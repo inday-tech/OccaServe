@@ -504,3 +504,69 @@ async function resetBrandDefaults() {
         if (window.showError) window.showError('An error occurred.');
     }
 }
+
+// Submit Verification Center documents via AJAX
+async function submitVerification() {
+    const btn = document.getElementById('btnSubmitVerification');
+    const idFront = document.getElementById('verif_id_front').files[0];
+    const permit = document.getElementById('verif_permit').files[0];
+
+    // Validation: Require ID Front and Business Permit if they don't already have one uploaded.
+    // The UI handles showing existing files, but we'll enforce strict validation here if it's their first time.
+    // Wait, since we can't easily check the backend state in pure JS without reading DOM, let's just check if files are selected OR if there's a success text nearby.
+    const hasId = document.querySelector('#verif_id_front').nextElementSibling?.classList.contains('field-hint');
+    const hasPermit = document.querySelector('#verif_permit').nextElementSibling?.classList.contains('field-hint');
+
+    if (!idFront && !hasId) {
+        if (window.showError) window.showError("Government ID (Front) is required.");
+        return;
+    }
+    if (!permit && !hasPermit) {
+        if (window.showError) window.showError("Business Permit is required.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('id_type', document.getElementById('verif_id_type').value);
+    if (idFront) formData.append('id_front', idFront);
+    
+    const idBack = document.getElementById('verif_id_back').files[0];
+    if (idBack) formData.append('id_back', idBack);
+
+    if (permit) formData.append('permit', permit);
+    formData.append('permit_expiry', document.getElementById('verif_permit_expiry').value);
+
+    const dti = document.getElementById('verif_dti').files[0];
+    if (dti) formData.append('dti', dti);
+
+    const bir = document.getElementById('verif_bir').files[0];
+    if (bir) formData.append('bir', bir);
+
+    const mayors = document.getElementById('verif_mayors').files[0];
+    if (mayors) formData.append('mayors', mayors);
+
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch('/caterer/verification/submit', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            if (window.showSuccess) window.showSuccess("Verification documents submitted successfully!");
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            if (window.showError) window.showError(result.message || "Failed to submit documents.");
+        }
+    } catch (err) {
+        console.error(err);
+        if (window.showError) window.showError("An unexpected error occurred.");
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }
+}

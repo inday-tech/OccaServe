@@ -1353,9 +1353,12 @@
                     <div class="admin-status-dot"></div>
                 </div>
                 <div class="admin-identity">
-                    <span class="admin-name">{{ user.caterer_profile.business_name if user and user.caterer_profile else
-                        'Business Name' }}</span>
+                    <span class="admin-name">{{ user.caterer_profile.business_name if user and user.caterer_profile else 'Business Name' }}</span>
+                    {% if user and user.caterer_profile and user.caterer_profile.verification_status == 'Verified' %}
                     <span class="admin-rank"><i class="fas fa-certificate"></i> Verified Partner</span>
+                    {% else %}
+                    <span class="admin-rank" style="color: #f39c12;"><i class="fas fa-clock"></i> Pending Review</span>
+                    {% endif %}
                 </div>
             </div>
 

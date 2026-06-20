@@ -1477,9 +1477,9 @@ async def add_caterer(
             last_name=final_last_name,
             phone_number=phone,
             status="active",
-            is_verified=True,
+            is_verified=False,
             is_email_verified=True,
-            is_kyc_complete=True,
+            is_kyc_complete=False,
             must_change_password=True
         )
         db.add(new_user)
@@ -1501,8 +1501,8 @@ async def add_caterer(
             cuisine_types=parsed_cuisines,
             latitude=latitude,
             longitude=longitude,
-            verification_status="Verified",
-            is_verified=True,
+            verification_status="Unverified",
+            is_verified=False,
             slug=business_name.lower().replace(" ", "-") + f"-{new_user.id}"
         )
         db.add(new_profile)
@@ -3115,3 +3115,69 @@ async def mark_all_admin_notifications_read(
     ).update({"is_read": True})
     db.commit()
     return {"success": True, "message": "All alerts marked as resolved in system logs."}
+
+@router.get("/api/caterers/{caterer_id}/documents")
+async def get_caterer_documents(
+    caterer_id: int,
+    db: Session = Depends(database.get_db),
+    admin: models.User = Depends(admin_only)
+):
+    profile = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id).first()
+    if not profile:
+        return {"success": False, "message": "Partner not found"}
+        
+    identity = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == profile.user_id).first()
+    
+    docs = {
+        "permit_url": profile.permit_url,
+        "permit_expiry_date": str(profile.permit_expiry_date) if profile.permit_expiry_date else None,
+        "dti_url": profile.dti_url,
+        "bir_url": profile.bir_url,
+        "mayors_permit_url": profile.mayors_permit_url,
+        "gov_id_url": identity.document_url if identity else None,
+        "gov_id_back_url": identity.document_back_url if identity else None
+    }
+    return {"success": True, "docs": docs}
+
+@router.post("/api/caterers/{caterer_id}/review")
+async def submit_caterer_review(
+    caterer_id: int,
+    status: str = Form(...),
+    remarks: str = Form(""),
+    db: Session = Depends(database.get_db),
+    admin: models.User = Depends(admin_only)
+):
+    profile = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id).first()
+    if not profile:
+        return {"success": False, "message": "Partner not found"}
+        
+    profile.verification_status = status
+    profile.admin_remarks = remarks
+    
+    identity = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == profile.user_id).first()
+    if identity:
+        identity.verification_status = status
+        
+    if status == "Verified":
+        if profile.user:
+            profile.user.is_verified = True
+            profile.user.is_kyc_complete = True
+    else:
+        if profile.user:
+            profile.user.is_verified = False
+            if status == "Suspended":
+                profile.user.status = "suspended"
+                profile.user.status_reason = remarks
+                profile.account_status = "Suspended"
+                
+    # Log Audit
+    audit = models.AuditLog(
+        user_id=profile.user_id,
+        action="verification_review",
+        new_status=status,
+        notes=f"Admin Review: {status}. Remarks: {remarks}"
+    )
+    db.add(audit)
+    db.commit()
+    
+    return {"success": True, "message": f"Partner verification updated to {status}."}

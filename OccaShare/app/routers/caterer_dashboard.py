@@ -894,7 +894,7 @@ async def caterer_dashboard(
     has_permit = bool(profile.permit_url)
     
     # Check eligibility to publish: Identity Verified + 1 Package + 3 Photos + Description
-    is_identity_verified = profile.status in ['Identity Verified', 'Published', 'Ready For Review', 'Verified'] or profile.verification_status == 'Verified'
+    is_identity_verified = profile.verification_status == 'Verified' and profile.user.is_verified
     can_publish = is_identity_verified and has_packages and has_photos and has_description
 
     completion_pct = 0
@@ -964,7 +964,7 @@ async def toggle_publish(
     has_description = bool(profile.description and profile.description.strip())
     has_packages = len([p for p in profile.packages if getattr(p, 'is_archived', False) == False]) >= 1
     has_photos = len([i for i in profile.gallery_items if getattr(i, 'is_archived', False) == False]) >= 3
-    is_identity_verified = profile.status in ['Identity Verified', 'Published', 'Ready For Review', 'Verified'] or profile.verification_status == 'Verified'
+    is_identity_verified = profile.verification_status == 'Verified'
     
     can_publish = is_identity_verified and has_packages and has_photos and has_description
     
@@ -2595,10 +2595,12 @@ async def edit_profile(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    identity = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user.id).first()
     return templates.TemplateResponse("caterer/profile_edit.html", {
         "request": request,
         "user": user,
         "profile": user.caterer_profile,
+        "identity": identity,
         "active_page": "settings"
     })
 
@@ -5602,4 +5604,102 @@ async def caterer_report_booking(
     db.commit()
 
     return JSONResponse(content={"success": True, "message": f"Report submitted successfully. Reference ID: {reference_id}"})
+
+
+@router.post("/verification/submit")
+async def submit_verification(
+    id_type: str = Form(...),
+    permit_expiry: Optional[str] = Form(None),
+    id_front: Optional[UploadFile] = File(None),
+    id_back: Optional[UploadFile] = File(None),
+    permit: Optional[UploadFile] = File(None),
+    dti: Optional[UploadFile] = File(None),
+    bir: Optional[UploadFile] = File(None),
+    mayors: Optional[UploadFile] = File(None),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == user.id).first()
+    if not profile:
+        return JSONResponse(status_code=400, content={"success": False, "message": "Profile not found."})
+
+    from ..core.utils import validate_file_type_and_size
+    import shutil
+    import os
+    import time
+    
+    upload_dir = "app/static/uploads/caterer/verification"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    def save_file(file_obj, prefix):
+        if not file_obj or not file_obj.filename: return None
+        # Handle file validation securely
+        file_obj.file.seek(0, 2)
+        size = file_obj.file.tell()
+        file_obj.file.seek(0)
+        
+        class MockFile:
+            def __init__(self, filename, size, file_obj):
+                self.filename = filename
+                self.size = size
+                self.file = file_obj
+                
+        mock = MockFile(file_obj.filename, size, file_obj.file)
+        validate_file_type_and_size(mock)
+            
+        ext = file_obj.filename.split('.')[-1].lower()
+        filename = f"{prefix}_{user.id}_{int(time.time())}.{ext}"
+        filepath = os.path.join(upload_dir, filename)
+        with open(filepath, "wb") as buffer:
+            shutil.copyfileobj(file_obj.file, buffer)
+        return f"/static/uploads/caterer/verification/{filename}"
+    
+    try:
+        if permit:
+            url = save_file(permit, "permit")
+            if url: profile.permit_url = url
+            
+        if permit_expiry:
+            from datetime import datetime
+            try:
+                profile.permit_expiry_date = datetime.strptime(permit_expiry, "%Y-%m-%d").date()
+            except:
+                pass
+                
+        if dti:
+            url = save_file(dti, "dti")
+            if url: profile.dti_url = url
+            
+        if bir:
+            url = save_file(bir, "bir")
+            if url: profile.bir_url = url
+            
+        if mayors:
+            url = save_file(mayors, "mayors")
+            if url: profile.mayors_permit_url = url
+            
+        # Update Verification Status
+        profile.verification_status = "Pending Review"
+        
+        # Identity Verification
+        identity = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user.id).first()
+        if not identity:
+            identity = models.IdentityVerification(user_id=user.id, id_type=id_type, verification_status="Pending Review")
+            db.add(identity)
+        else:
+            identity.id_type = id_type
+            identity.verification_status = "Pending Review"
+            
+        if id_front:
+            url = save_file(id_front, "id_front")
+            if url: identity.document_url = url
+        if id_back:
+            url = save_file(id_back, "id_back")
+            if url: identity.document_back_url = url
+            
+        db.commit()
+        return JSONResponse(content={"success": True, "message": "Verification submitted successfully."})
+    except Exception as e:
+        db.rollback()
+        return JSONResponse(status_code=500, content={"success": False, "message": str(e)})
 

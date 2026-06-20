@@ -43,8 +43,13 @@
 
             <div class="account-status-box">
                 <div class="status-label">Account Status</div>
-                <div class="status-value">
+                    {% if profile.verification_status == 'Verified' %}
                     <i class="fas fa-check-circle"></i> Verified Partner
+                    {% elif profile.verification_status == 'Pending Review' %}
+                    <i class="fas fa-clock" style="color:#f39c12;"></i> Pending Review
+                    {% else %}
+                    <i class="fas fa-info-circle"></i> {{ profile.verification_status or 'Unverified' }}
+                    {% endif %}
                 </div>
             </div>
 
@@ -73,6 +78,9 @@
                     </button>
                     <button type="button" class="tab-btn" data-tab="brand">
                         <i class="fas fa-palette"></i> <span>Professional Branding</span>
+                    </button>
+                    <button type="button" class="tab-btn" data-tab="verification">
+                        <i class="fas fa-shield-halved"></i> <span>Verification Center</span>
                     </button>
                     <button type="button" class="tab-btn" data-tab="account">
                         <i class="fas fa-user-shield"></i> <span>Account & Security</span>
@@ -248,28 +256,7 @@
                         <span class="field-hint"><i class="fas fa-lock"></i> Email cannot be changed for security.</span>
                     </div>
 
-                    <div class="form-group" style="margin-top: 1.5rem;">
-                        <label><i class="fas fa-file-contract"></i> Business Permit</label>
-                        <input type="file" name="permit_file" accept=".png,.jpg,.jpeg,.pdf" class="form-file-input" onchange="
-                            const file = this.files[0];
-                            if (file) {
-                                const allowedExtensions = ['png', 'jpg', 'jpeg', 'pdf'];
-                                const fileExtension = file.name.split('.').pop().toLowerCase();
-                                if (!allowedExtensions.includes(fileExtension)) {
-                                    alert('Invalid file type. Only PNG, JPEG, and PDF are allowed.');
-                                    this.value = '';
-                                }
-                            }
-                        ">
-                        {% if profile.permit_url %}
-                        <div class="field-hint" style="margin-top: 8px;">
-                            <i class="fas fa-check-circle" style="color: #10b981;"></i> Current permit uploaded. 
-                            <a href="{{ profile.permit_url }}" target="_blank" style="color: var(--primary-color); font-weight: 600; text-decoration: underline;">View File</a>
-                        </div>
-                        {% endif %}
-                        <span class="field-hint">Required for administrative review and platform compliance. This is strictly private and visible only to you and platform admins.</span>
-                    </div>
-
+                    <!-- Business Permit upload moved to Verification Center -->
                     <!-- Notification Preferences -->
                     <div class="section-header-compact" style="margin-top: 2.5rem;">
                         <h3><i class="fas fa-bell"></i> Notification Preferences</h3>
@@ -803,11 +790,132 @@
                                     </button>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 </div>
 
+                <!-- Tab: Verification Center -->
+                <div class="tab-content" id="verification">
+                    <div class="section-header-compact">
+                        <h3><i class="fas fa-shield-halved"></i> Verification Center</h3>
+                        <p>Submit your compliance documents here. These are private and never visible to customers.</p>
+                    </div>
+
+                    <!-- Status Section -->
+                    <div class="verification-status-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <h4 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: #1e293b;">Verification Status</h4>
+                            <p style="margin: 0; font-size: 0.9rem; color: #64748b;">Current compliance standing of your business.</p>
+                            {% if profile.admin_remarks %}
+                            <div style="margin-top: 1rem; padding: 0.75rem; background: #fee2e2; border-left: 4px solid #ef4444; border-radius: 4px; font-size: 0.85rem; color: #7f1d1d;">
+                                <strong>Admin Remarks:</strong> {{ profile.admin_remarks }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div>
+                            {% set v_status = profile.verification_status or 'Not Submitted' %}
+                            {% set status_colors = {
+                                'Not Submitted': '#94a3b8',
+                                'Pending Review': '#eab308',
+                                'Requires Revision': '#f97316',
+                                'Verified': '#10b981',
+                                'Rejected': '#ef4444',
+                                'Suspended': '#7f1d1d'
+                            } %}
+                            <span style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 999px; font-weight: 700; font-size: 0.9rem; background: {{ status_colors.get(v_status, '#94a3b8') }}20; color: {{ status_colors.get(v_status, '#94a3b8') }}; border: 1px solid {{ status_colors.get(v_status, '#94a3b8') }}50;">
+                                <i class="fas fa-circle" style="font-size: 0.5rem;"></i> {{ v_status }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Upload Forms via AJAX -->
+                    <div id="verificationFormsContainer">
+                        <div class="form-row-two-col">
+                            <!-- Identity Verification -->
+                            <div class="brand-settings-card">
+                                <div class="brand-card-header">
+                                    <i class="fas fa-id-card"></i>
+                                    <span>Identity Verification</span>
+                                </div>
+                                <div class="brand-card-body">
+                                    <div class="form-group">
+                                        <label>ID Type</label>
+                                        <select id="verif_id_type" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
+                                            <option value="National ID">National ID</option>
+                                            <option value="Driver's License">Driver's License</option>
+                                            <option value="Passport">Passport</option>
+                                            <option value="UMID">UMID</option>
+                                            <option value="PhilSys ID">PhilSys ID</option>
+                                            <option value="Voter's ID">Voter's ID</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Front ID Image *</label>
+                                        <input type="file" id="verif_id_front" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
+                                        {% if profile.gov_id_url or (identity and identity.document_url) %}
+                                        <div class="field-hint" style="margin-top: 8px;"><i class="fas fa-check-circle" style="color: #10b981;"></i> Uploaded. <a href="{{ profile.gov_id_url or (identity and identity.document_url) }}" target="_blank">View</a></div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Back ID Image (Optional)</label>
+                                        <input type="file" id="verif_id_back" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
+                                        {% if identity and identity.document_back_url %}
+                                        <div class="field-hint" style="margin-top: 8px;"><i class="fas fa-check-circle" style="color: #10b981;"></i> Uploaded. <a href="{{ identity.document_back_url }}" target="_blank">View</a></div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Business Verification -->
+                            <div class="brand-settings-card">
+                                <div class="brand-card-header">
+                                    <i class="fas fa-file-contract"></i>
+                                    <span>Business Verification</span>
+                                </div>
+                                <div class="brand-card-body">
+                                    <div class="form-group">
+                                        <label>Business Permit *</label>
+                                        <input type="file" id="verif_permit" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
+                                        {% if profile.permit_url %}
+                                        <div class="field-hint" style="margin-top: 8px;"><i class="fas fa-check-circle" style="color: #10b981;"></i> Uploaded. <a href="{{ profile.permit_url }}" target="_blank">View</a></div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Permit Expiration Date</label>
+                                        <input type="date" id="verif_permit_expiry" value="{{ profile.permit_expiry_date or '' }}" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>DTI Registration (Optional)</label>
+                                        <input type="file" id="verif_dti" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
+                                        {% if profile.dti_url %}
+                                        <div class="field-hint" style="margin-top: 8px;"><i class="fas fa-check-circle" style="color: #10b981;"></i> Uploaded. <a href="{{ profile.dti_url }}" target="_blank">View</a></div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="form-group">
+                                        <label>BIR Registration (Optional)</label>
+                                        <input type="file" id="verif_bir" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
+                                        {% if profile.bir_url %}
+                                        <div class="field-hint" style="margin-top: 8px;"><i class="fas fa-check-circle" style="color: #10b981;"></i> Uploaded. <a href="{{ profile.bir_url }}" target="_blank">View</a></div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Mayor's Permit (Optional)</label>
+                                        <input type="file" id="verif_mayors" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
+                                        {% if profile.mayors_permit_url %}
+                                        <div class="field-hint" style="margin-top: 8px;"><i class="fas fa-check-circle" style="color: #10b981;"></i> Uploaded. <a href="{{ profile.mayors_permit_url }}" target="_blank">View</a></div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
+                            <button type="button" class="btn-primary" id="btnSubmitVerification" onclick="submitVerification()" style="padding: 12px 24px; font-size: 1rem;">
+                                <i class="fas fa-paper-plane"></i> Submit Verification
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="form-footer-actions">
                     <button type="submit" class="btn-primary btn-save-changes">Save All Changes</button>

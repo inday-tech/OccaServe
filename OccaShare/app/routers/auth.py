@@ -508,8 +508,8 @@ async def register(
                 gov_id_url=gov_id_url,
                 latitude=latitude,
                 longitude=longitude,
-                verification_status="Verified",
-                status="Identity Verified",
+                verification_status="Pending Review",
+                status="Pending Approval",
                 team_size=team_size
             )
             db.add(new_profile)
@@ -555,7 +555,7 @@ async def register(
                         document_url=gov_id_url,
                         selfie_url=None,
                         ocr_data=ocr_payload,
-                        verification_status="approved"
+                        verification_status="Pending Review"
                     )
                     
                     db.add(verification)

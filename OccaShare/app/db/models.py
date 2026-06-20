@@ -127,8 +127,14 @@ class CatererProfile(Base):
     starting_price = Column(Float, default=0.0)
     sample_menu_url = Column(String, nullable=True)
     permit_url = Column(String, nullable=True)
+    dti_url = Column(String, nullable=True)
+    bir_url = Column(String, nullable=True)
+    mayors_permit_url = Column(String, nullable=True)
+    permit_expiry_date = Column(Date, nullable=True)
     permit_status = Column(String, default='Pending') # Pending, Verified, Rejected
     gov_id_url = Column(String, nullable=True)
+    registration_source = Column(String, default="Website")
+    admin_remarks = Column(Text, nullable=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     
@@ -644,6 +650,7 @@ class IdentityVerification(Base):
     user_id = Column(Integer, ForeignKey("users.id"), unique=True)
     verification_type = Column(String, default='government_id')
     document_url = Column(String, nullable=True)
+    document_back_url = Column(String, nullable=True)
     id_number = Column(String, nullable=True)
     selfie_url = Column(String, nullable=True) # selfie_1
     selfie_2_url = Column(String, nullable=True)

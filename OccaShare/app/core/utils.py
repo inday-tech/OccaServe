@@ -140,13 +140,29 @@ def get_dashboard_url(role: str) -> str:
     return mapping.get(role, '/')
 
 def validate_file_type_and_size(file_content: bytes, filename: str, max_size_mb: int = 5) -> Optional[str]:
-    if len(file_content) > max_size_mb * 1024 * 1024:
+    file_size = len(file_content)
+    if file_size == 0:
+        return "File is empty (0 bytes)."
+        
+    # A legitimate scanned document or photo is almost always > 10KB.
+    # Blank PDFs or tiny placeholder images are usually < 5KB.
+    if file_size < 5120:  # 5KB
+        return "File is too small to be a valid document. Please ensure it is not blank."
+
+    if file_size > max_size_mb * 1024 * 1024:
         return f"File size exceeds the {max_size_mb}MB limit."
-    allowed_extensions = {'.jpg', '.jpeg', '.png', '.webp', '.pdf'}
+        
     import os
     ext = os.path.splitext(filename)[1].lower()
+    allowed_extensions = {'.jpg', '.jpeg', '.png', '.webp', '.pdf'}
+    
     if ext not in allowed_extensions:
         return f"Unsupported file type '{ext}'. Allowed: {', '.join(allowed_extensions)}"
+        
+    if ext == '.pdf':
+        if b'%PDF-' not in file_content[:10]:
+            return "File appears to be corrupted or is not a valid PDF."
+            
     return None
 
 def background_geocode(caterer_id: int):

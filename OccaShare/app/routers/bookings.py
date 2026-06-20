@@ -81,8 +81,11 @@ async def my_bookings_redirect():
 # --- Wizard Steps ---
 
 # --- Dedicated A La Carte Checkout ---
-@router.get("/alacarte/checkout/{caterer_id}")
+@router.get("/alacarte/{caterer_id}/{menu_id}", response_class=HTMLResponse)
 async def alacarte_checkout_page(request: Request, caterer_id: int, menu_id: str, db: Session = Depends(database.get_db)):
+    caterer = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id).first()
+    if not caterer or caterer.verification_status != 'Verified' or not caterer.user.is_verified:
+        return RedirectResponse(url="/customer/marketplace?error_msg=This partner is not currently authorized to accept bookings.")
     user = get_current_user_from_session(request, db)
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/alacarte/checkout/{caterer_id}?menu_id={menu_id}")
@@ -344,6 +347,10 @@ async def alacarte_checkout_submit(
 # Step 1: Initialize/Select Caterer (from Profile Page)
 @router.get("/start/{caterer_id}")
 async def start_booking(request: Request, caterer_id: int, package_id: Optional[int] = None, db: Session = Depends(database.get_db)):
+    caterer = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id).first()
+    if not caterer or caterer.verification_status != 'Verified' or not caterer.user.is_verified:
+        return RedirectResponse(url="/customer/marketplace?error_msg=This partner is not currently authorized to accept bookings.")
+    
     user = get_current_user_from_session(request, db)
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/start/{caterer_id}")
@@ -364,6 +371,10 @@ async def start_booking(request: Request, caterer_id: int, package_id: Optional[
 
 @router.get("/custom/request/{caterer_id}")
 async def custom_booking_request_form(request: Request, caterer_id: int, db: Session = Depends(database.get_db)):
+    caterer = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id).first()
+    if not caterer or caterer.verification_status != 'Verified' or not caterer.user.is_verified:
+        return RedirectResponse(url="/customer/marketplace?error_msg=This partner is not currently authorized to accept bookings.")
+
     user = get_current_user_from_session(request, db)
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/custom/request/{caterer_id}")
