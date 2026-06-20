@@ -199,7 +199,7 @@
             <label class="form-label">Base Package / Food Cost (Total for {{ booking.guest_count }} pax)</label>
             <div style="position: relative;">
                 <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); font-weight: 700;">₱</span>
-                <input type="number" step="0.01" name="base_price" id="basePrice" class="form-input" style="padding-left: 2rem;" required oninput="calculateTotal()">
+                <input type="text" inputmode="numeric" name="base_price" id="basePrice" class="form-input js-format-comma" style="padding-left: 2rem;" required oninput="calculateTotal()">
             </div>
             <small style="color: #64748b; margin-top: 4px; display: block;">This covers the core food and inclusions.</small>
         </div>
@@ -273,10 +273,15 @@
         row.className = 'line-item-row';
         row.innerHTML = `
             <input type="text" name="addon_names" class="form-input" placeholder="e.g. Rustic Wood Backdrop" required>
-            <input type="number" step="0.01" name="addon_prices" class="form-input addon-price" placeholder="0.00" required oninput="calculateTotal()">
+            <input type="text" inputmode="numeric" name="addon_prices" class="form-input addon-price js-format-comma" placeholder="0.00" required oninput="calculateTotal()">
             <button type="button" class="btn-remove" onclick="this.parentElement.remove(); calculateTotal();"><i class="fas fa-times"></i></button>
         `;
         container.appendChild(row);
+        const newInput = row.querySelector('.js-format-comma');
+        if (newInput && window.applyCommaFormatting) {
+            newInput.addEventListener('input', function() { window.applyCommaFormatting(this); calculateTotal(); });
+            if (newInput.value) window.applyCommaFormatting(newInput);
+        }
     }
     
     function calculateTotal() {

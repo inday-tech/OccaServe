@@ -1366,7 +1366,7 @@
                     <li>
                         <a href="/caterer/dashboard" class="nav-item {{ 'active' if active_page == 'dashboard' }}">
                             <div class="nav-icon"><i class="fas fa-th-large"></i></div>
-                            <span class="nav-label">Overview</span>
+                            <span class="nav-label">Dashboard</span>
                         </a>
                     </li>
                 </ul>
@@ -1388,26 +1388,26 @@
                     <li>
                         <a href="/caterer/menu" class="nav-item {{ 'active' if active_page == 'menu' }}">
                             <div class="nav-icon"><i class="fas fa-utensils"></i></div>
-                            <span class="nav-label">Dish Management</span>
+                            <span class="nav-label">Menu Management</span>
                         </a>
                     </li>
                     <li>
                         <a href="/caterer/services" class="nav-item {{ 'active' if active_page == 'services' }}">
                             <div class="nav-icon"><i class="fas fa-concierge-bell"></i></div>
-                            <span class="nav-label">Equipments & Services</span>
+                            <span class="nav-label">Equipment & Services</span>
                         </a>
                     </li>
 
                     <li>
                         <a href="/caterer/packages" class="nav-item {{ 'active' if active_page == 'packages' }}">
                             <div class="nav-icon"><i class="fas fa-gift"></i></div>
-                            <span class="nav-label">Packages</span>
+                            <span class="nav-label">Package Management</span>
                         </a>
                     </li>
                     <li>
                         <a href="/caterer/customers" class="nav-item {{ 'active' if active_page == 'customers' }}">
                             <div class="nav-icon"><i class="fas fa-users"></i></div>
-                            <span class="nav-label">Customers</span>
+                            <span class="nav-label">Customer Directory</span>
                         </a>
                     </li>
                 </ul>
@@ -1417,19 +1417,19 @@
                     <li>
                         <a href="/caterer/payments" class="nav-item {{ 'active' if active_page == 'payments' }}">
                             <div class="nav-icon"><i class="fas fa-money-bill-wave"></i></div>
-                            <span class="nav-label">Earnings</span>
+                            <span class="nav-label">Payments & Earnings</span>
                         </a>
                     </li>
                     <li>
                         <a href="/caterer/financials" class="nav-item {{ 'active' if active_page == 'financials' }}">
                             <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
-                            <span class="nav-label">Financials</span>
+                            <span class="nav-label">Financial Reports</span>
                         </a>
                     </li>
                     <li>
                         <a href="/caterer/compliance" class="nav-item {{ 'active' if active_page == 'compliance' }}">
                             <div class="nav-icon"><i class="fas fa-shield-halved"></i></div>
-                            <span class="nav-label">Compliance</span>
+                            <span class="nav-label">Customer Verification</span>
                         </a>
                     </li>
                     <li>
@@ -1445,7 +1445,7 @@
                     <li>
                         <a href="/caterer/profile" class="nav-item {{ 'active' if active_page == 'settings' }}">
                             <div class="nav-icon"><i class="fas fa-cog"></i></div>
-                            <span class="nav-label">Settings</span>
+                            <span class="nav-label">Business Settings</span>
                         </a>
                     </li>
                     <li>
@@ -1789,6 +1789,7 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="{{ url_for('static', path='js/main.js') }}?v=aca5396d"></script>
+    <script src="{{ url_for('static', path='/js/global/diamond_validation.js') }}?v={{ range(1, 10000) | random }}"></script>
     <script>
         window.catererConfig = {
             userId: {{ user.id if user else 'null' }}

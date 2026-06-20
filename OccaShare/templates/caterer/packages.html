@@ -130,7 +130,7 @@
                         <div class="step-icon-side"><i class="fas fa-utensils"></i></div>
                         <div class="step-text-side">
                             <span class="step-title-side">Menu Setup</span>
-                            <span class="step-desc-side">Dish selection</span>
+                            <span class="step-desc-side">Menu selection</span>
                         </div>
                     </div>
                     
@@ -318,11 +318,11 @@
                             </div>
                             <div class="form-group-pro" id="minGuestsGroup">
                                 <label style="font-size: 10px;">Min Guests</label>
-                                <input type="number" name="min_guests" class="control-pro" style="height: 50px; font-weight: 700;" value="50" min="1" max="100000" oninput="if(this.value.length > 6) this.value = this.value.slice(0,6);">
+                                <input type="text" inputmode="numeric" name="min_guests" class="control-pro js-format-comma" style="height: 50px; font-weight: 700;" value="50" min="1" max="100000" oninput="if(this.value.length > 6) this.value = this.value.slice(0,6);">
                             </div>
                             <div class="form-group-pro" id="excessPaxGroup" style="display: none;">
                                 <label style="font-size: 10px;">Excess Pax Rate (₱)</label>
-                                <input type="number" name="additional_guest_price" class="control-pro" style="height: 50px; font-weight: 700;" value="0" min="0">
+                                <input type="text" inputmode="numeric" name="additional_guest_price" class="control-pro js-format-comma" style="height: 50px; font-weight: 700;" value="0" min="0">
                             </div>
                             <div class="form-group-pro">
                                 <label style="font-size: 10px;">Reservation Fee Setup</label>
@@ -331,7 +331,7 @@
                                         <option value="fixed">Fixed (₱)</option>
                                         <option value="percentage">Percentage (%)</option>
                                     </select>
-                                    <input type="number" name="reservation_fee_value" class="control-pro" style="flex: 1; height: 50px; font-weight: 700;" value="5000" min="0" oninput="if(this.value.length > 8) this.value = this.value.slice(0,8);">
+                                    <input type="text" inputmode="numeric" name="reservation_fee_value" class="control-pro js-format-comma" style="flex: 1; height: 50px; font-weight: 700;" value="5000" min="0" oninput="if(this.value.length > 8) this.value = this.value.slice(0,8);">
                                 </div>
                             </div>
                         </div>
@@ -383,15 +383,15 @@
                         <div class="form-row-pro" style="grid-template-columns: repeat(3, 1fr); gap: 1rem;">
                             <div class="form-group-pro" style="margin-bottom: 0.5rem;">
                                 <label style="font-size: 10px;">Labor / Staff (₱)</label>
-                                <input type="number" id="pkgLaborCost" name="labor_cost" class="control-pro" value="0" min="0" max="999999" oninput="if(this.value.length > 7) this.value = this.value.slice(0,7);">
+                                <input type="text" inputmode="numeric" id="pkgLaborCost" name="labor_cost" class="control-pro js-format-comma" value="0" min="0" max="999999" oninput="if(this.value.length > 7) this.value = this.value.slice(0,7);">
                             </div>
                             <div class="form-group-pro" style="margin-bottom: 0.5rem;">
                                 <label style="font-size: 10px;">Utilities (₱)</label>
-                                <input type="number" id="pkgUtilityCost" name="utility_cost" class="control-pro" value="0" min="0" max="999999" oninput="if(this.value.length > 7) this.value = this.value.slice(0,7);">
+                                <input type="text" inputmode="numeric" id="pkgUtilityCost" name="utility_cost" class="control-pro js-format-comma" value="0" min="0" max="999999" oninput="if(this.value.length > 7) this.value = this.value.slice(0,7);">
                             </div>
                             <div class="form-group-pro" style="margin-bottom: 0.5rem;">
                                 <label style="font-size: 10px;">Transportation (₱)</label>
-                                <input type="number" id="pkgTransportCost" name="transportation_cost" class="control-pro" value="0" min="0" max="999999" oninput="if(this.value.length > 7) this.value = this.value.slice(0,7);">
+                                <input type="text" inputmode="numeric" id="pkgTransportCost" name="transportation_cost" class="control-pro js-format-comma" value="0" min="0" max="999999" oninput="if(this.value.length > 7) this.value = this.value.slice(0,7);">
                             </div>
                         </div>
                         
@@ -432,7 +432,7 @@
                             <div style="display: flex; gap: 1rem;">
                                 <div style="flex: 1; background: white; border: 1px solid #e2e8f0; border-radius: var(--border-radius, 0.5rem); padding: 0.75rem; text-align: center;">
                                     <div style="font-size: 1.5rem; font-weight: 900; color: #1e293b;" id="reviewDishesCount">0</div>
-                                    <div style="font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Dishes</div>
+                                    <div style="font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Menu Items</div>
                                 </div>
                                 <div style="flex: 1; background: white; border: 1px solid #e2e8f0; border-radius: var(--border-radius, 0.5rem); padding: 0.75rem; text-align: center;">
                                     <div style="font-size: 1.5rem; font-weight: 900; color: #1e293b;" id="reviewServicesCount">0</div>
@@ -482,7 +482,7 @@
                 <label id="markupValueLabel">Markup Value (%)</label>
                 <div style="position:relative;">
                     <span id="markupSymbol" style="position:absolute; left:var(--space-md); top:50%; transform:translateY(-50%); font-weight:800; color:var(--color-neutral-400);">%</span>
-                    <input type="number" id="roiMarkupValue" class="control-pro" style="padding-left:2.5rem; font-weight:700;" placeholder="0.00">
+                    <input type="text" inputmode="numeric" id="roiMarkupValue" class="control-pro js-format-comma" style="padding-left:2.5rem; font-weight:700;" placeholder="0.00">
                 </div>
             </div>
 

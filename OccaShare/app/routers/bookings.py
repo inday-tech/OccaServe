@@ -95,7 +95,10 @@ async def alacarte_checkout_page(request: Request, caterer_id: int, menu_id: str
     except ValueError:
         return RedirectResponse(url="/marketplace", status_code=303)
 
-    menu_items = db.query(models.MenuItem).filter(models.MenuItem.id.in_(id_list)).all()
+    menu_items = db.query(models.MenuItem).filter(
+        models.MenuItem.id.in_(id_list),
+        models.MenuItem.available_for_order == True
+    ).all()
     
     if not caterer or not menu_items:
         return RedirectResponse(url="/marketplace", status_code=303)
@@ -570,7 +573,9 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
     # All active items for this caterer (to allow swapping)
     all_menu_items = db.query(models.MenuItem).filter(
         models.MenuItem.caterer_id == caterer.id,
-        models.MenuItem.is_archived == False
+        models.MenuItem.is_archived == False,
+        models.MenuItem.available_for_package == True,
+        models.MenuItem.pricing_type == "fixed"
     ).all()
     
     addon_items = [i for i in all_menu_items if i.is_addon]

@@ -2292,9 +2292,9 @@ async def manage_packages(
     active_menu = [m for m in profile.menu_items if not m.is_archived and m.category not in service_cats]
     
     # Compile Inventory & Services
-    equipment_items = [e for e in profile.equipment_items if not e.is_archived]
-    service_items = [s for s in profile.service_items if not s.is_archived]
-    legacy_items = [m for m in profile.menu_items if not m.is_archived and m.category in service_cats]
+    equipment_items = [e for e in profile.equipment_items if not e.is_archived and e.status == 'available']
+    service_items = [s for s in profile.service_items if not s.is_archived and s.status == 'available']
+    legacy_items = [m for m in profile.menu_items if not m.is_archived and m.status == 'available' and m.category in service_cats]
     
     # Unify them into a dictionary format compatible with the template
     active_services = []
@@ -2788,23 +2788,46 @@ async def toggle_package_status(
 @router.post("/menu/add")
 async def add_menu_item(
     request: Request,
-    name: str = Form(...),
-    category: str = Form(...),
-    description: Optional[str] = Form(None),
-    price: float = Form(0.0),
-    cost_price: float = Form(0.0),
-    unit_type: str = Form("Per Pax"),
-    status: str = Form("available"),
-    visibility: str = Form("public"),
-    dietary_tags: list[str] = Form([]),
-    allergen_info: list[str] = Form([]),
-    image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    form_data = await request.form()
+    
+    name = form_data.get("name")
+    category = form_data.get("category")
+    if category == "Other":
+        category = form_data.get("custom_category") or "Other"
+    
+    description = form_data.get("description")
+    status = form_data.get("status", "available")
+    
+    # New V2.0 Fields
+    usage_type = form_data.get("usage_type", "both")
+    available_for_package = usage_type in ["package_only", "both"]
+    available_for_order = usage_type in ["order_only", "both"]
+    
+    pricing_type = form_data.get("pricing_type", "fixed")
+    
+    # Base Price and Serving Size for Fixed Price
+    price = None
+    serving_size = None
+    if not (usage_type == "package_only"):
+        if pricing_type == "fixed":
+            try:
+                price = float(form_data.get("price", "0").replace(",", ""))
+            except ValueError:
+                price = 0.0
+            serving_size = form_data.get("serving_size")
+    
+    is_hidden = form_data.get("visibility") == "hidden"
+    
+    dietary_tags = form_data.getlist("dietary_tags")
+    allergen_info = form_data.getlist("allergen_info")
+    
+    image = form_data.get("image")
     import base64
     image_url = None
-    if image and image.filename:
+    if image and hasattr(image, "filename") and image.filename:
         try:
             content_bytes = await image.read()
             if content_bytes:
@@ -2820,16 +2843,60 @@ async def add_menu_item(
         category=category,
         description=description,
         price=price,
-        cost_price=cost_price,
-        pricing_unit=unit_type,
+        serving_size=serving_size,
         status=status,
-        is_hidden=(visibility == "hidden"),
+        usage_type=usage_type,
+        available_for_package=available_for_package,
+        available_for_order=available_for_order,
+        pricing_type=pricing_type,
+        is_hidden=is_hidden,
         dietary_tags=dietary_tags,
         allergen_info=allergen_info,
         image_url=image_url,
         is_archived=False
     )
     db.add(new_item)
+    db.flush() # To get new_item.id
+
+    # Handle dynamic pricing tables
+    if not (usage_type == "package_only"):
+        if pricing_type == "size_based":
+            size_names = form_data.getlist("size_names[]")
+            size_caps = form_data.getlist("size_capacities[]")
+            size_prices = form_data.getlist("size_prices[]")
+            for i in range(len(size_names)):
+                s_name = size_names[i].strip()
+                s_cap = size_caps[i] if i < len(size_caps) else None
+                try:
+                    s_price = float(size_prices[i].replace(",", ""))
+                except:
+                    s_price = 0.0
+                if s_name:
+                    sz_pricing = models.MenuSizePricing(
+                        menu_item_id=new_item.id,
+                        size_name=s_name,
+                        capacity=s_cap,
+                        price=s_price
+                    )
+                    db.add(sz_pricing)
+        
+        elif pricing_type == "weight_based":
+            weight_labels = form_data.getlist("weight_labels[]")
+            weight_prices = form_data.getlist("weight_prices[]")
+            for i in range(len(weight_labels)):
+                w_label = weight_labels[i].strip()
+                try:
+                    w_price = float(weight_prices[i].replace(",", ""))
+                except:
+                    w_price = 0.0
+                if w_label:
+                    wt_pricing = models.MenuWeightPricing(
+                        menu_item_id=new_item.id,
+                        weight_label=w_label,
+                        price=w_price
+                    )
+                    db.add(wt_pricing)
+
     db.commit()
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -3480,7 +3547,8 @@ async def get_all_menu_items_api(
 ):
     items = db.query(models.MenuItem).filter(
         models.MenuItem.caterer_id == user.caterer_profile.id,
-        models.MenuItem.is_archived == False
+        models.MenuItem.is_archived == False,
+        models.MenuItem.available_for_package == True
     ).all()
     return [
         {
@@ -3546,17 +3614,6 @@ async def get_menu_item_ingredients(
 async def update_menu_item(
     item_id: int,
     request: Request,
-    name: str = Form(...),
-    category: str = Form(...),
-    description: Optional[str] = Form(None),
-    price: float = Form(0.0),
-    cost_price: float = Form(0.0),
-    unit_type: str = Form("Per Pax"),
-    status: str = Form("available"),
-    visibility: str = Form("public"),
-    dietary_tags: list[str] = Form([]),
-    allergen_info: list[str] = Form([]),
-    image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -3565,18 +3622,56 @@ async def update_menu_item(
     if not item or item.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Item not found")
 
+    form_data = await request.form()
+    
+    name = form_data.get("name")
+    category = form_data.get("category")
+    if category == "Other":
+        category = form_data.get("custom_category") or "Other"
+    
+    description = form_data.get("description")
+    status = form_data.get("status", "available")
+    
+    # New V2.0 Fields
+    usage_type = form_data.get("usage_type", "both")
+    available_for_package = usage_type in ["package_only", "both"]
+    available_for_order = usage_type in ["order_only", "both"]
+    
+    pricing_type = form_data.get("pricing_type", "fixed")
+    
+    # Base Price and Serving Size for Fixed Price
+    price = None
+    serving_size = None
+    if not (usage_type == "package_only"):
+        if pricing_type == "fixed":
+            try:
+                price = float(form_data.get("price", "0").replace(",", ""))
+            except ValueError:
+                price = 0.0
+            serving_size = form_data.get("serving_size")
+    
+    is_hidden = form_data.get("visibility") == "hidden"
+    
+    dietary_tags = form_data.getlist("dietary_tags")
+    allergen_info = form_data.getlist("allergen_info")
+    
+    image = form_data.get("image")
+
     item.name = name
     item.category = category
     item.description = description
     item.price = price
-    item.cost_price = cost_price
-    item.pricing_unit = unit_type
+    item.serving_size = serving_size
     item.status = status
-    item.is_hidden = (visibility == "hidden")
+    item.usage_type = usage_type
+    item.available_for_package = available_for_package
+    item.available_for_order = available_for_order
+    item.pricing_type = pricing_type
+    item.is_hidden = is_hidden
     item.dietary_tags = dietary_tags
     item.allergen_info = allergen_info
 
-    if image and image.filename:
+    if image and hasattr(image, "filename") and image.filename:
         try:
             content_bytes = await image.read()
             if content_bytes:
@@ -3585,6 +3680,49 @@ async def update_menu_item(
                 item.image_url = f"data:{mime};base64,{encoded}"
         except Exception:
             pass
+
+    # Clear existing pricing
+    db.query(models.MenuSizePricing).filter(models.MenuSizePricing.menu_item_id == item.id).delete()
+    db.query(models.MenuWeightPricing).filter(models.MenuWeightPricing.menu_item_id == item.id).delete()
+
+    # Handle dynamic pricing tables
+    if not (usage_type == "package_only"):
+        if pricing_type == "size_based":
+            size_names = form_data.getlist("size_names[]")
+            size_caps = form_data.getlist("size_capacities[]")
+            size_prices = form_data.getlist("size_prices[]")
+            for i in range(len(size_names)):
+                s_name = size_names[i].strip()
+                s_cap = size_caps[i] if i < len(size_caps) else None
+                try:
+                    s_price = float(size_prices[i].replace(",", ""))
+                except:
+                    s_price = 0.0
+                if s_name:
+                    sz_pricing = models.MenuSizePricing(
+                        menu_item_id=item.id,
+                        size_name=s_name,
+                        capacity=s_cap,
+                        price=s_price
+                    )
+                    db.add(sz_pricing)
+        
+        elif pricing_type == "weight_based":
+            weight_labels = form_data.getlist("weight_labels[]")
+            weight_prices = form_data.getlist("weight_prices[]")
+            for i in range(len(weight_labels)):
+                w_label = weight_labels[i].strip()
+                try:
+                    w_price = float(weight_prices[i].replace(",", ""))
+                except:
+                    w_price = 0.0
+                if w_label:
+                    wt_pricing = models.MenuWeightPricing(
+                        menu_item_id=item.id,
+                        weight_label=w_label,
+                        price=w_price
+                    )
+                    db.add(wt_pricing)
 
     db.commit()
 

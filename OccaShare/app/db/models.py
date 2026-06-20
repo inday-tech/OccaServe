@@ -288,10 +288,16 @@ class MenuItem(Base):
     
     # Phase 1 Fields
     cost_price = Column(Float, default=0.0) # estimated_cost
-    price = Column(Float, default=0.0) # selling_price
+    price = Column(Float, nullable=True, default=0.0) # selling_price - nullable for package_only
     pricing_unit = Column(String, default="per_pax") # unit_type
     min_order_qty = Column(Integer, default=1)
     status = Column(String, default="available") # available, unavailable
+    
+    # New V2.0 Menu & Package Management Fields
+    usage_type = Column(String, default="both") # package_only, order_only, both
+    available_for_package = Column(Boolean, default=True)
+    available_for_order = Column(Boolean, default=True)
+    pricing_type = Column(String, default="fixed") # fixed, size_based, weight_based, packed_meal
     
     # Legacy fields
     cost_breakdown = Column(JSONB, nullable=True)
@@ -311,6 +317,29 @@ class MenuItem(Base):
 
     caterer = relationship("CatererProfile", back_populates="menu_items")
     packages = relationship("CateringPackage", secondary="package_menus", back_populates="menu_items")
+    
+    size_prices = relationship("MenuSizePricing", back_populates="menu_item", cascade="all, delete-orphan")
+    weight_prices = relationship("MenuWeightPricing", back_populates="menu_item", cascade="all, delete-orphan")
+
+
+class MenuSizePricing(Base):
+    __tablename__ = "menu_size_pricing"
+    id = Column(Integer, primary_key=True, index=True)
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"))
+    size_name = Column(String)
+    capacity = Column(String, nullable=True) # e.g. "10-15 Pax"
+    price = Column(Float, default=0.0)
+    
+    menu_item = relationship("MenuItem", back_populates="size_prices")
+
+class MenuWeightPricing(Base):
+    __tablename__ = "menu_weight_pricing"
+    id = Column(Integer, primary_key=True, index=True)
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"))
+    weight_label = Column(String) # e.g. "1kg"
+    price = Column(Float, default=0.0)
+
+    menu_item = relationship("MenuItem", back_populates="weight_prices")
 
 class Equipment(Base):
     __tablename__ = "equipment"

@@ -548,17 +548,17 @@
                     <div class="form-row-three-col" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
                         <div class="form-group">
                             <label><i class="fas fa-calendar-alt"></i> Booking Lead Time (Days)</label>
-                            <input type="number" name="booking_lead_time" min="1" value="{{ profile.booking_lead_time or 7 }}">
+                            <input type="text" inputmode="numeric" name="booking_lead_time" class="js-format-comma" min="1" value="{{ profile.booking_lead_time or 7 }}">
                             <span class="field-hint">Minimum days in advance.</span>
                         </div>
                         <div class="form-group">
                             <label><i class="fas fa-users"></i> Min Pax (Guests)</label>
-                            <input type="number" name="min_pax" min="1" value="{{ profile.min_pax or 20 }}">
+                            <input type="text" inputmode="numeric" name="min_pax" class="js-format-comma" min="1" value="{{ profile.min_pax or 20 }}">
                             <span class="field-hint">Minimum pax required.</span>
                         </div>
                         <div class="form-group">
                             <label><i class="fas fa-tags"></i> Starting Price (₱)</label>
-                            <input type="number" name="starting_price" min="0" value="{{ profile.starting_price or 0 }}">
+                            <input type="text" inputmode="numeric" name="starting_price" class="js-format-comma" min="0" value="{{ profile.starting_price or 0 }}">
                             <span class="field-hint">Your lowest per-head price.</span>
                         </div>
                         <div class="form-group">

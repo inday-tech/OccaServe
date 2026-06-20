@@ -1011,7 +1011,7 @@ async def caterer_detail(
 
     # Filter active data only
     active_packages = [p for p in caterer.packages if p.is_active]
-    active_menu = [m for m in caterer.menu_items if not m.is_archived and not m.is_hidden and m.status == 'available' and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']]
+    active_menu = [m for m in caterer.menu_items if not m.is_archived and not m.is_hidden and m.status == 'available' and getattr(m, 'available_for_order', True) and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']]
 
     # Check for previous relationship
     has_previous_bookings = db.query(models.Booking).filter(
