@@ -3,12 +3,12 @@
 {% block title %}Settings - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/profile_edit.css') }}?v=2.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/profile_edit.css') }}?v=4.1">
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/node-vibrant/3.1.6/vibrant.min.js"></script>
-<script src="{{ url_for('static', path='/js/caterer/profile_edit.js') }}?v=3.0"></script>
+<script src="{{ url_for('static', path='/js/caterer/profile_edit.js') }}?v=4.0"></script>
 {% endblock %}
 
 {% block content %}
@@ -19,78 +19,151 @@
     </div>
 </div>
 
-<div class="profile-edit-container">
-    <div class="profile-card">
-        <!-- Profile Sidebar Info -->
-        <div class="profile-sidebar-column">
-            <div class="profile-sidebar-logo" style="overflow: hidden;">
+<div class="settings-layout">
+
+    <!-- ═══════════════════════════════════════════
+         SETTINGS SIDEBAR
+    ═══════════════════════════════════════════ -->
+    <aside class="settings-sidebar" id="settingsSidebar">
+
+        <!-- Business Identity Card -->
+        <div class="settings-identity-card">
+            <div class="settings-identity-logo" id="sidebarLogoDisplay" style="overflow: hidden;">
                 {% if profile.logo_url %}
                     <img src="{{ profile.logo_url }}" alt="Business Logo" style="width: 100%; height: 100%; object-fit: cover;">
                 {% else %}
-                    {{ profile.business_name[0] if profile.business_name else 'B' }}
+                    <span>{{ profile.business_name[0] if profile.business_name else 'B' }}</span>
                 {% endif %}
             </div>
-            <div class="profile-sidebar-header-info">
-                <h3 class="sidebar-business-name">{{ profile.business_name or 'My Business' }}</h3>
-                <p class="sidebar-location">
-                    <i class="fas fa-map-marker-alt"></i> 
+            <div class="settings-identity-info">
+                <h3 class="settings-biz-name">{{ profile.business_name or 'My Business' }}</h3>
+                <p class="settings-biz-location">
+                    <i class="fas fa-map-marker-alt"></i>
                     {% set addr = [] %}
                     {% if profile.contact_address %}{% set _ = addr.append(profile.contact_address) %}{% endif %}
                     {% if profile.city and profile.city not in (profile.contact_address or '') %}{% set _ = addr.append(profile.city) %}{% endif %}
                     {{ addr | join(', ') if addr else 'Add Address' }}
                 </p>
-            </div>
-
-            <div class="account-status-box">
-                <div class="status-label">Account Status</div>
+                <div class="settings-status-badge
+                    {% if profile.verification_status == 'Verified' %} status-verified
+                    {% elif profile.verification_status == 'Pending Review' %} status-pending
+                    {% else %} status-unverified{% endif %}">
                     {% if profile.verification_status == 'Verified' %}
-                    <i class="fas fa-check-circle"></i> Verified Partner
+                        <i class="fas fa-check-circle"></i> Verified
                     {% elif profile.verification_status == 'Pending Review' %}
-                    <i class="fas fa-clock" style="color:#f39c12;"></i> Pending Review
+                        <i class="fas fa-clock"></i> Pending Review
                     {% else %}
-                    <i class="fas fa-info-circle"></i> {{ profile.verification_status or 'Unverified' }}
+                        <i class="fas fa-info-circle"></i> {{ profile.verification_status or 'Unverified' }}
                     {% endif %}
                 </div>
             </div>
-
-            <div class="profile-sidebar-actions">
-                <button type="button" class="profile-action-btn secondary" onclick="openProfilePreviewModal('{{ profile.id }}')">
-                    <i class="fas fa-eye"></i> <span>View Public Profile</span>
-                </button>
-
-                <button type="button" class="profile-action-btn danger" onclick="openPasswordModal()">
-                    <i class="fas fa-key"></i> <span>Change Password</span>
-                </button>
-            </div>
         </div>
 
+        <!-- Navigation Menu -->
+        <nav class="settings-nav">
+
+            <!-- Group: Profile -->
+            <div class="snav-group" id="grp-profile">
+                <button type="button" class="snav-group-header expanded" onclick="toggleNavGroup('grp-profile')">
+                    <span class="snav-group-label">
+                        <i class="fas fa-user-circle"></i> Profile
+                    </span>
+                    <i class="fas fa-chevron-down snav-chevron"></i>
+                </button>
+                <div class="snav-group-items">
+                    <button type="button" class="snav-item active" data-section="general">
+                        <i class="fas fa-store"></i> Business Info
+                    </button>
+                    <button type="button" class="snav-item" data-section="location">
+                        <i class="fas fa-map-marked-alt"></i> Location & Contact
+                    </button>
+                </div>
+            </div>
+
+            <!-- Group: Payments & Policies -->
+            <div class="snav-group" id="grp-payments">
+                <button type="button" class="snav-group-header" onclick="toggleNavGroup('grp-payments')">
+                    <span class="snav-group-label">
+                        <i class="fas fa-wallet"></i> Payments & Policies
+                    </span>
+                    <i class="fas fa-chevron-down snav-chevron"></i>
+                </button>
+                <div class="snav-group-items" style="display:none;">
+                    <button type="button" class="snav-item" data-section="payment-methods">
+                        <i class="fas fa-credit-card"></i> Payment Methods
+                    </button>
+                    <button type="button" class="snav-item" data-section="booking-policies">
+                        <i class="fas fa-file-signature"></i> Booking Policies
+                    </button>
+                </div>
+            </div>
+
+            <!-- Group: Branding -->
+            <div class="snav-group" id="grp-brand">
+                <button type="button" class="snav-group-header" onclick="toggleNavGroup('grp-brand')">
+                    <span class="snav-group-label">
+                        <i class="fas fa-palette"></i> Branding
+                    </span>
+                    <i class="fas fa-chevron-down snav-chevron"></i>
+                </button>
+                <div class="snav-group-items" style="display:none;">
+                    <button type="button" class="snav-item" data-section="brand">
+                        <i class="fas fa-wand-magic-sparkles"></i> Brand Colors & Style
+                    </button>
+                </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="snav-divider"></div>
+
+            <!-- Standalone: Verification -->
+            <button type="button" class="snav-item snav-standalone" data-section="verification">
+                <i class="fas fa-shield-halved"></i> Verification Center
+                {% set v_status = profile.verification_status or 'Not Submitted' %}
+                {% if v_status == 'Pending Review' %}
+                    <span class="snav-badge badge-warning">Review</span>
+                {% elif v_status == 'Verified' %}
+                    <span class="snav-badge badge-success"><i class="fas fa-check"></i></span>
+                {% elif v_status == 'Requires Revision' %}
+                    <span class="snav-badge badge-danger">!</span>
+                {% endif %}
+            </button>
+
+            <!-- Standalone: Account -->
+            <button type="button" class="snav-item snav-standalone" data-section="account">
+                <i class="fas fa-user-shield"></i> Account & Security
+            </button>
+
+        </nav>
+
+        <!-- Sidebar Actions -->
+        <div class="settings-sidebar-actions">
+            <button type="button" class="saction-btn saction-secondary" onclick="openProfilePreviewModal('{{ profile.id }}')">
+                <i class="fas fa-eye"></i> View Public Profile
+            </button>
+            <button type="button" class="saction-btn saction-danger" onclick="openPasswordModal()">
+                <i class="fas fa-key"></i> Change Password
+            </button>
+        </div>
+
+    </aside>
+
+    <!-- ═══════════════════════════════════════════
+         SETTINGS CONTENT PANEL
+    ═══════════════════════════════════════════ -->
+    <div class="settings-content">
         <div class="profile-main-content">
-            <div class="tabs-nav-wrapper">
-                <div class="tabs-nav">
-                    <button type="button" class="tab-btn active" data-tab="general">
-                        <i class="fas fa-store"></i> <span>Business</span>
-                    </button>
-                    <button type="button" class="tab-btn" data-tab="location">
-                        <i class="fas fa-map-marked-alt"></i> <span>Location & Contact</span>
-                    </button>
-                    <button type="button" class="tab-btn" data-tab="payments">
-                        <i class="fas fa-wallet"></i> <span>Payments & Policies</span>
-                    </button>
-                    <button type="button" class="tab-btn" data-tab="brand">
-                        <i class="fas fa-palette"></i> <span>Professional Branding</span>
-                    </button>
-                    <button type="button" class="tab-btn" data-tab="verification">
-                        <i class="fas fa-shield-halved"></i> <span>Verification Center</span>
-                    </button>
-                    <button type="button" class="tab-btn" data-tab="account">
-                        <i class="fas fa-user-shield"></i> <span>Account & Security</span>
-                    </button>
+            <!-- Content Panel Section Header -->
+            <div class="content-panel-header" id="contentPanelHeader">
+                <div>
+                    <h2 class="content-panel-title" id="contentPanelTitle">Business Info</h2>
+                    <p class="content-panel-subtitle" id="contentPanelSubtitle">Core identity details of your catering business.</p>
                 </div>
             </div>
 
             <form action="/caterer/profile?success_msg=Business+profile+updated+successfully" method="POST" enctype="multipart/form-data" class="profile-edit-form">
-                <!-- Tab: General Info -->
-                <div class="tab-content active" id="general">
+                <!-- Section: Business Info -->
+                <div class="settings-section active" id="section-general">
                     <div class="section-header-compact">
                         <h3><i class="fas fa-info-circle"></i> Basic Business Info</h3>
                         <p>Core identity details of your catering business.</p>
@@ -146,10 +219,11 @@
                         {% endfor %}
                     </div>
                     {% endif %}
-                </div>
+            </div>
+            <!-- End Section: Business Info -->
 
-                <!-- Tab: Location & Contact -->
-                <div class="tab-content" id="location">
+            <!-- Section: Location & Contact -->
+            <div class="settings-section" id="section-location">
                     <div class="section-header-compact">
                         <h3><i class="fas fa-map-location-dot"></i> Registered Business Location</h3>
                         <p>Your official business address used for search and bookings.</p>
@@ -226,10 +300,11 @@
                         <textarea name="contact_address" id="businessAddress" rows="3" placeholder="e.g. Near San Agustin Church, Beside Jollibee on Main Street" required>{{ profile.contact_address or '' }}</textarea>
                         <span class="field-hint">Include landmarks and specific directions to help customers find you easily.</span>
                     </div>
-                </div>
+            </div>
+            <!-- End Section: Location & Contact -->
 
-                <!-- Tab: Account Settings -->
-                <div class="tab-content" id="account">
+            <!-- Section: Account & Security -->
+            <div class="settings-section" id="section-account">
                     <div class="section-header-compact">
                         <h3><i class="fas fa-user-shield"></i> Legal & Personal</h3>
                         <p>This information is used for legal contracts and is pulled from your account.</p>
@@ -402,14 +477,15 @@
                             </div>
                         </div>
                     </div>
-                </div>
+            </div>
+            <!-- End Section: Account -->
 
-                <!-- Tab: Payments -->
-                <div class="tab-content" id="payments">
-                    <div class="section-header-compact">
-                        <h3><i class="fas fa-credit-card"></i> Payment Methods</h3>
-                        <p>Configure how customers can pay you and where you'll receive your earnings.</p>
-                    </div>
+            <!-- Section: Payment Methods -->
+            <div class="settings-section" id="section-payment-methods">
+                <div class="section-header-compact">
+                    <h3><i class="fas fa-credit-card"></i> Payment Methods</h3>
+                    <p>Configure how customers can pay you and where you'll receive your earnings.</p>
+                </div>
 
 
 
@@ -525,12 +601,15 @@
                             </div>
                         </div>
                     </div>
+            </div>
+            <!-- End Section: Payment Methods -->
 
-                    <!-- Policies Section (merged into Payments tab) -->
-                    <div class="section-header-compact" style="margin-top: 2.5rem;">
-                        <h3><i class="fas fa-shield-halved"></i> Business Policies</h3>
-                        <p>Set clear expectations for bookings, payments, and cancellations.</p>
-                    </div>
+            <!-- Section: Booking Policies -->
+            <div class="settings-section" id="section-booking-policies">
+                <div class="section-header-compact">
+                    <h3><i class="fas fa-shield-halved"></i> Business Policies</h3>
+                    <p>Set clear expectations for bookings, payments, and cancellations.</p>
+                </div>
 
                     <div class="form-row-three-col" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
                         <div class="form-group">
@@ -596,10 +675,11 @@
                         </div>
                         <span class="field-hint">This will be attached to your digital booking contract that customers must agree to before checkout.</span>
                     </div>
-                </div>
+            </div>
+            <!-- End Section: Booking Policies -->
 
-                <!-- Tab: Brand -->
-                <div class="tab-content" id="brand">
+            <!-- Section: Brand Colors & Style -->
+            <div class="settings-section" id="section-brand">
                     <div class="section-header-compact">
                         <h3><i class="fas fa-fingerprint"></i> Brand Identity</h3>
                         <p>Customize the look and feel of your caterer portal.</p>
@@ -792,10 +872,11 @@
                             </div>
                         </div>
                     </div>
-                </div>
+            </div>
+            <!-- End Section: Brand -->
 
-                <!-- Tab: Verification Center -->
-                <div class="tab-content" id="verification">
+            <!-- Section: Verification Center -->
+            <div class="settings-section" id="section-verification">
                     <div class="section-header-compact">
                         <h3><i class="fas fa-shield-halved"></i> Verification Center</h3>
                         <p>Submit your compliance documents here. These are private and never visible to customers.</p>
@@ -915,12 +996,13 @@
                             </button>
                         </div>
                     </div>
-                </div>
+            </div>
+            <!-- End Section: Verification -->
 
-                <div class="form-footer-actions">
-                    <button type="submit" class="btn-primary btn-save-changes">Save All Changes</button>
-                    <a href="/caterer/dashboard" class="btn-outline btn-discard-changes">Cancel</a>
-                </div>
+            <div class="form-footer-actions">
+                <button type="submit" class="btn-primary btn-save-changes">Save All Changes</button>
+                <a href="/caterer/dashboard" class="btn-outline btn-discard-changes">Cancel</a>
+            </div>
             </form>
         </div>
     </div>
@@ -1507,10 +1589,10 @@ currentPassInput.addEventListener('input', validateRequirements);
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Fix map size when Location tab is clicked
-        const locationTab = document.querySelector('[data-tab="location"]');
-        if (locationTab) {
-            locationTab.addEventListener('click', () => {
+        // Fix map size when Location section is shown via sidebar nav
+        const locationNavItem = document.querySelector('[data-section="location"]');
+        if (locationNavItem) {
+            locationNavItem.addEventListener('click', () => {
                 setTimeout(() => {
                     if (!mapInitialized) {
                         initLocationMap();
@@ -1518,13 +1600,13 @@ currentPassInput.addEventListener('input', validateRequirements);
                         google.maps.event.trigger(map, 'resize');
                         map.setCenter(marker.getPosition());
                     }
-                }, 250);
+                }, 300);
             });
         }
 
-        // If Location tab is already active (e.g., direct URL hash), init immediately
-        const locationContent = document.getElementById('location');
-        if (locationContent && locationContent.classList.contains('active')) {
+        // If Location section is already active on load (e.g., direct URL hash)
+        const locationSection = document.getElementById('section-location');
+        if (locationSection && locationSection.classList.contains('active')) {
             setTimeout(initLocationMap, 300);
         }
 

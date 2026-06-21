@@ -1,39 +1,112 @@
 /**
- * Caterer Profile Edit Logic
- * Handles color extraction, live branding preview, payment validation, and tab management.
+ * Caterer Profile Edit Logic - Settings Sidebar Layout
+ * Handles sidebar navigation, accordion groups, color extraction, live branding preview.
  */
+
+// ─── Section Metadata ───
+const SECTION_META = {
+    'general':          { title: 'Business Info',          subtitle: 'Core identity details of your catering business.' },
+    'location':         { title: 'Location & Contact',     subtitle: 'Your official business address used for search and bookings.' },
+    'payment-methods':  { title: 'Payment Methods',        subtitle: 'Configure how customers can pay you and where you\'ll receive your earnings.' },
+    'booking-policies': { title: 'Booking Policies',       subtitle: 'Set clear expectations for bookings, payments, and cancellations.' },
+    'brand':            { title: 'Brand Colors & Style',   subtitle: 'Customize the look and feel of your caterer portal.' },
+    'verification':     { title: 'Verification Center',    subtitle: 'Submit your compliance documents. These are private and never visible to customers.' },
+    'account':          { title: 'Account & Security',     subtitle: 'Manage your personal info, notifications, and account preferences.' },
+};
+
+// ─── Sidebar Section Switching ───
+window.switchSettingsSection = function(sectionId) {
+    document.querySelectorAll('.settings-section').forEach(s => s.classList.remove('active'));
+    const target = document.getElementById('section-' + sectionId);
+    if (target) target.classList.add('active');
+
+    document.querySelectorAll('.snav-item').forEach(item => item.classList.remove('active'));
+    const activeNavItem = document.querySelector(`.snav-item[data-section="${sectionId}"]`);
+    if (activeNavItem) activeNavItem.classList.add('active');
+
+    const meta = SECTION_META[sectionId] || {};
+    const titleEl = document.getElementById('contentPanelTitle');
+    const subtitleEl = document.getElementById('contentPanelSubtitle');
+    if (titleEl) titleEl.textContent = meta.title || sectionId;
+    if (subtitleEl) subtitleEl.textContent = meta.subtitle || '';
+
+    history.replaceState(null, null, '#' + sectionId);
+
+    if (sectionId === 'location') {
+        setTimeout(() => {
+            if (typeof mapInitialized !== 'undefined' && !mapInitialized) {
+                if (typeof initLocationMap === 'function') initLocationMap();
+            } else if (typeof map !== 'undefined' && map && typeof google !== 'undefined') {
+                google.maps.event.trigger(map, 'resize');
+                if (typeof marker !== 'undefined') map.setCenter(marker.getPosition());
+            }
+        }, 250);
+    }
+
+    const contentEl = document.querySelector('.settings-content');
+    if (contentEl) contentEl.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+// ─── Accordion Toggle for Nav Groups ───
+window.toggleNavGroup = function(groupId) {
+    const group = document.getElementById(groupId);
+    if (!group) return;
+    const header = group.querySelector('.snav-group-header');
+    const items = group.querySelector('.snav-group-items');
+    const isExpanded = header.classList.contains('expanded');
+
+    if (isExpanded) {
+        header.classList.remove('expanded');
+        items.style.maxHeight = '0px';
+        items.style.opacity = '0';
+        setTimeout(() => { items.style.display = 'none'; }, 280);
+    } else {
+        header.classList.add('expanded');
+        items.style.display = 'flex';
+        items.style.maxHeight = '0px';
+        items.style.opacity = '0';
+        requestAnimationFrame(() => {
+            items.style.maxHeight = items.scrollHeight + 'px';
+            items.style.opacity = '1';
+        });
+    }
+};
+
 document.addEventListener('DOMContentLoaded', function () {
-    // 1. Tab Management Logic
-    const tabBtns = document.querySelectorAll('.tab-btn');
-    const tabContents = document.querySelectorAll('.tab-content');
+    // 1. Sidebar Nav Click Handlers
+    document.querySelectorAll('.snav-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const sectionId = item.getAttribute('data-section');
+            if (!sectionId) return;
 
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const targetTab = btn.getAttribute('data-tab');
-
-            // Toggle Buttons
-            tabBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            // Toggle Contents
-            tabContents.forEach(content => {
-                if (content.id === targetTab) {
-                    content.classList.add('active');
-                } else {
-                    content.classList.remove('active');
+            const parentGroup = item.closest('.snav-group');
+            if (parentGroup) {
+                const header = parentGroup.querySelector('.snav-group-header');
+                if (header && !header.classList.contains('expanded')) {
+                    toggleNavGroup(parentGroup.id);
                 }
-            });
+            }
 
-            // Update URL hash without scroll
-            history.replaceState(null, null, '#' + targetTab);
+            switchSettingsSection(sectionId);
         });
     });
 
-    // Restore Tab from Hash
+    // Restore Section from Hash
     const currentHash = window.location.hash.substring(1);
-    if (currentHash) {
-        const targetBtn = document.querySelector(`.tab-btn[data-tab="${currentHash}"]`);
-        if (targetBtn) targetBtn.click();
+    if (currentHash && SECTION_META[currentHash]) {
+        const navItem = document.querySelector(`.snav-item[data-section="${currentHash}"]`);
+        if (navItem) {
+            const parentGroup = navItem.closest('.snav-group');
+            if (parentGroup) {
+                const groupHeader = parentGroup.querySelector('.snav-group-header');
+                if (groupHeader && !groupHeader.classList.contains('expanded')) {
+                    const groupItems = parentGroup.querySelector('.snav-group-items');
+                    groupHeader.classList.add('expanded');
+                    if (groupItems) { groupItems.style.display = 'flex'; groupItems.style.maxHeight = '999px'; groupItems.style.opacity = '1'; }
+                }
+            }
+        }
+        switchSettingsSection(currentHash);
     }
 
     // 2. Color Code Sync (Color Input -> Text Span)
@@ -46,8 +119,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     });
-
-    // 3. Magic Palette extraction has been migrated to use ColorThief below
 
     // 4. Advanced Branding Sync
     const fontSelect = document.querySelector('select[name="font_family"]');
@@ -106,12 +177,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (mMainBody) mMainBody.className = 'mock-content-body texture-' + (textureSelect?.value || 'none');
         
         mockup.classList.remove('glass-active');
-
         mockup.style.fontFamily = fontSelect?.value || 'Inter';
         const radius = radiusInput?.value || 12;
         mockup.style.setProperty('--preview-radius', radius + 'px');
 
-        // Decorations Logic
         const sDecor = sidebarDecorSelect?.value || 'none';
         const hDecor = headerDecorSelect?.value || 'none';
         
@@ -133,9 +202,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     '<div class="mock-sidebar-decor sticker-2" style="top:40%; color:#a0aec0;"><i class="fas fa-cookie-bite"></i></div>';
         }
         
-        const existingSDecors = mSidebar.querySelectorAll('.mock-sidebar-decor');
-        existingSDecors.forEach(d => d.remove());
-        if (sHtml) mSidebar.insertAdjacentHTML('beforeend', sHtml);
+        const existingSDecors = mSidebar?.querySelectorAll('.mock-sidebar-decor');
+        existingSDecors?.forEach(d => d.remove());
+        if (sHtml && mSidebar) mSidebar.insertAdjacentHTML('beforeend', sHtml);
 
         let hHtml = '';
         if (hDecor === 'utensils') {
@@ -155,9 +224,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     '<div class="mock-header-decor" style="left:85%;"><i class="fas fa-map-marker-alt" style="color:var(--accent-color);"></i></div>';
         }
         
-        const existingHDecors = mHeader.querySelectorAll('.mock-header-decor');
-        existingHDecors.forEach(d => d.remove());
-        if (hHtml) mHeader.insertAdjacentHTML('beforeend', hHtml);
+        const existingHDecors = mHeader?.querySelectorAll('.mock-header-decor');
+        existingHDecors?.forEach(d => d.remove());
+        if (hHtml && mHeader) mHeader.insertAdjacentHTML('beforeend', hHtml);
         
         mCards.forEach(c => c.style.borderRadius = radius + 'px');
         if (mBtn) mBtn.style.borderRadius = (radius * 0.8) + 'px';
@@ -174,9 +243,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (el === fontSelect) document.documentElement.style.setProperty('--font-family', fontSelect.value);
             updateMockup();
         });
-        if (el.type === 'color') {
-            el.addEventListener('input', updateMockup);
-        }
     });
 
     // Color input sync with global CSS
@@ -192,6 +258,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.documentElement.style.setProperty(cssVar, input.value);
             const rgb = hexToRgbGlobal(input.value);
             if (rgb) document.documentElement.style.setProperty(`${cssVar}-rgb`, `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+            updateMockup();
         });
     });
 
@@ -206,7 +273,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Logo image preview
+    // Logo image preview + sidebar logo update
     document.querySelectorAll('.form-file-input').forEach(input => {
         input.addEventListener('change', function() {
             if (this.files?.[0]) {
@@ -220,9 +287,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         mockLogo.style.backgroundPosition = 'center';
                         mockLogo.style.backgroundColor = 'transparent';
                     }
-                    
-                    // Also update the sidebar logo preview!
-                    const sidebarLogo = document.querySelector('.profile-sidebar-logo');
+                    // Update the sidebar logo in the new layout
+                    const sidebarLogo = document.getElementById('sidebarLogoDisplay');
                     if (sidebarLogo) {
                         sidebarLogo.innerHTML = `<img src="${e.target.result}" alt="Business Logo" style="width: 100%; height: 100%; object-fit: cover;">`;
                     }
@@ -232,18 +298,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Magic Palette Extraction Logic using Event Delegation
+    // Magic Palette Extraction via Event Delegation
     document.addEventListener('click', function(e) {
         const btn = e.target.closest('.magic-extract-shared');
         if (!btn) return;
         
         e.preventDefault();
-        console.log("Analyze & Apply clicked!");
         
         const fileInput = document.querySelector('input[name="logo_brand"]');
         const file = fileInput ? fileInput.files[0] : null;
         
-        if (!file && !document.querySelector('.profile-sidebar-logo img')) {
+        if (!file && !document.getElementById('sidebarLogoDisplay')?.querySelector('img')) {
             if (typeof Swal !== 'undefined') {
                 Swal.fire('Requirement', 'Please upload a logo in the Professional Branding tab first!', 'warning');
             } else {
@@ -266,8 +331,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 try {
                     Vibrant.from(img).getPalette().then((palette) => {
                         const getHex = (swatch, fallback) => swatch ? swatch.getHex() : fallback;
-                        
-                        // Vibrant returns true, rich colors instead of washed-out averages
                         const primary = getHex(palette.Vibrant, '#FF7B54');
                         const secondary = getHex(palette.DarkVibrant, getHex(palette.Muted, '#2D4059'));
                         const accent = getHex(palette.LightVibrant, primary);
@@ -294,15 +357,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         if (typeof Swal !== 'undefined') {
                             Swal.fire('Palette Generated!', 'Magic Palette applied. Elite dashboard theme generated.', 'success');
-                        } else {
-                            alert('Palette Generated! Magic Palette applied.');
                         }
                     }).catch(err => {
                         console.error("Extraction error", err);
                         if (typeof Swal !== 'undefined') {
                             Swal.fire('Extraction Failed', 'Failed to extract colors. Please try a different image format.', 'error');
-                        } else {
-                            alert('Extraction Failed: Failed to extract colors.');
                         }
                     }).finally(() => {
                         btn.innerHTML = btnOriginalHtml;
@@ -316,8 +375,6 @@ document.addEventListener('DOMContentLoaded', function () {
             img.onerror = () => {
                 if (typeof Swal !== 'undefined') {
                     Swal.fire('Load Failed', 'Failed to load image for extraction.', 'error');
-                } else {
-                    alert('Load Failed: Failed to load image for extraction.');
                 }
                 btn.innerHTML = btnOriginalHtml;
                 btn.disabled = false;
@@ -329,12 +386,12 @@ document.addEventListener('DOMContentLoaded', function () {
             reader.onload = (event) => processImage(event.target.result);
             reader.readAsDataURL(file);
         } else {
-            const existingImg = document.querySelector('.profile-sidebar-logo img');
+            const existingImg = document.getElementById('sidebarLogoDisplay')?.querySelector('img');
             if (existingImg) processImage(existingImg.src);
         }
     });
 
-    // Initial Update
+    // Initial Preview Update
     updateMockup();
 
     // Hook up danger zone buttons
@@ -343,22 +400,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnDelete = document.getElementById('btnDeleteRequest');
 
     if (btnDeactivate) {
-        btnDeactivate.addEventListener('click', (e) => {
-            e.preventDefault();
-            handleDeactivate();
-        });
+        btnDeactivate.addEventListener('click', (e) => { e.preventDefault(); handleDeactivate(); });
     }
     if (btnReactivate) {
-        btnReactivate.addEventListener('click', (e) => {
-            e.preventDefault();
-            handleReactivate();
-        });
+        btnReactivate.addEventListener('click', (e) => { e.preventDefault(); handleReactivate(); });
     }
     if (btnDelete) {
-        btnDelete.addEventListener('click', (e) => {
-            e.preventDefault();
-            handleDeleteRequest();
-        });
+        btnDelete.addEventListener('click', (e) => { e.preventDefault(); handleDeleteRequest(); });
     }
 });
 
@@ -416,18 +464,10 @@ async function saveNotificationPrefs() {
 // Account Deactivation
 async function handleDeactivate() {
     if (typeof Swal !== "undefined") {
-        const result = await Swal.fire({
-            title: "Deactivate Account?",
-            text: "Your profile will be hidden from customers. Are you sure?",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonColor: "#f39c12",
-            cancelButtonColor: "#3085d6",
-            confirmButtonText: "Yes, deactivate it!"
-        });
+        const result = await Swal.fire({ title: "Deactivate Account?", text: "Your profile will be hidden from customers. Are you sure?", icon: "warning", showCancelButton: true, confirmButtonColor: "#f39c12", cancelButtonColor: "#3085d6", confirmButtonText: "Yes, deactivate it!" });
         if (!result.isConfirmed) return;
     } else {
-        if (!confirm("Are you sure you want to deactivate your account? Your profile will be hidden from customers.")) return;
+        if (!confirm("Are you sure you want to deactivate your account?")) return;
     }
     try {
         const res = await window.apiAction("/caterer/settings/deactivate", { method: "POST" });
@@ -437,18 +477,10 @@ async function handleDeactivate() {
 
 async function handleReactivate() {
     if (typeof Swal !== "undefined") {
-        const result = await Swal.fire({
-            title: "Reactivate Account?",
-            text: "Your profile will be visible to customers again.",
-            icon: "info",
-            showCancelButton: true,
-            confirmButtonColor: "#2ecc71",
-            cancelButtonColor: "#3085d6",
-            confirmButtonText: "Yes, reactivate it!"
-        });
+        const result = await Swal.fire({ title: "Reactivate Account?", text: "Your profile will be visible to customers again.", icon: "info", showCancelButton: true, confirmButtonColor: "#2ecc71", cancelButtonColor: "#3085d6", confirmButtonText: "Yes, reactivate it!" });
         if (!result.isConfirmed) return;
     } else {
-        if (!confirm("Are you sure you want to reactivate your account? Your profile will be visible again.")) return;
+        if (!confirm("Are you sure you want to reactivate your account?")) return;
     }
     try {
         const res = await window.apiAction("/caterer/settings/reactivate", { method: "POST" });
@@ -458,18 +490,10 @@ async function handleReactivate() {
 
 async function handleDeleteRequest() {
     if (typeof Swal !== "undefined") {
-        const result = await Swal.fire({
-            title: "PERMANENTLY DELETE ACCOUNT?",
-            text: "WARNING: All data, dishes, and history will be lost. This cannot be undone!",
-            icon: "error",
-            showCancelButton: true,
-            confirmButtonColor: "#d33",
-            cancelButtonColor: "#3085d6",
-            confirmButtonText: "Yes, delete my account forever!"
-        });
+        const result = await Swal.fire({ title: "PERMANENTLY DELETE ACCOUNT?", text: "WARNING: All data, dishes, and history will be lost. This cannot be undone!", icon: "error", showCancelButton: true, confirmButtonColor: "#d33", cancelButtonColor: "#3085d6", confirmButtonText: "Yes, delete my account forever!" });
         if (!result.isConfirmed) return;
     } else {
-        if (!confirm("WARNING: Are you absolutely sure you want to PERMANENTLY delete your account? All data, dishes, and history will be lost. This cannot be undone.")) return;
+        if (!confirm("WARNING: Are you absolutely sure?")) return;
     }
     try {
         const res = await window.apiAction("/caterer/settings/delete", { method: "POST" });
@@ -480,16 +504,8 @@ async function handleDeleteRequest() {
 // Reset Brand to Defaults
 async function resetBrandDefaults() {
     if (!window.showStandardConfirm) return;
-
-    const { isConfirmed } = await window.showStandardConfirm({
-        title: 'Reset Brand Settings?',
-        message: 'This will clear all your custom colors, fonts, textures, and decorations, reverting to OccaServe defaults.',
-        icon: 'warning',
-        confirmButtonText: 'Yes, reset to defaults'
-    });
-
+    const { isConfirmed } = await window.showStandardConfirm({ title: 'Reset Brand Settings?', message: 'This will clear all your custom colors, fonts, textures, and decorations, reverting to OccaServe defaults.', icon: 'warning', confirmButtonText: 'Yes, reset to defaults' });
     if (!isConfirmed) return;
-
     try {
         const response = await fetch('/caterer/settings/reset-brand', { method: 'POST' });
         const resJson = await response.json();
@@ -510,38 +526,23 @@ async function submitVerification() {
     const btn = document.getElementById('btnSubmitVerification');
     const idFront = document.getElementById('verif_id_front').files[0];
     const permit = document.getElementById('verif_permit').files[0];
-
-    // Validation: Require ID Front and Business Permit if they don't already have one uploaded.
-    // The UI handles showing existing files, but we'll enforce strict validation here if it's their first time.
-    // Wait, since we can't easily check the backend state in pure JS without reading DOM, let's just check if files are selected OR if there's a success text nearby.
     const hasId = document.querySelector('#verif_id_front').nextElementSibling?.classList.contains('field-hint');
     const hasPermit = document.querySelector('#verif_permit').nextElementSibling?.classList.contains('field-hint');
 
-    if (!idFront && !hasId) {
-        if (window.showError) window.showError("Government ID (Front) is required.");
-        return;
-    }
-    if (!permit && !hasPermit) {
-        if (window.showError) window.showError("Business Permit is required.");
-        return;
-    }
+    if (!idFront && !hasId) { if (window.showError) window.showError("Government ID (Front) is required."); return; }
+    if (!permit && !hasPermit) { if (window.showError) window.showError("Business Permit is required."); return; }
 
     const formData = new FormData();
     formData.append('id_type', document.getElementById('verif_id_type').value);
     if (idFront) formData.append('id_front', idFront);
-    
     const idBack = document.getElementById('verif_id_back').files[0];
     if (idBack) formData.append('id_back', idBack);
-
     if (permit) formData.append('permit', permit);
     formData.append('permit_expiry', document.getElementById('verif_permit_expiry').value);
-
     const dti = document.getElementById('verif_dti').files[0];
     if (dti) formData.append('dti', dti);
-
     const bir = document.getElementById('verif_bir').files[0];
     if (bir) formData.append('bir', bir);
-
     const mayors = document.getElementById('verif_mayors').files[0];
     if (mayors) formData.append('mayors', mayors);
 
@@ -550,11 +551,7 @@ async function submitVerification() {
     btn.disabled = true;
 
     try {
-        const response = await fetch('/caterer/verification/submit', {
-            method: 'POST',
-            body: formData
-        });
-        
+        const response = await fetch('/caterer/verification/submit', { method: 'POST', body: formData });
         const result = await response.json();
         if (result.success) {
             if (window.showSuccess) window.showSuccess("Verification documents submitted successfully!");
