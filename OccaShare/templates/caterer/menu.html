@@ -140,14 +140,25 @@
     </div>
 </div>
 {% else %}
-<div class="empty-state animate-up delay-2" style="padding: 4rem 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%;">
-    <div class="empty-icon text-brand" style="opacity: 0.5; font-size: 4rem; margin-bottom: 1.5rem;">
-        <i class="fas fa-utensils"></i>
+    {% if user and user.caterer_profile and user.caterer_profile.verification_status != 'Verified' %}
+    <div class="empty-state animate-up delay-2" style="padding: 4rem 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%;">
+        <div class="empty-icon text-brand" style="opacity: 0.5; font-size: 4rem; margin-bottom: 1.5rem;">
+            <i class="fas fa-clipboard-list"></i>
+        </div>
+        <h2 class="text-secondary" style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Draft Your Menu</h2>
+        <p class="mx-auto" style="max-width: 400px; color: #64748b; margin-top: 0;">While waiting for your account to be verified, you can start drafting your menu here. It will automatically be published once you are verified.</p>
+        <button class="btn-primary-pro mt-4 mx-auto" onclick="openAddMenuModal()" style="margin-top: 1.5rem;">Add Your First Menu Item</button>
     </div>
-    <h2 class="text-secondary" style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Your Library is Empty</h2>
-    <p class="mx-auto" style="max-width: 400px; color: #64748b; margin-top: 0;">Start building your culinary collection by adding your signature dishes.</p>
-    <button class="btn-primary-pro mt-4 mx-auto" onclick="openAddMenuModal()" style="margin-top: 1.5rem;">Add Your First Menu Item</button>
-</div>
+    {% else %}
+    <div class="empty-state animate-up delay-2" style="padding: 4rem 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%;">
+        <div class="empty-icon text-brand" style="opacity: 0.5; font-size: 4rem; margin-bottom: 1.5rem;">
+            <i class="fas fa-utensils"></i>
+        </div>
+        <h2 class="text-secondary" style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Your Library is Empty</h2>
+        <p class="mx-auto" style="max-width: 400px; color: #64748b; margin-top: 0;">Start building your culinary collection by adding your signature dishes.</p>
+        <button class="btn-primary-pro mt-4 mx-auto" onclick="openAddMenuModal()" style="margin-top: 1.5rem;">Add Your First Menu Item</button>
+    </div>
+    {% endif %}
 {% endif %}
 
 <!-- Add/Edit Menu Modal -->
@@ -309,7 +320,7 @@
 <!-- Archive Dish Modal -->
 <div id="archiveDishModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-sm occ-content-pop" style="font-family: 'Poppins', sans-serif; border-radius: var(--border-radius, 12px); overflow: hidden; max-width: 450px; width: 100%;">
-        <div class="occ-modal-header" style="background: #ef4444; padding: 1.5rem; color: white !important; display: flex; justify-content: space-between; align-items: flex-start;">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h3 class="occ-modal-title" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: white !important;">Archive Menu Item</h3>
                 <div class="occ-modal-subtitle" style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem; color: white !important;">Confirming database removal.</div>

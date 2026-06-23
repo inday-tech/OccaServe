@@ -19,8 +19,8 @@
     --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
     --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
     --color-primary: #3b82f6;
-    --color-success: #10b981;
-    --color-warning: #f59e0b;
+    --color-success: var(--accent-color);
+    --color-warning: var(--accent-color);
     --color-danger: #ef4444;
 }
 

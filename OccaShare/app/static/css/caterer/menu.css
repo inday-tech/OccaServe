@@ -279,9 +279,9 @@
     border-radius: var(--border-radius, 50px);
 }
 
-.margin-value.positive { background: #ecfdf5; color: #10b981; }
+.margin-value.positive { background: #ecfdf5; color: var(--accent-color); }
 .margin-value.negative { background: #fef2f2; color: #ef4444; }
-.margin-value.neutral { background: #fffbeb; color: #f59e0b; }
+.margin-value.neutral { background: #fffbeb; color: var(--accent-color); }
 
 /* --- DROPDOWN MENU (GLASS) --- */
 .dropdown-menu-glass {
@@ -347,7 +347,7 @@
     font-size: 0.6rem;
     font-weight: 800;
     text-transform: uppercase;
-    color: #f59e0b;
+    color: var(--accent-color);
     background: #fff7ed;
     padding: 2px 8px;
     border-radius: var(--border-radius, 4px);

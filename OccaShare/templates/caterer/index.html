@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
     :root {
-        --chart-profit: #10b981;
+        --chart-profit: var(--accent-color);
         --chart-expenses: #ef4444;
         --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
@@ -432,50 +432,50 @@
             <!-- Checklist Grid -->
             <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px;">
                 <!-- Required items for Publishing -->
-                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if is_identity_verified else '#64748b' }};">
-                    <i class="fas {{ 'fa-check-circle' if is_identity_verified else 'fa-circle-notch' }}" style="color: {{ '#10b981' if is_identity_verified else '#cbd5e1' }};"></i>
+                <a href="/caterer/profile#verification" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if is_identity_verified else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
+                    <i class="fas {{ 'fa-check-circle' if is_identity_verified else 'fa-circle-notch' }}" style="color: {{ 'var(--accent-color)' if is_identity_verified else '#cbd5e1' }};"></i>
                     <span style="{% if is_identity_verified %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if is_identity_verified else 'underline' }};">
                         {{ 'Identity Verified' if is_identity_verified else 'Identity Verification (Pending Review)' }} <span style="font-size:0.7rem; color:#94a3b8;">(40%)</span>
                     </span>
-                </div>
+                </a>
                 
                 <a href="/caterer/profile#general" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_description else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
-                    <i class="fas {{ 'fa-check-circle' if has_description else 'fa-circle-notch' }}" style="color: {{ '#10b981' if has_description else '#cbd5e1' }};"></i>
+                    <i class="fas {{ 'fa-check-circle' if has_description else 'fa-circle-notch' }}" style="color: {{ 'var(--accent-color)' if has_description else '#cbd5e1' }};"></i>
                     <span style="{% if has_description %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_description else 'underline' }};">Business Description <span style="font-size:0.7rem; color:#94a3b8;">(+5%)</span></span>
                 </a>
 
                 <a href="/caterer/profile#general" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_logo else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
-                    <i class="fas {{ 'fa-check-circle' if has_logo else 'fa-circle-notch' }}" style="color: {{ '#10b981' if has_logo else '#cbd5e1' }};"></i>
+                    <i class="fas {{ 'fa-check-circle' if has_logo else 'fa-circle-notch' }}" style="color: {{ 'var(--accent-color)' if has_logo else '#cbd5e1' }};"></i>
                     <span style="{% if has_logo %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_logo else 'underline' }};">Business Logo <span style="font-size:0.7rem; color:#94a3b8;">(+10%)</span></span>
                 </a>
 
                 <a href="/caterer/profile#general" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_cover else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
-                    <i class="fas {{ 'fa-check-circle' if has_cover else 'fa-circle-notch' }}" style="color: {{ '#10b981' if has_cover else '#cbd5e1' }};"></i>
+                    <i class="fas {{ 'fa-check-circle' if has_cover else 'fa-circle-notch' }}" style="color: {{ 'var(--accent-color)' if has_cover else '#cbd5e1' }};"></i>
                     <span style="{% if has_cover %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_cover else 'underline' }};">Cover Image <span style="font-size:0.7rem; color:#94a3b8;">(+5%)</span></span>
                 </a>
 
                 <a href="/caterer/profile#payments" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_starting_price else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
-                    <i class="fas {{ 'fa-check-circle' if has_starting_price else 'fa-circle-notch' }}" style="color: {{ '#10b981' if has_starting_price else '#cbd5e1' }};"></i>
+                    <i class="fas {{ 'fa-check-circle' if has_starting_price else 'fa-circle-notch' }}" style="color: {{ 'var(--accent-color)' if has_starting_price else '#cbd5e1' }};"></i>
                     <span style="{% if has_starting_price %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_starting_price else 'underline' }};">Starting Price <span style="font-size:0.7rem; color:#94a3b8;">(+5%)</span></span>
                 </a>
 
                 <a href="/caterer/packages" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_packages else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
-                    <i class="fas {{ 'fa-check-circle' if has_packages else 'fa-circle-notch' }}" style="color: {{ '#10b981' if has_packages else '#cbd5e1' }};"></i>
+                    <i class="fas {{ 'fa-check-circle' if has_packages else 'fa-circle-notch' }}" style="color: {{ 'var(--accent-color)' if has_packages else '#cbd5e1' }};"></i>
                     <span style="{% if has_packages %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_packages else 'underline' }};">Catering Package <span style="font-size:0.7rem; color:#94a3b8;">(+15%)</span></span>
                 </a>
 
-                <a href="/caterer/profile#general" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_photos else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
-                    <i class="fas {{ 'fa-check-circle' if has_photos else 'fa-circle-notch' }}" style="color: {{ '#10b981' if has_photos else '#cbd5e1' }};"></i>
-                    <span style="{% if has_photos %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_photos else 'underline' }};">3+ Food Photos <span style="font-size:0.7rem; color:#94a3b8;">(+10%)</span></span>
+                <a href="/caterer/portfolio" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_portfolio else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
+                    <i class="fas {{ 'fa-check-circle' if has_portfolio else 'fa-circle-notch' }}" style="color: {{ 'var(--accent-color)' if has_portfolio else '#cbd5e1' }};"></i>
+                    <span style="{% if has_portfolio %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_portfolio else 'underline' }};">1+ Portfolio Event <span style="font-size:0.7rem; color:#94a3b8;">(+10%)</span></span>
                 </a>
 
                 <a href="/caterer/menu" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_menu else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
-                    <i class="fas {{ 'fa-check-circle' if has_menu else 'fa-circle-notch' }}" style="color: {{ '#10b981' if has_menu else '#cbd5e1' }};"></i>
+                    <i class="fas {{ 'fa-check-circle' if has_menu else 'fa-circle-notch' }}" style="color: {{ 'var(--accent-color)' if has_menu else '#cbd5e1' }};"></i>
                     <span style="{% if has_menu %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_menu else 'underline' }};">Sample Menu <span style="font-size:0.7rem; color:#94a3b8;">(+5%)</span></span>
                 </a>
 
-                <a href="/caterer/profile#account" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_permit else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
-                    <i class="fas {{ 'fa-check-circle' if has_permit else 'fa-circle-notch' }}" style="color: {{ '#10b981' if has_permit else '#cbd5e1' }};"></i>
+                <a href="/caterer/profile#verification" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_permit else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
+                    <i class="fas {{ 'fa-check-circle' if has_permit else 'fa-circle-notch' }}" style="color: {{ 'var(--accent-color)' if has_permit else '#cbd5e1' }};"></i>
                     <span style="{% if has_permit %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_permit else 'underline' }};">Business Permit <span style="font-size:0.7rem; color:#94a3b8;">(+5%)</span></span>
                 </a>
             </div>
@@ -484,7 +484,7 @@
             {% if not can_publish %}
             <div style="margin-top: 15px; font-size: 0.75rem; color: #b91c1c; background: #fef2f2; padding: 10px 15px; border-radius: var(--border-radius, 8px); display: flex; gap: 10px; align-items: flex-start; border: 1px solid #fecaca;">
                 <i class="fas fa-exclamation-triangle" style="margin-top: 2px;"></i>
-                <span><strong>Minimum to Publish:</strong> Identity Verification, Business Description, 1 Catering Package, 3+ Unarchived Food Photos.</span>
+                <span><strong>Minimum to Publish:</strong> Identity Verification, Business Description, 1 Catering Package, 1+ Public Portfolio Event.</span>
             </div>
             {% endif %}
 
@@ -619,7 +619,7 @@
     <div class="kpi-card-clean">
         <div class="kpi-info">
             <h4 style="display: flex; justify-content: space-between; align-items: center;">Business ROI</h4>
-            <span class="kpi-value" id="stat-roi" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#10b981' }};">{{ roi_percentage|default(0) }}%</span>
+            <span class="kpi-value" id="stat-roi" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else 'var(--accent-color)' }};">{{ roi_percentage|default(0) }}%</span>
             <span class="trend-badge" id="stat-margin-text" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">{{ ((net_profit / total_revenue * 100)|round if total_revenue and total_revenue > 0 else 0)|int }}% Net Margin</span>
         </div>
     </div>
@@ -666,7 +666,7 @@
                 </div>
                 <div style="display: flex; align-items: center;">
                     <div id="roi-status-badge" class="roi-badge-premium"
-                        style="{% if net_profit and net_profit < 0 %}background:#ef4444; color:white;{% elif roi_percentage and roi_percentage < 15 %}background:rgba(245, 158, 11, 0.1); color:#f59e0b;{% else %}background:rgba(16, 185, 129, 0.1); color:#10b981;{% endif %}">
+                        style="{% if net_profit and net_profit < 0 %}background:#ef4444; color:white;{% elif roi_percentage and roi_percentage < 15 %}background:rgba(245, 158, 11, 0.1); color:var(--accent-color);{% else %}background:rgba(16, 185, 129, 0.1); color:var(--accent-color);{% endif %}">
                         {% if net_profit and net_profit < 0 %} <i class="fas fa-exclamation-triangle"></i> LOSS
                             {% elif roi_percentage and roi_percentage < 15 %} <i class="fas fa-info-circle"></i> LOW
                                 MARGIN
@@ -697,7 +697,7 @@
                         style="padding: 0.75rem 0; background: transparent; border-radius: 0; border: none; border-bottom: 1px solid #f1f5f9;">
                         <div class="roi-metric-label" style="font-size: 0.6rem;">Net Profit</div>
                         <div class="roi-metric-value" id="roi-breakdown-profit"
-                            style="color: #10b981; font-size: 1rem;">₱{{ "{:,.2f}".format(net_profit|default(0.0)) }}
+                            style="color: var(--accent-color); font-size: 1rem;">₱{{ "{:,.2f}".format(net_profit|default(0.0)) }}
                         </div>
                     </div>
                     <div class="roi-metric-item"
@@ -730,7 +730,7 @@
                 <canvas id="bookingsChart"></canvas>
             </div>
             <div class="chart-legend-custom" style="margin-top: 1.5rem;">
-                <div class="legend-item"><span class="legend-dot" style="background: #10b981;"></span> Completed</div>
+                <div class="legend-item"><span class="legend-dot" style="background: var(--accent-color);"></span> Completed</div>
                 <div class="legend-item"><span class="legend-dot" style="background: #94a3b8;"></span> Pending</div>
             </div>
         </div>
@@ -908,7 +908,7 @@
                         <div style="font-size: 0.75rem; color: #64748b;">{{ client.orders }} orders</div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-weight: 800; color: #10b981; font-size: 0.9rem;">₱{{
+                        <div style="font-weight: 800; color: var(--accent-color); font-size: 0.9rem;">₱{{
                             "{:,.2f}".format(client.spent) }}</div>
                     </div>
                 </div>
@@ -1087,8 +1087,8 @@
     });
 
     function initCharts(data) {
-        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#FF7B54';
-        const highlightColor = getComputedStyle(document.documentElement).getPropertyValue('--highlight-color').trim() || '#10b981';
+        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || 'var(--primary-color)';
+        const highlightColor = getComputedStyle(document.documentElement).getPropertyValue('--highlight-color').trim() || 'var(--accent-color)';
 
         // 1. Financial Pie Chart
         const ctxPie = document.getElementById('financialPieChart').getContext('2d');
@@ -1192,16 +1192,16 @@
                         sb.innerHTML = '<i class="fas fa-info-circle"></i> LOW MARGIN';
                         sb.className = 'roi-badge-premium';
                         sb.style.background = 'rgba(245, 158, 11, 0.1)';
-                        sb.style.color = '#f59e0b';
-                        if (roiCard) roiCard.style.borderLeft = '4px solid #f59e0b';
-                        if (roiValue) roiValue.style.color = '#f59e0b';
+                        sb.style.color = 'var(--accent-color)';
+                        if (roiCard) roiCard.style.borderLeft = '4px solid var(--accent-color)';
+                        if (roiValue) roiValue.style.color = 'var(--accent-color)';
                     } else {
                         sb.innerHTML = '<i class="fas fa-check-circle"></i> PROFITABLE';
                         sb.className = 'roi-badge-premium';
                         sb.style.background = 'rgba(16, 185, 129, 0.1)';
-                        sb.style.color = '#10b981';
-                        if (roiCard) roiCard.style.borderLeft = '4px solid #10b981';
-                        if (roiValue) roiValue.style.color = '#10b981';
+                        sb.style.color = 'var(--accent-color)';
+                        if (roiCard) roiCard.style.borderLeft = '4px solid var(--accent-color)';
+                        if (roiValue) roiValue.style.color = 'var(--accent-color)';
                     }
                 }
 
@@ -1235,7 +1235,7 @@
                 const now = new Date();
                 const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 const tag = document.getElementById('last-updated-tag');
-                if (tag) tag.innerHTML = `<i class="fas fa-check-circle" style="color: #10b981; margin-right: 5px;"></i> Accurate as of ${timeStr}`;
+                if (tag) tag.innerHTML = `<i class="fas fa-check-circle" style="color: var(--accent-color); margin-right: 5px;"></i> Accurate as of ${timeStr}`;
 
                 if (analyticsArea) analyticsArea.classList.remove('loading-shimmer');
                 if (statsGrid) statsGrid.classList.remove('loading-shimmer');
@@ -1308,7 +1308,7 @@
                     <div style="font-family: 'Poppins', sans-serif !important; font-size: 0.75rem; color: #64748b;">${c.orders} orders</div>
                 </div>
                 <div style="text-align: right;">
-                    <div style="font-weight: 800; color: #10b981; font-size: 0.9rem;">${formatCurrency(c.spent)}</div>
+                    <div style="font-weight: 800; color: var(--accent-color); font-size: 0.9rem;">${formatCurrency(c.spent)}</div>
                 </div>
             </div>
         `).join('');

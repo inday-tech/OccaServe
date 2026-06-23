@@ -64,7 +64,7 @@
 }
 
 .star-rating-display {
-    color: #f59e0b;
+    color: var(--accent-color);
     font-size: 1rem;
     display: flex;
     gap: 2px;
@@ -181,7 +181,7 @@
 }
 
 .stars-container-sm {
-    color: #f59e0b;
+    color: var(--accent-color);
     font-size: 0.75rem;
     display: flex;
     gap: 2px;

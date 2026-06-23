@@ -326,11 +326,17 @@ function initWebSocket() {
     ws.onmessage = ({ data }) => {
         try {
             const d = JSON.parse(data);
-            if (d.type === 'notification' || d.type === 'message' || d.type === 'new_notification') fetchIntelligence();
+            if (d.type === 'notification' || d.type === 'message' || d.type === 'new_notification') {
+                fetchIntelligence();
+                if (window.fetchGlobalNotifications) window.fetchGlobalNotifications(true);
+            }
             
             if (d.type === 'booking_update' || d.type === 'payment_update' || d.type === 'status_update') {
                 if (window.showToast) window.showToast("Real-time Update: " + (d.message || "Status changed"), "info");
-                setTimeout(() => window.location.reload(), 1500);
+                setTimeout(() => {
+                    if (window.softRefresh) window.softRefresh();
+                    else window.location.reload();
+                }, 1500);
             }
         } catch {}
     };

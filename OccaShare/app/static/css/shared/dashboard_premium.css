@@ -263,7 +263,7 @@
     font-size: var(--text-base);
     color: var(--secondary-color, #1e293b);
     outline: none;
-    font-family: 'Poppins', sans-serif;
+    font-family: var(--font-family, 'Poppins', sans-serif);
 }
 
 .search-input-pro::placeholder {
@@ -380,7 +380,7 @@
 
 .p-card-title,
 .card-title {
-    font-family: 'Poppins', sans-serif;
+    font-family: var(--font-family, 'Poppins', sans-serif);
     font-size: var(--text-xl);
     font-weight: 700;
     color: var(--secondary-color, #2D4059);

@@ -1,0 +1,197 @@
+{% set active_page = 'portfolio' %}
+{% extends "caterer/layout.html" %}
+
+{% block title %}Manage Portfolio - OccaShare Caterer{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/portfolio.css') }}?v=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.css">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <h1>Portfolio Management</h1>
+        <p>Showcase your best events to build trust and attract more bookings.</p>
+    </div>
+    <div class="pkg-header-actions" style="display: flex; align-items: center; gap: 1rem;">
+        <button class="btn-primary-pro" onclick="openPortfolioModal()">
+            <i class="fas fa-plus"></i> <span>ADD PORTFOLIO</span>
+        </button>
+    </div>
+</div>
+
+{% if portfolios %}
+<div class="portfolio-grid animate-up delay-1">
+    {% for p in portfolios %}
+    <div class="portfolio-card" id="portfolio-{{ p.id }}">
+        <div class="portfolio-media">
+            <div class="portfolio-badges">
+                {% if p.is_featured %}
+                <span class="badge-featured"><i class="fas fa-star"></i> Featured</span>
+                {% endif %}
+                {% if p.booking_id %}
+                <span class="badge-verified"><i class="fas fa-check-circle"></i> Verified</span>
+                {% endif %}
+                {% if p.visibility == 'Hidden' %}
+                <span class="badge-hidden"><i class="fas fa-eye-slash"></i> Hidden</span>
+                {% endif %}
+            </div>
+            
+            {% set cover = p.images | selectattr('is_cover', 'equalto', True) | first %}
+            {% if cover %}
+                <img src="{{ cover.image_url }}" alt="{{ p.title }}">
+            {% else %}
+                <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #cbd5e1; background: #f1f5f9;">
+                    <i class="fas fa-image" style="font-size: 3rem;"></i>
+                </div>
+            {% endif %}
+
+            <div class="portfolio-actions-overlay">
+                <button type="button" onclick="togglePortfolioVisibility({{ p.id }})" class="btn-icon-overlay" title="Toggle Visibility">
+                    <i class="fas {{ 'fa-eye' if p.visibility == 'Hidden' else 'fa-eye-slash' }}"></i>
+                </button>
+                <button type="button" onclick="togglePortfolioFeature({{ p.id }})" class="btn-icon-overlay" title="Toggle Feature">
+                    <i class="fas fa-star" style="color: {{ 'var(--accent-color)' if p.is_featured else '#1e293b' }}"></i>
+                </button>
+                <button type="button" onclick="deletePortfolio({{ p.id }})" class="btn-icon-overlay delete" title="Delete">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="portfolio-body">
+            <div class="portfolio-type">{{ p.event_type }}</div>
+            <h3 class="portfolio-title">{{ p.title }}</h3>
+            <p class="portfolio-desc">{{ p.description }}</p>
+            
+            <div class="portfolio-meta">
+                <span><i class="far fa-images"></i> {{ p.images|length }} Photos</span>
+                {% if p.location %}
+                <span><i class="fas fa-map-marker-alt"></i> {{ p.location }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="packages-empty-pro animate-up delay-1 d-flex flex-column align-items-center justify-content-center text-center py-5" style="background: white; border-radius: var(--border-radius, 1.5rem); border: 2px dashed #e2e8f0; margin-top: 2rem;">
+    <div class="empty-icon-pro text-brand" style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; opacity: 0.5; margin-bottom: 1.5rem;">
+        <i class="fas fa-camera-retro"></i>
+    </div>
+    <h2 class="text-secondary" style="font-weight: 800; margin-bottom: 0.5rem;">No Portfolio Yet</h2>
+    <p style="color: #64748b; max-width: 400px; margin: 0 auto 1.5rem;">Your past events speak louder than words. Start building trust by showcasing your best work.</p>
+    <button type="button" class="btn-primary-pro" onclick="openPortfolioModal()" style="padding: 0.75rem 2rem; font-weight: 800;">Add First Portfolio</button>
+</div>
+{% endif %}
+
+<!-- Add Portfolio Modal -->
+<div id="portfolioModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-lg occ-content-pop" style="max-width: 700px;">
+        <div class="occ-modal-header glass-header">
+            <div>
+                <h3 class="occ-modal-title" style="color: white;">Add Portfolio Entry</h3>
+                <div class="occ-modal-subtitle" style="color: rgba(255, 255, 255, 0.85);">Showcase a successfully completed event</div>
+            </div>
+            <button type="button" onclick="closePortfolioModal()" class="occ-modal-close" style="color: white; opacity: 0.8;"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <form id="portfolioForm" onsubmit="submitPortfolio(event)" style="display: flex; flex-direction: column;">
+            <div class="occ-modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <div class="form-row-pro">
+                    <div class="form-group-pro" style="flex: 2;">
+                        <label>Portfolio Title *</label>
+                        <input type="text" name="title" class="control-pro" placeholder="e.g. Elegant Garden Wedding" required>
+                    </div>
+                    <div class="form-group-pro" style="flex: 1;">
+                        <label>Event Type *</label>
+                        <select name="event_type" class="control-pro" required>
+                            <option value="Wedding">Wedding</option>
+                            <option value="Debut">Debut</option>
+                            <option value="Birthday">Birthday</option>
+                            <option value="Corporate">Corporate</option>
+                            <option value="Anniversary">Anniversary</option>
+                            <option value="Baptism">Baptism</option>
+                            <option value="Private Party">Private Party</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group-pro">
+                    <label>Short Description *</label>
+                    <textarea name="description" class="control-pro" rows="3" placeholder="Describe the event, the theme, and the service you provided..." required></textarea>
+                </div>
+
+                <div class="form-row-pro">
+                    <div class="form-group-pro">
+                        <label>Event Location <small>(City/Venue Name)</small></label>
+                        <input type="text" name="location" class="control-pro" placeholder="e.g. Tagaytay City">
+                    </div>
+                    <div class="form-group-pro">
+                        <label>Event Date</label>
+                        <input type="date" name="event_date" class="control-pro">
+                    </div>
+                </div>
+
+                <div class="form-group-pro">
+                    <label>Event Highlights <small>(Press Enter to add tag)</small></label>
+                    <input type="text" name="highlights" id="highlightsInput" placeholder="e.g. 250 Guests, Buffet Setup, White Theme">
+                </div>
+                
+                <div class="form-group-pro">
+                    <label>Link to OccaServe Booking <small>(For "Verified Event" Badge)</small></label>
+                    <select name="booking_id" class="control-pro">
+                        <option value="">None (Standard Portfolio)</option>
+                        {% for b in completed_bookings %}
+                        <option value="{{ b.id }}">#{{ b.id }} - {{ b.customer.first_name }} {{ b.customer.last_name }} ({{ b.event_date.strftime('%B %d, %Y') if b.event_date else 'Unknown Date' }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group-pro" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+                    <label>Cover Photo * <small>(High quality, Landscape preferred)</small></label>
+                    <input type="file" id="coverPhotoInput" accept="image/*" style="display: none;" onchange="previewCoverPhoto(this)">
+                    <div id="coverPhotoPreviewBox" class="upload-box" onclick="document.getElementById('coverPhotoInput').click()" style="height: 150px; position: relative; overflow: hidden;">
+                        <div id="coverPlaceholder" style="display: flex; flex-direction: column; align-items: center;">
+                            <i class="fas fa-camera text-2xl mb-2"></i>
+                            <span>Click to upload cover photo</span>
+                        </div>
+                        <img id="coverImg" src="" style="display: none; width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0;">
+                    </div>
+                </div>
+
+                <div class="form-group-pro" style="margin-top: 1rem;">
+                    <label>Additional Gallery Photos <small>(Up to 10 images)</small></label>
+                    <input type="file" id="galleryPhotosInput" accept="image/*" multiple style="display: none;" onchange="previewGalleryPhotos(this)">
+                    <div class="photo-upload-grid" id="galleryGrid">
+                        <div class="upload-box" onclick="document.getElementById('galleryPhotosInput').click()">
+                            <i class="fas fa-plus"></i>
+                            <span style="font-size: 10px; margin-top: 4px;">Add Photos</span>
+                        </div>
+                        <!-- Previews go here -->
+                    </div>
+                </div>
+                
+                <div class="form-row-pro" style="margin-top: 1.5rem; background: #f8fafc; padding: 1rem; border-radius: 8px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                        <input type="checkbox" name="is_featured" value="true" style="width: 18px; height: 18px;">
+                        <span style="font-weight: 700; color: #1e293b;">Set as Featured Portfolio</span>
+                    </label>
+                </div>
+            </div>
+            <div class="occ-modal-footer" style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="btn-secondary-pro" onclick="closePortfolioModal()">Cancel</button>
+                <button type="submit" class="btn-primary-pro" id="submitPortfolioBtn">Save Portfolio</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify"></script>
+<script src="{{ url_for('static', path='/js/caterer/portfolio.js') }}?v=1.0"></script>
+{% endblock %}

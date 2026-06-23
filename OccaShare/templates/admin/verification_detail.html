@@ -225,7 +225,7 @@
 <div class="intelligence-hub">
     <div class="audit-main">
         {% if verification %}
-            {% set is_duplicate = (verification.document_url == verification.selfie_url) %}
+            {% set is_duplicate = (verification.document_url and verification.selfie_url and verification.document_url == verification.selfie_url) %}
             {% if is_duplicate %}
             <div class="warning-banner">
                 <i class="fas fa-exclamation-triangle fa-lg"></i>
@@ -234,6 +234,7 @@
             {% endif %}
 
             <div class="audit-card-premium">
+                {% if verification.document_url or verification.selfie_url %}
                 <div class="section-title-clean">Match Confidence</div>
                 
                 <div class="confidence-gauge-container">
@@ -258,28 +259,85 @@
                         </p>
                     </div>
                 </div>
+                {% else %}
+                <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 24px;">
+                    <i class="fas fa-inbox fa-3x" style="color: #94a3b8; margin-bottom: 16px;"></i>
+                    <h3 style="margin: 0; color: #475569; font-size: 1.2rem;">Awaiting Submission</h3>
+                    <p style="color: #64748b; margin: 8px 0 0;">This user has not yet uploaded any identity verification documents.</p>
+                </div>
+                {% endif %}
+
 
                 <div class="artifact-grid {{ 'three-cols' if target_user.role == 'caterer' else 'two-cols' }}">
                     <!-- ID Document -->
                     <div class="image-scanner">
                         <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">ID Document</label>
-                        <img src="{{ verification.document_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;">
+                        {% if verification.document_url %}
+                            {% set doc_url = verification.document_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if '/static/uploads/verification/' in verification.document_url else verification.document_url %}
+                            <img src="{{ doc_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;" onerror="this.onerror=null; this.src='/static/images/default-avatar.png';">
+                        {% else %}
+                            <div style="width: 100%; height: 260px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #94a3b8; font-weight: 700;"><i class="fas fa-image" style="margin-right: 8px;"></i> No ID Uploaded</div>
+                        {% endif %}
                     </div>
                     <!-- Selfie -->
                     <div class="image-scanner">
                         <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">Selfie Photo</label>
-                        <img src="{{ verification.selfie_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;">
-                    </div>
-                    <!-- Permit if Caterer -->
-                    {% if target_user.role == 'caterer' and target_user.caterer_profile and target_user.caterer_profile.permit_url %}
-                    <div class="image-scanner">
-                        <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">Business Permit</label>
-                        {% if target_user.caterer_profile.permit_url.startswith('data:application/pdf') or target_user.caterer_profile.permit_url.endswith('.pdf') %}
-                        <iframe src="{{ target_user.caterer_profile.permit_url }}" style="width: 100%; height: 260px; border: none; background: #e2e8f0;"></iframe>
+                        {% if verification.selfie_url %}
+                            {% set selfie_url = verification.selfie_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if '/static/uploads/verification/' in verification.selfie_url else verification.selfie_url %}
+                            <img src="{{ selfie_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;" onerror="this.onerror=null; this.src='/static/images/default-avatar.png';">
                         {% else %}
-                        <img src="{{ target_user.caterer_profile.permit_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;">
+                            <div style="width: 100%; height: 260px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #94a3b8; font-weight: 700;"><i class="fas fa-camera" style="margin-right: 8px;"></i> No Selfie Uploaded</div>
                         {% endif %}
                     </div>
+                    <!-- Permit if Caterer -->
+                    {% if target_user.role == 'caterer' and target_user.caterer_profile %}
+                        {% if target_user.caterer_profile.permit_url %}
+                        <div class="image-scanner">
+                            <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">Business Permit</label>
+                            {% set permit_url = target_user.caterer_profile.permit_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if '/static/uploads/verification/' in target_user.caterer_profile.permit_url else target_user.caterer_profile.permit_url %}
+                            {% if permit_url.startswith('data:application/pdf') or permit_url.endswith('.pdf') %}
+                            <iframe src="{{ permit_url }}" style="width: 100%; height: 260px; border: none; background: #e2e8f0;"></iframe>
+                            {% else %}
+                            <img src="{{ permit_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;">
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        
+                        {% if target_user.caterer_profile.dti_url %}
+                        <div class="image-scanner">
+                            <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">DTI Registration</label>
+                            {% set dti_url = target_user.caterer_profile.dti_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if '/static/uploads/verification/' in target_user.caterer_profile.dti_url else target_user.caterer_profile.dti_url %}
+                            {% if dti_url.startswith('data:application/pdf') or dti_url.endswith('.pdf') %}
+                            <iframe src="{{ dti_url }}" style="width: 100%; height: 260px; border: none; background: #e2e8f0;"></iframe>
+                            {% else %}
+                            <img src="{{ dti_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;">
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        
+                        {% if target_user.caterer_profile.bir_url %}
+                        <div class="image-scanner">
+                            <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">BIR Registration</label>
+                            {% set bir_url = target_user.caterer_profile.bir_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if '/static/uploads/verification/' in target_user.caterer_profile.bir_url else target_user.caterer_profile.bir_url %}
+                            {% if bir_url.startswith('data:application/pdf') or bir_url.endswith('.pdf') %}
+                            <iframe src="{{ bir_url }}" style="width: 100%; height: 260px; border: none; background: #e2e8f0;"></iframe>
+                            {% else %}
+                            <img src="{{ bir_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;">
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        
+                        {% if target_user.caterer_profile.mayors_permit_url %}
+                        <div class="image-scanner">
+                            <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">Mayor's Permit</label>
+                            {% set mayors_url = target_user.caterer_profile.mayors_permit_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if '/static/uploads/verification/' in target_user.caterer_profile.mayors_permit_url else target_user.caterer_profile.mayors_permit_url %}
+                            {% if mayors_url.startswith('data:application/pdf') or mayors_url.endswith('.pdf') %}
+                            <iframe src="{{ mayors_url }}" style="width: 100%; height: 260px; border: none; background: #e2e8f0;"></iframe>
+                            {% else %}
+                            <img src="{{ mayors_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;">
+                            {% endif %}
+                        </div>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>

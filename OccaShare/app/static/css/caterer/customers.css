@@ -261,7 +261,7 @@ textarea.form-control {
     background-color: #fef2f2 !important;
 }
 .form-control.is-valid {
-    border-color: #10b981 !important;
+    border-color: var(--accent-color) !important;
 }
 .invalid-feedback {
     color: #ef4444;
@@ -296,8 +296,8 @@ textarea.form-control {
 .text-muted { color: #64748b; }
 .text-dark { color: #0f172a; }
 .text-primary { color: var(--primary-color); }
-.text-success { color: #10b981; }
-.text-warning { color: #f59e0b; }
+.text-success { color: var(--accent-color); }
+.text-warning { color: var(--accent-color); }
 .text-danger { color: #ef4444; }
 .bg-danger { background: #ef4444 !important; }
 .border-none { border: none !important; }

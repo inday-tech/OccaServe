@@ -112,8 +112,8 @@
     opacity: 0.8;
 }
 
-.pay-stat-released::before { background: #10b981; }
-.pay-stat-escrow::before   { background: #f59e0b; }
+.pay-stat-released::before { background: var(--accent-color); }
+.pay-stat-escrow::before   { background: var(--accent-color); }
 .pay-stat-active::before   { background: #64748b; }
 .pay-stat-payout::before   { background: #6366f1; }
 
@@ -361,10 +361,10 @@
 }
 
 .pay-status-completed { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
-.pay-status-completed::before { background: #10b981; }
+.pay-status-completed::before { background: var(--accent-color); }
 
 .pay-status-partial { background: #fffbeb; color: #92400e; border-color: #fde68a; }
-.pay-status-partial::before { background: #f59e0b; }
+.pay-status-partial::before { background: var(--accent-color); }
 
 .pay-status-pending { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
 .pay-status-pending::before { background: #94a3b8; }

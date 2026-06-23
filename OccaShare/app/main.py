@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 from fastapi.staticfiles import StaticFiles
 from .db.database import engine, Base, get_db
-from .routers import website, auth, admin, bookings, social_auth, caterers, packages, caterer_dashboard, customer_dashboard, verification, kyc, quotations, payments, contact, notifications, chat, caterer_feed, inventory_api
+from .routers import website, auth, admin, bookings, social_auth, caterers, packages, caterer_dashboard, customer_dashboard, verification, kyc, quotations, payments, contact, notifications, chat, caterer_feed, inventory_api, caterer_portfolio
 from .db import models
 from sqlalchemy.orm import Session
 from .services.realtime import manager
@@ -201,9 +201,9 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 # DEBUG MIDDLEWARE: Log all incoming requests to find the 404 culprit
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    print(f"[DEBUG LOG] Request: {request.method} {request.url}")
+    # print(f"[DEBUG LOG] Request: {request.method} {request.url}")
     response = await call_next(request)
-    print(f"[DEBUG LOG] Response: {response.status_code} for {request.url.path}")
+    # print(f"[DEBUG LOG] Response: {response.status_code} for {request.url.path}")
     return response
 
 @app.get("/test-extract")
@@ -255,6 +255,7 @@ app.include_router(notifications.router)
 app.include_router(chat.router)
 app.include_router(caterer_feed.router)
 app.include_router(inventory_api.router)
+app.include_router(caterer_portfolio.router)
 
 # --- WebSocket Implementation ---
 

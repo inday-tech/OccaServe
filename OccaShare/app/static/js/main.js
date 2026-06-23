@@ -331,10 +331,41 @@ window.markAllAsReadGlobal = async function() {
 window.addEventListener('load', () => {
     if (document.getElementById('headerNotifContainer')) {
         window.fetchGlobalNotifications();
-        globalNotifTimer = setInterval(() => window.fetchGlobalNotifications(), 15000);
+        // globalNotifTimer = setInterval(() => window.fetchGlobalNotifications(), 15000); // Polling removed in favor of WebSockets
     }
 });
 
+
+// ==========================================
+// SEAMLESS DOM REFRESH (No Full Reload)
+// ==========================================
+window.softRefresh = async function() {
+    try {
+        const res = await fetch(window.location.href);
+        const text = await res.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+        
+        // Find the main container in the fetched doc (supports caterer, customer, admin mains)
+        const newMain = doc.querySelector('main');
+        const currentMain = document.querySelector('main');
+        
+        if (newMain && currentMain) {
+            currentMain.innerHTML = newMain.innerHTML;
+            
+            // Re-initialize specific scripts if they exist on the page
+            if (typeof initDetailListeners === 'function') initDetailListeners();
+            if (typeof filterBookings === 'function') filterBookings();
+            
+            console.log('Soft refresh successful');
+            return true;
+        }
+    } catch(e) {
+        console.error('Soft refresh failed', e);
+    }
+    // Fallback
+    window.location.reload();
+};
 
 // ========================================== 
 // GLOBAL DROPDOWN TOGGLE ENGINE 

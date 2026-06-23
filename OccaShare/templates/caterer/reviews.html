@@ -50,7 +50,7 @@
                 {% set count = rating_stats.get(star, 0) %}
                 {% set percent = (count / total_reviews * 100)|int if total_reviews > 0 else 0 %}
                 <div class="breakdown-item">
-                    <span class="star-label">{{ star }} <i class="fas fa-star" style="font-size: 0.75rem; color: #f59e0b;"></i></span>
+                    <span class="star-label">{{ star }} <i class="fas fa-star" style="font-size: 0.75rem; color: var(--accent-color);"></i></span>
                     <div class="progress-bar-bg">
                         <div class="progress-bar-fill" style="width: {{ percent }}%;"></div>
                     </div>

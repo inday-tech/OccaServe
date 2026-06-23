@@ -83,13 +83,13 @@
                         </span>
                         <!-- Extraction Method Badge -->
                         {% set method = verification.ocr_data.extraction_method or 'unknown' %}
-                        <span style="background: {{ '#10b981' if method == 'gemini' else '#f59e0b' if method == 'tesseract' else '#94a3b8' }}; color: #fff; padding: 4px 10px; border-radius: var(--border-radius, 20px); font-size: 0.65rem; font-weight: 800;">
+                        <span style="background: {{ 'var(--accent-color)' if method == 'gemini' else 'var(--accent-color)' if method == 'tesseract' else '#94a3b8' }}; color: #fff; padding: 4px 10px; border-radius: var(--border-radius, 20px); font-size: 0.65rem; font-weight: 800;">
                             {{ '🤖 Gemini AI' if method == 'gemini' else '📝 Tesseract' if method == 'tesseract' else '❓ Unknown' }}
                         </span>
                         <!-- Confidence Score -->
                         {% set conf = verification.ocr_data.confidence_score or 0 %}
                         {% if conf %}
-                        <span style="background: {{ '#10b981' if conf >= 0.8 else '#f59e0b' if conf >= 0.5 else '#ef4444' }}; color: #fff; padding: 4px 10px; border-radius: var(--border-radius, 20px); font-size: 0.65rem; font-weight: 800;">
+                        <span style="background: {{ 'var(--accent-color)' if conf >= 0.8 else 'var(--accent-color)' if conf >= 0.5 else '#ef4444' }}; color: #fff; padding: 4px 10px; border-radius: var(--border-radius, 20px); font-size: 0.65rem; font-weight: 800;">
                             {{ '%.0f' | format(conf * 100) }}% confidence
                         </span>
                         {% endif %}
@@ -322,7 +322,7 @@
                 </form>
                 {% else %}
                 <div style="padding: 1.5rem 1rem; text-align: center;">
-                    <i class="fas fa-check-double" style="font-size: 2rem; color: #10b981; margin-bottom: 0.75rem; display: block;"></i>
+                    <i class="fas fa-check-double" style="font-size: 2rem; color: var(--accent-color); margin-bottom: 0.75rem; display: block;"></i>
                     <p style="margin: 0; font-size: 0.85rem; font-weight: 800; color: var(--color-neutral-800);">Verification Complete</p>
                     <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--color-neutral-500);">This identity has been successfully verified. No further action is required.</p>
                 </div>

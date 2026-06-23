@@ -54,9 +54,9 @@
 }
 
 /* Types */
-.modal-type-success .modal-icon-wrapper { background: #f0fdf4; color: #10b981; }
+.modal-type-success .modal-icon-wrapper { background: #f0fdf4; color: var(--accent-color); }
 .modal-type-error .modal-icon-wrapper { background: #fef2f2; color: #ef4444; }
-.modal-type-warning .modal-icon-wrapper { background: #fffbeb; color: #f59e0b; }
+.modal-type-warning .modal-icon-wrapper { background: #fffbeb; color: var(--accent-color); }
 .modal-type-confirm .modal-icon-wrapper { background: #eff6ff; color: #3b82f6; }
 
 .modal-title {
@@ -99,7 +99,7 @@
 }
 
 .btn-confirm-main {
-    background: var(--primary-color, #FF7B54);
+    background: var(--primary-color, var(--primary-color));
     color: white;
     box-shadow: 0 4px 12px rgba(var(--primary-color-rgb, 255, 123, 84), 0.2);
 }

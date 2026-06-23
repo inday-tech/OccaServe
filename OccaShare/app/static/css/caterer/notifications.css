@@ -8,7 +8,7 @@
     --text-lg: 1.25rem;    
     --text-xl: 1.5rem;     
     --text-2xl: 1.875rem;
-    --primary-color: #ff7b54;
+    --primary-color: var(--primary-color);
     --primary-color-rgb: 255, 123, 84;
     --secondary-color: #1e293b;
     --text-muted: #64748b;
@@ -302,11 +302,11 @@
 
 .notif-btn-read {
     background: rgba(16, 185, 129, 0.08);
-    color: #10b981;
+    color: var(--accent-color);
 }
 
 .notif-btn-read:hover {
-    background: #10b981;
+    background: var(--accent-color);
     color: white;
     transform: scale(1.1);
 }

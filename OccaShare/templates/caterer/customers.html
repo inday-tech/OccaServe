@@ -29,14 +29,14 @@
         <div class="kpi-card-clean">
             <div class="kpi-info">
                 <h4 style="color: var(--primary-color);">VIP Accounts</h4>
-                <span class="kpi-value" style="color: #10b981;" id="statVipClients">{{ stats.vip }}</span>
+                <span class="kpi-value" style="color: var(--accent-color);" id="statVipClients">{{ stats.vip }}</span>
                 <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">High-value clients</span>
             </div>
         </div>
         <div class="kpi-card-clean">
             <div class="kpi-info">
                 <h4 style="color: var(--primary-color);">Monthly Acquisition</h4>
-                <span class="kpi-value" style="color: #f59e0b;" id="statGrowthClients">{{ stats.new }}</span>
+                <span class="kpi-value" style="color: var(--accent-color);" id="statGrowthClients">{{ stats.new }}</span>
                 <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">New accounts this month</span>
             </div>
         </div>
@@ -68,7 +68,7 @@
                         <i class="fas fa-file-export"></i> Export Data <i class="fas fa-chevron-down ml-1"></i>
                     </button>
                     <div class="action-dropdown-menu" id="actionMenu-export">
-                        <button onclick="window.exportCustomerCSV('csv')"><i class="fas fa-file-csv" style="color: #10b981;"></i> Export to Excel (CSV)</button>
+                        <button onclick="window.exportCustomerCSV('csv')"><i class="fas fa-file-csv" style="color: var(--accent-color);"></i> Export to Excel (CSV)</button>
                         <div class="dropdown-divider"></div>
                         <button onclick="window.exportCustomerPDF()"><i class="fas fa-file-pdf" style="color: #ef4444;"></i> Export to PDF</button>
                     </div>
@@ -163,7 +163,7 @@
 <!-- Register New Customer Modal -->
 <div id="addCustomerModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-lg flex-col-modal">
-        <div class="occ-modal-header colored-header">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h3 class="occ-modal-title"><i class="fas fa-user-plus"></i> Client Registration</h3>
                 <div class="occ-modal-subtitle">Establish a verified entry in your intelligence database.</div>
@@ -255,7 +255,7 @@
 <!-- CRM Hub Modal -->
 <div id="customerProfileModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-lg flex-col-modal">
-        <div class="occ-modal-header colored-header">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h3 id="profName" class="occ-modal-title">Analyzing...</h3>
                 <div id="profStatus" class="occ-modal-subtitle status-pill-indicator">Connecting to intelligence stream...</div>

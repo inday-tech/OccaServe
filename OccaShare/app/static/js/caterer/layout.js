@@ -239,6 +239,9 @@
                 if (window.showToast) {
                     window.showToast(data.message || "New notification received", "info");
                 }
+                if (window.fetchGlobalNotifications) {
+                    window.fetchGlobalNotifications(true);
+                }
             } else if (data.type === 'booking_update') {
                 // If on dashboard, refresh stats
                 if (typeof window.refreshDashboardData === 'function') {
@@ -248,6 +251,8 @@
                 if (window.location.pathname.includes('/caterer/bookings')) {
                     if (typeof window.refreshBookingsTable === 'function') {
                         window.refreshBookingsTable();
+                    } else if (window.softRefresh) {
+                        setTimeout(() => window.softRefresh(), 1000);
                     } else {
                         setTimeout(() => window.location.reload(), 1000);
                     }
@@ -285,7 +290,8 @@
 
                     // Reload after a short delay for a smooth transition
                     setTimeout(() => {
-                        window.location.reload();
+                        if (window.softRefresh) window.softRefresh();
+                        else window.location.reload();
                     }, 2500);
                 }
             } else if (data.type === 'payout_update' || data.type === 'payout_completed') {
