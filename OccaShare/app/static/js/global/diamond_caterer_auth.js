@@ -7,6 +7,17 @@
     let currentStepCat = 1;
     const totalStepsCat = 4;
 
+    // Compose hidden full_name from separate fields (called by diamond_validation.js crossCheckNames)
+    window.composeFullNameCat = function () {
+        const fn = document.getElementById('first_name_cat')?.value.trim() || '';
+        const mn = document.getElementById('middle_name_cat')?.value.trim() || '';
+        const ln = document.getElementById('last_name_cat')?.value.trim() || '';
+        const hidden = document.getElementById('full_name_cat');
+        if (hidden) {
+            hidden.value = `${fn} ${mn ? mn + ' ' : ''}${ln}`.trim();
+        }
+    };
+
     const LAGUNA_DATA = {
         "Santa Cruz": [
             "Alipit", "Bagumbayan", "Bubukal", "Calios", "Duhat",
