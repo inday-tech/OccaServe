@@ -82,12 +82,33 @@
                 if (!res.valid) valid = false;
             }
 
-            const fnEl = document.getElementById('full_name_cat');
-            if (fnEl) {
-                const nameVal = fnEl.value.trim();
-                const res = window.diamondValidators.name(nameVal);
-                window.setDiamondError('fullNameCat', res.message, !res.valid);
+            const lnEl = document.getElementById('last_name_cat');
+            if (lnEl) {
+                const res = window.diamondValidators.name(lnEl.value.trim());
+                window.setDiamondError('lastNameCat', res.message, !res.valid);
                 if (!res.valid) valid = false;
+            }
+
+            const fnEl = document.getElementById('first_name_cat');
+            if (fnEl) {
+                const res = window.diamondValidators.name(fnEl.value.trim());
+                window.setDiamondError('firstNameCat', res.message, !res.valid);
+                if (!res.valid) valid = false;
+            }
+
+            const mnEl = document.getElementById('middle_name_cat');
+            if (mnEl && mnEl.value.trim()) {
+                const res = window.diamondValidators.name(mnEl.value.trim());
+                window.setDiamondError('middleNameCat', res.message, !res.valid);
+                if (!res.valid) valid = false;
+            }
+
+            // Cross-field: first != last
+            if (fnEl && lnEl && fnEl.value.trim() && lnEl.value.trim() &&
+                fnEl.value.trim().toLowerCase() === lnEl.value.trim().toLowerCase()) {
+                window.setDiamondError('firstNameCat', 'First & Last name cannot be identical');
+                window.setDiamondError('lastNameCat', 'First & Last name cannot be identical');
+                valid = false;
             }
 
             const emailEl = document.getElementById('email_cat');
@@ -258,7 +279,10 @@
     }
 
     function showOcrReviewModal() {
-        const userFullName = document.getElementById('full_name_cat')?.value || '';
+        const userLastName = document.getElementById('last_name_cat')?.value || '';
+        const userFirstName = document.getElementById('first_name_cat')?.value || '';
+        const userMiddleName = document.getElementById('middle_name_cat')?.value || '';
+        const userFullName = `${userFirstName} ${userMiddleName ? userMiddleName + ' ' : ''}${userLastName}`.trim();
         const userIdNumber = document.getElementById('id_number_cat')?.value || '';
 
         const extFullName = window.extractedOcrData?.id?.full_name || window.extractedOcrData?.id?.full_name_extracted || 'Not clear/detected';
@@ -278,9 +302,19 @@
                                     <label style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Extracted from ID</label>
                                     <div style="padding: 0.6rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; color: #0f172a; font-weight: 500; word-break: break-word;">${extFullName}</div>
                                 </div>
-                                <div>
-                                    <label style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Your Input</label>
-                                    <input type="text" id="review_full_name" class="minimal-input" value="${userFullName}" style="padding: 0.6rem; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 0.5rem;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;">
+                                    <div>
+                                        <label style="font-size: 0.7rem; color: #64748b; font-weight: 600;">Last Name</label>
+                                        <input type="text" id="review_last_name" class="minimal-input" value="${userLastName}" style="padding: 0.5rem; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-size: 0.85rem;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 0.7rem; color: #64748b; font-weight: 600;">First Name</label>
+                                        <input type="text" id="review_first_name" class="minimal-input" value="${userFirstName}" style="padding: 0.5rem; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-size: 0.85rem;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 0.7rem; color: #64748b; font-weight: 600;">Middle Name</label>
+                                        <input type="text" id="review_middle_name" class="minimal-input" value="${userMiddleName}" style="padding: 0.5rem; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-size: 0.85rem;" placeholder="Optional">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -310,16 +344,23 @@
                     popup: 'premium-auth-swal'
                 },
                 preConfirm: () => {
-                    const rFullName = document.getElementById('review_full_name').value.trim();
+                    const rLastName = document.getElementById('review_last_name').value.trim();
+                    const rFirstName = document.getElementById('review_first_name').value.trim();
+                    const rMiddleName = document.getElementById('review_middle_name').value.trim();
                     const rId = document.getElementById('review_id_number').value.trim();
 
-                    if (!rFullName || !rId) {
-                        Swal.showValidationMessage('All fields must be filled.');
+                    if (!rLastName || !rFirstName || !rId) {
+                        Swal.showValidationMessage('Last Name, First Name, and ID Number are required.');
                         return false;
                     }
 
-                    document.getElementById('full_name_cat').value = rFullName;
+                    // Write back reviewed values to the form
+                    document.getElementById('last_name_cat').value = rLastName;
+                    document.getElementById('first_name_cat').value = rFirstName;
+                    document.getElementById('middle_name_cat').value = rMiddleName;
                     document.getElementById('id_number_cat').value = rId;
+                    // Compose full_name hidden field
+                    document.getElementById('full_name_cat').value = `${rFirstName} ${rMiddleName ? rMiddleName + ' ' : ''}${rLastName}`.trim();
 
                     return true;
                 }
@@ -368,9 +409,15 @@
                 if (val) formData.set(f, val.toString().replace(/,/g, ''));
             });
 
-            // Set full name directly
-            const fn = document.getElementById('full_name_cat')?.value.trim() || '';
-            formData.set('full_name', fn);
+            // Send separate name fields
+            const ln = document.getElementById('last_name_cat')?.value.trim() || '';
+            const fn = document.getElementById('first_name_cat')?.value.trim() || '';
+            const mn = document.getElementById('middle_name_cat')?.value.trim() || '';
+            formData.set('last_name', ln);
+            formData.set('first_name', fn);
+            formData.set('middle_name', mn);
+            // Compose full_name for backward compatibility (OCR verification)
+            formData.set('full_name', `${fn} ${mn ? mn + ' ' : ''}${ln}`.trim());
 
             const response = await fetch('/auth/register', {
                 method: 'POST',
