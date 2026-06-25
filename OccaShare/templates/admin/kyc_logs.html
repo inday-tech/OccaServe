@@ -139,7 +139,7 @@
     <div class="kpi-card-clean">
         <div class="kpi-info">
             <h4>Pending Reviews</h4>
-            <span class="kpi-value">{{ pending_caterers|length + pending_customers|length }}</span>
+            <span class="kpi-value">{{ pending_customers|length }}</span>
         </div>
     </div>
     <div class="kpi-card-clean">
@@ -158,7 +158,7 @@
 
 <div class="compliance-tabs">
     <div onclick="switchTab('pending')" id="tab-pending" class="comp-tab active">
-        Action Required <span class="notif-dot">{{ pending_caterers|length + pending_customers|length }}</span>
+        Action Required <span class="notif-dot">{{ pending_customers|length }}</span>
     </div>
     <div onclick="switchTab('history')" id="tab-history" class="comp-tab">
         Verification History
@@ -166,70 +166,7 @@
 </div>
 
 <div id="queue-pending">
-    <div class="table-card-clean" style="margin-bottom: 2rem;">
-        <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
-            <h3
-                style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; display: flex; align-items: center; gap: 10px;">
-                Pending Caterers
-            </h3>
-        </div>
-        <div style="overflow-x: auto;">
-            {% if pending_caterers %}
-            <table class="clean-table">
-                <thead>
-                    <tr>
-                        <th>Business Name</th>
-                        <th>Owner</th>
-                        <th>Status</th>
-                        <th>Date Submitted</th>
-                        <th style="text-align: right;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for caterer in pending_caterers %}
-                    <tr>
-                        <td>
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div class="avatar-sm"><i class="fas fa-utensils"></i></div>
-                                <div>
-                                    <div style="font-weight: 800; color: var(--adm-navy);">{{ caterer.business_name }}
-                                    </div>
-                                    <div style="font-size: 0.7rem; font-weight: 600; color: var(--adm-muted);">{{
-                                        caterer.city }} REGION</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            <div style="font-weight: 700; color: var(--adm-navy); font-size: 0.8rem;">{{
-                                caterer.user.first_name }} {{ caterer.user.last_name }}</div>
-                            <div style="font-size: 0.7rem; color: var(--adm-muted);">{{ caterer.user.email }}</div>
-                        </td>
-                        <td>
-                            <div style="font-weight: 700; color: var(--adm-navy); font-size: 0.8rem;">
-                                Awaiting Review
-                            </div>
-                        </td>
-                        <td>
-                            <div class="aging-badge">
-                                {{ caterer.created_at.strftime('%b %d, %Y') }}
-                            </div>
-                        </td>
-                        <td style="text-align: right;">
-                            <a href="/admin/verify/{{ caterer.user_id }}" class="btn-clean"
-                                style="font-size: 0.65rem;">Review</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div style="text-align: center; padding: 4rem;">
-                <i class="fas fa-check-double fa-3x" style="color: #cbd5e1; margin-bottom: 1rem;"></i>
-                <h4 style="color: var(--adm-muted); font-weight: 800;">No pending partner audits.</h4>
-            </div>
-            {% endif %}
-        </div>
-    </div>
+    <!-- Pending Caterers have been moved exclusively to the Caterer Partners page for a cleaner workflow -->
 
     <div class="table-card-clean">
         <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
@@ -364,7 +301,10 @@
     // Live Update Listener
     window.addEventListener('system_update', (e) => {
         if (e.detail.type === 'kyc_update') {
-            setTimeout(() => window.location.reload(), 1000);
+            setTimeout(() => {
+                if (window.softRefresh) window.softRefresh();
+                else window.location.reload();
+            }, 1000);
         }
     });
 </script>

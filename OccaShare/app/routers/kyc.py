@@ -684,6 +684,17 @@ async def view_kyc_document(
         filename.startswith(f"cropped_user_{current_user.id}_")
     )
     
+    if current_user.role == "caterer" and current_user.caterer_profile:
+        file_url = f"/static/uploads/verification/{filename}"
+        proxy_url = f"/api/bookings/kyc/view/{filename}"
+        profile = current_user.caterer_profile
+        doc_urls = [
+            profile.permit_url, profile.dti_url, profile.bir_url, 
+            profile.mayors_permit_url, profile.gov_id_url
+        ]
+        if file_url in doc_urls or proxy_url in doc_urls:
+            is_owner = True
+    
     is_caterer_authorized = False
     if current_user.role == "caterer":
         # Check if this caterer has a booking with the user whose ID this is

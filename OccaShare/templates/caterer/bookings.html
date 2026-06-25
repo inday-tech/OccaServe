@@ -186,14 +186,14 @@
     <div class="kpi-card-clean">
         <div class="kpi-info">
             <h4>Confirmed</h4>
-            <span class="kpi-value" style="color: #10b981;">{{ bookings|selectattr('status', 'equalto', 'confirmed')|list|count }}</span>
+            <span class="kpi-value" style="color: var(--accent-color);">{{ bookings|selectattr('status', 'equalto', 'confirmed')|list|count }}</span>
             <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Ready to serve</span>
         </div>
     </div>
     <div class="kpi-card-clean">
         <div class="kpi-info">
             <h4>Pending</h4>
-            <span class="kpi-value" style="color: #f59e0b;">{{ bookings|selectattr('status', 'in', ['pending', 'pending_quotation', 'awaiting_payment'])|list|count }}</span>
+            <span class="kpi-value" style="color: var(--accent-color);">{{ bookings|selectattr('status', 'in', ['pending', 'pending_quotation', 'awaiting_payment'])|list|count }}</span>
             <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Awaiting action</span>
         </div>
     </div>
@@ -253,8 +253,8 @@
                     {% else %}
                         Pending: 
                         {% set msg_parts = [] %}
-                        {% if payments_to_verify %} {% set _ = msg_parts.append('<span style="color: #f59e0b; font-weight: 800;">' ~ payments_to_verify|length ~ '</span> payments') %} {% endif %}
-                        {% if contracts_to_sign %} {% set _ = msg_parts.append('<span style="color: #f59e0b; font-weight: 800;">' ~ contracts_to_sign|length ~ '</span> contracts') %} {% endif %}
+                        {% if payments_to_verify %} {% set _ = msg_parts.append('<span style="color: var(--accent-color); font-weight: 800;">' ~ payments_to_verify|length ~ '</span> payments') %} {% endif %}
+                        {% if contracts_to_sign %} {% set _ = msg_parts.append('<span style="color: var(--accent-color); font-weight: 800;">' ~ contracts_to_sign|length ~ '</span> contracts') %} {% endif %}
                         {{ msg_parts|join(' &bull; ')|safe }}
                     {% endif %}
                 </span>
@@ -296,11 +296,11 @@
         <span>Urgent (Event within 48h)</span>
     </div>
     <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;">
-        <i class="fas fa-shield-check" style="color: #10b981;"></i>
+        <i class="fas fa-shield-check" style="color: var(--accent-color);"></i>
         <span>Identity Verified</span>
     </div>
     <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;">
-        <i class="fas fa-shield-exclamation" style="color: #f59e0b;"></i>
+        <i class="fas fa-shield-exclamation" style="color: var(--accent-color);"></i>
         <span>KYC Audit Needed</span>
     </div>
     <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;">
@@ -336,7 +336,7 @@
                     <i class="fas fa-file-export"></i> Export Data <i class="fas fa-chevron-down" style="font-size: 0.75rem;"></i>
                 </button>
                 <div class="action-dropdown-menu" id="bookingExportMenu" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 8px; background: white; border: 1px solid #e2e8f0; border-radius: var(--border-radius, 12px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); width: 200px; z-index: 100; overflow: hidden;">
-                    <button onclick="window.exportBookings('excel')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569; border-bottom: 1px solid #f1f5f9;"><i class="fas fa-file-excel" style="color: #10b981; font-size: 1.1rem; width: 20px;"></i> Excel (CSV)</button>
+                    <button onclick="window.exportBookings('excel')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569; border-bottom: 1px solid #f1f5f9;"><i class="fas fa-file-excel" style="color: var(--accent-color); font-size: 1.1rem; width: 20px;"></i> Excel (CSV)</button>
                     <button onclick="window.exportBookings('pdf')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569; border-bottom: 1px solid #f1f5f9;"><i class="fas fa-file-pdf" style="color: #ef4444; font-size: 1.1rem; width: 20px;"></i> PDF Report</button>
                     <button onclick="window.exportBookings('word')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569;"><i class="fas fa-file-word" style="color: #3b82f6; font-size: 1.1rem; width: 20px;"></i> Word Doc</button>
                 </div>
@@ -413,9 +413,9 @@
                             </div>
                             {% if booking.user %}
                                 {% if booking.user.is_verified %}
-                                    <span title="Identity Verified" style="color: #10b981; font-size: 0.75rem;"><i class="fas fa-shield-check"></i></span>
+                                    <span title="Identity Verified" style="color: var(--accent-color); font-size: 0.75rem;"><i class="fas fa-shield-check"></i></span>
                                 {% elif booking.package_id %}
-                                    <span title="Needs KYC Audit" style="color: #f59e0b; font-size: 0.75rem;"><i class="fas fa-shield-exclamation"></i></span>
+                                    <span title="Needs KYC Audit" style="color: var(--accent-color); font-size: 0.75rem;"><i class="fas fa-shield-exclamation"></i></span>
                                 {% endif %}
                             {% endif %}
                         </div>
@@ -582,7 +582,7 @@
                             <button type="button" onclick="openExpenseTracker({{ booking.id }}, this)" 
                                 data-breakdown="{{ (booking.actual_cost_breakdown or []) | tojson | forceescape }}" 
                                 data-total-amount="{{ booking.total_price or booking.total_amount }}"
-                                style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; font-size: 0.85rem; color: #f59e0b; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; transition: background 0.2s;">
+                                style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; font-size: 0.85rem; color: var(--accent-color); cursor: pointer; display: flex; align-items: center; gap: 0.6rem; transition: background 0.2s;">
                                 <i class="fas fa-receipt"></i> Track Expenses
                             </button>
                             {% endif %}
@@ -700,11 +700,18 @@
         </div>
     </div>
     {% else %}
-    <div class="no-bookings-empty" style="text-align: center; padding: 4rem 2rem; color: #94a3b8;">
-        <i class="fas fa-calendar-times" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-        <p style="font-size: 1.1rem; font-weight: 500;">No bookings yet. They will appear here once customers book your
-            services.</p>
-    </div>
+        {% if user and user.caterer_profile and user.caterer_profile.verification_status != 'Verified' %}
+        <div class="no-bookings-empty" style="text-align: center; padding: 4rem 2rem; color: #94a3b8;">
+            <i class="fas fa-lock" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+            <p style="font-size: 1.1rem; font-weight: 500;">Bookings are locked. You must verify your business identity and permit before customers can book your services.</p>
+        </div>
+        {% else %}
+        <div class="no-bookings-empty" style="text-align: center; padding: 4rem 2rem; color: #94a3b8;">
+            <i class="fas fa-calendar-times" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+            <p style="font-size: 1.1rem; font-weight: 500;">No bookings yet. They will appear here once customers book your
+                services.</p>
+        </div>
+        {% endif %}
     {% endif %}
 </div>
 
@@ -791,11 +798,11 @@
     }
     
     .step-pro.completed .step-dot {
-        background: #10b981;
+        background: var(--accent-color);
         color: white;
     }
     .step-pro.completed .step-label {
-        color: #10b981;
+        color: var(--accent-color);
     }
 
     @media (max-width: 992px) {
@@ -838,7 +845,7 @@
 
 <div id="bookingDetailModal" class="occ-modal-overlay">
     <div class="occ-modal-box modal-b-container occ-content-pop">
-        <div class="occ-modal-header" style="background: white; border-bottom: 1px solid #f1f5f9; padding: 1.5rem 2rem;">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h2 id="modalBookingId" class="occ-modal-title" style="color: #0f172a; font-weight: 800; font-size: 1.25rem; margin-bottom: 0;">Booking Details</h2>
                 <div class="occ-modal-subtitle" style="color: #64748b; font-size: 0.85rem; font-weight: 500; margin-top: 4px;">Comprehensive overview of event and financials</div>
@@ -1110,7 +1117,7 @@
                         </div>
                         <div class="summary-item">
                             <div style="font-size: 0.65rem; text-transform: uppercase; color: #64748b; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Exp. Profit</div>
-                            <div id="modalEstimateProfit" style="font-size: 1.1rem; font-weight: 800; color: #10b981;">₱0.00</div>
+                            <div id="modalEstimateProfit" style="font-size: 1.1rem; font-weight: 800; color: var(--accent-color);">₱0.00</div>
                         </div>
                         <div class="summary-item">
                             <div style="font-size: 0.65rem; text-transform: uppercase; color: #64748b; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.25rem;">ROI %</div>
@@ -1166,7 +1173,7 @@
 <!-- Reject Reason Modal -->
 <div id="rejectReasonModal" class="occ-modal-overlay" style="z-index: 1100;">
     <div class="occ-modal-box sz-sm occ-content-pop">
-        <div class="occ-modal-header" style="background: #fef2f2;">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h2 class="occ-modal-title" style="color: #991b1b;"><i class="fas fa-ban"></i> Reject Booking</h2>
                 <div class="occ-modal-subtitle">Please provide a reason for the cancellation</div>
@@ -1196,7 +1203,7 @@
 ════════════════════════════════════════════════════ -->
 <div id="contractModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-lg occ-content-slide-up">
-        <div class="occ-modal-header">
+        <div class="occ-modal-header glass-header">
             <div style="display:flex;align-items:center;gap:0.75rem;">
                 <div class="secure-badge-pro"><i class="fas fa-shield-check"></i> Certified Secure</div>
                 <h2 class="occ-modal-title">Digital Service Agreement</h2>
@@ -1224,7 +1231,7 @@
 ════════════════════════════════════════════════════ -->
 <div id="walkinBookingModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-xl occ-content-slide-down" style="max-width: 1000px;">
-        <div class="occ-modal-header" style="background: white; border-bottom: 1px solid #f1f5f9; padding: 1.5rem 2rem;">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h2 class="occ-modal-title" style="color: #0f172a; font-weight: 800; font-size: 1.25rem; margin-bottom: 0;">
                     <i class="fas fa-clipboard-list" style="color: var(--primary-color); margin-right: 8px;"></i> Manual Walk-in Booking
@@ -1409,7 +1416,7 @@
 ════════════════════════════════════════════════════ -->
 <div id="dispatchProofModal" class="occ-modal-overlay" style="z-index: 9999;">
     <div class="occ-modal-box sz-sm occ-content-zoom-in">
-        <div class="occ-modal-header">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h2 class="occ-modal-title"><i class="fas fa-camera" style="color:var(--primary-color);"></i> Proof of Preparation</h2>
                 <div class="occ-modal-subtitle">Upload photo of packed orders to unlock dispatch.</div>
@@ -1451,7 +1458,7 @@
 <!-- Report Issue Modal -->
 <div id="reportIssueModal" class="occ-modal-overlay" style="z-index: 1000000;">
     <div class="occ-modal-box sz-sm occ-content-pop">
-        <div class="occ-modal-header" style="background: #fef2f2;">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h2 class="occ-modal-title" style="color: #991b1b;"><i class="fas fa-flag"></i> Report Issue</h2>
                 <div class="occ-modal-subtitle">File a dispute against a customer</div>

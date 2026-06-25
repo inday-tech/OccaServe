@@ -630,6 +630,7 @@
                         if (data.type === 'new_notification') {
                             updateBadge(data.count);
                             if (typeof window.showSuccess === 'function') window.showSuccess(data.message, "System Alert");
+                            if (window.fetchGlobalNotifications) window.fetchGlobalNotifications(true);
                         }
                         if (data.type === 'new_payout_request') {
                             const pb = document.getElementById('payoutNotifBadge');

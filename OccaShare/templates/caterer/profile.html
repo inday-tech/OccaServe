@@ -13,9 +13,9 @@
         theme: {
             extend: {
                 colors: {
-                    primary: '{{ caterer.primary_color if caterer.primary_color else "#f97316" }}',
+                    primary: '{{ caterer.primary_color if caterer.primary_color else "var(--primary-color)" }}',
                     secondary: '{{ caterer.secondary_color if caterer.secondary_color else "#334155" }}',
-                    accent: '{{ caterer.accent_color if caterer.accent_color else "#f97316" }}',
+                    accent: '{{ caterer.accent_color if caterer.accent_color else "var(--primary-color)" }}',
                     highlight: '{{ caterer.highlight_color if caterer.highlight_color else "#fdba74" }}'
                 },
                 borderRadius: {
@@ -39,9 +39,9 @@
 </style>
 <style>
     :root {
-        --brand-primary: {{ caterer.primary_color if caterer.primary_color else "#f97316" }};
+        --brand-primary: {{ caterer.primary_color if caterer.primary_color else "var(--primary-color)" }};
         --brand-secondary: {{ caterer.secondary_color if caterer.secondary_color else "#334155" }};
-        --brand-accent: {{ caterer.accent_color if caterer.accent_color else "#f97316" }};
+        --brand-accent: {{ caterer.accent_color if caterer.accent_color else "var(--primary-color)" }};
         --brand-highlight: {{ caterer.highlight_color if caterer.highlight_color else "#fdba74" }};
     }
     body { 
@@ -838,12 +838,12 @@
         const displayInclusions = (pkg.inclusions && pkg.inclusions.length > 0) ? pkg.inclusions : defaultInclusions;
         
         incHtml = `<ul class="space-y-2 mt-3">
-            ${displayInclusions.map(i => `<li class="text-xs text-slate-600 flex items-center gap-2"><i class="fas fa-check-circle text-[#f97316]"></i> ${i}</li>`).join('')}
+            ${displayInclusions.map(i => `<li class="text-xs text-slate-600 flex items-center gap-2"><i class="fas fa-check-circle text-[var(--primary-color)]"></i> ${i}</li>`).join('')}
         </ul>`;
 
         const html = `
             <h3 class="text-base font-bold text-slate-800 mb-1">${pkg.name}</h3>
-            <div class="text-lg font-black text-[#f97316] mb-3">${pkg.price}</div>
+            <div class="text-lg font-black text-[var(--primary-color)] mb-3">${pkg.price}</div>
             <p class="text-xs text-slate-500 leading-relaxed mb-4">${pkg.description}</p>
             
             <div class="border-t border-slate-100 pt-4 mb-4">
@@ -968,7 +968,7 @@
                         ${savedAddress ? savedAddress + '<br>' : ''}
                         Philippines
                     </div>
-                    <div id="map-distance-info" style="font-size: 12px; color: #f97316; font-weight: bold; margin-bottom: 8px; display: none;"></div>
+                    <div id="map-distance-info" style="font-size: 12px; color: var(--primary-color); font-weight: bold; margin-bottom: 8px; display: none;"></div>
                     <a href="${googleMapsLink}" target="_blank" style="font-size: 14px; color: #1a73e8; text-decoration: none; font-weight: 400;">
                         View on Google Maps
                     </a>

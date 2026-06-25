@@ -164,11 +164,6 @@
             <form action="/caterer/profile?success_msg=Business+profile+updated+successfully" method="POST" enctype="multipart/form-data" class="profile-edit-form">
                 <!-- Section: Business Info -->
                 <div class="settings-section active" id="section-general">
-                    <div class="section-header-compact">
-                        <h3><i class="fas fa-info-circle"></i> Basic Business Info</h3>
-                        <p>Core identity details of your catering business.</p>
-                    </div>
-
                     <div class="form-group">
                         <label><i class="fas fa-signature"></i> Business Name</label>
                         <input type="text" name="business_name" value="{{ profile.business_name }}" placeholder="Enter your business name" required>
@@ -196,48 +191,20 @@
                             required>{{ profile.description }}</textarea>
                     </div>
 
-                    <!-- Gallery Section (merged into Business tab) -->
-                    <div class="section-header-compact" style="margin-top: 2rem;">
-                        <h3><i class="fas fa-camera-retro"></i> Business Gallery</h3>
-                        <p>Showcase your best dishes and event setups to attract clients.</p>
-                    </div>
-                    <div class="form-group">
-                        <label>Add to Gallery (Multiple)</label>
-                        <input type="file" name="gallery" accept="image/*" multiple class="form-file-input">
-                    </div>
-
-                    {% if profile.gallery_items %}
-                    <div class="gallery-management-grid">
-                        {% for item in profile.gallery_items if not item.is_archived %}
-                        <div class="gallery-item-wrapper">
-                            <img src="{{ item.media_url }}" class="gallery-item-img">
-                            <button type="button" onclick="archiveGalleryItem({{ item.id }})"
-                                class="archive-gallery-item-btn" title="Archive Image">
-                                <i class="fas fa-archive"></i>
-                            </button>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
             </div>
             <!-- End Section: Business Info -->
 
             <!-- Section: Location & Contact -->
             <div class="settings-section" id="section-location">
-                    <div class="section-header-compact">
-                        <h3><i class="fas fa-map-location-dot"></i> Registered Business Location</h3>
-                        <p>Your official business address used for search and bookings.</p>
-                    </div>
-
                     <div class="location-picker-card" style="margin-top: 0;">
                         <label><i class="fas fa-crosshairs"></i> Interactive Street Map</label>
-                        <p class="field-hint">Pin your exact kitchen location. This ensures accurate distance calculation for customers.</p>
+                        <p class="field-hint">Search for your official Google Business Profile to lock your coordinates. If you are not on Google Maps yet, click 'Use My Location' while at your kitchen.</p>
 
                         <div class="location-picker-wrapper">
                             <div class="map-search-group" style="display:flex;gap:0.5rem;align-items:center;">
                                 <div style="position:relative;flex:1;">
                                     <i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none;z-index:2;"></i>
-                                    <input type="text" id="mapSearchInput" placeholder="Search barangay, street, or landmark..." autocomplete="off" style="padding-left:38px;width:100%;">
+                                    <input type="text" id="mapSearchInput" placeholder="Search your Business Name or Landmark on Google Maps..." autocomplete="off" style="padding-left:38px;width:100%;">
                                 </div>
                                 <button type="button" id="gpsLocateBtn" style="background:var(--primary-color,#800000);color:#fff;border:none;padding:10px 16px;border-radius: var(--border-radius, 8px);cursor:pointer;font-size:0.85rem;white-space:nowrap;display:flex;align-items:center;gap:6px;" title="Use GPS to pin your exact location">
                                     <i class="fas fa-crosshairs"></i> Use My Location
@@ -305,10 +272,6 @@
 
             <!-- Section: Account & Security -->
             <div class="settings-section" id="section-account">
-                    <div class="section-header-compact">
-                        <h3><i class="fas fa-user-shield"></i> Legal & Personal</h3>
-                        <p>This information is used for legal contracts and is pulled from your account.</p>
-                    </div>
 
                     <div class="form-row-three-col" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
                         <div class="form-group">
@@ -429,7 +392,7 @@
                             <div class="la-icon"><i class="fas fa-shield-check"></i></div>
                             <div class="la-info">
                                 <span class="la-label">Account Status</span>
-                                <span class="la-value" style="color: {{ '#10b981' if profile.account_status == 'Active' else '#ef4444' }};">
+                                <span class="la-value" style="color: {{ 'var(--accent-color)' if profile.account_status == 'Active' else '#ef4444' }};">
                                     <i class="fas fa-{{ 'check-circle' if profile.account_status == 'Active' else 'exclamation-triangle' }}"></i>
                                     {{ profile.account_status or 'Active' }}
                                 </span>
@@ -457,7 +420,7 @@
                                     <p>{{ 'Your business is currently hidden. Reactivate to be visible again.' if profile.account_status == 'Deactivated' else 'Temporarily hide your business from customers. You can reactivate anytime.' }}</p>
                                 </div>
                                 {% if profile.account_status == 'Deactivated' %}
-                                <button type="button" id="btnReactivate" class="btn-primary" style="background:#10b981; border:none; padding:10px 16px; color:white; border-radius: var(--border-radius, 8px); pointer-events: auto !important; position: relative; z-index: 99;">
+                                <button type="button" id="btnReactivate" class="btn-primary" style="background:var(--accent-color); border:none; padding:10px 16px; color:white; border-radius: var(--border-radius, 8px); pointer-events: auto !important; position: relative; z-index: 99;">
                                     <i class="fas fa-eye"></i> Reactivate
                                 </button>
                                 {% else %}
@@ -482,10 +445,6 @@
 
             <!-- Section: Payment Methods -->
             <div class="settings-section" id="section-payment-methods">
-                <div class="section-header-compact">
-                    <h3><i class="fas fa-credit-card"></i> Payment Methods</h3>
-                    <p>Configure how customers can pay you and where you'll receive your earnings.</p>
-                </div>
 
 
 
@@ -606,10 +565,6 @@
 
             <!-- Section: Booking Policies -->
             <div class="settings-section" id="section-booking-policies">
-                <div class="section-header-compact">
-                    <h3><i class="fas fa-shield-halved"></i> Business Policies</h3>
-                    <p>Set clear expectations for bookings, payments, and cancellations.</p>
-                </div>
 
                     <div class="form-row-three-col" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
                         <div class="form-group">
@@ -680,10 +635,6 @@
 
             <!-- Section: Brand Colors & Style -->
             <div class="settings-section" id="section-brand">
-                    <div class="section-header-compact">
-                        <h3><i class="fas fa-fingerprint"></i> Brand Identity</h3>
-                        <p>Customize the look and feel of your caterer portal.</p>
-                    </div>
                     <div class="brand-management-grid">
                         <div class="brand-config-main-col">
                             <!-- Theme & Colors Section -->
@@ -706,16 +657,16 @@
                                     <div class="palette-presets-container" style="margin-top: 1.5rem;">
                                         <label class="config-sub-label">Recommended Presets</label>
                                         <div class="preset-flex">
-                                            <div class="preset-item" data-primary="#FF7B54" data-secondary="#2D4059"
+                                            <div class="preset-item" data-primary="var(--primary-color)" data-secondary="#2D4059"
                                                 data-accent="#FFB26B"
-                                                style="background: linear-gradient(135deg, #FF7B54 50%, #2D4059 50%);"
+                                                style="background: linear-gradient(135deg, var(--primary-color) 50%, #2D4059 50%);"
                                                 title="Sunset Professional"></div>
                                             <div class="preset-item" data-primary="#4F46E5" data-secondary="#1E293B"
-                                                data-accent="#10B981"
+                                                data-accent="var(--accent-color)"
                                                 style="background: linear-gradient(135deg, #4F46E5 50%, #1E293B 50%);"
                                                 title="OccaServe Indigo"></div>
                                             <div class="preset-item" data-primary="#0D9488" data-secondary="#111827"
-                                                data-accent="#F59E0B"
+                                                data-accent="var(--accent-color)"
                                                 style="background: linear-gradient(135deg, #0D9488 50%, #111827 50%);"
                                                 title="Teal & Dark"></div>
                                             <div class="preset-item" data-primary="#BC13FE" data-secondary="#1A1A1A"
@@ -739,8 +690,8 @@
                                             <label>Primary</label>
                                             <div class="color-input-wrapper">
                                                 <input type="color" name="primary_color"
-                                                    value="{{ profile.primary_color or '#FF7B54' }}">
-                                                <span class="color-code">{{ profile.primary_color or '#FF7B54' }}</span>
+                                                    value="{{ profile.primary_color or 'var(--primary-color)' }}">
+                                                <span class="color-code">{{ profile.primary_color or 'var(--primary-color)' }}</span>
                                             </div>
                                         </div>
                                         <div class="color-control">
@@ -809,8 +760,8 @@
                                 </div>
                                 <div class="brand-card-body">
                                     <div class="form-group" style="margin-bottom: 0;">
-                                        <select name="font_family" class="filter-select-pro">
-                                            <option value="'Poppins', sans-serif" {% if profile.font_family=="'Poppins', sans-serif" %}selected{% endif %}>Classic Poppins</option>
+                                        <select name="font_family" id="fontFamilySelect" class="filter-select-pro">
+                                            <option value="'Poppins', sans-serif" {% if not profile.font_family or profile.font_family=="'Poppins', sans-serif" %}selected{% endif %}>Classic Poppins (Default)</option>
                                             <option value="'Inter', sans-serif" {% if profile.font_family=="'Inter', sans-serif" %}selected{% endif %}>Modern Inter</option>
                                             <option value="'Outfit', sans-serif" {% if profile.font_family=="'Outfit', sans-serif" %}selected{% endif %}>Geometric Outfit</option>
                                             <option value="'Montserrat', sans-serif" {% if profile.font_family=="'Montserrat', sans-serif" %}selected{% endif %}>Bold Montserrat</option>
@@ -877,11 +828,6 @@
 
             <!-- Section: Verification Center -->
             <div class="settings-section" id="section-verification">
-                    <div class="section-header-compact">
-                        <h3><i class="fas fa-shield-halved"></i> Verification Center</h3>
-                        <p>Submit your compliance documents here. These are private and never visible to customers.</p>
-                    </div>
-
                     <!-- Status Section -->
                     <div class="verification-status-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between;">
                         <div>
@@ -898,8 +844,8 @@
                             {% set status_colors = {
                                 'Not Submitted': '#94a3b8',
                                 'Pending Review': '#eab308',
-                                'Requires Revision': '#f97316',
-                                'Verified': '#10b981',
+                                'Requires Revision': 'var(--primary-color)',
+                                'Verified': 'var(--accent-color)',
                                 'Rejected': '#ef4444',
                                 'Suspended': '#7f1d1d'
                             } %}
@@ -934,14 +880,33 @@
                                         <label>Front ID Image *</label>
                                         <input type="file" id="verif_id_front" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% if profile.gov_id_url or (identity and identity.document_url) %}
-                                        <div class="field-hint" style="margin-top: 8px;"><i class="fas fa-check-circle" style="color: #10b981;"></i> Uploaded. <a href="{{ profile.gov_id_url or (identity and identity.document_url) }}" target="_blank">View</a></div>
+                                        {% set doc_url = profile.gov_id_url or (identity.document_url if identity else '') %}
+                                        {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
+                                        <div class="field-hint" style="margin-top: 8px; display: flex; align-items: center;"><i class="fas fa-check-circle" style="color: var(--accent-color); margin-right: 4px;"></i> Uploaded. 
+                                            <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem; margin-left: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fas fa-external-link-alt"></i> View File</a>
+                                        </div>
                                         {% endif %}
                                     </div>
                                     <div class="form-group">
                                         <label>Back ID Image (Optional)</label>
                                         <input type="file" id="verif_id_back" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% if identity and identity.document_back_url %}
-                                        <div class="field-hint" style="margin-top: 8px;"><i class="fas fa-check-circle" style="color: #10b981;"></i> Uploaded. <a href="{{ identity.document_back_url }}" target="_blank">View</a></div>
+                                        {% set doc_url = identity.document_back_url %}
+                                        {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
+                                        <div class="field-hint" style="margin-top: 8px; display: flex; align-items: center;"><i class="fas fa-check-circle" style="color: var(--accent-color); margin-right: 4px;"></i> Uploaded. 
+                                            <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem; margin-left: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fas fa-external-link-alt"></i> View File</a>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Selfie Photo (Liveness Check) *</label>
+                                        <input type="file" id="verif_selfie" accept="image/jpeg,image/png" capture="user" class="form-file-input">
+                                        {% if identity and identity.selfie_url %}
+                                        {% set doc_url = identity.selfie_url %}
+                                        {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
+                                        <div class="field-hint" style="margin-top: 8px; display: flex; align-items: center;"><i class="fas fa-check-circle" style="color: var(--accent-color); margin-right: 4px;"></i> Uploaded. 
+                                            <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem; margin-left: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fas fa-external-link-alt"></i> View File</a>
+                                        </div>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -958,7 +923,11 @@
                                         <label>Business Permit *</label>
                                         <input type="file" id="verif_permit" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% if profile.permit_url %}
-                                        <div class="field-hint" style="margin-top: 8px;"><i class="fas fa-check-circle" style="color: #10b981;"></i> Uploaded. <a href="{{ profile.permit_url }}" target="_blank">View</a></div>
+                                        {% set doc_url = profile.permit_url %}
+                                        {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
+                                        <div class="field-hint" style="margin-top: 8px; display: flex; align-items: center;"><i class="fas fa-check-circle" style="color: var(--accent-color); margin-right: 4px;"></i> Uploaded. 
+                                            <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem; margin-left: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fas fa-external-link-alt"></i> View File</a>
+                                        </div>
                                         {% endif %}
                                     </div>
                                     <div class="form-group">
@@ -969,21 +938,33 @@
                                         <label>DTI Registration (Optional)</label>
                                         <input type="file" id="verif_dti" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% if profile.dti_url %}
-                                        <div class="field-hint" style="margin-top: 8px;"><i class="fas fa-check-circle" style="color: #10b981;"></i> Uploaded. <a href="{{ profile.dti_url }}" target="_blank">View</a></div>
+                                        {% set doc_url = profile.dti_url %}
+                                        {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
+                                        <div class="field-hint" style="margin-top: 8px; display: flex; align-items: center;"><i class="fas fa-check-circle" style="color: var(--accent-color); margin-right: 4px;"></i> Uploaded. 
+                                            <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem; margin-left: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fas fa-external-link-alt"></i> View File</a>
+                                        </div>
                                         {% endif %}
                                     </div>
                                     <div class="form-group">
                                         <label>BIR Registration (Optional)</label>
                                         <input type="file" id="verif_bir" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% if profile.bir_url %}
-                                        <div class="field-hint" style="margin-top: 8px;"><i class="fas fa-check-circle" style="color: #10b981;"></i> Uploaded. <a href="{{ profile.bir_url }}" target="_blank">View</a></div>
+                                        {% set doc_url = profile.bir_url %}
+                                        {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
+                                        <div class="field-hint" style="margin-top: 8px; display: flex; align-items: center;"><i class="fas fa-check-circle" style="color: var(--accent-color); margin-right: 4px;"></i> Uploaded. 
+                                            <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem; margin-left: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fas fa-external-link-alt"></i> View File</a>
+                                        </div>
                                         {% endif %}
                                     </div>
                                     <div class="form-group">
                                         <label>Mayor's Permit (Optional)</label>
                                         <input type="file" id="verif_mayors" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% if profile.mayors_permit_url %}
-                                        <div class="field-hint" style="margin-top: 8px;"><i class="fas fa-check-circle" style="color: #10b981;"></i> Uploaded. <a href="{{ profile.mayors_permit_url }}" target="_blank">View</a></div>
+                                        {% set doc_url = profile.mayors_permit_url %}
+                                        {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
+                                        <div class="field-hint" style="margin-top: 8px; display: flex; align-items: center;"><i class="fas fa-check-circle" style="color: var(--accent-color); margin-right: 4px;"></i> Uploaded. 
+                                            <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem; margin-left: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fas fa-external-link-alt"></i> View File</a>
+                                        </div>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -1010,7 +991,7 @@
 <!-- Change Password Modal -->
 <div id="passwordModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-sm">
-        <div class="occ-modal-header">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h3 class="occ-modal-title"><i class="fas fa-key" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Update Password</h3>
                 <div class="occ-modal-subtitle">Ensure your account stays secure with a strong password.</div>
@@ -1070,7 +1051,7 @@
 <!-- Public Profile Preview Modal -->
 <div id="profilePreviewModal" class="occ-modal-overlay">
     <div class="occ-modal-box" style="max-width: 1200px; width: 95%; height: 90vh; display: flex; flex-direction: column; padding: 0;">
-        <div class="occ-modal-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; background: #fff; border-radius: 16px 16px 0 0;">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h3 class="occ-modal-title"><i class="fas fa-desktop" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Public Profile Preview</h3>
             </div>
@@ -1133,7 +1114,7 @@ window.togglePasswordVisibility = function(inputId, icon) {
     font-size: 0.9rem;
 }
 .map-search-group button {
-    background: var(--primary-color, #f97316);
+    background: var(--primary-color, var(--primary-color));
     color: white;
     border: none;
     border-radius: calc(var(--border-radius) * 0.5);
@@ -1284,17 +1265,17 @@ function validateRequirements() {
     // 1. Length Requirement
     const reqLength = document.getElementById('req-length');
     if (newPass.length >= 8) {
-        reqLength.style.color = '#10b981';
+        reqLength.style.color = 'var(--accent-color)';
         reqLength.querySelector('i').className = 'fas fa-check-circle';
     } else {
-        reqLength.style.color = newPass.length > 0 ? '#f59e0b' : '#64748b';
+        reqLength.style.color = newPass.length > 0 ? 'var(--accent-color)' : '#64748b';
         reqLength.querySelector('i').className = 'fas fa-circle';
     }
     
     // 2. Different from Current Requirement
     const reqDiff = document.getElementById('req-different');
     if (newPass && currentPass && newPass !== currentPass) {
-        reqDiff.style.color = '#10b981';
+        reqDiff.style.color = 'var(--accent-color)';
         reqDiff.querySelector('i').className = 'fas fa-check-circle';
     } else if (newPass && currentPass && newPass === currentPass) {
         reqDiff.style.color = '#ef4444';
@@ -1307,20 +1288,20 @@ function validateRequirements() {
     // 3. Uppercase Requirement
     const reqUpper = document.getElementById('req-upper');
     if (/[A-Z]/.test(newPass)) {
-        reqUpper.style.color = '#10b981';
+        reqUpper.style.color = 'var(--accent-color)';
         reqUpper.querySelector('i').className = 'fas fa-check-circle';
     } else {
-        reqUpper.style.color = newPass.length > 0 ? '#f59e0b' : '#64748b';
+        reqUpper.style.color = newPass.length > 0 ? 'var(--accent-color)' : '#64748b';
         reqUpper.querySelector('i').className = 'fas fa-circle';
     }
     
     // 4. Special Character Requirement
     const reqSpecial = document.getElementById('req-special');
     if (/[^A-Za-z0-9]/.test(newPass)) {
-        reqSpecial.style.color = '#10b981';
+        reqSpecial.style.color = 'var(--accent-color)';
         reqSpecial.querySelector('i').className = 'fas fa-check-circle';
     } else {
-        reqSpecial.style.color = newPass.length > 0 ? '#f59e0b' : '#64748b';
+        reqSpecial.style.color = newPass.length > 0 ? 'var(--accent-color)' : '#64748b';
         reqSpecial.querySelector('i').className = 'fas fa-circle';
     }
     
@@ -1334,10 +1315,10 @@ function validateRequirements() {
         confPassInput.style.borderColor = '#e2e8f0';
     } else if (newPass === confPass) {
         statusText.innerText = 'Passwords match!';
-        statusText.style.color = '#10b981';
+        statusText.style.color = 'var(--accent-color)';
         statusIcon.className = 'fas fa-check-circle';
-        statusIcon.style.color = '#10b981';
-        confPassInput.style.borderColor = '#10b981';
+        statusIcon.style.color = 'var(--accent-color)';
+        confPassInput.style.borderColor = 'var(--accent-color)';
     } else {
         statusText.innerText = 'Passwords do not match';
         statusText.style.color = '#ef4444';
@@ -1386,13 +1367,13 @@ currentPassInput.addEventListener('input', validateRequirements);
             zoomControl: true
         });
 
-        // Draggable Marker
+        // Locked Marker (Anti-Spoofing)
         marker = new google.maps.Marker({
             position: initialPos,
             map: map,
-            draggable: true,
+            draggable: false, // DISABLED dragging to prevent location spoofing
             animation: google.maps.Animation.DROP,
-            title: 'I-drag para sa exact na lokasyon'
+            title: 'Naka-lock ang iyong lokasyon'
         });
 
         // Geocoder (for reverse geocoding on drag/click)
@@ -1449,20 +1430,8 @@ currentPassInput.addEventListener('input', validateRequirements);
             });
         }
 
-        // Marker Drag → update coords + reverse geocode
-        marker.addListener('dragend', () => {
-            const pos = marker.getPosition();
-            updateCoords(pos.lat(), pos.lng());
-            reverseGeocode(pos.lat(), pos.lng());
-            map.panTo(pos);
-        });
-
-        // Map Click → move marker + update coords
-        map.addListener('click', (e) => {
-            marker.setPosition(e.latLng);
-            updateCoords(e.latLng.lat(), e.latLng.lng());
-            reverseGeocode(e.latLng.lat(), e.latLng.lng());
-        });
+        // Marker drag and Map click events have been REMOVED to prevent location spoofing.
+        // The user must use Google Places Autocomplete or the GPS locator button.
 
         // ─── Google Places Autocomplete ───
         const searchInput = document.getElementById('mapSearchInput');
@@ -1480,7 +1449,7 @@ currentPassInput.addEventListener('input', validateRequirements);
         autocomplete.addListener('place_changed', () => {
             const place = autocomplete.getPlace();
             if (!place.geometry || !place.geometry.location) {
-                if (window.showError) window.showError('Hindi nahanap ang lokasyon. Subukan ang mas specific na address.');
+                if (window.showError) window.showError('Location not found. Please select a valid business or address from the dropdown suggestions.');
                 return;
             }
 
@@ -1533,7 +1502,7 @@ currentPassInput.addEventListener('input', validateRequirements);
                         reverseGeocode(lat, lng);
 
                         gpsBtn.innerHTML = '<i class="fas fa-check"></i> Located!';
-                        gpsBtn.style.background = '#10b981';
+                        gpsBtn.style.background = 'var(--accent-color)';
                         setTimeout(() => {
                             gpsBtn.innerHTML = origHtml;
                             gpsBtn.style.background = '';
@@ -1580,7 +1549,7 @@ currentPassInput.addEventListener('input', validateRequirements);
                             updateCoords(loc.lat(), loc.lng());
                             
                             const display = document.getElementById('latDisplay');
-                            if (display) display.closest('.coords-display').style.borderColor = '#10b981';
+                            if (display) display.closest('.coords-display').style.borderColor = 'var(--accent-color)';
                         }
                     });
                 }

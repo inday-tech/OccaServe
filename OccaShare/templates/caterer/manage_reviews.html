@@ -6,13 +6,13 @@
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2.5rem;">
         <div>
             <h1 style="font-size:2rem; font-weight:800; color:#0f172a; margin:0; display:flex; align-items:center;">
-                <i class="fas fa-star" style="color:#f59e0b; margin-right:12px;"></i>Customer Reviews
+                <i class="fas fa-star" style="color:var(--accent-color); margin-right:12px;"></i>Customer Reviews
             </h1>
             <p style="color:#64748b; margin-top:0.5rem; font-size:1.1rem;">Manage your reputation and feature your best customer experiences.</p>
         </div>
         <div style="text-align:right;">
             <div style="font-size:1.5rem; font-weight:800; color:#0f172a;">{{ "%.1f"|format(profile.rating or 0) }}</div>
-            <div style="color:#f59e0b; font-size:0.9rem;">
+            <div style="color:var(--accent-color); font-size:0.9rem;">
                 {% for i in range((profile.rating or 0)|int) %}<i class="fas fa-star"></i>{% endfor %}
                 {% if (profile.rating or 0) % 1 >= 0.5 %}<i class="fas fa-star-half-alt"></i>{% endif %}
             </div>
@@ -24,22 +24,22 @@
     <div style="display:grid; gap:1.5rem;">
         {% if reviews %}
             {% for review in reviews %}
-            <div class="c-card-premium" style="padding:1.75rem; position:relative; overflow:hidden; border-left: 4px solid {% if review.is_highlighted %}#f59e0b{% else %}#e2e8f0{% endif %}; transition: transform 0.2s, box-shadow 0.2s;">
+            <div class="c-card-premium" style="padding:1.75rem; position:relative; overflow:hidden; border-left: 4px solid {% if review.is_highlighted %}var(--accent-color){% else %}#e2e8f0{% endif %}; transition: transform 0.2s, box-shadow 0.2s;">
                 {% if review.is_highlighted %}
-                <div style="position:absolute; top:0; right:0; background:#f59e0b; color:white; padding:4px 12px; font-size:0.7rem; font-weight:800; border-bottom-left-radius:12px; display:flex; align-items:center; gap:4px;">
+                <div style="position:absolute; top:0; right:0; background:var(--accent-color); color:white; padding:4px 12px; font-size:0.7rem; font-weight:800; border-bottom-left-radius:12px; display:flex; align-items:center; gap:4px;">
                     <i class="fas fa-thumbtack" style="font-size:0.6rem;"></i> PINNED TO PROFILE
                 </div>
                 {% endif %}
 
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.25rem;">
                     <div style="display:flex; align-items:center; gap:1rem;">
-                        <div style="width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg, var(--primary-color, #FF7B54), #facc15); color:white; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.1rem; box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+                        <div style="width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg, var(--primary-color, var(--primary-color)), #facc15); color:white; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.1rem; box-shadow:0 4px 12px rgba(0,0,0,0.1);">
                             {{ review.user.first_name[0] if review.user else '?' }}
                         </div>
                         <div>
                             <h4 style="margin:0; font-size:1.05rem; color:#0f172a; font-weight:700;">{{ review.user.first_name if review.user else 'Anonymous' }} {{ review.user.last_name if review.user else '' }}</h4>
                             <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
-                                <div style="display:flex; color:#f59e0b; font-size:0.8rem;">
+                                <div style="display:flex; color:var(--accent-color); font-size:0.8rem;">
                                     {% for i in range(review.rating) %}<i class="fas fa-star"></i>{% endfor %}
                                     {% for i in range(5 - review.rating) %}<i class="far fa-star" style="color:#e2e8f0;"></i>{% endfor %}
                                 </div>
@@ -51,7 +51,7 @@
                     <div style="display:flex; gap:8px;">
                         <button onclick="togglePin({{ review.id }}, this)" 
                                 title="{% if review.is_highlighted %}Unpin from Profile{% else %}Pin to Top of Profile{% endif %}"
-                                style="width:36px; height:36px; border-radius: var(--border-radius, 10px); border:1px solid #e2e8f0; background:white; color:{% if review.is_highlighted %}#f59e0b{% else %}#64748b{% endif %}; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; justify-content:center;">
+                                style="width:36px; height:36px; border-radius: var(--border-radius, 10px); border:1px solid #e2e8f0; background:white; color:{% if review.is_highlighted %}var(--accent-color){% else %}#64748b{% endif %}; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; justify-content:center;">
                             <i class="fas fa-thumbtack"></i>
                         </button>
                     </div>
@@ -71,16 +71,16 @@
 
                 <!-- Caterer Reply Section -->
                 {% if review.caterer_reply %}
-                <div style="margin-left:2.5rem; padding:1.25rem; background:#fff7ed; border-radius: var(--border-radius, 14px); border-left:3px solid #f97316; position:relative;">
+                <div style="margin-left:2.5rem; padding:1.25rem; background:#fff7ed; border-radius: var(--border-radius, 14px); border-left:3px solid var(--primary-color); position:relative;">
                     <div style="position:absolute; top:-10px; left:15px; width:0; height:0; border-left:10px solid transparent; border-right:10px solid transparent; border-bottom:10px solid #fff7ed;"></div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                        <span style="font-size:0.78rem; font-weight:800; color:#f97316; text-transform:uppercase; letter-spacing:0.025em;">Your Response</span>
+                        <span style="font-size:0.78rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.025em;">Your Response</span>
                         <button onclick="openReplyModal({{ review.id }}, '{{ review.caterer_reply|replace("'", "\\'") }}')" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:0.75rem; font-weight:600;">Edit Reply</button>
                     </div>
                     <p style="margin:0; font-size:0.9rem; color:#475569; line-height:1.5;">{{ review.caterer_reply }}</p>
                 </div>
                 {% else %}
-                <button onclick="openReplyModal({{ review.id }})" style="margin-left:2.5rem; padding:0.75rem 1.25rem; background:white; border:1.5px dashed #e2e8f0; border-radius: var(--border-radius, 12px); color:#64748b; font-size:0.85rem; font-weight:700; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:8px;" onmouseenter="this.style.borderColor='var(--primary-color, #FF7B54)'; this.style.color='var(--primary-color, #FF7B54)'" onmouseleave="this.style.borderColor='#e2e8f0'; this.style.color='#64748b'">
+                <button onclick="openReplyModal({{ review.id }})" style="margin-left:2.5rem; padding:0.75rem 1.25rem; background:white; border:1.5px dashed #e2e8f0; border-radius: var(--border-radius, 12px); color:#64748b; font-size:0.85rem; font-weight:700; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:8px;" onmouseenter="this.style.borderColor='var(--primary-color, var(--primary-color))'; this.style.color='var(--primary-color, var(--primary-color))'" onmouseleave="this.style.borderColor='#e2e8f0'; this.style.color='#64748b'">
                     <i class="fas fa-reply"></i> Reply to this review
                 </button>
                 {% endif %}
@@ -101,10 +101,10 @@
     <div style="background:white; border-radius: var(--border-radius, 24px); width:90%; max-width:500px; padding:2rem; box-shadow:0 30px 60px rgba(0,0,0,0.3);">
         <h3 id="replyModalTitle" style="margin:0 0 1.5rem; font-size:1.25rem; font-weight:800; color:#0f172a;">Reply to Review</h3>
         <form id="replyForm" method="POST" action="">
-            <textarea name="reply_text" id="reply_text" rows="5" required minlength="5" placeholder="Thank the customer for their feedback..." style="width:100%; box-sizing:border-box; padding:1.25rem; border:1.5px solid #e2e8f0; border-radius: var(--border-radius, 16px); font-family:inherit; font-size:0.95rem; line-height:1.6; resize:none; outline:none; transition:all 0.2s;" onfocus="this.style.borderColor='var(--primary-color, #FF7B54)'; this.style.boxShadow='0 0 0 4px rgba(255,123,84,0.1)'"></textarea>
+            <textarea name="reply_text" id="reply_text" rows="5" required minlength="5" placeholder="Thank the customer for their feedback..." style="width:100%; box-sizing:border-box; padding:1.25rem; border:1.5px solid #e2e8f0; border-radius: var(--border-radius, 16px); font-family:inherit; font-size:0.95rem; line-height:1.6; resize:none; outline:none; transition:all 0.2s;" onfocus="this.style.borderColor='var(--primary-color, var(--primary-color))'; this.style.boxShadow='0 0 0 4px rgba(255,123,84,0.1)'"></textarea>
             <div style="display:flex; gap:12px; margin-top:2rem;">
                 <button type="button" onclick="closeReplyModal()" style="flex:1; padding:1rem; background:#f1f5f9; color:#64748b; border:none; border-radius: var(--border-radius, 14px); font-weight:700; cursor:pointer;">Cancel</button>
-                <button type="submit" style="flex:2; padding:1rem; background:linear-gradient(135deg, var(--primary-color, #FF7B54), #f97316); color:white; border:none; border-radius: var(--border-radius, 14px); font-weight:800; cursor:pointer; box-shadow:0 4px 15px rgba(249,115,22,0.3);">Submit Reply</button>
+                <button type="submit" style="flex:2; padding:1rem; background:linear-gradient(135deg, var(--primary-color, var(--primary-color)), var(--primary-color)); color:white; border:none; border-radius: var(--border-radius, 14px); font-weight:800; cursor:pointer; box-shadow:0 4px 15px rgba(249,115,22,0.3);">Submit Reply</button>
             </div>
         </form>
     </div>

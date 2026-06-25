@@ -66,7 +66,7 @@
     </div>
     <div class="stat-card-premium dashboard-card p-4 border-subtle">
         <div class="stat-label-dashboard text-xs font-bold text-muted text-uppercase mb-1 block">Market Price Alerts</div>
-        <div class="stat-value-dashboard text-2xl font-black" style="color: #f59e0b;">0</div>
+        <div class="stat-value-dashboard text-2xl font-black" style="color: var(--accent-color);">0</div>
     </div>
 </div>
 
@@ -103,7 +103,7 @@
                             </button>
                             <div class="action-dropdown-menu" id="actionMenu-ing{{ item.id }}">
                                 <button onclick="editIngredient({{ item.id }}, '{{ item.name|replace("'", "\\'")|escape }}', '{{ item.unit }}', {{ item.unit_price }})" style="color: #1e293b;">
-                                    <i class="fas fa-edit" style="width: 24px; color: #f59e0b;"></i> Update Price
+                                    <i class="fas fa-edit" style="width: 24px; color: var(--accent-color);"></i> Update Price
                                 </button>
                                 <button class="delete-btn" onclick="confirmArchiveIngredient({{ item.id }}, '{{ item.name|replace("'", "\\'")|escape }}')">
                                     <i class="fas fa-archive" style="width: 24px;"></i> Archive Material
@@ -150,7 +150,7 @@
 <!-- Add/Edit Ingredient Modal (Elite Style) -->
 <div id="ingredientModal" class="occ-modal-overlay" style="display: none;">
     <div class="occ-modal-box sz-sm occ-content-pop" style="font-family: 'Poppins', sans-serif; border-radius: var(--border-radius, 12px); overflow: hidden; max-width: 500px; width: 100%;">
-        <div class="occ-modal-header colored-header" style="background: var(--primary-color); padding: 1.5rem; color: white; display: flex; justify-content: space-between; align-items: flex-start;">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h3 id="modalTitle" class="occ-modal-title" style="margin: 0; font-size: 1.25rem; font-weight: 700;">Add Raw Material</h3>
                 <div class="occ-modal-subtitle" style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem;">Set the base purchasing unit and market price for costing.</div>
@@ -208,7 +208,7 @@
 <!-- Archive Confirmation Modal -->
 <div id="archiveIngredientModal" class="occ-modal-overlay" style="display: none;">
     <div class="occ-modal-box sz-sm occ-content-pop" style="font-family: 'Poppins', sans-serif; border-radius: var(--border-radius, 12px); overflow: hidden; max-width: 450px; width: 100%;">
-        <div class="occ-modal-header" style="background: #ef4444; padding: 1.5rem; color: white !important; display: flex; justify-content: space-between; align-items: flex-start;">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h3 class="occ-modal-title" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: white !important;">Archive Material</h3>
                 <div class="occ-modal-subtitle" style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem; color: white !important;">Confirming database removal.</div>

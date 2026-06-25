@@ -32,11 +32,11 @@
         <div class="kpi-card-clean">
             <div class="kpi-info">
                 <h4>This Month's Overhead</h4>
-                <span class="kpi-value" style="color: #f59e0b;">₱{{ "{:,.2f}".format(monthly_overhead) }}</span>
+                <span class="kpi-value" style="color: var(--accent-color);">₱{{ "{:,.2f}".format(monthly_overhead) }}</span>
                 <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Current month</span>
             </div>
         </div>
-        <div class="kpi-card-clean" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+        <div class="kpi-card-clean" style="background: linear-gradient(135deg, var(--accent-color) 0%, #059669 100%);">
             <div class="kpi-info">
                 <h4 style="color: rgba(255,255,255,0.8);">Net Profit (Estimate)</h4>
                 <span class="kpi-value" style="color: white; font-size: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">₱{{ "{:,.2f}".format(net_profit if net_profit is defined else 0) }}</span>
@@ -83,11 +83,19 @@
             </table>
         </div>
         {% else %}
-        <div style="text-align: center; padding: 3rem 1rem;">
-            <div style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem;"><i class="fas fa-receipt"></i></div>
-            <h3 style="font-size: 1.1rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem;">No Expenses Logged</h3>
-            <p style="font-size: 0.85rem; color: #64748b;">Start tracking your business overhead like rent, utilities, and marketing.</p>
-        </div>
+            {% if user and user.caterer_profile and user.caterer_profile.verification_status != 'Verified' %}
+            <div style="text-align: center; padding: 3rem 1rem;">
+                <div style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem;"><i class="fas fa-file-invoice-dollar"></i></div>
+                <h3 style="font-size: 1.1rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem;">Prepare Your Financials</h3>
+                <p style="font-size: 0.85rem; color: #64748b;">Even before your account is verified, you can start logging your early business expenses here to keep your records straight.</p>
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 3rem 1rem;">
+                <div style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem;"><i class="fas fa-receipt"></i></div>
+                <h3 style="font-size: 1.1rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem;">No Expenses Logged</h3>
+                <p style="font-size: 0.85rem; color: #64748b;">Start tracking your business overhead like rent, utilities, and marketing.</p>
+            </div>
+            {% endif %}
         {% endif %}
     </div>
 </div>
@@ -95,7 +103,7 @@
 <!-- Modal: Add Expense -->
 <div id="addExpenseModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-md occ-content-zoom-in">
-        <div class="occ-modal-header" style="background: white; border-bottom: 1px solid #f1f5f9; padding: 1.5rem;">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h2 class="occ-modal-title" style="color: #0f172a; font-weight: 800; font-size: 1.25rem;"><i class="fas fa-plus-circle text-primary me-2"></i> Log Business Expense</h2>
                 <div class="occ-modal-subtitle">Add general overhead costs (e.g. Rent, Ads)</div>

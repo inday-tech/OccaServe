@@ -119,7 +119,7 @@
             </div>
         </div>
         <div class="guide-step" style="display: flex; gap: 1rem;">
-            <div style="width: 40px; height: 40px; background: #ecfdf5; color: #10b981; border-radius: var(--border-radius, 12px); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-qrcode"></i></div>
+            <div style="width: 40px; height: 40px; background: #ecfdf5; color: var(--accent-color); border-radius: var(--border-radius, 12px); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-qrcode"></i></div>
             <div>
                 <h4 style="margin: 0 0 4px 0; font-size: 0.9rem; font-weight: 800; color: var(--color-neutral-900);">3. Settle Platform Dues</h4>
                 <p style="margin: 0; font-size: 0.75rem; color: var(--color-neutral-500); line-height: 1.4;">Click 'Settle Dues' to pay your outstanding balance to the Admin via GCash.</p>
@@ -230,7 +230,7 @@
                             <div id="actionMenu-{{ b.id }}" class="pay-dropdown-menu">
                                 {% if b.payment_status != 'paid' %}
                                 <button class="pay-dropdown-item" onclick="verifyPayment('{{ b.id }}')">
-                                    <i class="fas fa-check-circle" style="color: #10b981;"></i> Verify Payment
+                                    <i class="fas fa-check-circle" style="color: var(--accent-color);"></i> Verify Payment
                                 </button>
                                 {% endif %}
                                 <button class="pay-dropdown-item" onclick="viewPaymentDetails('{{ b.id }}')">
@@ -238,7 +238,7 @@
                                 </button>
                                 {% if b.payment_proof_url %}
                                 <button class="pay-dropdown-item" onclick="showProof('{{ b.payment_proof_url }}', 'Proof - BK-{{ b.id }}')">
-                                    <i class="fas fa-receipt" style="color: #f59e0b;"></i> Check Receipt
+                                    <i class="fas fa-receipt" style="color: var(--accent-color);"></i> Check Receipt
                                 </button>
                                 {% endif %}
                                 <button class="pay-dropdown-item" onclick="window.viewInvoice('{{ b.id }}')">
@@ -319,9 +319,9 @@
                     <td><span class="pay-date">{{ inv.due_date.strftime('%b %d, %Y') if inv.due_date else '---' }}</span></td>
                     <td>
                         {% if inv.status == 'paid' %}
-                            <span class="pay-status-badge" style="background: #ecfdf5; color: #059669; border-color: #10b981;">Paid</span>
+                            <span class="pay-status-badge" style="background: #ecfdf5; color: #059669; border-color: var(--accent-color);">Paid</span>
                         {% else %}
-                            <span class="pay-status-badge" style="background: #fffbeb; color: #d97706; border-color: #f59e0b;">Pending</span>
+                            <span class="pay-status-badge" style="background: #fffbeb; color: #d97706; border-color: var(--accent-color);">Pending</span>
                         {% endif %}
                     </td>
                     <td class="pay-th-right">
@@ -350,8 +350,8 @@
 <!-- Transaction Details Modal -->
 <div id="detailsModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-md">
-        <div class="occ-modal-header">
-            <div class="occ-modal-header-icon" style="background: var(--color-neutral-100); color: var(--color-neutral-600);">
+        <div class="occ-modal-header glass-header">
+            <div class="occ-modal-header glass-header">
                 <i class="fas fa-file-invoice-dollar"></i>
             </div>
             <div>
@@ -372,8 +372,8 @@
 <!-- Settle Dues Modal -->
 <div id="settleModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-md">
-        <div class="occ-modal-header">
-            <div class="occ-modal-header-icon" style="background: #fef2f2; color: #dc2626;">
+        <div class="occ-modal-header glass-header">
+            <div class="occ-modal-header glass-header">
                 <i class="fas fa-file-invoice-dollar"></i>
             </div>
             <div>
@@ -417,7 +417,7 @@
 <!-- Proof Modal (Same as before but improved UI) -->
 <div id="proofModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-md">
-        <div class="occ-modal-header">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h3 id="proofModalTitle" class="occ-modal-title">Receipt / Payment Proof</h3>
                 <div class="occ-modal-subtitle">Official document provided by the customer.</div>
@@ -437,8 +437,8 @@
 <!-- Invoice Modal -->
 <div id="invoiceModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-lg" style="max-width: 850px;">
-        <div class="occ-modal-header">
-            <div class="occ-modal-header-icon" style="background: var(--color-success-50); color: var(--color-success-600);">
+        <div class="occ-modal-header glass-header">
+            <div class="occ-modal-header glass-header">
                 <i class="fas fa-file-invoice"></i>
             </div>
             <div>

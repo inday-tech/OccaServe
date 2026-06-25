@@ -319,11 +319,11 @@
         <span class="legend-pill" style="background: rgba(15,23,42,0.1); border-color: #1f2937; color: #1f2937;">
             <span class="pill-dot" style="background:#1f2937;"></span> Corporate
         </span>
-        <span class="legend-pill" style="background: rgba(16,185,129,0.1); border-color: #10b981; color: #10b981;">
-            <span class="pill-dot" style="background:#10b981;"></span> Private Party
+        <span class="legend-pill" style="background: rgba(16,185,129,0.1); border-color: var(--accent-color); color: var(--accent-color);">
+            <span class="pill-dot" style="background:var(--accent-color);"></span> Private Party
         </span>
-        <span class="legend-pill" style="background: rgba(245,158,11,0.1); border-color: #f59e0b; color: #f59e0b;">
-            <span class="pill-dot" style="background:#f59e0b;"></span> Ala Carte
+        <span class="legend-pill" style="background: rgba(245,158,11,0.1); border-color: var(--accent-color); color: var(--accent-color);">
+            <span class="pill-dot" style="background:var(--accent-color);"></span> Ala Carte
         </span>
         <span class="legend-pill" style="background: #fef2f2; border-color: #fca5a5; color: #ef4444;">
             <span class="pill-square" style="background:#ef4444;"></span> Blocked Date
@@ -454,10 +454,17 @@
                 </div>
                 {% endfor %}
                 {% else %}
-                <div style="text-align: center; padding: 2rem; color: #9ca3af;">
-                    <i class="fas fa-calendar-day fa-2x" style="margin-bottom: 1rem; opacity: 0.5;"></i>
-                    <p style="font-size: 0.85rem;">No events scheduled yet.</p>
-                </div>
+                    {% if user and user.caterer_profile and user.caterer_profile.verification_status != 'Verified' %}
+                    <div style="text-align: center; padding: 2rem; color: #9ca3af;">
+                        <i class="fas fa-lock fa-2x" style="margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p style="font-size: 0.85rem;">Bookings are locked. Complete your account verification to make your profile public and start accepting reservations.</p>
+                    </div>
+                    {% else %}
+                    <div style="text-align: center; padding: 2rem; color: #9ca3af;">
+                        <i class="fas fa-calendar-day fa-2x" style="margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p style="font-size: 0.85rem;">No events scheduled yet.</p>
+                    </div>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>
@@ -467,7 +474,7 @@
 <!-- EVENT DETAILS MODAL -->
 <div id="eventModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-md occ-content-pop">
-        <div class="occ-modal-header colored-header">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h3 id="calModalTitle" class="occ-modal-title">Booking Details</h3>
                 <div class="occ-modal-subtitle">Review service logistics and customer information</div>
@@ -545,7 +552,7 @@
 <!-- WALK-IN BOOKING MODAL -->
 <div id="manualBookingModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-lg occ-content-pop">
-        <div class="occ-modal-header colored-header">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h3 class="occ-modal-title"><i class="fas fa-user-plus"></i> Create Walk-in Booking</h3>
                 <div class="occ-modal-subtitle">Register a new offline booking with complete service details</div>
@@ -798,7 +805,7 @@
 <!-- SMART ROI BREAKDOWN MODAL -->
 <div id="roiBreakdownModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-md occ-content-pop">
-        <div class="occ-modal-header colored-header">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h3 class="occ-modal-title"><i class="fas fa-chart-pie"></i> Cost Breakdown & Profit</h3>
                 <div id="roiBreakdownSubtitle" class="occ-modal-subtitle">Package: ---</div>
@@ -839,8 +846,7 @@
 <!-- BLOCKED DATE MODAL -->
 <div id="blockedDateModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-sm occ-content-pop">
-        <div class="occ-modal-header colored-header"
-            style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h3 class="occ-modal-title"><i class="fas fa-ban" style="margin-right: 8px;"></i> Date Unavailable</h3>
                 <div class="occ-modal-subtitle">This date is not accepting new bookings</div>

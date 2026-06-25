@@ -3,7 +3,7 @@
    ========================================================================== */
 
 :root {
-    --primary-color: #10b981;
+    --primary-color: var(--accent-color);
     --primary-light: rgba(16, 185, 129, 0.1);
     --secondary-color: #1e293b;
     --bg-main: #f8fafc;
@@ -92,7 +92,7 @@
 .stat-card-premium:hover .stat-icon-bg { transform: scale(1.1) rotate(5deg); }
 
 .halo-slate { background: #f8fafc; color: #475569; border: 1px solid #f1f5f9; }
-.halo-amber { background: #fffbeb; color: #f59e0b; border: 1px solid #fef3c7; }
+.halo-amber { background: #fffbeb; color: var(--accent-color); border: 1px solid #fef3c7; }
 
 .stat-label-dashboard { font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; }
 .stat-value-dashboard { font-size: 2rem; font-weight: 900; color: #0f172a; letter-spacing: -0.02em; }

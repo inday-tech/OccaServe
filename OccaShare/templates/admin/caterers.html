@@ -316,8 +316,8 @@
                                 </button>
                                 {% endif %}
                                 
-                                <button class="dm-dropdown-item" data-id="{{ caterer.id }}" data-email="{{ caterer.user.email }}" onclick="openRecoveryModal(this)">
-                                    Account Recovery
+                                <button class="dm-dropdown-item" data-id="{{ caterer.id }}" data-fname="{{ caterer.user.first_name }}" data-lname="{{ caterer.user.last_name }}" data-email="{{ caterer.user.email }}" data-status="{{ caterer.status }}" onclick="openEditModal(this)">
+                                    Edit Profile
                                 </button>
                                 
                                 <div style="height: 1px; background: #f1f5f9; margin: 4px 8px;"></div>
@@ -499,30 +499,46 @@
     </div>
 </div>
 
-<!-- Account Recovery Modal (Replaces Edit Profile) -->
-<div id="recoveryModal" class="admin-modal-overlay">
+<!-- Edit Caterer Modal -->
+<div id="editCatererModal" class="admin-modal-overlay">
     <div class="admin-modal-card" style="max-width: 500px; width: 95%;">
         <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem;">
             <div>
-                <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Account Recovery</h3>
-                <p style="font-size: 0.7rem; color: var(--adm-muted);">Help caterer regain access to their account.</p>
+                <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Edit Caterer Profile</h3>
+                <p style="font-size: 0.7rem; color: var(--adm-muted);">Modify basic account information.</p>
             </div>
-            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeRecoveryModal()">&times;</button>
+            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeEditModal()">&times;</button>
         </div>
-        <form id="recoveryForm">
-            <input type="hidden" id="recovery_caterer_id">
+        <form id="editCatererForm" onsubmit="submitEditCaterer(event)">
+            <input type="hidden" id="edit_caterer_id">
             <div class="modal-body-clean" style="padding: 1.5rem 2rem;">
-                <p style="font-size: 0.75rem; color: #475569; margin-bottom: 1rem;">
-                    For security and liability reasons, admins cannot edit a caterer's business profile directly. However, you can trigger a password reset link to their registered email.
-                </p>
-                <div class="dm-input-group" style="margin-bottom: 1rem;">
-                    <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Registered Email</label>
-                    <input type="email" id="recovery_email" readonly style="background: #f1f5f9;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div class="dm-input-group">
+                        <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">First Name</label>
+                        <input type="text" id="edit_fname" name="first_name" required class="form-control">
+                    </div>
+                    <div class="dm-input-group">
+                        <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Last Name</label>
+                        <input type="text" id="edit_lname" name="last_name" required class="form-control">
+                    </div>
                 </div>
+                <div class="dm-input-group" style="margin-bottom: 15px;">
+                    <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Email Address</label>
+                    <input type="email" id="edit_email" name="email" required class="form-control">
+                </div>
+                <div class="dm-input-group" style="margin-bottom: 15px;">
+                    <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Status</label>
+                    <select id="edit_status" name="status" class="form-control">
+                        <option value="active">Active</option>
+                        <option value="pending_kyc">Pending KYC</option>
+                        <option value="suspended">Suspended</option>
+                    </select>
+                </div>
+                <input type="hidden" name="is_active" value="true">
             </div>
             <div class="modal-footer-clean" style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" class="btn-clean" style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy);" onclick="closeRecoveryModal()">Dismiss</button>
-                <button type="button" class="btn-clean" style="background: var(--adm-primary); color: white;" onclick="sendRecoveryEmail()">Send Password Reset</button>
+                <button type="button" class="btn-clean" style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy);" onclick="closeEditModal()">Cancel</button>
+                <button type="submit" class="btn-clean" style="background: var(--adm-primary); color: white;" id="saveEditBtn">Save Changes</button>
             </div>
         </form>
     </div>
@@ -989,13 +1005,16 @@
         } catch (err) { Swal.fire('Error', 'Server Error.', 'error'); }
     };
 
-    // Account Recovery Logic
-    function openRecoveryModal(btn) {
-        document.getElementById('recovery_caterer_id').value = btn.getAttribute('data-id');
-        document.getElementById('recovery_email').value = btn.getAttribute('data-email');
-        document.getElementById('recoveryModal').classList.add('active');
+    // Edit Caterer Logic
+    function openEditModal(btn) {
+        document.getElementById('edit_caterer_id').value = btn.getAttribute('data-id');
+        document.getElementById('edit_fname').value = btn.getAttribute('data-fname');
+        document.getElementById('edit_lname').value = btn.getAttribute('data-lname');
+        document.getElementById('edit_email').value = btn.getAttribute('data-email');
+        document.getElementById('edit_status').value = btn.getAttribute('data-status');
+        document.getElementById('editCatererModal').classList.add('active');
     }
-    function closeRecoveryModal() { document.getElementById('recoveryModal').classList.remove('active'); }
+    function closeEditModal() { document.getElementById('editCatererModal').classList.remove('active'); }
     
     // View Details Logic
     function viewCatererDetails(btn) {
@@ -1015,28 +1034,36 @@
     }
     function closeViewCatererModal() { document.getElementById('viewCatererModal').classList.remove('active'); }
 
-    async function sendRecoveryEmail() {
-        const id = document.getElementById('recovery_caterer_id').value;
-        const email = document.getElementById('recovery_email').value;
-        
-        if (!id || !email) return Swal.fire('Error', 'Missing caterer details.', 'error');
-        
-        Swal.fire({ title: 'Sending...', text: 'Generating secure token...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    // Submit Edit
+    async function submitEditCaterer(e) {
+        e.preventDefault();
+        const form = document.getElementById('editCatererForm');
+        const catererId = document.getElementById('edit_caterer_id').value;
+        const btn = document.getElementById('saveEditBtn');
+        btn.disabled = true;
+        btn.innerText = 'Saving...';
         
         try {
-            const fd = new FormData();
-            fd.append('email', email);
-            const res = await fetch(`/admin/api/caterers/${id}/recover`, { method: 'POST', body: fd });
-            const data = await res.json();
-            
+            const formData = new FormData(form);
+            const response = await fetch(`/admin/api/caterers/${catererId}/edit`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
             if (data.success) {
-                Swal.fire('Recovery Initiated', `A password reset link has been sent to ${email}.`, 'success');
-                closeRecoveryModal();
+                Swal.fire('Success', 'Caterer profile updated.', 'success').then(() => {
+                    if (window.softRefresh) window.softRefresh();
+                    else window.location.reload();
+                });
+                closeEditModal();
             } else {
-                Swal.fire('Failed', data.message, 'error');
+                Swal.fire('Failed', data.message || 'Error updating profile.', 'error');
             }
         } catch (err) {
-            Swal.fire('Error', 'Service Unreachable.', 'error');
+            Swal.fire('Error', 'Connection failed.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Save Changes';
         }
     }
 
@@ -1125,6 +1152,9 @@
                 const docs = [
                     { name: 'Gov ID Front', url: data.docs.gov_id_url },
                     { name: 'Gov ID Back', url: data.docs.gov_id_back_url },
+                    { name: 'Selfie / Proof of Life 1', url: data.docs.selfie_url },
+                    { name: 'Selfie / Proof of Life 2', url: data.docs.selfie_2_url },
+                    { name: 'Selfie / Proof of Life 3', url: data.docs.selfie_3_url },
                     { name: 'Business Permit', url: data.docs.permit_url, extra: data.docs.permit_expiry_date ? `(Expires: ${data.docs.permit_expiry_date})` : '' },
                     { name: 'DTI Reg', url: data.docs.dti_url },
                     { name: 'BIR Reg', url: data.docs.bir_url },
@@ -1133,16 +1163,16 @@
                 
                 let found = false;
                 docs.forEach(doc => {
-                    if (doc.url) {
+                    if (doc.url && doc.url !== "None" && doc.url !== "null") {
                         found = true;
                         const isPdf = doc.url.toLowerCase().endsWith('.pdf');
-                        let preview = isPdf ? `<div style="padding: 2rem; background: #f1f5f9; text-align: center; border-radius: 8px; color: #64748b;"><i class="fas fa-file-pdf fa-2x" style="color: #ef4444;"></i><br><span style="font-size: 0.75rem; font-weight: 600;">PDF Document</span></div>` : `<img src="${doc.url}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px;">`;
+                        let preview = isPdf ? `<div style="padding: 2rem; background: #f1f5f9; text-align: center; border-radius: 8px; color: #64748b;"><i class="fas fa-file-pdf fa-2x" style="color: #ef4444;"></i><br><span style="font-size: 0.75rem; font-weight: 600;">PDF Document</span></div>` : `<img src="${doc.url}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px;" onerror="this.onerror=null; this.outerHTML='<div style=\\'width: 100%; height: 120px; background: #fee2e2; color: #ef4444; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; font-size: 0.75rem; font-weight: 700; text-align: center; padding: 10px;\\'><i class=\\'fas fa-exclamation-triangle fa-2x\\' style=\\'margin-bottom: 8px;\\'></i>File Error / Encrypted<br><small style=\\'font-weight: 500; margin-top: 4px;\\'>Requires Re-upload</small></div>';">`;
                         
                         html += `
                         <div style="background: white; border: 1px solid #e2e8f0; padding: 10px; border-radius: 10px;">
                             <div style="font-size: 0.75rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 8px; display: flex; justify-content: space-between;">
                                 <span>${doc.name}</span>
-                                <span style="color: #64748b; font-weight: 600;">${doc.extra}</span>
+                                <span style="color: #64748b; font-weight: 600;">${doc.extra || ''}</span>
                             </div>
                             <a href="${doc.url}" target="_blank" style="display: block;">
                                 ${preview}

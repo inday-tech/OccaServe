@@ -553,7 +553,7 @@ async def register(
                     verification = models.IdentityVerification(
                         user_id=new_user.id,
                         document_url=gov_id_url,
-                        selfie_url=None,
+                        selfie_url=selfie_url,
                         ocr_data=ocr_payload,
                         verification_status="Pending Review"
                     )
@@ -701,6 +701,29 @@ def verify_email_submit(
             from sqlalchemy.sql import func
             user.last_login = func.now()
             db.commit()
+            
+            # Phase 1: Notify Admins of New Verified Customer
+            if user.role == "customer":
+                from ..services.realtime import manager
+                import asyncio
+                admins = db.query(models.User).filter(models.User.role == "admin").all()
+                for admin in admins:
+                    new_notif = models.Notification(
+                        user_id=admin.id,
+                        title="New Customer Registration",
+                        message=f"Customer {user.first_name} {user.last_name} has registered and verified their email.",
+                        link="/admin/customers",
+                        type="info"
+                    )
+                    db.add(new_notif)
+                    db.commit()
+                    
+                    count = db.query(models.Notification).filter(models.Notification.user_id == admin.id, models.Notification.is_read == False).count()
+                    asyncio.create_task(manager.broadcast_to_user(admin.id, {
+                        "type": "new_notification",
+                        "message": f"New Customer: {user.first_name}",
+                        "count": count
+                    }))
         else:
             if is_ajax:
                 return JSONResponse(status_code=400, content={"success": False, "message": "Invalid verification code"})

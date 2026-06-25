@@ -200,7 +200,10 @@
 
     window.addEventListener('system_update', (e) => {
         if (e.detail.type === 'feedback_update' || e.detail.type === 'new_platform_feedback') {
-            setTimeout(() => window.location.reload(), 1000);
+            setTimeout(() => {
+                if (window.softRefresh) window.softRefresh();
+                else window.location.reload();
+            }, 1000);
         }
     });
 </script>

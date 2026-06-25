@@ -288,7 +288,10 @@
 
     window.addEventListener('system_update', (e) => {
         if (e.detail.type === 'inquiry_update' || e.detail.type === 'new_inquiry') {
-            setTimeout(() => window.location.reload(), 1000);
+            setTimeout(() => {
+                if (window.softRefresh) window.softRefresh();
+                else window.location.reload();
+            }, 1000);
         }
     });
 

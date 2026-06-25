@@ -139,10 +139,10 @@ class CatererProfile(Base):
     longitude = Column(Float, nullable=True)
     
     # NEW: Brand Customization Fields
-    primary_color = Column(String, default="#2D3748") # Deep Blue/Gray
-    secondary_color = Column(String, default="#4A5568") # Gray
-    accent_color = Column(String, default="#48BB78") # Green
-    highlight_color = Column(String, default="#48BB78") # New: Extra branding color
+    primary_color = Column(String, default="#FF7B54") # OccaServe Orange
+    secondary_color = Column(String, default="#2D4059") # Dark Blue/Slate
+    accent_color = Column(String, default="#FFB17A") # Soft Orange
+    highlight_color = Column(String, default="#FFE5D9") # Light Tint
     font_family = Column(String, default="Inter")
     border_radius = Column(Integer, default=12) # in px
     sidebar_mode = Column(String, default="full") # 'full' (text + icon), 'icons' (icon only)
@@ -203,6 +203,7 @@ class CatererProfile(Base):
     equipment_items = relationship("Equipment", back_populates="caterer", cascade="all, delete-orphan")
     service_items = relationship("Service", back_populates="caterer", cascade="all, delete-orphan")
     business_expenses = relationship("BusinessExpense", back_populates="caterer", cascade="all, delete-orphan")
+    portfolios = relationship("Portfolio", back_populates="caterer", cascade="all, delete-orphan")
 
 class PackageMenu(Base):
     __tablename__ = "package_menus"
@@ -952,3 +953,36 @@ class VerificationSession(Base):
 
 
 
+
+class Portfolio(Base):
+    __tablename__ = "portfolios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    caterer_id = Column(Integer, ForeignKey("caterer_profiles.id", ondelete="CASCADE"))
+    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="SET NULL"), nullable=True) # For Verified Badge
+    title = Column(String, nullable=False)
+    event_type = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    highlights = Column(String, nullable=True) # Stored as comma-separated
+    location = Column(String, nullable=True)
+    event_date = Column(Date, nullable=True)
+    visibility = Column(String, default="Public") # Public or Hidden
+    is_featured = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+
+    caterer = relationship("CatererProfile", back_populates="portfolios")
+    booking = relationship("Booking", backref="portfolio")
+    images = relationship("PortfolioImage", back_populates="portfolio", cascade="all, delete-orphan")
+
+
+class PortfolioImage(Base):
+    __tablename__ = "portfolio_images"
+
+    id = Column(Integer, primary_key=True, index=True)
+    portfolio_id = Column(Integer, ForeignKey("portfolios.id", ondelete="CASCADE"))
+    image_url = Column(String, nullable=False)
+    is_cover = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    portfolio = relationship("Portfolio", back_populates="images")

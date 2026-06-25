@@ -51,7 +51,7 @@
             <div class="pkg-header-row" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
                 <h3 class="package-name-pro" style="font-size: 1.15rem; font-weight: 800; color: #1e293b; margin: 0; line-height: 1.3;">{{ package.name }}</h3>
                 <div class="pkg-status-indicator" style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-                    <div style="width: 8px; height: 8px; border-radius: 50%; background: {{ '#10b981' if package.is_active else '#94a3b8' }};"></div>
+                    <div style="width: 8px; height: 8px; border-radius: 50%; background: {{ 'var(--accent-color)' if package.is_active else '#94a3b8' }};"></div>
                     <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">{{ 'Active' if package.is_active else 'Hidden' }}</span>
                 </div>
             </div>
@@ -87,20 +87,31 @@
     </div>
 </div>
 {% else %}
-<div class="packages-empty-pro animate-up delay-1 d-flex flex-column align-items-center justify-content-center text-center py-5" style="background: white; border-radius: var(--border-radius, 1.5rem); border: 2px dashed #e2e8f0; margin-top: 2rem;">
-    <div class="empty-icon-pro text-brand" style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; opacity: 0.5; margin-bottom: 1.5rem;">
-        <i class="fas fa-layer-group"></i>
+    {% if user and user.caterer_profile and user.caterer_profile.verification_status != 'Verified' %}
+    <div class="packages-empty-pro animate-up delay-1 d-flex flex-column align-items-center justify-content-center text-center py-5" style="background: white; border-radius: var(--border-radius, 1.5rem); border: 2px dashed #e2e8f0; margin-top: 2rem;">
+        <div class="empty-icon-pro text-brand" style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; opacity: 0.5; margin-bottom: 1.5rem;">
+            <i class="fas fa-hard-hat"></i>
+        </div>
+        <h2 class="text-secondary" style="font-weight: 800; margin-bottom: 0.5rem;">Prepare Your Packages</h2>
+        <p style="color: #64748b; max-width: 400px; margin: 0 auto 1.5rem;">While waiting for your account to be verified, you can start drafting your service packages here. They will automatically be published once you are verified.</p>
+        <button type="button" class="btn-primary-pro" onclick="window.openAddPackageModal()" style="padding: 0.75rem 2rem; font-weight: 800;">Draft First Package</button>
     </div>
-    <h2 class="text-secondary" style="font-weight: 800; margin-bottom: 0.5rem;">No Packages Available</h2>
-    <p style="color: #64748b; max-width: 400px; margin: 0 auto 1.5rem;">Your menu offerings drive your bookings. Start creating your first professional package now.</p>
-    <button type="button" class="btn-primary-pro" onclick="window.openAddPackageModal()" style="padding: 0.75rem 2rem; font-weight: 800;">Get Started</button>
-</div>
+    {% else %}
+    <div class="packages-empty-pro animate-up delay-1 d-flex flex-column align-items-center justify-content-center text-center py-5" style="background: white; border-radius: var(--border-radius, 1.5rem); border: 2px dashed #e2e8f0; margin-top: 2rem;">
+        <div class="empty-icon-pro text-brand" style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; opacity: 0.5; margin-bottom: 1.5rem;">
+            <i class="fas fa-layer-group"></i>
+        </div>
+        <h2 class="text-secondary" style="font-weight: 800; margin-bottom: 0.5rem;">No Packages Available</h2>
+        <p style="color: #64748b; max-width: 400px; margin: 0 auto 1.5rem;">Your menu offerings drive your bookings. Start creating your first professional package now.</p>
+        <button type="button" class="btn-primary-pro" onclick="window.openAddPackageModal()" style="padding: 0.75rem 2rem; font-weight: 800;">Get Started</button>
+    </div>
+    {% endif %}
 {% endif %}
 
 <!-- Create/Edit Package Form Modal -->
 <div id="packageModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-lg occ-content-pop">
-        <div class="occ-modal-header" style="background: var(--primary-color); border-bottom: none;">
+        <div class="occ-modal-header glass-header">
             <div>
                 <h3 id="packageModalTitle" class="occ-modal-title" style="color: white;">Create New Package</h3>
                 <div class="occ-modal-subtitle" style="color: rgba(255, 255, 255, 0.85);">Define your service logistics, inclusions, and professional pricing tiers.</div>
@@ -462,9 +473,9 @@
 <!-- ROI Modal -->
 <div id="roiModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-sm occ-content-pop">
-        <div class="occ-modal-header colored-header" style="background: var(--secondary-color);">
+        <div class="occ-modal-header glass-header">
             <div>
-                <h3 class="occ-modal-title"><i class="fas fa-shield-alt" style="color: #10b981; margin-right: 8px;"></i> ROI & Markup Settings</h3>
+                <h3 class="occ-modal-title"><i class="fas fa-shield-alt" style="color: var(--accent-color); margin-right: 8px;"></i> ROI & Markup Settings</h3>
                 <div id="roiModalSubtitle" class="occ-modal-subtitle">Package: Loading...</div>
             </div>
             <button onclick="hideRoiModal()" class="occ-modal-close"><i class="fas fa-times"></i></button>

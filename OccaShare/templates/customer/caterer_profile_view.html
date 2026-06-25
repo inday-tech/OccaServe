@@ -1042,6 +1042,7 @@
     <div class="hub-tabs">
         <button type="button" class="tab-btn active" onclick="hubSwitchTab('hub-tab-overview', this)">Overview</button>
         <button type="button" class="tab-btn" onclick="hubSwitchTab('hub-tab-menu', this)">Menu & Packages</button>
+        <button type="button" class="tab-btn" onclick="hubSwitchTab('hub-tab-portfolio', this)">Portfolio</button>
         <button type="button" class="tab-btn" onclick="hubSwitchTab('hub-tab-policies', this)">Policies & Reviews</button>
     </div>
 
@@ -1361,6 +1362,58 @@
                     </div>
                     {% else %}
                     <p style="color: var(--hub-slate-400); font-size: 0.9rem;">No dishes available yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- PORTFOLIO TAB -->
+            <div id="hub-tab-portfolio" class="tab-content">
+                <div class="intel-card" style="padding: 1.75rem;">
+                    <h2 class="section-title"><i class="fas fa-camera-retro"></i> Event Portfolio</h2>
+                    <p style="color: var(--hub-slate-400); font-size: 0.9rem; margin-bottom: 1.5rem;">Browse our past events and successful catering setups.</p>
+                    
+                    {% set public_portfolios = caterer.portfolios | selectattr('visibility', 'equalto', 'Public') | sort(attribute='created_at', reverse=true) | list %}
+                    {% if public_portfolios %}
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
+                        {% for p in public_portfolios %}
+                        <div style="background: #fff; border: 1px solid var(--hub-slate-200); border-radius: var(--hub-radius); overflow: hidden; display: flex; flex-direction: column; cursor: pointer; transition: transform 0.2s;" onclick="openPortfolioViewModal({{ p.id }})">
+                            <div style="position: relative; height: 180px; background: var(--hub-slate-50);">
+                                {% set cover = p.images | selectattr('is_cover', 'equalto', True) | first %}
+                                {% if cover %}
+                                <img src="{{ cover.image_url }}" alt="{{ p.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                {% else %}
+                                <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--hub-slate-400);">
+                                    <i class="fas fa-image" style="font-size: 3rem;"></i>
+                                </div>
+                                {% endif %}
+                                
+                                <div style="position: absolute; top: 10px; left: 10px; display: flex; gap: 6px;">
+                                    {% if p.booking_id %}
+                                    <span style="background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;"><i class="fas fa-check-circle"></i> Verified Event</span>
+                                    {% endif %}
+                                    {% if p.is_featured %}
+                                    <span style="background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;"><i class="fas fa-star"></i> Featured</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div style="padding: 1.25rem; flex: 1; display: flex; flex-direction: column;">
+                                <div style="font-size: 0.75rem; color: var(--hub-primary); font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">{{ p.event_type }}</div>
+                                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--hub-text-dark); margin: 0 0 0.5rem 0;">{{ p.title }}</h3>
+                                <div style="display: flex; gap: 10px; font-size: 0.8rem; color: var(--hub-slate-600); font-weight: 600; margin-top: auto;">
+                                    <span><i class="far fa-images"></i> {{ p.images|length }} Photos</span>
+                                    {% if p.location %}
+                                    <span><i class="fas fa-map-marker-alt"></i> {{ p.location }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div style="text-align: center; padding: 3rem 1rem; color: var(--hub-slate-400);">
+                        <i class="fas fa-camera-retro" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p style="font-weight: 600;">No public portfolio entries yet.</p>
+                    </div>
                     {% endif %}
                 </div>
             </div>
@@ -1696,6 +1749,36 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 
+    <!-- PORTFOLIO VIEW MODAL -->
+    <div id="portfolio-view-modal" class="oc-modal-layer" onclick="if(event.target===this)window.closePortfolioViewModal()">
+        <div class="m-box-elite" style="max-width: 800px; padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+            <button type="button" onclick="window.closePortfolioViewModal()"
+                style="position: absolute; top: 1rem; right: 1rem; border: none; background: rgba(0,0,0,0.5); color: white; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; z-index: 10;"><i
+                    class="fas fa-times"></i></button>
+            
+            <div id="portfolio-gallery" style="background: #000; height: 400px; position: relative; display: flex; align-items: center; justify-content: center;">
+                <img id="portfolio-main-img" src="" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                
+                <button type="button" id="portfolio-prev-btn" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.8); border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.2rem;"><i class="fas fa-chevron-left"></i></button>
+                <button type="button" id="portfolio-next-btn" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.8); border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.2rem;"><i class="fas fa-chevron-right"></i></button>
+            </div>
+
+            <div style="padding: 1.5rem; background: white; max-height: 40vh; overflow-y: auto;">
+                <div style="display: flex; gap: 8px; margin-bottom: 0.5rem;" id="portfolio-badges-container"></div>
+                
+                <h3 id="portfolio-view-title" style="font-size: 1.5rem; font-weight: 800; color: var(--hub-text-dark); margin-bottom: 0.5rem;"></h3>
+                <div style="font-size: 0.85rem; color: var(--hub-primary); font-weight: 700; text-transform: uppercase; margin-bottom: 1rem;" id="portfolio-view-type"></div>
+                
+                <p id="portfolio-view-desc" style="color: var(--hub-slate-600); line-height: 1.6; font-size: 0.95rem; margin-bottom: 1.5rem;"></p>
+                
+                <div style="display: flex; gap: 1.5rem; font-size: 0.85rem; color: var(--hub-slate-600); font-weight: 600; border-top: 1px solid var(--hub-slate-200); padding-top: 1rem;" id="portfolio-meta-container">
+                </div>
+                
+                <div id="portfolio-highlights" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1rem;"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Embed all menu items as JS data for the modal -->
     <script>
         window.hubMenuItems = [
@@ -1714,6 +1797,102 @@ document.addEventListener('DOMContentLoaded', function() {
             }{{ ',' if not loop.last else '' }}
             {% endfor %}
         ];
+
+        window.hubPortfolios = {
+            {% for p in public_portfolios %}
+            "{{ p.id }}": {
+                id: {{ p.id|tojson }},
+                title: {{ p.title|tojson }},
+                event_type: {{ p.event_type|tojson }},
+                description: {{ p.description|tojson }},
+                location: {{ p.location|tojson }},
+                is_featured: {{ p.is_featured|tojson }},
+                booking_id: {{ p.booking_id|tojson }},
+                highlights: {{ (p.highlights or '')|tojson }},
+                images: [
+                    {% for img in p.images %}
+                    "{{ img.image_url }}"{{ ',' if not loop.last else '' }}
+                    {% endfor %}
+                ]
+            }{{ ',' if not loop.last else '' }}
+            {% endfor %}
+        };
+
+        let currentPortfolioImages = [];
+        let currentImageIndex = 0;
+
+        window.openPortfolioViewModal = function(id) {
+            const p = window.hubPortfolios[String(id)];
+            if (!p) return;
+
+            document.getElementById('portfolio-view-title').textContent = p.title;
+            document.getElementById('portfolio-view-type').textContent = p.event_type;
+            document.getElementById('portfolio-view-desc').textContent = p.description;
+
+            // Badges
+            let badgesHtml = '';
+            if (p.booking_id) {
+                badgesHtml += '<span style="background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;"><i class="fas fa-check-circle"></i> Verified Event</span>';
+            }
+            if (p.is_featured) {
+                badgesHtml += '<span style="background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;"><i class="fas fa-star"></i> Featured</span>';
+            }
+            document.getElementById('portfolio-badges-container').innerHTML = badgesHtml;
+
+            // Meta
+            let metaHtml = '';
+            metaHtml += '<span><i class="far fa-images"></i> ' + p.images.length + ' Photos</span>';
+            if (p.location) {
+                metaHtml += '<span><i class="fas fa-map-marker-alt"></i> ' + p.location + '</span>';
+            }
+            document.getElementById('portfolio-meta-container').innerHTML = metaHtml;
+
+            // Highlights
+            let highlightsHtml = '';
+            if (p.highlights) {
+                const tags = p.highlights.split(',').filter(Boolean);
+                tags.forEach(t => {
+                    highlightsHtml += '<span style="background: var(--hub-slate-100); color: var(--hub-slate-600); padding: 4px 10px; border-radius: 100px; font-size: 0.75rem; font-weight: 600;">' + t.trim() + '</span>';
+                });
+            }
+            document.getElementById('portfolio-highlights').innerHTML = highlightsHtml;
+
+            // Gallery
+            currentPortfolioImages = p.images;
+            currentImageIndex = 0;
+            updatePortfolioImage();
+
+            document.getElementById('portfolio-view-modal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.closePortfolioViewModal = function() {
+            document.getElementById('portfolio-view-modal').classList.remove('active');
+            document.body.style.overflow = '';
+        };
+
+        function updatePortfolioImage() {
+            if (currentPortfolioImages.length === 0) return;
+            document.getElementById('portfolio-main-img').src = currentPortfolioImages[currentImageIndex];
+            
+            // Toggle buttons
+            document.getElementById('portfolio-prev-btn').style.display = currentPortfolioImages.length > 1 ? 'block' : 'none';
+            document.getElementById('portfolio-next-btn').style.display = currentPortfolioImages.length > 1 ? 'block' : 'none';
+        }
+
+        document.getElementById('portfolio-prev-btn').addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (currentPortfolioImages.length === 0) return;
+            currentImageIndex = (currentImageIndex - 1 + currentPortfolioImages.length) % currentPortfolioImages.length;
+            updatePortfolioImage();
+        });
+
+        document.getElementById('portfolio-next-btn').addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (currentPortfolioImages.length === 0) return;
+            currentImageIndex = (currentImageIndex + 1) % currentPortfolioImages.length;
+            updatePortfolioImage();
+        });
 
         window.openCategoryModal = function(cat) {
             const modal = document.getElementById('dish-cat-modal');

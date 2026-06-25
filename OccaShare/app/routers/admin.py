@@ -1918,12 +1918,9 @@ async def view_kyc_queue(
         models.CatererProfile.verification_status == "Pending"
     ).all()
 
-    # 2. Fetch Pending Customers (Role is customer and not verified)
-    # We look for users who HAVE an IdentityVerification record that is not approved, 
-    # OR customers who haven't been verified yet.
-    pending_customers = db.query(models.User).filter(
+    pending_customers = db.query(models.User).join(models.IdentityVerification).filter(
         models.User.role == "customer",
-        models.User.is_verified == False
+        models.IdentityVerification.verification_status.in_(["Pending Review", "pending_confirmation", "processing", "pending_manual_review"])
     ).all()
 
     # 3. Fetch Verified History (Last 20 for history tab)
@@ -2778,6 +2775,29 @@ async def kyc_manual_action(
             reason
         )
         
+    # Phase 2: Notify Customer in-app
+    notif_type = "success" if action == "approve" else "danger"
+    title = "KYC Verification Approved" if action == "approve" else "KYC Verification Rejected"
+    msg = "Your identity verification has been approved." if action == "approve" else f"Your identity verification was rejected. Reason: {reason}"
+    
+    new_notif = models.Notification(
+        user_id=target_user_id,
+        title=title,
+        message=msg,
+        link="/customer/dashboard",
+        type=notif_type
+    )
+    db.add(new_notif)
+    db.commit()
+    
+    from ..services.realtime import manager
+    import asyncio
+    count = db.query(models.Notification).filter(models.Notification.user_id == target_user_id, models.Notification.is_read == False).count()
+    asyncio.create_task(manager.broadcast_to_user(target_user_id, {
+        "type": "new_notification",
+        "message": title,
+        "count": count
+    }))
     db.commit()
     return RedirectResponse(url="/admin/dashboard?success_msg=Action+completed+successfully", status_code=303)
 
@@ -3128,14 +3148,22 @@ async def get_caterer_documents(
         
     identity = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == profile.user_id).first()
     
+    def fix_url(url):
+        if url and url.startswith("/static/uploads/verification/"):
+            return url.replace("/static/uploads/verification/", "/api/bookings/kyc/view/")
+        return url
+
     docs = {
-        "permit_url": profile.permit_url,
+        "permit_url": fix_url(profile.permit_url),
         "permit_expiry_date": str(profile.permit_expiry_date) if profile.permit_expiry_date else None,
-        "dti_url": profile.dti_url,
-        "bir_url": profile.bir_url,
-        "mayors_permit_url": profile.mayors_permit_url,
-        "gov_id_url": identity.document_url if identity else None,
-        "gov_id_back_url": identity.document_back_url if identity else None
+        "dti_url": fix_url(profile.dti_url),
+        "bir_url": fix_url(profile.bir_url),
+        "mayors_permit_url": fix_url(profile.mayors_permit_url),
+        "gov_id_url": fix_url(identity.document_url) if identity else None,
+        "gov_id_back_url": fix_url(identity.document_back_url) if identity else None,
+        "selfie_url": fix_url(identity.selfie_url) if identity else None,
+        "selfie_2_url": fix_url(identity.selfie_2_url) if identity else None,
+        "selfie_3_url": fix_url(identity.selfie_3_url) if identity else None
     }
     return {"success": True, "docs": docs}
 
@@ -3178,6 +3206,34 @@ async def submit_caterer_review(
         notes=f"Admin Review: {status}. Remarks: {remarks}"
     )
     db.add(audit)
-    db.commit()
+    
+    # Phase 2: Notify Caterer of KYC Status Change
+    if profile.user_id:
+        notif_type = "success" if status == "Verified" else ("danger" if status in ["Rejected", "Suspended"] else "warning")
+        title = "Verification Approved" if status == "Verified" else "Verification Update"
+        msg = f"Your business verification documents have been {status}."
+        if remarks:
+            msg += f" Remarks: {remarks}"
+            
+        new_notif = models.Notification(
+            user_id=profile.user_id,
+            title=title,
+            message=msg,
+            link="/caterer/settings",
+            type=notif_type
+        )
+        db.add(new_notif)
+        db.commit()
+        
+        from ..services.realtime import manager
+        import asyncio
+        count = db.query(models.Notification).filter(models.Notification.user_id == profile.user_id, models.Notification.is_read == False).count()
+        asyncio.create_task(manager.broadcast_to_user(profile.user_id, {
+            "type": "new_notification",
+            "message": title,
+            "count": count
+        }))
+    else:
+        db.commit()
     
     return {"success": True, "message": f"Partner verification updated to {status}."}

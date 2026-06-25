@@ -144,7 +144,7 @@
     }
     
     .btn-submit {
-        background: #10b981;
+        background: var(--accent-color);
         color: white;
         border: none;
         padding: 1rem 2rem;
@@ -311,7 +311,7 @@
             submitBtn.innerHTML = '<i class="fas fa-ban"></i> Below Absolute Minimum';
         } else {
             submitBtn.disabled = false;
-            submitBtn.style.background = '#10b981';
+            submitBtn.style.background = 'var(--accent-color)';
             submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Proposal to Customer';
         }
     }

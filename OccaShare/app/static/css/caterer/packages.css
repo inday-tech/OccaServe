@@ -583,7 +583,7 @@ textarea.control-pro {
 }
 
 .rating-pro {
-    color: #f59e0b;
+    color: var(--accent-color);
     font-weight: 700;
     font-size: var(--text-base);
 }
@@ -1720,15 +1720,15 @@ textarea.control-pro {
 
 /* Active State with Vibrant Primary Gradient */
 .pkg-step.active .step-icon {
-    background: linear-gradient(135deg, #FF7B54 0%, #ff5c2b 100%);
-    border-color: #FF7B54;
+    background: linear-gradient(135deg, var(--primary-color) 0%, #ff5c2b 100%);
+    border-color: var(--primary-color);
     color: #ffffff;
     box-shadow: 0 0 0 4px #ffffff, 0 10px 20px rgba(255, 123, 84, 0.35);
     transform: translateY(-5px) scale(1.08);
 }
 
 .pkg-step.active .step-label {
-    color: #FF7B54;
+    color: var(--primary-color);
     font-weight: 900;
     transform: translateY(-2px);
 }
@@ -1814,7 +1814,7 @@ textarea.control-pro {
 }
 
 .control-pro:focus {
-    border-color: #FF7B54;
+    border-color: var(--primary-color);
     box-shadow: 0 0 0 4px rgba(255, 123, 84, 0.1);
     outline: none;
 }

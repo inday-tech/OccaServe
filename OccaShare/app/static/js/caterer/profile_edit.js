@@ -274,7 +274,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Logo image preview + sidebar logo update
-    document.querySelectorAll('.form-file-input').forEach(input => {
+    document.querySelectorAll('.logo-input-shared').forEach(input => {
         input.addEventListener('change', function() {
             if (this.files?.[0]) {
                 const reader = new FileReader();
@@ -330,11 +330,43 @@ document.addEventListener('DOMContentLoaded', function () {
             img.onload = function() {
                 try {
                     Vibrant.from(img).getPalette().then((palette) => {
-                        const getHex = (swatch, fallback) => swatch ? swatch.getHex() : fallback;
-                        const primary = getHex(palette.Vibrant, '#FF7B54');
-                        const secondary = getHex(palette.DarkVibrant, getHex(palette.Muted, '#2D4059'));
-                        const accent = getHex(palette.LightVibrant, primary);
-                        const highlight = getHex(palette.DarkMuted, getHex(palette.LightMuted, primary));
+                        const getHex = (swatch) => swatch ? swatch.getHex() : null;
+                        
+                        const lightenHex = (hex, percent) => {
+                            if (!hex) return '#ffffff';
+                            let r = parseInt(hex.slice(1, 3), 16),
+                                g = parseInt(hex.slice(3, 5), 16),
+                                b = parseInt(hex.slice(5, 7), 16);
+                            r = Math.min(255, Math.floor(r + (255 - r) * percent));
+                            g = Math.min(255, Math.floor(g + (255 - g) * percent));
+                            b = Math.min(255, Math.floor(b + (255 - b) * percent));
+                            return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+                        };
+
+                        const hexDiff = (hex1, hex2) => {
+                            if(!hex1 || !hex2) return 0;
+                            let r1 = parseInt(hex1.slice(1, 3), 16), g1 = parseInt(hex1.slice(3, 5), 16), b1 = parseInt(hex1.slice(5, 7), 16);
+                            let r2 = parseInt(hex2.slice(1, 3), 16), g2 = parseInt(hex2.slice(3, 5), 16), b2 = parseInt(hex2.slice(5, 7), 16);
+                            return Math.abs(r1-r2) + Math.abs(g1-g2) + Math.abs(b1-b2);
+                        };
+
+                        // Primary: Dominant brand color
+                        let primary = getHex(palette.Vibrant) || getHex(palette.Muted) || '#FF7B54';
+                        
+                        // Secondary: Dark neutral. Fallback to #2F2F2F if too close to primary
+                        let secondary = getHex(palette.DarkMuted) || getHex(palette.DarkVibrant);
+                        if (!secondary || hexDiff(primary, secondary) < 150) {
+                            secondary = '#2F2F2F';
+                        }
+
+                        // Accent: Vibrant or complementary. Fallback if too close to primary
+                        let accent = getHex(palette.LightVibrant) || getHex(palette.Muted);
+                        if (!accent || hexDiff(primary, accent) < 100) {
+                            accent = '#FFB17A'; // OccaServe soft orange
+                        }
+
+                        // Highlight: Very light tint of Primary (85% lighter) for backgrounds
+                        let highlight = lightenHex(primary, 0.85);
 
                         const applyColor = (name, hex) => {
                             const input = document.querySelector(`input[name="${name}"]`);
@@ -503,21 +535,42 @@ async function handleDeleteRequest() {
 
 // Reset Brand to Defaults
 async function resetBrandDefaults() {
-    if (!window.showStandardConfirm) return;
-    const { isConfirmed } = await window.showStandardConfirm({ title: 'Reset Brand Settings?', message: 'This will clear all your custom colors, fonts, textures, and decorations, reverting to OccaServe defaults.', icon: 'warning', confirmButtonText: 'Yes, reset to defaults' });
+    let isConfirmed = false;
+    if (typeof Swal !== 'undefined') {
+        const result = await Swal.fire({
+            title: 'Reset Brand Settings?',
+            text: 'This will clear all your custom colors, fonts, textures, and decorations, reverting to OccaServe defaults.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, reset to defaults',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#ef4444'
+        });
+        isConfirmed = result.isConfirmed;
+    } else {
+        isConfirmed = confirm('Reset Brand Settings?\n\nThis will clear all your custom colors, fonts, textures, and decorations, reverting to OccaServe defaults.');
+    }
+    
     if (!isConfirmed) return;
+    
     try {
         const response = await fetch('/caterer/settings/reset-brand', { method: 'POST' });
         const resJson = await response.json();
         if (resJson.status === 'success') {
-            if (window.showSuccess) window.showSuccess('Brand settings reset! Reloading page...');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ title: 'Reset Successful!', text: 'Brand settings reset! Reloading page...', icon: 'success', timer: 1500, showConfirmButton: false });
+            } else {
+                alert('Brand settings reset! Reloading page...');
+            }
             setTimeout(() => window.location.reload(), 1500);
         } else {
             if (window.showError) window.showError(resJson.message || 'Failed to reset.');
+            else alert(resJson.message || 'Failed to reset.');
         }
     } catch (err) {
         console.error(err);
         if (window.showError) window.showError('An error occurred.');
+        else alert('An error occurred.');
     }
 }
 
@@ -529,14 +582,27 @@ async function submitVerification() {
     const hasId = document.querySelector('#verif_id_front').nextElementSibling?.classList.contains('field-hint');
     const hasPermit = document.querySelector('#verif_permit').nextElementSibling?.classList.contains('field-hint');
 
-    if (!idFront && !hasId) { if (window.showError) window.showError("Government ID (Front) is required."); return; }
-    if (!permit && !hasPermit) { if (window.showError) window.showError("Business Permit is required."); return; }
+    if (!idFront && !hasId) { 
+        if (typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Government ID (Front) is required.', showConfirmButton: false, timer: 3000 });
+        else alert("Government ID (Front) is required."); 
+        return; 
+    }
+    if (!permit && !hasPermit) { 
+        if (typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Business Permit is required.', showConfirmButton: false, timer: 3000 });
+        else alert("Business Permit is required."); 
+        return; 
+    }
 
     const formData = new FormData();
     formData.append('id_type', document.getElementById('verif_id_type').value);
     if (idFront) formData.append('id_front', idFront);
     const idBack = document.getElementById('verif_id_back').files[0];
     if (idBack) formData.append('id_back', idBack);
+    
+    // Phase 2: Attach selfie to FormData
+    const selfie = document.getElementById('verif_selfie').files[0];
+    if (selfie) formData.append('selfie', selfie);
+    
     if (permit) formData.append('permit', permit);
     formData.append('permit_expiry', document.getElementById('verif_permit_expiry').value);
     const dti = document.getElementById('verif_dti').files[0];
@@ -554,14 +620,26 @@ async function submitVerification() {
         const response = await fetch('/caterer/verification/submit', { method: 'POST', body: formData });
         const result = await response.json();
         if (result.success) {
-            if (window.showSuccess) window.showSuccess("Verification documents submitted successfully!");
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Verification documents submitted!', showConfirmButton: false, timer: 3000 });
+            } else {
+                alert('Verification documents submitted!');
+            }
             setTimeout(() => window.location.reload(), 1500);
         } else {
-            if (window.showError) window.showError(result.message || "Failed to submit documents.");
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: result.message || "Failed to submit documents.", showConfirmButton: false, timer: 3000 });
+            } else {
+                alert(result.message || "Failed to submit documents.");
+            }
         }
     } catch (err) {
         console.error(err);
-        if (window.showError) window.showError("An unexpected error occurred.");
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'An unexpected error occurred.', showConfirmButton: false, timer: 3000 });
+        } else {
+            alert('An unexpected error occurred.');
+        }
     } finally {
         btn.innerHTML = originalHtml;
         btn.disabled = false;

@@ -888,14 +888,14 @@ async def caterer_dashboard(
     has_cover = bool(profile.cover_image_url)
     has_description = bool(profile.description and profile.description.strip())
     has_packages = len([p for p in profile.packages if getattr(p, 'is_archived', False) == False]) >= 1
-    has_photos = len([i for i in profile.gallery_items if getattr(i, 'is_archived', False) == False]) >= 3
+    has_portfolio = len([p for p in profile.portfolios if getattr(p, 'visibility', 'Public') == 'Public']) >= 1
     has_starting_price = bool(profile.starting_price and profile.starting_price > 0)
     has_menu = len([m for m in profile.menu_items if getattr(m, 'is_archived', False) == False]) > 0
     has_permit = bool(profile.permit_url)
     
     # Check eligibility to publish: Identity Verified + 1 Package + 3 Photos + Description
     is_identity_verified = profile.verification_status == 'Verified' and profile.user.is_verified
-    can_publish = is_identity_verified and has_packages and has_photos and has_description
+    can_publish = is_identity_verified and has_packages and has_portfolio and has_description
 
     completion_pct = 0
     if is_identity_verified: completion_pct += 40
@@ -903,7 +903,7 @@ async def caterer_dashboard(
     if has_cover: completion_pct += 5
     if has_description: completion_pct += 5
     if has_packages: completion_pct += 15
-    if has_photos: completion_pct += 10
+    if has_portfolio: completion_pct += 10
     if has_starting_price: completion_pct += 5
     if has_menu: completion_pct += 5
     if has_permit: completion_pct += 5
@@ -911,19 +911,19 @@ async def caterer_dashboard(
     # Next Recommended Action Logic
     next_action = None
     if not is_identity_verified:
-        next_action = {"title": "Verify Business Identity", "desc": "Upload your valid ID to verify your catering business.", "url": "/caterer/profile#account", "btn": "Verify Now"}
+        next_action = {"title": "Verify Business Identity", "desc": "Upload your valid ID to verify your catering business.", "url": "/caterer/profile#verification", "btn": "Verify Now"}
     elif not has_description:
         next_action = {"title": "Add Business Description", "desc": "Tell customers about your catering services and specialties.", "url": "/caterer/profile#general", "btn": "Add Description"}
     elif not has_permit:
-        next_action = {"title": "Upload Business Permit", "desc": "Upload your permit to increase your trust rating.", "url": "/caterer/profile#account", "btn": "Upload Permit"}
+        next_action = {"title": "Upload Business Permit", "desc": "Upload your permit to increase your trust rating.", "url": "/caterer/profile#verification", "btn": "Upload Permit"}
     elif not has_logo:
         next_action = {"title": "Upload Business Logo", "desc": "Make your profile stand out with a professional logo.", "url": "/caterer/profile#general", "btn": "Upload Logo"}
     elif not has_cover:
         next_action = {"title": "Upload Cover Image", "desc": "Add a beautiful banner image to attract customers.", "url": "/caterer/profile#general", "btn": "Upload Cover"}
     elif not has_menu:
         next_action = {"title": "Create Sample Menu", "desc": "Add at least one menu item that customers can choose from.", "url": "/caterer/menu", "btn": "Add Menu Item"}
-    elif not has_photos:
-        next_action = {"title": "Upload Food Photos", "desc": "Upload at least 3 photos of your food or setup to showcase your work.", "url": "/caterer/profile#general", "btn": "Upload Photos"}
+    elif not has_portfolio:
+        next_action = {"title": "Create Portfolio Event", "desc": "Showcase your past events and credibility by creating a portfolio project.", "url": "/caterer/portfolio", "btn": "Create Portfolio"}
     elif not has_packages:
         next_action = {"title": "Create First Package", "desc": "Create at least one catering package for customers to book.", "url": "/caterer/packages", "btn": "Create Package"}
     elif profile.status == 'Draft' or profile.status == 'Identity Verified':
@@ -942,7 +942,7 @@ async def caterer_dashboard(
         "has_cover": has_cover,
         "has_description": has_description,
         "has_packages": has_packages,
-        "has_photos": has_photos,
+        "has_portfolio": has_portfolio,
         "has_starting_price": has_starting_price,
         "has_menu": has_menu,
         "has_permit": has_permit,
@@ -963,10 +963,10 @@ async def toggle_publish(
         
     has_description = bool(profile.description and profile.description.strip())
     has_packages = len([p for p in profile.packages if getattr(p, 'is_archived', False) == False]) >= 1
-    has_photos = len([i for i in profile.gallery_items if getattr(i, 'is_archived', False) == False]) >= 3
+    has_portfolio = len([p for p in profile.portfolios if getattr(p, 'visibility', 'Public') == 'Public']) >= 1
     is_identity_verified = profile.verification_status == 'Verified'
     
-    can_publish = is_identity_verified and has_packages and has_photos and has_description
+    can_publish = is_identity_verified and has_packages and has_portfolio and has_description
     
     if profile.status == "Published":
         profile.status = "Identity Verified"
@@ -977,7 +977,7 @@ async def toggle_publish(
             missing = []
             if not is_identity_verified: missing.append("Identity Verification")
             if not has_packages: missing.append("At least 1 Package")
-            if not has_photos: missing.append("At least 3 Food Photos")
+            if not has_portfolio: missing.append("At least 1 Portfolio Event")
             if not has_description: missing.append("Business Description")
             return JSONResponse(
                 status_code=400, 
@@ -2590,6 +2590,7 @@ async def archive_service_item(
 
 
 @router.get("/profile", response_class=HTMLResponse)
+@router.get("/settings", response_class=HTMLResponse)
 async def edit_profile(
     request: Request, 
     db: Session = Depends(database.get_db),
@@ -5383,12 +5384,12 @@ async def reset_brand_defaults(
     user: models.User = Depends(caterer_only)
 ):
     profile = user.caterer_profile
-    profile.primary_color = "#2D3748"
-    profile.secondary_color = "#4A5568"
-    profile.accent_color = "#48BB78"
-    profile.highlight_color = "#48BB78"
-    profile.font_family = "'Poppins', sans-serif"
-    profile.border_radius = 12
+    profile.primary_color = None
+    profile.secondary_color = None
+    profile.accent_color = None
+    profile.highlight_color = None
+    profile.font_family = None
+    profile.border_radius = None
     profile.dashboard_texture = "none"
     profile.sidebar_decoration = "none"
     profile.header_decoration = "none"
@@ -5608,6 +5609,7 @@ async def caterer_report_booking(
 
 @router.post("/verification/submit")
 async def submit_verification(
+    background_tasks: BackgroundTasks,
     id_type: str = Form(...),
     permit_expiry: Optional[str] = Form(None),
     id_front: Optional[UploadFile] = File(None),
@@ -5616,6 +5618,7 @@ async def submit_verification(
     dti: Optional[UploadFile] = File(None),
     bir: Optional[UploadFile] = File(None),
     mayors: Optional[UploadFile] = File(None),
+    selfie: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -5628,31 +5631,27 @@ async def submit_verification(
     import os
     import time
     
-    upload_dir = "app/static/uploads/caterer/verification"
+    upload_dir = "app/static/uploads/verification"
     os.makedirs(upload_dir, exist_ok=True)
+    
+    from ..core.encryption import encrypt_data
     
     def save_file(file_obj, prefix):
         if not file_obj or not file_obj.filename: return None
-        # Handle file validation securely
-        file_obj.file.seek(0, 2)
-        size = file_obj.file.tell()
-        file_obj.file.seek(0)
         
-        class MockFile:
-            def __init__(self, filename, size, file_obj):
-                self.filename = filename
-                self.size = size
-                self.file = file_obj
-                
-        mock = MockFile(file_obj.filename, size, file_obj.file)
-        validate_file_type_and_size(mock)
+        content = file_obj.file.read()
+        from ..core.utils import validate_file_type_and_size
+        error = validate_file_type_and_size(content, file_obj.filename)
+        if error:
+            raise ValueError(error)
             
         ext = file_obj.filename.split('.')[-1].lower()
-        filename = f"{prefix}_{user.id}_{int(time.time())}.{ext}"
+        filename = f"user_{user.id}_{prefix}_{int(time.time())}.{ext}"
         filepath = os.path.join(upload_dir, filename)
+        
         with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(file_obj.file, buffer)
-        return f"/static/uploads/caterer/verification/{filename}"
+            buffer.write(encrypt_data(content))
+        return f"/static/uploads/verification/{filename}"
     
     try:
         if permit:
@@ -5684,10 +5683,10 @@ async def submit_verification(
         # Identity Verification
         identity = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user.id).first()
         if not identity:
-            identity = models.IdentityVerification(user_id=user.id, id_type=id_type, verification_status="Pending Review")
+            identity = models.IdentityVerification(user_id=user.id, verification_type=id_type, verification_status="Pending Review")
             db.add(identity)
         else:
-            identity.id_type = id_type
+            identity.verification_type = id_type
             identity.verification_status = "Pending Review"
             
         if id_front:
@@ -5697,7 +5696,75 @@ async def submit_verification(
             url = save_file(id_back, "id_back")
             if url: identity.document_back_url = url
             
+        if selfie:
+            url = save_file(selfie, "selfie")
+            if url: identity.selfie_url = url
+            
         db.commit()
+        
+        # Phase 3: Trigger OCR AI on Manual Uploads
+        if identity.document_url:
+            full_name = f"{user.first_name} {user.last_name}"
+            
+            async def run_caterer_kyc_bg(id_url, selfie_url, user_name, user_id, type_of_id):
+                try:
+                    from ..db.database import SessionLocal
+                    from ..services.verification import verification_service
+                    db_session = SessionLocal()
+                    
+                    selfie_paths = [selfie_url] if selfie_url else []
+                    result = await verification_service.verify_identity_v2(
+                        id_path=id_url, 
+                        selfie_paths=selfie_paths, 
+                        full_name=user_name, 
+                        id_number="", 
+                        id_type=type_of_id, 
+                        db=db_session, 
+                        user_id=user_id
+                    )
+                    
+                    ident = db_session.query(models.IdentityVerification).filter_by(user_id=user_id).first()
+                    if ident:
+                        new_ocr = result.get("ocr_data")
+                        if new_ocr and isinstance(new_ocr, dict) and new_ocr.get("fields"):
+                            ident.ocr_data = new_ocr
+                        elif ident.ocr_data is None:
+                            ident.ocr_data = {}
+                            
+                        ident.fraud_score = result.get("fraud_score", 0)
+                        ident.match_score = result.get("face_match_confidence", 0.0)
+                        ident.face_detected = result.get("liveness_score", 0.0) > 0 or result.get("face_match_confidence", 0.0) > 0
+                        ident.id_detected = result.get("ocr_match", False) or (isinstance(ident.ocr_data, dict) and ident.ocr_data.get("full_name") is not None)
+                        ident.liveness_status = "passed" if result.get("liveness_score", 0.0) > 0.4 else "failed"
+                        db_session.commit()
+                        
+                    db_session.close()
+                except Exception as e:
+                    print(f"[CATERER OCR BACKGROUND ERROR] {e}")
+
+            background_tasks.add_task(run_caterer_kyc_bg, identity.document_url, identity.selfie_url, full_name, user.id, id_type)
+
+        # Phase 1: Notify Admins of Caterer Document Submission
+        from ..services.realtime import manager
+        import asyncio
+        admins = db.query(models.User).filter(models.User.role == "admin").all()
+        for admin in admins:
+            new_notif = models.Notification(
+                user_id=admin.id,
+                title="KYC Submission",
+                message=f"Caterer {profile.business_name} has submitted verification documents.",
+                link=f"/admin/caterers?caterer_id={user.id}&action=verify",
+                type="info"
+            )
+            db.add(new_notif)
+            db.commit()
+            
+            count = db.query(models.Notification).filter(models.Notification.user_id == admin.id, models.Notification.is_read == False).count()
+            asyncio.create_task(manager.broadcast_to_user(admin.id, {
+                "type": "new_notification",
+                "message": f"KYC update from {profile.business_name}",
+                "count": count
+            }))
         return JSONResponse(content={"success": True, "message": "Verification submitted successfully."})
     except Exception as e:
         db.rollback()
