@@ -28,8 +28,11 @@ class QuotationService:
             # Determine actual package price (prioritize price_per_head over legacy price)
             actual_unit_price = package.price_per_head if hasattr(package, 'price_per_head') and package.price_per_head else package.price
             
-            # Base calculation: actual_unit_price * guest_count
-            base_amount = Decimal(str(actual_unit_price)) * Decimal(str(booking.guest_count))
+            # Base calculation: actual_unit_price * guest_count (only if per_pax)
+            if getattr(package, 'pricing_mode', None) == 'fixed' or getattr(package, 'price_unit', None) != 'per_guest':
+                base_amount = Decimal(str(actual_unit_price))
+            else:
+                base_amount = Decimal(str(actual_unit_price)) * Decimal(str(booking.guest_count))
             package_details = {
                 "name": package.name,
                 "description": package.description,
@@ -42,17 +45,31 @@ class QuotationService:
         addons = []
         addon_total = Decimal("0.0")
         
-        from ..db.models import BookingMenuItem, MenuItem
-        booking_items = db.query(BookingMenuItem).join(MenuItem).filter(
+        from ..db.models import BookingMenuItem
+        booking_items = db.query(BookingMenuItem).filter(
             BookingMenuItem.booking_id == booking.id,
             BookingMenuItem.is_add_on == True
         ).all()
 
         for item in booking_items:
             price = Decimal(str(item.price))
+            
+            # Determine the name based on which item type is attached
+            name = "Add-on"
+            item_id = None
+            if item.menu_item:
+                name = item.menu_item.name
+                item_id = item.menu_item_id
+            elif item.equipment:
+                name = item.equipment.name
+                item_id = item.equipment_id
+            elif item.service:
+                name = item.service.name
+                item_id = item.service_id
+
             addons.append({
-                "id": item.menu_item_id,
-                "name": item.menu_item.name,
+                "id": item_id,
+                "name": name,
                 "price": float(price)
             })
             addon_total += price

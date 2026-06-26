@@ -65,12 +65,22 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
         caterer.profile_views = (caterer.profile_views or 0) + 1
         db.commit()
     
+    # Calculate active menu & inventory
+    active_menu = [m for m in caterer.menu_items if not m.is_archived and not m.is_hidden and m.status == 'available' and m.usage_type in ['order_only', 'both'] and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']]
+    active_services = [s for s in getattr(caterer, 'service_items', []) if not s.is_archived and not s.is_hidden and s.status == 'available' and s.usage_type in ['order_only', 'both']]
+    active_equipment = [e for e in getattr(caterer, 'equipment_items', []) if not e.is_archived and not e.is_hidden and e.status == 'available' and e.usage_type in ['order_only', 'both']]
+    active_inventory = active_services + active_equipment
+    public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public']
+
     # If the user is a logged-in customer, show the dashboard-integrated view
     if user and user.role == "customer":
         return templates.TemplateResponse("customer/caterer_profile_view.html", {
             "request": request, 
             "caterer": caterer,
             "packages": [p for p in caterer.packages if p.is_active and p.status == 'active'],
+            "active_menu": active_menu,
+            "active_inventory": active_inventory,
+            "public_portfolios": public_portfolios,
             "gallery_items": caterer.gallery_items,
             "reviews": caterer.reviews,
             "user": user,
@@ -84,6 +94,9 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
         "request": request, 
         "caterer": caterer,
         "packages": active_packages,
+        "active_menu": active_menu,
+        "active_inventory": active_inventory,
+        "public_portfolios": public_portfolios,
         "gallery_items": [g for g in caterer.gallery_items if not g.is_archived],
         "reviews": caterer.reviews,
         "user": user,
@@ -116,11 +129,22 @@ def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(datab
             raise HTTPException(status_code=404, detail="Caterer not found")
 
     active_packages = [p for p in caterer.packages if p.is_active and p.status == 'active']
+    active_menu = [m for m in caterer.menu_items if not m.is_archived and not m.is_hidden and m.status == 'available' and m.usage_type in ['order_only', 'both'] and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']]
+    active_services = [s for s in getattr(caterer, 'service_items', []) if not s.is_archived and not s.is_hidden and s.status == 'available' and s.usage_type in ['order_only', 'both']]
+    active_equipment = [e for e in getattr(caterer, 'equipment_items', []) if not e.is_archived and not e.is_hidden and e.status == 'available' and e.usage_type in ['order_only', 'both']]
+    active_inventory = active_services + active_equipment
+    public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public']
+
     return templates.TemplateResponse("caterer/profile.html", {
         "request": request, 
         "caterer": caterer,
         "packages": active_packages,
+        "active_menu": active_menu,
+        "active_inventory": active_inventory,
+        "public_portfolios": public_portfolios,
         "gallery_items": [g for g in caterer.gallery_items if not g.is_archived],
+        "reviews": caterer.reviews,
+        "user": user,
         "nav_page": "caterers"
     })
 
@@ -204,9 +228,9 @@ def unified_search_api(request: Request, q: str = "", lat: Optional[float] = Non
             END
         """).bindparams(lat=lat, lon=lon)
         
-        query = query.add_columns(distance_query.label("distance")).order_by(text("distance ASC"))
+        query = query.add_columns(distance_query).order_by(distance_query)
     else:
-        query = query.add_columns(literal_column("NULL").label("distance")).order_by(models.CatererProfile.rating.desc())
+        query = query.add_columns(literal_column("NULL")).order_by(models.CatererProfile.rating.desc())
 
     results = query.all()
 

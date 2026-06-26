@@ -218,7 +218,7 @@
                     {% endif %}
 
                     <!-- Add-ons Section -->
-                    {% if addon_items %}
+                    {% if addon_items or addon_equipment or addon_services %}
                     <div class="menu-sub-section" style="margin-top: 2rem;">
                         <label class="form-label">Optional Add-ons</label>
                         <div class="menu-item-cards">
@@ -232,6 +232,36 @@
                                 <div class="mic-info">
                                     <span class="mic-name">{{ item.name }}</span>
                                     <span class="mic-cat">{{ item.category }}</span>
+                                </div>
+                                <span class="mic-price">+₱{{ "{:,.2f}".format(item.addon_price or 0) }}</span>
+                            </label>
+                            {% endfor %}
+                            
+                            {% for item in addon_equipment %}
+                            <label class="menu-item-card addon {% if item.id in selected_addon_equipment_ids %}selected{% endif %}">
+                                <input type="checkbox" name="selected_equipment_addons" value="{{ item.id }}" 
+                                    {% if item.id in selected_addon_equipment_ids %}checked{% endif %} 
+                                    data-price="{{ item.addon_price or 0 }}"
+                                    onchange="handleMenuCardToggle(this)" style="display: none;">
+                                <div class="indicator-circle"></div>
+                                <div class="mic-info">
+                                    <span class="mic-name">{{ item.name }} <i class="fas fa-chair" style="color: var(--wiz-slate-400); font-size: 0.7rem; margin-left: 4px;"></i></span>
+                                    <span class="mic-cat">{{ item.category or 'Equipment' }}</span>
+                                </div>
+                                <span class="mic-price">+₱{{ "{:,.2f}".format(item.addon_price or 0) }}</span>
+                            </label>
+                            {% endfor %}
+
+                            {% for item in addon_services %}
+                            <label class="menu-item-card addon {% if item.id in selected_addon_service_ids %}selected{% endif %}">
+                                <input type="checkbox" name="selected_service_addons" value="{{ item.id }}" 
+                                    {% if item.id in selected_addon_service_ids %}checked{% endif %} 
+                                    data-price="{{ item.addon_price or 0 }}"
+                                    onchange="handleMenuCardToggle(this)" style="display: none;">
+                                <div class="indicator-circle"></div>
+                                <div class="mic-info">
+                                    <span class="mic-name">{{ item.name }} <i class="fas fa-user-tie" style="color: var(--wiz-slate-400); font-size: 0.7rem; margin-left: 4px;"></i></span>
+                                    <span class="mic-cat">{{ item.category or 'Service' }}</span>
                                 </div>
                                 <span class="mic-price">+₱{{ "{:,.2f}".format(item.addon_price or 0) }}</span>
                             </label>
@@ -332,7 +362,7 @@
 
                 <div class="calc-row">
                     <span class="calc-label">Package Price</span>
-                    <span class="calc-val">₱{{ "{:,.2f}".format(package.price_per_head or package.price or 0) }}/pax</span>
+                    <span class="calc-val">₱{{ "{:,.2f}".format(package.price_per_head if package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest' else package.price or 0) }}{% if package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest' %}/pax{% else %} total{% endif %}</span>
                 </div>
                 <div class="calc-row">
                     <span class="calc-label">Estimated Guests</span>
@@ -404,7 +434,9 @@
 
 {% block step_js %}
 <script>
+    window.pricingMode = "{{ package.pricing_mode if package.pricing_mode else ('per_pax' if package.price_unit == 'per_guest' else 'fixed') }}";
     window.pricePerHead = parseFloat("{{ package.price_per_head or package.price or 0 }}") || 0;
+    window.basePrice = parseFloat("{{ package.price or 0 }}") || 0;
     window.catererId = "{{ caterer.id }}";
     window.minGuests = parseInt("{{ package.min_guests or caterer.min_pax or 1 }}") || 1;
     window.maxGuests = parseInt("{{ package.max_guests or 0 }}") || 0;

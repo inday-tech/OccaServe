@@ -138,6 +138,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // MAP items
+    const UNIT_MAP = {
+        'per_serving': '', 'per_tray': ' / Tray', 'per_bilao': ' / Bilao',
+        'per_pax': ' / Pax', 'per_hour': ' / Hr', 'per_unit': ' / Unit', 'per_set': ' / Set',
+        'per_kg': ' / Kg', 'whole': ' / Whole'
+    };
+
     window.renderBillItems = function() {
         applyDynamicTerminology();
         const container = document.getElementById('dynamic-bill-items');
@@ -148,11 +154,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         window.cartItems.forEach((cItem, index) => {
             const backendList = window.backendMenuItems || [];
-            const bItem = backendList.find(i => String(i.id) === String(cItem.id)) || cItem;
+            const bItem = backendList.find(i => String(i.id) === String(cItem.id) && (cItem.type ? i.type === cItem.type : true)) || cItem;
             const price = parseFloat(cItem.price || bItem.price) || 0;
             const qty = parseInt(cItem.qty) || 1;
-            const isRental = bItem.is_rental;
-            const unitLabel = isRental ? '/ Unit' : (bItem.is_combo ? '(Platter)' : '/ Tray');
+            const unitLabel = bItem.pricing_unit ? (UNIT_MAP[bItem.pricing_unit] || ' / ' + bItem.pricing_unit) : (bItem.is_rental ? '/ Unit' : (bItem.is_combo ? '(Platter)' : '/ Tray'));
             
             baseTotal += (price * qty);
 
@@ -205,6 +210,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             cart.push({
                 id: id,
+                type: cItem.type || 'Menu',
                 quantity: qty,
                 choices: choices
             });

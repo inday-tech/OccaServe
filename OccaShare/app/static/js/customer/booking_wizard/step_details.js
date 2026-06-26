@@ -106,10 +106,15 @@ document.addEventListener('DOMContentLoaded', function () {
         calcGuests.innerText = guests;
 
         // Base package price
-        let total = guests * pricePerHead;
+        let total = 0;
+        if (window.pricingMode === 'fixed') {
+            total = window.basePrice;
+        } else {
+            total = guests * pricePerHead;
+        }
 
         // Add-ons price
-        const checkedAddons = document.querySelectorAll('input[name="selected_addons"]:checked');
+        const checkedAddons = document.querySelectorAll('.menu-item-card.addon input[type="checkbox"]:checked');
         let addonsTotal = 0;
         checkedAddons.forEach(cb => {
             const price = parseFloat(cb.getAttribute('data-price')) || 0;
@@ -499,6 +504,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Selection Rules Validation
             const selectionGroups = document.querySelectorAll('.selection-group');
+            let selectionErrorMsg = '';
             selectionGroups.forEach(group => {
                 const limit = parseInt(group.dataset.limit) || 0;
                 const cat = group.dataset.category;
@@ -506,6 +512,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 if (count !== limit && limit > 0) {
                     isValid = false;
+                    selectionErrorMsg += `• Please select exactly ${limit} item(s) for ${cat.replace(/([A-Z])/g, ' $1').trim()}.\n`;
                     const counterEl = document.getElementById(`counter-${cat}`);
                     if (counterEl) {
                         counterEl.style.background = '#fee2e2';
@@ -513,6 +520,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
             });
+
+            if (selectionErrorMsg) {
+                alert("Incomplete Menu Setup:\n\n" + selectionErrorMsg);
+            }
 
             if (!isValid) {
                 e.preventDefault();

@@ -92,18 +92,36 @@ async def alacarte_checkout_page(request: Request, caterer_id: int, menu_id: str
     
     caterer = db.query(models.CatererProfile).get(caterer_id)
     
-    # Parse multiple IDs
-    try:
-        id_list = [int(id_str.strip()) for id_str in menu_id.split(",") if id_str.strip()]
-    except ValueError:
-        return RedirectResponse(url="/marketplace", status_code=303)
-
+    # Parse multiple IDs with type prefixes (m_ for MenuItem, e_ for Equipment, s_ for Service)
+    m_ids, e_ids, s_ids = [], [], []
+    for id_str in menu_id.split(","):
+        id_str = id_str.strip()
+        if not id_str: continue
+        if id_str.startswith('m_'):
+            m_ids.append(int(id_str[2:]))
+        elif id_str.startswith('e_'):
+            e_ids.append(int(id_str[2:]))
+        elif id_str.startswith('s_'):
+            s_ids.append(int(id_str[2:]))
+        elif id_str.isdigit():
+            m_ids.append(int(id_str)) # legacy fallback
+            
     menu_items = db.query(models.MenuItem).filter(
-        models.MenuItem.id.in_(id_list),
+        models.MenuItem.id.in_(m_ids),
         models.MenuItem.available_for_order == True
-    ).all()
+    ).all() if m_ids else []
     
-    if not caterer or not menu_items:
+    equipment_items = db.query(models.Equipment).filter(
+        models.Equipment.id.in_(e_ids),
+        models.Equipment.status == 'available'
+    ).all() if e_ids else []
+    
+    service_items = db.query(models.Service).filter(
+        models.Service.id.in_(s_ids),
+        models.Service.status == 'available'
+    ).all() if s_ids else []
+    
+    if not caterer or (not menu_items and not equipment_items and not service_items):
         return RedirectResponse(url="/marketplace", status_code=303)
         
     return templates.TemplateResponse("customer/booking_wizard/alacarte_checkout.html", {
@@ -111,6 +129,8 @@ async def alacarte_checkout_page(request: Request, caterer_id: int, menu_id: str
         "user": user,
         "caterer": caterer,
         "menu_items": menu_items,
+        "equipment_items": equipment_items,
+        "service_items": service_items,
         "menu_id_raw": menu_id,
         "current_step": 1
     })
@@ -258,15 +278,21 @@ async def alacarte_checkout_submit(
         if cart_data:
             cart_items = json.loads(cart_data)
             for item in cart_items:
-                m_item = db.query(models.MenuItem).get(int(item['id']))
-                if m_item and m_item.category:
-                    cat = m_item.category.lower()
-                    if 'rental' in cat or 'equipment' in cat:
-                        is_rental = True
-                    elif 'service' in cat or 'staff' in cat or 'waiter' in cat:
-                        has_services = True
-                    else:
-                        has_food = True
+                i_type = item.get('type', 'Menu')
+                if i_type == 'Equipment':
+                    is_rental = True
+                elif i_type == 'Service':
+                    has_services = True
+                else:
+                    m_item = db.query(models.MenuItem).get(int(item['id']))
+                    if m_item and m_item.category:
+                        cat = m_item.category.lower()
+                        if 'rental' in cat or 'equipment' in cat:
+                            is_rental = True
+                        elif 'service' in cat or 'staff' in cat or 'waiter' in cat:
+                            has_services = True
+                        else:
+                            has_food = True
         
         # Phase 2: Dynamic Document Routing Algorithm
         document_type = "invoice"
@@ -309,20 +335,44 @@ async def alacarte_checkout_submit(
             db.add(booking)
             db.flush()
 
-        # Add Menu Items
+        # Add Items
         if cart_data:
             cart_items = json.loads(cart_data)
             for item in cart_items:
-                m_item = db.query(models.MenuItem).get(int(item['id']))
-                if m_item:
-                    booking_item = models.BookingMenuItem(
-                        booking_id=booking.id,
-                        menu_item_id=m_item.id,
-                        price=m_item.price,
-                        quantity=int(item.get('quantity', 1)),
-                        choices=item.get('choices')
-                    )
-                    db.add(booking_item)
+                i_type = item.get('type', 'Menu')
+                if i_type == 'Equipment':
+                    e_item = db.query(models.Equipment).get(int(item['id']))
+                    if e_item:
+                        booking_item = models.BookingMenuItem(
+                            booking_id=booking.id,
+                            equipment_id=e_item.id,
+                            price=e_item.rental_price,
+                            quantity=int(item.get('quantity', 1)),
+                            choices=item.get('choices')
+                        )
+                        db.add(booking_item)
+                elif i_type == 'Service':
+                    s_item = db.query(models.Service).get(int(item['id']))
+                    if s_item:
+                        booking_item = models.BookingMenuItem(
+                            booking_id=booking.id,
+                            service_id=s_item.id,
+                            price=s_item.selling_price,
+                            quantity=int(item.get('quantity', 1)),
+                            choices=item.get('choices')
+                        )
+                        db.add(booking_item)
+                else:
+                    m_item = db.query(models.MenuItem).get(int(item['id']))
+                    if m_item:
+                        booking_item = models.BookingMenuItem(
+                            booking_id=booking.id,
+                            menu_item_id=m_item.id,
+                            price=m_item.price,
+                            quantity=int(item.get('quantity', 1)),
+                            choices=item.get('choices')
+                        )
+                        db.add(booking_item)
         elif menu_id:
             # Legacy Fallback
             id_list = [int(id_str.strip()) for id_str in menu_id.split(",") if id_str.strip()]
@@ -590,11 +640,27 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
     ).all()
     
     addon_items = [i for i in all_menu_items if i.is_addon]
+    
+    addon_equipment = db.query(models.Equipment).filter(
+        models.Equipment.caterer_id == caterer.id,
+        models.Equipment.is_archived == False,
+        models.Equipment.is_addon == True
+    ).all()
+
+    addon_services = db.query(models.Service).filter(
+        models.Service.caterer_id == caterer.id,
+        models.Service.is_archived == False,
+        models.Service.is_addon == True
+    ).all()
 
     # Get selected addons if existing booking
     selected_addon_ids = []
+    selected_addon_equipment_ids = []
+    selected_addon_service_ids = []
     if booking:
-        selected_addon_ids = [item.menu_item_id for item in booking.items if item.is_add_on]
+        selected_addon_ids = [item.menu_item_id for item in booking.items if item.is_add_on and item.menu_item_id]
+        selected_addon_equipment_ids = [item.equipment_id for item in booking.items if item.is_add_on and item.equipment_id]
+        selected_addon_service_ids = [item.service_id for item in booking.items if item.is_add_on and item.service_id]
 
     return templates.TemplateResponse("customer/booking_wizard/step_details.html", {
         "request": request,
@@ -604,7 +670,11 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
         "caterer": caterer,
         "all_menu_items": all_menu_items,
         "addon_items": addon_items,
+        "addon_equipment": addon_equipment,
+        "addon_services": addon_services,
         "selected_addon_ids": selected_addon_ids,
+        "selected_addon_equipment_ids": selected_addon_equipment_ids,
+        "selected_addon_service_ids": selected_addon_service_ids,
         "user": user,
         "current_step": 1,
         "active_page": "bookings"
@@ -627,6 +697,8 @@ async def step_details_submit(
     reservation_fee: float = Form(0.0),
     selected_items: list[int] = Form([]),
     selected_addons: list[int] = Form([]),
+    selected_equipment_addons: list[int] = Form([]),
+    selected_service_addons: list[int] = Form([]),
     special_requests: Optional[str] = Form(""),
     db: Session = Depends(database.get_db)
 ):
@@ -804,6 +876,28 @@ async def step_details_submit(
                 menu_item_id=item_id,
                 is_add_on=menu_item.is_addon,
                 price=menu_item.addon_price if menu_item.is_addon else 0.0
+            )
+            db.add(booking_item)
+            
+    for equip_id in selected_equipment_addons:
+        equip_item = db.query(models.Equipment).get(equip_id)
+        if equip_item:
+            booking_item = models.BookingMenuItem(
+                booking_id=booking.id,
+                equipment_id=equip_id,
+                is_add_on=True,
+                price=equip_item.addon_price or 0.0
+            )
+            db.add(booking_item)
+
+    for serv_id in selected_service_addons:
+        serv_item = db.query(models.Service).get(serv_id)
+        if serv_item:
+            booking_item = models.BookingMenuItem(
+                booking_id=booking.id,
+                service_id=serv_id,
+                is_add_on=True,
+                price=serv_item.addon_price or 0.0
             )
             db.add(booking_item)
     

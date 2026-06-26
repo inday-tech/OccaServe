@@ -1105,7 +1105,7 @@
             }
 
             // Section 1: Service Details
-            const paxLabel = pkg.price_unit === 'per_guest' ? '/pax' : ' total';
+            const paxLabel = (pkg.pricing_mode === 'per_pax' || pkg.price_unit === 'per_guest') ? '/pax' : ' total';
             const addGuestHtml = pkg.additional_guest_price > 0
                 ? `<div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.5rem 0;border-bottom:1px solid var(--hub-slate-100);">
                      <span style="color:var(--hub-slate-400);font-weight:700;">EXTRA PAX</span>
@@ -1216,7 +1216,7 @@
             <!-- OVERVIEW TAB -->
             <div id="hub-tab-overview" class="tab-content active">
                 <div class="intel-card">
-                    <h2 class="section-title">Business Story</h2>
+                    <h2 class="section-title">About Us</h2>
                     <p style="color: var(--hub-slate-600); font-size: 1rem; line-height: 1.8; margin-bottom: 2rem;">
                         {{ caterer.description or 'A premier catering partner dedicated to delivering exceptional
                         culinary experiences for weddings, corporate events, and private celebrations.' }}
@@ -1231,7 +1231,7 @@
                         <div class="stat-mini-box">
                             <i class="fas fa-utensils smb-icon"></i>
                             <span class="smb-val">{{ active_menu|length }}</span>
-                            <span class="smb-lab">Active Dishes</span>
+                            <span class="smb-lab">Food Options</span>
                         </div>
                         <div class="stat-mini-box">
                             <i class="fas fa-award smb-icon"></i>
@@ -1244,7 +1244,7 @@
                 <!-- EVENT HIGHLIGHTS (GALLERY STREAMLINED) -->
                 {% if gallery_items %}
                 <div class="intel-card">
-                    <h2 class="section-title">Event Highlights</h2>
+                    <h2 class="section-title">Recent Events</h2>
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;">
                         {% for item in gallery_items[:3] %}
                         <div style="height: 140px; border-radius: 12px; overflow: hidden;">
@@ -1264,7 +1264,7 @@
                 <!-- PACKAGES -->
                 {% if packages %}
                 <div class="intel-card" style="padding: 1.75rem;">
-                    <h2 class="section-title">Catering Packages</h2>
+                    <h2 class="section-title">Ready-to-Book Packages</h2>
                     <div class="pkg-grid">
                         {% for pkg in packages %}
                         <div class="elite-item-card pkg-item">
@@ -1275,12 +1275,10 @@
                             <div class="ei-body">
                                 <span class="ei-cat">{{ pkg.service_type or 'General' }}</span>
                                 <span class="ei-name">{{ pkg.name }}</span>
-                                {% if pkg.price_per_head %}
-                                <span class="ei-price">₱{{ "{:,.2f}".format(pkg.price_per_head) }}<span style="font-size:0.65rem;font-weight:600;color:var(--hub-slate-400)">/pax</span></span>
-                                {% elif pkg.price_unit == 'per_guest' %}
-                                <span class="ei-price">₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }}<span style="font-size:0.65rem;font-weight:600;color:var(--hub-slate-400)">/pax</span></span>
+                                {% if pkg.pricing_mode == 'fixed' or pkg.price_unit == 'total' %}
+                                <span class="ei-price">₱{{ "{:,.2f}".format(pkg.price if pkg.price else (pkg.price_per_head if pkg.price_per_head else 0)) }}<span style="font-size:0.65rem;font-weight:600;color:var(--hub-slate-400)"> total</span></span>
                                 {% else %}
-                                <span class="ei-price">₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }}<span style="font-size:0.65rem;font-weight:600;color:var(--hub-slate-400)"> total</span></span>
+                                <span class="ei-price">₱{{ "{:,.2f}".format(pkg.price_per_head if pkg.price_per_head else (pkg.price if pkg.price else 0)) }}<span style="font-size:0.65rem;font-weight:600;color:var(--hub-slate-400)">/pax</span></span>
                                 {% endif %}
                                 {% if pkg.min_guests %}
                                 <span style="font-size:0.7rem;color:var(--hub-slate-400);font-weight:700;">Min. {{ pkg.min_guests }} pax{% if pkg.max_guests %} · Max. {{ pkg.max_guests }} pax{% endif %}</span>
@@ -1308,7 +1306,7 @@
 
                 <!-- A LA CARTE MENU — CATEGORY CARDS -->
                 <div class="intel-card" style="padding: 1.75rem;">
-                    <h2 class="section-title" style="margin-bottom: 1.25rem;">A-la-carte & Rentals</h2>
+                    <h2 class="section-title" style="margin-bottom: 1.25rem;">Food Menu</h2>
 
                     {% if active_menu %}
                     {% set categories = [] %}
@@ -1330,7 +1328,7 @@
                         {% endfor %}
                         
                         {% if not display_img.url %}
-                            {% set final_img = 'https://ui-avatars.com/api/?name=' ~ (cat|urlencode) ~ '&background=f1f5f9&color=64748b&size=400&font-size=0.2' %}
+                            {% set final_img = 'https://ui-avatars.com/api/?name=' ~ (cat|urlencode) ~ '&background=f1f5f9&color=FF7B54&size=400&font-size=0.33&bold=true' %}
                         {% else %}
                             {% set final_img = display_img.url %}
                         {% endif %}
@@ -1364,7 +1362,61 @@
                     <p style="color: var(--hub-slate-400); font-size: 0.9rem;">No dishes available yet.</p>
                     {% endif %}
                 </div>
-            </div>
+                
+                <!-- RENTALS & SERVICES -->
+                <div class="intel-card" style="padding: 1.75rem; margin-top: 2rem;">
+                    <h2 class="section-title" style="margin-bottom: 1.25rem;">Event Rentals & Services</h2>
+
+                    {% if active_inventory %}
+                    {% set inv_categories = [] %}
+                    {% for item in active_inventory %}
+                        {% set cat_name = item.category if item.category else ('Equipment' if item.equipment_type else 'Service') %}
+                        {% if cat_name not in inv_categories %}
+                            {% set _ = inv_categories.append(cat_name) %}
+                        {% endif %}
+                    {% endfor %}
+
+                    <div class="cat-card-grid">
+                        {% for cat in inv_categories %}
+                        {% set cat_items = [] %}
+                        {% for item in active_inventory %}
+                            {% set item_cat = item.category if item.category else ('Equipment' if item.equipment_type else 'Service') %}
+                            {% if item_cat == cat %}
+                                {% set _ = cat_items.append(item) %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% set display_img = namespace(url='') %}
+                        {% for item in cat_items %}
+                            {% if item.image_url and not display_img.url %}
+                                {% set display_img.url = item.image_url %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if not display_img.url %}
+                            {% set final_img = 'https://ui-avatars.com/api/?name=' ~ (cat|urlencode) ~ '&background=f1f5f9&color=FF7B54&size=400&font-size=0.33&bold=true' %}
+                        {% else %}
+                            {% set final_img = display_img.url %}
+                        {% endif %}
+                        
+                        <div class="cat-card" onclick="window.openInventoryModal('{{ cat|e }}')">
+                            <img src="{{ final_img }}" class="cat-card-img" alt="{{ cat }}" loading="lazy" style="object-fit: cover;">
+                            <div class="cat-card-body">
+                                <span class="cat-card-name">{{ cat }}</span>
+                                <span class="cat-card-count" style="margin-top: 6px; display: inline-block;">{{ cat_items|length }} item{{ 's' if cat_items|length != 1 else '' }}</span>
+                            </div>
+                            <div class="cat-card-footer">
+                                <span>Browse Items</span>
+                                <i class="fas fa-chevron-right" style="font-size: 0.65rem;"></i>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p style="color: var(--hub-slate-400); font-size: 0.9rem;">No rentals or services available yet.</p>
+                    {% endif %}
+                </div>
+            </div> <!-- Closes hub-tab-menu -->
 
             <!-- PORTFOLIO TAB -->
             <div id="hub-tab-portfolio" class="tab-content">
@@ -1422,7 +1474,7 @@
             <div id="hub-tab-policies" class="tab-content">
                 <!-- OPERATIONAL POLICIES (Real-Time) -->
                 <div class="intel-card" style="padding: 1.75rem; margin-top: 2rem;">
-                    <h2 class="section-title">Operational Policies</h2>
+                    <h2 class="section-title">Booking Rules</h2>
                     <div class="policy-grid" style="display: grid; grid-template-columns: 1fr; gap: 1rem; margin-top: 1.5rem;">
                         <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
                             <div>
@@ -1583,16 +1635,21 @@ window.hubPkgs = {
         id: {{ pkg.id }},
         name: {{ pkg.name|tojson }},
         desc: {{ (pkg.description or '')|tojson }},
-        price: "₱{{ '{:,.2f}'.format(pkg.price_per_head if pkg.price_per_head else (pkg.price or 0)) }}{{ '/pax' if (pkg.price_per_head or pkg.price_unit == 'per_guest') else '' }}",
+        price: "₱{{ '{:,.2f}'.format(pkg.price if pkg.price else (pkg.price_per_head if pkg.price_per_head else 0)) if (pkg.pricing_mode == 'fixed' or pkg.price_unit == 'total') else '{:,.2f}'.format(pkg.price_per_head if pkg.price_per_head else (pkg.price if pkg.price else 0)) }}{{ ' total' if (pkg.pricing_mode == 'fixed' or pkg.price_unit == 'total') else '/pax' }}",
         price_raw: {{ (pkg.price_per_head if pkg.price_per_head else (pkg.price or 0))|tojson }},
         price_unit: {{ (pkg.price_unit or 'per_guest')|tojson }},
+        pricing_mode: {{ (pkg.pricing_mode or 'per_pax')|tojson }},
         min_guests: {{ (pkg.min_guests or 0)|tojson }},
         max_guests: {{ (pkg.max_guests or 0)|tojson }},
         duration: "{{ pkg.service_duration or 4 }} hours",
         additional_guest_price: {{ (pkg.additional_guest_price or 0)|tojson }},
         overtime_fee: {{ (pkg.overtime_fee or 0)|tojson }},
         inclusions: {{ (pkg.inclusions)|tojson if pkg.inclusions else '[]' }},
-        linked_inventory: [{% for item in pkg.menu_items %}{% if item.category in ['Rentals', 'Services'] %}{{ item.name|tojson }},{% endif %}{% endfor %}].filter(Boolean),
+        linked_inventory: [
+            {% for item in pkg.menu_items %}{% if item.category in ['Rentals', 'Services'] %}{{ item.name|tojson }},{% endif %}{% endfor %}
+            {% if pkg.equipment_links %}{% for el in pkg.equipment_links %}{{ el.equipment.name|tojson }},{% endfor %}{% endif %}
+            {% if pkg.service_links %}{% for sl in pkg.service_links %}{{ sl.service.name|tojson }},{% endfor %}{% endif %}
+        ].filter(Boolean),
         dishes: [{% for item in pkg.menu_items %}{% if item.category not in ['Rentals', 'Services'] %}{{ item.name|tojson }},{% endif %}{% endfor %}].filter(Boolean)
     }{{ ',' if not loop.last }}
     {% endfor %}
@@ -1639,7 +1696,7 @@ window.updateCartUI = function() {
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
                     <span style="font-size:0.85rem;font-weight:900;color:var(--hub-primary);">₱${subtotal}</span>
-                    <i class="fas fa-times-circle" onclick="window.removeCartItem('${item.id}')"
+                    <i class="fas fa-times-circle" onclick="window.removeCartItem('${item.id}', '${item.type}')"
                        style="cursor:pointer;color:var(--hub-slate-400);font-size:0.9rem;transition:color 0.2s;"
                        onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--hub-slate-400)'"
                        title="Remove"></i>
@@ -1656,12 +1713,15 @@ window.updateCartUI = function() {
 };
 
 // ---- Remove item from cart ----
-window.removeCartItem = function(id) {
-    window.selectedItems = window.selectedItems.filter(i => String(i.id) !== String(id));
+window.removeCartItem = function(id, type) {
+    if (!type) type = 'Menu'; // Fallback
+    window.selectedItems = window.selectedItems.filter(i => !(String(i.id) === String(id) && i.type === type));
+    
     // Reset modal btn if dish modal is open
-    const mbtn = document.getElementById('mbtn-' + id);
-    const mqty = document.getElementById('mq-' + id);
-    if (mbtn) { mbtn.classList.remove('selected'); mbtn.textContent = 'Add'; }
+    const mbtn = document.getElementById(type === 'Menu' ? 'mbtn-' + id : `mbtn-${type}-${id}`);
+    const mqty = document.getElementById(type === 'Menu' ? 'mq-' + id : `mq-${type}-${id}`);
+    
+    if (mbtn) { mbtn.classList.remove('selected'); mbtn.textContent = (type === 'Equipment') ? 'Rent' : 'Add'; }
     if (mqty) mqty.disabled = false;
     window.updateCartUI();
 };
@@ -1694,7 +1754,11 @@ window.toggleMenuItem = function(id, name, price) {
 // ---- Checkout: redirect to alacarte checkout ----
 window.checkoutOrder = function() {
     if (window.selectedItems.length === 0) return;
-    const menuIds = window.selectedItems.map(i => i.id).join(',');
+    const menuIds = window.selectedItems.map(i => {
+        if (i.type === 'Equipment') return 'e_' + i.id;
+        if (i.type === 'Service') return 's_' + i.id;
+        return 'm_' + i.id;
+    }).join(',');
     const catererId = {{ caterer.id }};
     sessionStorage.setItem('alacarte_cart_' + catererId, JSON.stringify(window.selectedItems));
     window.location.href = `/bookings/alacarte/checkout/${catererId}?menu_id=${menuIds}`;
@@ -1793,7 +1857,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 serving_size: {{ (item.serving_size or '')|tojson }},
                 pricing_unit: {{ (item.pricing_unit or 'per_serving')|tojson }},
                 dietary_tags: {{ (item.dietary_tags or [])|tojson }},
-                allergen_info: {{ (item.allergen_info or [])|tojson }}
+                allergen_info: {{ (item.allergen_info or [])|tojson }},
+                pricing_type: "{{ item.pricing_type or 'fixed' }}",
+                weight_prices: [
+                    {% for wp in item.weight_prices %}
+                    { weight_label: {{ wp.weight_label|tojson }}, price: {{ wp.price|tojson }} }{{ ',' if not loop.last else '' }}
+                    {% endfor %}
+                ],
+                size_prices: [
+                    {% for sp in item.size_prices %}
+                    { size_name: {{ sp.size_name|tojson }}, price: {{ sp.price|tojson }}, capacity: {{ (sp.capacity or '')|tojson }} }{{ ',' if not loop.last else '' }}
+                    {% endfor %}
+                ]
+            }{{ ',' if not loop.last else '' }}
+            {% endfor %}
+        ];
+
+        window.hubInventoryItems = [
+            {% for item in active_inventory %}
+            {
+                id: {{ item.id|tojson }},
+                name: {{ item.name|tojson }},
+                category: {{ (item.category or '')|tojson }},
+                price: {{ (item.rental_price if item.rental_price is defined else item.selling_price)|tojson }},
+                image: {{ (item.image_url or '')|tojson }},
+                description: {{ (item.description or '')|tojson }},
+                pricing_unit: {{ (item.unit_type or 'piece')|tojson }},
+                type: "{{ 'Equipment' if item.rental_price is defined else 'Service' }}"
             }{{ ',' if not loop.last else '' }}
             {% endfor %}
         ];
@@ -1904,16 +1994,29 @@ document.addEventListener('DOMContentLoaded', function() {
             const DIET_ICONS = { 'Vegetarian': '🌿', 'Vegan': '🌱', 'Halal': '✡️', 'Gluten-Free': '🌾' };
             const UNIT_MAP = {
                 'per_serving': '', 'per_tray': ' / Tray', 'per_bilao': ' / Bilao',
-                'per_pax': ' / Pax', 'per_hour': ' / Hr', 'per_unit': ' / Unit', 'per_set': ' / Set'
+                'per_pax': ' / Pax', 'per_hour': ' / Hr', 'per_unit': ' / Unit', 'per_set': ' / Set',
+                'per_kg': ' / Kg', 'whole': ' / Whole'
             };
 
             body.innerHTML = items.map(item => {
                 const img = item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200';
                 const unitSuffix = item.pricing_unit ? (UNIT_MAP[item.pricing_unit] || '') : '';
-                const priceDisplay = item.price > 0
-                    ? '\u20b1' + parseFloat(item.price).toLocaleString('en-PH', {minimumFractionDigits:2}) + unitSuffix
-                    : '<span style="font-size:0.78rem;font-weight:700;color:var(--hub-slate-400);">Included in Package</span>';
-                const isSelected = window.selectedItems.some(s => String(s.id) === String(item.id));
+                let priceDisplay = '';
+                let optionsHtml = '';
+                
+                if (item.pricing_type === 'weight_based' && item.weight_prices && item.weight_prices.length > 0) {
+                    optionsHtml = '<select class="dish-row-qty" id="opt-' + item.id + '" style="width: auto; margin-right: 4px; border: 1px solid var(--hub-slate-200); border-radius: 6px; padding: 4px 8px; font-size: 0.75rem;">' + item.weight_prices.map(wp => `<option value="${wp.weight_label}|${wp.price}">${wp.weight_label} - ₱${parseFloat(wp.price).toLocaleString('en-PH', {minimumFractionDigits:0})}</option>`).join('') + '</select>';
+                    priceDisplay = '<span style="font-size:0.75rem;font-weight:800;color:var(--hub-brand);">Weight Options Available</span>';
+                } else if (item.pricing_type === 'size_based' && item.size_prices && item.size_prices.length > 0) {
+                    optionsHtml = '<select class="dish-row-qty" id="opt-' + item.id + '" style="width: auto; margin-right: 4px; border: 1px solid var(--hub-slate-200); border-radius: 6px; padding: 4px 8px; font-size: 0.75rem;">' + item.size_prices.map(sp => `<option value="${sp.size_name}|${sp.price}">${sp.size_name} - ₱${parseFloat(sp.price).toLocaleString('en-PH', {minimumFractionDigits:0})}</option>`).join('') + '</select>';
+                    priceDisplay = '<span style="font-size:0.75rem;font-weight:800;color:var(--hub-brand);">Size Options Available</span>';
+                } else {
+                    priceDisplay = item.price > 0
+                        ? '₱' + parseFloat(item.price).toLocaleString('en-PH', {minimumFractionDigits:2}) + unitSuffix
+                        : '<span style="font-size:0.78rem;font-weight:700;color:var(--hub-slate-400);">Included in Package</span>';
+                }
+                
+                const isSelected = window.selectedItems.some(s => String(s.id) === String(item.id) && (s.type ? s.type === 'Menu' : true));
 
                 const dietHtml = (item.dietary_tags && item.dietary_tags.length > 0)
                     ? item.dietary_tags.map(t => `<span style="font-size:0.65rem;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:100px;padding:2px 8px;font-weight:700;">${DIET_ICONS[t]||''} ${t}</span>`).join('')
@@ -1946,6 +2049,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         ${tagsHtml}
                     </div>
                     <div class="dish-row-action">
+                        ${optionsHtml}
                         <input type="number" class="dish-row-qty" id="mq-${item.id}" value="1" min="1"
                                ${isSelected ? 'disabled' : ''}>
                         <button type="button"
@@ -1967,6 +2071,51 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.style.overflow = '';
         };
 
+        window.openInventoryModal = function(cat) {
+            const modal = document.getElementById('dish-cat-modal');
+            const title = document.getElementById('dish-modal-cat-title');
+            const body  = document.getElementById('dish-modal-body');
+            const items = window.hubInventoryItems.filter(i => i.category === cat);
+            title.textContent = cat + ' (' + items.length + ' item' + (items.length !== 1 ? 's' : '') + ')';
+
+            body.innerHTML = items.map(item => {
+                const img = item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200';
+                const unitSuffix = item.pricing_unit ? ' / ' + item.pricing_unit : '';
+                const priceDisplay = item.price > 0
+                    ? '\u20b1' + parseFloat(item.price).toLocaleString('en-PH', {minimumFractionDigits:2}) + unitSuffix
+                    : '<span style="font-size:0.78rem;font-weight:700;color:var(--hub-slate-400);">Contact for Price</span>';
+                const isSelected = window.selectedItems.some(s => String(s.id) === String(item.id) && s.type === item.type);
+
+                const descHtml = item.description
+                    ? `<div style="font-size:0.72rem;color:var(--hub-slate-400);line-height:1.5;margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${item.description}</div>`
+                    : '';
+
+                return `
+                <div class="dish-row" id="dish-row-${item.id}">
+                    <img src="${img}" class="dish-row-img" alt="${item.name}" loading="lazy"
+                         onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200'">
+                    <div class="dish-row-info">
+                        <div class="dish-row-name">${item.name}</div>
+                        <div class="dish-row-price">${priceDisplay}</div>
+                        ${descHtml}
+                    </div>
+                    <div class="dish-row-action">
+                        <input type="number" class="dish-row-qty" id="mq-${item.type}-${item.id}" value="1" min="1"
+                               ${isSelected ? 'disabled' : ''}>
+                        <button type="button"
+                            class="dish-row-btn ${isSelected ? 'selected' : ''}"
+                            id="mbtn-${item.type}-${item.id}"
+                            onclick="window.toggleInventoryModalItem(${item.id}, '${item.type}')">
+                            ${isSelected ? (item.type === 'Equipment' ? 'Rented ✓' : 'Added ✓') : (item.type === 'Equipment' ? 'Rent' : 'Add')}
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        };
+
         // ── toggleModalItem ──────────────────────────────────────────────
         // SAFE: only passes numeric ID, looks up name/price from hubMenuItems
         window.toggleModalItem = function(id) {
@@ -1979,6 +2128,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const idx = window.selectedItems.findIndex(i => String(i.id) === sid);
             const btn = document.getElementById('mbtn-' + sid);
             const qty = document.getElementById('mq-' + sid);
+            const opt = document.getElementById('opt-' + sid);
             const qtyVal = qty ? (Math.max(1, parseInt(qty.value) || 1)) : 1;
 
             if (idx === -1) {
@@ -1987,22 +2137,78 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert('Please enter a valid quantity (1–999).');
                     return;
                 }
+                
+                let finalPrice = menuItem ? (parseFloat(menuItem.price) || 0) : 0;
+                let finalName = menuItem ? menuItem.name : 'Item #' + sid;
+                
+                if (opt && opt.value) {
+                    const [optName, optPrice] = opt.value.split('|');
+                    finalPrice = parseFloat(optPrice) || finalPrice;
+                    finalName = finalName + ' (' + optName + ')';
+                }
+                
                 window.selectedItems.push({
                     id: sid,
-                    name: menuItem ? menuItem.name : 'Item #' + sid,
-                    price: menuItem ? (parseFloat(menuItem.price) || 0) : 0,
+                    type: 'Menu',
+                    name: finalName,
+                    price: finalPrice,
                     qty: qtyVal
                 });
                 if (btn) { btn.classList.add('selected'); btn.textContent = (menuItem && menuItem.category === 'Rentals') ? 'Rented ✓' : 'Added ✓'; }
                 if (qty) qty.disabled = true;
+                if (opt) opt.disabled = true;
             } else {
                 // Toggle off
                 window.selectedItems.splice(idx, 1);
                 if (btn) { btn.classList.remove('selected'); btn.textContent = (menuItem && menuItem.category === 'Rentals') ? 'Rent' : 'Add'; }
                 if (qty) { qty.disabled = false; qty.value = 1; }
+                const opt = document.getElementById('opt-' + sid);
+                if (opt) opt.disabled = false;
             }
 
             // Force drawer visible with !important
+            const drawer = document.querySelector('.order-drawer');
+            if (drawer) {
+                drawer.style.setProperty(
+                    'display',
+                    window.selectedItems.length > 0 ? 'block' : 'none',
+                    'important'
+                );
+            }
+            window.updateCartUI();
+        };
+        // ── toggleInventoryModalItem ─────────────────────────────────────────
+        window.toggleInventoryModalItem = function(id, type) {
+            const sid = String(id);
+            const menuItem = window.hubInventoryItems
+                ? window.hubInventoryItems.find(i => String(i.id) === sid && i.type === type)
+                : null;
+
+            const idx = window.selectedItems.findIndex(i => String(i.id) === sid && i.type === type);
+            const btn = document.getElementById(`mbtn-${type}-${sid}`);
+            const qty = document.getElementById(`mq-${type}-${sid}`);
+            const qtyVal = qty ? (Math.max(1, parseInt(qty.value) || 1)) : 1;
+
+            if (idx === -1) {
+                if (qtyVal < 1 || qtyVal > 999) {
+                    alert('Please enter a valid quantity (1–999).');
+                    return;
+                }
+                window.selectedItems.push({
+                    id: sid,
+                    type: type,
+                    name: menuItem ? menuItem.name : type + ' #' + sid,
+                    price: menuItem ? (parseFloat(menuItem.price) || 0) : 0,
+                    qty: qtyVal
+                });
+                if (btn) { btn.classList.add('selected'); btn.textContent = (type === 'Equipment') ? 'Rented ✓' : 'Added ✓'; }
+                if (qty) qty.disabled = true;
+            } else {
+                window.selectedItems.splice(idx, 1);
+                if (btn) { btn.classList.remove('selected'); btn.textContent = (type === 'Equipment') ? 'Rent' : 'Add'; }
+                if (qty) { qty.disabled = false; qty.value = 1; }
+            }
+
             const drawer = document.querySelector('.order-drawer');
             if (drawer) {
                 drawer.style.setProperty(

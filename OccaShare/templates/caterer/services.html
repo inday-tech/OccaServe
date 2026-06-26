@@ -21,18 +21,21 @@
     </div>
 </div>
 
-{% set categories_list = ['Tables', 'Chairs', 'Tents & Canopies', 'Stage & Platform', 'Audio Equipment', 'Lighting Equipment', 'Visual Equipment', 'Buffet Equipment', 'Tableware & Utensils', 'Decorations', 'Furniture', 'Catering Staff', 'Event Coordination', 'Entertainment', 'Photography', 'Videography', 'Audio & Visual Services', 'Decoration Services', 'Transportation', 'Security Services', 'Others'] %}
+{% set unique_categories = [] %}
+{% for item in items %}
+    {% if item.category and item.category not in unique_categories %}
+        {% set _ = unique_categories.append(item.category) %}
+    {% endif %}
+{% endfor %}
 <div class="category-filters animate-up delay-1">
     <button class="cat-chip active" data-cat="all" onclick="filterByCategory('all')">
         All Items <span class="badge-count">{{ items|length }}</span>
     </button>
-    {% for cat in categories_list %}
+    {% for cat in unique_categories|sort %}
     {% set count = items|selectattr('category', 'equalto', cat)|list|length %}
-    {% if count > 0 %}
     <button class="cat-chip" data-cat="{{ cat }}" onclick="filterByCategory('{{ cat }}')">
         {{ cat }} <span class="badge-count">{{ count }}</span>
     </button>
-    {% endif %}
     {% endfor %}
 </div>
 
@@ -69,7 +72,10 @@
                         data-pricing-unit="{{ item.unit_type or 'Per Event' }}"
                         data-available-qty="{{ item.available_qty or '' }}"
                         data-status="{{ item.status }}"
-                        data-is-hidden="{{ 'true' if item.status == 'unavailable' and item.item_type == 'Legacy' else 'false' }}"
+                        data-is-hidden="{{ 'true' if item.is_hidden else 'false' }}"
+                        data-usage-type="{{ item.usage_type or 'both' }}"
+                        data-is-addon="{{ 'true' if item.is_addon else 'false' }}"
+                        data-addon-price="{{ item.addon_price or 0 }}"
                         data-image-url="{{ item.image_url or '' }}"
                         onclick="viewMenuItem(this)">
                         <i class="fas fa-eye"></i> View
@@ -85,7 +91,10 @@
                         data-pricing-unit="{{ item.unit_type or 'Per Event' }}"
                         data-available-qty="{{ item.available_qty or '' }}"
                         data-status="{{ item.status }}"
-                        data-is-hidden="{{ 'true' if item.status == 'unavailable' and item.item_type == 'Legacy' else 'false' }}"
+                        data-is-hidden="{{ 'true' if item.is_hidden else 'false' }}"
+                        data-usage-type="{{ item.usage_type or 'both' }}"
+                        data-is-addon="{{ 'true' if item.is_addon else 'false' }}"
+                        data-addon-price="{{ item.addon_price or 0 }}"
                         data-image-url="{{ item.image_url or '' }}"
                         onclick="editMenuItem(this)">
                         <i class="fas fa-edit"></i> Edit
@@ -106,6 +115,12 @@
             <p class="item-desc-premium">{{ item.description|truncate(80) if item.description else 'No description provided.' }}</p>
             
             <div class="item-footer-premium">
+                {% if item.is_hidden %}
+                <div class="price-stack" style="width: 100%;">
+                    <span class="price-label">Selling Price</span>
+                    <span class="price-value" style="color: #64748b; font-size: 0.9rem;">Included in Package</span>
+                </div>
+                {% else %}
                 <div class="price-stack">
                     <span class="price-label">Selling Price</span>
                     <span class="price-value">₱{{ "{:,.0f}".format(item.price or 0) }} / {{ item.unit_type }}</span>
@@ -117,6 +132,7 @@
                         ₱{{ "{:,.0f}".format(profit) }}
                     </span>
                 </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -209,9 +225,18 @@
                 
                 <div class="form-group-pro">
                     <label>Catalog Visibility * <i class="fas fa-info-circle text-muted" title="If hidden, customers can only book this if it's inside a package."></i></label>
-                    <select name="visibility" id="modalVisibility" class="control-pro" required>
+                    <select name="visibility" id="modalVisibility" class="control-pro" required onchange="toggleServicePricing()">
                         <option value="public">Show on Profile</option>
                         <option value="hidden">Hidden (Package Only)</option>
+                    </select>
+                </div>
+
+                <div class="form-group-pro">
+                    <label>Usage Type * <i class="fas fa-info-circle text-muted" title="Controls how customers can book this item."></i></label>
+                    <select name="usage_type" id="modalUsageType" class="control-pro" required>
+                        <option value="both">Both (A la Carte & Package)</option>
+                        <option value="order_only">A la Carte Only</option>
+                        <option value="package_only">Package Only</option>
                     </select>
                 </div>
 
@@ -220,18 +245,33 @@
                     <textarea name="description" class="control-pro" placeholder="Describe dimensions, material, or service details..." maxlength="500" style="height: 80px;"></textarea>
                 </div>
 
-                <div class="form-row-pro">
-                    <div class="form-group-pro">
-                        <label>Estimated Cost (₱) * <i class="fas fa-info-circle text-muted" title="Internal business cost used for ROI"></i></label>
-                        <input type="text" name="cost_price" id="cost_price_input" class="control-pro js-format-comma" placeholder="0" required inputmode="numeric" maxlength="10">
+                <div id="servicePricingSection">
+                    <div class="form-row-pro">
+                        <div class="form-group-pro">
+                            <label>Estimated Cost (₱) <i class="fas fa-info-circle text-muted" title="Internal business cost used for ROI"></i></label>
+                            <input type="text" name="cost_price" id="cost_price_input" class="control-pro js-format-comma" placeholder="0" inputmode="numeric" maxlength="10">
+                        </div>
+                        <div class="form-group-pro" id="serviceSellingPriceGroup">
+                            <label>Selling Price (₱) <i class="fas fa-info-circle text-muted" title="Price charged to customers (can be 0 if hidden/package only)"></i></label>
+                            <input type="text" name="price" id="servicePriceInput" class="control-pro js-format-comma" placeholder="0" inputmode="numeric" maxlength="10">
+                        </div>
                     </div>
-                    <div class="form-group-pro">
-                        <label>Selling Price (₱) * <i class="fas fa-info-circle text-muted" title="Price charged to customers"></i></label>
-                        <input type="text" name="price" id="servicePriceInput" class="control-pro js-format-comma" placeholder="0" required inputmode="numeric" maxlength="10">
+                    
+                    <div class="margin-analytics-pro" id="roiMarginBadge" style="margin-bottom: 20px;">Profit: --</div>
+
+                    <div class="form-group-pro" style="margin-top: 15px; border-top: 1px dashed #e2e8f0; padding-top: 15px;">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" name="is_addon" id="isAddonCheckbox" value="true" onchange="document.getElementById('addonPriceGroup').style.display = this.checked ? 'block' : 'none';">
+                            <strong>Make available as Package Add-on</strong>
+                        </label>
+                        <p style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">Allow customers to add this to standard packages for an extra fee.</p>
+                    </div>
+
+                    <div class="form-group-pro" id="addonPriceGroup" style="display: none; background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                        <label>Add-on Price (₱) <i class="fas fa-info-circle text-muted" title="Price when added to a package"></i></label>
+                        <input type="text" name="addon_price" id="addonPriceInput" class="control-pro js-format-comma" placeholder="0" inputmode="numeric" maxlength="10">
                     </div>
                 </div>
-                
-                <div class="margin-analytics-pro" id="roiMarginBadge" style="margin-bottom: 20px;">Profit: --</div>
 
                 <div class="form-group-pro">
                     <label>Photo</label>
@@ -324,7 +364,7 @@
     const unitSelect = document.getElementById('modalPricingUnit');
     const customCat = document.getElementById('customCategoryInput');
 
-    const equipmentCats = ['Tables', 'Chairs', 'Tents & Canopies', 'Stage & Platform', 'Audio Equipment', 'Lighting Equipment', 'Visual Equipment', 'Buffet Equipment', 'Tableware & Utensils', 'Decorations', 'Furniture', 'Others'];
+    const equipmentCats = ['Tables', 'Chairs', 'Furniture Sets', 'Tents & Canopies', 'Stage & Platform', 'Audio Equipment', 'Lighting Equipment', 'Visual Equipment', 'Buffet Equipment', 'Tableware & Utensils', 'Decorations', 'Event Styling', 'Furniture', 'Others'];
     const serviceCats = ['Catering Staff', 'Event Coordination', 'Entertainment', 'Photography', 'Videography', 'Audio & Visual Services', 'Decoration Services', 'Transportation', 'Security Services', 'Others'];
 
     const equipmentUnits = ['Per Piece', 'Per Set', 'Per Day', 'Per Event'];
@@ -366,6 +406,19 @@
         toggleCustomCategory();
     }
 
+    function toggleServicePricing() {
+        const vis = document.getElementById('modalVisibility').value;
+        const sellingGroup = document.getElementById('serviceSellingPriceGroup');
+        const roiBadge = document.getElementById('roiMarginBadge');
+        if (vis === 'hidden') {
+            sellingGroup.style.display = 'none';
+            roiBadge.style.display = 'none';
+        } else {
+            sellingGroup.style.display = 'block';
+            roiBadge.style.display = 'flex';
+        }
+    }
+
     function toggleCustomCategory() {
         if (catSelect.value === 'Others') {
             customCat.style.display = 'block';
@@ -384,6 +437,7 @@
         removeImage();
         typeSelect.disabled = false; // Allow changing type for new item
         handleTypeChange();
+        toggleServicePricing();
         
         if (document.getElementById('menuErrorDrawer')) document.getElementById('menuErrorDrawer').style.display = 'none';
         
@@ -401,8 +455,14 @@
         document.getElementById('viewItemType').innerText = el.dataset.type;
         document.getElementById('viewItemCat').innerText = el.dataset.category;
         document.getElementById('viewItemDesc').innerText = el.dataset.description || 'No description provided.';
-        document.getElementById('viewItemPrice').innerText = '₱' + parseFloat(el.dataset.price).toLocaleString() + ' / ' + el.dataset.pricingUnit;
-        document.getElementById('viewItemCost').innerText = '₱' + parseFloat(el.dataset.costPrice).toLocaleString();
+        
+        if (el.dataset.isHidden === 'true') {
+            document.getElementById('viewItemPrice').innerText = 'Included in Package';
+            document.getElementById('viewItemCost').innerText = '--';
+        } else {
+            document.getElementById('viewItemPrice').innerText = '₱' + parseFloat(el.dataset.price).toLocaleString() + ' / ' + el.dataset.pricingUnit;
+            document.getElementById('viewItemCost').innerText = '₱' + parseFloat(el.dataset.costPrice).toLocaleString();
+        }
         
         const statusSpan = document.getElementById('viewItemStatus');
         if (el.dataset.status === 'available') {
@@ -444,6 +504,10 @@
                 pricing_unit: el.dataset.pricingUnit,
                 available_qty: el.dataset.availableQty,
                 status: el.dataset.status,
+                is_hidden: el.dataset.isHidden,
+                usage_type: el.dataset.usageType || 'both',
+                is_addon: el.dataset.isAddon === 'true',
+                addon_price: el.dataset.addonPrice || 0,
                 image_url: el.dataset.imageUrl
             };
 
@@ -481,6 +545,17 @@
             form.available_qty.value = item.available_qty || 1;
             form.status.value = item.status || 'available';
             if (form.visibility) form.visibility.value = item.is_hidden === 'true' ? 'hidden' : 'public';
+            if (form.usage_type) form.usage_type.value = item.usage_type;
+            
+            if (form.is_addon) {
+                form.is_addon.checked = item.is_addon;
+                document.getElementById('addonPriceGroup').style.display = item.is_addon ? 'block' : 'none';
+            }
+            if (form.addon_price) {
+                form.addon_price.value = item.addon_price;
+            }
+
+            toggleServicePricing();
 
             if (window.applyCommaFormatting) {
                 window.applyCommaFormatting(form.price);
@@ -632,11 +707,12 @@
         }
         
         // --- PRICING VALIDATION ---
+        const visibility = document.getElementById('modalVisibility').value;
         const sellPrice = parseFloat(this.querySelector('input[name="price"]').value) || 0;
         const costPrice = parseFloat(document.getElementById('cost_price_input').value) || 0;
         
-        if (sellPrice <= 0) {
-            alert("Selling Price must be greater than zero.");
+        if (visibility === 'public' && sellPrice <= 0) {
+            alert("Selling Price must be greater than zero if the item is visible on your profile (A La Carte).");
             if (btn) btn.disabled = false;
             if (document.getElementById('updateItemType').value) typeSelect.disabled = true;
             return;
@@ -649,6 +725,14 @@
         }
 
         const data = new FormData(this);
+        data.set('price', sellPrice);
+        data.set('cost_price', costPrice);
+        
+        // Ensure addon_price is sent as a valid number, even if empty
+        const addonPriceInput = document.getElementById('addonPriceInput');
+        if (addonPriceInput) {
+            data.set('addon_price', parseFloat(addonPriceInput.value.replace(/,/g, '')) || 0);
+        }
         
         // Use hidden input for type if updating
         const updateType = document.getElementById('updateItemType').value;

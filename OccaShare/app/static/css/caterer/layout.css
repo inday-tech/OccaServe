@@ -2063,3 +2063,5 @@
 .texture-dining { background-image: linear-gradient(45deg, rgba(203,213,225,0.05) 25%, transparent 25%), linear-gradient(-45deg, rgba(203,213,225,0.05) 25%, transparent 25%) !important; background-size: 30px 30px !important; }
 
 
+
+@media (max-width: 768px) { .page-header { flex-direction: column !important; align-items: flex-start !important; gap: 1rem; } }

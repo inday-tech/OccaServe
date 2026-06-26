@@ -738,11 +738,39 @@
         {% for item in menu_items %}
         {
             id: "{{ item.id }}",
+            type: "Menu",
             name: {{ (item.name or '')|tojson }},
             price: {{ item.price or 0 }},
+            pricing_unit: "{{ item.pricing_unit or 'per_tray' }}",
             image_url: "{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}",
             is_combo: {{ 'true' if item.is_combo else 'false' }},
             is_rental: {{ 'true' if item.category and item.category|lower == 'rentals' else 'false' }}
+        }{% if not loop.last or equipment_items or service_items %},{% endif %}
+        {% endfor %}
+        
+        {% for item in equipment_items %}
+        {
+            id: "{{ item.id }}",
+            type: "Equipment",
+            name: {{ (item.name or '')|tojson }},
+            price: {{ item.rental_price or 0 }},
+            pricing_unit: "{{ item.unit_type or 'per_unit' }}",
+            image_url: "{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}",
+            is_combo: false,
+            is_rental: true
+        }{% if not loop.last or service_items %},{% endif %}
+        {% endfor %}
+        
+        {% for item in service_items %}
+        {
+            id: "{{ item.id }}",
+            type: "Service",
+            name: {{ (item.name or '')|tojson }},
+            price: {{ item.selling_price or 0 }},
+            pricing_unit: "{{ item.unit_type or 'per_unit' }}",
+            image_url: "{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}",
+            is_combo: false,
+            is_rental: false
         }{% if not loop.last %},{% endif %}
         {% endfor %}
     ];

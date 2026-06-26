@@ -589,6 +589,48 @@
                         </div>
                     </div>
                     
+                    <!-- New Global Cost Settings -->
+                    <div class="section-header-compact" style="margin-top: 2rem;">
+                        <h3><i class="fas fa-calculator"></i> Global Operational Costs</h3>
+                        <p>These will be used automatically when computing ROI for all your catering packages.</p>
+                    </div>
+                    <div class="form-row-three-col" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label><i class="fas fa-user-tie"></i> Labor Cost (₱)</label>
+                            <input type="text" inputmode="numeric" name="default_labor_cost" class="js-format-comma" min="0" value="{{ profile.default_labor_cost or 0 }}">
+                            <span class="field-hint">Average labor fee per event.</span>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-bolt"></i> Utilities (₱)</label>
+                            <input type="text" inputmode="numeric" name="default_utility_cost" class="js-format-comma" min="0" value="{{ profile.default_utility_cost or 0 }}">
+                            <span class="field-hint">Average gas/electricity cost.</span>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-truck"></i> Transport (₱)</label>
+                            <input type="text" inputmode="numeric" name="default_transport_cost" class="js-format-comma" min="0" value="{{ profile.default_transport_cost or 0 }}">
+                            <span class="field-hint">Average logistics/delivery cost.</span>
+                        </div>
+                    </div>
+
+                    <div class="section-header-compact" style="margin-top: 2rem;">
+                        <h3><i class="fas fa-hand-holding-dollar"></i> Global Reservation Policy</h3>
+                        <p>Default reservation fee for your packages.</p>
+                    </div>
+                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label><i class="fas fa-percent"></i> Fee Type</label>
+                            <select name="default_reservation_type" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
+                                <option value="fixed" {% if profile.default_reservation_type == 'fixed' %}selected{% endif %}>Fixed Amount (₱)</option>
+                                <option value="percentage" {% if profile.default_reservation_type == 'percentage' %}selected{% endif %}>Percentage (%)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-money-bill"></i> Fee Value</label>
+                            <input type="text" inputmode="numeric" name="default_reservation_value" class="js-format-comma" min="0" value="{{ profile.default_reservation_value or 0 }}">
+                            <span class="field-hint">Amount or percentage required to secure date.</span>
+                        </div>
+                    </div>
+
                     <div class="form-group" style="margin-top: 1.5rem;">
                         <label><i class="fas fa-hand-holding-dollar"></i> Accepted Payment Terms</label>
                         <p class="field-hint" style="margin-bottom: 0.75rem;">Select the payment structures you allow for customer bookings. 100% Full Payment is always recommended.</p>

@@ -169,6 +169,11 @@ class CatererProfile(Base):
     equipment_turnover_hours = Column(Integer, default=24) # Turnaround time for rentals
     min_pax = Column(Integer, default=20) # Minimum pax for services
     accepted_payment_terms = Column(JSONB, default=[100]) # Flexible array, e.g. [30, 50, 100]
+    default_labor_cost = Column(Float, default=0.0)
+    default_utility_cost = Column(Float, default=0.0)
+    default_transport_cost = Column(Float, default=0.0)
+    default_reservation_type = Column(String, default='fixed') # 'fixed' or 'percentage'
+    default_reservation_value = Column(Float, default=0.0)
     
     # NEW: Notification Preferences (JSONB for flexibility)
     notification_preferences = Column(JSONB, default={
@@ -216,6 +221,7 @@ class PackageEquipment(Base):
     package_id = Column(Integer, ForeignKey("catering_packages.id", ondelete="CASCADE"))
     equipment_id = Column(Integer, ForeignKey("equipment.id", ondelete="CASCADE"))
     quantity = Column(Integer, default=1)
+    equipment = relationship("Equipment", backref="package_links")
 
 class PackageService(Base):
     __tablename__ = "package_services"
@@ -223,6 +229,7 @@ class PackageService(Base):
     package_id = Column(Integer, ForeignKey("catering_packages.id", ondelete="CASCADE"))
     service_id = Column(Integer, ForeignKey("services.id", ondelete="CASCADE"))
     quantity = Column(Integer, default=1)
+    service = relationship("Service", backref="package_links")
 
 class CateringPackage(Base):
     __tablename__ = "catering_packages"
@@ -280,6 +287,9 @@ class CateringPackage(Base):
 
     caterer = relationship("CatererProfile", back_populates="packages")
     menu_items = relationship("MenuItem", secondary="package_menus", back_populates="packages")
+    
+    equipment_links = relationship("PackageEquipment", cascade="all, delete-orphan", backref="package")
+    service_links = relationship("PackageService", cascade="all, delete-orphan", backref="package")
 
     bookings = relationship("Booking", back_populates="package")
 
@@ -367,6 +377,9 @@ class Equipment(Base):
     is_hidden = Column(Boolean, default=False)
     
     is_archived = Column(Boolean, default=False)
+    usage_type = Column(String, default="both") # 'package_only', 'order_only', 'both'
+    is_addon = Column(Boolean, default=False)
+    addon_price = Column(Float, default=0.0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     caterer = relationship("CatererProfile", back_populates="equipment_items")
@@ -389,6 +402,9 @@ class Service(Base):
     is_hidden = Column(Boolean, default=False)
     
     is_archived = Column(Boolean, default=False)
+    usage_type = Column(String, default="both") # 'package_only', 'order_only', 'both'
+    is_addon = Column(Boolean, default=False)
+    addon_price = Column(Float, default=0.0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     caterer = relationship("CatererProfile", back_populates="service_items")
@@ -505,7 +521,9 @@ class BookingMenuItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     booking_id = Column(Integer, ForeignKey("bookings.id"))
-    menu_item_id = Column(Integer, ForeignKey("menu_items.id"))
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id"), nullable=True)
+    equipment_id = Column(Integer, ForeignKey("equipment.id"), nullable=True)
+    service_id = Column(Integer, ForeignKey("services.id"), nullable=True)
     is_add_on = Column(Boolean, default=False)
     price = Column(Float) # Price at the time of booking
     quantity = Column(Integer, default=1)
@@ -513,6 +531,8 @@ class BookingMenuItem(Base):
 
     booking = relationship("Booking", back_populates="selected_items")
     menu_item = relationship("MenuItem")
+    equipment = relationship("Equipment")
+    service = relationship("Service")
 
 class BookingHistory(Base):
     __tablename__ = "booking_history"

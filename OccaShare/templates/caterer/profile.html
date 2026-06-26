@@ -243,7 +243,7 @@
                     <div class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1 hover-highlight">
                         <div class="text-secondary mb-2 text-xl hover:text-white"><i class="fas fa-utensils"></i></div>
                         <div class="text-2xl font-black text-slate-800">
-                            {{ caterer.menu_items|selectattr('is_archived', 'equalto', false)|selectattr('is_hidden', 'equalto', false)|list|length }}
+                            {{ active_menu|length }}
                         </div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Dishes</div>
                     </div>
@@ -290,19 +290,19 @@
             </section>
 
             <!-- Culinary Selection (Compact Space-Saving Category Grid) -->
-            {% if caterer.menu_items %}
+            {% if active_menu %}
             <section class="card-premium p-6">
                 <div class="flex items-center justify-between mb-8">
                     <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
                         <span class="w-8 h-[1px] bg-slate-200"></span> Culinary Library
                     </h2>
                     <span class="text-[10px] font-black text-accent uppercase bg-accent/10 px-2.5 py-1 rounded-full">
-                        {{ caterer.menu_items|selectattr('is_archived', 'equalto', false)|selectattr('is_hidden', 'equalto', false)|list|length }} Dishes Available
+                        {{ active_menu|length }} Dishes Available
                     </span>
                 </div>
 
                 {% set categories = [] %}
-                {% for item in caterer.menu_items if not item.is_archived and not item.is_hidden %}
+                {% for item in active_menu %}
                     {% if item.category not in categories %}
                         {% set _ = categories.append(item.category) %}
                     {% endif %}
@@ -310,7 +310,7 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                     {% for cat in categories %}
-                        {% set cat_items = caterer.menu_items|selectattr('category', 'equalto', cat)|selectattr('is_archived', 'equalto', false)|selectattr('is_hidden', 'equalto', false)|list %}
+                        {% set cat_items = active_menu|selectattr('category', 'equalto', cat)|list %}
                         {% set icon_class = get_category_icon(cat)|trim %}
                         
                         {# Extract first active item with valid image in this category #}
@@ -369,7 +369,76 @@
             </section>
             {% endif %}
 
-            <!-- Packages Section (Premium Grid) -->
+            <!-- Rentals & Services Section -->
+            {% if active_inventory %}
+            <section class="card-premium p-6 mt-6">
+                <div class="flex items-center justify-between mb-8">
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <span class="w-8 h-[1px] bg-slate-200"></span> Rentals & Services
+                    </h2>
+                    <span class="text-[10px] font-black text-brand uppercase bg-brand/10 px-2.5 py-1 rounded-full">
+                        {{ active_inventory|length }} Items Available
+                    </span>
+                </div>
+
+                {% set inventory_categories = [] %}
+                {% for item in active_inventory %}
+                    {% set cat_name = item.category if item.category else ('Equipment' if item.equipment_type else 'Service') %}
+                    {% if cat_name not in inventory_categories %}
+                        {% set _ = inventory_categories.append(cat_name) %}
+                    {% endif %}
+                {% endfor %}
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                    {% for cat in inventory_categories %}
+                        {% set cat_items = [] %}
+                        {% for item in active_inventory %}
+                            {% set item_cat = item.category if item.category else ('Equipment' if item.equipment_type else 'Service') %}
+                            {% if item_cat == cat %}
+                                {% set _ = cat_items.append(item) %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {# Extract first active item with valid image in this category #}
+                        {% set active_photo = namespace(url='') %}
+                        {% for item in cat_items %}
+                            {% if item.image_url and not active_photo.url %}
+                                {% set active_photo.url = item.image_url %}
+                            {% endif %}
+                        {% endfor %}
+                        {% set cat_cover_image = active_photo.url if active_photo.url else 'https://ui-avatars.com/api/?name=' ~ (cat|urlencode) ~ '&background=f1f5f9&color=64748b&size=400&font-size=0.2' %}
+                        
+                        <div class="group relative rounded-3xl overflow-hidden border border-slate-200 bg-white transition-all duration-300 hover:shadow-xl hover:border-brand/30 flex flex-col cursor-pointer"
+                             onclick='openInventoryShowcase({{ cat|tojson|safe }})'>
+                            
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            
+                            <div class="h-32 w-full bg-slate-100 relative overflow-hidden">
+                                <img src="{{ cat_cover_image }}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="{{ cat }}">
+                                <div class="absolute inset-0 bg-black/10 transition-opacity group-hover:opacity-0"></div>
+                            </div>
+                            
+                            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center z-20 border-2 border-white text-slate-400 group-hover:text-brand transition-colors">
+                                <i class="fas fa-box-open text-xl"></i>
+                            </div>
+
+                            <div class="p-6 pt-10 text-center flex-1 flex flex-col">
+                                <div class="flex flex-col items-center mb-3">
+                                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest mb-1.5 truncate max-w-full px-2">{{ cat }}</h3>
+                                    <span class="text-[9px] font-bold text-slate-400 bg-slate-100 group-hover:bg-brand group-hover:text-white px-3 py-1 rounded-full transition-colors flex-shrink-0">
+                                        {{ cat_items|length }} Items
+                                    </span>
+                                </div>
+
+                                <div class="mt-4 flex items-center justify-center gap-1.5 text-[9px] font-black text-brand uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
+                                    Explore Items <i class="fas fa-arrow-right text-[8px] mt-0.5 animate-bounce"></i>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
             {% if packages %}
             <section class="card-premium p-6">
                 <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
@@ -393,12 +462,10 @@
                         <div class="p-6 flex-1 flex flex-col">
                             <h3 class="text-base font-black text-slate-800 uppercase mb-2 leading-tight">{{ pkg.name }}</h3>
                             <div class="text-brand font-black text-xl mb-4">
-                                {% if pkg.price_per_head %}
-                                    ₱{{ "{:,.2f}".format(pkg.price_per_head) }}<span class="text-[10px] text-slate-400 font-bold ml-1">/pax</span>
-                                {% elif pkg.price_unit == 'per_guest' %}
-                                    ₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }}<span class="text-[10px] text-slate-400 font-bold ml-1">/pax</span>
+                                {% if pkg.pricing_mode == 'per_pax' or pkg.price_unit == 'per_guest' %}
+                                    ₱{{ "{:,.2f}".format(pkg.price_per_head if pkg.price_per_head else (pkg.price if pkg.price else 0)) }}<span class="text-[10px] text-slate-400 font-bold ml-1">/pax</span>
                                 {% else %}
-                                    ₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }}<span class="text-[10px] text-slate-400 font-bold ml-1"> total</span>
+                                    ₱{{ "{:,.2f}".format(pkg.price if pkg.price else (pkg.price_per_head if pkg.price_per_head else 0)) }}<span class="text-[10px] text-slate-400 font-bold ml-1"> total</span>
                                 {% endif %}
                             </div>
                             <p class="text-xs text-slate-500 mb-6 flex-1 line-clamp-3 leading-relaxed">{{ pkg.description }}</p>
@@ -416,17 +483,19 @@
             {% endif %}
 
             <!-- Gallery Section -->
-            {% if gallery_items %}
+            {% if public_portfolios %}
             <section class="card-premium p-6">
                 <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
                     <span class="w-8 h-[1px] bg-slate-200"></span> Visual Portfolio
                 </h2>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {% for item in gallery_items %}
+                    {% for item in public_portfolios %}
+                    {% set cover_img = (item.images | selectattr('is_cover', 'equalto', True) | first) %}
+                    {% set img_url = cover_img.image_url if cover_img else (item.images[0].image_url if item.images else '/static/images/default-portfolio.jpg') %}
                     <div class="aspect-square rounded-2xl overflow-hidden bg-white p-1.5 border border-slate-200 transition-all hover:scale-105 hover:shadow-lg cursor-pointer group relative" 
-                         onclick="openPublicImage('{{ item.media_url }}')">
+                         onclick="openPublicImage('{{ img_url }}')">
                         <div class="w-full h-full rounded-xl overflow-hidden relative">
-                            <img src="{{ item.media_url }}" class="w-full h-full object-cover" alt="Gallery Photo">
+                            <img src="{{ img_url }}" class="w-full h-full object-cover" alt="Gallery Photo">
                             <div class="absolute inset-0 bg-brand/35 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
                                 <i class="fas fa-search-plus text-white text-2xl animate-pulse"></i>
                             </div>
@@ -655,18 +724,26 @@
         {% for pkg in packages %}
         "{{ pkg.id }}": {
             name: "{{ pkg.name }}",
-            {% if pkg.price_per_head %}
-            price: '₱{{ "{:,.2f}".format(pkg.price_per_head) }} <span class="text-[10px] text-slate-400 font-bold ml-1">/pax</span>',
-            {% elif pkg.price_unit == "per_guest" %}
-            price: '₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }} <span class="text-[10px] text-slate-400 font-bold ml-1">/pax</span>',
+            {% if pkg.pricing_mode == 'per_pax' or pkg.price_unit == 'per_guest' %}
+            price: '₱{{ "{:,.2f}".format(pkg.price_per_head if pkg.price_per_head else (pkg.price if pkg.price else 0)) }} <span class="text-[10px] text-slate-400 font-bold ml-1">/pax</span>',
             {% else %}
-            price: '₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }} <span class="text-[10px] text-slate-400 font-bold ml-1">total</span>',
+            price: '₱{{ "{:,.2f}".format(pkg.price if pkg.price else (pkg.price_per_head if pkg.price_per_head else 0)) }} <span class="text-[10px] text-slate-400 font-bold ml-1">total</span>',
             {% endif %}
             description: `{{ pkg.description or 'Premium package.' }}`,
             inclusions: [
                 {% if pkg.menu_items %}
                     {% for m in pkg.menu_items %}
                         "Dish: {{ m.name }} ({{ m.category }})",
+                    {% endfor %}
+                {% endif %}
+                {% if pkg.equipment_links %}
+                    {% for eq_link in pkg.equipment_links %}
+                        "Equipment: {{ eq_link.equipment.name }} {% if eq_link.quantity > 1 %}(x{{ eq_link.quantity }}){% endif %}",
+                    {% endfor %}
+                {% endif %}
+                {% if pkg.service_links %}
+                    {% for svc_link in pkg.service_links %}
+                        "Service: {{ svc_link.service.name }} {% if svc_link.quantity > 1 %}(x{{ svc_link.quantity }}){% endif %}",
                     {% endfor %}
                 {% endif %}
                 {% if pkg.inclusions and pkg.inclusions is iterable %}
@@ -684,17 +761,101 @@
     const menuDishes = {
         {% for cat in categories %}
         "{{ cat }}": [
-            {% for item in caterer.menu_items if item.category == cat and not item.is_archived and not item.is_hidden %}
+            {% for item in active_menu if item.category == cat %}
             {
                 name: {{ item.name|tojson }},
                 image_url: "{{ item.image_url if item.image_url else '' }}",
                 serving_size: {{ (item.serving_size if item.serving_size else 'Single')|tojson }},
-                price: {{ (item.price if item.price else 0)|tojson }}
+                price: {{ (item.price if item.price else 0)|tojson }},
+                pricing_type: "{{ item.pricing_type or 'fixed' }}",
+                weight_prices: [
+                    {% for wp in item.weight_prices %}
+                    { weight_label: {{ wp.weight_label|tojson }}, price: {{ wp.price|tojson }} }{{ ',' if not loop.last else '' }}
+                    {% endfor %}
+                ],
+                size_prices: [
+                    {% for sp in item.size_prices %}
+                    { size_name: {{ sp.size_name|tojson }}, price: {{ sp.price|tojson }}, capacity: {{ (sp.capacity or '')|tojson }} }{{ ',' if not loop.last else '' }}
+                    {% endfor %}
+                ]
             },
             {% endfor %}
         ],
         {% endfor %}
     };
+
+    const inventoryItems = {
+        {% set inventory_categories = [] %}
+        {% for item in active_inventory %}
+            {% set cat_name = item.category if item.category else ('Equipment' if item.equipment_type else 'Service') %}
+            {% if cat_name not in inventory_categories %}
+                {% set _ = inventory_categories.append(cat_name) %}
+            {% endif %}
+        {% endfor %}
+
+        {% for cat in inventory_categories %}
+        "{{ cat }}": [
+            {% for item in active_inventory %}
+                {% set item_cat = item.category if item.category else ('Equipment' if item.equipment_type else 'Service') %}
+                {% if item_cat == cat %}
+                {
+                    name: {{ item.name|tojson }},
+                    image_url: "{{ item.image_url if item.image_url else '' }}",
+                    price: {{ (item.rental_price if item.rental_price is defined else item.selling_price)|tojson }},
+                    unit_type: {{ (item.unit_type if item.unit_type else 'piece')|tojson }},
+                    type: "{{ 'Equipment' if item.rental_price is defined else 'Service' }}"
+                },
+                {% endif %}
+            {% endfor %}
+        ],
+        {% endfor %}
+    };
+
+    function openInventoryShowcase(categoryName) {
+        const items = inventoryItems[categoryName] || [];
+        
+        // Update Title & Count
+        document.getElementById('showcase-title').innerText = categoryName;
+        document.getElementById('showcase-count').innerText = `${items.length} items available`;
+
+        // Update Icon based on category
+        const iconContainer = document.getElementById('showcase-icon-container');
+        iconContainer.innerHTML = `<i class="fas fa-box-open"></i>`;
+
+        // Populating the items grid
+        const grid = document.getElementById('showcase-items-grid');
+        if (items.length === 0) {
+            grid.innerHTML = `
+                <div class="col-span-full text-center py-12">
+                    <i class="fas fa-box-open text-slate-200 text-4xl mb-3"></i>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">No items in this category.</p>
+                </div>
+            `;
+        } else {
+            grid.innerHTML = items.map(item => `
+                <div class="group border border-slate-100 rounded-2xl p-4 flex flex-col gap-3 transition-all hover:border-brand/30 hover:shadow-lg bg-slate-50/20 hover:bg-white overflow-hidden text-center">
+                    <div class="relative overflow-hidden rounded-xl h-44 bg-slate-100 shadow-sm border border-slate-100/50">
+                        ${item.image_url ? 
+                            `<img src="${item.image_url}" onerror="this.src='https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400&auto=format&fit=crop'" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="${item.name}">` : 
+                            `<div class="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-300">
+                                <i class="fas fa-image text-3xl mb-2"></i>
+                                <span class="text-[9px] font-bold uppercase tracking-widest">No Image</span>
+                            </div>`
+                        }
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    </div>
+                    <div class="px-1 flex flex-col gap-1.5 items-center w-full">
+                        <div class="text-xs font-black text-slate-800 uppercase tracking-wider line-clamp-1">${item.name}</div>
+                        <div class="text-brand font-black text-sm bg-brand/5 px-3 py-1 rounded-full border border-brand/10">₱${parseFloat(item.price).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})} <span class="text-[9px] text-slate-400 font-bold">/${item.unit_type}</span></div>
+                        <button onclick="promptBookingAuth()" class="mt-2 w-full text-[10px] font-bold text-white bg-brand rounded-full py-1.5 transition hover:bg-brand/90 shadow-sm uppercase tracking-widest"><i class="fas ${item.type === 'Equipment' ? 'fa-box' : 'fa-calendar-check'}"></i> ${item.type === 'Equipment' ? 'Rent' : 'Book'}</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('category-showcase-modal').classList.remove('hidden');
+        document.getElementById('category-showcase-modal').classList.add('flex');
+    }
 
     function openCategoryShowcase(categoryName) {
         const dishes = menuDishes[categoryName] || [];
@@ -776,7 +937,12 @@
                     </div>
                     <div class="px-1 flex flex-col gap-1.5 items-center w-full">
                         <div class="text-xs font-black text-slate-800 uppercase tracking-wider line-clamp-1">${item.name}</div>
-                        <div class="text-brand font-black text-sm bg-brand/5 px-3 py-1 rounded-full border border-brand/10">₱${parseFloat(item.price).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</div>
+                        ${(item.pricing_type === 'weight_based' && item.weight_prices && item.weight_prices.length > 0)
+                            ? '<div class="flex flex-col gap-1 w-full items-center">' + item.weight_prices.map(wp => `<div class="text-brand font-bold text-[11px]">₱${parseFloat(wp.price).toLocaleString()} <span class="text-[9px] text-slate-400">/${wp.weight_label}</span></div>`).join('') + '</div>'
+                            : (item.pricing_type === 'size_based' && item.size_prices && item.size_prices.length > 0)
+                                ? '<div class="flex flex-col gap-1 w-full items-center">' + item.size_prices.map(sp => `<div class="text-brand font-bold text-[11px]">₱${parseFloat(sp.price).toLocaleString()} <span class="text-[9px] text-slate-400">/${sp.size_name}</span></div>`).join('') + '</div>'
+                                : `<div class="text-brand font-black text-sm bg-brand/5 px-3 py-1 rounded-full border border-brand/10">₱${parseFloat(item.price).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</div>`
+                        }
                         <button onclick="promptBookingAuth()" class="mt-2 w-full text-[10px] font-bold text-white bg-brand rounded-full py-1.5 transition hover:bg-brand/90 shadow-sm uppercase tracking-widest"><i class="fas ${categoryName === 'Rentals' ? 'fa-box' : (categoryName === 'Services' ? 'fa-calendar-check' : 'fa-cart-plus')}"></i> ${categoryName === 'Rentals' ? 'Rent' : (categoryName === 'Services' ? 'Book' : 'Order')}</button>
                     </div>
                 </div>

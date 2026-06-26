@@ -22,18 +22,21 @@
     </div>
 </div>
 
-{% set categories_list = ['Chicken', 'Beef', 'Pork', 'Seafood', 'Vegetable', 'Pasta', 'Dessert', 'Drinks', 'Party Trays / Bilao', 'Other'] %}
+{% set unique_categories = [] %}
+{% for item in menu_items %}
+    {% if item.category and item.category not in unique_categories %}
+        {% set _ = unique_categories.append(item.category) %}
+    {% endif %}
+{% endfor %}
 <div class="category-filters animate-up delay-1">
     <button class="cat-chip active" data-cat="all" onclick="filterByCategory('all')">
         All Items <span class="badge-count">{{ menu_items|length }}</span>
     </button>
-    {% for cat in categories_list %}
+    {% for cat in unique_categories|sort %}
     {% set count = menu_items|selectattr('category', 'equalto', cat)|list|length %}
-    {% if count > 0 %}
     <button class="cat-chip" data-cat="{{ cat }}" onclick="filterByCategory('{{ cat }}')">
         {{ cat }} <span class="badge-count">{{ count }}</span>
     </button>
-    {% endif %}
     {% endfor %}
 </div>
 
@@ -64,6 +67,7 @@
                         data-name="{{ item.name }}"
                         data-category="{{ item.category }}"
                         data-description="{{ item.description or '' }}"
+                        data-cost-price="{{ item.cost_price or 0 }}"
                         data-price="{{ item.price or '' }}"
                         data-serving-size="{{ item.serving_size or '' }}"
                         data-usage-type="{{ item.usage_type or 'both' }}"
@@ -85,6 +89,11 @@
                         data-allergen-info='{{ item.allergen_info|tojson if item.allergen_info else "[]" }}'
                         data-is-hidden="{{ 'true' if item.is_hidden else 'false' }}"
                         data-image-url="{{ item.image_url or '' }}"
+                        data-is-addon="{{ 'true' if item.is_addon else 'false' }}"
+                        data-addon-price="{{ item.addon_price or 0 }}"
+                        data-is-combo="{{ 'true' if item.is_combo else 'false' }}"
+                        data-max-choices="{{ item.max_choices or 1 }}"
+                        data-combo-options='{{ item.combo_options|tojson if item.combo_options else "[]" }}'
                         onclick="editMenuItem(this)">
                         <i class="fas fa-edit"></i> Edit
                     </button>
@@ -220,6 +229,11 @@
                     <label>Description</label>
                     <textarea name="description" class="control-pro" placeholder="Short description of the dish..." maxlength="500" style="height: 80px;"></textarea>
                 </div>
+                
+                <div class="form-group-pro">
+                    <label>Estimated Cost (₱) <i class="fas fa-info-circle text-muted" title="Your internal cost for this dish per serving/pax. Used for profit calculation."></i></label>
+                    <input type="text" name="cost_price" id="cost_price_input" class="control-pro js-format-comma" placeholder="0" inputmode="numeric" maxlength="10">
+                </div>
 
                 <!-- SECTION: Usage Type -->
                 <h4 style="font-size: 1rem; font-weight: 800; margin-top: 1.5rem; margin-bottom: 1rem; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Usage Type</h4>
@@ -249,6 +263,20 @@
                             </div>
                         </label>
                     </div>
+                </div>
+
+                <!-- SECTION: Add-on Configuration -->
+                <div class="form-group-pro" style="margin-top: 15px; border-top: 1px dashed #e2e8f0; padding-top: 15px;">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" name="is_addon" id="isAddonCheckbox" value="true" onchange="document.getElementById('addonPriceGroup').style.display = this.checked ? 'block' : 'none';">
+                        <strong>Make available as Package Add-on</strong>
+                    </label>
+                    <p style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">Allow customers to add this to standard packages for an extra fee.</p>
+                </div>
+
+                <div class="form-group-pro" id="addonPriceGroup" style="display: none; background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                    <label>Add-on Price (₱) <i class="fas fa-info-circle text-muted" title="Price when added to a package"></i></label>
+                    <input type="text" name="addon_price" id="addonPriceInput" class="control-pro js-format-comma" placeholder="0" inputmode="numeric" maxlength="10">
                 </div>
 
                 <!-- SECTION: Pricing Configuration -->
@@ -292,6 +320,44 @@
                             <!-- Rows injected by JS -->
                         </div>
                         <button type="button" class="btn-secondary-pro" onclick="addWeightRow()" style="margin-top: 0.5rem; width: 100%; border: 1px dashed #94a3b8;"><i class="fas fa-plus"></i> Add Weight</button>
+                    </div>
+                </div>
+
+                <!-- SECTION: Combo / Bento Configuration -->
+                <h4 style="font-size: 1rem; font-weight: 800; margin-top: 1.5rem; margin-bottom: 1rem; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Combo / Bento Configuration</h4>
+                
+                <div class="form-group-pro">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; background: #f0fdf4; padding: 1rem; border-radius: 8px; border: 1px solid #bbf7d0;">
+                        <input type="checkbox" name="is_combo" id="is_combo_checkbox" value="true" onchange="toggleComboSection()" style="width: 1.2rem; height: 1.2rem; accent-color: #16a34a;">
+                        <div>
+                            <span style="font-weight: 700; color: #166534; display: block;">Enable Customer Selection (Combo / Bento)</span>
+                            <span style="font-size: 0.75rem; color: #15803d; font-weight: 400;">Allow customers to choose specific dishes from your menu when they buy this item.</span>
+                        </div>
+                    </label>
+                </div>
+
+                <div id="comboConfigSection" style="display: none; background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px dashed #cbd5e1; margin-bottom: 1.5rem;">
+                    <div class="form-group-pro">
+                        <label>Maximum Choices per Order *</label>
+                        <input type="number" name="max_choices" id="combo_max_choices" class="control-pro" placeholder="e.g. 2" min="1" max="20">
+                        <small style="color: #64748b; font-size: 0.7rem; margin-top: 5px; display: block;">How many dishes can the customer select for this bento/platter?</small>
+                    </div>
+
+                    <div class="form-group-pro">
+                        <label>Select Available Options for this Combo</label>
+                        <div style="max-height: 200px; overflow-y: auto; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+                            {% for mi in menu_items %}
+                                {% if not mi.is_combo and mi.category != 'Other' and mi.category != 'Additionals' and mi.category != 'Rentals' and mi.category != 'Packed Meal' %}
+                                <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer;">
+                                    <input type="checkbox" name="combo_options_list[]" value="{{ mi.name }}" style="margin-top: 4px;">
+                                    <div>
+                                        <span style="font-size: 0.85rem; font-weight: 600; color: #334155;">{{ mi.name }}</span>
+                                        <div style="font-size: 0.65rem; color: #94a3b8;">{{ mi.category }}</div>
+                                    </div>
+                                </label>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
 
@@ -398,11 +464,28 @@
         }
     }
 
+    function toggleComboSection() {
+        const isCombo = document.getElementById('is_combo_checkbox').checked;
+        const configSection = document.getElementById('comboConfigSection');
+        const maxChoicesInput = document.getElementById('combo_max_choices');
+        
+        if (isCombo) {
+            configSection.style.display = 'block';
+            maxChoicesInput.required = true;
+        } else {
+            configSection.style.display = 'none';
+            maxChoicesInput.required = false;
+        }
+    }
+
     function addSizeRow(name = '', capacity = '', price = '') {
         const container = document.getElementById('sizeRowsContainer');
         const index = container.children.length;
         const row = document.createElement('div');
-        row.className = 'form-row-pro';
+        row.className = '';
+        row.style.display = 'flex';
+        row.style.gap = '10px';
+        row.style.alignItems = 'flex-start';
         row.style.marginBottom = '10px';
         row.innerHTML = `
             <div class="form-group-pro" style="flex: 2; margin-bottom: 0;">
@@ -414,7 +497,7 @@
             <div class="form-group-pro" style="flex: 2; margin-bottom: 0;">
                 <input type="text" inputmode="numeric" name="size_prices[]" class="control-pro js-format-comma" placeholder="Price (₱)" value="${price}" required min="0" step="0.01">
             </div>
-            <button type="button" class="btn-remove-img-pro" style="position: static; width: 40px; height: 40px; border-radius: 8px; margin-top: 4px;" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>
+            <button type="button" class="btn-remove-img-pro" style="position: static; width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0; background: #fee2e2; color: #ef4444; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>
         `;
         container.appendChild(row);
         const newInput = row.querySelector('.js-format-comma');
@@ -428,7 +511,10 @@
         const container = document.getElementById('weightRowsContainer');
         const index = container.children.length;
         const row = document.createElement('div');
-        row.className = 'form-row-pro';
+        row.className = '';
+        row.style.display = 'flex';
+        row.style.gap = '10px';
+        row.style.alignItems = 'flex-start';
         row.style.marginBottom = '10px';
         row.innerHTML = `
             <div class="form-group-pro" style="flex: 3; margin-bottom: 0;">
@@ -437,7 +523,7 @@
             <div class="form-group-pro" style="flex: 3; margin-bottom: 0;">
                 <input type="text" inputmode="numeric" name="weight_prices[]" class="control-pro js-format-comma" placeholder="Price (₱)" value="${price}" required min="0" step="0.01">
             </div>
-            <button type="button" class="btn-remove-img-pro" style="position: static; width: 40px; height: 40px; border-radius: 8px; margin-top: 4px;" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>
+            <button type="button" class="btn-remove-img-pro" style="position: static; width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0; background: #fee2e2; color: #ef4444; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>
         `;
         container.appendChild(row);
         const newInput = row.querySelector('.js-format-comma');
@@ -453,11 +539,19 @@
         form.reset();
         removeImage();
         
+        if (form.is_addon) form.is_addon.checked = false;
+        document.getElementById('addonPriceGroup').style.display = 'none';
+
         document.getElementById('sizeRowsContainer').innerHTML = '';
         document.getElementById('weightRowsContainer').innerHTML = '';
         document.getElementById('usage_both').checked = true;
         document.getElementById('modalPricingType').value = 'fixed';
         togglePricingSection();
+        
+        document.getElementById('is_combo_checkbox').checked = false;
+        document.getElementById('combo_max_choices').value = '';
+        document.querySelectorAll('input[name="combo_options_list[]"]').forEach(cb => cb.checked = false);
+        toggleComboSection();
         
         if (document.getElementById('menuErrorDrawer')) document.getElementById('menuErrorDrawer').style.display = 'none';
         
@@ -478,11 +572,14 @@
                 name: el.dataset.name,
                 category: el.dataset.category,
                 description: el.dataset.description,
+                cost_price: el.dataset.costPrice || 0,
                 price: el.dataset.price,
                 serving_size: el.dataset.servingSize,
                 status: el.dataset.status,
                 image_url: el.dataset.imageUrl,
                 usage_type: el.dataset.usageType || 'both',
+                is_addon: el.dataset.isAddon === 'true',
+                addon_price: el.dataset.addonPrice || 0,
                 pricing_type: el.dataset.pricingType || 'fixed'
             };
 
@@ -509,6 +606,14 @@
             // Set usage_type
             document.querySelector(`input[name="usage_type"][value="${item.usage_type}"]`).checked = true;
             
+            if (form.is_addon) {
+                form.is_addon.checked = item.is_addon;
+                document.getElementById('addonPriceGroup').style.display = item.is_addon ? 'block' : 'none';
+            }
+            if (form.addon_price) {
+                form.addon_price.value = item.addon_price;
+            }
+
             // Set pricing_type
             document.getElementById('modalPricingType').value = item.pricing_type;
             
@@ -531,6 +636,22 @@
             }
 
             togglePricingSection();
+
+            // Combo Data
+            const isComboStr = el.dataset.isCombo;
+            if (isComboStr === 'true') {
+                document.getElementById('is_combo_checkbox').checked = true;
+                document.getElementById('combo_max_choices').value = el.dataset.maxChoices || '';
+                const opts = JSON.parse(el.dataset.comboOptions || '[]');
+                document.querySelectorAll('input[name="combo_options_list[]"]').forEach(cb => {
+                    cb.checked = opts.includes(cb.value);
+                });
+            } else {
+                document.getElementById('is_combo_checkbox').checked = false;
+                document.getElementById('combo_max_choices').value = '';
+                document.querySelectorAll('input[name="combo_options_list[]"]').forEach(cb => cb.checked = false);
+            }
+            toggleComboSection();
 
             if (window.applyCommaFormatting) {
                 window.applyCommaFormatting(document.getElementById('fixed_price_input'));

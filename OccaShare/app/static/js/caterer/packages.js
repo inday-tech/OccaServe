@@ -537,8 +537,8 @@ async function loadPkgMenuLibrary() {
         const linkedItems = pkgId ? await linkedRes.json() : [];
         const linkedIds = Array.isArray(linkedItems) ? linkedItems.map(i => i.id) : [];
 
-        // Populate tab-perks (Equipment/Services) checkboxes
-        document.querySelectorAll('#tab-perks input[name="linked_menu_ids"]').forEach(cb => {
+        // Populate tab-perks (Equipment/Services) and tab-addons checkboxes
+        document.querySelectorAll('#tab-perks input[name="linked_menu_ids"], #tab-addons input[name="linked_menu_ids"]').forEach(cb => {
             const baseVal = cb.value.split('_q')[0];
             const val = isNaN(baseVal) ? baseVal : parseInt(baseVal);
             
@@ -593,40 +593,56 @@ async function loadPkgMenuLibrary() {
             return;
         }
 
-        container.innerHTML = foodLibrary.map(item => {
-            const isSelected = linkedIds.includes(item.id);
-            return `
-                <div class="menu-select-card ${isSelected ? 'selected' : ''}" 
-                     data-id="${item.id}"
-                     data-cost="${item.cost_price || 0}"
-                     data-category="${item.category}"
-                     onclick="window.toggleLibItemSelectCard(this, ${item.id})"
-                     style="position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; padding: 1.25rem 0.75rem; border: 1px solid ${isSelected ? 'var(--primary-color)' : '#e2e8f0'}; border-radius: 0.75rem; cursor: pointer; transition: all 0.2s; background: ${isSelected ? '#f0fdf4' : 'white'}; box-shadow: ${isSelected ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'};">
-                    
-                    <div style="position: absolute; top: 10px; right: 10px; font-size: 1.2rem; color: ${isSelected ? 'var(--primary-color)' : '#cbd5e1'}; transition: all 0.2s;">
-                        ${isSelected ? '<i class="fas fa-check-circle"></i>' : '<i class="far fa-circle"></i>'}
-                    </div>
-
-                    <img src="${item.image_url || DISH_PLACEHOLDER}" alt="${item.name}" onerror="this.src='${DISH_PLACEHOLDER}'" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 3px solid #f8fafc; margin-bottom: 0.25rem; box-shadow: 0 4px 8px rgba(0,0,0,0.06);">
-                    
-                    <div style="flex: 1; width: 100%;">
-                        <h6 style="margin: 0; font-size: 0.85rem; font-weight: 800; color: #1e293b; line-height: 1.2; text-overflow: ellipsis; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${item.name}</h6>
-                        <div style="font-size: 0.65rem; font-weight: 800; color: var(--primary-color); text-transform: uppercase; margin-top: 6px; letter-spacing: 0.05em;">${item.category}</div>
-                        <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; margin-top: 2px;">₱${(item.cost_price || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})} cost</div>
-                    </div>
-                    <input type="checkbox" name="linked_menu_ids" value="${item.id}" ${isSelected ? 'checked' : ''} style="display:none;">
+        // Group by category
+        const grouped = {};
+        foodLibrary.forEach(item => {
+            const cat = item.category || 'Other';
+            if (!grouped[cat]) grouped[cat] = [];
+            grouped[cat].push(item);
+        });
+        
+        let html = '';
+        for (const [cat, items] of Object.entries(grouped)) {
+            html += `
+                <div style="grid-column: 1 / -1; margin-top: 1rem; border-bottom: 2px solid #f1f5f9; padding-bottom: 0.5rem;">
+                    <h5 style="font-size: 0.9rem; font-weight: 800; color: #1e293b; margin: 0; text-transform: uppercase;">${cat}</h5>
                 </div>
             `;
-        }).join('');
+            html += items.map(item => {
+                const isSelected = linkedIds.includes(item.id);
+                return `
+                    <div class="menu-select-card ${isSelected ? 'selected' : ''}" 
+                         data-id="${item.id}"
+                         data-cost="${item.cost_price || 0}"
+                         data-category="${item.category}"
+                         onclick="window.toggleLibItemSelectCard(this, ${item.id})"
+                         style="position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; padding: 1.25rem 0.75rem; border: 1px solid ${isSelected ? 'var(--primary-color)' : '#e2e8f0'}; border-radius: 0.75rem; cursor: pointer; transition: all 0.2s; background: ${isSelected ? '#f0fdf4' : 'white'}; box-shadow: ${isSelected ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'};">
+                        
+                        <div style="position: absolute; top: 10px; right: 10px; font-size: 1.2rem; color: ${isSelected ? 'var(--primary-color)' : '#cbd5e1'}; transition: all 0.2s;">
+                            ${isSelected ? '<i class="fas fa-check-circle"></i>' : '<i class="far fa-circle"></i>'}
+                        </div>
+
+                        <img src="${item.image_url || DISH_PLACEHOLDER}" alt="${item.name}" onerror="this.src='${DISH_PLACEHOLDER}'" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 3px solid #f8fafc; margin-bottom: 0.25rem; box-shadow: 0 4px 8px rgba(0,0,0,0.06);">
+                        
+                        <div style="flex: 1; width: 100%;">
+                            <h6 style="margin: 0; font-size: 0.85rem; font-weight: 800; color: #1e293b; line-height: 1.2; text-overflow: ellipsis; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${item.name}</h6>
+                            <div style="font-size: 0.65rem; font-weight: 800; color: var(--primary-color); text-transform: uppercase; margin-top: 6px; letter-spacing: 0.05em;">${item.category}</div>
+                            ${(item.price && parseFloat(item.price) > 0) ? `<div style="font-size: 0.75rem; color: #64748b; font-weight: 700; margin-top: 4px;">Ala Carte Price: ₱${parseFloat(item.price).toLocaleString('en-PH', {minimumFractionDigits: 2})}</div>` : '<div style="font-size: 0.75rem; color: #10b981; font-weight: 700; margin-top: 4px;">Bundled in Package</div>'}
+                            <div style="font-size: 0.65rem; color: #94a3b8; font-weight: 600; margin-top: 2px;">Est. Puhunan: ₱${(item.cost_price || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})}</div>
+                        </div>
+                        <input type="checkbox" name="linked_menu_ids" value="${item.id}" ${isSelected ? 'checked' : ''} style="display:none;">
+                    </div>
+                `;
+            }).join('');
+        }
+        container.innerHTML = html;
         
         // Populate Add-ons Tab
         const addonsGrid = document.getElementById('addonsGrid');
         if (addonsGrid) {
             const addonsLibrary = library.filter(item => item.is_addon === true);
-            if (addonsLibrary.length === 0) {
-                addonsGrid.innerHTML = '<div class="text-center py-5 text-slate-400 text-xs" style="grid-column: 1 / -1;">No add-ons available in your inventory.</div>';
-            } else {
-                addonsGrid.innerHTML = addonsLibrary.map(item => {
+            if (addonsLibrary.length > 0) {
+                addonsGrid.innerHTML += addonsLibrary.map(item => {
                     const isSelected = linkedIds.includes(item.id);
                     return `
                         <div class="menu-select-card ${isSelected ? 'selected' : ''}" 
@@ -644,6 +660,7 @@ async function loadPkgMenuLibrary() {
                             <div style="flex: 1; width: 100%;">
                                 <h6 style="margin: 0; font-size: 0.85rem; font-weight: 800; color: #1e293b; line-height: 1.2; text-overflow: ellipsis; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${item.name}</h6>
                                 <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; margin-top: 4px;">Charge: ₱${(item.addon_price || item.price || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})}</div>
+                                <div style="font-size: 0.65rem; color: #94a3b8; font-weight: 600; margin-top: 2px;">Est. Puhunan: ₱${(item.cost_price || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})}</div>
                             </div>
                             <input type="checkbox" name="linked_menu_ids" value="${item.id}" ${isSelected ? 'checked' : ''} style="display:none;">
                         </div>
@@ -777,9 +794,9 @@ function filterPkgMenuLibrary() {
 
 function calculateCosts() {
     const form = document.getElementById('packageForm');
-    const labor = parseFloat(document.getElementById('pkgLaborCost')?.value) || 0;
-    const utility = parseFloat(document.getElementById('pkgUtilityCost')?.value) || 0;
-    const transport = parseFloat(document.getElementById('pkgTransportCost')?.value) || 0;
+    const labor = parseFloat(document.getElementById('pkgLaborCost')?.value.replace(/,/g, '')) || 0;
+    const utility = parseFloat(document.getElementById('pkgUtilityCost')?.value.replace(/,/g, '')) || 0;
+    const transport = parseFloat(document.getElementById('pkgTransportCost')?.value.replace(/,/g, '')) || 0;
     const minGuests = parseInt(form.min_guests ? form.min_guests.value : 50) || 1;
     const mode = form.pricing_mode ? form.pricing_mode.value : 'per_pax';
     
@@ -809,30 +826,25 @@ function calculateCosts() {
             } catch (e) {}
         }
 
-        let ingCostPerPax = 0;
+        let ingCostPerPaxVar = 0;
         for (const [cat, costs] of Object.entries(selectedDishesByCategory)) {
             costs.sort((a, b) => b - a);
             const limit = rules[cat] ? parseInt(rules[cat]) : costs.length;
             const effectiveLimit = Math.min(limit, costs.length);
             for (let i = 0; i < effectiveLimit; i++) {
-                ingCostPerPax += costs[i];
+                ingCostPerPaxVar += costs[i];
             }
         }
-
-        const ingDisplay = document.getElementById('pkgIngredientCostDisplay');
-        if (ingDisplay) {
-            ingDisplay.innerText = '₱' + ingCostPerPax.toFixed(2) + ' / pax';
-            ingDisplay.dataset.cost = ingCostPerPax;
-        }
+        
+        window._tempIngCostPerPax = ingCostPerPaxVar;
     }
 
-    const ingDisplay = document.getElementById('pkgIngredientCostDisplay');
-    const ingCostPerPax = parseFloat(ingDisplay?.dataset?.cost) || 0;
+    const ingCostPerPax = window._tempIngCostPerPax || 0;
 
     let overheadTotal = labor + utility + transport;
     let overheadPerPax = mode === 'per_pax' ? (overheadTotal / minGuests) : overheadTotal;
     let servicesCostPerPax = mode === 'per_pax' ? (servicesCostTotal / minGuests) : servicesCostTotal;
-    let foodCostPerPax = mode === 'per_pax' ? ingCostPerPax : (ingCostPerPax * minGuests);
+    let foodCostPerPax = ingCostPerPax;
     
     let totalCostPerPax = overheadPerPax + foodCostPerPax + servicesCostPerPax;
 
@@ -897,18 +909,20 @@ function calculateCosts() {
 
     if (rName && form) {
         rName.innerText = form.name.value || 'Untitled Package';
-        rType.innerText = form.service_type.value || 'General';
+        if (rType) rType.innerText = form.service_type.value || 'General';
         
         const mode = form.pricing_mode ? form.pricing_mode.value : 'per_pax';
-        rMode.innerText = mode === 'fixed' ? 'Fixed (Event Based)' : 'Per Pax (Guest Based)';
+        if (rMode) rMode.innerText = mode === 'fixed' ? 'Fixed (Event Based)' : 'Per Pax (Guest Based)';
         
-        rPrice.innerText = '₱' + manualPrice.toLocaleString(undefined, { minimumFractionDigits: 2 }) + (mode === 'fixed' ? ' total' : ' / pax');
-        rROI.innerText = margin.toFixed(1) + '%';
-        rROI.style.color = margin < 0 ? '#ef4444' : '#1e293b';
+        if (rPrice) rPrice.innerText = '₱' + manualPrice.toLocaleString(undefined, { minimumFractionDigits: 2 }) + (mode === 'fixed' ? ' total' : ' / pax');
+        if (rROI) {
+            rROI.innerText = margin.toFixed(1) + '%';
+            rROI.style.color = margin < 0 ? '#ef4444' : '#1e293b';
+        }
 
         const resType = form.reservation_fee_type ? form.reservation_fee_type.value : 'fixed';
         const resVal = form.reservation_fee_value ? parseFloat(form.reservation_fee_value.value) || 0 : 0;
-        rRes.innerText = resType === 'percentage' ? resVal + '%' : '₱' + resVal.toLocaleString();
+        if (rRes) rRes.innerText = resType === 'percentage' ? resVal + '%' : '₱' + resVal.toLocaleString();
         
         const rExcessContainer = document.getElementById('reviewExcessPaxContainer');
         const rExcess = document.getElementById('reviewExcessPax');
@@ -922,8 +936,8 @@ function calculateCosts() {
             }
         }
         
-        rDishes.innerText = document.querySelectorAll('#tab-menu .menu-select-card.selected').length;
-        rServices.innerText = document.querySelectorAll('#tab-perks .menu-select-card.selected').length;
+        if (rDishes) rDishes.innerText = document.querySelectorAll('#tab-menu .menu-select-card.selected').length;
+        if (rServices) rServices.innerText = document.querySelectorAll('#tab-perks .menu-select-card.selected').length;
         
         const rAddons = document.getElementById('reviewAddonsCount');
         if (rAddons) {
@@ -947,6 +961,20 @@ window.togglePricingMode = function(mode) {
     if (perHeadLabel) {
         perHeadLabel.innerText = mode === 'fixed' ? 'Total Package Price (₱) *' : 'Selling Price Per Pax (₱) *';
     }
+    
+    // Update Financial Panel labels dynamically
+    const fFoodLabel = document.getElementById('analysisFoodCostLabel');
+    if (fFoodLabel) fFoodLabel.innerText = mode === 'fixed' ? 'Total Est. Food Cost (Puhunan):' : 'Est. Food Cost (Puhunan / Pax):';
+    
+    const fServLabel = document.getElementById('analysisServicesCostLabel');
+    if (fServLabel) fServLabel.innerText = mode === 'fixed' ? 'Total Est. Services/Rentals Cost (Puhunan):' : 'Est. Services/Rentals Cost (Puhunan / Pax):';
+    
+    const fOpLabel = document.getElementById('analysisOperationalCostLabel');
+    if (fOpLabel) fOpLabel.innerText = mode === 'fixed' ? 'Total Est. Operational Cost (Puhunan):' : 'Est. Operational Cost (Puhunan / Pax):';
+    
+    const fTotalLabel = document.getElementById('analysisTotalCostLabel');
+    if (fTotalLabel) fTotalLabel.innerText = mode === 'fixed' ? 'Total Est. Base Cost (Puhunan):' : 'Total Est. Base Cost (Puhunan / Pax):';
+    
     calculateCosts();
 };
 
@@ -1131,6 +1159,25 @@ window.onclick = function(event) {
     if (event.target == rModal) safeCloseModal('roiModal');
 };
 
+window.toggleAllInContainer = function(checkbox, selector) {
+    const container = document.querySelector(selector);
+    if (!container) return;
+    
+    const isChecked = checkbox.checked;
+    const cards = container.querySelectorAll('.menu-select-card');
+    
+    cards.forEach(card => {
+        const id = card.dataset.id;
+        const cb = card.querySelector('input[type="checkbox"]');
+        if (!cb || !id) return;
+        
+        // If the card's state doesn't match the master checkbox state, toggle it
+        if (cb.checked !== isChecked) {
+            window.toggleLibItemSelectCard(card, id);
+        }
+    });
+};
+
 // Final Consolidated Exports
 window.openAddPackageModal = openAddPackageModal;
 window.editPackage = editPackage;
@@ -1150,6 +1197,7 @@ window.togglePackageStatus = togglePackageStatus;
 window.filterPackages = filterPackages;
 window.previewPackageImage = previewPackageImage;
 window.validateTab = validateTab;
+window.toggleAllInContainer = toggleAllInContainer;
 
 console.log("[Packages] v18.0 Exported.");
 

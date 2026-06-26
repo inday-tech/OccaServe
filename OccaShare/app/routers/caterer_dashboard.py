@@ -2289,12 +2289,12 @@ async def manage_packages(
     
     # Filter menu items (Dishes)
     service_cats = ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
-    active_menu = [m for m in profile.menu_items if not m.is_archived and m.category not in service_cats]
+    active_menu = [m for m in profile.menu_items if not m.is_archived and m.category not in service_cats and (getattr(m, 'usage_type', 'both') != 'order_only' or getattr(m, 'is_addon', False))]
     
     # Compile Inventory & Services
-    equipment_items = [e for e in profile.equipment_items if not e.is_archived and e.status == 'available']
-    service_items = [s for s in profile.service_items if not s.is_archived and s.status == 'available']
-    legacy_items = [m for m in profile.menu_items if not m.is_archived and m.status == 'available' and m.category in service_cats]
+    equipment_items = [e for e in profile.equipment_items if not e.is_archived and e.status == 'available' and (getattr(e, 'usage_type', 'both') != 'order_only' or getattr(e, 'is_addon', False))]
+    service_items = [s for s in profile.service_items if not s.is_archived and s.status == 'available' and (getattr(s, 'usage_type', 'both') != 'order_only' or getattr(s, 'is_addon', False))]
+    legacy_items = [m for m in profile.menu_items if not m.is_archived and m.status == 'available' and m.category in service_cats and (getattr(m, 'usage_type', 'both') != 'order_only' or getattr(m, 'is_addon', False))]
     
     # Unify them into a dictionary format compatible with the template
     active_services = []
@@ -2306,17 +2306,19 @@ async def manage_packages(
             "name": e.name,
             "category": e.category,
             "cost_price": e.cost_value,
-            "image_url": e.image_url
+            "image_url": e.image_url,
+            "is_addon": e.is_addon
         })
     for s in service_items:
         active_services.append({
-            "id": f"sv_{s.id}",
+            "id": f"svc_{s.id}",
             "real_id": s.id,
             "type": "Service",
             "name": s.name,
             "category": s.category,
             "cost_price": s.cost,
-            "image_url": s.image_url
+            "image_url": s.image_url,
+            "is_addon": s.is_addon
         })
     for m in legacy_items:
         active_services.append({
@@ -2326,7 +2328,8 @@ async def manage_packages(
             "name": m.name,
             "category": m.category,
             "cost_price": m.cost_price,
-            "image_url": m.image_url
+            "image_url": m.image_url,
+            "is_addon": m.is_addon
         })
         
     return templates.TemplateResponse("caterer/packages.html", {
@@ -2380,6 +2383,10 @@ async def manage_services(
             "unit_type": e.unit_type,
             "available_qty": e.available_qty,
             "status": e.status,
+            "is_hidden": e.is_hidden,
+            "usage_type": getattr(e, "usage_type", "both"),
+            "is_addon": getattr(e, "is_addon", False),
+            "addon_price": getattr(e, "addon_price", 0.0),
             "image_url": e.image_url
         })
     for s in service_items:
@@ -2394,6 +2401,10 @@ async def manage_services(
             "unit_type": s.unit_type,
             "available_qty": s.max_available,
             "status": s.status,
+            "is_hidden": s.is_hidden,
+            "usage_type": getattr(s, "usage_type", "both"),
+            "is_addon": getattr(s, "is_addon", False),
+            "addon_price": getattr(s, "addon_price", 0.0),
             "image_url": s.image_url
         })
     for m in legacy_items:
@@ -2408,6 +2419,10 @@ async def manage_services(
             "unit_type": m.pricing_unit,
             "available_qty": m.max_stock_quantity or 1,
             "status": "unavailable" if m.is_hidden else "available",
+            "is_hidden": m.is_hidden,
+            "usage_type": getattr(m, "usage_type", "both"),
+            "is_addon": getattr(m, "is_addon", False),
+            "addon_price": getattr(m, "addon_price", 0.0),
             "image_url": m.image_url
         })
 
@@ -2431,6 +2446,9 @@ async def add_service_item(
     available_qty: int = Form(1),
     status: str = Form("available"),
     visibility: str = Form("public"),
+    usage_type: str = Form("both"),
+    is_addon: bool = Form(False),
+    addon_price: float = Form(0.0),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -2460,6 +2478,9 @@ async def add_service_item(
             available_qty=available_qty,
             status=status,
             is_hidden=(visibility == "hidden"),
+            usage_type=usage_type,
+            is_addon=is_addon,
+            addon_price=addon_price,
             image_url=image_url
         )
     else:
@@ -2474,6 +2495,9 @@ async def add_service_item(
             max_available=available_qty,
             status=status,
             is_hidden=(visibility == "hidden"),
+            usage_type=usage_type,
+            is_addon=is_addon,
+            addon_price=addon_price,
             image_url=image_url
         )
         
@@ -2498,6 +2522,9 @@ async def update_service_item(
     available_qty: int = Form(1),
     status: str = Form("available"),
     visibility: str = Form("public"),
+    usage_type: str = Form("both"),
+    is_addon: bool = Form(False),
+    addon_price: float = Form(0.0),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -2527,6 +2554,9 @@ async def update_service_item(
         item.available_qty = available_qty
         item.status = status
         item.is_hidden = (visibility == "hidden")
+        item.usage_type = usage_type
+        item.is_addon = is_addon
+        item.addon_price = addon_price
         if image_url: item.image_url = image_url
     elif type == "Legacy":
         item = db.query(models.MenuItem).get(item_id)
@@ -2541,6 +2571,9 @@ async def update_service_item(
         item.max_stock_quantity = available_qty
         item.is_hidden = (visibility == "hidden")
         item.status = status
+        item.usage_type = usage_type
+        item.is_addon = is_addon
+        item.addon_price = addon_price
         if image_url: item.image_url = image_url
     else:
         item = db.query(models.Service).get(item_id)
@@ -2555,6 +2588,9 @@ async def update_service_item(
         item.max_available = available_qty
         item.status = status
         item.is_hidden = (visibility == "hidden")
+        item.usage_type = usage_type
+        item.is_addon = is_addon
+        item.addon_price = addon_price
         if image_url: item.image_url = image_url
 
     db.commit()
@@ -2640,10 +2676,17 @@ async def add_package(
     user: models.User = Depends(caterer_only)
 ):
     errors = []
+    
+    # Inject Global Settings for Operational Costs and Reservation
+    labor_cost = user.caterer_profile.default_labor_cost or 0.0
+    utility_cost = user.caterer_profile.default_utility_cost or 0.0
+    transportation_cost = user.caterer_profile.default_transport_cost or 0.0
+    reservation_fee_type = user.caterer_profile.default_reservation_type or "fixed"
+    reservation_fee_value = user.caterer_profile.default_reservation_value or 0.0
+    
     if not name.strip():
         errors.append("Package name is required.")
-    if not linked_menu_ids or len(linked_menu_ids) == 0:
-        errors.append("Please select at least 1 menu item from your library.")
+    # Removed mandatory menu item selection to allow optional packages
     if price_per_head <= 0:
         errors.append("Price per head must be greater than 0.")
     global_min_pax = user.caterer_profile.min_pax or 20
@@ -2653,8 +2696,8 @@ async def add_package(
     global_lead_time = user.caterer_profile.booking_lead_time or 7
     if booking_lead_time < global_lead_time:
         errors.append(f"Booking lead time cannot be lower than your global setting of {global_lead_time} days.")
-    if reservation_fee_value <= 0:
-        errors.append("Reservation fee must be greater than 0.")
+    if reservation_fee_value <= 0 and price_per_head > 0:
+        pass # Optional warning: errors.append("Reservation fee must be greater than 0.")
     elif reservation_fee_type == 'fixed' and price_per_head > 0 and min_guests > 0 and pricing_mode == 'per_pax':
         max_allowed_fee = (price_per_head * min_guests) * 0.5
         if reservation_fee_value > max_allowed_fee:
@@ -2709,10 +2752,10 @@ async def add_package(
         inclusions={inc: True for inc in inclusions} if inclusions else {},
         base_pax=base_pax,
         additional_guest_price=additional_guest_price,
-        labor_cost=labor_cost,
-        utility_cost=utility_cost,
+        labor_cost=user.caterer_profile.default_labor_cost or 0.0,
+        utility_cost=user.caterer_profile.default_utility_cost or 0.0,
         equipment_cost=equipment_cost,
-        transportation_cost=transportation_cost,
+        transportation_cost=user.caterer_profile.default_transport_cost or 0.0,
         miscellaneous_cost=miscellaneous_cost,
         internal_cost_per_pax=internal_cost_per_pax,
         reservation_fee_type=reservation_fee_type,
@@ -2824,6 +2867,30 @@ async def add_menu_item(
     
     is_hidden = form_data.get("visibility") == "hidden"
     
+    is_addon = form_data.get("is_addon") == "true"
+    addon_price = 0.0
+    if is_addon:
+        try:
+            addon_price = float(form_data.get("addon_price", "0").replace(",", ""))
+        except ValueError:
+            addon_price = 0.0
+
+    try:
+        cost_price = float(str(form_data.get("cost_price", "0")).replace(",", ""))
+    except ValueError:
+        cost_price = 0.0
+    
+    # Combo / Bento Logic
+    is_combo = form_data.get("is_combo") == "true"
+    max_choices = 0
+    combo_options = []
+    if is_combo:
+        try:
+            max_choices = int(form_data.get("max_choices", "1"))
+        except:
+            max_choices = 1
+        combo_options = form_data.getlist("combo_options_list[]")
+    
     dietary_tags = form_data.getlist("dietary_tags")
     allergen_info = form_data.getlist("allergen_info")
     
@@ -2845,6 +2912,7 @@ async def add_menu_item(
         name=name,
         category=category,
         description=description,
+        cost_price=cost_price,
         price=price,
         serving_size=serving_size,
         status=status,
@@ -2853,9 +2921,14 @@ async def add_menu_item(
         available_for_order=available_for_order,
         pricing_type=pricing_type,
         is_hidden=is_hidden,
+        is_addon=is_addon,
+        addon_price=addon_price,
         dietary_tags=dietary_tags,
         allergen_info=allergen_info,
         image_url=image_url,
+        is_combo=is_combo,
+        max_choices=max_choices,
+        combo_options=combo_options,
         is_archived=False
     )
     db.add(new_item)
@@ -2978,6 +3051,11 @@ async def update_profile(
     terms_and_conditions: Optional[str] = Form(None),
     general_terms: Optional[str] = Form(None),
     payment_terms: List[str] = Form(default=["100"]),
+    default_labor_cost: Optional[str] = Form("0.0"),
+    default_utility_cost: Optional[str] = Form("0.0"),
+    default_transport_cost: Optional[str] = Form("0.0"),
+    default_reservation_type: str = Form("fixed"),
+    default_reservation_value: Optional[str] = Form("0.0"),
     primary_color: Optional[str] = Form(None),
     secondary_color: Optional[str] = Form(None),
     accent_color: Optional[str] = Form(None),
@@ -3069,6 +3147,14 @@ async def update_profile(
         pass
     profile.terms_and_conditions = terms_and_conditions
     profile.general_terms = general_terms
+    try:
+        profile.default_labor_cost = float(default_labor_cost) if default_labor_cost else 0.0
+        profile.default_utility_cost = float(default_utility_cost) if default_utility_cost else 0.0
+        profile.default_transport_cost = float(default_transport_cost) if default_transport_cost else 0.0
+        profile.default_reservation_value = float(default_reservation_value) if default_reservation_value else 0.0
+    except ValueError:
+        pass
+    profile.default_reservation_type = default_reservation_type
 
     # Update branding
     profile.primary_color = primary_color
@@ -3247,10 +3333,17 @@ async def update_package(
         raise HTTPException(status_code=404, detail="Package not found")
         
     errors = []
+    
+    # Inject Global Settings for Operational Costs and Reservation
+    labor_cost = user.caterer_profile.default_labor_cost or 0.0
+    utility_cost = user.caterer_profile.default_utility_cost or 0.0
+    transportation_cost = user.caterer_profile.default_transport_cost or 0.0
+    reservation_fee_type = user.caterer_profile.default_reservation_type or "fixed"
+    reservation_fee_value = user.caterer_profile.default_reservation_value or 0.0
+    
     if not name.strip():
         errors.append("Package name is required.")
-    if not linked_menu_ids or len(linked_menu_ids) == 0:
-        errors.append("Please select at least 1 menu item from your library.")
+    # Removed mandatory menu item selection to allow optional packages
     if price_per_head <= 0:
         errors.append("Price per head must be greater than 0.")
     global_min_pax = user.caterer_profile.min_pax or 20
@@ -3260,8 +3353,8 @@ async def update_package(
     global_lead_time = user.caterer_profile.booking_lead_time or 7
     if booking_lead_time < global_lead_time:
         errors.append(f"Booking lead time cannot be lower than your global setting of {global_lead_time} days.")
-    if reservation_fee_value <= 0:
-        errors.append("Reservation fee must be greater than 0.")
+    if reservation_fee_value <= 0 and price_per_head > 0:
+        pass # Optional warning: errors.append("Reservation fee must be greater than 0.")
     elif reservation_fee_type == 'fixed' and price_per_head > 0 and min_guests > 0 and pricing_mode == 'per_pax':
         max_allowed_fee = (price_per_head * min_guests) * 0.5
         if reservation_fee_value > max_allowed_fee:
@@ -3559,7 +3652,9 @@ async def get_all_menu_items_api(
             "name": i.name,
             "category": i.category,
             "image_url": i.image_url,
-            "cost_price": i.cost_price
+            "cost_price": i.cost_price,
+            "price": i.price,
+            "is_addon": i.is_addon
         }
         for i in items
     ]
@@ -3655,6 +3750,30 @@ async def update_menu_item(
     
     is_hidden = form_data.get("visibility") == "hidden"
     
+    is_addon = form_data.get("is_addon") == "true"
+    addon_price = 0.0
+    if is_addon:
+        try:
+            addon_price = float(form_data.get("addon_price", "0").replace(",", ""))
+        except ValueError:
+            addon_price = 0.0
+
+    try:
+        cost_price = float(str(form_data.get("cost_price", "0")).replace(",", ""))
+    except ValueError:
+        cost_price = 0.0
+    
+    # Combo / Bento Logic
+    is_combo = form_data.get("is_combo") == "true"
+    max_choices = 0
+    combo_options = []
+    if is_combo:
+        try:
+            max_choices = int(form_data.get("max_choices", "1"))
+        except:
+            max_choices = 1
+        combo_options = form_data.getlist("combo_options_list[]")
+    
     dietary_tags = form_data.getlist("dietary_tags")
     allergen_info = form_data.getlist("allergen_info")
     
@@ -3663,6 +3782,7 @@ async def update_menu_item(
     item.name = name
     item.category = category
     item.description = description
+    item.cost_price = cost_price
     item.price = price
     item.serving_size = serving_size
     item.status = status
@@ -3671,8 +3791,13 @@ async def update_menu_item(
     item.available_for_order = available_for_order
     item.pricing_type = pricing_type
     item.is_hidden = is_hidden
+    item.is_addon = is_addon
+    item.addon_price = addon_price
     item.dietary_tags = dietary_tags
     item.allergen_info = allergen_info
+    item.is_combo = is_combo
+    item.max_choices = max_choices
+    item.combo_options = combo_options
 
     if image and hasattr(image, "filename") and image.filename:
         try:

@@ -69,7 +69,7 @@
             <div class="package-price-pro" style="margin-top: auto; background: #f8fafc; padding: 1rem; border-radius: var(--border-radius, 1rem); border: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <span style="display: block; font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">Starting at</span>
-                    <span style="font-size: 1.5rem; font-weight: 900; color: #1e293b;">₱{{ "{:,.0f}".format(package.price_per_head or 0) }}<small style="font-size: 0.7rem; color: #64748b; font-weight: 600;">/pax</small></span>
+                    <span style="font-size: 1.5rem; font-weight: 900; color: #1e293b;">₱{{ "{:,.0f}".format(package.price_per_head or 0) }}<small style="font-size: 0.7rem; color: #64748b; font-weight: 600;">{{ ' / pax' if package.pricing_mode == 'per_pax' else ' total' }}</small></span>
                 </div>
                 <button type="button" class="btn-archive-minimal" onclick="window.archivePackage({{ package.id }})" style="width: 32px; height: 32px; border-radius: var(--border-radius, 8px); border: 1px solid #fee2e2; background: #fff5f5; color: #ef4444; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;"><i class="fas fa-archive"></i></button>
             </div>
@@ -181,11 +181,11 @@
                     <!-- Tab 1: Basic Info -->
                     <div id="tab-basic" class="tab-pane-pro active">
                     <div class="form-row-pro">
-                        <div class="form-group-pro">
+                        <div class="form-group-pro" style="flex: 1; min-width: 150px;">
                             <label>Package Name *</label>
                             <input type="text" name="name" class="control-pro" required>
                         </div>
-                        <div class="form-group-pro">
+                        <div class="form-group-pro" style="flex: 1; min-width: 150px;">
                             <label>Pricing Mode</label>
                             <select name="pricing_mode" class="control-pro" onchange="window.togglePricingMode(this.value)">
                                 <option value="per_pax">Per Pax (Guest Based)</option>
@@ -237,10 +237,16 @@
                             <span style="font-size: 9px; font-weight:800; color:var(--color-neutral-400); text-transform:uppercase; background:var(--color-neutral-100); padding:2px 8px; border-radius:calc(var(--border-radius) * 0.3);">Inventory Linked</span>
                         </div>
                         <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Select the rentals and services from your inventory that are included in this package. These will automatically appear in the customer's package details.</p>
+                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+                            <label class="btn-secondary-pro" style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; padding: 0.4rem 0.8rem; font-size: 0.75rem; margin:0;">
+                                <input type="checkbox" onchange="window.toggleAllInContainer(this, '#tab-perks .menu-grid-scroll')" style="margin:0; width: 14px; height: 14px; cursor: pointer;"> Select All
+                            </label>
+                        </div>
                         <div style="background:var(--color-neutral-50); border-radius:var(--border-radius); padding:var(--space-md); border:1px solid var(--color-neutral-200); margin-bottom:var(--space-md); max-height:350px; overflow-y:auto;">
                             <div class="menu-grid-scroll" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem;">
                                 {% if services %}
                                     {% for item in services %}
+                                      {% if not item.is_addon %}
                                     <div class="menu-select-card" data-id="{{ item.id }}" data-cost="{{ item.cost_price or 0 }}" onclick="window.toggleLibItemSelectCard(this, '{{ item.id }}')" style="position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; padding: 1.25rem 0.75rem; border: 1px solid #e2e8f0; border-radius: var(--border-radius, 0.75rem); cursor: pointer; transition: all 0.2s; background: white;">
                                         <div style="position: absolute; top: 10px; right: 10px; font-size: 1.2rem; color: #cbd5e1; transition: all 0.2s;">
                                             <i class="far fa-circle"></i>
@@ -255,7 +261,7 @@
                                         <div style="flex: 1; width: 100%;">
                                             <h6 style="margin: 0; font-size: 0.85rem; font-weight: 800; color: #1e293b; line-height: 1.2; text-overflow: ellipsis; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{{ item.name }}</h6>
                                             <div style="font-size: 0.65rem; font-weight: 800; color: var(--primary-color); text-transform: uppercase; margin-top: 6px; letter-spacing: 0.05em;">{{ item.category }}</div>
-                                            <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; margin-top: 2px;">₱{{ "{:,.2f}".format(item.cost_price or 0) }} cost</div>
+                                            <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; margin-top: 2px;">Est. Puhunan: ₱{{ "{:,.2f}".format(item.cost_price or 0) }}</div>
                                         </div>
                                         
                                         <div class="qty-container" style="display: none; width: 100%; margin-top: 8px;" onclick="event.stopPropagation()">
@@ -266,6 +272,7 @@
                                         </div>
                                         <input type="checkbox" name="linked_menu_ids" value="{{ item.id }}_q1" style="display:none;">
                                     </div>
+                                    {% endif %}
                                     {% endfor %}
                                 {% else %}
                                     <div style="grid-column: 1 / -1; text-align: center; color: #94a3b8; padding: 2rem 0; font-size: 0.85rem;">
@@ -283,9 +290,14 @@
                     <div style="background:var(--color-neutral-50); border:1px solid var(--color-neutral-200); border-radius:var(--border-radius); padding:var(--space-md);">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
                             <label style="margin:0;">Library Selection</label>
-                            <div style="position:relative; width:160px;">
-                                <i class="fas fa-search" style="position:absolute; left:var(--space-sm); top:50%; transform:translateY(-50%); font-size:10px; color:var(--color-neutral-400);"></i>
-                                <input type="text" id="pkgMenuLibrarySearch" placeholder="Quick search..." onkeyup="filterPkgMenuLibrary()" class="control-pro" style="height:32px; padding-left:2rem; font-size:11px;">
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <label class="btn-secondary-pro" style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; padding: 0.3rem 0.6rem; font-size: 0.7rem; margin:0;">
+                                    <input type="checkbox" onchange="window.toggleAllInContainer(this, '#pkgMenuLibraryContainer')" style="margin:0; width: 14px; height: 14px; cursor: pointer;"> Select All
+                                </label>
+                                <div style="position:relative; width:160px; margin-left: 0.5rem;">
+                                    <i class="fas fa-search" style="position:absolute; left:var(--space-sm); top:50%; transform:translateY(-50%); font-size:10px; color:var(--color-neutral-400);"></i>
+                                    <input type="text" id="pkgMenuLibrarySearch" placeholder="Quick search..." onkeyup="filterPkgMenuLibrary()" class="control-pro" style="height:32px; padding-left:2rem; font-size:11px;">
+                                </div>
                             </div>
                         </div>
                         <div id="pkgMenuLibraryContainer" class="menu-grid-scroll">
@@ -314,6 +326,30 @@
                         <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Select items from your inventory that customers can optionally add to their booking for an extra charge (e.g., Photobooth, Band, Extra Tables).</p>
                         <div style="background:var(--color-neutral-50); border-radius:var(--border-radius); padding:var(--space-md); border:1px solid var(--color-neutral-200); margin-bottom:var(--space-md); max-height:350px; overflow-y:auto;">
                             <div class="menu-grid-scroll" id="addonsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem;">
+                                  {% if services %}
+                                      {% for item in services %}
+                                      {% if item.is_addon %}
+                                      <div class="menu-select-card" data-id="{{ item.id }}" data-cost="{{ item.cost_price or 0 }}" onclick="window.toggleLibItemSelectCard(this, '{{ item.id }}')" style="position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; padding: 1.25rem 0.75rem; border: 1px solid #e2e8f0; border-radius: var(--border-radius, 0.75rem); cursor: pointer; transition: all 0.2s; background: white;">
+                                          <div style="position: absolute; top: 10px; right: 10px; font-size: 1.2rem; color: #cbd5e1; transition: all 0.2s;">
+                                              <i class="far fa-circle"></i>
+                                          </div>
+                                          {% if item.image_url %}
+                                              <img src="{{ item.image_url }}" alt="{{ item.name }}" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 3px solid #f8fafc; margin-bottom: 0.25rem; box-shadow: 0 4px 8px rgba(0,0,0,0.06);">
+                                          {% else %}
+                                              <div style="width: 64px; height: 64px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; margin-bottom: 0.25rem;">
+                                                  <i class="fas fa-box" style="font-size: 1.5rem; color: #94a3b8;"></i>
+                                              </div>
+                                          {% endif %}
+                                          <div style="flex: 1; width: 100%;">
+                                              <h6 style="margin: 0; font-size: 0.85rem; font-weight: 800; color: #1e293b;">{{ item.name }}</h6>
+                                              <div style="font-size: 0.65rem; font-weight: 800; color: var(--primary-color); text-transform: uppercase; margin-top: 6px;">{{ item.category or 'Add-on' }}</div>
+                                              <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; margin-top: 2px;">Est. Puhunan: ₱{{ "{:,.2f}".format(item.cost_price or 0) }}</div>
+                                          </div>
+                                          <input type="checkbox" name="linked_menu_ids" value="{{ item.id }}" style="display:none;">
+                                      </div>
+                                      {% endif %}
+                                      {% endfor %}
+                                  {% endif %}
                                 <!-- Will be populated dynamically by JS -->
                             </div>
                         </div>
@@ -322,17 +358,18 @@
                 <!-- Tab 4: Pricing -->
                 <div id="tab-pricing" class="tab-pane-pro">
                     <div class="pricing-overview-card" style="background: #fff; border: 1px solid #e2e8f0; padding: 1.5rem; border-radius: var(--border-radius); margin-bottom: 1.5rem;">
-                        <div class="form-row-pro" style="grid-template-columns: 1fr 1fr 1fr;">
+                        <div class="form-row-pro" style="display: flex; flex-wrap: wrap; gap: 1rem;">
                             <div class="form-group-pro">
                                 <label style="font-size: 10px;">Selling Price (₱) *</label>
                                 <input type="text" name="price_per_head" id="pkgManualPriceInput" class="control-pro js-format-comma" style="height: 50px; font-size: 1.1rem; font-weight: 900;" placeholder="0.00" required maxlength="10">
                             </div>
-                            <div class="form-group-pro" id="minGuestsGroup">
+                            <div class="form-group-pro" id="minGuestsGroup" style="flex: 1; min-width: 150px;">
                                 <label style="font-size: 10px;">Min Guests</label>
                                 <input type="text" inputmode="numeric" name="min_guests" class="control-pro js-format-comma" style="height: 50px; font-weight: 700;" value="50" min="1" max="100000" oninput="if(this.value.length > 6) this.value = this.value.slice(0,6);">
                             </div>
-                            <div class="form-group-pro" id="excessPaxGroup" style="display: none;">
+                            <div class="form-group-pro" id="excessPaxGroup" style="display: none; flex: 1; min-width: 150px;">
                                 <label style="font-size: 10px;">Excess Pax Rate (₱)</label>
+                                <small style="display:block; font-size:9px; color:#64748b; margin-top:-4px; margin-bottom:4px;">Added to base per extra guest</small>
                                 <input type="text" inputmode="numeric" name="additional_guest_price" class="control-pro js-format-comma" style="height: 50px; font-weight: 700;" value="0" min="0">
                             </div>
                             <div class="form-group-pro">
@@ -348,6 +385,11 @@
                         </div>
 
 
+                        <!-- We fetch these from the caterer profile defaults as they are just estimates, we don't ask the caterer to re-enter them here -->
+                        <input type="hidden" id="pkgLaborCost" value="{{ user.caterer_profile.default_labor_cost or 0 }}">
+                        <input type="hidden" id="pkgUtilityCost" value="{{ user.caterer_profile.default_utility_cost or 0 }}">
+                        <input type="hidden" id="pkgTransportCost" value="{{ user.caterer_profile.default_transport_cost or 0 }}">
+
                         <!-- Financial Analysis Panel -->
                         <div class="roi-margin-container" style="background: #f8fafc; padding: 1.5rem; border-radius: var(--border-radius, 0.75rem); border: 1px solid #e2e8f0; margin-top: 1rem;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
@@ -357,23 +399,23 @@
                             
                             <div style="display:flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem; color: #64748b;">
                                 <div style="display:flex; justify-content:space-between; align-items: center;">
-                                    <span>Food Cost:</span>
+                                    <span id="analysisFoodCostLabel">Est. Food Cost (Puhunan):</span>
                                     <span id="analysisFoodCost" style="font-weight: 600; color: #1e293b;">₱0.00</span>
                                 </div>
                                 <div style="display:flex; justify-content:space-between; align-items: center;">
-                                    <span>Services/Rentals Cost:</span>
+                                    <span id="analysisServicesCostLabel">Est. Services/Rentals Cost (Puhunan):</span>
                                     <span id="analysisServicesCost" style="font-weight: 600; color: #1e293b;">₱0.00</span>
                                 </div>
                                 <div style="display:flex; justify-content:space-between; align-items: center;">
-                                    <span>Operational Cost (Per Pax):</span>
+                                    <span id="analysisOperationalCostLabel">Est. Operational Cost (Per Pax):</span>
                                     <span id="analysisOperationalCost" style="font-weight: 600; color: #1e293b;">₱0.00</span>
                                 </div>
                                 <div style="display:flex; justify-content:space-between; align-items: center; font-weight: 800; color: #0f172a; border-top: 1px solid #e2e8f0; padding-top: 0.5rem; margin-top: 0.25rem;">
-                                    <span>Total Est. Cost:</span>
+                                    <span id="analysisTotalCostLabel">Total Est. Base Cost (Puhunan):</span>
                                     <span id="totalCostDisplay">₱0.00</span>
                                 </div>
                                 <div style="display:flex; justify-content:space-between; align-items: center; font-weight: 800; color: #22c55e; border-top: 1px solid #e2e8f0; padding-top: 0.5rem; margin-top: 0.25rem;">
-                                    <span>Expected Profit:</span>
+                                    <span>Expected Profit (Benta - Puhunan):</span>
                                     <span id="analysisProfit">₱0.00</span>
                                 </div>
                                 <div style="display:flex; justify-content:space-between; align-items: center; font-weight: 800; color: #3b82f6; border-top: 1px solid #e2e8f0; padding-top: 0.5rem; margin-top: 0.25rem;">
@@ -384,37 +426,7 @@
                         </div>
                     </div>
 
-                    <!-- Advanced Costing Accordion -->
-                    <div class="advanced-costing-area">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.75rem;">
-                            <label style="margin:0; color: #1e293b; font-weight: 800;">Operational Overheads</label>
-                            <span style="font-size: 9px; background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: var(--border-radius, 4px); font-weight: 800;">AUTO-CALCULATING</span>
-                        </div>
-                        
-                        <div class="form-row-pro" style="grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-                            <div class="form-group-pro" style="margin-bottom: 0.5rem;">
-                                <label style="font-size: 10px;">Labor / Staff (₱)</label>
-                                <input type="text" inputmode="numeric" id="pkgLaborCost" name="labor_cost" class="control-pro js-format-comma" value="0" min="0" max="999999" oninput="if(this.value.length > 7) this.value = this.value.slice(0,7);">
-                            </div>
-                            <div class="form-group-pro" style="margin-bottom: 0.5rem;">
-                                <label style="font-size: 10px;">Utilities (₱)</label>
-                                <input type="text" inputmode="numeric" id="pkgUtilityCost" name="utility_cost" class="control-pro js-format-comma" value="0" min="0" max="999999" oninput="if(this.value.length > 7) this.value = this.value.slice(0,7);">
-                            </div>
-                            <div class="form-group-pro" style="margin-bottom: 0.5rem;">
-                                <label style="font-size: 10px;">Transportation (₱)</label>
-                                <input type="text" inputmode="numeric" id="pkgTransportCost" name="transportation_cost" class="control-pro js-format-comma" value="0" min="0" max="999999" oninput="if(this.value.length > 7) this.value = this.value.slice(0,7);">
-                            </div>
-                        </div>
-                        
-                        <div style="background: #fff; padding: 0.75rem; border-radius: var(--border-radius, 0.5rem); border: 1px solid #f1f5f9; margin-top: 0.5rem;">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span style="font-size: 0.75rem; color: #64748b;">Linked Ingredients Cost:</span>
-                                <span id="pkgIngredientCostDisplay" data-cost="0" style="font-weight: 700; color: #0f172a;">₱0.00 / pax</span>
-                            </div>
-                        </div>
-                        
-                        <input type="hidden" name="internal_cost_per_pax" id="pkgInternalCostPerPax" value="0">
-                    </div>
+                    <input type="hidden" name="internal_cost_per_pax" id="pkgInternalCostPerPax" value="0">
                 </div>
 
                 <!-- Tab 5: Review & Save -->
