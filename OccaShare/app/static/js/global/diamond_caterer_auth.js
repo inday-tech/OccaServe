@@ -5,7 +5,7 @@
 
 (function () {
     let currentStepCat = 1;
-    const totalStepsCat = 4;
+    const totalStepsCat = 3;
 
     // Compose hidden full_name from separate fields (called by diamond_validation.js crossCheckNames)
     window.composeFullNameCat = function () {
@@ -41,7 +41,7 @@
             const stepValid = await validateCurrentStepCat();
             if (!stepValid) return;
 
-            if (currentStepCat === 3) {
+            if (currentStepCat === 2) {
                 submitCatererForm();
                 return;
             }
@@ -233,33 +233,6 @@
             }
         }
 
-        if (currentStepCat === 3) {
-            const idTypeEl = document.getElementById('id_type_cat');
-            if (idTypeEl && (!idTypeEl.value || idTypeEl.value.trim() === '')) {
-                window.setDiamondError('idTypeCat', "Required", true);
-                valid = false;
-            } else {
-                window.setDiamondError('idTypeCat', "", false);
-            }
-
-            const idNumEl = document.getElementById('id_number_cat');
-            if (idNumEl && (!idNumEl.value || idNumEl.value.trim() === '')) {
-                window.setDiamondError('idNumberCat', "Required", true);
-                valid = false;
-            } else {
-                window.setDiamondError('idNumberCat', "", false);
-            }
-
-            const govIdBox = document.getElementById('govIdBoxCat');
-            if (govIdBox && !govIdBox.classList.contains('scanned-success')) {
-                const errDiv = document.getElementById('govIdOcrErrorCat');
-                if (errDiv) { errDiv.innerText = "Valid Government ID scan required"; errDiv.style.display = 'block'; }
-                valid = false;
-            } else {
-                const errDiv = document.getElementById('govIdOcrErrorCat');
-                if (errDiv) { errDiv.style.display = 'none'; }
-            }
-        }
 
         return valid;
     }
@@ -270,23 +243,8 @@
         const form = document.getElementById('catererForm');
         if (!form) return;
 
-        // Final Verification Safeguard
-        const idScanned = document.getElementById('govIdBoxCat').classList.contains('scanned-success');
-
-        if (!idScanned) {
-            if (window.Swal) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Security Check Required',
-                    text: 'Government ID verification is required. Please upload or capture your valid ID in Step 3.',
-                    confirmButtonColor: '#f97316'
-                });
-            }
-            return;
-        }
-
-        // Show OCR Validation Modal before final submit
-        showOcrReviewModal();
+        // No more ID verification at registration — go straight to submit
+        finalExecuteSubmit();
     }
 
     function showOcrReviewModal() {
@@ -455,7 +413,7 @@
                     // Transition to step 4
                     const steps = form.querySelectorAll('.form-step');
                     steps[currentStepCat - 1].classList.remove('active');
-                    currentStepCat = 4;
+                    currentStepCat = 3;
                     steps[currentStepCat - 1].classList.add('active');
 
                     // Update Progress Tracker

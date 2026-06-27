@@ -20,10 +20,6 @@
         </div>
         <div class="progress-step" id="p-step-3">
             3
-            <span class="step-label">Identity</span>
-        </div>
-        <div class="progress-step" id="p-step-4">
-            4
             <span class="step-label">Done</span>
         </div>
     </div>
@@ -55,21 +51,21 @@
                         <div>
                             <label for="last_name_cat" style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Last Name</label>
                             <div class="input-wrapper" id="lastNameCatWrapper">
-                                <input type="text" id="last_name_cat" name="last_name" class="minimal-input" required placeholder="e.g. Dela Cruz">
+                                <input type="text" id="last_name_cat" name="last_name" class="minimal-input" required>
                                 <div id="lastNameCatError" class="error-drawer">Required</div>
                             </div>
                         </div>
                         <div>
                             <label for="first_name_cat" style="font-size: 0.75rem; color: #64748b; font-weight: 600;">First Name</label>
                             <div class="input-wrapper" id="firstNameCatWrapper">
-                                <input type="text" id="first_name_cat" name="first_name" class="minimal-input" required placeholder="e.g. Juan">
+                                <input type="text" id="first_name_cat" name="first_name" class="minimal-input" required>
                                 <div id="firstNameCatError" class="error-drawer">Required</div>
                             </div>
                         </div>
                         <div>
                             <label for="middle_name_cat" style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Middle Name</label>
                             <div class="input-wrapper" id="middleNameCatWrapper">
-                                <input type="text" id="middle_name_cat" name="middle_name" class="minimal-input" placeholder="Optional">
+                                <input type="text" id="middle_name_cat" name="middle_name" class="minimal-input">
                                 <div id="middleNameCatError" class="error-drawer"></div>
                             </div>
                         </div>
@@ -195,175 +191,10 @@
             </div>
         </div>
 
-        <!-- Step 3: Identity Verification -->
-        <style>
-            .file-upload-box {
-                height: 150px !important;
-                min-height: 150px !important;
-                justify-content: center !important;
-                align-items: center !important;
-                overflow: hidden !important;
-                min-width: 0 !important;
-                width: 100% !important;
-                box-sizing: border-box !important;
-            }
-            .file-upload-box p {
-                width: 100%;
-                max-width: 100%;
-                box-sizing: border-box;
-                padding: 0 10px;
-                white-space: normal;
-                word-wrap: break-word;
-                word-break: break-all;
-                overflow: hidden;
-                display: -webkit-box;
-                -webkit-line-clamp: 2;
-                -webkit-box-orient: vertical;
-            }
-            .scan-status-badge {
-                max-width: 90%;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                overflow: hidden;
-                display: inline-block;
-            }
-            .ocr-error-text {
-                color: #ef4444;
-                font-size: 0.75rem;
-                font-weight: 600;
-                margin-top: 0.5rem;
-                background: #fff5f5;
-                border: 1px solid rgba(239, 68, 68, 0.2);
-                padding: 0.5rem 0.75rem;
-                border-radius: 0.5rem;
-                display: none;
-            }
-            .full-width-grid {
-                grid-template-columns: 1fr !important;
-            }
-        </style>
-        <div class="form-step" id="step-3">
-            <div class="form-grid full-width-grid" style="grid-template-columns: 1fr !important;">
-                <div class="form-group full-width" style="margin-top: 1.5rem;">
-                    <label for="id_type_cat">Valid ID Type <span style="color:#ef4444;">*</span></label>
-                    <div class="input-wrapper" id="idTypeCatWrapper">
-                        <select id="id_type_cat" name="id_type" class="minimal-input" required>
-                            <option value="">-- Choose ID Type --</option>
-                            <option value="PhilID (National ID)">PhilSys / PhilID</option>
-                            <option value="Driver's License">Philippine Driver's License</option>
-                            <option value="Passport">Philippine Passport</option>
-                            <option value="UMID">UMID</option>
-                            <option value="PRC ID">PRC ID</option>
-                            <option value="Postal ID">Postal ID</option>
-                        </select>
-                        <div id="idTypeCatError" class="error-drawer">Required</div>
-                    </div>
-                </div>
-                <div class="form-group full-width">
-                    <label for="id_number_cat">ID Number <span style="color:#ef4444;">*</span></label>
-                    <div class="input-wrapper" id="idNumberCatWrapper">
-                        <input type="text" id="id_number_cat" name="id_number" class="minimal-input" required oninput="formatIdNumberInline(this, 'id_type_cat')">
-                        <div id="idNumberCatError" class="error-drawer">Required</div>
-                    </div>
-                </div>
-                
-                <script>
-                    function formatIdNumberInline(inputEl, selectId) {
-                        const selectEl = document.getElementById(selectId);
-                        const idType = selectEl ? selectEl.value : '';
-                        
-                        let val = inputEl.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-                        let formatted = val;
-                
-                        if (idType === 'PhilID (National ID)') {
-                            val = val.replace(/[^0-9]/g, '');
-                            const parts = [];
-                            for (let i = 0; i < val.length && i < 16; i += 4) {
-                                parts.push(val.substring(i, i + 4));
-                            }
-                            formatted = parts.join('-');
-                        } 
-                        else if (idType === "Driver's License") {
-                            if (val.length > 0) {
-                                const firstChar = val.charAt(0).replace(/[^A-Z]/g, '');
-                                const rest = val.substring(1).replace(/[^0-9]/g, '');
-                                val = firstChar + rest;
-                                
-                                let formattedVal = firstChar;
-                                if (rest.length > 0) {
-                                    formattedVal += rest.substring(0, 2);
-                                    if (rest.length > 2) {
-                                        formattedVal += '-' + rest.substring(2, 4);
-                                        if (rest.length > 4) {
-                                            formattedVal += '-' + rest.substring(4, 10);
-                                        }
-                                    }
-                                }
-                                formatted = formattedVal;
-                            }
-                        }
-                        else if (idType === 'UMID' || idType === 'SSS ID') {
-                            val = val.replace(/[^0-9]/g, '');
-                            const parts = [];
-                            if (val.length > 0) parts.push(val.substring(0, 2));
-                            if (val.length > 2) parts.push(val.substring(2, 9));
-                            if (val.length > 9) parts.push(val.substring(9, 10));
-                            formatted = parts.join('-');
-                        }
-                        else if (idType === 'TIN ID') {
-                            val = val.replace(/[^0-9]/g, '');
-                            const parts = [];
-                            for (let i = 0; i < val.length && i < 12; i += 3) {
-                                parts.push(val.substring(i, i + 3));
-                            }
-                            formatted = parts.join('-');
-                        }
-                        else if (idType === 'Passport') {
-                            formatted = val.substring(0, 9);
-                        }
-                
-                        if (inputEl.value !== formatted) {
-                            inputEl.value = formatted;
-                        }
-                    }
-                
-                    document.getElementById('id_type_cat').addEventListener('change', function() {
-                        const inputEl = document.getElementById('id_number_cat');
-                        if (inputEl) {
-                            let ph = '';
-                            if (this.value === 'PhilID (National ID)') ph = '0000-0000-0000-0000';
-                            else if (this.value === "Driver's License") ph = 'A00-00-000000';
-                            else if (this.value === 'UMID' || this.value === 'SSS ID') ph = '00-0000000-0';
-                            else if (this.value === 'TIN ID') ph = '000-000-000-000';
-                            else if (this.value === 'Passport') ph = 'P1234567A';
-                            
-                            inputEl.setAttribute('placeholder', ph);
-                            if (inputEl.value) {
-                                formatIdNumberInline(inputEl, 'id_type_cat');
-                            }
-                        }
-                    });
-                </script>
- 
-                <div class="form-group full-width">
-                    <label for="gov_id_cat">Valid Government ID <span style="color:#ef4444;">*</span></label>
-                    <div class="file-upload-box" id="govIdBoxCat" onclick="document.getElementById('gov_id_cat').click()">
-                        <div id="govIdInitialViewCat" style="text-align: center; width: 100%;">
-                            <i class="fas fa-id-card" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 0.5rem;"></i>
-                            <p id="govIdNameCat" style="font-size: 0.8rem; font-weight: 600; margin-bottom: 0.5rem;">Government ID</p>
-                            <span style="font-size: 0.7rem; color: var(--auth-slate-400);">Click to Upload (JPEG/PNG)</span>
-                        </div>
-                        <span id="govIdStatusCat" class="scan-status-badge"></span>
-                        <input type="file" id="gov_id_cat" name="gov_id" accept="image/*" style="display:none;" required
-                            onchange="updateFileNameCat(this, 'govIdNameCat'); handleFileUploadCat(this, 'id');">
-                    </div>
-                    <div id="govIdOcrErrorCat" class="ocr-error-text"></div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Step 4: Registration Complete success state -->
-        <div class="form-step" id="step-4">
+
+        <!-- Step 3: Registration Complete success state -->
+        <div class="form-step" id="step-3">
             <div style="text-align: center; padding: 2rem 1rem;">
                 <div style="width: 70px; height: 70px; background: #f0fdf4; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
                     <i class="fas fa-check-circle" style="font-size: 2.5rem; color: #10b981;"></i>
@@ -376,16 +207,16 @@
                     <svg style="width: 120px; height: 120px; transform: rotate(-90deg);">
                         <circle cx="60" cy="60" r="50" stroke="#f1f5f9" stroke-width="10" fill="transparent" />
                         <circle cx="60" cy="60" r="50" stroke="#f97316" stroke-width="10" fill="transparent" 
-                                stroke-dasharray="314.16" stroke-dashoffset="188.5" style="transition: stroke-dashoffset 1s ease-out;" />
+                                stroke-dasharray="314.16" stroke-dashoffset="314.16" style="transition: stroke-dashoffset 1s ease-out;" />
                     </svg>
                     <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
-                        <span style="font-size: 1.5rem; font-weight: 800; color: #0f172a;">40%</span>
+                        <span style="font-size: 1.5rem; font-weight: 800; color: #0f172a;">0%</span>
                         <div style="font-size: 0.65rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Profile</div>
                     </div>
                 </div>
                 
                 <p style="color: #475569; font-size: 0.8rem; max-width: 320px; margin: 0 auto 2rem; line-height: 1.5;">
-                    Let's complete the remaining checklist on your dashboard to publish your business listing.
+                    Let's complete the remaining checklist on your dashboard — including identity verification — to publish your business listing.
                 </p>
                 
                 <button type="button" class="btn-primary" id="btnGoToDashboard" style="width: 100%; max-width: 250px; margin: 0 auto; padding: 0.7rem 1.5rem; font-weight: 700;" onclick="window.location.href='/caterer/dashboard'">Go To Dashboard</button>

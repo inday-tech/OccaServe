@@ -1,6 +1,6 @@
 (function () {
     let currentStepCat = 1;
-    const totalStepsCat = 4;
+    const totalStepsCat = 3;
 
     function setError(fieldId, message, isError = true) {
         const wrapper = document.getElementById(fieldId + 'Wrapper');
@@ -176,11 +176,16 @@
 
         if (n === 1 && !validateCurrentStepCat()) return;
 
+        // Submit on last input step (step 2)
+        if (n === 1 && currentStepCat === 2) {
+            submitCatererForm();
+            return;
+        }
+
         steps[currentStepCat - 1].classList.remove('active');
         currentStepCat += n;
 
         if (currentStepCat > totalStepsCat) {
-            submitCatererForm();
             currentStepCat = totalStepsCat;
             return;
         }
@@ -307,21 +312,6 @@
             }
         }
 
-        if (currentStepCat === 4) {
-            const permitBox = document.getElementById('permitBoxCat');
-            const govIdBox = document.getElementById('govIdBoxCat');
-
-            const permitVerified = !permitBox || permitBox.classList.contains('scanned-success');
-            const idVerified = !govIdBox || govIdBox.classList.contains('scanned-success');
-
-            if (!idVerified) {
-                valid = false;
-                alert("⚠️ Verification Required: Please upload and successfully scan your Government ID first.");
-            } else if (!permitVerified) {
-                valid = false;
-                alert("⚠️ Verification Required: Please upload and successfully scan your Business Permit first.");
-            }
-        }
 
         return valid;
     }

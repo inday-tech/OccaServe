@@ -508,65 +508,13 @@ async def register(
                 gov_id_url=gov_id_url,
                 latitude=latitude,
                 longitude=longitude,
-                verification_status="Pending Review",
+                verification_status="Not Verified",
                 status="Pending Approval",
                 team_size=team_size
             )
             db.add(new_profile)
 
-            if gov_id_url:
-                # --- REAL OCR INTEGRATION ---
-                print(f"[AUTH] Performing real OCR for new caterer: {business_name}")
-                try:
-                    # 1. OCR for ID only
-                    id_res = await verification_service.verify_id_document(
-                        gov_id_url, full_name, id_number or "", id_type or "Passport", db=db
-                    )
-                    
-                    permit_res = {"status": "skipped"}
-                    face_res = {"status": "skipped"}
 
-                    # --- BLOCKING LOGIC ---
-                    if id_res["status"] != "matched":
-                        # If mismatched and blocking is enabled
-                        db.rollback()
-                        error_msg = f"Security Check Failed: ID Validation Error ({id_res.get('failure_reason')}). "
-                        print(f"[KYC DEBUG] ID Validation Failed: {id_res.get('failure_reason')}")
-                        
-                        if is_ajax:
-                            return JSONResponse(status_code=400, content={"success": False, "message": error_msg})
-                        return templates.TemplateResponse("auth/register_caterer.html", {
-                            "request": request, 
-                            "error": error_msg,
-                            "user": new_user,
-                            "business_name": business_name
-                        })
-
-                    # Store results in ocr_data
-                    ocr_payload = {
-                        "id_verification": id_res,
-                        "permit_verification": permit_res,
-                        "face_verification": face_res,
-                        "extracted_at": datetime.now().isoformat()
-                    }
-                    
-                    verification = models.IdentityVerification(
-                        user_id=new_user.id,
-                        document_url=gov_id_url,
-                        selfie_url=selfie_url,
-                        ocr_data=ocr_payload,
-                        verification_status="Pending Review"
-                    )
-                    
-                    db.add(verification)
-                except Exception as ocr_err:
-                    print(f"[AUTH OCR ERROR] Registration OCR failed: {ocr_err}")
-                    db.rollback()
-                    if is_ajax:
-                        return JSONResponse(status_code=500, content={"success": False, "message": f"Verification system error: {str(ocr_err)}"})
-                    return templates.TemplateResponse("auth/register_caterer.html", {
-                        "request": request, "error": f"Verification system error: {str(ocr_err)}"
-                    })
 
         db.flush()
         
@@ -578,7 +526,7 @@ async def register(
                 new_notif = models.Notification(
                     user_id=admin.id,
                     title="New Caterer Application",
-                    message=f"{business_name} has registered and submitted documents for verification.",
+                    message=f"{business_name} has registered as a new caterer partner.",
                     link="/admin/kyc",
                     type="info"
                 )
