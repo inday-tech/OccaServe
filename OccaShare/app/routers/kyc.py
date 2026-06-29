@@ -681,8 +681,22 @@ async def view_kyc_document(
         filename.startswith(f"user_{current_user.id}_") or
         filename.startswith(f"temp_ocr_{current_user.id}_") or
         filename.startswith(f"cropped_temp_ocr_{current_user.id}_") or
-        filename.startswith(f"cropped_user_{current_user.id}_")
+        filename.startswith(f"cropped_user_{current_user.id}_") or
+        filename.startswith(f"selfie_{current_user.id}_")
     )
+    
+    # Check IdentityVerification record for ownership (handles registration-uploaded files)
+    if not is_owner:
+        file_url = f"/static/uploads/verification/{filename}"
+        proxy_url = f"/api/bookings/kyc/view/{filename}"
+        identity = db.query(models.IdentityVerification).filter(
+            models.IdentityVerification.user_id == current_user.id
+        ).first()
+        if identity:
+            identity_urls = [identity.document_url, identity.selfie_url,
+                           getattr(identity, 'selfie_2_url', None), getattr(identity, 'selfie_3_url', None)]
+            if file_url in identity_urls or proxy_url in identity_urls:
+                is_owner = True
     
     if current_user.role == "caterer" and current_user.caterer_profile:
         file_url = f"/static/uploads/verification/{filename}"
@@ -730,21 +744,39 @@ async def view_kyc_document(
         raise HTTPException(status_code=404, detail="Document not found.")
 
     with open(path, "rb") as f:
-        encrypted_data = f.read()
+        file_data = f.read()
     
+    # Infer MIME type from the original filename extension
+    ext = os.path.splitext(filename)[1].lower()
+    mime_map = {
+        ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+        ".png": "image/png", ".webp": "image/webp",
+        ".pdf": "application/pdf", ".enc": "image/jpeg"
+    }
+    media_type = mime_map.get(ext, "image/jpeg")
+    
+    # Try decryption first (most files are encrypted)
     try:
         from cryptography.fernet import InvalidToken
-        decrypted_data = decrypt_data(encrypted_data)
-    except InvalidToken:
-        # This happens if the KYC_ENCRYPTION_KEY in .env was changed
+        decrypted_data = decrypt_data(file_data)
+        return Response(content=decrypted_data, media_type=media_type)
+    except (InvalidToken, Exception) as e:
+        # Decryption failed — check if the file is actually a valid raw image
+        # (uploaded before encryption was enabled, or key has changed)
+        image_signatures = {
+            b'\xff\xd8\xff': "image/jpeg",      # JPEG
+            b'\x89PNG': "image/png",             # PNG
+            b'RIFF': "image/webp",               # WebP
+            b'%PDF': "application/pdf",          # PDF
+        }
+        for sig, detected_mime in image_signatures.items():
+            if file_data[:len(sig)] == sig:
+                print(f"[KYC VIEW] File '{filename}' is not encrypted, serving raw {detected_mime}")
+                return Response(content=file_data, media_type=detected_mime)
+        
+        # Neither valid decryption nor valid raw image — file is truly corrupted
+        print(f"[KYC VIEW ERROR] Cannot decrypt or read file '{filename}': {e}")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
-            detail="Document decryption failed. The encryption key has changed since this file was uploaded. Please ask the user to re-upload."
+            detail="Document cannot be displayed. The file may be corrupted or the encryption key has changed. Please ask the user to re-upload."
         )
-    except Exception as e:
-        print(f"Decryption error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to decrypt document.")
-
-    # Infer MIME type from filename or just use image/jpeg as default
-    # Real app would store MIME in DB
-    return Response(content=decrypted_data, media_type="image/jpeg")

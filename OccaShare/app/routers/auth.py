@@ -514,6 +514,18 @@ async def register(
             )
             db.add(new_profile)
 
+            # Create IdentityVerification record so admin can view docs in verification detail
+            if gov_id_url or selfie_url:
+                identity_record = models.IdentityVerification(
+                    user_id=new_user.id,
+                    document_url=gov_id_url if gov_id_url else None,
+                    selfie_url=selfie_url if selfie_url else None,
+                    verification_type=id_type or "Government ID",
+                    id_number=id_number,
+                    verification_status="pending"
+                )
+                db.add(identity_record)
+
 
 
         db.flush()
