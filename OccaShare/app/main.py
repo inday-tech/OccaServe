@@ -12,13 +12,16 @@ from sqlalchemy.orm import Session
 from .services.realtime import manager
 from sqlalchemy import text
 
-# Create tables and execute master schema migrations at startup
-try:
-    from scripts.master_migration import master_migration
-    print("[STARTUP] Executing master database schema migrations...")
-    master_migration()
-except Exception as e:
-    print(f"[STARTUP ERROR] Master database schema migrations failed: {e}")
+# MIGRATION REMOVED FROM STARTUP: Running database migrations inside worker processes
+# causes deadlocks and Gunicorn timeouts when deploying with multiple workers.
+# Migrations are already run during the build/release phase (releaseCommand in railway.json).
+#
+# try:
+#     from scripts.master_migration import master_migration
+#     print("[STARTUP] Executing master database schema migrations...")
+#     master_migration()
+# except Exception as e:
+#     print(f"[STARTUP ERROR] Master database schema migrations failed: {e}")
 from starlette.middleware.sessions import SessionMiddleware
 from .core.config import settings
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
