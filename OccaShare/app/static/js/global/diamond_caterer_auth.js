@@ -402,33 +402,35 @@
             } else {
                 const result = await response.json();
                 if (result.status === 'success') {
-                    // Update Step 4 redirect button
-                    const btn = document.getElementById('btnGoToDashboard');
-                    if (btn && result.email) {
-                        btn.onclick = function () {
-                            window.location.href = `/auth/verify?email=${encodeURIComponent(result.email)}`;
-                        };
+                    if (window.openAuthModal && document.getElementById('authModalOverlay')) {
+                        const emailDisplay = document.getElementById('email-display');
+                        const emailField = document.getElementById('emailField');
+                        if (emailDisplay) emailDisplay.innerText = result.email;
+                        if (emailField) emailField.value = result.email;
+
+                        openAuthModal('verify');
+                        if (typeof window.initVerifyPolling === 'function') {
+                            window.initVerifyPolling();
+                        }
+                        if (typeof window.startTimer === 'function') {
+                            window.startTimer();
+                        }
+                    } else {
+                        window.location.href = `/auth/verify?email=${encodeURIComponent(result.email)}`;
                     }
 
-                    // Transition to step 4
-                    const steps = form.querySelectorAll('.form-step');
-                    steps[currentStepCat - 1].classList.remove('active');
-                    currentStepCat = 3;
-                    steps[currentStepCat - 1].classList.add('active');
-
-                    // Update Progress Tracker
-                    const pSteps = document.querySelectorAll('.progress-step');
-                    pSteps.forEach((s, idx) => {
-                        if (idx + 1 < currentStepCat) s.className = 'progress-step completed';
-                        else if (idx + 1 === currentStepCat) s.className = 'progress-step active';
-                        else s.className = 'progress-step';
-                    });
-
-                    // Hide Buttons & footer
-                    const navBtns = document.getElementById('catererNavButtonsContainer');
-                    if (navBtns) navBtns.style.display = 'none';
-                    const authFooter = document.getElementById('catererAuthFooter');
-                    if (authFooter) authFooter.style.display = 'none';
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Almost There!',
+                            text: 'Please check your email for the 6-digit verification code.',
+                            timer: 5000,
+                            showConfirmButton: false,
+                            toast: true,
+                            position: 'top-end',
+                            timerProgressBar: true
+                        });
+                    }
                 } else if (window.Swal) {
                     Swal.fire({ icon: 'error', title: 'Registration Failed', text: result.message || 'Please check your information.' });
                 }
