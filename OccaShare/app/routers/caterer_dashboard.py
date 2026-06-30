@@ -3409,6 +3409,9 @@ async def update_profile(
                     profile.permit_status = 'Pending Review'
                     # Reset verification status if they uploaded a new permit to require re-review
                     profile.verification_status = 'Pending Review'
+                    profile.is_verified = False
+                    if profile.user:
+                        profile.user.is_verified = False
             except Exception as e:
                 import traceback
                 print(f"[IMAGE UPLOAD ERROR] Failed on {field_name}: {str(e)}")
@@ -5967,6 +5970,9 @@ async def submit_verification(
             
         # Update Verification Status
         profile.verification_status = "Pending Review"
+        profile.is_verified = False
+        if profile.user:
+            profile.user.is_verified = False
         
         # Identity Verification
         identity = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user.id).first()

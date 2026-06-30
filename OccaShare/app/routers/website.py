@@ -33,6 +33,9 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
         db.execute(text("ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS birthdate DATE"))
         db.execute(text("ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS id_address_extracted TEXT"))
         db.execute(text("ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS permit_status VARCHAR DEFAULT 'Pending'"))
+        db.execute(text("UPDATE caterer_profiles SET is_verified = TRUE WHERE verification_status = 'Verified'"))
+        db.execute(text("UPDATE users SET is_verified = TRUE WHERE id IN (SELECT user_id FROM caterer_profiles WHERE verification_status = 'Verified')"))
+        db.execute(text("UPDATE caterer_profiles SET account_status = 'Active' WHERE account_status = 'Approved'"))
         db.commit()
     except Exception as e:
         print(f"[DB SYNC ERROR] {e}")

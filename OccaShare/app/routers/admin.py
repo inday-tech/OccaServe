@@ -1228,10 +1228,12 @@ from fastapi import BackgroundTasks
 async def edit_caterer(
     caterer_id: int,
     background_tasks: BackgroundTasks,
-    business_name: str = Form(...),
-    full_name: str = Form(...),
     email: str = Form(...),
-    phone: str = Form(...),
+    business_name: Optional[str] = Form(None),
+    full_name: Optional[str] = Form(None),
+    first_name: Optional[str] = Form(None),
+    last_name: Optional[str] = Form(None),
+    phone: Optional[str] = Form(None),
     province: Optional[str] = Form(None),
     city: Optional[str] = Form(None),
     barangay: Optional[str] = Form(None),
@@ -1239,6 +1241,7 @@ async def edit_caterer(
     province_name: Optional[str] = Form(None),
     city_name: Optional[str] = Form(None),
     brgy_name: Optional[str] = Form(None),
+    status: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
 ):
@@ -1246,11 +1249,22 @@ async def edit_caterer(
     if not caterer:
          return {"success": False, "message": "Caterer not found."}
     
-    parts = full_name.strip().split(None, 1)
-    if len(parts) > 1:
-        first_name, last_name = parts[0], parts[1]
+    extracted_fname = ""
+    extracted_lname = ""
+    if full_name:
+        parts = full_name.strip().split(None, 1)
+        extracted_fname = parts[0]
+        extracted_lname = parts[1] if len(parts) > 1 else ""
     else:
-        first_name, last_name = parts[0], ""
+        if first_name is not None:
+            extracted_fname = first_name.strip()
+        elif caterer.user:
+            extracted_fname = caterer.user.first_name or ""
+            
+        if last_name is not None:
+            extracted_lname = last_name.strip()
+        elif caterer.user:
+            extracted_lname = caterer.user.last_name or ""
         
     existing_user = db.query(models.User).filter(models.User.email == email.strip().lower(), models.User.id != caterer.user_id).first()
     if existing_user:
@@ -1258,13 +1272,15 @@ async def edit_caterer(
 
     # IDENTITY LOCK: If already verified, do NOT allow changing core business/owner names
     if caterer.verification_status == 'Verified':
-        if caterer.business_name != business_name:
+        if business_name is not None and caterer.business_name != business_name:
             return {"success": False, "message": "Identity Lock Active: Business Name of a Verified Partner is locked."}
-        if caterer.user and (caterer.user.first_name != first_name or caterer.user.last_name != last_name):
+        if caterer.user and (caterer.user.first_name != extracted_fname or caterer.user.last_name != extracted_lname):
              return {"success": False, "message": "Identity Lock Active: Signatory Name is locked."}
 
-    caterer.business_name = business_name
-    caterer.contact_phone = phone
+    if business_name is not None:
+        caterer.business_name = business_name
+    if phone is not None:
+        caterer.contact_phone = phone
     
     # Update Jurisdictional Data
     if province: caterer.province_code = province
@@ -1285,14 +1301,18 @@ async def edit_caterer(
         caterer.contact_address = ", ".join(addr_parts)
     
     if caterer.user:
-        caterer.user.first_name = first_name
-        caterer.user.last_name = last_name
+        caterer.user.first_name = extracted_fname
+        caterer.user.last_name = extracted_lname
         caterer.user.email = email.strip().lower()
-        caterer.user.phone_number = phone
+        if phone is not None:
+            caterer.user.phone_number = phone
+        if status is not None:
+            caterer.user.status = status
         
     db.commit()
-    from ..core import utils
-    background_tasks.add_task(utils.background_geocode, caterer.id)
+    if phone is not None:
+        from ..core import utils
+        background_tasks.add_task(utils.background_geocode, caterer.id)
     
     # Real-time update
     asyncio.create_task(manager.broadcast({
@@ -1776,7 +1796,7 @@ async def clear_user_audit(
     if user.role == "caterer":
         profile = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == user_id).first()
         if profile:
-            profile.account_status = "Approved"
+            profile.account_status = "Active"
 
     # Log Audit
     audit = models.AuditLog(
@@ -3219,10 +3239,12 @@ async def submit_caterer_review(
         identity.verification_status = status
         
     if status == "Verified":
+        profile.is_verified = True
         if profile.user:
             profile.user.is_verified = True
             profile.user.is_kyc_complete = True
     else:
+        profile.is_verified = False
         if profile.user:
             profile.user.is_verified = False
             if status == "Suspended":

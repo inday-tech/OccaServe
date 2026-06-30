@@ -92,22 +92,27 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Restore Section from Hash
-    const currentHash = window.location.hash.substring(1);
-    if (currentHash && SECTION_META[currentHash]) {
-        const navItem = document.querySelector(`.snav-item[data-section="${currentHash}"]`);
-        if (navItem) {
-            const parentGroup = navItem.closest('.snav-group');
-            if (parentGroup) {
-                const groupHeader = parentGroup.querySelector('.snav-group-header');
-                if (groupHeader && !groupHeader.classList.contains('expanded')) {
-                    const groupItems = parentGroup.querySelector('.snav-group-items');
-                    groupHeader.classList.add('expanded');
-                    if (groupItems) { groupItems.style.display = 'flex'; groupItems.style.maxHeight = '999px'; groupItems.style.opacity = '1'; }
+    function handleHashRoute() {
+        const currentHash = window.location.hash.substring(1);
+        if (currentHash && SECTION_META[currentHash]) {
+            const navItem = document.querySelector(`.snav-item[data-section="${currentHash}"]`);
+            if (navItem) {
+                const parentGroup = navItem.closest('.snav-group');
+                if (parentGroup) {
+                    const groupHeader = parentGroup.querySelector('.snav-group-header');
+                    if (groupHeader && !groupHeader.classList.contains('expanded')) {
+                        const groupItems = parentGroup.querySelector('.snav-group-items');
+                        groupHeader.classList.add('expanded');
+                        if (groupItems) { groupItems.style.display = 'flex'; groupItems.style.maxHeight = '999px'; groupItems.style.opacity = '1'; }
+                    }
                 }
             }
+            switchSettingsSection(currentHash);
         }
-        switchSettingsSection(currentHash);
     }
+
+    handleHashRoute();
+    window.addEventListener('hashchange', handleHashRoute);
 
     // 2. Color Code Sync (Color Input -> Text Span)
     const colorInputs = document.querySelectorAll('input[type="color"]');

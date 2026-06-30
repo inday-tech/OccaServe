@@ -1,6 +1,7 @@
 from fastapi.templating import Jinja2Templates
 from ..db.database import SessionLocal
 from ..db import models
+import os
 
 # Initialize Jinja2 templates pointing to the top-level "templates" directory
 templates = Jinja2Templates(directory="templates")
@@ -75,3 +76,9 @@ templates.env.globals["website_config"] = website_config
 
 # hex_to_rgb filter: {{ '#800000' | hex_to_rgb }} → '128, 0, 0'
 templates.env.filters["hex_to_rgb"] = hex_to_rgb
+
+# Google Maps API Key global function
+def google_maps_api_key():
+    return os.getenv("GOOGLE_MAPS_API_KEY", "AIzaSyBpFEUgMDrteQk_BIYKSRRID1mhuCEEykY")
+
+templates.env.globals["google_maps_api_key"] = google_maps_api_key
