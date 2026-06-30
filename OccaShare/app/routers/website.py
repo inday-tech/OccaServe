@@ -3,6 +3,7 @@ from jose import JWTError, jwt
 from fastapi.responses import HTMLResponse
 from ..core.templates import templates
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from ..db import crud, schemas, database, models
 from ..core import security as auth, utils
 
@@ -22,24 +23,8 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
         except JWTError:
             pass
 
-    # Temporary Schema Sync
-    try:
-        from sqlalchemy import text
-        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_address TEXT"))
-        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS id_address TEXT"))
-        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS current_address TEXT"))
-        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS verification_status VARCHAR DEFAULT 'pending'"))
-        db.execute(text("ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS full_name VARCHAR"))
-        db.execute(text("ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS birthdate DATE"))
-        db.execute(text("ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS id_address_extracted TEXT"))
-        db.execute(text("ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS permit_status VARCHAR DEFAULT 'Pending'"))
-        db.execute(text("UPDATE caterer_profiles SET is_verified = TRUE WHERE verification_status = 'Verified'"))
-        db.execute(text("UPDATE users SET is_verified = TRUE WHERE id IN (SELECT user_id FROM caterer_profiles WHERE verification_status = 'Verified')"))
-        db.execute(text("UPDATE caterer_profiles SET account_status = 'Active' WHERE account_status = 'Approved'"))
-        db.commit()
-    except Exception as e:
-        print(f"[DB SYNC ERROR] {e}")
-        db.rollback()
+    # NOTE: Schema sync (ALTER TABLE) has been moved to app startup (main.py).
+    # Running DDL per-request holds AccessExclusiveLock on tables and causes deadlocks.
 
     packages = db.query(models.CateringPackage).filter(models.CateringPackage.is_active == True).limit(3).all()
     caterers = db.query(models.CatererProfile).filter(
@@ -55,20 +40,30 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
     # Fallback: show highly-rated caterer reviews if no platform feedback is featured yet
     if not highlighted_reviews:
         highlighted_reviews = db.query(models.Review).filter(models.Review.rating >= 4).order_by(models.Review.created_at.desc()).limit(3).all()
-    
+
     # Stats for the "Trust Counter" section
-    total_caterers = db.query(models.CatererProfile).filter(
-        models.CatererProfile.status == 'Published',
-        models.CatererProfile.is_verified == True,
-        models.CatererProfile.account_status == 'Active'
-    ).count()
-    # Count actual events that are paid or completed
+    # Use func.count(Model.id) instead of ORM .count() to avoid the full-column subquery
+    # that .count() generates — it selects all 60+ columns and holds locks longer.
+    try:
+        total_caterers = db.query(func.count(models.CatererProfile.id)).filter(
+            models.CatererProfile.status == 'Published',
+            models.CatererProfile.is_verified == True,
+            models.CatererProfile.account_status == 'Active'
+        ).scalar() or 0
 
+        total_events = db.query(func.count(models.Booking.id)).filter(
+            models.Booking.status.in_(['paid', 'completed'])
+        ).scalar() or 0
 
-    total_events = db.query(models.Booking).filter(models.Booking.status.in_(['paid', 'completed'])).count()
-    # Count unique happy hosts (customers)
-    total_hosts = db.query(models.User).filter(models.User.role == 'customer', models.User.status == 'active').count()
-    
+        total_hosts = db.query(func.count(models.User.id)).filter(
+            models.User.role == 'customer',
+            models.User.status == 'active'
+        ).scalar() or 0
+    except Exception as e:
+        print(f"[STATS ERROR] Failed to load homepage stats: {e}")
+        db.rollback()
+        total_caterers = total_events = total_hosts = 0
+
     stats = {
         "caterers": total_caterers,
         "events": total_events,
@@ -78,7 +73,7 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
     config = db.query(models.WebsiteConfig).first()
 
     return templates.TemplateResponse("index.html", {
-        "request": request, 
+        "request": request,
         "packages": packages,
         "caterers": caterers,
         "highlighted_reviews": highlighted_reviews,
@@ -101,5 +96,3 @@ async def privacy_policy_page(request: Request):
 @router.get("/support/terms-of-service", response_class=HTMLResponse)
 async def terms_of_service_page(request: Request):
     return templates.TemplateResponse("support/terms_of_service.html", {"request": request})
-
-

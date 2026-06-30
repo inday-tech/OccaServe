@@ -28,7 +28,39 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from .core.security import SECRET_KEY, ALGORITHM
 from jose import jwt, JWTError
 
-app = FastAPI()
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Run one-time DB schema sync on startup to avoid per-request DDL locks."""
+    db = None
+    try:
+        from .db.database import SessionLocal
+        db = SessionLocal()
+        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_address TEXT"))
+        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS id_address TEXT"))
+        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS current_address TEXT"))
+        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS verification_status VARCHAR DEFAULT 'pending'"))
+        db.execute(text("ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS full_name VARCHAR"))
+        db.execute(text("ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS birthdate DATE"))
+        db.execute(text("ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS id_address_extracted TEXT"))
+        db.execute(text("ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS permit_status VARCHAR DEFAULT 'Pending'"))
+        db.execute(text("UPDATE caterer_profiles SET is_verified = TRUE WHERE verification_status = 'Verified'"))
+        db.execute(text("UPDATE users SET is_verified = TRUE WHERE id IN (SELECT user_id FROM caterer_profiles WHERE verification_status = 'Verified')"))
+        db.execute(text("UPDATE caterer_profiles SET account_status = 'Active' WHERE account_status = 'Approved'"))
+        db.commit()
+        print("[STARTUP] Schema sync completed successfully.")
+    except Exception as e:
+        print(f"[STARTUP] Schema sync error (non-fatal): {e}")
+        if db:
+            db.rollback()
+    finally:
+        if db:
+            db.close()
+    yield  # App runs here
+
+app = FastAPI(lifespan=lifespan)
+
 
 import traceback
 from fastapi.responses import PlainTextResponse
