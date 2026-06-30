@@ -411,10 +411,42 @@
                     window.location.href = result.redirect || `/auth/verify?email=${encodeURIComponent(email)}`;
                 }
             } else {
-                // Server returned an error
-                const message = result.message || 'Please check your information and try again.';
+                // Server returned an error — show specific fields that failed
+                const fieldErrors = result.field_errors || {};
+                const fieldNames = {
+                    email: 'Email Address',
+                    full_name: 'Full Name',
+                    mobile_number: 'Contact Number',
+                    password: 'Password',
+                    confirm_password: 'Confirm Password',
+                    address: 'Business Address',
+                    business_name: 'Business Name',
+                    min_pax: 'Minimum Pax Capacity',
+                    years_of_operation: 'Years of Experience',
+                    coverage_area: 'Service Areas'
+                };
+
+                let errorDetail = '';
+                const errorKeys = Object.keys(fieldErrors);
+                if (errorKeys.length > 0) {
+                    errorDetail = '\n\nFields to fix:\n' + errorKeys.map(k => `• ${fieldNames[k] || k}: ${fieldErrors[k]}`).join('\n');
+
+                    // If step-1 fields failed, go back to step 1 so user can fix them
+                    const step1Fields = ['email', 'full_name', 'mobile_number', 'password', 'confirm_password', 'business_name'];
+                    const hasStep1Error = errorKeys.some(k => step1Fields.includes(k));
+                    if (hasStep1Error && currentStepCat > 1) {
+                        changeStepCat(-(currentStepCat - 1));
+                    }
+                }
+
+                const message = (result.message || 'Please check your information and try again.') + errorDetail;
                 if (window.Swal) {
-                    Swal.fire({ icon: 'error', title: 'Registration Failed', text: message });
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Registration Failed',
+                        text: message,
+                        customClass: { popup: 'swal-wide' }
+                    });
                 }
             }
         } catch (error) {

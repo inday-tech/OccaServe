@@ -191,7 +191,8 @@ async def register(
     # Caterer fields
     business_name: str = Form(None),
     business_type: str = Form(None),
-    years_of_operation: int = Form(0),
+    years_of_operation: Optional[int] = Form(0),
+
     business_description: str = Form(None),
     coverage_area: str = Form(None),
     payout_method: str = Form(None),
@@ -296,8 +297,6 @@ async def register(
     if password != confirm_password:
         errors["confirm_password"] = "Passwords do not match"
 
-
-
     if role == "caterer":
         if not address or not address.strip():
             errors["address"] = "Business Address is required"
@@ -309,7 +308,10 @@ async def register(
         if not business_name or not business_name.strip():
             errors["business_name"] = "Business name is required for caterers"
         else:
-            bn_error = is_dummy_name(business_name)
+            # Use is_valid_business_name (allows apostrophes, ampersands, numbers, commas)
+            # NOT is_dummy_name which calls is_valid_person_name and rejects these chars
+            from ..core.utils import is_valid_business_name
+            bn_error = is_valid_business_name(business_name)
             if bn_error:
                 errors["business_name"] = bn_error
 
@@ -319,11 +321,14 @@ async def register(
             ).first()
             if existing_biz:
                 errors["business_name"] = "This business name is already registered."
-            
-        if years_of_operation < 0 or years_of_operation > 100:
+
+        if years_of_operation is not None and (years_of_operation < 0 or years_of_operation > 100):
             errors["years_of_operation"] = "Years of operation must be between 0 and 100"
-            
-        if min_pax is None or min_pax < 1 or min_pax > 5000:
+
+        # Default min_pax to 1 if not provided (for backward compat with older form versions)
+        if min_pax is None:
+            min_pax = 1
+        if min_pax < 1 or min_pax > 5000:
             errors["min_pax"] = "Minimum Pax must be between 1 and 5,000"
 
     # Only return error if there ARE validation errors
@@ -493,7 +498,8 @@ async def register(
                 user_id=new_user.id,
                 business_name=business_name,
                 business_type=business_type,
-                years_of_operation=years_of_operation,
+                years_of_operation=years_of_operation or 0,
+
                 description=business_description,
                 coverage_area=coverage_area,
                 payout_method=payout_method,
