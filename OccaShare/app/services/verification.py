@@ -235,47 +235,83 @@ class VerificationService:
     def match_name(self, full_name: str, ocr_full_name: str, ocr_last_name: str = None, ocr_first_name: str = None, ocr_middle_name: str = None, full_ocr_text: str = None) -> bool:
         if not full_name:
             return False
-        clean_input = " ".join(full_name.lower().split())
-        full_ocr_lower = full_ocr_text.lower() if full_ocr_text else ""
-        
-        # 1. Try exact match on full name / presence in full ocr text
-        if (ocr_full_name and clean_input in ocr_full_name.lower()) or (full_ocr_lower and clean_input in full_ocr_lower):
+            
+        # Helper to normalize a string
+        def normalize(text: str) -> str:
+            if not text:
+                return ""
+            # Lowercase and replace punctuation/special characters with spaces
+            t = text.lower()
+            t = re.sub(r'[^a-z0-9\s]', ' ', t)
+            # Remove common suffixes and titles
+            stopwords = {'jr', 'sr', 'ii', 'iii', 'iv', 'mr', 'ms', 'mrs', 'dr', 'prof'}
+            words = [w for w in t.split() if w not in stopwords]
+            return " ".join(words)
+
+        clean_input = normalize(full_name)
+        clean_ocr_full = normalize(ocr_full_name)
+        clean_ocr_last = normalize(ocr_last_name)
+        clean_ocr_first = normalize(ocr_first_name)
+        clean_ocr_middle = normalize(ocr_middle_name)
+        clean_ocr_text = normalize(full_ocr_text)
+
+        # 1. Exact or Substring match
+        if (clean_ocr_full and clean_input in clean_ocr_full) or (clean_ocr_text and clean_input in clean_ocr_text):
             return True
             
-        # 2. Typo tolerance (Fuzzy) on full name
-        if ocr_full_name:
-            ratio = difflib.SequenceMatcher(None, clean_input, ocr_full_name.lower()).ratio()
-            if ratio > 0.70:
+        # 2. Fuzzy match on full name
+        if clean_ocr_full:
+            if difflib.SequenceMatcher(None, clean_input, clean_ocr_full).ratio() > 0.70:
                 return True
                 
-        # 3. Check individual parts against full OCR text
-        input_parts = [p for p in clean_input.split() if len(p) > 2]
-        if input_parts and full_ocr_lower:
-            matches = 0
-            for part in input_parts:
-                if part in full_ocr_lower or any(difflib.SequenceMatcher(None, part, w).ratio() > 0.75 for w in full_ocr_lower.split()):
-                    matches += 1
-            if (matches / len(input_parts)) >= 0.50:
+        # 3. Check individual tokens of the registered name against OCR text
+        input_tokens = [w for w in clean_input.split() if len(w) > 1]
+        ocr_tokens = set(clean_ocr_text.split() + clean_ocr_full.split() + clean_ocr_first.split() + clean_ocr_last.split() + clean_ocr_middle.split())
+        ocr_tokens = {w for w in ocr_tokens if w}
+
+        if input_tokens and ocr_tokens:
+            matched_tokens = 0
+            for token in input_tokens:
+                # Direct check
+                if token in ocr_tokens or (clean_ocr_text and token in clean_ocr_text):
+                    matched_tokens += 1
+                # Fuzzy check against all ocr tokens
+                elif any(difflib.SequenceMatcher(None, token, ot).ratio() > 0.75 for ot in ocr_tokens):
+                    matched_tokens += 1
+            
+            # If at least 60% of the registered name tokens are found, consider it a match
+            # (This safely handles middle name mismatches, e.g. "Naomi Trillana Caragay" vs "Naomi Caragay" or "Naomi T. Caragay")
+            match_ratio = matched_tokens / len(input_tokens)
+            print(f"[KYC MATCH DEBUG] Token match ratio: {matched_tokens}/{len(input_tokens)} = {match_ratio:.2f}")
+            if match_ratio >= 0.60:
                 return True
+
+        # 4. Fallback: First Name and Last Name matching (the absolute core identity)
+        # Split registered full name into parts
+        registered_parts = clean_input.split()
+        if len(registered_parts) >= 2:
+            first_reg = registered_parts[0]
+            last_reg = registered_parts[-1]
+            
+            first_matched = False
+            last_matched = False
+            
+            # Check first name
+            if first_reg in ocr_tokens or (clean_ocr_text and first_reg in clean_ocr_text):
+                first_matched = True
+            elif any(difflib.SequenceMatcher(None, first_reg, ot).ratio() > 0.75 for ot in ocr_tokens):
+                first_matched = True
                 
-        # 4. Check individual parts against individual name fields
-        input_parts_lenient = [p for p in clean_input.split() if len(p) > 1]
-        extracted_last = (ocr_last_name or "").lower()
-        extracted_first = (ocr_first_name or "").lower()
-        extracted_middle = (ocr_middle_name or "").lower()
-        
-        if extracted_last or extracted_first or extracted_middle:
-            parts_found = 0
-            total_parts = len(input_parts_lenient)
-            for part in input_parts_lenient:
-                if part in extracted_last or part in extracted_first or part in extracted_middle:
-                    parts_found += 1
-                elif any(difflib.SequenceMatcher(None, part, w).ratio() > 0.70 
-                         for w in [extracted_last, extracted_first, extracted_middle] if w):
-                    parts_found += 1
-            if total_parts > 0 and (parts_found / total_parts) >= 0.40:
+            # Check last name
+            if last_reg in ocr_tokens or (clean_ocr_text and last_reg in clean_ocr_text):
+                last_matched = True
+            elif any(difflib.SequenceMatcher(None, last_reg, ot).ratio() > 0.75 for ot in ocr_tokens):
+                last_matched = True
+                
+            if first_matched and last_matched:
+                print(f"[KYC MATCH DEBUG] First and Last name matched successfully: '{first_reg}' & '{last_reg}'")
                 return True
-                
+
         return False
 
     def _prepare_image(self, encrypted_path: str, is_id: bool = True) -> np.ndarray:
