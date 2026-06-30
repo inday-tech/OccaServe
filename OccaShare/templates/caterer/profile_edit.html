@@ -95,6 +95,24 @@
                     <button type="button" class="snav-item" data-section="booking-policies">
                         <i class="fas fa-file-signature"></i> Booking Policies
                     </button>
+                    <button type="button" class="snav-item" data-section="availability">
+                        <i class="fas fa-clock"></i> Booking & Availability
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Group: Deliveries & Travel -->
+            <div class="snav-group" id="grp-delivery">
+                <button type="button" class="snav-group-header" onclick="toggleNavGroup('grp-delivery')">
+                    <span class="snav-group-label">
+                        <i class="fas fa-truck-fast"></i> Deliveries & Travel
+                    </span>
+                    <i class="fas fa-chevron-down snav-chevron"></i>
+                </button>
+                <div class="snav-group-items" style="display:none;">
+                    <button type="button" class="snav-item" data-section="delivery-settings">
+                        <i class="fas fa-map-location-dot"></i> Delivery Zones & Fees
+                    </button>
                 </div>
             </div>
 
@@ -164,9 +182,15 @@
             <form action="/caterer/profile?success_msg=Business+profile+updated+successfully" method="POST" enctype="multipart/form-data" class="profile-edit-form">
                 <!-- Section: Business Info -->
                 <div class="settings-section active" id="section-general">
-                    <div class="form-group">
-                        <label><i class="fas fa-signature"></i> Business Name</label>
-                        <input type="text" name="business_name" value="{{ profile.business_name }}" placeholder="Enter your business name" required>
+                    <div class="form-row-two-col">
+                        <div class="form-group">
+                            <label><i class="fas fa-signature"></i> Business Name</label>
+                            <input type="text" name="business_name" value="{{ profile.business_name }}" placeholder="Enter your business name" required>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-clock"></i> Years of Experience</label>
+                            <input type="number" name="years_of_operation" value="{{ profile.years_of_operation or 0 }}" min="0" max="100" placeholder="e.g. 5">
+                        </div>
                     </div>
 
                     <div class="form-row-two-col">
@@ -443,6 +467,94 @@
             </div>
             <!-- End Section: Account -->
 
+            <!-- Section: Delivery & Travel Settings -->
+            <div class="settings-section" id="section-delivery-settings">
+                <div class="section-header-compact">
+                    <h3><i class="fas fa-map-location-dot"></i> Delivery Zones & Travel Fees</h3>
+                    <p>Set up your delivery charges based on customer location. These settings apply to new checkout sessions.</p>
+                </div>
+
+                <!-- Global Settings -->
+                <div class="form-row-two-col" style="margin-top: 1.5rem;">
+                    <div class="form-group">
+                        <label><i class="fas fa-truck"></i> Base Delivery Fee (₱)</label>
+                        <input type="text" inputmode="numeric" name="base_delivery_fee" class="js-format-comma" value="{{ profile.base_delivery_fee or 150.0 }}">
+                        <span class="field-hint">Default fee for nearby locations not explicitly set.</span>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-ban"></i> Out of Coverage Action</label>
+                        <select name="out_of_coverage_action" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
+                            <option value="reject" {% if profile.out_of_coverage_action == 'reject' %}selected{% endif %}>Reject (Outside Service Area)</option>
+                            <option value="manual" {% if profile.out_of_coverage_action == 'manual' %}selected{% endif %}>Accept as Manual Quotation (Pending Review)</option>
+                        </select>
+                        <span class="field-hint">What happens if a customer orders from a location not in your zones.</span>
+                    </div>
+                </div>
+
+                <!-- Delivery Zones List -->
+                <div class="delivery-zones-container" style="margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h4 style="margin:0; font-size: 1.1rem;"><i class="fas fa-layer-group"></i> Configured Delivery Zones</h4>
+                        <button type="button" class="btn-primary" onclick="openAddZoneModal()" style="padding: 6px 12px; font-size: 0.85rem; border-radius: 6px;">
+                            <i class="fas fa-plus"></i> Add Zone
+                        </button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table-modern" style="width: 100%; text-align: left; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid #e2e8f0;">
+                                    <th style="padding: 1rem; color: #475569; font-weight: 600; font-size: 0.9rem;">Province</th>
+                                    <th style="padding: 1rem; color: #475569; font-weight: 600; font-size: 0.9rem;">Municipality/City</th>
+                                    <th style="padding: 1rem; color: #475569; font-weight: 600; font-size: 0.9rem;">Fee Type</th>
+                                    <th style="padding: 1rem; color: #475569; font-weight: 600; font-size: 0.9rem;">Amount</th>
+                                    <th style="padding: 1rem; color: #475569; font-weight: 600; font-size: 0.9rem; text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if profile.delivery_zones %}
+                                    {% for zone in profile.delivery_zones %}
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 1rem; color: #334155; vertical-align: middle;">{{ zone.province }}</td>
+                                        <td style="padding: 1rem; color: #334155; vertical-align: middle;">{{ zone.city_municipality }}</td>
+                                        <td style="padding: 1rem; vertical-align: middle;">
+                                            {% if zone.is_manual_quote %}
+                                                <span class="badge badge-warning" style="background: #fef08a; color: #854d0e; padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">Manual Quote</span>
+                                            {% else %}
+                                                <span class="badge badge-success" style="background: #bbf7d0; color: #166534; padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">Fixed Fee</span>
+                                            {% endif %}
+                                        </td>
+                                        <td style="padding: 1rem; font-weight: 600; color: #0f172a; vertical-align: middle;">
+                                            {% if zone.is_manual_quote %}
+                                                <span style="color: #64748b; font-style: italic;">TBD</span>
+                                            {% else %}
+                                                ₱{{ "{:,.2f}".format(zone.fee) }}
+                                            {% endif %}
+                                        </td>
+                                        <td style="padding: 1rem; text-align: right; vertical-align: middle;">
+                                            <button type="button" class="btn-secondary-pro" onclick="openEditZoneModal({{ zone.id }}, '{{ zone.province|replace("'", "\\'") }}', '{{ zone.city_municipality|replace("'", "\\'") }}', '{{ 'true' if zone.is_manual_quote else 'false' }}', {{ zone.fee }})" style="padding: 6px 12px; font-size: 0.85rem; border-radius: 6px; margin-right: 4px; background: transparent; border: 1px solid #cbd5e1; color: #475569;">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn-danger-outline" onclick="deleteDeliveryZone({{ zone.id }})" style="padding: 6px 12px; font-size: 0.85rem; border-radius: 6px;">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" style="text-align: center; color: #64748b; padding: 2rem;">
+                                            No delivery zones configured yet. Add your service areas above.
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- End Section: Delivery & Travel Settings -->
+
             <!-- Section: Payment Methods -->
             <div class="settings-section" id="section-payment-methods">
 
@@ -674,6 +786,156 @@
                     </div>
             </div>
             <!-- End Section: Booking Policies -->
+
+            <!-- Section: Booking & Availability -->
+            <div class="settings-section" id="section-availability">
+                <div class="section-header-compact">
+                    <h3><i class="fas fa-clock"></i> Universal Scheduling & Availability</h3>
+                    <p>Set specific schedules and durations for different transaction types.</p>
+                </div>
+
+                {% set rules = profile.scheduling_rules or {} %}
+                {% set bh = rules.get('business_hours', {'open_time': '08:00', 'close_time': '20:00'}) %}
+                {% set fr = rules.get('food_rules', {'delivery_available': true, 'pickup_available': true, 'delivery_start': '09:00', 'delivery_end': '19:00', 'lead_time_hours': 24, 'allow_same_day': false}) %}
+                {% set er = rules.get('equipment_rules', {'pickup_start': '08:00', 'pickup_end': '18:00', 'return_start': '08:00', 'return_end': '18:00', 'min_rental_hours': 24, 'max_rental_hours': 72}) %}
+                {% set sr = rules.get('service_rules', {'min_duration_hours': 3, 'max_duration_hours': 8, 'earliest_start': '08:00', 'latest_end': '22:00'}) %}
+                {% set pr = rules.get('package_rules', {'min_event_duration': 4, 'max_event_duration': 6, 'setup_time_hours': 2, 'cleanup_time_hours': 1}) %}
+
+                <!-- 1. Business Operating Hours -->
+                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-store"></i> General Business Hours</h4>
+                    <p class="field-hint">When does your business generally operate and accept communications?</p>
+                    <div class="form-row-two-col" style="margin-top: 1rem;">
+                        <div class="form-group">
+                            <label>Opening Time</label>
+                            <input type="time" name="business_hours_open_time" value="{{ bh.open_time }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Closing Time</label>
+                            <input type="time" name="business_hours_close_time" value="{{ bh.close_time }}">
+                        </div>
+                    </div>
+                    {% set op_days = bh.get('operating_days', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']) %}
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label>Operating Days</label>
+                        <p class="field-hint" style="margin-bottom: 0.5rem;">Select the days of the week you accept bookings and orders.</p>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="checkbox" name="operating_days" value="{{ day }}" {% if day in op_days %}checked{% endif %} style="width: 16px; height: 16px; accent-color: var(--primary-color);">
+                                <span style="font-size: 0.85rem; font-weight: 600;">{{ day }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Food Order Scheduling -->
+                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-utensils"></i> Food Order Scheduling</h4>
+                    <div class="form-row-two-col" style="margin-top: 1rem;">
+                        <div class="form-group">
+                            <label>Delivery Start Time</label>
+                            <input type="time" name="food_delivery_start" value="{{ fr.delivery_start }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Delivery End Time</label>
+                            <input type="time" name="food_delivery_end" value="{{ fr.delivery_end }}">
+                        </div>
+                    </div>
+                    <div class="form-row-two-col">
+                        <div class="form-group">
+                            <label>Preparation Lead Time (Hours)</label>
+                            <input type="number" name="food_lead_time_hours" value="{{ fr.lead_time_hours }}" min="0">
+                        </div>
+                        <div class="form-group" style="display:flex; align-items:flex-end;">
+                            <label class="toggle-switch" style="margin-bottom: 10px;">
+                                <input type="checkbox" name="food_allow_same_day" {% if fr.allow_same_day %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                                <span style="margin-left: 50px; font-weight: 600;">Allow Same-Day Orders</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Equipment Rental Scheduling -->
+                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-box-open"></i> Equipment Rental Scheduling</h4>
+                    <div class="form-row-two-col" style="margin-top: 1rem;">
+                        <div class="form-group">
+                            <label>Allowed Pickup Start</label>
+                            <input type="time" name="equipment_pickup_start" value="{{ er.pickup_start }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Allowed Pickup End</label>
+                            <input type="time" name="equipment_pickup_end" value="{{ er.pickup_end }}">
+                        </div>
+                    </div>
+                    <div class="form-row-two-col">
+                        <div class="form-group">
+                            <label>Min Rental Duration (Hours)</label>
+                            <input type="number" name="equipment_min_rental" value="{{ er.min_rental_hours }}" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Max Rental Duration (Hours)</label>
+                            <input type="number" name="equipment_max_rental" value="{{ er.max_rental_hours }}" min="1">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Service Booking Scheduling -->
+                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-user-tie"></i> Service Staff Scheduling</h4>
+                    <div class="form-row-two-col" style="margin-top: 1rem;">
+                        <div class="form-group">
+                            <label>Earliest Service Start</label>
+                            <input type="time" name="service_earliest_start" value="{{ sr.earliest_start }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Latest Service End</label>
+                            <input type="time" name="service_latest_end" value="{{ sr.latest_end }}">
+                        </div>
+                    </div>
+                    <div class="form-row-two-col">
+                        <div class="form-group">
+                            <label>Min Duration (Hours)</label>
+                            <input type="number" name="service_min_duration" value="{{ sr.min_duration_hours }}" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Max Duration (Hours)</label>
+                            <input type="number" name="service_max_duration" value="{{ sr.max_duration_hours }}" min="1">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Package Booking Scheduling -->
+                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-gift"></i> Package Event Scheduling</h4>
+                    <div class="form-row-two-col" style="margin-top: 1rem;">
+                        <div class="form-group">
+                            <label>Min Event Duration (Hours)</label>
+                            <input type="number" name="package_min_duration" value="{{ pr.min_event_duration }}" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Max Event Duration (Hours)</label>
+                            <input type="number" name="package_max_duration" value="{{ pr.max_event_duration }}" min="1">
+                        </div>
+                    </div>
+                    <div class="form-row-two-col">
+                        <div class="form-group">
+                            <label>Setup Time Needed (Hours Before)</label>
+                            <input type="number" name="package_setup_time" value="{{ pr.setup_time_hours }}" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Cleanup Time Needed (Hours After)</label>
+                            <input type="number" name="package_cleanup_time" value="{{ pr.cleanup_time_hours }}" min="0">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <!-- End Section: Booking & Availability -->
+
 
             <!-- Section: Brand Colors & Style -->
             <div class="settings-section" id="section-brand">
@@ -1847,5 +2109,281 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 </script>
+<!-- ADD ZONE MODAL -->
+<div id="addZoneModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-md occ-content-pop">
+        <form id="addZoneForm" onsubmit="submitAddZone(event)">
+            <div class="occ-modal-header">
+                <div>
+                    <h3 class="occ-modal-title">Add Delivery Zone</h3>
+                </div>
+                <button type="button" class="occ-modal-close" onclick="closeAddZoneModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="occ-modal-body">
+                <div class="form-group">
+                    <label>Province</label>
+                    <select id="zoneProvince" name="province" class="form-control" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
+                        <option value="">Select Province</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Municipality / City</label>
+                    <select id="zoneCity" name="city_municipality" class="form-control" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;" disabled>
+                        <option value="">Select Municipality</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Fee Type</label>
+                    <select id="zoneFeeType" name="is_manual_quote" class="form-control" onchange="toggleZoneFeeInput()" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
+                        <option value="false">Fixed Delivery Fee</option>
+                        <option value="true">Manual Quotation (TBD)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="zoneFeeGroup">
+                    <label>Fixed Delivery Fee (₱)</label>
+                    <input type="text" inputmode="numeric" id="zoneFeeInput" name="fee" class="form-control js-format-comma" value="0" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
+                </div>
+            </div>
+            
+            <div class="occ-modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeAddZoneModal()">Cancel</button>
+                <button type="submit" class="btn-primary" id="btnSaveZone">Add Zone</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- EDIT ZONE MODAL -->
+<div id="editZoneModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-md occ-content-pop">
+        <form id="editZoneForm" onsubmit="submitEditZone(event)">
+            <input type="hidden" id="editZoneId">
+            <div class="occ-modal-header">
+                <div>
+                    <h3 class="occ-modal-title">Edit Delivery Fee</h3>
+                </div>
+                <button type="button" class="occ-modal-close" onclick="closeEditZoneModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="occ-modal-body">
+                <div class="form-group">
+                    <label>Location</label>
+                    <input type="text" id="editZoneLocation" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;" disabled>
+                </div>
+                <div class="form-group">
+                    <label>Fee Type</label>
+                    <select id="editZoneFeeType" class="form-control" onchange="toggleEditZoneFeeInput()" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
+                        <option value="false">Fixed Delivery Fee</option>
+                        <option value="true">Manual Quotation (TBD)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="editZoneFeeGroup">
+                    <label>Fixed Delivery Fee (₱)</label>
+                    <input type="text" inputmode="numeric" id="editZoneFeeInput" class="form-control js-format-comma" value="0" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
+                </div>
+            </div>
+            
+            <div class="occ-modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeEditZoneModal()">Cancel</button>
+                <button type="submit" class="btn-primary" id="btnSaveEditZone">Update Fee</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Delivery Zone Modal Logic
+    function openAddZoneModal() {
+        document.getElementById('addZoneModal').classList.add('active');
+        loadZoneProvinces();
+    }
+
+    function closeAddZoneModal() {
+        document.getElementById('addZoneModal').classList.remove('active');
+        document.getElementById('addZoneForm').reset();
+        document.getElementById('zoneCity').disabled = true;
+        document.getElementById('zoneCity').innerHTML = '<option value="">Select Municipality</option>';
+        document.getElementById('zoneFeeGroup').style.display = 'block';
+    }
+
+    function toggleZoneFeeInput() {
+        const isManual = document.getElementById('zoneFeeType').value === 'true';
+        document.getElementById('zoneFeeGroup').style.display = isManual ? 'none' : 'block';
+    }
+
+    // Edit Zone Logic
+    function openEditZoneModal(id, province, city, isManual, fee) {
+        document.getElementById('editZoneId').value = id;
+        document.getElementById('editZoneLocation').value = `${city}, ${province}`;
+        document.getElementById('editZoneFeeType').value = isManual;
+        document.getElementById('editZoneFeeInput').value = fee;
+        toggleEditZoneFeeInput();
+        
+        document.getElementById('editZoneModal').classList.add('active');
+    }
+
+    function closeEditZoneModal() {
+        document.getElementById('editZoneModal').classList.remove('active');
+    }
+
+    function toggleEditZoneFeeInput() {
+        const isManual = document.getElementById('editZoneFeeType').value === 'true';
+        document.getElementById('editZoneFeeGroup').style.display = isManual ? 'none' : 'block';
+    }
+
+    async function loadZoneProvinces() {
+        const provSelect = document.getElementById('zoneProvince');
+        if (provSelect.options.length > 1) return; // Already loaded
+
+        try {
+            const res = await fetch('https://psgc.gitlab.io/api/provinces/');
+            const provinces = await res.json();
+            
+            provinces.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.code;
+                opt.textContent = p.name;
+                provSelect.appendChild(opt);
+            });
+
+            const optNCR = document.createElement('option');
+            optNCR.value = "130000000";
+            optNCR.textContent = "NATIONAL CAPITAL REGION (NCR)";
+            provSelect.appendChild(optNCR);
+        } catch (e) {
+            console.error('Failed to load provinces:', e);
+        }
+    }
+
+    document.getElementById('zoneProvince')?.addEventListener('change', async (e) => {
+        const code = e.target.value;
+        const citySelect = document.getElementById('zoneCity');
+        citySelect.innerHTML = '<option value="">Select Municipality</option>';
+        citySelect.disabled = true;
+
+        if (!code) return;
+
+        try {
+            citySelect.innerHTML = '<option value="">Loading...</option>';
+            let endpoint = `https://psgc.gitlab.io/api/provinces/${code}/cities-municipalities/`;
+            if (code === "130000000") {
+                endpoint = `https://psgc.gitlab.io/api/regions/${code}/cities-municipalities/`;
+            }
+            
+            const res = await fetch(endpoint);
+            const cities = await res.json();
+            
+            citySelect.innerHTML = '<option value="">Select Municipality</option>';
+            cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.code;
+                opt.textContent = c.name;
+                citySelect.appendChild(opt);
+            });
+            citySelect.disabled = false;
+        } catch (e) {
+            console.error('Failed to load cities:', e);
+        }
+    });
+
+    async function submitAddZone(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnSaveZone');
+        const origText = btn.innerHTML;
+        btn.innerHTML = 'Saving...';
+        btn.disabled = true;
+
+        const provSelect = document.getElementById('zoneProvince');
+        const citySelect = document.getElementById('zoneCity');
+        
+        const data = {
+            province: provSelect.options[provSelect.selectedIndex].text,
+            city_municipality: citySelect.options[citySelect.selectedIndex].text,
+            is_manual_quote: document.getElementById('zoneFeeType').value === 'true',
+            fee: parseFloat((document.getElementById('zoneFeeInput').value || '0').replace(/,/g, '')) || 0
+        };
+
+        try {
+            const res = await fetch('/caterer/api/delivery-zones', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (res.ok) {
+                Swal.fire('Success', 'Delivery zone added!', 'success').then(() => {
+                    location.reload();
+                });
+            } else {
+                const err = await res.json();
+                Swal.fire('Error', err.detail || 'Failed to add zone', 'error');
+                btn.innerHTML = origText;
+                btn.disabled = false;
+            }
+        } catch (error) {
+            Swal.fire('Error', 'Network error', 'error');
+            btn.innerHTML = origText;
+            btn.disabled = false;
+        }
+    }
+
+    async function submitEditZone(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnSaveEditZone');
+        const origText = btn.innerHTML;
+        btn.innerHTML = 'Saving...';
+        btn.disabled = true;
+
+        const id = document.getElementById('editZoneId').value;
+        const data = {
+            is_manual_quote: document.getElementById('editZoneFeeType').value === 'true',
+            fee: parseFloat((document.getElementById('editZoneFeeInput').value || '0').replace(/,/g, '')) || 0
+        };
+
+        try {
+            const res = await fetch(`/caterer/api/delivery-zones/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (res.ok) {
+                Swal.fire('Success', 'Delivery fee updated!', 'success').then(() => {
+                    location.reload();
+                });
+            } else {
+                const err = await res.json();
+                Swal.fire('Error', err.detail || 'Failed to update zone', 'error');
+                btn.innerHTML = origText;
+                btn.disabled = false;
+            }
+        } catch (error) {
+            Swal.fire('Error', 'Network error', 'error');
+            btn.innerHTML = origText;
+            btn.disabled = false;
+        }
+    }
+
+    async function deleteDeliveryZone(id) {
+        if (!confirm('Are you sure you want to delete this zone?')) return;
+        
+        try {
+            const res = await fetch(`/caterer/api/delivery-zones/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                location.reload();
+            } else {
+                Swal.fire('Error', 'Failed to delete zone', 'error');
+            }
+        } catch (e) {
+            Swal.fire('Error', 'Network error', 'error');
+        }
+    }
+</script>
+
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 {% endblock %}

@@ -206,7 +206,7 @@
                     <td>
                         <div class="pay-customer-cell">
                             <span class="pay-customer-name cust-name">{{ b.user.first_name }} {{ b.user.last_name }}</span>
-                            <span class="pay-booking-ref bk-id">Booking #BK-{{ b.id }}</span>
+                            <span class="pay-booking-ref bk-id">{% if b.document_type == 'invoice' %}Order #ORD-{% else %}Booking #BK-{% endif %}{{ b.id }}</span>
                         </div>
                     </td>
                     <td><span class="pay-event-name">{{ b.event_name or b.event_type }}</span></td>
@@ -237,7 +237,7 @@
                                     <i class="fas fa-info-circle"></i> View Details
                                 </button>
                                 {% if b.payment_proof_url %}
-                                <button class="pay-dropdown-item" onclick="showProof('{{ b.payment_proof_url }}', 'Proof - BK-{{ b.id }}')">
+                                <button class="pay-dropdown-item" onclick="showProof('{{ b.payment_proof_url }}', 'Proof - {% if b.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ b.id }}')">
                                     <i class="fas fa-receipt" style="color: var(--accent-color);"></i> Check Receipt
                                 </button>
                                 {% endif %}

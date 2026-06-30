@@ -1,0 +1,1434 @@
+{% set wrapper_class = "fixed-viewport" %}
+{% extends "caterer/layout.html" %}
+
+{% block title %}Manage Food Orders - Caterer Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/bookings.css') }}?v=2.3">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/contract_view.css') }}?v=1.6">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v=1.6">
+<style>
+    /* Operations Checklist Styles */
+    .tasks-list-pro {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .task-item-pro {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: var(--border-radius);
+        transition: all 0.2s ease;
+    }
+
+    .task-item-pro:hover {
+        border-color: var(--primary-color);
+        background: white;
+        transform: translateX(4px);
+    }
+
+    .task-item-pro.completed {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+    }
+
+    .task-item-pro.completed .task-title {
+        text-decoration: line-through;
+        color: #94a3b8;
+    }
+
+    .task-checkbox-pro {
+        width: 24px;
+        height: 24px;
+        border-radius: calc(var(--border-radius) * 0.5);
+        border: 2px solid #cbd5e1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: white;
+        flex-shrink: 0;
+    }
+
+    .task-item-pro.completed .task-checkbox-pro {
+        background: #16a34a;
+        border-color: #16a34a;
+        color: white;
+    }
+
+    .task-title {
+        flex: 1;
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: var(--secondary-color);
+    }
+
+    .btn-delete-task {
+        opacity: 0;
+        color: #94a3b8;
+        cursor: pointer;
+        transition: all 0.2s;
+        padding: 5px;
+    }
+
+    .task-item-pro:hover .btn-delete-task {
+        opacity: 1;
+    }
+
+    .btn-delete-task:hover {
+        color: #ef4444;
+        transform: scale(1.2);
+    }
+
+    .progress-bar-pro {
+        height: 12px;
+        background: #e2e8f0;
+        border-radius: calc(var(--border-radius) * 0.5);
+        overflow: hidden;
+        border: 1px solid #f1f5f9;
+    }
+
+    .progress-fill-pro {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary-color), var(--highlight-color));
+        transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .mtab-pane-pro { display: none; }
+    .mtab-pane-pro.active { display: block; }
+
+    /* Responsive Overrides for Bookings Page */
+    .b-table-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .header-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+    }
+    .process-legend-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        align-items: center;
+    }
+    
+    @media (max-width: 768px) {
+        .b-table-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .header-controls {
+            width: 100%;
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .header-controls .filter-wrapper, 
+        .header-controls select, 
+        .header-controls .action-dropdown-container,
+        .header-controls button {
+            width: 100%;
+            justify-content: center;
+        }
+        .process-legend-container {
+            gap: 0.75rem !important;
+            justify-content: flex-start;
+        }
+        .process-legend-container > div {
+            flex: 1 1 100%;
+            border-right: none !important;
+            padding-right: 0 !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-premium">
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+    <div class="header-title-group">
+        <h1>Manage Food Orders</h1>
+        <p>Review, track, and fulfill all your direct ala carte food orders.</p>
+    </div>
+</div>
+
+<!-- Diagnostics Error Catcher -->
+<script>
+    window.addEventListener('error', function(e) {
+        if (e.filename && e.filename.includes('bookings.js')) {
+            alert('BOOKINGS.JS ERROR: ' + e.message + ' at line ' + e.lineno);
+        } else if (e.message && e.message.includes('toggleBookingExportMenu')) {
+            alert('ACTION ERROR: Function not found. Bookings.js likely failed to load.');
+        }
+    });
+</script>
+
+<div class="kpi-grid-clean" style="margin-bottom: var(--space-lg);">
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Total Orders</h4>
+            <span class="kpi-value">{{ bookings|count }}</span>
+            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">All food orders</span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Confirmed</h4>
+            <span class="kpi-value" style="color: var(--accent-color);">{{ bookings|selectattr('status', 'equalto', 'confirmed')|list|count }}</span>
+            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Ready to serve</span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Pending</h4>
+            <span class="kpi-value" style="color: var(--accent-color);">{{ bookings|selectattr('status', 'in', ['pending', 'pending_quotation', 'awaiting_payment'])|list|count }}</span>
+            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Awaiting action</span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Cancelled</h4>
+            <span class="kpi-value" style="color: #ef4444;">{{ bookings|selectattr('status', 'equalto', 'cancelled')|list|count }}</span>
+            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Cancelled orders</span>
+        </div>
+    </div>
+</div>
+
+{% set payments_to_verify = [] %}
+{% set urgent_events = [] %}
+
+{% for b in bookings %}
+    {% set is_early_stage = b.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'] %}
+    {% set caterer_action_needed = b.status in ['pending', 'awaiting_caterer', 'pending_review'] or (b.payment_status == 'proof_submitted' and is_early_stage) %}
+    {% if b.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+        {% set caterer_action_needed = False %}
+    {% endif %}
+    {% set is_urgent = (b.event_date - today).days <= 2 and caterer_action_needed %}
+    {% if is_urgent %}
+        {% set _ = urgent_events.append(b) %}
+    {% else %}
+        {% set is_early_stage = b.status in ['draft', 'pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'] %}
+        {% if b.payment_status == 'balance_proof_submitted' or (b.payment_status == 'proof_submitted' and is_early_stage) %}
+            {% set _ = payments_to_verify.append(b) %}
+        {% endif %}
+    {% endif %}
+{% endfor %}
+
+{% set normal_alerts = (payments_to_verify|length) %}
+{% set total_alerts = (normal_alerts + urgent_events|length) %}
+
+{% if total_alerts > 0 %}
+{% set is_critical = urgent_events|length > 0 %}
+<div class="action-banner-premium animate-up delay-1" id="alertBanner" style="{% if is_critical %}background: #fef2f2; border: 2px solid #ef4444; color: #7f1d1d; box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.2);{% endif %}">
+    <div class="action-banner-content">
+        <div class="action-banner-icon" style="{% if is_critical %}background: #ef4444; color: white; border-radius: 50%; font-size: 1.5rem; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;{% endif %}">
+            <i class="fas {% if is_critical %}fa-exclamation-triangle fa-beat-fade{% else %}fa-shield-check{% endif %}"></i>
+        </div>
+        <div class="action-banner-text">
+            <h4 style="{% if is_critical %}color: #b91c1c; font-size: 1.15rem; font-weight: 800;{% endif %}">
+                {% if is_critical %}Critical Action Required{% else %}Action Required{% endif %} 
+                <span class="alert-count-badge" style="{% if is_critical %}background: #ef4444; color: white;{% endif %}">{{ total_alerts }} ALERTS</span>
+            </h4>
+            <p style="margin-top: 6px; font-size: 0.9rem; {% if is_critical %}color: #7f1d1d;{% else %}color: rgba(255,255,255,0.7);{% endif %} font-weight: 500;">
+                <span id="bannerTaskDetails">
+                    {% if is_critical %}
+                        You have <strong style="font-size: 1.1rem; color: #ef4444;">{{ urgent_events|length }}</strong> urgent pending bookings (less than 48 hours away).
+                        <br>All other pages are locked until you Review and Accept/Reject them below.
+                    {% else %}
+                        Pending: 
+                        {% set msg_parts = [] %}
+                        {% if payments_to_verify %} {% set _ = msg_parts.append('<span style="color: var(--accent-color); font-weight: 800;">' ~ payments_to_verify|length ~ '</span> payments') %} {% endif %}
+                        {{ msg_parts|join(' &bull; ')|safe }}
+                    {% endif %}
+                </span>
+            </p>
+        </div>
+    </div>
+    <button onclick="scrollToActionTable()" class="btn-banner-action" style="{% if is_critical %}background: #ef4444 !important; color: white; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);{% endif %}">
+        {% if is_critical %}Resolve Now{% else %}Attend Now{% endif %} <i class="fas fa-arrow-right"></i>
+    </button>
+</div>
+<script>
+    function scrollToActionTable() {
+        const sf = document.getElementById('statusFilter');
+        if (sf) { 
+            sf.value = 'action_required'; 
+            // If filterBookings is global, we can call it, else trigger change
+            if (typeof filterBookings === 'function') {
+                filterBookings();
+            } else {
+                sf.dispatchEvent(new Event('change'));
+            }
+        }
+        const tc = document.querySelector('.b-table-container');
+        if (tc) {
+            tc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            tc.style.boxShadow = '0 0 25px rgba(249, 115, 22, 0.2)';
+            setTimeout(() => { tc.style.boxShadow = ''; }, 2000);
+        }
+    }
+</script>
+{% endif %}
+
+
+<!-- Process Legend -->
+<div class="process-legend-container animate-up delay-2" style="margin-bottom: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: var(--border-radius); border: 1px solid #e2e8f0;">
+    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; border-right: 2px solid #e2e8f0; padding-right: 1.5rem;">Order Indicators</div>
+    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;">
+        <div style="width: 12px; height: 12px; background: #ef4444; border-radius: 50%; box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2); animation: pulse 2s infinite;"></div>
+        <span>Urgent Action Required (Within 48h)</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;">
+        <span class="premium-status-badge pulse-update" style="font-size: 0.65rem; padding: 2px 6px;">New Update</span>
+        <span>Payment Proof Submitted</span>
+    </div>
+</div>
+
+<div class="b-table-container c-card-premium" style="margin-top: 0;">
+    <div class="b-table-header">
+        <h3>All Orders</h3>
+        <div class="header-controls">
+            <!-- Local search removed, using global header search -->
+            <input type="hidden" id="bookingSearchInput">
+            <div class="filter-wrapper">
+                <select class="filter-select-pro" id="statusFilter" onchange="filterBookings()">
+                    <option value="">All Status</option>
+                    <option value="action_required" style="font-weight:800; color:var(--primary-color);">🔥 Action Required</option>
+                    <option value="pending_quotation">Draft</option>
+                    <option value="awaiting_caterer">To Sign</option>
+                    <option value="pending">Pending Pay</option>
+                    <option value="awaiting_payment">Pending Payment</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="preparing">Preparation</option>
+                    <option value="on_the_way">Ready For Delivery</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+            </div>
+            <div class="action-dropdown-container" style="position: relative;">
+                <button class="btn-outline input-sm" style="padding: 0.75rem 1.25rem; height: 100%; border: 1px solid #cbd5e1; border-radius: var(--border-radius, 8px); font-weight: 700; color: #475569; background: white; cursor: pointer; display: flex; align-items: center; gap: 8px;" onclick="window.toggleBookingExportMenu(event)">
+                    <i class="fas fa-file-export"></i> Export Data <i class="fas fa-chevron-down" style="font-size: 0.75rem;"></i>
+                </button>
+                <div class="action-dropdown-menu" id="bookingExportMenu" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 8px; background: white; border: 1px solid #e2e8f0; border-radius: var(--border-radius, 12px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); width: 200px; z-index: 100; overflow: hidden;">
+                    <button onclick="window.exportBookings('excel')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569; border-bottom: 1px solid #f1f5f9;"><i class="fas fa-file-excel" style="color: var(--accent-color); font-size: 1.1rem; width: 20px;"></i> Excel (CSV)</button>
+                    <button onclick="window.exportBookings('pdf')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569; border-bottom: 1px solid #f1f5f9;"><i class="fas fa-file-pdf" style="color: #ef4444; font-size: 1.1rem; width: 20px;"></i> PDF Report</button>
+                    <button onclick="window.exportBookings('word')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569;"><i class="fas fa-file-word" style="color: #3b82f6; font-size: 1.1rem; width: 20px;"></i> Word Doc</button>
+                </div>
+            </div>
+            <button onclick="window.location.href='/caterer/calendar'" class="btn-primary-pro" title="Go to Calendar to Add Walk-in Bookings">
+                <span class="btn-text">New Order</span>
+            </button>
+        </div>
+    </div>
+
+    {% if bookings %}
+    <div class="bookings-table-scroll-wrapper" style="overflow-x: auto; width: 100%;">
+        <table class="b-table bookings-list-table" style="width: 100%; border-collapse: collapse; min-width: 1000px;">
+            <thead>
+                <tr style="border-bottom: 2px solid #f1f5f9;">
+                    <th
+                        style="padding: 1.5rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Order ID</th>
+                    <th
+                        style="padding: 1.5rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Customer</th>
+                    <th
+                        style="padding: 1.5rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Order Type</th>
+                    <th
+                        style="padding: 1.5rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Date & Time</th>
+                    <th
+                        style="padding: 1.5rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Fulfillment</th>
+                    <th
+                        style="padding: 1.5rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Amount</th>
+                    <th
+                        style="padding: 1.5rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Status</th>
+                    <th
+                        style="padding: 1.5rem; text-align: right; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for booking in bookings %}
+                {% set is_early_stage = booking.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'] %}
+                {% set caterer_action_needed = booking.status in ['pending', 'awaiting_caterer', 'pending_review'] or (booking.payment_status == 'proof_submitted' and is_early_stage) %}
+                {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+                    {% set caterer_action_needed = False %}
+                {% endif %}
+                {% set row_is_urgent = (booking.event_date - today).days <= 2 and caterer_action_needed %}
+                <tr id="booking-row-{{ booking.id }}" class="booking-row-item {% if row_is_urgent %}urgent-booking-row{% endif %}" 
+                    data-status="{{ booking.status }}" 
+                    data-payment-status="{{ booking.payment_status }}"
+                    data-is-urgent="{{ 'true' if row_is_urgent else 'false' }}"
+                    style="border-bottom: 1px solid #f8fafc; transition: all 0.2s ease;">
+                    <!-- ID -->
+                    <td style="padding: 1.5rem; font-weight: 800; color: #64748b; font-size: 0.85rem; letter-spacing: 0.05em; text-transform: uppercase;">
+                        <div style="display: flex; align-items: center;">
+                            {% if row_is_urgent %}
+                                <div class="urgent-pulse-indicator" title="Event Happening Soon!"></div>
+                            {% endif %}
+                            ORD-{{ "%03d" | format(booking.id) }}
+                        </div>
+                    </td>
+
+                    <!-- CUSTOMER -->
+                    <td style="padding: 1.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="font-weight: 800; color: #0f172a; font-size: var(--text-sm);">
+                                {% if booking.user %}
+                                {{ booking.user.first_name }} {{ booking.user.last_name }}
+                                {% else %}
+                                Walk-in Customer
+                                {% endif %}
+                            </div>
+                            {% if booking.user %}
+                                {% if booking.user.is_verified %}
+                                    <span title="Identity Verified" style="color: var(--accent-color); font-size: 0.75rem;"><i class="fas fa-shield-check"></i></span>
+                                {% elif booking.package_id %}
+                                    <span title="Needs KYC Audit" style="color: var(--accent-color); font-size: 0.75rem;"><i class="fas fa-shield-exclamation"></i></span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        <div style="font-size: var(--text-xs); color: #94a3b8; font-weight: 500; margin-top: 0.1rem; letter-spacing: 0.02em;">
+                            {% if booking.user %}
+                            {{ booking.user.email }}
+                            {% else %}
+                            N/A
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- ORDER TYPE -->
+                    <td style="padding: 1.5rem;">
+                        <div style="font-weight: 800; color: #0f172a; font-size: var(--text-sm);">Ala Carte</div>
+                        <div style="font-size: var(--text-xs); color: #94a3b8; font-weight: 600; margin-top: 0.1rem; text-transform: uppercase; letter-spacing: 0.03em;">
+                            <span style="color: var(--primary-color);">Food Delivery / Pickup</span>
+                        </div>
+                    </td>
+
+                    <!-- DATE -->
+                    <td class="booking-cell-first" style="padding: 1.5rem;">
+                        <div class="flex-column">
+                            {% set is_early_stage = booking.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'] %}
+                            {% set caterer_action_needed_cell = booking.status in ['pending', 'awaiting_caterer', 'pending_review'] or (booking.payment_status == 'proof_submitted' and is_early_stage) %}
+                            {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+                                {% set caterer_action_needed_cell = False %}
+                            {% endif %}
+                            {% set cell_is_urgent = (booking.event_date - today).days <= 2 and caterer_action_needed_cell %}
+                            <div class="event-date-main">
+                                {% if cell_is_urgent %}
+                                    <div class="urgent-status-chip" style="margin-bottom: 4px;">
+                                        <div class="urgent-pulse-indicator"></div>
+                                        <span>Urgent</span>
+                                    </div>
+                                {% endif %}
+                                {{ booking.event_date.strftime('%b %d, %Y') }}
+                            </div>
+                            <div class="event-time-sub" style="font-size: 0.85rem; color: #94a3b8; font-weight: 500; margin-top: 0.1rem;">{{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBA' }}</div>
+                        </div>
+                    </td>
+
+                    <!-- FULFILLMENT -->
+                    <td style="padding: 1.5rem; color: #334155; font-weight: 600; font-size: 0.9rem;">
+                        {% if booking.venue_address == 'PICKUP' %}
+                            <span style="color: #f59e0b;"><i class="fas fa-store"></i> Store Pickup</span>
+                        {% else %}
+                            <span style="color: #10b981;"><i class="fas fa-motorcycle"></i> Delivery</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- AMOUNT -->
+                    <td style="padding: 1.5rem; color: #0f172a; font-weight: 800; font-size: 1.05rem;">₱{{
+                        "{:,.0f}".format(booking.total_price or booking.total_amount) }}</td>
+
+                    <!-- STATUS -->
+                    <td style="padding: 1.5rem;">
+                        {% set badge_class = 'badge-draft' %}
+                        {% set status_label = booking.status.replace('_', ' ').title() if booking.status else 'Unknown' %}
+                        
+                        {% if booking.status == 'pending' %}
+                            {% if booking.payment_status == 'proof_submitted' %}
+                                {% set badge_class = 'badge-payment pulse-update' %}
+                                {% set status_label = 'Verify Payment' %}
+                            {% else %}
+                                {% set badge_class = 'badge-pending' %}
+                                {% set status_label = 'Pending Pay' %}
+                            {% endif %}
+                        {% elif booking.status == 'confirmed' %}
+                            {% if booking.payment_status == 'balance_proof_submitted' %}
+                                {% set badge_class = 'badge-payment pulse-update' %}
+                                {% set status_label = 'Verify Balance' %}
+                            {% else %}
+                                {% set badge_class = 'badge-confirmed' %}
+                                {% set status_label = 'Confirmed' %}
+                            {% endif %}
+                        {% elif booking.status == 'pending_quotation' %}
+                            {% set badge_class = 'badge-draft' %}
+                            {% set status_label = 'Draft' %}
+                        {% elif booking.status in ['pending_review', 'under_review'] %}
+                            {% set badge_class = 'badge-pending pulse-update' %}
+                            {% set status_label = 'New Inquiry' %}
+                        {% elif booking.status == 'quotation_phase' %}
+                            {% set badge_class = 'badge-draft' %}
+                            {% set status_label = 'Quoted' %}
+                        {% elif booking.status == 'awaiting_caterer' %}
+                            {% set badge_class = 'badge-pending' %}
+                            {% set status_label = 'To Sign' %}
+                        {% elif booking.status in ['awaiting_payment', 'pending_payment'] %}
+                            {% set badge_class = 'badge-payment' %}
+                        {% elif booking.status == 'preparing' %}
+                            {% set badge_class = 'badge-preparing' %}
+                        {% elif booking.status in ['on_the_way', 'ready_for_delivery', 'ready_for_pickup', 'arrived'] %}
+                            {% set badge_class = 'badge-active' %}
+                        {% elif booking.status in ['in_progress', 'setup_ongoing'] %}
+                            {% set badge_class = 'badge-in_progress' %}
+                        {% elif booking.status == 'completed' %}
+                            {% set badge_class = 'badge-completed' %}
+                        {% elif booking.status == 'cancelled' %}
+                            {% set badge_class = 'badge-cancelled' %}
+                        {% endif %}
+
+                        {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+                            {% set badge_class = 'badge-reupload' %}
+                            {% set status_label = 'Re-upload' %}
+                        {% endif %}
+                        
+                        <span class="badge-status {{ badge_class }}">{{ status_label }}</span>
+                    </td>
+                    <td class="action-dropdown-container" style="padding: 1.25rem 1.5rem; text-align: right; position: relative;">
+                        <button class="btn-action-trigger" onclick="toggleActionMenuBookings('{{ booking.id }}', event)" style="background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1.1rem; padding: 0.4rem; transition: color 0.2s;">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </button>
+                        <div id="actionMenu-{{ booking.id }}" class="action-dropdown-menu"
+                            style="display: none; position: absolute; right: 1.5rem; background: white; border: 1px solid #e2e8f0; border-radius: var(--border-radius); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); z-index: 50; min-width: 160px; overflow: hidden;">
+                            <button class="view-details"
+                                style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; font-size: 0.85rem; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; transition: background 0.2s;"
+                                data-id="{{ booking.id }}" data-event-name="{{ booking.event_name or 'N/A' }}"
+                                data-event-date="{{ booking.event_date.isoformat() }}"
+                                data-event-type="{{ booking.event_type or 'N/A' }}"
+                                data-venue="{{ booking.venue_address or 'TBD' }}"
+                                data-requests="{{ booking.special_requests or 'None' }}" 
+                                data-payment-ref="{{ booking.payment_reference or '' }}"
+                                data-caterer-notes="{{ booking.caterer_notes or '' }}"
+                                {% if booking.user %}
+                                data-customer="{{ booking.user.first_name }} {{ booking.user.last_name }}"
+                                data-email="{{ booking.user.email }}" {% else %} data-customer="Walk-in Customer"
+                                data-email="N/A" {% endif %}
+                                data-amount="₱{{ '{:,.2f}'.format(booking.total_price or booking.total_amount) }}"
+                                data-status="{{ booking.status }}" data-payment-status="{{ booking.payment_status }}"
+                                data-payment-method="{{ booking.payment_method or 'TBD' }}"
+                                data-proof-url="{{ booking.payment_proof_url or '' }}"
+                                data-balance-proof-url="{{ booking.balance_proof_url or '' }}"
+                                data-booked-on="{{ booking.created_at.strftime('%B %d, %Y %H:%M') }}"
+                                data-guest-count="{{ booking.guest_count }}"
+                                data-balance-due="{{ booking.balance_due_date.strftime('%Y-%m-%d') if booking.balance_due_date else '' }}"
+                                data-payment-plan="{{ booking.payment_plan or 'downpayment' }}"
+                                data-is-package="{{ 'true' if booking.package_id else 'false' }}"
+                                data-is-verified="{{ 'true' if (booking.user and booking.user.is_verified) else 'false' }}"
+                                data-target-user-id="{{ booking.user_id or '' }}"
+                                data-is-food-order="true"
+                                data-has-contract="{{ 'true' if booking.quotation else 'false' }}">
+                                <i class="far fa-eye" style="color: #64748b;"></i> View Details
+                            </button>
+                            <!-- Food Orders do not have Contracts or Proposals -->
+                            {% if booking.status in ['completed', 'cancelled'] %}
+                            <button type="button" onclick="confirmArchiveBooking({{ booking.id }})"
+                                style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; font-size: 0.85rem; color: #dc2626; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; transition: background 0.2s;">
+                                <i class="fas fa-archive"></i> Archive
+                            </button>
+                            {% endif %}
+
+                            
+                            <!-- Add Report Issue Button -->
+                            <button type="button" onclick="openReportModal('{{ booking.id }}')"
+                                style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; font-size: 0.85rem; color: #ef4444; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; transition: background 0.2s;">
+                                <i class="fas fa-flag"></i> Report Issue
+                            </button>
+                        </div>
+
+                        <!-- Hidden Menu Info for Modal -->
+                        <div id="booking-items-{{ booking.id }}" style="display: none;">
+                            {% if booking.package %}
+                                <div class="package-accordion-container">
+                                    <div class="package-accordion">
+                                        <button class="accordion-header" onclick="togglePackageAccordion(this)">
+                                            <span class="accordion-title">
+                                                <i class="fas fa-gift"></i> {{ booking.package.name }}
+                                            </span>
+                                            <i class="fas fa-chevron-down accordion-icon"></i>
+                                        </button>
+                                        <div class="accordion-content">
+                                            <div class="pkg-details-box">
+                                                {% if booking.package.description %}
+                                                    <p class="pkg-desc-text">{{ booking.package.description }}</p>
+                                                {% endif %}
+                                                
+                                                {% if booking.package.inclusions %}
+                                                    <div class="inclusion-section-p">
+                                                        <h4><i class="fas fa-check-circle"></i> Service Inclusions</h4>
+                                                        <div class="inclusion-grid-p">
+                                                            {% for inc in booking.package.inclusions %}
+                                                                <div class="inclusion-item-p">
+                                                                    <i class="fas fa-star"></i> {{ inc }}
+                                                                </div>
+                                                            {% endfor %}
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            <div class="menu-structured-p" style="margin-top: 1.5rem;">
+                                <div class="menu-section-p">
+                                    <h4 style="font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem;"><i class="fas fa-utensils"></i> Dish Selection</h4>
+                                    
+                                    {% if booking.selected_items %}
+                                        {% for group in booking.selected_items|groupby('menu_item.category') %}
+                                            <div class="menu-cat-group">
+                                                <div class="menu-cat-label">{{ group.grouper or 'Main Dishes' }}</div>
+                                                <div class="menu-items-flex">
+                                                    {% for item in group.list %}
+                                                        <div class="mi-pill-premium" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 1rem;">
+                                                            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                                                    <span class="mi-name-text">{{ item.menu_item.name }}</span>
+                                                                    {% if item.is_add_on %}
+                                                                        <span class="mi-addon-badge">Add-on</span>
+                                                                    {% endif %}
+                                                                </div>
+                                                                <span class="mi-qty-text">x{{ item.quantity if item.quantity else (booking.guest_count if not item.is_add_on else 1) }}</span>
+                                                            </div>
+                                                            {% if item.choices %}
+                                                                <div style="margin-top: 0.25rem; font-size: 0.75rem; color: #64748b; background: #f1f5f9; padding: 0.5rem 0.75rem; border-radius: var(--border-radius, 0.5rem); border: 1px solid #e2e8f0; width: 100%;">
+                                                                    <span style="font-weight: 800; color: #0f766e;"><i class="fas fa-list-ul"></i> Platter Choices:</span>
+                                                                    <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem;">
+                                                                        {% for choice in item.choices %}
+                                                                            <span style="background: white; border: 1px solid #cbd5e1; padding: 2px 6px; border-radius: var(--border-radius, 4px); font-weight: 600;">{{ choice }}</span>
+                                                                        {% endfor %}
+                                                                    </div>
+                                                                </div>
+                                                            {% endif %}
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div style="text-align: center; padding: 2rem; background: #f8fafc; border-radius: var(--border-radius); border: 1px dashed #cbd5e1;">
+                                            <i class="fas fa-info-circle" style="color: #94a3b8; font-size: 1.5rem; margin-bottom: 0.5rem;"></i>
+                                            <p style="color: #64748b; font-size: 0.85rem; margin: 0;">No itemized menu data available for this booking.</p>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                <!-- No Search Results Empty State -->
+                <tr id="searchEmptyState" style="display: none;">
+                    <td colspan="7" style="text-align: center; padding: 4rem 1rem;">
+                        <div class="text-brand" style="opacity: 0.5; font-size: 3rem; margin-bottom: 1rem;"><i class="fas fa-search"></i></div>
+                        <h2 class="text-secondary" style="font-size: 1.25rem; font-weight: 700;">No bookings found</h2>
+                        <p style="color: #64748b; font-size: 0.9rem;">Try adjusting your search or filter to find what you're looking for.</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div class="pagination-container-p">
+        <div class="pagination-info">
+            Showing <span id="startRange">0</span> to <span id="endRange">0</span> of <span id="totalEntries">0</span> orders
+        </div>
+        <div class="pagination-buttons">
+            <button id="prevPage" class="btn-pagination"><i class="fas fa-chevron-left"></i> Previous</button>
+            <div id="pageNumbers" class="page-numbers"></div>
+            <button id="nextPage" class="btn-pagination">Next <i class="fas fa-chevron-right"></i></button>
+        </div>
+    </div>
+    {% else %}
+        {% if user and user.caterer_profile and user.caterer_profile.verification_status != 'Verified' %}
+        <div class="no-bookings-empty" style="text-align: center; padding: 4rem 2rem; color: #94a3b8;">
+            <i class="fas fa-lock" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+            <p style="font-size: 1.1rem; font-weight: 500;">Bookings are locked. You must verify your business identity and permit before customers can book your services.</p>
+        </div>
+        {% else %}
+        <div class="no-bookings-empty" style="text-align: center; padding: 4rem 2rem; color: #94a3b8;">
+            <i class="fas fa-calendar-times" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+            <p style="font-size: 1.1rem; font-weight: 500;">No bookings yet. They will appear here once customers book your
+                services.</p>
+        </div>
+        {% endif %}
+    {% endif %}
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: VIEW DETAILS
+════════════════════════════════════════════════════ -->
+<style>
+    .modal-b-container { max-width: 1000px !important; width: 95% !important; border-radius: var(--border-radius, 1.25rem); overflow: hidden; }
+    .elite-status-bar-responsive {
+        background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+        padding: 1.5rem; border-radius: var(--border-radius, 1rem); border: 1px solid #e2e8f0; margin-bottom: 1.5rem;
+        display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    }
+    .status-group-responsive { display: flex; gap: 3rem; align-items: center; flex-wrap: wrap; }
+    .grid-b-details { display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.5rem; align-items: start; }
+    
+    /* Stepper CSS */
+    .booking-stepper-pro {
+        position: relative;
+        padding: 1.5rem;
+        background: #fff;
+        border-radius: var(--border-radius, 1rem);
+        border: 1px solid #e2e8f0;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    .stepper-steps-pro {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+        z-index: 2;
+    }
+    .stepper-track-pro {
+        position: absolute;
+        top: 2.75rem;
+        left: 2rem;
+        right: 2rem;
+        height: 4px;
+        background: #f1f5f9;
+        z-index: 1;
+        border-radius: var(--border-radius, 4px);
+    }
+    .step-pro {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        background: white;
+        padding: 0 0.5rem;
+        z-index: 2;
+        flex: 1;
+    }
+    .step-dot {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: #f1f5f9;
+        color: #94a3b8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.9rem;
+        border: 4px solid white;
+        transition: all 0.3s ease;
+    }
+    .step-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        text-align: center;
+    }
+    
+    .step-pro.active .step-dot {
+        background: var(--primary-color);
+        color: white;
+        box-shadow: 0 0 0 4px rgba(var(--primary-color-rgb), 0.15);
+    }
+    .step-pro.active .step-label {
+        color: var(--primary-color);
+    }
+    
+    .step-pro.completed .step-dot {
+        background: var(--accent-color);
+        color: white;
+    }
+    .step-pro.completed .step-label {
+        color: var(--accent-color);
+    }
+
+    @media (max-width: 992px) {
+        .grid-b-details { grid-template-columns: 1fr; }
+        .status-group-responsive { gap: 1.5rem; }
+    }
+    @media (max-width: 576px) {
+        .elite-status-bar-responsive { flex-direction: column; align-items: flex-start; }
+        .elite-status-bar-responsive > div { width: 100%; justify-content: space-between; }
+        .status-group-responsive { gap: 1rem; flex-direction: column; align-items: flex-start; }
+        
+        .booking-stepper-pro { 
+            padding: 1rem 0.25rem !important; 
+        }
+        .stepper-steps-pro {
+            min-width: unset;
+        }
+        .stepper-track-pro {
+            min-width: unset;
+            left: 10%;
+            right: 10%;
+            top: 1.9rem;
+        }
+        .step-pro {
+            padding: 0 2px;
+            gap: 0.25rem;
+        }
+        .step-dot {
+            width: 28px;
+            height: 28px;
+            font-size: 0.7rem;
+            border-width: 2px;
+        }
+        .step-label {
+            font-size: 0.5rem;
+            letter-spacing: 0;
+        }
+    }
+</style>
+
+<div id="bookingDetailModal" class="occ-modal-overlay">
+    <div class="occ-modal-box modal-b-container occ-content-pop">
+        <div class="occ-modal-header glass-header">
+            <div>
+                <h2 id="modalBookingId" class="occ-modal-title" style="color: #0f172a; font-weight: 800; font-size: 1.25rem; margin-bottom: 0;">Booking Details</h2>
+                <div class="occ-modal-subtitle" style="color: #64748b; font-size: 0.85rem; font-weight: 500; margin-top: 4px;">Comprehensive overview of event and financials</div>
+            </div>
+            <button onclick="bk_closeBookingDetailModal()" class="occ-modal-close" style="color: #94a3b8; background: transparent; border: none; font-size: 1.25rem; transition: color 0.2s;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="occ-modal-body" style="padding: 0; background: #fafbfc;">
+            <!-- Tabs Header (Simplified for Food Orders) -->
+            <div class="modal-tabs-pro" style="display: flex; gap: 0; border-bottom: 1px solid #e2e8f0; background: white;">
+                <button class="mtab-btn-pro active" onclick="switchBookingTab('overview', this)" style="padding: 1rem 1.5rem; background: transparent; border: none; border-bottom: 2px solid var(--primary-color); color: var(--primary-color); font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-info-circle" style="margin-right: 6px;"></i>Order Overview</button>
+            </div>
+
+            <!-- Overview Tab -->
+            <div id="btab-overview" class="mtab-pane-pro active" style="padding: 1.5rem 2rem;">
+            <!-- Action-Oriented Header / Elite Status Bar -->
+            <div class="elite-status-bar-responsive">
+                <div class="status-group-responsive">
+                    <div class="status-info-group">
+                        <span class="status-info-label" style="font-size: 0.65rem; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;">Booking Status</span>
+                        <div id="modalStatus" class="premium-status-badge" style="font-size: 0.85rem; padding: 0.4rem 1rem; margin-top: 4px; border-radius: var(--border-radius, 8px);"></div>
+                    </div>
+                    <div class="status-info-group">
+                        <span class="status-info-label" style="font-size: 0.65rem; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;">Created On</span>
+                        <div id="modalBookedOn" style="font-weight: 800; color: #0f172a; font-size: 1rem; margin-top: 4px;"></div>
+                    </div>
+                </div>
+                <!-- Action Center Header -->
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <div id="modalRiskAlert" class="action-required-alert" style="display: none; padding: 0.5rem 1rem; border-radius: var(--border-radius, 8px); font-weight: 800; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; font-size: 0.75rem;">
+                        <i class="fas fa-shield-exclamation"></i> HIGH RISK
+                    </div>
+                    <!-- Moved Actions here -->
+                    <div id="bookingModalActionsTop" style="display: flex; gap: 0.5rem; flex-wrap: wrap;"></div>
+                </div>
+            </div>
+
+            <!-- Progress Stepper (Full Width Top) -->
+            <div class="booking-stepper-pro">
+                <div class="stepper-track-pro"></div>
+                <div class="stepper-steps-pro">
+                    <div class="step-pro" data-step="pending" title="Order Submitted">
+                        <div class="step-dot">1</div>
+                        <span class="step-label">Submitted</span>
+                    </div>
+                    <div class="step-pro" data-step="preparing" title="Preparing Order">
+                        <div class="step-dot">2</div>
+                        <span class="step-label">Preparing</span>
+                    </div>
+                    <div class="step-pro" data-step="on_the_way" title="Out for Delivery">
+                        <div class="step-dot">3</div>
+                        <span class="step-label">Transit</span>
+                    </div>
+                    <div class="step-pro" data-step="arrived" title="Delivered">
+                        <div class="step-dot">4</div>
+                        <span class="step-label">Delivered</span>
+                    </div>
+                    <div class="step-pro" data-step="completed" title="Order Finished">
+                        <div class="step-dot">5</div>
+                        <span class="step-label">Completed</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Responsive Grid -->
+            <div class="grid-b-details">
+                <!-- LEFT COLUMN: Static Event Details -->
+                <div class="form-column-left" style="display: flex; flex-direction: column; gap: 1rem;">
+                    
+                    <!-- Customer & Event Compact Block -->
+                    <div style="background: white; border-radius: var(--border-radius, 12px); border: 1px solid #e2e8f0; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 1.5rem;">
+                            <div>
+                                <div style="font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.05em;">Customer</div>
+                                <div id="modalCustomer" style="font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 2px;"></div>
+                                <div id="modalEmail" style="font-size: 0.85rem; color: #475569; font-weight: 500;"></div>
+                            </div>
+                            <div>
+                                <div id="modalEventDetailsLabel" style="font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.05em;">Event Details</div>
+                                <div id="modalEventName" style="font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 6px;"></div>
+                                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                                    <span id="modalEventType" style="font-size: 0.75rem; font-weight: 600; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; padding: 3px 10px; border-radius: var(--border-radius, 6px);"></span>
+                                    <span id="modalGuestCount" style="font-size: 0.75rem; font-weight: 600; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; padding: 3px 10px; border-radius: var(--border-radius, 6px);"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.05em;">Venue Location</div>
+                            <div id="modalVenue" style="font-size: 0.95rem; color: #334155; line-height: 1.5; font-weight: 500;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Final Menu (Collapsible) -->
+                    <details style="background: white; border-radius: var(--border-radius, 12px); border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.02);" open>
+                        <summary style="padding: 1.5rem; font-size: 0.85rem; font-weight: 700; color: #0f172a; cursor: pointer; text-transform: uppercase; background: #f8fafc; list-style: none; display: flex; justify-content: space-between; align-items: center; letter-spacing: 0.05em;">
+                            <span>Final Menu Inclusions</span>
+                            <i class="fas fa-chevron-down" style="color: #94a3b8;"></i>
+                        </summary>
+                        <div id="modalMenuSection" style="padding: 1.25rem; border-top: 1px solid #e2e8f0;">
+                            <div id="modalMenuItems" class="modal-menu-container"></div>
+                        </div>
+                    </details>
+                    
+                    <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: var(--border-radius, 12px); padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <div style="color: #b45309; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.05em;">Special Requests</div>
+                        <div id="modalRequests" style="font-size: 0.9rem; color: #92400e; font-weight: 500; line-height: 1.6; font-style: italic;"></div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: Financials + Due Date + Receipts (CLEAN) -->
+                <div class="form-column-right" style="display: flex; flex-direction: column; gap: 1rem;">
+                    
+                    <!-- Financials Focus -->
+                    <div style="background: white; border-radius: var(--border-radius, 12px); border: 1px solid #e2e8f0; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid #f1f5f9;">
+                            <div>
+                                <div style="color: #64748b; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Total Amount</div>
+                                <div id="modalTotalAmount" style="color: #0f172a; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em;">₱0.00</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="color: #64748b; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Payment Status</div>
+                                <div id="modalPaymentStatus" class="premium-status-badge" style="font-size: 0.75rem; padding: 4px 12px; border-radius: var(--border-radius, 6px); font-weight: 600;"></div>
+                            </div>
+                        </div>
+                        
+                        <div style="font-size: 0.85rem; font-weight: 500; color: #475569; margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 0.6rem;">
+                            <i class="fas fa-credit-card" style="color: #94a3b8;"></i> <span id="modalPaymentMethod"></span>
+                        </div>
+                        
+                        <!-- Food Orders are Paid in Full or COD - No Balance Due Tracking -->
+
+                        <!-- Dynamic Proofs -->
+                        <div id="modalProofSection" style="display: none; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #e2e8f0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <div style="font-size: 0.75rem; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em;">Payment Receipts</div>
+                                <button id="aiVerifyBtn" onclick="runAIScan()" style="background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; padding: 4px 10px; font-size: 0.7rem; font-weight: 700; border-radius: var(--border-radius, 6px); cursor: pointer; transition: background 0.2s;"><i class="fas fa-microchip"></i> AI Verify</button>
+                            </div>
+                            <div id="modalProofContainer" style="background: #f8fafc; border: 1px dashed #cbd5e1; padding: 1rem; border-radius: var(--border-radius, 0.75rem); display: flex; gap: 1rem; flex-wrap: wrap;"></div>
+                            
+                            <!-- AI Results -->
+                            <div id="aiScanResults" style="display: none; background: white; border: 1px solid #e2e8f0; border-radius: var(--border-radius, 0.75rem); margin-top: 1rem; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                                <div style="background: #f8fafc; padding: 0.75rem 1rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-weight: 800; color: #1e293b; font-size: 0.7rem;"><i class="fas fa-robot" style="color: #0ea5e9;"></i> AI REPORT</span>
+                                    <div id="aiConfidenceBadge"></div>
+                                </div>
+                                <div id="aiScanContent" style="padding: 1rem; font-size: 0.8rem;"></div>
+                                <div id="aiScanFlags" style="padding: 0 1rem 1rem;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audit Trail (Collapsible) -->
+            <div style="margin-top: 1.5rem; background: white; border-radius: var(--border-radius, 12px); border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                <details style="padding: 1.5rem;">
+                    <summary style="font-size: 0.85rem; font-weight: 700; color: #0f172a; cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em; outline: none; list-style-position: inside;">
+                        Audit Trail &amp; History
+                    </summary>
+                    <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
+                        <div class="audit-timeline-pro" id="modalHistoryTimeline"></div>
+                    </div>
+                </details>
+            </div>
+            </div>
+
+            <!-- Chat Tab -->
+
+        </div>
+    </div>
+</div>
+
+<!-- Reject Reason Modal -->
+<div id="rejectReasonModal" class="occ-modal-overlay" style="z-index: 1100;">
+    <div class="occ-modal-box sz-sm occ-content-pop">
+        <div class="occ-modal-header glass-header">
+            <div>
+                <h2 class="occ-modal-title" style="color: #991b1b;"><i class="fas fa-ban"></i> Reject Booking</h2>
+                <div class="occ-modal-subtitle">Please provide a reason for the cancellation</div>
+            </div>
+            <button onclick="bk_closeModal('rejectReasonModal')" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="occ-modal-body">
+            <div class="occ-form-group">
+                <label class="occ-form-label" style="font-weight: 800;">Reason for Rejection</label>
+                <textarea id="rejectReasonInput" class="occ-form-input" style="height: 120px; resize: none; border-color: #fecaca;" placeholder="Example: Fully booked on this date, out of service area, etc."></textarea>
+                <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;"><i class="fas fa-info-circle"></i> This reason will be sent to the customer via email.</p>
+            </div>
+        </div>
+        <div class="occ-modal-footer">
+            <button onclick="bk_closeModal('rejectReasonModal')" class="btn-sm-outline">Go Back</button>
+            <button onclick="submitRejectionWithReason()" class="btn-sm-danger" style="background: #dc2626; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--border-radius, 8px); font-weight: 800; display: flex; align-items: center; gap: 0.5rem;">
+                Confirm Rejection
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: CONTRACT VIEW
+════════════════════════════════════════════════════ -->
+<div id="contractModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-lg occ-content-slide-up">
+        <div class="occ-modal-header glass-header">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <div class="secure-badge-pro"><i class="fas fa-shield-check"></i> Certified Secure</div>
+                <h2 class="occ-modal-title">Digital Service Agreement</h2>
+            </div>
+            <div style="display:flex;gap:1rem;align-items:center;">
+                <button onclick="printContract(currentBookingIdForContract)" class="btn-sm-outline" style="height:40px; display:inline-flex; align-items:center; gap:0.5rem;">
+                    <i class="fas fa-print"></i> Print / PDF
+                </button>
+                <button onclick="closeContractModal()" class="occ-modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="occ-modal-body" id="contractModalBody" style="background:#f1f5f9; padding:2.5rem;">
+            <div style="text-align:center;padding:4rem;">
+                <i class="fas fa-circle-notch fa-spin fa-3x" style="color:var(--primary-color);"></i>
+                <p style="margin-top:1.25rem;color:#64748b;font-weight:500;">Loading secure document...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: NEW BOOKING
+════════════════════════════════════════════════════ -->
+<div id="walkinBookingModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-xl occ-content-slide-down" style="max-width: 1000px;">
+        <div class="occ-modal-header glass-header">
+            <div>
+                <h2 class="occ-modal-title" style="color: #0f172a; font-weight: 800; font-size: 1.25rem; margin-bottom: 0;">
+                    <i class="fas fa-clipboard-list" style="color: var(--primary-color); margin-right: 8px;"></i> Manual Walk-in Booking
+                </h2>
+                <div class="occ-modal-subtitle" style="color: #64748b; font-size: 0.85rem; font-weight: 500; margin-top: 4px;">Register a direct/offline customer event</div>
+            </div>
+            <button type="button" onclick="closeWalkinModal()" class="occ-modal-close" style="color: #94a3b8; background: transparent; border: none; font-size: 1.25rem; transition: color 0.2s;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="occ-modal-body" style="padding-top: 1rem;">
+            <form id="walkinBookingForm" onsubmit="submitWalkinBooking(event)" novalidate>
+                <div class="occ-form-grid">
+                    
+                    <!-- LEFT COLUMN: Customer & Menu -->
+                    <div class="form-column-left" style="display: flex; flex-direction: column; gap: 0.85rem;">
+                        <div class="occ-form-group full-width" style="margin-bottom:0.25rem;">
+                            <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Customer Details</span>
+                        </div>
+                        
+                        <div class="occ-form-grid" style="gap: 0.85rem;">
+                            <div class="occ-form-group">
+                                <label class="occ-form-label">First Name *</label>
+                                <input type="text" id="bookCustFirstName" name="first_name" class="occ-form-input real-time-val" required>
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                            </div>
+                            <div class="occ-form-group">
+                                <label class="occ-form-label">Middle Name</label>
+                                <input type="text" id="bookCustMiddleName" name="middle_name" class="occ-form-input real-time-val">
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                            </div>
+                        </div>
+                        <div class="occ-form-group">
+                            <label class="occ-form-label">Last Name *</label>
+                            <input type="text" id="bookCustLastName" name="last_name" class="occ-form-input real-time-val" required>
+                            <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                        </div>
+                        
+                        <div class="occ-form-group">
+                            <label class="occ-form-label">Email Address *</label>
+                            <input type="email" id="bookCustEmail" name="customer_email" class="occ-form-input real-time-val" required>
+                            <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                            <div id="bookUserDetectionBadge" style="display: none; align-items: center; gap: 0.35rem; font-size: 0.75rem; margin-top: 0.5rem; padding: 0.4rem 0.6rem; border-radius: var(--border-radius, 6px); width: fit-content; line-height: 1.2;">
+                                <i class="fas fa-info-circle"></i> <span id="bookUserDetectionText"></span>
+                            </div>
+                        </div>
+
+                        <div class="occ-form-group">
+                            <label class="occ-form-label">Contact Number *</label>
+                            <input type="text" id="bookCustContact" name="customer_contact" class="occ-form-input real-time-val" maxlength="11" required>
+                            <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                        </div>
+
+                        <div class="occ-form-group full-width" style="margin-top:1rem; margin-bottom:0.25rem; border-top:1px solid #f1f5f9; padding-top:1rem;">
+                            <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Menu & Pricing</span>
+                        </div>
+                        
+                        <div class="occ-form-group full-width">
+                            <label class="occ-form-label">Select Package (Optional)</label>
+                            <select id="bookPackage" name="package_id" class="filter-select-pro">
+                                <option value="" data-price="0" data-unit="fixed" data-min="1">None / Custom</option>
+                                {% for pkg in packages %}
+                                {% set display_price = pkg.price if (pkg.price and pkg.price > 0) else (pkg.price_per_head or 0) %}
+                                <option value="{{ pkg.id }}" data-price="{{ display_price }}" data-unit="{{ pkg.price_unit or 'per_guest' }}" data-min="{{ pkg.min_guests or 1 }}">{{ pkg.name }} (₱{{ '{:,.2f}'.format(display_price) }}{{ '/pax' if pkg.price_unit == 'per_guest' else '' }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="occ-form-grid" style="gap: 0.85rem;">
+                            <div class="occ-form-group">
+                                <label class="occ-form-label">No. of Guests *</label>
+                                <input type="number" id="bookGuests" name="guest_count" required min="1" max="100000" class="occ-form-input real-time-val">
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                            </div>
+                            <div class="occ-form-group">
+                                <label class="occ-form-label">Total Amount (₱) *</label>
+                                <input type="text" id="bookTotalAmount" name="total_amount" required class="occ-form-input real-time-val" onblur="this.value = formatCurrency(this.value)" onfocus="this.value = this.value.replace(/[₱,]/g, '')">
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT COLUMN: Event Logistics -->
+                    <div class="form-column-right" style="display: flex; flex-direction: column; gap: 0.85rem; padding-left: 1rem; border-left: 1px solid #f1f5f9;">
+                        <div class="occ-form-group full-width" style="margin-bottom:0.25rem;">
+                            <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Event Logistics & Origin</span>
+                        </div>
+
+                        <div class="occ-form-group">
+                            <label class="occ-form-label">Booking Source *</label>
+                            <select id="bookSource" name="booking_source" class="filter-select-pro" required>
+                                <option value="Walk-in">Walk-in / Direct</option>
+                                <option value="Facebook">Facebook Page</option>
+                                <option value="Referral">Referral / Word of Mouth</option>
+                                <option value="Other">Other Origin</option>
+                            </select>
+                            <div style="font-size: 0.65rem; color: #64748b; margin-top: 4px;"><i class="fas fa-info-circle"></i> Helps track where your customers are coming from.</div>
+                        </div>
+
+                        <div class="occ-form-group">
+                            <label class="occ-form-label">Event Name *</label>
+                            <input type="text" id="bookEventName" name="event_name" required class="occ-form-input real-time-val">
+                            <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                        </div>
+                        
+                        <div class="occ-form-grid" style="gap: 0.85rem;">
+                            <div class="occ-form-group">
+                                <label class="occ-form-label">Event Type *</label>
+                                <select name="event_type" required class="filter-select-pro real-time-val">
+                                    <option value="">Select Type...</option>
+                                    <option value="Wedding">Wedding</option>
+                                    <option value="Birthday">Birthday</option>
+                                    <option value="Corporate">Corporate</option>
+                                    <option value="Private Party">Private Party</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                            </div>
+                            <div class="occ-form-group">
+                                <label class="occ-form-label">Event Date *</label>
+                                <input type="date" name="event_date" id="walkin_event_date" required class="occ-form-input real-time-val">
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                            </div>
+                        </div>
+
+                        <div class="occ-form-grid" style="gap: 0.85rem;">
+                            <div class="occ-form-group">
+                                <label class="occ-form-label">Province *</label>
+                                <select id="bookProvince" name="province" required class="filter-select-pro real-time-val">
+                                    <option value="">Select Province...</option>
+                                    <option value="Laguna">Laguna</option>
+                                    <option value="Batangas">Batangas</option>
+                                    <option value="Cavite">Cavite</option>
+                                    <option value="Rizal">Rizal</option>
+                                </select>
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                            </div>
+                            <div class="occ-form-group">
+                                <label class="occ-form-label">City / Town *</label>
+                                <select id="bookCity" name="city" required class="filter-select-pro real-time-val">
+                                    <option value="">Select City...</option>
+                                </select>
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                            </div>
+                        </div>
+
+                        <div class="occ-form-group">
+                            <label class="occ-form-label">Barangay *</label>
+                            <select id="bookBarangay" name="barangay" required class="filter-select-pro real-time-val">
+                                <option value="">Select Barangay...</option>
+                            </select>
+                            <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                        </div>
+
+                        <div class="occ-form-group full-width">
+                            <label class="occ-form-label">Street Address / Landmark *</label>
+                            <textarea name="venue_address" rows="2" required class="occ-form-input real-time-val" style="height:auto; min-height:60px;" placeholder="Unit #, Street, Phase, Landmark"></textarea>
+                            <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="occ-modal-footer">
+            <button type="button" onclick="closeWalkinModal()" class="btn-secondary-pro" style="min-width:100px;">Cancel</button>
+            <button type="submit" form="walkinBookingForm" id="walkinSubmitBtn" class="btn-primary-pro" style="padding:0 1.5rem; height:44px; display:flex; align-items:center; gap:0.5rem;">
+                Create Booking
+            </button>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+
+{% block extra_body %}
+<!-- ═══════════════════════════════════════════════════
+     MODAL: DISPATCH PROOF (PANEL DEFENSE)
+════════════════════════════════════════════════════ -->
+<div id="dispatchProofModal" class="occ-modal-overlay" style="z-index: 9999;">
+    <div class="occ-modal-box sz-sm occ-content-zoom-in">
+        <div class="occ-modal-header glass-header">
+            <div>
+                <h2 class="occ-modal-title"><i class="fas fa-camera" style="color:var(--primary-color);"></i> Proof of Preparation</h2>
+                <div class="occ-modal-subtitle">Upload photo of packed orders to unlock dispatch.</div>
+            </div>
+            <button type="button" onclick="closeDispatchProofModal()" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="occ-modal-body">
+            <form id="dispatchProofForm" onsubmit="submitDispatchProof(event)">
+                <input type="hidden" id="dispatchProofBookingId">
+                <input type="hidden" id="dispatchProofStage">
+                
+                <div style="background:#f0f9ff; color:#0369a1; padding:1rem; border-radius: var(--border-radius, 0.75rem); font-size:0.85rem; margin-bottom:1.5rem; display:flex; gap:0.75rem; align-items:flex-start;">
+                    <i class="fas fa-info-circle mt-1"></i>
+                    <div>
+                        <strong>Quality Assurance Lock</strong><br>
+                        To ensure quality and prevent blind checklist completion, you must provide photographic evidence of the prepared food before dispatching.
+                    </div>
+                </div>
+
+                <div class="occ-form-group">
+                    <label class="occ-form-label">Upload Photo Evidence *</label>
+                    <input type="file" id="dispatchProofImage" class="occ-form-input" accept="image/png, image/jpeg" required>
+                    <div style="font-size:0.7rem; color:#64748b; margin-top:0.25rem;">Max size: 5MB (JPG/PNG)</div>
+                </div>
+            </form>
+        </div>
+        <div class="occ-modal-footer">
+            <button type="button" onclick="closeDispatchProofModal()" class="btn-secondary-pro">Cancel</button>
+            <button type="submit" form="dispatchProofForm" id="dispatchProofSubmitBtn" class="btn-primary-pro bg-primary" style="background:var(--primary-color) !important;">
+                Confirm & Dispatch
+            </button>
+        </div>
+    </div>
+    </div>
+</div>
+
+<!-- Report Issue Modal -->
+<div id="reportIssueModal" class="occ-modal-overlay" style="z-index: 1000000;">
+    <div class="occ-modal-box sz-sm occ-content-pop">
+        <div class="occ-modal-header glass-header">
+            <div>
+                <h2 class="occ-modal-title" style="color: #991b1b;"><i class="fas fa-flag"></i> Report Issue</h2>
+                <div class="occ-modal-subtitle">File a dispute against a customer</div>
+            </div>
+            <button onclick="closeReportModal()" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="occ-modal-body">
+            <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1.5rem; font-weight: 500;">Please provide details of your dispute. This will be sent to the OccaServe Admin for investigation.</p>
+            
+            <form id="reportForm" onsubmit="submitReport(event)">
+                <input type="hidden" id="reportBookingId" name="booking_id">
+                <div class="occ-form-group">
+                    <label class="occ-form-label" style="font-weight: 800; color: #991b1b;">Reason *</label>
+                    <select name="reason" required class="occ-form-input">
+                        <option value="">Select a reason...</option>
+                        <option value="Customer did not show up">Customer did not show up</option>
+                        <option value="Fake payment or receipt">Fake payment or receipt</option>
+                        <option value="Bad behavior or harassment">Bad behavior or harassment</option>
+                        <option value="Customer refused to pay balance">Customer refused to pay balance</option>
+                        <option value="Other issue">Other issue</option>
+                    </select>
+                </div>
+                <div class="occ-form-group">
+                    <label class="occ-form-label" style="font-weight: 800; color: #991b1b;">Details *</label>
+                    <textarea name="details" required class="occ-form-input" style="height: 120px; resize: none; border-color: #fecaca;" placeholder="Describe what happened in detail..."></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="occ-modal-footer">
+            <button onclick="closeReportModal()" class="btn-sm-outline">Cancel</button>
+            <button type="submit" form="reportForm" class="btn-sm-danger" style="background: #dc2626; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--border-radius, 8px); font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%;">
+                Submit Report <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     TIER 1 FORCED ACTION (REMOVED MODAL, REPLACED BY BANNER)
+════════════════════════════════════════════════════ -->
+<script>
+    // Robust inline verification to identify why modals/validation might fail
+    (function() {
+        console.log('[BookingsUI] Inline verification started.');
+        
+        window.addEventListener('load', function() {
+            const checklist = {
+                'window.bk_closeModal': typeof window.bk_closeModal,
+                'window.ValidationManager': typeof window.ValidationManager,
+                'document.getElementById("walkinBookingForm")': !!document.getElementById('walkinBookingForm')
+            };
+            
+            console.log('[BookingsUI] State Checklist:', checklist);
+            
+            // Emergency Recovery for Modal Closing
+            if (typeof window.bk_closeModal !== 'function') {
+                console.warn('[BookingsUI] bk_closeModal missing from window. Injecting emergency fallback.');
+                window.bk_closeModal = function(id) {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.classList.remove('active');
+                        setTimeout(() => { if(!el.classList.contains('active')) el.style.display = 'none'; }, 300);
+                        document.body.style.overflow = '';
+                    }
+                };
+                // Link aliases
+                window.closeWalkinModal = () => window.bk_closeModal('walkinBookingModal');
+                window.bk_closeBookingDetailModal = () => window.bk_closeModal('bookingDetailModal');
+                window.closeExpenseTracker = () => window.bk_closeModal('expenseTrackerModal');
+                window.closeContractModal = () => window.bk_closeModal('contractModal');
+            }
+
+            // Global Search Listener
+            window.addEventListener('globalSearch', function(e) {
+                const hiddenInput = document.getElementById('bookingSearchInput');
+                if (hiddenInput && typeof window.filterBookings === 'function') {
+                    hiddenInput.value = e.detail.value;
+                    window.filterBookings();
+                }
+            });
+        });
+    })();
+</script>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', path='/js/auth/location_data.js') }}"></script>
+<script src="{{ url_for('static', path='/js/caterer/bookings.js') }}?v={{ range(10000, 99999) | random }}"></script>
+
+<script>
+    function openReportModal(bookingId) {
+        document.getElementById('reportBookingId').value = bookingId;
+        if (typeof window.bk_openModal === 'function') {
+            window.bk_openModal('reportIssueModal');
+        } else {
+            const modal = document.getElementById('reportIssueModal');
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('active'), 10);
+        }
+    }
+
+    function closeReportModal() {
+        if (typeof window.bk_closeModal === 'function') {
+            window.bk_closeModal('reportIssueModal');
+        } else {
+            const modal = document.getElementById('reportIssueModal');
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
+        document.getElementById('reportForm').reset();
+    }
+
+    async function submitReport(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const bookingId = formData.get('booking_id');
+        const submitBtn = form.querySelector('button[type="submit"]');
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+
+        try {
+            const response = await fetch(`/api/bookings/${bookingId}/report`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                closeReportModal();
+                Swal.fire({
+                    title: 'Report Submitted',
+                    text: data.message,
+                    icon: 'success',
+                    confirmButtonColor: '#ef4444'
+                });
+            } else {
+                Swal.fire('Error', data.message, 'error');
+            }
+        } catch (error) {
+            Swal.fire('Error', 'An unexpected error occurred. Please try again.', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Submit Report <i class="fas fa-paper-plane"></i>';
+        }
+    }
+</script>
+{% endblock %}

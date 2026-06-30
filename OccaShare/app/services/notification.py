@@ -63,23 +63,26 @@ class NotificationService:
         db.commit()
 
         # 2. Email Notification
-        EmailService.send_booking_confirmation(customer.email, booking.id) # To Customer
+        EmailService.send_booking_confirmation(customer.email, booking.id, booking.document_type) # To Customer
         
         # Email to Caterer
+        prefix = "ORD" if booking.document_type == "invoice" else "BK"
+        subject_prefix = "Order" if booking.document_type == "invoice" else "Booking"
+        
         EmailService._send_email(
             user.email,
-            "New Booking Request - OccaShare",
-            f"Hello {caterer.business_name},\n\nYou have received a new booking for '{booking.event_name}'.\nLog in to your dashboard to review."
+            f"New {subject_prefix} Request - OccaShare",
+            f"Hello {caterer.business_name},\n\nYou have received a new {subject_prefix.lower()} for '{booking.event_name}'.\nLog in to your dashboard to review."
         )
 
         # 3. SMS Notification to Caterer
         phone = caterer.contact_phone or user.phone_number
         if phone:
-            sms_msg = f"OccaShare: New booking for '{booking.event_name}' on {booking.event_date}. Log in to review!"
+            sms_msg = f"OccaShare: New {subject_prefix.lower()} for '{booking.event_name}' on {booking.event_date}. Log in to review!"
             await NotificationService._send_sms(phone, sms_msg)
 
         # 4. Real-time WebSocket
-        await manager.broadcast_to_user(user.id, {"type": "booking_update", "message": f"New booking: {booking.event_name}"})
+        await manager.broadcast_to_user(user.id, {"type": "booking_update", "message": f"New {subject_prefix.lower()}: {booking.event_name}"})
 
     @staticmethod
     async def notify_quotation_ready(db: Session, booking: models.Booking):
@@ -186,7 +189,8 @@ class NotificationService:
             booking.id, 
             amount, 
             booking.payment_reference or "N/A", 
-            payment_type
+            payment_type,
+            booking.document_type
         )
 
         # 3. SMS to Caterer

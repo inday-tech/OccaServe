@@ -1,14 +1,6 @@
 :root {
-    --wiz-primary: {
-            {
-            caterer.primary_color if caterer else '#FF7B54'
-        }
-    }
-
-    ;
-    --wiz-primary-rgb: 255,
-    123,
-    84;
+    --wiz-primary: #FF7B54;
+    --wiz-primary-rgb: 255, 123, 84;
     --wiz-slate-50: #f8fafc;
     --wiz-slate-100: #f1f5f9;
     --wiz-slate-200: #e2e8f0;

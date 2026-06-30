@@ -724,36 +724,25 @@
         {% for pkg in packages %}
         "{{ pkg.id }}": {
             name: "{{ pkg.name }}",
+            desc: `{{ pkg.description or '' }}`,
             {% if pkg.pricing_mode == 'per_pax' or pkg.price_unit == 'per_guest' %}
             price: '₱{{ "{:,.2f}".format(pkg.price_per_head if pkg.price_per_head else (pkg.price if pkg.price else 0)) }} <span class="text-[10px] text-slate-400 font-bold ml-1">/pax</span>',
             {% else %}
             price: '₱{{ "{:,.2f}".format(pkg.price if pkg.price else (pkg.price_per_head if pkg.price_per_head else 0)) }} <span class="text-[10px] text-slate-400 font-bold ml-1">total</span>',
             {% endif %}
-            description: `{{ pkg.description or 'Premium package.' }}`,
-            inclusions: [
-                {% if pkg.menu_items %}
-                    {% for m in pkg.menu_items %}
-                        "Dish: {{ m.name }} ({{ m.category }})",
-                    {% endfor %}
-                {% endif %}
-                {% if pkg.equipment_links %}
-                    {% for eq_link in pkg.equipment_links %}
-                        "Equipment: {{ eq_link.equipment.name }} {% if eq_link.quantity > 1 %}(x{{ eq_link.quantity }}){% endif %}",
-                    {% endfor %}
-                {% endif %}
-                {% if pkg.service_links %}
-                    {% for svc_link in pkg.service_links %}
-                        "Service: {{ svc_link.service.name }} {% if svc_link.quantity > 1 %}(x{{ svc_link.quantity }}){% endif %}",
-                    {% endfor %}
-                {% endif %}
-                {% if pkg.inclusions and pkg.inclusions is iterable %}
-                    {% for inc in pkg.inclusions %}
-                        "{{ inc }}",
-                    {% endfor %}
-                {% endif %}
-            ],
-            service_duration: "{{ pkg.service_duration or 4 }} Hours",
-            service_type: "{{ pkg.service_type or 'General' }}"
+            min_guests: {{ (pkg.min_guests or 0)|tojson }},
+            max_guests: {{ (pkg.max_guests or 0)|tojson }},
+            duration: "{{ pkg.service_duration or 4 }} Hours",
+            additional_guest_price: {{ (pkg.additional_guest_price or 0)|tojson }},
+            overtime_fee: {{ (pkg.overtime_fee or 0)|tojson }},
+            inclusions: {{ (pkg.inclusions)|tojson if pkg.inclusions else '[]' }},
+            linked_inventory: [
+                {% for item in pkg.menu_items %}{% if item.category in ['Rentals', 'Services'] %}{{ item.name|tojson }},{% endif %}{% endfor %}
+                {% if pkg.equipment_links %}{% for el in pkg.equipment_links %}{{ el.equipment.name|tojson }},{% endfor %}{% endif %}
+                {% if pkg.service_links %}{% for sl in pkg.service_links %}{{ sl.service.name|tojson }},{% endfor %}{% endif %}
+            ].filter(Boolean),
+            dishes: [{% for item in pkg.menu_items %}{% if item.category not in ['Rentals', 'Services'] %}{{ item.name|tojson }},{% endif %}{% endfor %}].filter(Boolean),
+            selection_rules: {{ (pkg.selection_rules)|tojson if pkg.selection_rules else 'null' }}
         },
         {% endfor %}
     };
@@ -998,29 +987,90 @@
         const pkg = publicPackages[id];
         if(!pkg) return;
 
-        let incHtml = "";
-        // Use real inclusions if available, else show high-quality defaults
-        const defaultInclusions = ["Full Event Setup & Cleanup", "Premium Buffet Table Design", "Professional Uniformed Servers", "Standard Sound System", "Complete Dining Utensils"];
-        const displayInclusions = (pkg.inclusions && pkg.inclusions.length > 0) ? pkg.inclusions : defaultInclusions;
-        
-        incHtml = `<ul class="space-y-2 mt-3">
-            ${displayInclusions.map(i => `<li class="text-xs text-slate-600 flex items-center gap-2"><i class="fas fa-check-circle text-[var(--primary-color)]"></i> ${i}</li>`).join('')}
-        </ul>`;
+        let addGuestHtml = '';
+        if (pkg.additional_guest_price > 0) {
+            addGuestHtml = `
+            <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.5rem 0;border-bottom:1px solid #f1f5f9;">
+                <span style="color:#94a3b8;font-weight:700;">ADDITIONAL GUEST</span>
+                <span style="font-weight:800;color:#1e293b;">₱${parseFloat(pkg.additional_guest_price).toLocaleString('en-PH', {minimumFractionDigits:2})} /pax</span>
+            </div>`;
+        }
+
+        let overtimeHtml = '';
+        if (pkg.overtime_fee > 0) {
+            overtimeHtml = `
+            <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.5rem 0;">
+                <span style="color:#94a3b8;font-weight:700;">OVERTIME FEE</span>
+                <span style="font-weight:800;color:#1e293b;">₱${parseFloat(pkg.overtime_fee).toLocaleString('en-PH', {minimumFractionDigits:2})} /hr</span>
+            </div>`;
+        }
+
+        const serviceHtml = `
+            <div style="background:#f8fafc;border-radius:12px;padding:1rem;border:1px solid #f1f5f9;margin-bottom:1.25rem;">
+                <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.5rem 0;border-bottom:1px solid #f1f5f9;">
+                    <span style="color:#94a3b8;font-weight:700;">GUEST COUNT</span>
+                    <span style="font-weight:800;color:#1e293b;">
+                        ${pkg.min_guests > 0 ? 'Min. '+pkg.min_guests : '—'}${pkg.max_guests > 0 ? ' · Max. '+pkg.max_guests : ''} pax
+                    </span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.5rem 0;border-bottom:1px solid #f1f5f9;">
+                    <span style="color:#94a3b8;font-weight:700;">SERVICE DURATION</span>
+                    <span style="font-weight:800;color:#1e293b;">${pkg.duration}</span>
+                </div>
+                ${addGuestHtml}
+                ${overtimeHtml}
+            </div>`;
+
+        const incList = [...(pkg.inclusions || []), ...(pkg.linked_inventory || [])].filter((v, i, a) => a.indexOf(v) === i);
+        const incHtml = incList.length > 0 ? `
+            <div style="margin-bottom:1.25rem;">
+                <h4 style="font-size:0.72rem;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
+                    <i class="fas fa-box-open" style="color:var(--brand-primary);margin-right:6px;"></i>Equipment & Services Included
+                </h4>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                    ${incList.map(inc => `
+                        <div style="font-size:0.75rem;color:#475569;background:#fff;padding:8px 10px;border-radius:8px;border:1px solid #f1f5f9;display:flex;align-items:center;gap:6px;">
+                            <i class="fas fa-check-circle" style="color:#10b981;flex-shrink:0;"></i>${inc}
+                        </div>`).join('')}
+                </div>
+            </div>` : '';
+
+        let dishHtml = '';
+        if (pkg.selection_rules && Object.keys(pkg.selection_rules).length > 0) {
+            dishHtml = `
+            <div style="margin-bottom:1.25rem;">
+                <h4 style="font-size:0.72rem;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
+                    <i class="fas fa-utensils" style="color:var(--brand-primary);margin-right:6px;"></i>Menu Selection Limits
+                </h4>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                    ${Object.entries(pkg.selection_rules).map(([cat, limit]) => `<span style="background:#f8fafc;color:#475569;padding:4px 12px;border-radius:100px;font-size:0.72rem;font-weight:700;border:1px solid #e2e8f0;">${limit} ${cat}</span>`).join('')}
+                </div>
+            </div>`;
+        } else if (pkg.dishes && pkg.dishes.length > 0) {
+            dishHtml = `
+            <div style="margin-bottom:1.25rem;">
+                <h4 style="font-size:0.72rem;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
+                    <i class="fas fa-utensils" style="color:var(--brand-primary);margin-right:6px;"></i>Dishes Included
+                </h4>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                    ${pkg.dishes.map(d => `<span style="background:#f8fafc;color:#475569;padding:4px 12px;border-radius:100px;font-size:0.72rem;font-weight:700;border:1px solid #e2e8f0;">${d}</span>`).join('')}
+                </div>
+            </div>`;
+        }
 
         const html = `
-            <h3 class="text-base font-bold text-slate-800 mb-1">${pkg.name}</h3>
-            <div class="text-lg font-black text-[var(--primary-color)] mb-3">${pkg.price}</div>
-            <p class="text-xs text-slate-500 leading-relaxed mb-4">${pkg.description}</p>
-            
-            <div class="border-t border-slate-100 pt-4 mb-4">
-                <div class="text-xs font-extrabold text-slate-800 uppercase">Included Services</div>
-                ${incHtml}
+            <div style="margin-bottom:1.25rem;">
+                <div style="font-size:0.7rem;font-weight:800;color:var(--brand-primary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Package Details</div>
+                <h2 style="font-size:1.3rem;font-weight:900;color:#1e293b;margin-bottom:0.25rem;">${pkg.name}</h2>
+                <div style="font-size:1.5rem;font-weight:900;color:var(--brand-primary);">${pkg.price}</div>
             </div>
-            
-            <div class="text-[10px] text-slate-400 font-bold flex flex-col gap-1">
-                <div>SERVICE: ${pkg.service_type}</div>
-                <div>DURATION: ${pkg.service_duration}</div>
-            </div>
+            ${pkg.desc ? `<p style="font-size:0.85rem;color:#475569;line-height:1.65;margin-bottom:1.25rem;">${pkg.desc}</p>` : ''}
+            ${serviceHtml}
+            ${incHtml}
+            ${dishHtml}
+            <button onclick="promptBookingAuth()" class="w-full py-3 bg-brand text-white hover:bg-brand/90 rounded-2xl text-xs font-bold transition-all shadow-sm" style="margin-top:0.5rem;display:flex;align-items:center;justify-content:center;gap:8px;">
+                <i class="fas fa-calendar-check"></i> Book this Package
+            </button>
         `;
         
         document.getElementById('public-pkg-content').innerHTML = html;

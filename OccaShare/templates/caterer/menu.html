@@ -127,6 +127,9 @@
                         <span class="price-value">Various Sizes</span>
                     {% elif item.pricing_type == 'weight_based' %}
                         <span class="price-value">Per Kg/Weight</span>
+                    {% elif item.pricing_type == 'per_pax' %}
+                        <span class="price-value">₱{{ "{:,.0f}".format(item.price or 0) }}</span>
+                        <span style="font-size: 0.85rem; color: #64748b; font-weight: 500; margin-left: 2px;">/ Pax</span>
                     {% else %}
                         <span class="price-value">₱{{ "{:,.0f}".format(item.price or 0) }}</span>
                         {% if item.serving_size %}
@@ -287,7 +290,8 @@
                         <label>Pricing Type *</label>
                         <select name="pricing_type" id="modalPricingType" class="control-pro" onchange="togglePricingInputs()">
                             <option value="fixed">Fixed Price (Per Tray/Order)</option>
-                            <option value="size_based">Size Based (Small, Med, Large)</option>
+                            <option value="per_pax">Fixed Price (Per Pax/Head)</option>
+                            <option value="size_based">Size Based (e.g. Small Tray, Med Bilao)</option>
                             <option value="weight_based">Weight Based (Per Kg)</option>
                         </select>
                     </div>
@@ -452,7 +456,7 @@
         weightSection.style.display = 'none';
         fixedPriceInput.required = false;
 
-        if (pricingType === 'fixed') {
+        if (pricingType === 'fixed' || pricingType === 'per_pax') {
             fixedSection.style.display = 'block';
             fixedPriceInput.required = true;
         } else if (pricingType === 'size_based') {
@@ -489,7 +493,7 @@
         row.style.marginBottom = '10px';
         row.innerHTML = `
             <div class="form-group-pro" style="flex: 2; margin-bottom: 0;">
-                <input type="text" name="size_names[]" class="control-pro" placeholder="Size (e.g. Small)" value="${name}" required>
+                <input type="text" name="size_names[]" class="control-pro" placeholder="Size (e.g. Small Tray)" value="${name}" required>
             </div>
             <div class="form-group-pro" style="flex: 2; margin-bottom: 0;">
                 <input type="text" name="size_capacities[]" class="control-pro" placeholder="Capacity (e.g. 10 Pax)" value="${capacity}">
@@ -622,7 +626,7 @@
             document.getElementById('weightRowsContainer').innerHTML = '';
 
             // Set Price Fields
-            if(item.pricing_type === 'fixed') {
+            if(item.pricing_type === 'fixed' || item.pricing_type === 'per_pax') {
                 document.getElementById('fixed_price_input').value = item.price || '';
                 document.getElementById('fixed_capacity_input').value = item.serving_size || '';
             } else if (item.pricing_type === 'size_based') {
@@ -779,7 +783,7 @@
         const isPackageOnly = document.getElementById('usage_package').checked;
         if (!isPackageOnly) {
             const pricingType = document.getElementById('modalPricingType').value;
-            if (pricingType === 'fixed') {
+            if (pricingType === 'fixed' || pricingType === 'per_pax') {
                 const sellPrice = parseFloat(document.getElementById('fixed_price_input').value) || 0;
                 if (sellPrice <= 0) {
                     alert("Selling Price must be greater than zero.");

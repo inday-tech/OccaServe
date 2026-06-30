@@ -200,11 +200,11 @@
             </thead>
             <tbody>
                 {% for booking in bookings %}
-                <tr class="ledger-row payment-row-item" data-search="{{ (booking.event_name or '')|lower }} {{ (booking.caterer.business_name or '')|lower }} BK-{{ booking.id }}">
+                <tr class="ledger-row payment-row-item" data-search="{{ (booking.event_name or '')|lower }} {{ (booking.caterer.business_name or '')|lower }} {% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ booking.id }}">
                     <td>
                         <span class="event-name">{{ booking.event_name or 'Event' }}</span>
                         <span class="event-sub" style="display: inline-flex; align-items: center; gap: 5px;">
-                            <span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:800; color:#475569;">#BK-{{ booking.id }}</span> 
+                            <span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:800; color:#475569;">#{% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ booking.id }}</span> 
                             &bull; {{ booking.created_at.strftime('%b %d, %Y') }}
                         </span>
                     </td>

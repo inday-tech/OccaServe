@@ -326,8 +326,10 @@
             <div class="chat-input-area">
                 <form id="chatForm" class="chat-input-wrapper">
                     <input type="file" id="mainChatFileInput" style="display: none;" accept=".jpg,.jpeg,.png,.gif,.mp4,.mov,.pdf,.docx,.txt,.webp">
-                    <button type="button" class="btn-secondary" id="mainAttachmentBtn" style="padding: 0 1rem; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--border-radius, 0.5rem);" title="Attach file">
-                        </button>
+                    <button type="button" class="btn-secondary" id="mainAttachmentBtn" style="position:relative;padding: 0 1rem; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--border-radius, 0.5rem); height:100%; display:flex; align-items:center; gap:6px; font-size:0.9rem;" title="Attach file">
+                        <i class="fas fa-paperclip"></i>
+                        <span id="attachFileLabel" style="font-size:0.7rem;font-weight:700;display:none;color:var(--primary-color);max-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+                    </button>
                     <input type="text" id="messageInput" placeholder="Type your message..." autocomplete="off">
                     <button type="submit" id="chatSendBtn" class="btn-chat-send"><i class="fas fa-paper-plane"></i></button>
                 </form>
@@ -408,23 +410,43 @@
             }
         });
 
-        // Handle File Attachments
         const mainFileIn = document.getElementById('mainChatFileInput');
         const mainAttachBtn = document.getElementById('mainAttachmentBtn');
+        const attachFileLabel = document.getElementById('attachFileLabel');
         if (mainAttachBtn && mainFileIn) {
             mainAttachBtn.onclick = () => mainFileIn.click();
             mainFileIn.onchange = async (e) => {
                 const file = e.target.files[0];
-                if (!file || !currentPeerId) return;
+                if (!file) return;
+
+                // Show filename on button as preview
+                if (attachFileLabel) {
+                    attachFileLabel.style.display = 'inline';
+                    attachFileLabel.textContent = file.name;
+                }
+                mainAttachBtn.style.borderColor = 'var(--primary-color)';
+                mainAttachBtn.style.color = 'var(--primary-color)';
+
+                if (!currentPeerId) {
+                    window.showToast && window.showToast('Please select a conversation first.', 'warning');
+                    mainFileIn.value = '';
+                    if (attachFileLabel) attachFileLabel.style.display = 'none';
+                    mainAttachBtn.style.borderColor = '';
+                    mainAttachBtn.style.color = '#64748b';
+                    return;
+                }
                 
                 // 5MB Limit
                 if (file.size > 5 * 1024 * 1024) {
                     Swal.fire('File Too Large', 'File exceeds the 5MB limit. Please choose a smaller file.', 'warning');
                     mainFileIn.value = '';
+                    if (attachFileLabel) attachFileLabel.style.display = 'none';
+                    mainAttachBtn.style.borderColor = '';
+                    mainAttachBtn.style.color = '#64748b';
                     return;
                 }
                 
-                const originalIcon = mainAttachBtn.innerHTML;
+                const originalHTML = mainAttachBtn.innerHTML;
                 mainAttachBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                 mainAttachBtn.disabled = true;
 
@@ -451,9 +473,12 @@
                 } catch (err) {
                     Swal.fire('Upload Failed', err.message, 'error');
                 } finally {
-                    mainAttachBtn.innerHTML = originalIcon;
+                    mainAttachBtn.innerHTML = originalHTML;
                     mainAttachBtn.disabled = false;
                     mainFileIn.value = '';
+                    if (attachFileLabel) attachFileLabel.style.display = 'none';
+                    mainAttachBtn.style.borderColor = '';
+                    mainAttachBtn.style.color = '#64748b';
                 }
             };
         }
@@ -570,9 +595,20 @@
 
     function appendMessage(msg, type) {
         const historyDiv = document.getElementById('chatHistory');
+        let contentHtml = '';
+        if (msg.is_deleted) {
+            contentHtml = '<span style="font-style:italic;opacity:0.8;">This message was deleted</span>';
+        } else if (msg.message_type === 'image') {
+            contentHtml = `<img src="${msg.file_url}" style="max-width:220px;border-radius:8px;cursor:pointer;display:block;" onclick="window.open('${msg.file_url}')">`;
+            if (msg.content) contentHtml += `<div style="margin-top:4px;">${msg.content}</div>`;
+        } else if (msg.message_type === 'file') {
+            contentHtml = `<a href="${msg.file_url}" target="_blank" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;background:rgba(0,0,0,0.07);padding:10px;border-radius:8px;"><i class="fas fa-file-alt fa-2x" style="color:var(--primary-color);"></i><div style="overflow:hidden;"><div style="font-weight:700;font-size:0.8rem;white-space:nowrap;text-overflow:ellipsis;">${msg.file_name || 'Attachment'}</div><div style="font-size:0.65rem;opacity:0.6;font-weight:700;">DOWNLOAD</div></div></a>`;
+        } else {
+            contentHtml = msg.content || '';
+        }
         const msgHtml = `
             <div class="message-bubble ${type == 'sent' ? 'message-sent' : 'message-received'}">
-                ${msg.content}
+                ${contentHtml}
                 <span class="message-time">${new Date(msg.created_at || new Date()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
             </div>
         `;

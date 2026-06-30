@@ -1,0 +1,587 @@
+{% extends "customer/layout.html" %}
+{% block title %}My Food Orders - OccaServe{% endblock %}
+
+{% block extra_css %}
+<style>
+:root {
+    --bk-text:    #0f172a;
+    --bk-sub:     #64748b;
+    --bk-border:  #e2e8f0;
+    --bk-bg:      #f8fafc;
+    --bk-white:   #ffffff;
+    --bk-primary: var(--primary-color, #FF7B54);
+    --bk-radius:  14px;
+}
+
+body, .customer-page-content { background: #f1f5f9 !important; }
+
+/* ── PAGE HEADER ── */
+.bk-header { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; }
+.bk-header h1 { font-size:1.55rem; font-weight:900; color:var(--bk-text); letter-spacing:-0.03em; margin:0; }
+.bk-header p  { font-size:0.85rem; color:var(--bk-sub); margin:4px 0 0; font-weight:500; }
+.btn-new-booking {
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--bk-primary); color:#fff !important;
+    padding:0.7rem 1.4rem; border-radius:12px; font-weight:800;
+    font-size:0.85rem; text-decoration:none; transition:opacity 0.2s;
+}
+.btn-new-booking:hover { opacity:0.88; }
+
+/* ── PREMIUM STAT CARDS (Dashboard Style) ── */
+.premium-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+    .premium-stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.premium-stat-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.premium-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+    border-color: var(--primary-color);
+}
+
+.premium-stat-title {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #0f172a;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.4rem;
+}
+
+.premium-stat-value {
+    font-size: 1.4rem;
+    font-weight: 900;
+    line-height: 1.2;
+    margin-bottom: 0.4rem;
+}
+
+.premium-stat-subtitle {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #64748b;
+}
+
+/* ── PANEL ── */
+.bk-panel {
+    background:var(--bk-white); border-radius:var(--bk-radius);
+    border:1px solid rgba(0,0,0,.06);
+    box-shadow:0 4px 20px rgba(0,0,0,.05); overflow:hidden;
+}
+.bk-panel-head {
+    padding:1.1rem 1.5rem; border-bottom:1px solid var(--bk-border);
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.75rem;
+}
+.bk-panel-head h3 { font-size:1rem; font-weight:800; color:var(--bk-text); margin:0; }
+
+/* ── STATUS FILTER ── */
+.bk-filter {
+    padding:5px 14px; border:1px solid var(--bk-border); border-radius:10px;
+    background:var(--bk-bg); font-size:0.8rem; font-weight:700; color:var(--bk-text);
+    cursor:pointer; outline:none;
+}
+
+/* ── TABLE ── */
+.bk-table-wrapper {
+    overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+}
+.bk-table { width:100%; border-collapse:collapse; min-width: 800px; }
+.bk-table th {
+    text-align:left; padding:.9rem 1.25rem;
+    font-size:.65rem; font-weight:800; color:var(--bk-sub);
+    text-transform:uppercase; letter-spacing:.05em;
+    background:#fcfcfd; border-bottom:1px solid var(--bk-border);
+    white-space: nowrap;
+}
+.bk-table td { padding:.95rem 1.25rem; border-bottom:1px solid #f8fafc; font-size:.84rem; vertical-align:middle; }
+.bk-table tr:hover td { background:#fafbfd; }
+.bk-table tr:last-child td { border-bottom:none; }
+
+.cell-name   { font-weight:800; color:var(--bk-text); }
+.cell-sub    { font-size:.72rem; color:var(--bk-sub); margin-top:2px; font-weight:600; }
+.bk-id-chip  { background:#f1f5f9; padding:1px 7px; border-radius:5px; font-size:.7rem; font-weight:800; color:var(--bk-sub); margin-right:5px; }
+
+/* ── STATUS BADGES ── */
+.bk-badge {
+    display:inline-flex; align-items:center; gap:5px;
+    font-size:.65rem; font-weight:800; text-transform:uppercase;
+    padding:4px 10px; border-radius:100px; letter-spacing:.04em; white-space:nowrap;
+}
+.badge-pending   { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
+.badge-confirmed { background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
+.badge-completed { background:#f0fdf4; color:#166534; border:1px solid #86efac; }
+.badge-draft     { background:#f8fafc; color:#475569; border:1px solid #e2e8f0; }
+.badge-cancelled { background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; }
+.badge-preparing { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
+.badge-active    { background:#f0f9ff; color:#0369a1; border:1px solid #bae6fd; }
+.badge-pay-now   { background:#fff1f2; color:#be123c; border:1px solid #fecdd3; }
+.badge-reupload  { background:#fffbeb; color:#b45309; border:1px solid #fde68a; }
+
+@keyframes pulse-ring {
+    0%,100% { box-shadow:0 0 0 0 rgba(239,68,68,.4); }
+    50%      { box-shadow:0 0 0 5px rgba(239,68,68,0); }
+}
+.badge-pulse { animation:pulse-ring 1.8s infinite; }
+
+/* ── ACTION BUTTONS ── */
+.bk-btn {
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:.75rem; font-weight:800; padding:7px 14px;
+    border-radius:10px; text-decoration:none; cursor:pointer;
+    border:none; transition:all .2s;
+}
+.btn-manage  { background:var(--bk-bg); color:var(--bk-text); border:1px solid var(--bk-border); }
+.btn-manage:hover  { background:#e2e8f0; }
+.btn-pay     { background:#0f172a; color:#fff !important; }
+.btn-pay:hover     { background:#1e293b; }
+.btn-settle  { background:#ef4444; color:#fff !important; }
+.btn-settle:hover  { background:#dc2626; }
+.btn-resume  { background:var(--bk-primary); color:#fff !important; }
+.btn-resume:hover  { opacity:.88; }
+.btn-del     { background:transparent; color:#ef4444; border:1px solid #fecaca; }
+.btn-del:hover     { background:#fef2f2; }
+
+/* ── EMPTY STATE ── */
+.bk-empty { padding:4rem 2rem; text-align:center; }
+.bk-empty-icon { font-size:2.5rem; color:#e2e8f0; margin-bottom:1rem; }
+.bk-empty h4   { font-size:1.1rem; font-weight:800; color:var(--bk-text); margin-bottom:.5rem; }
+.bk-empty p    { font-size:.85rem; color:var(--bk-sub); margin-bottom:1.5rem; }
+
+/* ── PAGINATION ── */
+.bk-pagination {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:1rem 1.5rem; border-top:1px solid var(--bk-border); background:#fcfcfd;
+    flex-wrap:wrap; gap:.75rem;
+}
+.bk-page-info { font-size:.75rem; font-weight:700; color:var(--bk-sub); }
+.bk-page-info span { color:var(--bk-text); font-weight:800; }
+.bk-page-btns { display:flex; align-items:center; gap:6px; }
+.btn-pg {
+    border:1px solid var(--bk-border); border-radius:9px; padding:6px 13px;
+    font-size:.75rem; font-weight:800; cursor:pointer; background:var(--bk-white);
+    color:var(--bk-sub); transition:all .18s; display:inline-flex; align-items:center; gap:5px;
+}
+.btn-pg:hover:not(:disabled) { background:var(--bk-bg); border-color:#cbd5e1; }
+.btn-pg:disabled { opacity:.45; cursor:not-allowed; }
+.btn-pg-num { min-width:34px; justify-content:center; }
+.btn-pg-num.active { background:var(--bk-text); color:#fff; border-color:var(--bk-text); }
+
+/* ── REALTIME TOAST BANNER ── */
+.bk-rt-banner {
+    display:none; align-items:center; gap:.75rem; margin-bottom:1rem;
+    background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px;
+    padding:.85rem 1.25rem; font-size:.82rem; font-weight:700; color:#1d4ed8;
+}
+
+@media(max-width:620px){
+    .bk-header { flex-direction:column; align-items:flex-start; }
+    .bk-pagination { flex-direction: column; justify-content: center; gap: 1rem; text-align: center; }
+    .bk-page-btns { justify-content: center; flex-wrap: wrap; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div>
+    <!-- Real-time update banner -->
+    <div class="bk-rt-banner" id="rtBanner">
+        <i class="fas fa-circle-notch fa-spin"></i>
+        <span id="rtBannerMsg">Booking status updated — reloading...</span>
+    </div>
+
+    <!-- Header -->
+    <div class="bk-header">
+        <div>
+            <h1>My Food Orders</h1>
+            <p>Track your Ala Carte food orders and deliveries.</p>
+        </div>
+        <a href="/customer/marketplace" class="btn-new-booking">
+            <i class="fas fa-plus"></i> Order Food
+        </a>
+    </div>
+
+    <!-- Stat Cards -->
+    {% set action_count = namespace(value=0) %}
+    {% for b in bookings %}
+        {% if b.payment_status in ['reupload_requested','balance_reupload_requested'] or b.status in ['pending_payment','awaiting_payment','draft'] %}
+            {% set action_count.value = action_count.value + 1 %}
+        {% endif %}
+    {% endfor %}
+
+    <div class="premium-stats-grid">
+        <div class="premium-stat-card">
+            <div class="premium-stat-title">TOTAL ORDERS</div>
+            <div class="premium-stat-value" style="color: #3b82f6;">{{ stats.total_reservations }}</div>
+            <div class="premium-stat-subtitle">All orders</div>
+        </div>
+        
+        <div class="premium-stat-card">
+            <div class="premium-stat-title">AMOUNT PAID</div>
+            <div class="premium-stat-value" style="color: #10b981;">₱{{ "{:,.0f}".format(stats.total_spent) }}</div>
+            <div class="premium-stat-subtitle">Confirmed payments</div>
+        </div>
+        
+        <div class="premium-stat-card">
+            <div class="premium-stat-title">BALANCE DUE</div>
+            <div class="premium-stat-value" style="color: #f59e0b;">₱{{ "{:,.0f}".format(stats.pending_obligations) }}</div>
+            <div class="premium-stat-subtitle">Pending obligations</div>
+        </div>
+        
+        <div class="premium-stat-card">
+            <div class="premium-stat-title">ACTION NEEDED</div>
+            <div class="premium-stat-value" style="color: #ef4444;">{{ action_count.value }}</div>
+            <div class="premium-stat-subtitle">Requires attention</div>
+        </div>
+    </div>
+
+    <!-- Main Panel -->
+    <div class="bk-panel">
+        <div class="bk-panel-head">
+            <h3>All Orders</h3>
+            <select class="bk-filter" id="statusFilter" onchange="applyFilter()">
+                <option value="">All Status</option>
+                <option value="action">⚡ Action Needed</option>
+                <option value="pending">Pending Review</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="preparing">Preparing</option>
+                <option value="on_the_way">On the Way</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="draft">Draft</option>
+            </select>
+        </div>
+
+        {% if bookings %}
+        <div class="bk-table-wrapper">
+        <table class="bk-table" id="bkTable">
+            <thead>
+                <tr>
+                    <th>Order</th>
+                    <th>Delivery Date</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th style="text-align:right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="bkTbody">
+            {% for b in bookings %}
+            {% set ps = b.payment_status or '' %}
+            {% set bs = b.status or '' %}
+            {% set needs_action = ps in ['reupload_requested','balance_reupload_requested'] or bs in ['pending_payment','awaiting_payment','draft'] %}
+            {% set item_names = [] %}
+            {% if b.selected_items %}
+                {% for si in b.selected_items %}
+                    {% if si.menu_item %}
+                        {% set _ = item_names.append(si.menu_item.name) %}
+                    {% elif si.equipment %}
+                        {% set _ = item_names.append(si.equipment.name) %}
+                    {% elif si.service %}
+                        {% set _ = item_names.append(si.service.name) %}
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+            <tr class="bk-row"
+                data-status="{{ bs }}"
+                data-action="{{ 'true' if needs_action else 'false' }}"
+                data-search="{{ (b.event_name or '')|lower }} {{ (b.caterer.business_name or '')|lower }} ord-{{ '%03d'|format(b.id) }} {{ b.event_type or '' }} {{ item_names|join(' ')|lower }}">
+                <td>
+                    <div class="cell-name">
+                        {% if item_names %}
+                            {{ item_names[:3] | join(', ') }}{% if item_names|length > 3 %}, and {{ item_names|length - 3 }} more{% endif %}
+                        {% else %}
+                            {{ b.event_name or b.event_type or 'Order' }}
+                        {% endif %}
+                    </div>
+                    <div class="cell-sub">
+                        <span class="bk-id-chip">ORD-{{ "%03d"|format(b.id) }}</span>{{ b.caterer.business_name }}
+                    </div>
+                </td>
+                <td>
+                    <div style="font-weight:700;color:var(--bk-text);">{{ b.event_date.strftime('%b %d, %Y') }}</div>
+                    <div class="cell-sub">{{ b.event_time.strftime('%I:%M %p') if b.event_time else 'TBD' }}</div>
+                </td>
+                <td>
+                    <div style="font-weight:800;color:var(--bk-text);">₱{{ "{:,.2f}".format(b.total_amount or 0) }}</div>
+                    <div class="cell-sub">{{ b.guest_count }} items</div>
+                </td>
+                <td>
+                    {% if ps in ['reupload_requested','balance_reupload_requested'] %}
+                        <span class="bk-badge badge-reupload badge-pulse">⚠ Re-upload Proof</span>
+                    {% elif bs in ['pending_payment','awaiting_payment'] %}
+                        <span class="bk-badge badge-pay-now badge-pulse">Pay Now</span>
+                    {% elif bs == 'confirmed' %}
+                        <span class="bk-badge badge-confirmed">Confirmed</span>
+                    {% elif bs == 'completed' %}
+                        <span class="bk-badge badge-completed">Completed</span>
+                    {% elif bs == 'pending' %}
+                        <span class="bk-badge badge-pending">Under Review</span>
+                    {% elif bs == 'cancelled' %}
+                        <span class="bk-badge badge-cancelled">Cancelled</span>
+                    {% elif bs == 'draft' %}
+                        <span class="bk-badge badge-draft">Draft</span>
+                    {% elif bs == 'preparing' %}
+                        <span class="bk-badge badge-preparing">Preparing</span>
+                    {% elif bs in ['on_the_way','ready_for_delivery','arrived'] %}
+                        <span class="bk-badge badge-active">On the Way</span>
+                    {% elif bs in ['in_progress','setup_ongoing'] %}
+                        <span class="bk-badge badge-active">Ongoing</span>
+                    {% else %}
+                        <span class="bk-badge badge-draft">{{ bs|replace('_',' ')|title }}</span>
+                    {% endif %}
+                </td>
+                <td style="text-align:right;">
+                    <div style="display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+                    {% if ps in ['reupload_requested','balance_reupload_requested'] %}
+                        <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-settle">Upload Proof</a>
+                    {% elif bs in ['pending_payment','awaiting_payment'] %}
+                        <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-pay">Manage Order</a>
+                    {% elif bs == 'draft' %}
+                        <a href="/bookings/continue/{{ b.id }}" class="bk-btn btn-resume">Continue</a>
+                        <button onclick="removeBooking({{ b.id }})" class="bk-btn btn-del" title="Delete Draft">Delete</button>
+                    {% elif bs in ['completed', 'cancelled'] %}
+                        <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">View Details</a>
+                        <button onclick="archiveBooking({{ b.id }})" class="bk-btn btn-manage" title="Archive Order"><i class="fas fa-archive"></i> Archive</button>
+                    {% else %}
+                        <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">View Details</a>
+                    {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+
+        <!-- No results row -->
+        <div id="bkNoResults" style="display:none;padding:3rem 2rem;text-align:center;">
+            <div style="font-size:2rem;color:#e2e8f0;margin-bottom:.75rem;"><i class="fas fa-search"></i></div>
+            <p style="color:var(--bk-sub);font-weight:600;font-size:.9rem;">No orders match your filter.</p>
+        </div>
+
+        <!-- Pagination -->
+        <div class="bk-pagination">
+            <div class="bk-page-info">
+                Showing <span id="pgStart">0</span>–<span id="pgEnd">0</span> of <span id="pgTotal">0</span> orders
+            </div>
+            <div class="bk-page-btns" id="pgBtns"></div>
+        </div>
+
+        {% else %}
+        <div class="bk-empty">
+            <div class="bk-empty-icon"><i class="fas fa-calendar-xmark"></i></div>
+            <h4>No Food Orders Yet</h4>
+            <p>You haven't made any food orders. Browse caterers to get started.</p>
+            <a href="/customer/marketplace" class="btn-new-booking">Order Food</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ── Pagination + Filter Engine ── */
+const ROWS_PER_PAGE = 8;
+let currentPage  = 1;
+let visibleRows  = [];
+
+function getAllRows() {
+    return Array.from(document.querySelectorAll('.bk-row'));
+}
+
+function applyFilter() {
+    const filterVal = document.getElementById('statusFilter')?.value || '';
+    const allRows   = getAllRows();
+
+    visibleRows = allRows.filter(row => {
+        const status  = row.dataset.status || '';
+        const action  = row.dataset.action === 'true';
+        if (!filterVal) return true;
+        if (filterVal === 'action') return action;
+        if (filterVal === 'on_the_way') return ['on_the_way','ready_for_delivery','arrived'].includes(status);
+        if (filterVal === 'in_progress') return ['in_progress','setup_ongoing'].includes(status);
+        return status === filterVal;
+    });
+
+    currentPage = 1;
+    renderPage();
+}
+
+// Hook into header global search
+function onGlobalSearch(q) {
+    const allRows = getAllRows();
+    const term    = q.trim().toLowerCase();
+    if (!term) { visibleRows = allRows; }
+    else {
+        visibleRows = allRows.filter(r =>
+            (r.dataset.search || '').includes(term)
+        );
+    }
+    currentPage = 1;
+    renderPage();
+}
+
+// Patch the customer layout search to also filter this page
+document.addEventListener('DOMContentLoaded', () => {
+    const inp = document.getElementById('globalSearchInput');
+    if (inp) {
+        inp.addEventListener('input', () => {
+            const q = inp.value.toLowerCase();
+            if (q.length >= 1) onGlobalSearch(q);
+            else applyFilter(); // reset to filter-only view
+        });
+    }
+
+    // Initial render
+    visibleRows = getAllRows();
+    renderPage();
+});
+
+function renderPage() {
+    const allRows  = getAllRows();
+    const total    = visibleRows.length;
+    const pages    = Math.max(1, Math.ceil(total / ROWS_PER_PAGE));
+    if (currentPage > pages) currentPage = pages;
+
+    const start = (currentPage - 1) * ROWS_PER_PAGE;
+    const end   = Math.min(start + ROWS_PER_PAGE, total);
+
+    // Show/hide rows
+    allRows.forEach(r => r.style.display = 'none');
+    visibleRows.slice(start, end).forEach(r => r.style.display = '');
+
+    // No results state
+    const noRes = document.getElementById('bkNoResults');
+    if (noRes) noRes.style.display = total === 0 ? 'block' : 'none';
+
+    // Range info
+    document.getElementById('pgStart').textContent = total === 0 ? 0 : start + 1;
+    document.getElementById('pgEnd').textContent   = end;
+    document.getElementById('pgTotal').textContent = total;
+
+    // Pagination buttons (caterer style: Prev + numbers + Next)
+    renderPagination(pages);
+}
+
+function renderPagination(total) {
+    const container = document.getElementById('pgBtns');
+    if (!container) return;
+
+    const btns = [];
+
+    // Previous
+    btns.push(`<button class="btn-pg" id="btnPrev" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}><i class="fas fa-chevron-left"></i> Previous</button>`);
+
+    // Page numbers (show up to 5 around current)
+    const range = [];
+    let lo = Math.max(1, currentPage - 2), hi = Math.min(total, currentPage + 2);
+    if (hi - lo < 4) { lo = Math.max(1, hi - 4); hi = Math.min(total, lo + 4); }
+    for (let i = lo; i <= hi; i++) range.push(i);
+
+    if (lo > 1)     { btns.push(`<button class="btn-pg btn-pg-num" onclick="goPage(1)">1</button>`); if (lo > 2) btns.push(`<span style="padding:0 4px;color:var(--bk-sub);font-size:.8rem;">…</span>`); }
+    range.forEach(i => btns.push(`<button class="btn-pg btn-pg-num ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`));
+    if (hi < total) { if (hi < total-1) btns.push(`<span style="padding:0 4px;color:var(--bk-sub);font-size:.8rem;">…</span>`); btns.push(`<button class="btn-pg btn-pg-num" onclick="goPage(${total})">${total}</button>`); }
+
+    // Next
+    btns.push(`<button class="btn-pg" id="btnNext" onclick="goPage(${currentPage+1})" ${currentPage===total?'disabled':''}> Next <i class="fas fa-chevron-right"></i></button>`);
+
+    container.innerHTML = btns.join('');
+}
+
+function goPage(p) {
+    const total = Math.max(1, Math.ceil(visibleRows.length / ROWS_PER_PAGE));
+    if (p < 1 || p > total) return;
+    currentPage = p;
+    renderPage();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ── Remove Draft Booking ── */
+async function removeBooking(id) {
+    if (!confirm('Delete this draft booking? This cannot be undone.')) return;
+    try {
+        const res  = await fetch(`/bookings/${id}`, { method:'DELETE' });
+        const data = await res.json();
+        if (res.ok) {
+            if (window.showToast) window.showToast(data.message, 'success');
+            location.reload();
+        } else {
+            if (window.showError) window.showError(data.detail || 'Failed.', 'Error');
+            else alert(data.detail || 'Error');
+        }
+    } catch { alert('Connection error. Please try again.'); }
+}
+
+/* ── Archive Booking ── */
+async function archiveBooking(id) {
+    if (!confirm('Move this booking to your archives?')) return;
+    try {
+        const res  = await fetch(`/customer/bookings/${id}/archive`, { method:'POST' });
+        const data = await res.json();
+        if (res.ok) {
+            if (window.showToast) window.showToast(data.message, 'success');
+            location.reload();
+        } else {
+            if (window.showError) window.showError(data.detail || 'Failed.', 'Error');
+            else alert(data.detail || 'Error');
+        }
+    } catch { alert('Connection error. Please try again.'); }
+}
+
+/* ── Real-time: intercept WS booking updates to show banner instead of instant reload ── */
+const _origWsHandler = window.__bkWsPatched;
+if (!_origWsPatched) {
+    window.__bkWsPatched = true;
+    const _initWs = window.initWebSocket;
+
+    // Override the WS message for this page to show a nicer banner
+    const _patchWS = () => {
+        const proto    = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const clientId = `user_${window.customerConfig?.userId || 0}_${Math.random().toString(36).substr(2,9)}`;
+        const ws       = new WebSocket(`${proto}//${location.host}/ws/${clientId}`);
+
+        ws.onmessage = ({ data }) => {
+            try {
+                const d = JSON.parse(data);
+                if (['booking_update','payment_update','status_update','signature_update'].includes(d.type)) {
+                    const banner = document.getElementById('rtBanner');
+                    const msg    = document.getElementById('rtBannerMsg');
+                    if (banner) {
+                        let textMsg = d.message || 'A booking was updated';
+                        if (d.type === 'signature_update') {
+                            textMsg = d.role === 'caterer' ? 'Caterer has signed the contract!' : 'Contract signature updated';
+                        }
+                        if (msg) msg.textContent = textMsg + ' — reloading...';
+                        banner.style.display = 'flex';
+                    }
+                    setTimeout(() => location.reload(), 2200);
+                }
+            } catch {}
+        };
+        ws.onclose = () => setTimeout(_patchWS, 5000);
+    };
+    _patchWS();
+}
+</script>
+{% endblock %}

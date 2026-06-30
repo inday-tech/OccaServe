@@ -1,0 +1,994 @@
+{% extends "customer/layout.html" %}
+
+{% block title %}{% if booking.status in ['draft', 'pending_review'] %}Inquiry Details{% else %}Manage Booking{% endif %} #{{ booking.id }} - OccaServe Elite{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_manage.css') }}?v=11.0">
+<style>
+    :root {
+        --up-slate-900: #0f172a;
+        --up-orange: #FF7B54;
+        --up-emerald: #10b981;
+        --up-amber: #f59e0b;
+        --dm-slate-50: #f8fafc;
+        --dm-slate-100: #f1f5f9;
+        --dm-slate-400: #94a3b8;
+    }
+    
+    body, .btn-action-elite {
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    /* ── FOCUS MODE: Hiding Sidebar/Header while maintaining BLUR ── */
+    body.contract-modal-open .customer-sidebar,
+    body.contract-modal-open .customer-header,
+    body.contract-modal-open .floating-burger,
+    body.contract-modal-open .mobile-fab-elite {
+        display: none !important;
+    }
+
+    body, .customer-page-content { background-color: #f1f5f9 !important; }
+    body.contract-modal-open .customer-main-wrapper {
+        margin-left: 0 !important;
+        padding: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        overflow: hidden !important;
+    }
+
+    /* ── PAGE HEADER ── */
+    .dash-header { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-end; }
+    .dash-header h1 {
+        font-size: 1.6rem; font-weight: 800;
+        color: var(--up-slate-900); letter-spacing: -0.03em; margin: 0;
+    }
+    .dash-header p {
+        font-size: 0.88rem; color: var(--dm-slate-400);
+        font-weight: 500; margin: 4px 0 0;
+    }
+
+    /* ── REFINED STEPPER ── */
+    .stepper-panel {
+        background: white; border-radius: 1.25rem; border: 1px solid var(--dm-slate-100);
+        padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
+    }
+    .steps-row { display: flex; justify-content: space-between; position: relative; padding: 0 2rem; }
+    .steps-row::before {
+        content: ''; position: absolute; top: 22px; left: 60px; right: 60px;
+        height: 2px; background: var(--dm-slate-100); z-index: 0;
+    }
+    .step { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100px; }
+    .step-dot {
+        width: 44px; height: 44px; border-radius: 12px;
+        background: #fff; border: 2px solid var(--dm-slate-100);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; color: var(--dm-slate-300); transition: all 0.3s;
+    }
+    .step.done .step-dot { background: var(--up-emerald); border-color: var(--up-emerald); color: #fff; }
+    .step.active .step-dot { border-color: var(--up-orange); color: var(--up-orange); box-shadow: 0 0 0 4px rgba(255,123,84,0.1); }
+    .step-label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: var(--dm-slate-400); text-align: center; }
+    .step.done .step-label, .step.active .step-label { color: var(--up-slate-900); }
+
+    /* ── INTELLIGENCE PANELS ── */
+    .panel { background: #ffffff; border-radius: 1.25rem; border: 1px solid rgba(0,0,0,0.05); overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01); margin-bottom: 1.5rem; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .panel:hover { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.01); transform: translateY(-2px); }
+    .panel-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--dm-slate-50); display: flex; justify-content: space-between; align-items: center; }
+    .panel-header h3 { font-size: 0.95rem; font-weight: 850; color: var(--up-slate-900); margin: 0; text-transform: uppercase; letter-spacing: 0.05em; }
+    .panel-body { padding: 1.5rem; }
+
+    /* ── DETAIL ROWS ── */
+    .detail-item { display: flex; justify-content: space-between; padding: 0.85rem 0; border-bottom: 1px solid #f8fafc; align-items: center; }
+    .detail-item:last-child { border-bottom: none; }
+    .detail-label { font-size: 0.8rem; font-weight: 700; color: var(--dm-slate-400); text-transform: uppercase; letter-spacing: 0.04em; }
+    .detail-value { font-size: 0.95rem; font-weight: 750; color: var(--up-slate-900); text-align: right; }
+    
+    @media (max-width: 768px) {
+        .detail-item { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+        .detail-value { text-align: left; }
+    }
+
+    /* ── FINANCIAL TERMINAL ── */
+    .financial-card { background: var(--up-slate-900); color: white; border-radius: 1.5rem; padding: 1.75rem; margin-bottom: 1.25rem; position: relative; overflow: hidden; }
+    .financial-card::after { content: ''; position: absolute; top: -50%; right: -20%; width: 200px; height: 200px; background: rgba(255,255,255,0.03); border-radius: 50%; }
+    .fin-label { font-size: 0.7rem; font-weight: 800; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.25rem; display: block; }
+    .fin-value { font-size: 1.75rem; font-weight: 900; letter-spacing: -0.02em; }
+    .fin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); }
+
+    /* ── ACTION BUTTONS ── */
+    .btn-action-elite { width: 100%; padding: 1rem; border-radius: 50px; font-weight: 850; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.85rem; border: none; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center; gap: 0.75rem; text-decoration: none; }
+    .btn-primary-orange { background: var(--up-orange); color: white; box-shadow: 0 4px 14px rgba(255, 123, 84, 0.3); }
+    .btn-primary-orange:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 123, 84, 0.4); }
+    .btn-outline-slate { background: transparent; border: 2px solid var(--dm-slate-100); color: var(--up-slate-900); }
+    .btn-outline-slate:hover { background: var(--dm-slate-50); border-color: var(--dm-slate-400); transform: translateY(-2px); }
+
+    /* ── AUDIT LOGS ── */
+    .audit-log-item { display: flex; align-items: center; gap: 12px; padding: 0.75rem; background: var(--dm-slate-50); border-radius: 12px; margin-bottom: 0.5rem; }
+    .audit-info b { font-size: 0.75rem; color: var(--up-slate-900); display: block; }
+    .audit-info span { font-size: 0.65rem; color: var(--dm-slate-400); font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ── BACK BUTTON ── -->
+<div style="margin-bottom: 1.5rem;">
+    <a href="/customer/bookings" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 6px 14px; background: white; border-radius: 50px; border: 1px solid var(--dm-slate-200); color: var(--up-slate-900); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s;"><i class="fas fa-arrow-left"></i> Back to Registry</a>
+</div>
+
+<div class="dash-header">
+    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        <h1>{{ booking.event_name or 'Logistic Management' }}</h1>
+        <p>Reference: <span style="background: var(--dm-slate-100); padding: 2px 8px; border-radius: 6px; color: var(--up-slate-900); font-weight: 800;">{% if is_food_order %}ORD-{% else %}BK-{% endif %}{{ "%03d" | format(booking.id) }}</span> &bull; Verified Transaction</p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+            {% set status_cfg = ('Action Required', '#fef2f2', '#ef4444') %}
+        {% else %}
+            {% set status_cfg = {
+                'confirmed': ('Confirmed', '#ecfdf5', '#10b981'),
+                'completed': ('Completed', '#f8fafc', '#64748b'),
+                'pending': ('Reviewing', '#fff7ed', '#f59e0b'),
+                'pending_review': ('Inquiry Submitted', '#eff6ff', '#3b82f6'),
+                'pending_payment': ('Awaiting Settlement', '#fffbeb', '#b45309'),
+                'cancelled': ('Cancelled', '#fef2f2', '#dc2626')
+            }.get(booking.status, (booking.status|capitalize, '#f1f5f9', '#475569')) %}
+        {% endif %}
+        <span style="background: {{ status_cfg[1] }}; color: {{ status_cfg[2] }}; padding: 8px 20px; border-radius: 30px; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
+            {{ status_cfg[0] }}
+        </span>
+    </div>
+</div>
+
+<!-- ── OUTSTANDING BALANCE BANNER ── -->
+{% if booking.status == 'confirmed' and booking.payment_plan != 'full' and booking.balance_due_date and booking.payment_status not in ['paid', 'proof_submitted', 'balance_reupload_requested'] %}
+    {% set total_val = booking.total_amount|float %}
+    {% set res_fee = booking.reservation_fee|float if booking.reservation_fee else 0.0 %}
+    {% set balance_val = total_val - res_fee %}
+    
+    {% if balance_val > 0 %}
+    <div style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-left: 4px solid #f97316; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(249, 115, 22, 0.08);">
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <div style="width: 45px; height: 45px; background: #ffedd5; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ea580c; font-size: 1.25rem;">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div>
+                <h3 style="margin: 0 0 4px 0; color: #9a3412; font-size: 1rem; font-weight: 800;">Action Required: Outstanding Balance</h3>
+                <p style="margin: 0; color: #c2410c; font-size: 0.85rem; font-weight: 500;">
+                    You have a remaining balance of <strong style="font-weight: 800;">₱{{ "{:,.2f}".format(balance_val) }}</strong>. 
+                    Please settle this amount on or before <strong style="font-weight: 800;">{{ booking.balance_due_date.strftime('%B %d, %Y') }}</strong>.
+                </p>
+                <div id="deadlineCountdownPkg" style="margin-top: 6px; font-size: 0.75rem; font-weight: 800; color: #ea580c; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: rgba(234, 88, 12, 0.1); border-radius: 20px;">
+                    <i class="fas fa-clock"></i> Calculating time remaining...
+                </div>
+            </div>
+        </div>
+        <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange" style="white-space: nowrap; padding: 0.75rem 1.5rem; font-size: 0.85rem; background: #ea580c !important; border: none; box-shadow: 0 4px 14px rgba(234, 88, 12, 0.3);">
+            Settle Balance Now <i class="fas fa-wallet"></i>
+        </a>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const dueStr = "{{ booking.balance_due_date.strftime('%Y-%m-%d') }}T23:59:59";
+            const dueDate = new Date(dueStr);
+            const today = new Date();
+            
+            const diffTime = dueDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            const countdownEl = document.getElementById('deadlineCountdownPkg');
+            if (diffDays < 0) {
+                countdownEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> PAYMENT OVERDUE';
+                countdownEl.style.color = '#dc2626';
+                countdownEl.style.background = '#fef2f2';
+            } else if (diffDays === 0) {
+                countdownEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> DUE TODAY';
+                countdownEl.style.color = '#dc2626';
+                countdownEl.style.background = '#fef2f2';
+            } else if (diffDays <= 3) {
+                countdownEl.innerHTML = '<i class="fas fa-clock"></i> DUE IN ' + diffDays + ' DAY' + (diffDays > 1 ? 'S' : '');
+                countdownEl.style.color = '#ea580c';
+            } else {
+                countdownEl.innerHTML = '<i class="fas fa-calendar-check"></i> Due in ' + diffDays + ' days';
+                countdownEl.style.color = '#64748b';
+                countdownEl.style.background = '#f1f5f9';
+            }
+        });
+    </script>
+    {% endif %}
+{% endif %}
+
+<div class="stepper-panel">
+    <div class="steps-row" style="padding: 0 1rem;">
+    {% if is_food_order %}
+        <!-- FOOD ORDER TRACK: 5-Step Timeline -->
+        <div class="step {{ 'done' if current_step_idx > 1 else 'active' }}">
+            <div class="step-dot"><i class="fas fa-receipt"></i></div>
+            <span class="step-label">Order<br>Submitted</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 2 else ('active' if current_step_idx == 2 else '') }}">
+            <div class="step-dot"><i class="fas fa-fire-burner"></i></div>
+            <span class="step-label">Preparing</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 3 else ('active' if current_step_idx == 3 else '') }}">
+            <div class="step-dot"><i class="fas fa-truck"></i></div>
+            <span class="step-label">Out for<br>Delivery</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 4 else ('active' if current_step_idx == 4 else '') }}">
+            <div class="step-dot"><i class="fas fa-box-open"></i></div>
+            <span class="step-label">Delivered</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx == 5 else ('active' if current_step_idx == 5 else '') }}">
+            <div class="step-dot"><i class="fas fa-check-circle"></i></div>
+            <span class="step-label">Completed</span>
+        </div>
+    {% elif is_fast_track %}
+        <!-- FAST TRACK (Rentals/Services): 8-Step Timeline -->
+        <div class="step {{ 'done' if current_step_idx > 1 else 'active' }}">
+            <div class="step-dot"><i class="fas fa-clock"></i></div>
+            <span class="step-label">Pending</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 2 else ('active' if current_step_idx == 2 else '') }}">
+            <div class="step-dot"><i class="fas fa-check-circle"></i></div>
+            <span class="step-label">Confirmed</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 3 else ('active' if current_step_idx == 3 else '') }}">
+            <div class="step-dot"><i class="fas fa-fire-burner"></i></div>
+            <span class="step-label">Preparing</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 4 else ('active' if current_step_idx == 4 else '') }}">
+            <div class="step-dot"><i class="fas fa-box"></i></div>
+            <span class="step-label">Ready</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 5 else ('active' if current_step_idx == 5 else '') }}">
+            <div class="step-dot"><i class="fas fa-truck"></i></div>
+            <span class="step-label">On Way</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 6 else ('active' if current_step_idx == 6 else '') }}">
+            <div class="step-dot"><i class="fas fa-map-marker-alt"></i></div>
+            <span class="step-label">Arrived</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 7 else ('active' if current_step_idx == 7 else '') }}">
+            <div class="step-dot"><i class="fas fa-tools"></i></div>
+            <span class="step-label">Setup</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx == 8 else ('active' if current_step_idx == 8 else '') }}">
+            <div class="step-dot"><i class="fas fa-flag-checkered"></i></div>
+            <span class="step-label">Success</span>
+        </div>
+    {% elif booking.status in ['draft', 'pending_review'] %}
+        <!-- INQUIRY TRACK: 4-Step Timeline -->
+        <div class="step {{ 'done' if current_step_idx > 1 else 'active' }}">
+            <div class="step-dot"><i class="fas fa-paper-plane"></i></div>
+            <span class="step-label">Inquiry<br>Submitted</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 2 else ('active' if current_step_idx == 2 else '') }}">
+            <div class="step-dot"><i class="fas fa-search"></i></div>
+            <span class="step-label">Under<br>Review</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 3 else ('active' if current_step_idx == 3 else '') }}">
+            <div class="step-dot"><i class="fas fa-file-invoice"></i></div>
+            <span class="step-label">Quotation<br>Sent</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 4 else ('active' if current_step_idx == 4 else '') }}">
+            <div class="step-dot"><i class="fas fa-handshake"></i></div>
+            <span class="step-label">Customer<br>Decision</span>
+        </div>
+    {% else %}
+        <!-- CONTRACT TRACK: 6-Step Timeline -->
+        <div class="step {{ 'done' if current_step_idx > 1 else 'active' }}">
+            <div class="step-dot"><i class="fas fa-user-check"></i></div>
+            <span class="step-label">Identity<br>Verified</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 2 else ('active' if current_step_idx == 2 else '') }}">
+            <div class="step-dot"><i class="fas fa-file-invoice-dollar"></i></div>
+            <span class="step-label">Quotation<br>Phase</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 3 else ('active' if current_step_idx == 3 else '') }}">
+            <div class="step-dot"><i class="fas fa-file-signature"></i></div>
+            <span class="step-label">Contract<br>Signed</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 4 else ('active' if current_step_idx == 4 else '') }}">
+            <div class="step-dot"><i class="fas fa-credit-card"></i></div>
+            <span class="step-label">Payment<br>Settled</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 5 else ('active' if current_step_idx == 5 else '') }}">
+            <div class="step-dot"><i class="fas fa-fire-burner"></i></div>
+            <span class="step-label">Prep &<br>Service</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx == 6 else ('active' if current_step_idx == 6 else '') }}">
+            <div class="step-dot"><i class="fas fa-flag-checkered"></i></div>
+            <span class="step-label">Event<br>Success</span>
+        </div>
+    {% endif %}
+    </div>
+</div>
+
+<div class="manage-grid">
+    <!-- LEFT COLUMN: LOGISTICS -->
+    <div class="left-col">
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Event Details</h3>
+            </div>
+            <div class="panel-body">
+                <div class="detail-item">
+                    <span class="detail-label">Event Schedule</span>
+                    <span class="detail-value">{{ booking.event_date.strftime('%B %d, %Y') }} at {{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBD' }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Service Venue</span>
+                    <span class="detail-value">{{ booking.venue_address or booking.event_address or booking.event_location or 'Venue TBD' }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Number of Guests</span>
+                    <span class="detail-value">{{ booking.guest_count }} Guests</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Service Type</span>
+                    <span class="detail-value">{{ booking.event_type or 'N/A' }}</span>
+                </div>
+                
+                {% if booking.package and booking.package.inclusions %}
+                <div class="detail-item" style="grid-column: 1 / -1; margin-top: 0.5rem;">
+                    <span class="detail-label">Package Inclusions</span>
+                    <div style="background: var(--dm-slate-50); border: 1px solid var(--dm-slate-100); border-radius: 12px; padding: 1rem; margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 8px;">
+                        {% if booking.package.inclusions is mapping %}
+                            {% for key, val in booking.package.inclusions.items() %}
+                                {% if val %}
+                                <span style="background: white; border: 1px solid var(--dm-slate-200); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; color: var(--up-slate-900); display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                                    <i class="fas fa-check" style="color: var(--up-emerald); font-size: 0.65rem;"></i> {{ key }}
+                                </span>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <span style="font-size: 0.85rem; color: var(--up-slate-900);">{{ booking.package.inclusions }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if booking.is_custom_event %}
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Custom Requirements</h3>
+            </div>
+            <div class="panel-body">
+                <div style="background: var(--dm-slate-50); padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <b style="font-size: 0.9rem; color: var(--up-slate-900);">Custom Inquiry</b>
+                        <p style="font-size: 0.75rem; color: var(--dm-slate-400); margin: 2px 0 0; font-weight: 600;">Details submitted for quotation</p>
+                    </div>
+                </div>
+                
+                <div class="detail-item">
+                    <span class="detail-label">Estimated Budget</span>
+                    <span class="detail-value">₱{{ "{:,.2f}".format(booking.custom_requirements.get('budget', 0)) }}</span>
+                </div>
+                <div class="detail-item" style="flex-direction: column; align-items: flex-start; gap: 0.5rem; border-bottom: none; margin-top: 0.5rem;">
+                    <span class="detail-label">Theme / Description</span>
+                    <div style="font-size: 0.85rem; color: var(--up-slate-900); background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; width: 100%; white-space: pre-wrap;">{{ booking.custom_requirements.get('theme_description', 'No description provided.') }}</div>
+                </div>
+                
+                {% if booking.custom_requirements.get('reference_images') %}
+                <div class="detail-item" style="flex-direction: column; align-items: flex-start; gap: 0.5rem; border-bottom: none; margin-top: 1rem;">
+                    <span class="detail-label">Reference Images</span>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        {% for img in booking.custom_requirements.get('reference_images') %}
+                        <a href="{{ img }}" target="_blank" style="display: block; width: 80px; height: 80px; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
+                            <img src="{{ img }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% set food_items = booking.selected_items | rejectattr('menu_item_id', 'none') | list %}
+        {% set equipment_items = booking.selected_items | rejectattr('equipment_id', 'none') | list %}
+        {% set service_items = booking.selected_items | rejectattr('service_id', 'none') | list %}
+        
+        {% if food_items or equipment_items or service_items %}
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Selected Items</h3>
+            </div>
+            <div class="panel-body">
+                <div style="background: var(--dm-slate-50); padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <b style="font-size: 0.9rem; color: var(--up-slate-900);">{{ booking.package.name if booking.package else 'Custom Menu' }}</b>
+                        <p style="font-size: 0.75rem; color: var(--dm-slate-400); margin: 2px 0 0; font-weight: 600;">Your Selected Booking Additions</p>
+                    </div>
+                    <span style="background: white; border: 1px solid var(--dm-slate-100); padding: 4px 12px; border-radius: 20px; font-size: 0.65rem; font-weight: 800; color: var(--up-slate-900);">VERIFIED</span>
+                </div>
+                
+                {% if food_items %}
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-utensils" style="margin-right: 5px;"></i> Food & Beverages</h4>
+                    <div class="menu-items-grid">
+                        {% for b_item in food_items %}
+                        <div style="background: #fff; border: 1px solid var(--dm-slate-100); padding: 0.75rem; border-radius: 12px; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <i class="fas fa-check-circle" style="color: var(--up-emerald); font-size: 0.8rem;"></i>
+                                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--up-slate-900);">{{ b_item.menu_item.name }}</span>
+                                </div>
+                                <span style="font-size: 0.75rem; font-weight: 850; color: var(--dm-slate-400);">x{{ b_item.quantity if b_item.quantity else (1 if not b_item.is_add_on else booking.guest_count) }}</span>
+                            </div>
+                            {% if b_item.choices %}
+                            <div style="margin-left: 1.5rem; font-size: 0.7rem; color: #64748b; background: #f8fafc; padding: 0.4rem 0.6rem; border-radius: 0.5rem; border: 1px dashed #cbd5e1;">
+                                <span style="font-weight: 800; color: #0f766e;"><i class="fas fa-list-ul"></i> Platter Choices:</span>
+                                <div style="display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.3rem;">
+                                    {% for choice in b_item.choices %}
+                                        <span style="background: white; border: 1px solid #e2e8f0; padding: 2px 4px; border-radius: 4px; font-weight: 600;">{{ choice }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if equipment_items %}
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-chair" style="margin-right: 5px;"></i> Equipment Rentals</h4>
+                    <div class="menu-items-grid">
+                        {% for b_item in equipment_items %}
+                        <div style="background: #fff; border: 1px solid var(--dm-slate-100); padding: 0.75rem; border-radius: 12px; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <i class="fas fa-check-circle" style="color: var(--up-emerald); font-size: 0.8rem;"></i>
+                                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--up-slate-900);">{{ b_item.equipment.name }}</span>
+                                </div>
+                                <span style="font-size: 0.75rem; font-weight: 850; color: var(--dm-slate-400);">x{{ b_item.quantity }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if service_items %}
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-concierge-bell" style="margin-right: 5px;"></i> Extra Services</h4>
+                    <div class="menu-items-grid">
+                        {% for b_item in service_items %}
+                        <div style="background: #fff; border: 1px solid var(--dm-slate-100); padding: 0.75rem; border-radius: 12px; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <i class="fas fa-check-circle" style="color: var(--up-emerald); font-size: 0.8rem;"></i>
+                                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--up-slate-900);">{{ b_item.service.name }}</span>
+                                </div>
+                                <span style="font-size: 0.75rem; font-weight: 850; color: var(--dm-slate-400);">x{{ b_item.quantity }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        
+
+    </div>
+
+    <!-- RIGHT COLUMN: FINANCIALS & ACTIONS -->
+    <div class="right-col">
+        <!-- FINANCIAL TERMINAL -->
+        <div class="financial-card">
+            <span class="fin-label">Outstanding Balance</span>
+            {% set total_val = booking.total_amount|float %}
+            {% set res_fee = booking.reservation_fee|float if booking.reservation_fee else 0.0 %}
+            {% set paid_amt = 0.0 %}
+            
+            {% if booking.payment_plan == 'full' %}
+                {% if booking.payment_status in ['paid', 'proof_submitted', 'reupload_requested'] %}
+                    {% set paid_amt = total_val %}
+                {% endif %}
+                {% set balance_val = total_val - paid_amt %}
+            {% else %}
+                {% if booking.payment_status == 'paid' %}
+                    {% set paid_amt = total_val %}
+                {% elif booking.payment_status in ['deposit_paid', 'balance_proof_submitted', 'balance_reupload_requested'] %}
+                    {% set paid_amt = res_fee %}
+                {% elif booking.payment_status in ['proof_submitted', 'reupload_requested'] %}
+                    {% set paid_amt = res_fee %}
+                {% endif %}
+                {% set balance_val = total_val - paid_amt %}
+            {% endif %}
+            
+            <div class="fin-value">₱{{ "{:,.2f}".format(balance_val if booking.status != 'completed' else 0) }}</div>
+            
+            <div class="fin-grid">
+                <div>
+                    <span class="fin-label">Total Amount</span>
+                    <b style="font-size: 0.95rem;">₱{{ "{:,.2f}".format(total_val) }}</b>
+                </div>
+                <div style="text-align: right;">
+                    <span class="fin-label">Amount Paid 
+                        {% if booking.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
+                        <span style="color:#f59e0b; font-size: 0.6rem;">(Pending Ver.)</span>
+                        {% elif booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+                        <span style="color:#ef4444; font-size: 0.6rem;">(Unverified)</span>
+                        {% endif %}
+                    </span>
+                    <b style="font-size: 0.95rem; color: var(--up-emerald);">₱{{ "{:,.2f}".format(paid_amt) }}</b>
+                </div>
+            </div>
+
+            {% if booking.quotation and booking.quotation.package_details %}
+            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                <span class="fin-label" style="margin-bottom: 0.75rem;">Quotation Breakdown</span>
+                <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.8rem; color: rgba(255,255,255,0.8);">
+                    {% if booking.quotation.package_details and booking.quotation.package_details.base_amount|float > 0 %}
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Base Package: {{ booking.quotation.package_details.name }}</span>
+                        <b>₱{{ "{:,.2f}".format(booking.quotation.package_details.base_amount|float) }}</b>
+                    </div>
+                    {% endif %}
+                    
+                    {% if booking.quotation.addons %}
+                        {% for addon in booking.quotation.addons %}
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>{{ addon.name }} <span style="font-size: 0.7rem; opacity: 0.7;">(x{{ addon.quantity if addon.quantity else 1 }})</span></span>
+                            <b>₱{{ "{:,.2f}".format(addon.price|float) }}</b>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% set is_rental = booking.event_type == 'Equipment Rental' %}
+            {% if is_rental and booking.security_deposit_amount %}
+            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                <span class="fin-label" style="margin-bottom: 0.75rem;">Security Deposit</span>
+                <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.85rem; color: rgba(255,255,255,0.8);">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Original Deposit</span>
+                        <b>₱{{ "{:,.2f}".format(booking.security_deposit_amount|float) }}</b>
+                    </div>
+                    {% if booking.security_deposit_status == 'forfeited' or booking.damage_deduction_amount %}
+                    <div style="display: flex; justify-content: space-between; color: #ef4444;">
+                        <span>Damage Deduction</span>
+                        <b>-₱{{ "{:,.2f}".format(booking.damage_deduction_amount|float if booking.damage_deduction_amount else booking.security_deposit_amount|float) }}</b>
+                    </div>
+                    {% endif %}
+                    <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed rgba(255,255,255,0.2);">
+                        <span style="font-weight: 800;">Deposit Status</span>
+                        <b style="text-transform: uppercase; color: {% if booking.security_deposit_status == 'fully_refunded' %}var(--up-emerald){% elif booking.security_deposit_status == 'forfeited' %}#ef4444{% else %}#f59e0b{% endif %};">
+                            {{ (booking.security_deposit_status or 'Held').replace('_', ' ') }}
+                        </b>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ACTION CENTER -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Actions</h3>
+            </div>
+            <div class="panel-body" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                {% if booking.status == 'draft' %}
+                    {% set next_step = '/bookings/step/kyc/' ~ booking.id %}
+                    {% if current_step_idx == 2 %} {% set next_step = '/bookings/step/quotation/' ~ booking.id %} {% endif %}
+                    {% if current_step_idx == 3 %} {% set next_step = '/bookings/step/payment/' ~ booking.id %} {% endif %}
+                    <a href="{{ next_step }}" class="btn-action-elite btn-primary-orange">
+                        Resume Booking <i class="fas fa-play"></i>
+                    </a>
+                {% elif booking.payment_status == 'reupload_requested' %}
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 1rem; margin-bottom: 0.5rem;">
+                        <div style="color: #b91c1c; font-size: 0.8rem; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-exclamation-circle"></i> Proof Rejected
+                        </div>
+                        <p style="color: #991b1b; font-size: 0.75rem; margin: 4px 0 0; font-weight: 500;">Your submitted payment proof was rejected. Please re-upload a clear and correct copy.</p>
+                    </div>
+                    <button onclick="openReuploadProofModal()" class="btn-action-elite btn-primary-orange" style="background: #ef4444; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);">
+                        Re-upload Proof of Payment <i class="fas fa-file-upload"></i>
+                    </button>
+                {% elif booking.status in ['pending_quotation', 'awaiting_customer'] %}
+                    <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-action-elite btn-primary-orange">
+                        Sign Contract <i class="fas fa-file-signature"></i>
+                    </a>
+                {% elif booking.status == 'awaiting_caterer' %}
+                    <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-action-elite btn-outline-slate">
+                        View Contract <i class="fas fa-file-contract"></i>
+                    </a>
+                {% elif booking.status in ['pending_payment', 'awaiting_payment'] and booking.payment_status not in ['proof_submitted', 'reupload_requested'] %}
+                    <a href="/bookings/step/payment/{{ booking.id }}" class="btn-action-elite btn-primary-orange">
+                        Settle Reservation <i class="fas fa-credit-card"></i>
+                    </a>
+                {% elif booking.payment_status == 'balance_reupload_requested' %}
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 1rem; margin-bottom: 0.5rem;">
+                        <div style="color: #b91c1c; font-size: 0.8rem; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-exclamation-circle"></i> Balance Proof Rejected
+                        </div>
+                        <p style="color: #991b1b; font-size: 0.75rem; margin: 4px 0 0; font-weight: 500;">Your submitted balance payment proof was rejected. Please re-upload a clear and correct copy.</p>
+                    </div>
+                    <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange" style="background: #ef4444; box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);">
+                        Re-upload Balance Proof <i class="fas fa-file-upload"></i>
+                    </a>
+                {% elif balance_val > 0 and booking.payment_plan != 'full' %}
+                    <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange">
+                        Pay Balance <i class="fas fa-wallet"></i>
+                    </a>
+                {% endif %}
+                
+                {% if not booking.review and (booking.status == 'completed' or (is_food_order and booking.status == 'arrived')) %}
+                    <a href="/customer/feedback/{{ booking.id }}" class="btn-action-elite" style="background: var(--up-emerald); color: white; border: none;">
+                        Rate & Review <i class="fas fa-star"></i>
+                    </a>
+                {% elif booking.review %}
+                    <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 1rem; margin-top: 0.5rem; text-align: center;">
+                        <div style="color: #059669; font-weight: 800; font-size: 0.85rem;"><i class="fas fa-check-circle"></i> You reviewed this caterer</div>
+                    </div>
+                {% endif %}
+
+                <a href="/customer/messages?caterer_id={{ booking.caterer.user_id }}&caterer_name={{ booking.caterer.business_name | urlencode }}" class="btn-action-elite btn-outline-slate">
+                    Message Caterer <i class="fas fa-comments"></i>
+                </a>
+                
+                <button onclick="openReportModal()" class="btn-action-elite" style="background: transparent; border: 2px solid #fee2e2; color: #ef4444; margin-top: 0.5rem;">
+                    Report Issue <i class="fas fa-flag"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- DOCUMENTS REPOSITORY -->
+        {% if not is_food_order %}
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Your Documents</h3>
+            </div>
+            <div class="panel-body">
+                <a href="javascript:void(0)" onclick="openContractModal('{{ booking.id }}')" 
+                   style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 0.85rem; background: var(--dm-slate-50); border-radius: 12px; transition: all 0.2s; border: 1px solid transparent;"
+                   onmouseover="this.style.borderColor='var(--up-orange)'; this.style.background='#fff';" 
+                   onmouseout="this.style.borderColor='transparent'; this.style.background='var(--dm-slate-50)';">
+                    <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(255,123,84,0.1); display: flex; align-items: center; justify-content: center; color: var(--up-orange); font-size: 1.1rem;">
+                        <i class="fas fa-file-contract"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">Service Agreement</b>
+                        <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">View Service Agreement</span>
+                    </div>
+                    <i class="fas fa-chevron-right" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% set is_rental = booking.event_type == 'Equipment Rental' %}
+        {% if is_rental and (booking.release_photo_url or booking.damage_proof_url) %}
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Rental Inspection Records</h3>
+            </div>
+            <div class="panel-body">
+                {% if booking.release_photo_url %}
+                <a href="{{ booking.release_photo_url }}" target="_blank" 
+                   style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 0.85rem; background: var(--dm-slate-50); border-radius: 12px; transition: all 0.2s; border: 1px solid transparent; margin-bottom: 0.5rem;"
+                   onmouseover="this.style.borderColor='var(--up-orange)'; this.style.background='#fff';" 
+                   onmouseout="this.style.borderColor='transparent'; this.style.background='var(--dm-slate-50)';">
+                    <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(255,123,84,0.1); display: flex; align-items: center; justify-content: center; color: var(--up-orange); font-size: 1.1rem;">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">Release Photo</b>
+                        <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">Condition before handover</span>
+                    </div>
+                    <i class="fas fa-chevron-right" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
+                </a>
+                {% endif %}
+
+                {% if booking.damage_proof_url %}
+                <a href="{{ booking.damage_proof_url }}" target="_blank" 
+                   style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 0.85rem; background: var(--dm-slate-50); border-radius: 12px; transition: all 0.2s; border: 1px solid transparent;"
+                   onmouseover="this.style.borderColor='#ef4444'; this.style.background='#fff';" 
+                   onmouseout="this.style.borderColor='transparent'; this.style.background='var(--dm-slate-50)';">
+                    <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(239, 68, 68, 0.1); display: flex; align-items: center; justify-content: center; color: #ef4444; font-size: 1.1rem;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">Damage Proof</b>
+                        <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">Evidence of damages</span>
+                    </div>
+                    <i class="fas fa-chevron-right" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- TRANSACTION LOGS -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Payment History</h3>
+            </div>
+            <div class="panel-body" style="padding-top: 0.5rem; max-height: 300px; overflow-y: auto;">
+                {% if booking.history %}
+                    {% for h in booking.history|sort(attribute='created_at', reverse=True) %}
+                    <div class="audit-log-item">
+                        <div class="audit-icon" style="color: {% if 'reject' in h.notes|lower or 'reupload' in h.notes|lower %}#ef4444{% else %}var(--up-emerald){% endif %};">
+                            <i class="fas {% if 'reject' in h.notes|lower or 'reupload' in h.notes|lower %}fa-times-circle{% elif h.status == 'confirmed' %}fa-check-double{% else %}fa-check{% endif %}"></i>
+                        </div>
+                        <div class="audit-info">
+                            <b>{{ h.status|capitalize }}</b>
+                            <span>{{ h.notes }} &bull; <br>{{ h.created_at.strftime('%b %d, %Y %I:%M %p') }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div style="text-align: center; padding: 1rem; color: var(--dm-slate-400); font-size: 0.8rem;">No payment history yet.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+{% endblock %}
+
+{% block modals %}
+<!-- Contract Modal -->
+<div id="contractModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.8); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+    <div style="background: #fff; width: 90%; max-width: 900px; height: 90vh; border-radius: 24px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+        <div style="padding: 1.25rem 2rem; border-bottom: 1px solid var(--dm-slate-100); display: flex; justify-content: space-between; align-items: center; background: #fff;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: rgba(16,185,129,0.1); color: var(--up-emerald); padding: 4px 12px; border-radius: 8px; font-size: 0.7rem; font-weight: 850; text-transform: uppercase; letter-spacing: 0.05em;">
+                    <i class="fas fa-shield-check"></i> Verified Secure
+                </div>
+                <h2 style="font-family: 'Poppins', sans-serif; font-size: 1.1rem; font-weight: 900; color: var(--up-slate-900); margin: 0;">Digital Service Agreement</h2>
+            </div>
+            <button onclick="closeContractModal()" style="background: var(--dm-slate-50); border: none; width: 36px; height: 36px; border-radius: 10px; color: var(--dm-slate-400); cursor: pointer; transition: all 0.2s;"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="contractModalBody" style="flex: 1; overflow-y: auto; padding: 2.5rem; background: #fcfcfd;">
+            <div style="text-align: center; padding: 5rem;">
+                <i class="fas fa-circle-notch fa-spin fa-2x" style="color: var(--up-orange);"></i>
+                <p style="margin-top: 1rem; color: var(--dm-slate-400); font-weight: 600;">Opening secure document archive...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Re-upload Downpayment Proof Modal -->
+<div id="reuploadProofModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: white; width: 95%; max-width: 400px; border-radius: 20px; padding: 2rem; position: relative;">
+        <button onclick="closeReuploadProofModal()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.2rem; color: var(--dm-slate-400); cursor: pointer; transition: color 0.2s;"><i class="fas fa-times"></i></button>
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--up-slate-900); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-file-invoice-dollar" style="color: #ef4444;"></i> Re-upload Proof
+        </h3>
+        <p style="font-size: 0.8rem; color: var(--dm-slate-400); margin-bottom: 1.5rem; font-weight: 500;">Please provide a clear copy of your payment receipt.</p>
+        
+        <form action="/bookings/reupload-proof/{{ booking.id }}" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="payment_method" value="{{ booking.payment_method }}">
+            
+            
+
+            <div id="reuploadErrorMsg" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 1rem; border-radius: 12px; font-size: 0.85rem; margin-bottom: 1.25rem; font-weight: 500;"></div>
+            <div style="margin-bottom: 1rem; background: var(--dm-slate-50); border-radius: 12px; padding: 1rem; border: 1px solid var(--dm-slate-100);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dm-slate-400);">Payment Method</span>
+                    <span style="font-size: 0.85rem; font-weight: 800; color: var(--up-slate-900); background: white; padding: 4px 12px; border-radius: 50px; border: 1px solid var(--dm-slate-100);">{{ booking.payment_method }}</span>
+                </div>
+                
+                <div style="font-size: 0.75rem; color: var(--up-slate-900); font-weight: 600;">
+                    {% if booking.payment_method == 'GCash' %}
+                        <p style="margin: 0 0 4px 0;"><strong>Recipient:</strong> {{ booking.caterer.gcash_name or 'N/A' }}</p>
+                        <p style="margin: 0 0 8px 0;"><strong>Number:</strong> {{ booking.caterer.gcash_number or 'N/A' }}</p>
+                        <ol style="margin: 0; padding-left: 1.2rem; color: var(--dm-slate-400); font-weight: 500;">
+                            <li>Open your e-wallet app and send the exact amount.</li>
+                            <li>Take a clear screenshot of the successful transaction.</li>
+                            <li>Ensure the <strong>Reference Number</strong> and <strong>Amount</strong> are visible.</li>
+                        </ol>
+                    {% elif booking.payment_method == 'Maya' %}
+                        <p style="margin: 0 0 4px 0;"><strong>Recipient:</strong> {{ booking.caterer.maya_name or 'N/A' }}</p>
+                        <p style="margin: 0 0 8px 0;"><strong>Number:</strong> {{ booking.caterer.maya_number or 'N/A' }}</p>
+                        <ol style="margin: 0; padding-left: 1.2rem; color: var(--dm-slate-400); font-weight: 500;">
+                            <li>Open your e-wallet app and send the exact amount.</li>
+                            <li>Take a clear screenshot of the successful transaction.</li>
+                            <li>Ensure the <strong>Reference Number</strong> and <strong>Amount</strong> are visible.</li>
+                        </ol>
+                    {% elif booking.payment_method == 'Bank Transfer' %}
+                        <p style="margin: 0 0 4px 0;"><strong>Bank:</strong> {{ booking.caterer.bank_name or 'N/A' }}</p>
+                        <p style="margin: 0 0 4px 0;"><strong>Account Name:</strong> {{ booking.caterer.bank_account_name or 'N/A' }}</p>
+                        <p style="margin: 0 0 8px 0;"><strong>Account No.:</strong> {{ booking.caterer.bank_account_number or 'N/A' }}</p>
+                        <ol style="margin: 0; padding-left: 1.2rem; color: var(--dm-slate-400); font-weight: 500;">
+                            <li>Transfer the exact amount to the bank account above.</li>
+                            <li>Take a clear screenshot of the confirmation page or receipt.</li>
+                            <li>Ensure the <strong>Reference Number</strong> and <strong>Amount</strong> are visible.</li>
+                        </ol>
+                    {% else %}
+                        <p style="margin: 0;">Please follow the standard payment procedure for {{ booking.payment_method }}.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--up-slate-900); margin-bottom: 0.5rem; text-transform: uppercase;">Upload New Receipt <span style="color: #ef4444;">*</span></label>
+                <input type="file" name="payment_proof" accept="image/jpeg, image/png, image/webp" required style="width: 100%; padding: 0.75rem; border: 2px dashed var(--up-orange); border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 0.8rem; color: var(--dm-slate-400); background: rgba(255,123,84,0.05);">
+                <p style="font-size: 0.65rem; color: var(--dm-slate-400); margin-top: 6px; text-align: center;"><i class="fas fa-robot"></i> Image will be verified automatically by our AI system.</p>
+            </div>
+            <button type="submit" class="btn-action-elite btn-primary-orange" style="width: 100%;">
+                Submit Document <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Report Issue Modal -->
+<div id="reportIssueModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: white; width: 95%; max-width: 450px; border-radius: 20px; padding: 2rem; position: relative;">
+        <button onclick="closeReportModal()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.2rem; color: var(--dm-slate-400); cursor: pointer;"><i class="fas fa-times"></i></button>
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--up-slate-900); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-flag" style="color: #ef4444;"></i> Report Issue
+        </h3>
+        <p style="font-size: 0.8rem; color: var(--dm-slate-400); margin-bottom: 1.5rem; font-weight: 500;">Please provide details of your dispute. This will be sent to the OccaServe Admin for investigation.</p>
+        
+        <form id="reportForm" onsubmit="submitReport(event)">
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--up-slate-900); margin-bottom: 0.5rem; text-transform: uppercase;">Reason <span style="color: #ef4444;">*</span></label>
+                <select name="reason" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--dm-slate-200); border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 0.85rem; color: var(--up-slate-900); background: #fff; outline: none;">
+                    <option value="">Select a reason...</option>
+                    <option value="Caterer did not arrive">Caterer did not arrive</option>
+                    <option value="Scam or fraud">Scam or fraud</option>
+                    <option value="Bad food quality (spoiled)">Bad food quality (spoiled)</option>
+                    <option value="Bad behavior or harassment">Bad behavior or harassment</option>
+                    <option value="Other issue">Other issue</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--up-slate-900); margin-bottom: 0.5rem; text-transform: uppercase;">Details <span style="color: #ef4444;">*</span></label>
+                <textarea name="details" required rows="4" placeholder="Describe what happened in detail..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--dm-slate-200); border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 0.85rem; color: var(--up-slate-900); background: #fff; outline: none; resize: none;"></textarea>
+            </div>
+            <button type="submit" class="btn-action-elite btn-primary-orange" style="width: 100%; background: #ef4444; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);">
+                Submit Report <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function initiatePaymongo(type) {
+        const formData = new FormData();
+        formData.append('payment_type', type);
+        try {
+            const response = await fetch(`/api/bookings/{{ booking.id }}/pay`, { method: 'POST', body: formData });
+            const data = await response.json();
+            if (data.success && data.checkout_url) { window.location.href = data.checkout_url; }
+            else { alert(data.message || 'Failed to generate link.'); }
+        } catch (error) { alert('Connection error.'); }
+    }
+
+    function openContractModal(bookingId) {
+        // HIDE sidebar/header to ensure they are GONE
+        document.body.classList.add('contract-modal-open');
+        
+        const modal = document.getElementById('contractModal');
+        const body = document.getElementById('contractModalBody');
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden'; 
+        fetch(`/api/bookings/${bookingId}/contract/content`)
+            .then(response => response.text())
+            .then(html => { body.innerHTML = html; })
+            .catch(err => { body.innerHTML = `<p style="color:#ef4444;text-align:center;padding:3rem;">Retrieval Failed.</p>`; });
+    }
+
+    function closeContractModal() {
+        document.body.classList.remove('contract-modal-open');
+        document.getElementById('contractModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    function openBalanceUploadModal() {
+        document.getElementById('balanceUploadModal').style.display = 'flex';
+    }
+    
+    function closeBalanceUploadModal() {
+        document.getElementById('balanceUploadModal').style.display = 'none';
+    }
+
+    function openReuploadProofModal() {
+        document.getElementById('reuploadProofModal').style.display = 'flex';
+    }
+    
+    function closeReuploadProofModal() {
+        document.getElementById('reuploadProofModal').style.display = 'none';
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        if (urlParams.has('validation_error')) {
+            const errorMsg = urlParams.get('validation_error');
+            
+            if (urlParams.has('open_reupload')) {
+                // Open modal and show error inside
+                const msgBox = document.getElementById('reuploadErrorMsg');
+                if (msgBox) {
+                    msgBox.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <strong>AI Verification Failed:</strong> ' + errorMsg.replace(/\+/g, ' ');
+                    msgBox.style.display = 'block';
+                }
+                openReuploadProofModal();
+            } else {
+                Swal.fire({
+                    title: 'AI Verification Failed',
+                    text: errorMsg,
+                    icon: 'error',
+                    confirmButtonColor: '#ef4444'
+                });
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        
+        if (urlParams.has('success_msg')) {
+            Swal.fire({
+                title: 'Success!',
+                text: urlParams.get('success_msg'),
+                icon: 'success',
+                confirmButtonColor: 'var(--up-emerald-500)'
+            });
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    });
+
+    function openReportModal() {
+        document.getElementById('reportIssueModal').style.display = 'flex';
+    }
+
+    function closeReportModal() {
+        document.getElementById('reportIssueModal').style.display = 'none';
+        document.getElementById('reportForm').reset();
+    }
+
+    async function submitReport(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const submitBtn = form.querySelector('button[type="submit"]');
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+
+        try {
+            const response = await fetch('/api/bookings/{{ booking.id }}/report', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                closeReportModal();
+                Swal.fire({
+                    title: 'Report Submitted',
+                    text: data.message,
+                    icon: 'success',
+                    confirmButtonColor: '#ef4444'
+                });
+            } else {
+                Swal.fire('Error', data.message, 'error');
+            }
+        } catch (error) {
+            Swal.fire('Error', 'An unexpected error occurred. Please try again.', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Submit Report <i class="fas fa-paper-plane"></i>';
+        }
+    }
+</script>
+{% endblock %}

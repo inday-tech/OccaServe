@@ -832,16 +832,22 @@ function showBookingDetails(btn) {
     currentBookingId = data.id;
     currentEventDate = data.eventDate;
 
-    document.getElementById('modalBookingId').innerText = 'Booking #' + data.id;
+    const isFoodOrder = data.isFoodOrder === 'true' || data.isFoodOrder === true;
+    let titlePrefix = isFoodOrder ? 'Food Order #' : (data.status === 'pending_review' ? 'Inquiry Details #' : 'Booking #');
+    document.getElementById('modalBookingId').innerText = titlePrefix + data.id;
     
     // Urgent Indicator in Modal Header
     const headerTitle = document.getElementById('modalBookingId');
     if (data.isUrgent === 'true') {
-        headerTitle.innerHTML = `Booking #${data.id} <span style="background: #fff1f2; color: #e11d48; font-size: 0.65rem; padding: 2px 8px; border-radius: 50px; margin-left: 8px; border: 1px solid #fecdd3; vertical-align: middle;"><i class="fas fa-clock"></i> URGENT</span>`;
+        headerTitle.innerHTML = `${titlePrefix}${data.id} <span style="background: #fff1f2; color: #e11d48; font-size: 0.65rem; padding: 2px 8px; border-radius: 50px; margin-left: 8px; border: 1px solid #fecdd3; vertical-align: middle;"><i class="fas fa-clock"></i> URGENT</span>`;
     }
 
     document.getElementById('modalCustomer').innerText = data.customer;
     document.getElementById('modalEmail').innerText = data.email;
+    const labelEl = document.getElementById('modalEventDetailsLabel');
+    if (labelEl) {
+        labelEl.innerText = isFoodOrder ? 'Order Details' : 'Event Details';
+    }
     document.getElementById('modalEventName').innerText = data.eventName;
     document.getElementById('modalEventType').innerText = data.eventType;
     document.getElementById('modalVenue').innerText = data.venue;
@@ -888,11 +894,31 @@ function showBookingDetails(btn) {
         var hasProof = false;
         if (proofUrl) {
             hasProof = true;
-            proofContainer.innerHTML += '<a href="' + proofUrl + '" target="_blank" class="modal-proof-item"><img src="' + proofUrl + '" class="modal-proof-img" onerror="this.src=\'/static/images/file-placeholder.png\'"><span class="modal-proof-label">Downpayment Proof</span></a>';
+            proofContainer.innerHTML += `<div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+                <a href="${proofUrl}" target="_blank" style="display:flex;flex-direction:column;align-items:center;gap:8px;text-decoration:none;">
+                    <img src="${proofUrl}" class="modal-proof-img" style="max-width:160px;max-height:160px;border-radius:8px;border:1px solid #e2e8f0;object-fit:cover;"
+                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <div style="display:none;width:120px;height:120px;background:#f1f5f9;border-radius:8px;border:1px dashed #cbd5e1;align-items:center;justify-content:center;flex-direction:column;gap:6px;">
+                        <i class='fas fa-file-image' style='font-size:2rem;color:#94a3b8;'></i>
+                        <span style='font-size:0.65rem;color:#94a3b8;font-weight:700;'>View File</span>
+                    </div>
+                    <span class="modal-proof-label">Downpayment Proof</span>
+                </a>
+            </div>`;
         }
         if (balanceProofUrl) {
             hasProof = true;
-            proofContainer.innerHTML += '<a href="' + balanceProofUrl + '" target="_blank" class="modal-proof-item"><img src="' + balanceProofUrl + '" class="modal-proof-img" onerror="this.src=\'/static/images/file-placeholder.png\'"><span class="modal-proof-label">Balance Proof</span></a>';
+            proofContainer.innerHTML += `<div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+                <a href="${balanceProofUrl}" target="_blank" style="display:flex;flex-direction:column;align-items:center;gap:8px;text-decoration:none;">
+                    <img src="${balanceProofUrl}" class="modal-proof-img" style="max-width:160px;max-height:160px;border-radius:8px;border:1px solid #e2e8f0;object-fit:cover;"
+                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <div style="display:none;width:120px;height:120px;background:#f1f5f9;border-radius:8px;border:1px dashed #cbd5e1;align-items:center;justify-content:center;flex-direction:column;gap:6px;">
+                        <i class='fas fa-file-image' style='font-size:2rem;color:#94a3b8;'></i>
+                        <span style='font-size:0.65rem;color:#94a3b8;font-weight:700;'>View File</span>
+                    </div>
+                    <span class="modal-proof-label">Balance Proof</span>
+                </a>
+            </div>`;
         }
         proofSection.style.display = hasProof ? 'block' : 'none';
     }
@@ -912,6 +938,8 @@ function showBookingDetails(btn) {
     const isVerified = data.isVerified === 'true' || data.isVerified === true;
     const targetUserId = data.targetUserId;
     const isPackage = data.isPackage === 'true' || data.isPackage === true;
+
+    const isRental = data.eventType === 'Equipment Rental';
 
     if (actionsEl) {
         actionsEl.style.display = 'flex';
@@ -940,12 +968,17 @@ function showBookingDetails(btn) {
         
         if (data.status === 'pending') {
             const isPayment = data.paymentStatus === 'proof_submitted';
-            const btnLabel = isPayment ? `Verify ${plan} & Accept` : 'Confirm & Accept Booking';
+            let btnLabel = isPayment ? `Verify ${plan} & Accept` : 'Confirm & Accept Booking';
+            let rejectLabel = 'Reject Booking';
+            if (isFoodOrder) {
+                btnLabel = isPayment ? `Verify Payment & Accept Order` : 'Confirm & Accept Order';
+                rejectLabel = 'Reject Order';
+            }
             const btnIcon = isPayment ? 'fa-check-double' : 'fa-check-circle';
             
             actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.confirmAcceptBooking(${data.id}, ${isPayment}, ${isVerified}, ${isPackage})"><i class="fas ${btnIcon}"></i> ${btnLabel}</button>`;
             if (isPayment) actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-reject" onclick="window.requestNewProof(${data.id})" style="background:#64748b;"><i class="fas fa-redo"></i> Request New Proof</button>`;
-            actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-reject" onclick="window.confirmRejectBooking(${data.id})"><i class="fas fa-times-circle"></i> Reject Booking</button>`;
+            actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-reject" onclick="window.confirmRejectBooking(${data.id})"><i class="fas fa-times-circle"></i> ${rejectLabel}</button>`;
             
         } else if (data.status === 'awaiting_caterer') {
             actionsEl.innerHTML = `<a href="/caterer/bookings/${data.id}/sign" class="btn-footer-action btn-status-confirm" style="text-decoration:none;"><i class="fas fa-pen-nib"></i> Sign Contract Now</a><button type="button" class="btn-footer-action btn-status-reject" onclick="window.confirmRejectBooking(${data.id})"><i class="fas fa-times-circle"></i> Reject</button>`;
@@ -957,26 +990,46 @@ function showBookingDetails(btn) {
                 if (data.paymentStatus === 'balance_proof_submitted') {
                     actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm pulse-update" onclick="window.confirmAcceptBooking(${data.id}, true)" style="margin-bottom:0.5rem;width:100%;"><i class="fas fa-check-double"></i> Verify Final Balance</button>`;
                 }
-                actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(${data.id}, 'preparing')" style="background:#5b5a9c;"><i class="fas fa-utensils"></i> Start Preparation</button>`;
+                if (isRental) {
+                    actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.openRentalReleaseModal(${data.id})" style="background:#5b5a9c;"><i class="fas fa-camera"></i> Release Equipment</button>`;
+                } else {
+                    actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(${data.id}, 'preparing')" style="background:#5b5a9c;"><i class="fas fa-utensils"></i> Start Preparation</button>`;
+                }
             } else if (data.status === 'preparing') {
                 if (data.venue === 'PICKUP') {
                     actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.validateAndProceed(' + data.id + ', \'ready_for_pickup\')" style="background:#10b981;"><i class="fas fa-shopping-bag"></i> Mark as Ready for Pickup</button>';
                 } else {
-                    actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.validateAndProceed(' + data.id + ', \'ready_for_delivery\')" style="background:#10b981;"><i class="fas fa-box"></i> Mark as Ready for Delivery</button>';
+                    if (isFoodOrder) {
+                        actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'on_the_way\')" style="background:#0ea5e9;"><i class="fas fa-truck"></i> Dispatch Order</button>';
+                    } else {
+                        actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.validateAndProceed(' + data.id + ', \'ready_for_delivery\')" style="background:#10b981;"><i class="fas fa-box"></i> Mark as Ready for Delivery</button>';
+                    }
                 }
             } else if (data.status === 'ready_for_pickup') {
                 actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-complete" onclick="window.confirmCompleteBooking(' + data.id + ')"><i class="fas fa-flag-checkered"></i> Mark as Picked Up (Complete)</button>';
+            } else if (data.status === 'released') {
+                if (isRental) {
+                    actionsEl.innerHTML = `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.openRentalInspectionModal(${data.id})" style="background:#10b981;"><i class="fas fa-clipboard-check"></i> Inspect & Process Return</button>`;
+                }
             } else if (data.status === 'ready_for_delivery') {
                 actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'on_the_way\')" style="background:#0ea5e9;"><i class="fas fa-truck"></i> Out for Delivery</button>';
             } else if (data.status === 'on_the_way') {
                 if (isPackage) {
                     actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'arrived\')" style="background:#6366f1;"><i class="fas fa-map-marker-alt"></i> Arrived at Location</button>';
+                } else if (isFoodOrder) {
+                    actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'arrived\')" style="background:#10b981;"><i class="fas fa-check-circle"></i> Mark as Delivered</button>';
                 } else {
-                    // Skip to Complete for Ala Carte
-                    actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-complete" onclick="window.confirmCompleteBooking(' + data.id + ')"><i class="fas fa-flag-checkered"></i> Mark as Delivered (Complete)</button>';
+                    // Skip to Complete for Ala Carte (Services)
+                    if (!isRental) {
+                        actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-complete" onclick="window.confirmCompleteBooking(' + data.id + ')"><i class="fas fa-flag-checkered"></i> Mark as Delivered (Complete)</button>';
+                    }
                 }
             } else if (data.status === 'arrived') {
-                if (isPackage) actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'setup_ongoing\')" style="background:#f97316;"><i class="fas fa-magic"></i> Setup & Serve</button>';
+                if (isPackage) {
+                    actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'setup_ongoing\')" style="background:#f97316;"><i class="fas fa-magic"></i> Setup & Serve</button>';
+                } else if (isFoodOrder) {
+                    actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-complete" onclick="window.confirmCompleteBooking(' + data.id + ')"><i class="fas fa-flag-checkered"></i> Mark Order Completed</button>';
+                }
             } else if (data.status === 'setup_ongoing' || data.status === 'in_progress') {
                 if (data.paymentStatus === 'paid' || data.amount === "₱0.00" || data.paymentPlan === 'full') {
                     const btnLabel = isPackage ? 'Mark as Done (Step 6)' : 'Mark as Completed';
@@ -992,7 +1045,7 @@ function showBookingDetails(btn) {
                     }
                 }
             } else if (data.status === 'completed' || data.status === 'cancelled') {
-                const archiveLabel = isPackage ? 'Archive Package Record' : 'Archive Booking';
+                const archiveLabel = isFoodOrder ? 'Archive Order' : (isPackage ? 'Archive Package Record' : 'Archive Booking');
                 actionsEl.innerHTML = '<button type="button" class="btn-footer-action" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;flex:1;" onclick="window.confirmArchiveBooking(' + data.id + ')"><i class="fas fa-archive"></i> ' + archiveLabel + '</button>';
             }
         }
@@ -1009,7 +1062,8 @@ function showBookingDetails(btn) {
     }
 
     document.getElementById('modalBookedOn').innerText = data.bookedOn;
-    document.getElementById('modalPaymentMethod').innerText = `Method: ${data.paymentMethod} (${(data.paymentPlan || 'downpayment').toUpperCase()})`;
+    const displayPaymentPlan = (isFoodOrder || data.paymentPlan === 'full') ? 'FULL PAYMENT' : (data.paymentPlan || 'downpayment').toUpperCase();
+    document.getElementById('modalPaymentMethod').innerText = `Method: ${data.paymentMethod} (${displayPaymentPlan})`;
     const payRefEl = document.getElementById('modalPaymentRef');
     if (payRefEl) {
         if (data.paymentRef && data.paymentRef.trim() !== '') {
@@ -1020,7 +1074,17 @@ function showBookingDetails(btn) {
         }
     }
     document.getElementById('modalTotalAmount').innerText = data.amount;
-    document.getElementById('modalGuestCount').innerText = data.guestCount + ' Guests';
+    
+    const guestCountEl = document.getElementById('modalGuestCount');
+    if (guestCountEl) {
+        if (isFoodOrder) {
+            guestCountEl.style.display = 'none';
+        } else {
+            guestCountEl.style.display = 'inline-block';
+            guestCountEl.innerText = data.guestCount + ' Guests';
+        }
+    }
+    
     // Handle Due Date section display logic
     const dueDateCard = document.getElementById('dueDateCardPremium');
     const modalDueDate = document.getElementById('modalDueDate');
@@ -1032,24 +1096,31 @@ function showBookingDetails(btn) {
     } else {
         if (dueDateCard) dueDateCard.style.display = 'block';
         if (!data.balanceDue) {
-            modalDueDate.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-exclamation-circle"></i> Needs Deadline</span>';
+            if (modalDueDate) modalDueDate.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-exclamation-circle"></i> Needs Deadline</span>';
             if (badgeContainer) badgeContainer.innerHTML = '<span class="due-date-badge missing">Action Required</span>';
         } else {
             // Simple format for display
             const parts = data.balanceDue.split('-');
             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             const formatted = `${months[parseInt(parts[1])-1]} ${parts[2]}, ${parts[0]}`;
-            modalDueDate.innerText = formatted;
+            if (modalDueDate) modalDueDate.innerText = formatted;
             if (badgeContainer) badgeContainer.innerHTML = '<span class="due-date-badge"><i class="fas fa-check-circle"></i> Deadline Set</span>';
         }
     }
 
-    document.getElementById('dueDateDisplaySection').style.display = 'block';
-    document.getElementById('dueDateEditSection').style.display = 'none';
-    document.getElementById('balanceDueDateInput').value = data.balanceDue || '';
-    // Ensure min date is today
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('balanceDueDateInput').min = today;
+    var displaySec = document.getElementById('dueDateDisplaySection');
+    if (displaySec) displaySec.style.display = 'block';
+    
+    var editSec = document.getElementById('dueDateEditSection');
+    if (editSec) editSec.style.display = 'none';
+    
+    var dueDateInput = document.getElementById('balanceDueDateInput');
+    if (dueDateInput) {
+        dueDateInput.value = data.balanceDue || '';
+        // Ensure min date is today
+        const today = new Date().toISOString().split('T')[0];
+        dueDateInput.min = today;
+    }
 
     var pStatusEl = document.getElementById('modalPaymentStatus');
     var pLabels = { 'paid': 'Fully Paid', 'deposit_paid': 'Downpayment Paid', 'proof_submitted': 'Proof Sent', 'balance_proof_submitted': 'Balance Proof Sent', 'pending': 'Payment Pending' };
@@ -1078,7 +1149,7 @@ function showBookingDetails(btn) {
     if (notesEl) notesEl.value = btn.dataset.catererNotes || '';
     
     // Update Stepper
-    updateBookingStepper(data.status, isPackage);
+    updateBookingStepper(data.status, isPackage, isFoodOrder);
     
     // Load Chat Messages
     loadBookingMessages(data.id);
@@ -1162,7 +1233,7 @@ function switchBookingTab(tabId, targetEl) {
 
     var saveBtn = document.getElementById('saveExpenseBtn');
     if (saveBtn) {
-        if (tabId === 'expenses') {
+        if (tabId === 'financials') {
             saveBtn.style.display = 'flex';
         } else {
             saveBtn.style.display = 'none';
@@ -1271,24 +1342,35 @@ async function saveCatererNotes() {
 
 // ─── NEW: STEPPER LOGIC ──────────────────────────────────────────────────────
 
-function updateBookingStepper(status, isPackage) {
-    const steps = isPackage 
-        ? ['pending', 'confirmed', 'preparing', 'on_the_way', 'in_progress', 'completed']
-        : ['pending', 'confirmed', 'preparing', 'on_the_way', 'completed'];
+function updateBookingStepper(status, isPackage, isFoodOrder) {
+    let steps;
+    if (isFoodOrder) {
+        steps = ['pending', 'preparing', 'on_the_way', 'arrived', 'completed'];
+    } else {
+        steps = isPackage 
+            ? ['pending', 'confirmed', 'preparing', 'on_the_way', 'in_progress', 'completed']
+            : ['pending', 'confirmed', 'preparing', 'on_the_way', 'completed'];
+    }
         
     const ongoingStep = document.getElementById('stepperStepOngoing');
-    if (ongoingStep) ongoingStep.style.display = isPackage ? 'block' : 'none';
+    if (ongoingStep) ongoingStep.style.display = (isPackage && !isFoodOrder) ? 'block' : 'none';
     
     const completedStepDot = document.getElementById('stepperStepCompletedDot');
-    if (completedStepDot) completedStepDot.innerHTML = isPackage ? '6' : '5';
+    if (completedStepDot) completedStepDot.innerHTML = (isPackage && !isFoodOrder) ? '6' : '5';
 
-    // Treat 'arrived' or 'setup_ongoing' as 'in_progress' for the stepper
+    // Treat 'arrived' or 'setup_ongoing' as 'in_progress' for the stepper (non-food)
     let currentIdx = steps.indexOf(status);
-    if (currentIdx === -1 && (status === 'arrived' || status === 'setup_ongoing')) {
-        currentIdx = steps.indexOf('in_progress');
+    if (!isFoodOrder) {
+        if (currentIdx === -1 && (status === 'arrived' || status === 'setup_ongoing')) {
+            currentIdx = steps.indexOf('in_progress');
+        }
     }
     // Treat ready_for_pickup/delivery as preparing
     if (currentIdx === -1 && (status === 'ready_for_pickup' || status === 'ready_for_delivery')) {
+        currentIdx = steps.indexOf('preparing');
+    }
+    // Treat confirmed as pending for food orders if it wasn't caught
+    if (isFoodOrder && status === 'confirmed') {
         currentIdx = steps.indexOf('preparing');
     }
     
@@ -2338,3 +2420,105 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ─── EQUIPMENT RENTAL HANDLERS ───────────────────────────────────────────────
+
+window.openRentalReleaseModal = function(bookingId) {
+    document.getElementById('releaseBookingId').value = bookingId;
+    bk_openModal('rentalReleaseModal');
+};
+
+window.closeRentalReleaseModal = function() {
+    bk_closeModal('rentalReleaseModal');
+    document.getElementById('rentalReleaseForm').reset();
+};
+
+window.submitRentalRelease = async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('releaseSubmitBtn');
+    const form = document.getElementById('rentalReleaseForm');
+    const bookingId = document.getElementById('releaseBookingId').value;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    
+    try {
+        const formData = new FormData(form);
+        const res = await fetch(`/caterer/rentals/${bookingId}/release`, {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            Swal.fire({icon: 'success', title: 'Equipment Released', text: data.message});
+            closeRentalReleaseModal();
+            if (window.refreshBookingsTable) window.refreshBookingsTable();
+        } else {
+            Swal.fire({icon: 'error', title: 'Action Failed', text: data.message});
+        }
+    } catch (err) {
+        Swal.fire({icon: 'error', title: 'Network Error', text: 'Failed to communicate with server.'});
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Release Equipment';
+    }
+};
+
+window.openRentalInspectionModal = function(bookingId) {
+    document.getElementById('inspectBookingId').value = bookingId;
+    bk_openModal('rentalInspectionModal');
+    toggleDamagePhotoRequirement();
+};
+
+window.closeRentalInspectionModal = function() {
+    bk_closeModal('rentalInspectionModal');
+    document.getElementById('rentalInspectionForm').reset();
+    toggleDamagePhotoRequirement();
+};
+
+window.toggleDamagePhotoRequirement = function() {
+    const deductionInput = document.getElementById('deductionAmount');
+    const photoGroup = document.getElementById('damagePhotoGroup');
+    const photoInput = document.getElementById('damagePhoto');
+    
+    if (parseFloat(deductionInput.value) > 0) {
+        photoGroup.style.display = 'block';
+        photoInput.required = true;
+    } else {
+        photoGroup.style.display = 'none';
+        photoInput.required = false;
+    }
+};
+
+window.submitRentalInspection = async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('inspectSubmitBtn');
+    const form = document.getElementById('rentalInspectionForm');
+    const bookingId = document.getElementById('inspectBookingId').value;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    
+    try {
+        const formData = new FormData(form);
+        const res = await fetch(`/caterer/rentals/${bookingId}/inspect`, {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            Swal.fire({icon: 'success', title: 'Inspection Complete', text: data.message});
+            closeRentalInspectionModal();
+            if (window.refreshBookingsTable) window.refreshBookingsTable();
+        } else {
+            Swal.fire({icon: 'error', title: 'Action Failed', text: data.message});
+        }
+    } catch (err) {
+        Swal.fire({icon: 'error', title: 'Network Error', text: 'Failed to communicate with server.'});
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Complete Return';
+    }
+};

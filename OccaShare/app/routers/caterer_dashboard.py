@@ -134,6 +134,88 @@ async def validate_dish_name(
     exists = query.first() is not None
     return {"exists": exists}
 
+class DeliveryZoneSchema(BaseModel):
+    province: str
+    city_municipality: str
+    is_manual_quote: bool = False
+    fee: float = 0.0
+
+@router.post("/api/delivery-zones")
+async def add_delivery_zone(
+    zone: DeliveryZoneSchema,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    # Check for duplicate zone
+    existing = db.query(models.DeliveryZone).filter(
+        models.DeliveryZone.caterer_id == profile.id,
+        models.DeliveryZone.province == zone.province,
+        models.DeliveryZone.city_municipality == zone.city_municipality
+    ).first()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Delivery zone for this municipality already exists")
+
+    new_zone = models.DeliveryZone(
+        caterer_id=profile.id,
+        province=zone.province,
+        city_municipality=zone.city_municipality,
+        fee=zone.fee if not zone.is_manual_quote else 0.0,
+        is_manual_quote=zone.is_manual_quote
+    )
+    db.add(new_zone)
+    db.commit()
+    return {"status": "success", "message": "Delivery zone added"}
+
+@router.delete("/api/delivery-zones/{zone_id}")
+async def delete_delivery_zone(
+    zone_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    zone = db.query(models.DeliveryZone).filter(
+        models.DeliveryZone.id == zone_id,
+        models.DeliveryZone.caterer_id == profile.id
+    ).first()
+    
+    if not zone:
+        raise HTTPException(status_code=404, detail="Zone not found")
+        
+    db.delete(zone)
+    db.commit()
+    return {"status": "success", "message": "Delivery zone deleted"}
+
+class DeliveryZoneUpdateSchema(BaseModel):
+    is_manual_quote: bool = False
+    fee: float = 0.0
+
+@router.put("/api/delivery-zones/{zone_id}")
+async def edit_delivery_zone(
+    zone_id: int,
+    zone_data: DeliveryZoneUpdateSchema,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    zone = db.query(models.DeliveryZone).filter(
+        models.DeliveryZone.id == zone_id,
+        models.DeliveryZone.caterer_id == profile.id
+    ).first()
+    
+    if not zone:
+        raise HTTPException(status_code=404, detail="Zone not found")
+        
+    zone.is_manual_quote = zone_data.is_manual_quote
+    zone.fee = zone_data.fee if not zone_data.is_manual_quote else 0.0
+    
+    db.commit()
+    return {"status": "success", "message": "Delivery zone updated"}
+
 @router.get("/api/availability/check")
 async def check_availability(
     date: str,
@@ -550,24 +632,28 @@ async def update_booking_status(
     title = ""
     message = ""
     
+    is_food_order = (booking.document_type == 'invoice')
+    ref_id = f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}"
+    item_type = "food order" if is_food_order else "booking"
+    
     if new_status == "preparing":
-        title = "Preparation Started!"
-        message = f"The caterer {user.caterer_profile.business_name} has started preparing for your food order '{booking.event_name}'."
+        title = "Preparation Started!" if not is_food_order else "Order is Preparing!"
+        message = f"The caterer {user.caterer_profile.business_name} has started preparing for your {item_type} '{booking.event_name}' ({ref_id})."
     elif new_status == "ready_for_delivery":
-        title = "Ready for Delivery!"
-        message = f"Cooking is complete! Your order is packed and ready for dispatch."
+        title = "Ready for Delivery!" if not is_food_order else "Order Ready for Dispatch!"
+        message = f"Preparation is complete! Your {item_type} is packed and ready for dispatch."
     elif new_status == "on_the_way":
-        title = "Order is in Transit!"
-        message = f"Our delivery team is on the way to your location for '{booking.event_name}'. Get those tables ready!"
+        title = "In Transit!" if not is_food_order else "Your Order is Dispatched!"
+        message = f"Our delivery team is on the way to your location for '{booking.event_name}' ({ref_id})."
     elif new_status == "arrived":
-        title = "Caterer has Arrived!"
-        message = f"Our team has arrived at your location. Please coordinate with our staff for turnover."
+        title = "Caterer has Arrived!" if not is_food_order else "Order Delivered!"
+        message = f"Our team has arrived at your location for '{booking.event_name}' ({ref_id})."
     elif new_status == "setup_ongoing":
         title = "Dining Setup Ongoing"
         message = f"Your food service is currently being set up. We are almost ready to serve!"
     elif new_status == "completed":
-        title = "Transaction Completed!"
-        message = f"Successfully delivered and served for your event '{booking.event_name}'. Thank you for choosing us!"
+        title = "Transaction Completed!" if not is_food_order else "Order Completed!"
+        message = f"Successfully finalized for your {item_type} '{booking.event_name}' ({ref_id}). Thank you for choosing us!"
 
     if title and message:
         await NotificationService.notify_status_update(
@@ -851,9 +937,9 @@ async def check_urgent_bookings(
     for b in profile.bookings:
         caterer_action_needed = False
         
-        is_early_stage = b.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment']
+        is_early_stage = b.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review']
         
-        if b.status in ['pending', 'awaiting_caterer']:
+        if b.status in ['pending', 'awaiting_caterer', 'pending_review']:
             caterer_action_needed = True
             
         # If waiting for customer to re-upload, it is NOT urgent for the caterer
@@ -878,7 +964,7 @@ async def caterer_dashboard(
     user: models.User = Depends(caterer_only)
 ):
     profile = user.caterer_profile
-    bookings = [b for b in profile.bookings if b.status not in ['draft', 'pending_quotation'] and not b.is_archived]
+    bookings = [b for b in profile.bookings if b.status not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted'] and not b.is_archived]
     
     timeframe = request.query_params.get('timeframe', 'month')
     stats = _get_caterer_stats(profile, bookings, timeframe=timeframe)
@@ -929,7 +1015,7 @@ async def caterer_dashboard(
     elif profile.status == 'Draft' or profile.status == 'Identity Verified':
         next_action = {"title": "Publish Listing", "desc": "You're all set! Publish your listing to start receiving bookings.", "url": "#", "btn": "Publish Now", "onclick": "togglePublish(this)"}
 
-    total_bookings = len([b for b in profile.bookings if b.status not in ['draft', 'pending_quotation', 'cancelled'] and not b.is_archived])
+    total_bookings = len([b for b in profile.bookings if b.status not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted', 'cancelled'] and not b.is_archived])
 
     return templates.TemplateResponse("caterer/index.html", {
         "request": request,
@@ -1111,7 +1197,7 @@ async def dashboard_overview_api(
 ):
     from fastapi.responses import JSONResponse
     profile = user.caterer_profile
-    bookings = [b for b in profile.bookings if b.status not in ['draft', 'pending_quotation'] and not b.is_archived]
+    bookings = [b for b in profile.bookings if b.status not in ['draft', 'pending_quotation', 'pending_review'] and not b.is_archived]
     
     timeframe = request.query_params.get('timeframe', 'month')
     start_date = request.query_params.get('start_date')
@@ -1183,12 +1269,12 @@ async def manage_bookings(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    all_bookings = [b for b in user.caterer_profile.bookings if b.status not in ['draft', 'pending_quotation'] and not b.is_archived]
+    all_bookings = [b for b in user.caterer_profile.bookings if b.status not in ['draft', 'pending_quotation'] and not b.is_archived and b.document_type != 'invoice']
     all_bookings.sort(key=lambda x: x.id, reverse=True)
     
     total_bookings = len(all_bookings)
     confirmed_count = sum(1 for b in all_bookings if b.status in ['confirmed', 'completed'])
-    pending_count = sum(1 for b in all_bookings if b.status in ['pending', 'awaiting_caterer', 'awaiting_payment'])
+    pending_count = sum(1 for b in all_bookings if b.status in ['pending', 'awaiting_caterer', 'awaiting_payment', 'pending_review'])
     cancelled_count = sum(1 for b in all_bookings if b.status == 'cancelled')
     
     packages = db.query(models.CateringPackage).filter(
@@ -1209,6 +1295,35 @@ async def manage_bookings(
         "pending_count": pending_count,
         "cancelled_count": cancelled_count,
         "active_page": "bookings",
+        "today": today
+    })
+
+@router.get("/orders", response_class=HTMLResponse)
+async def manage_orders(
+    request: Request, 
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    all_orders = [b for b in user.caterer_profile.bookings if b.status not in ['draft', 'pending_quotation'] and not b.is_archived and b.document_type == 'invoice']
+    all_orders.sort(key=lambda x: x.id, reverse=True)
+    
+    total_bookings = len(all_orders)
+    confirmed_count = sum(1 for b in all_orders if b.status in ['confirmed', 'completed'])
+    pending_count = sum(1 for b in all_orders if b.status in ['pending', 'awaiting_caterer', 'awaiting_payment', 'pending_review'])
+    cancelled_count = sum(1 for b in all_orders if b.status == 'cancelled')
+    
+    from datetime import date
+    today = date.today()
+    
+    return templates.TemplateResponse("caterer/orders.html", {
+        "request": request,
+        "user": user,
+        "bookings": all_orders,
+        "total_bookings": total_bookings,
+        "confirmed_count": confirmed_count,
+        "pending_count": pending_count,
+        "cancelled_count": cancelled_count,
+        "active_page": "orders",
         "today": today
     })
 
@@ -1293,7 +1408,7 @@ async def caterer_payments(
 ):
     from datetime import datetime, timezone
     profile = user.caterer_profile
-    bookings = [b for b in profile.bookings if b.status != 'draft' and not b.is_archived]
+    bookings = [b for b in profile.bookings if b.status not in ['draft', 'pending_review'] and not b.is_archived]
 
     # ── Post-Paid Commission System Variables ──────────────────────────
     outstanding_balance = profile.outstanding_balance or 0.0
@@ -1389,7 +1504,7 @@ async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_u
         await NotificationService.notify_status_update(
             db, booking.user_id, 
             "Booking Confirmed!", 
-            f"Ang iyong booking para sa '{booking.event_name}' ay CONFIRMED na! Naka-verify na ang iyong reservation.", 
+            f"Your booking for '{booking.event_name}' has been confirmed. Your reservation is now active.", 
             f"/customer/bookings/manage/{booking.id}"
         )
 
@@ -1401,7 +1516,7 @@ async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_u
         await NotificationService.notify_status_update(
             db, booking.user_id, 
             "Payment Fully Verified!", 
-            f"Natanggap at na-verify na ang iyong full payment para sa '{booking.event_name}'. Maraming salamat!", 
+            f"Your full payment for '{booking.event_name}' has been received and verified. Thank you!", 
             f"/customer/bookings/manage/{booking.id}"
         )
     
@@ -1582,7 +1697,7 @@ async def request_new_proof(
         "type": "payment_rejected",
         "booking_id": booking.id,
         "reason": reason,
-        "message": f"Ay naku! Ang iyong payment proof sa {booking.event_name} ay tinanggihan. Silipin sa dashboard para sa detalye."
+        "message": f"Your payment proof for '{booking.event_name}' was rejected. Please check your dashboard for details."
     })
     
     await manager.broadcast_to_user(user.id, {
@@ -1798,8 +1913,8 @@ async def view_booking_quotation(
     
     quotation = booking.quotation
     if not quotation:
-        # If it's a custom event and no quotation exists, show the Proposal Maker
-        if booking.is_custom_event:
+        # If it's a custom event or requires manual quote, show the Proposal Maker
+        if booking.is_custom_event or booking.travel_fee_status == "manual_quote":
             return templates.TemplateResponse("caterer/proposal_maker.html", {
                 "request": request,
                 "booking": booking,
@@ -1919,6 +2034,22 @@ async def complete_booking(
 
     if booking.status not in ['confirmed', 'paid']:
         raise HTTPException(status_code=400, detail="Only confirmed bookings can be marked as completed")
+
+    # --- PHASE 3: COMPLETION GATING LOGIC ---
+    has_equipment = False
+    has_food = True if booking.package_id else False
+    has_service = False
+    
+    for item in booking.selected_items:
+        if getattr(item, 'equipment_id', None): has_equipment = True
+        if getattr(item, 'menu_item_id', None): has_food = True
+        if getattr(item, 'service_id', None): has_service = True
+        
+    if has_equipment and not booking.return_photo_url:
+        return RedirectResponse(url=f"/caterer/bookings?error_msg=Cannot+complete+booking:+Equipment+Return+Inspection+is+required.", status_code=303)
+        
+    if has_food and not booking.dispatch_proof_url:
+        return RedirectResponse(url=f"/caterer/bookings?error_msg=Cannot+complete+booking:+Food+Dispatch+verification+is+required.", status_code=303)
 
     booking.status = 'completed'
     booking.payment_status = 'paid'  # Mark as fully settled when event is completed
@@ -2127,7 +2258,7 @@ async def payments_summary_api(
     """Real-time summary of payment card totals — used by JS polling."""
     from datetime import datetime, timezone
     profile = user.caterer_profile
-    bookings = [b for b in profile.bookings if b.status != 'draft' and not b.is_archived]
+    bookings = [b for b in profile.bookings if b.status not in ['draft', 'pending_review'] and not b.is_archived]
 
     # Post-paid variables
     outstanding_balance = profile.outstanding_balance or 0.0
@@ -2449,6 +2580,7 @@ async def add_service_item(
     usage_type: str = Form("both"),
     is_addon: bool = Form(False),
     addon_price: float = Form(0.0),
+    base_duration_hours: int = Form(3),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -2498,6 +2630,7 @@ async def add_service_item(
             usage_type=usage_type,
             is_addon=is_addon,
             addon_price=addon_price,
+            base_duration_hours=base_duration_hours,
             image_url=image_url
         )
         
@@ -2525,6 +2658,7 @@ async def update_service_item(
     usage_type: str = Form("both"),
     is_addon: bool = Form(False),
     addon_price: float = Form(0.0),
+    base_duration_hours: int = Form(3),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -2591,6 +2725,7 @@ async def update_service_item(
         item.usage_type = usage_type
         item.is_addon = is_addon
         item.addon_price = addon_price
+        item.base_duration_hours = base_duration_hours
         if image_url: item.image_url = image_url
 
     db.commit()
@@ -2858,7 +2993,7 @@ async def add_menu_item(
     price = None
     serving_size = None
     if not (usage_type == "package_only"):
-        if pricing_type == "fixed":
+        if pricing_type in ["fixed", "per_pax"]:
             try:
                 price = float(form_data.get("price", "0").replace(",", ""))
             except ValueError:
@@ -2907,6 +3042,15 @@ async def add_menu_item(
         except Exception:
             pass
 
+    # Map pricing_type to pricing_unit to maintain legacy compatibility
+    pricing_unit = "per_tray"
+    if pricing_type == "per_pax":
+        pricing_unit = "per_pax"
+    elif pricing_type == "weight_based":
+        pricing_unit = "per_kg"
+    elif pricing_type == "size_based":
+        pricing_unit = "per_size"
+
     new_item = models.MenuItem(
         caterer_id=user.caterer_profile.id,
         name=name,
@@ -2914,6 +3058,7 @@ async def add_menu_item(
         description=description,
         cost_price=cost_price,
         price=price,
+        pricing_unit=pricing_unit,
         serving_size=serving_size,
         status=status,
         usage_type=usage_type,
@@ -3067,6 +3212,7 @@ async def update_profile(
     dashboard_texture: str = Form("none"),
     latitude: Optional[str] = Form(None),
     longitude: Optional[str] = Form(None),
+    years_of_operation: Optional[int] = Form(None),
     contact_address: Optional[str] = Form(None),
     payout_method: Optional[str] = Form(None),
     province: Optional[str] = Form(None),
@@ -3075,13 +3221,57 @@ async def update_profile(
     province_code: Optional[str] = Form(None),
     city_code: Optional[str] = Form(None),
     brgy_code: Optional[str] = Form(None),
+    base_delivery_fee: Optional[float] = Form(150.0),
+    out_of_coverage_action: Optional[str] = Form("reject"),
     gallery: List[UploadFile] = File(default=[]),
     permit_file: Optional[UploadFile] = File(None),
+    business_hours_open_time: Optional[str] = Form("08:00"),
+    business_hours_close_time: Optional[str] = Form("20:00"),
+    operating_days: List[str] = Form(default=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]),
+    food_delivery_start: Optional[str] = Form("09:00"),
+    food_delivery_end: Optional[str] = Form("19:00"),
+    food_lead_time_hours: Optional[int] = Form(24),
+    food_allow_same_day: Optional[bool] = Form(False),
+    equipment_pickup_start: Optional[str] = Form("08:00"),
+    equipment_pickup_end: Optional[str] = Form("18:00"),
+    equipment_min_rental: Optional[int] = Form(24),
+    equipment_max_rental: Optional[int] = Form(72),
+    service_earliest_start: Optional[str] = Form("08:00"),
+    service_latest_end: Optional[str] = Form("22:00"),
+    service_min_duration: Optional[int] = Form(3),
+    service_max_duration: Optional[int] = Form(8),
+    package_min_duration: Optional[int] = Form(4),
+    package_max_duration: Optional[int] = Form(6),
+    package_setup_time: Optional[int] = Form(2),
+    package_cleanup_time: Optional[int] = Form(1),
     background_tasks: BackgroundTasks = None,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
     profile = user.caterer_profile
+
+    # Update Universal Scheduling Rules
+    profile.scheduling_rules = {
+        "business_hours": {"open_time": business_hours_open_time, "close_time": business_hours_close_time, "operating_days": operating_days},
+        "food_rules": {
+            "delivery_available": True, "pickup_available": True, 
+            "delivery_start": food_delivery_start, "delivery_end": food_delivery_end, 
+            "lead_time_hours": food_lead_time_hours, "allow_same_day": bool(food_allow_same_day)
+        },
+        "equipment_rules": {
+            "pickup_start": equipment_pickup_start, "pickup_end": equipment_pickup_end, 
+            "return_start": equipment_pickup_start, "return_end": equipment_pickup_end, 
+            "min_rental_hours": equipment_min_rental, "max_rental_hours": equipment_max_rental
+        },
+        "service_rules": {
+            "min_duration_hours": service_min_duration, "max_duration_hours": service_max_duration, 
+            "earliest_start": service_earliest_start, "latest_end": service_latest_end
+        },
+        "package_rules": {
+            "min_event_duration": package_min_duration, "max_event_duration": package_max_duration, 
+            "setup_time_hours": package_setup_time, "cleanup_time_hours": package_cleanup_time
+        }
+    }
 
     # Update User Info
     user.first_name = first_name
@@ -3092,6 +3282,8 @@ async def update_profile(
     # Update Profile Info
     profile.business_name = business_name
     profile.description = description
+    if years_of_operation is not None:
+        profile.years_of_operation = years_of_operation
     if city:
         profile.city = city
     if contact_address:
@@ -3155,6 +3347,11 @@ async def update_profile(
     except ValueError:
         pass
     profile.default_reservation_type = default_reservation_type
+    
+    if base_delivery_fee is not None:
+        profile.base_delivery_fee = base_delivery_fee
+    if out_of_coverage_action:
+        profile.out_of_coverage_action = out_of_coverage_action
 
     # Update branding
     profile.primary_color = primary_color
@@ -3741,7 +3938,7 @@ async def update_menu_item(
     price = None
     serving_size = None
     if not (usage_type == "package_only"):
-        if pricing_type == "fixed":
+        if pricing_type in ["fixed", "per_pax"]:
             try:
                 price = float(form_data.get("price", "0").replace(",", ""))
             except ValueError:
@@ -3790,6 +3987,17 @@ async def update_menu_item(
     item.available_for_package = available_for_package
     item.available_for_order = available_for_order
     item.pricing_type = pricing_type
+    
+    # Map pricing_type to pricing_unit to maintain legacy compatibility
+    if pricing_type == "fixed":
+        item.pricing_unit = "per_tray"
+    elif pricing_type == "per_pax":
+        item.pricing_unit = "per_pax"
+    elif pricing_type == "weight_based":
+        item.pricing_unit = "per_kg"
+    elif pricing_type == "size_based":
+        item.pricing_unit = "per_size"
+        
     item.is_hidden = is_hidden
     item.is_addon = is_addon
     item.addon_price = addon_price
@@ -4387,6 +4595,24 @@ async def complete_booking(
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
     
+    # --- PHASE 3: COMPLETION GATING LOGIC ---
+    has_equipment = False
+    has_food = True if booking.package_id else False
+    has_service = False
+    
+    for item in booking.selected_items:
+        if getattr(item, 'equipment_id', None): has_equipment = True
+        if getattr(item, 'menu_item_id', None): has_food = True
+        if getattr(item, 'service_id', None): has_service = True
+        
+    if has_equipment and not booking.return_photo_url:
+        return JSONResponse(status_code=400, content={"status": "error", "message": "Cannot complete booking: Equipment Return Inspection (Photo) is required."})
+        
+    if has_food and not booking.dispatch_proof_url:
+        return JSONResponse(status_code=400, content={"status": "error", "message": "Cannot complete booking: Food Dispatch/Setup verification (Photo) is required."})
+    
+    # Optional: If services have specific completion proof in the future, add it here.
+    
     booking.status = 'completed'
     history = models.BookingHistory(booking_id=booking.id, status='completed', notes="Event marked as completed by caterer.")
     db.add(history)
@@ -4751,6 +4977,7 @@ async def view_compliance_queue(
     # Fetch all customers who have booked with this caterer and have a pending KYC
     customers = db.query(models.User).join(models.Booking).join(models.IdentityVerification).filter(
         models.Booking.caterer_id == profile.id,
+        models.Booking.status.not_in(['inquiry', 'negotiating', 'quoted']),
         models.User.role == "customer",
         models.User.is_archived == False,
         models.IdentityVerification.verification_status.in_([
@@ -4778,6 +5005,7 @@ async def view_compliance_queue(
         user_bookings = db.query(models.Booking).filter(
             models.Booking.user_id == customer.id, 
             models.Booking.caterer_id == profile.id,
+            models.Booking.status.not_in(['inquiry', 'negotiating', 'quoted']),
             ~models.Booking.event_type.in_(["Ala Carte Order", "Equipment Rental"])
         ).order_by(models.Booking.created_at.desc()).all()
         
@@ -5776,7 +6004,7 @@ async def submit_verification(
         
         with open(filepath, "wb") as buffer:
             buffer.write(encrypt_data(content))
-        return f"/static/uploads/verification/{filename}"
+        return f"/api/bookings/kyc/view/{filename}"
     
     try:
         if permit:
@@ -5891,6 +6119,104 @@ async def submit_verification(
                 "count": count
             }))
         return JSONResponse(content={"success": True, "message": "Verification submitted successfully."})
+    except Exception as e:
+        db.rollback()
+        return JSONResponse(status_code=500, content={"success": False, "message": str(e)})
+
+
+@router.post("/rentals/{booking_id}/release")
+async def release_rental_equipment(
+    booking_id: int,
+    request: Request,
+    release_photo: UploadFile = File(...),
+    db: Session = Depends(database.get_db)
+):
+    user = get_current_user_from_session(request, db)
+    if not user or user.role != "caterer":
+        return JSONResponse(status_code=403, content={"success": False, "message": "Unauthorized"})
+
+    booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+    if not booking or booking.caterer.user_id != user.id:
+        return JSONResponse(status_code=404, content={"success": False, "message": "Rental not found."})
+
+    # Validate Payment
+    if booking.security_deposit_status == "unpaid":
+        return JSONResponse(status_code=400, content={"success": False, "message": "Cannot release equipment. Security deposit is unpaid."})
+
+    try:
+        # Save Release Photo
+        upload_dir = "app/static/uploads/rentals"
+        os.makedirs(upload_dir, exist_ok=True)
+        ext = release_photo.filename.split('.')[-1]
+        filename = f"release_{booking.id}_{uuid.uuid4().hex}.{ext}"
+        file_path = os.path.join(upload_dir, filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(release_photo.file, buffer)
+
+        booking.release_photo_url = f"/static/uploads/rentals/{filename}"
+        booking.status = "released"
+        
+        # Log History
+        db.add(models.BookingHistory(booking_id=booking.id, status="released", notes="Equipment released to customer with proof of condition."))
+        db.commit()
+        return JSONResponse(content={"success": True, "message": "Equipment marked as Released."})
+    except Exception as e:
+        db.rollback()
+        return JSONResponse(status_code=500, content={"success": False, "message": str(e)})
+
+
+@router.post("/rentals/{booking_id}/inspect")
+async def inspect_rental_equipment(
+    booking_id: int,
+    request: Request,
+    missing_items: int = Form(0),
+    deduction_amount: float = Form(0.0),
+    damage_photo: Optional[UploadFile] = File(None),
+    db: Session = Depends(database.get_db)
+):
+    user = get_current_user_from_session(request, db)
+    if not user or user.role != "caterer":
+        return JSONResponse(status_code=403, content={"success": False, "message": "Unauthorized"})
+
+    booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+    if not booking or booking.caterer.user_id != user.id:
+        return JSONResponse(status_code=404, content={"success": False, "message": "Rental not found."})
+
+    # Strict Validation: If deduction > 0, photo is MANDATORY
+    if deduction_amount > 0 and (not damage_photo or not damage_photo.filename):
+        return JSONResponse(status_code=400, content={"success": False, "message": "Damage Proof Photo is required when deducting from the security deposit."})
+
+    # Strict Validation: Cannot deduct more than deposit
+    if deduction_amount > booking.security_deposit_amount:
+        return JSONResponse(status_code=400, content={"success": False, "message": f"Deduction cannot exceed the total security deposit of ₱{booking.security_deposit_amount}."})
+
+    try:
+        if damage_photo and damage_photo.filename:
+            upload_dir = "app/static/uploads/rentals"
+            os.makedirs(upload_dir, exist_ok=True)
+            ext = damage_photo.filename.split('.')[-1]
+            filename = f"damage_{booking.id}_{uuid.uuid4().hex}.{ext}"
+            file_path = os.path.join(upload_dir, filename)
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(damage_photo.file, buffer)
+            booking.damage_proof_url = f"/static/uploads/rentals/{filename}"
+
+        booking.missing_items_count = missing_items
+        booking.damage_deduction_amount = deduction_amount
+        booking.status = "completed"
+        
+        # Determine Deposit Status
+        if deduction_amount > 0:
+            if deduction_amount >= booking.security_deposit_amount:
+                booking.security_deposit_status = "forfeited"
+            else:
+                booking.security_deposit_status = "partially_refunded"
+        else:
+            booking.security_deposit_status = "fully_refunded"
+
+        db.add(models.BookingHistory(booking_id=booking.id, status="completed", notes=f"Inspection completed. Deduction: ₱{deduction_amount}."))
+        db.commit()
+        return JSONResponse(content={"success": True, "message": "Inspection recorded and Rental completed."})
     except Exception as e:
         db.rollback()
         return JSONResponse(status_code=500, content={"success": False, "message": str(e)})

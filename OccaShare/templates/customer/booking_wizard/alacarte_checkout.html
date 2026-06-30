@@ -1,13 +1,11 @@
 {% extends "customer/booking_wizard/wizard_base.html" %}
 
-{% set is_rental = false %}
-{% for item in menu_items %}
-    {% if item.category|lower == 'rentals' %}
-        {% set is_rental = true %}
-    {% endif %}
-{% endfor %}
+{% set is_rental = true if equipment_items else false %}
+{% set has_services = true if service_items else false %}
+{% set has_food = true if menu_items else false %}
+{% set is_mixed = true if ((has_food and is_rental) or (has_food and has_services) or (is_rental and has_services)) else false %}
 
-{% block wizard_title %}{{ 'Equipment Rental Checkout' if is_rental else 'A La Carte Checkout' }}{% endblock %}
+{% block wizard_title %}{{ 'Checkout Details' if is_mixed else ('Equipment Rental Checkout' if is_rental else 'A La Carte Checkout') }}{% endblock %}
 
 {% block step_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}">
@@ -223,7 +221,37 @@
 
     .checkout-nav-box {
         display: flex; justify-content: space-between; align-items: center;
-        margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9; background: white;
+        margin-top: 2rem; padding: 1.5rem 2rem; border-radius: 1.5rem; 
+        border: 1px solid var(--border-light); background: white; box-shadow: var(--card-shadow);
+    }
+    
+    .btn-wizard-next, .btn-wizard-back {
+        padding: 1rem 2rem;
+        border-radius: 1rem;
+        font-weight: 800;
+        font-size: 0.95rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+    }
+    .btn-wizard-next {
+        background: var(--text-slate);
+        color: white;
+    }
+    .btn-wizard-next:hover {
+        background: black;
+        transform: translateY(-2px);
+    }
+    .btn-wizard-back {
+        background: #f1f5f9;
+        color: var(--text-muted);
+    }
+    .btn-wizard-back:hover {
+        background: #e2e8f0;
+        color: var(--text-slate);
     }
 
     .checkout-screen { display: none; }
@@ -343,7 +371,7 @@
     <div class="mini-stepper">
         <div class="mini-step active" id="m-step-1">
             <div class="ms-icon">1</div>
-            <span class="ms-label">{{ 'Delivery & Setup' if is_rental else 'Delivery' }}</span>
+            <span class="ms-label">{{ 'Checkout Details' if is_mixed else ('Rental Details' if is_rental else 'Delivery') }}</span>
         </div>
         <div class="mini-step" id="m-step-2">
             <div class="ms-icon">2</div>
@@ -357,24 +385,43 @@
                 <!-- STEP 1: DELIVERY INFORMATION -->
                 <div class="checkout-screen active" id="screen-1">
                     <div class="checkout-card">
-                        <h2 class="section-title">
-                            <i class="fas fa-truck" style="color: var(--checkout-primary);"></i>
-                            Delivery Information
-                        </h2>
-                        <p class="section-subtitle" id="subtitle_step1">Please tell us how you want to receive your order.</p>
+                        <h3 class="section-title">
+                            <i class="fas {% if is_mixed %}fa-box-open{% elif has_services and not has_food %}fa-map-marker-alt{% else %}fa-truck{% endif %}" style="color: var(--checkout-primary);"></i>
+                            {% if is_mixed %}
+                                Fulfillment Details
+                            {% elif has_services and not has_food %}
+                                Service & Location Details
+                            {% elif is_rental %}
+                                Equipment Rental Details
+                            {% else %}
+                                Delivery Information
+                            {% endif %}
+                        </h3>
+                        <p class="section-subtitle">
+                            {% if is_mixed %}
+                                Please provide details for the fulfillment of your mixed order.
+                            {% elif has_services and not has_food %}
+                                Please provide the venue address where the service will take place.
+                            {% else %}
+                                {% if is_rental %}Please tell us how you want to receive your equipment.{% else %}Please tell us how you want to receive your order.{% endif %}
+                            {% endif %}
+                        </p>
 
                         <div class="form-group">
                             <label>Fulfillment Method</label>
                             <div class="fulfillment-selector">
                                 <label class="fulfillment-opt active">
                                     <input type="radio" name="fulfillment" value="delivery" checked onchange="updateFulfillment(this)" style="display: none;">
-                                    <div class="fulfillment-icon"><i class="fas fa-bicycle"></i></div>
+                                    <div class="fulfillment-icon"><i class="fas {% if has_services and not has_food %}fa-map-pin{% else %}fa-bicycle{% endif %}"></i></div>
                                     <div class="fulfillment-details">
-                                        <div class="fulfillment-name" id="lbl_fulfill_del">{{ 'Delivery & Setup' if is_rental else 'Delivery' }}</div>
-                                        <div class="fulfillment-hint">+₱150 Fee</div>
+                                        <div class="fulfillment-name" id="lbl_fulfill_del">
+                                            {% if is_mixed %}Event Delivery & Setup{% elif has_services and not has_food %}On-Site Service{% elif is_rental %}Delivery & Setup{% else %}Delivery{% endif %}
+                                        </div>
+                                        <div class="fulfillment-hint">{% if has_services and not has_food %}Travel Fee may apply{% else %}+₱{{ "%.2f"|format(caterer.base_delivery_fee or 150.0) }} Base Fee{% endif %}</div>
                                     </div>
                                     <div class="fulfillment-check"><i class="fas fa-check"></i></div>
                                 </label>
+                                {% if not (has_services and not has_food and not is_rental) %}
                                 <label class="fulfillment-opt">
                                     <input type="radio" name="fulfillment" value="pickup" onchange="updateFulfillment(this)" style="display: none;">
                                     <div class="fulfillment-icon"><i class="fas fa-store"></i></div>
@@ -384,6 +431,7 @@
                                     </div>
                                     <div class="fulfillment-check"><i class="fas fa-check"></i></div>
                                 </label>
+                                {% endif %}
                             </div>
                         </div>
 
@@ -444,94 +492,80 @@
                             </div>
                         </div>
 
-                        <div class="grid-2-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="grid-2-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                             <div class="form-group">
-                                <label id="lbl_delivery_date">Delivery Date</label>
+                                <label id="lbl_delivery_date">
+                                    {% if is_mixed %}Event / Setup Date{% elif has_services and not has_food %}Event Date{% elif is_rental %}Delivery / Setup Date{% else %}Delivery Date{% endif %}
+                                </label>
                                 <input type="date" name="delivery_date" id="delivery_date" class="form-input" required>
                                 <span class="field-error" id="err-delivery_date">Please select a date.</span>
                             </div>
                             <div class="form-group">
-                                <label id="lbl_delivery_time">Delivery Time</label>
+                                <label id="lbl_delivery_time">
+                                    {% if is_mixed %}Event / Setup Time{% elif has_services and not has_food %}Call Time{% elif is_rental %}Delivery / Setup Time{% else %}Delivery Time{% endif %}
+                                </label>
                                 <input type="time" name="delivery_time" id="delivery_time" class="form-input" required>
                                 <span class="field-error" id="err-delivery_time">Please select a time.</span>
                             </div>
                         </div>
 
+                        {% if is_rental or has_services %}
+                        <div class="grid-2-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            {% if is_rental %}
+                            <div class="form-group">
+                                <label>Pull-out / Pickup Return Time</label>
+                                <input type="time" name="pullout_time" id="pullout_time" class="form-input" required>
+                                <span class="field-error" id="err-pullout_time">Please specify return time.</span>
+                            </div>
+                            {% endif %}
+                            
+                            {% if has_services %}
+                            <div class="form-group">
+                                <label>Estimated Event Duration (Hours) <br><span style="font-weight: 400; font-size: 0.85em; color: var(--hub-slate-400); font-style: italic;">(For caterer's scheduling only, does not affect base rate)</span></label>
+                                <input type="number" name="event_duration" id="event_duration" class="form-input" min="1" value="4" required>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
                         <div id="address-section">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding-top: 1rem; border-top: 1px dashed #e2e8f0; margin-top: 0.5rem;">
-                                <div class="form-group">
-                                    <label>Barangay (Sta. Cruz)</label>
-                                    <select id="brgy_select" class="form-input" required onchange="syncAddress()">
+                            <div style="display: grid; grid-template-columns: 1fr; gap: 1rem; padding-top: 1rem; border-top: 1px dashed #e2e8f0; margin-top: 0.5rem;">
+                                
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label>Province</label>
+                                    <select id="prov_select" class="form-input" required onchange="handleProvinceChange()">
+                                        <option value="">-- Select Province --</option>
+                                    </select>
+                                    <span class="field-error" id="err-prov_select">Please select a province.</span>
+                                </div>
+                                
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label>Municipality / City</label>
+                                    <select id="city_select" class="form-input" required onchange="handleCityChange()" disabled>
+                                        <option value="">-- Select Municipality --</option>
+                                    </select>
+                                    <span class="field-error" id="err-city_select">Please select a municipality.</span>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label>Barangay</label>
+                                    <select id="brgy_select" class="form-input" required onchange="syncAddress()" disabled>
                                         <option value="">-- Select Barangay --</option>
-                                        <option value="Alobo">Alobo</option>
-                                        <option value="Angas">Angas</option>
-                                        <option value="Aturan">Aturan</option>
-                                        <option value="Bagong Silang">Bagong Silang</option>
-                                        <option value="Baguidbirin">Baguidbirin</option>
-                                        <option value="Baliis">Baliis</option>
-                                        <option value="Balogo">Balogo</option>
-                                        <option value="Banahaw">Banahaw</option>
-                                        <option value="Bangcuangan">Bangcuangan</option>
-                                        <option value="Banogbog">Banogbog</option>
-                                        <option value="Binuangan">Binuangan</option>
-                                        <option value="Bocboc">Bocboc</option>
-                                        <option value="Botilao">Botilao</option>
-                                        <option value="Buyaba">Buyaba</option>
-                                        <option value="Caigangan">Caigangan</option>
-                                        <option value="Daykitin">Daykitin</option>
-                                        <option value="Devilla">Devilla</option>
-                                        <option value="Dolores">Dolores</option>
-                                        <option value="Haguimit">Haguimit</option>
-                                        <option value="Hupi">Hupi</option>
-                                        <option value="Ipil">Ipil</option>
-                                        <option value="Jolo">Jolo</option>
-                                        <option value="Kaganhao">Kaganhao</option>
-                                        <option value="Kalunuran">Kalunuran</option>
-                                        <option value="Kilo-kilo">Kilo-kilo</option>
-                                        <option value="Kiydaman">Kiydaman</option>
-                                        <option value="Labo">Labo</option>
-                                        <option value="Lamesa">Lamesa</option>
-                                        <option value="Landy">Landy</option>
-                                        <option value="Lapu-lapu">Lapu-lapu</option>
-                                        <option value="Libjo">Libjo</option>
-                                        <option value="Lipa">Lipa</option>
-                                        <option value="Lusok">Lusok</option>
-                                        <option value="Maharlika">Maharlika</option>
-                                        <option value="Makawayan">Makawayan</option>
-                                        <option value="Maniwaya">Maniwaya</option>
-                                        <option value="Masaguisi">Masaguisi</option>
-                                        <option value="Masalukot">Masalukot</option>
-                                        <option value="Matalaba">Matalaba</option>
-                                        <option value="Mongpong">Mongpong</option>
-                                        <option value="Morales">Morales</option>
-                                        <option value="Napo">Napo</option>
-                                        <option value="Pag-asa">Pag-asa</option>
-                                        <option value="Pantayin">Pantayin</option>
-                                        <option value="Polo">Polo</option>
-                                        <option value="Pulong-Parang">Pulong-Parang</option>
-                                        <option value="Punong">Punong</option>
-                                        <option value="San Antonio">San Antonio</option>
-                                        <option value="San Isidro">San Isidro</option>
-                                        <option value="San Jose">San Jose</option>
-                                        <option value="San Juan">San Juan</option>
-                                        <option value="San Pedro">San Pedro</option>
-                                        <option value="San Roque">San Roque</option>
-                                        <option value="Tagum">Tagum</option>
-                                        <option value="Tamayo">Tamayo</option>
-                                        <option value="Tambangan">Tambangan</option>
-                                        <option value="Tawiran">Tawiran</option>
-                                        <option value="Taytay">Taytay</option>
                                     </select>
                                     <span class="field-error" id="err-brgy_select">Please select a barangay.</span>
                                 </div>
-                                <div class="form-group">
+
+                                <div class="form-group" style="margin-bottom: 0;">
                                     <label>Street / House No.</label>
-                                    <input type="text" id="street_input" class="form-input" placeholder="e.g. 123 Diamond St." oninput="syncAddress()">
+                                    <input type="text" id="street_input" class="form-input" placeholder="e.g. 123 Diamond St." oninput="syncAddress()" required>
                                 </div>
                             </div>
                             <!-- Hidden field for combined address -->
                             <input type="hidden" name="address" id="address">
-                            <span class="field-error" id="err-address" style="margin-top: -1rem; margin-bottom: 1rem;">Full address is required.</span>
+                            <input type="hidden" name="province" id="hidden_province">
+                            <input type="hidden" name="municipality" id="hidden_municipality">
+                            <input type="hidden" name="barangay" id="hidden_barangay">
+                            <span class="field-error" id="err-address" style="margin-top: 0.5rem; margin-bottom: 1rem;">Full address is required.</span>
                         </div>
 
                         <div class="form-group">
@@ -564,66 +598,81 @@
                         <div class="form-group">
                             <label>Payment Method</label>
                             <div class="payment-grid">
-                                <div class="payment-opt active" onclick="selectPayment('COD', this)">
+                                {% if caterer.cash_instructions %}
+                                <div class="payment-opt active" onclick="selectPayment('CASH', this)">
                                     <div class="selection-indicator"><i class="fas fa-check"></i></div>
                                     <i class="fas fa-hand-holding-usd pay-icon"></i>
-                                    <span class="pay-label">CASH ON DELIVERY</span>
-                                    <span class="pay-sub">PAY UPON ARRIVAL</span>
+                                    <span class="pay-label">CASH / MANUAL</span>
+                                    <span class="pay-sub">PAY IN PERSON</span>
                                 </div>
-                                <div class="payment-opt" onclick="selectPayment('GCASH', this)">
+                                {% endif %}
+                                {% if caterer.gcash_number or caterer.gcash_qr_url %}
+                                <div class="payment-opt {% if not caterer.cash_instructions %}active{% endif %}" onclick="selectPayment('GCASH', this)">
                                     <div class="selection-indicator"><i class="fas fa-check"></i></div>
                                     <i class="fas fa-mobile-alt pay-icon"></i>
                                     <span class="pay-label">GCASH TRANSFER</span>
                                     <span class="pay-sub">ONLINE PAYMENT</span>
                                 </div>
-                            </div>
-                            <input type="hidden" name="payment_method" id="payment_method" value="COD">
-
-                            <!-- GCash Instructions (Hidden by default) -->
-                            <div id="gcash-instructions" style="display: none; margin-top: 2rem; padding: 2rem; background: #eff6ff; border: 2px dashed #bfdbfe; border-radius: 1rem; text-align: center;">
-                                <h4 style="color: #1e3a8a; font-weight: 850; margin-bottom: 1rem; font-size: 1.1rem;"><i class="fas fa-qrcode"></i> Scan to Pay via GCash</h4>
-                                {% if caterer.gcash_qr_url %}
-                                <img src="{{ caterer.gcash_qr_url }}" alt="GCash QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bfdbfe; margin-bottom: 1rem;">
                                 {% endif %}
-                                <div style="color: #1e40af; font-weight: 600; font-size: 0.95rem;">
-                                    {% if caterer.gcash_qr_url %}
-                                    <p style="margin-bottom: 0.5rem;"><strong>Scan the QR Code</strong> above OR "Send Money" to <br><strong style="font-size: 1.2rem; color: #1e3a8a;">{{ caterer.gcash_number if caterer.gcash_number else "the Caterer's Number" }}</strong>.</p>
-                                    {% else %}
-                                    <p style="margin-bottom: 0.5rem;">"Send Money" to <br><strong style="font-size: 1.2rem; color: #1e3a8a;">{{ caterer.gcash_number if caterer.gcash_number else "the Caterer's Number" }}</strong>.</p>
-                                    {% endif %}
+                                {% if caterer.maya_number or caterer.maya_qr_url %}
+                                <div class="payment-opt {% if not caterer.cash_instructions and not (caterer.gcash_number or caterer.gcash_qr_url) %}active{% endif %}" onclick="selectPayment('MAYA', this)">
+                                    <div class="selection-indicator"><i class="fas fa-check"></i></div>
+                                    <i class="fas fa-wallet pay-icon"></i>
+                                    <span class="pay-label">MAYA TRANSFER</span>
+                                    <span class="pay-sub">ONLINE PAYMENT</span>
                                 </div>
-                                <p style="font-size: 0.8rem; color: #3b82f6; margin-top: 1rem; font-style: italic;">* Please save your screenshot receipt. The caterer may request it upon delivery or pickup.</p>
+                                {% endif %}
+                                {% if caterer.bank_name %}
+                                <div class="payment-opt {% if not caterer.cash_instructions and not (caterer.gcash_number or caterer.gcash_qr_url) and not (caterer.maya_number or caterer.maya_qr_url) %}active{% endif %}" onclick="selectPayment('BANK', this)">
+                                    <div class="selection-indicator"><i class="fas fa-check"></i></div>
+                                    <i class="fas fa-university pay-icon"></i>
+                                    <span class="pay-label">BANK TRANSFER</span>
+                                    <span class="pay-sub">ONLINE PAYMENT</span>
+                                </div>
+                                {% endif %}
                             </div>
+                            <input type="hidden" name="payment_method" id="payment_method" value="{% if caterer.cash_instructions %}CASH{% elif caterer.gcash_number or caterer.gcash_qr_url %}GCASH{% elif caterer.maya_number or caterer.maya_qr_url %}MAYA{% elif caterer.bank_name %}BANK{% endif %}">
+                            
+<!-- Payment method note removed. Will use modal. -->
+
+                            <!-- Payment Modal Moved to Bottom of Form -->
                         </div>
 
                         <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 2.5rem 0;">
 
-                        <div class="booking-summary-panel" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 1.25rem; padding: 1.5rem;">
-                            <h3 style="font-weight: 800; font-size: 1rem; margin-bottom: 1rem;">Final Review</h3>
-                            <div class="sum-row"><strong>Recipient:</strong> <span id="rev-name">-</span></div>
-                            <div class="sum-row"><strong>Contact:</strong> <span id="rev-phone">-</span></div>
-                            <div class="sum-row"><strong>When:</strong> <span id="rev-datetime">-</span></div>
-                            <div class="sum-row"><strong>Address:</strong> <span id="rev-location">-</span></div>
+                        <div class="booking-summary-panel" style="background: white; border: 1px solid #e2e8f0; border-radius: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); overflow: hidden;">
+                            <div style="background: var(--up-slate-900); padding: 1.25rem 1.5rem;">
+                                <h3 style="font-weight: 800; font-size: 1.1rem; margin: 0; color: white;"><i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: var(--checkout-primary);"></i> Order Review</h3>
+                            </div>
+                            <div style="padding: 1.5rem;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                                    <div>
+                                        <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Recipient</div>
+                                        <div id="rev-name" style="font-weight: 600; color: #0f172a; font-size: 0.95rem;">-</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Contact Number</div>
+                                        <div id="rev-phone" style="font-weight: 600; color: #0f172a; font-size: 0.95rem;">-</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Delivery / Pickup Time</div>
+                                        <div id="rev-datetime" style="font-weight: 600; color: #0f172a; font-size: 0.95rem;">-</div>
+                                    </div>
+                                    <div style="grid-column: 1 / -1;">
+                                        <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Destination</div>
+                                        <div id="rev-location" style="font-weight: 600; color: #0f172a; font-size: 0.95rem;">-</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        {% set is_rental = false %}
-                        {% set has_services = false %}
-                        {% for item in menu_items %}
-                            {% set cat = item.category|lower if item.category else '' %}
-                            {% if 'rental' in cat or 'equipment' in cat %}
-                                {% set is_rental = true %}
-                            {% elif 'service' in cat or 'staff' in cat or 'waiter' in cat %}
-                                {% set has_services = true %}
-                            {% endif %}
-                        {% endfor %}
-                        
                         {% set doc_name = "Order Invoice" %}
                         {% set active_terms = caterer.general_terms %}
                         
-                        {% if is_rental %}
+                        {% if is_rental and not has_food %}
                             {% set doc_name = "Rental Agreement" %}
                             {% set active_terms = caterer.rental_policies if caterer.rental_policies else caterer.general_terms %}
-                        {% elif has_services %}
+                        {% elif has_services and not has_food %}
                             {% set doc_name = "Event Service Agreement" %}
                             {% set active_terms = caterer.terms_and_conditions %}
                         {% endif %}
@@ -678,18 +727,19 @@
                             <i class="fas fa-check"></i>
                         </div>
                         <h1 class="wizard-title" style="font-size: 2rem;">Order Received!</h1>
-                        <p class="wizard-subtitle" style="margin-bottom: 3rem;" id="subtitle_step3">Your {{ 'equipment request' if is_rental else 'food order' }} has been sent to {{ caterer.business_name }}.</p>
+                        <p class="wizard-subtitle" style="margin-bottom: 3rem;" id="subtitle_step3">Your {{ 'mixed event order' if is_mixed else ('equipment request' if is_rental else 'food order') }} has been sent to {{ caterer.business_name }}.</p>
                         
                         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 1.25rem; padding: 1.5rem; text-align: left; margin-bottom: 3rem;">
                             <p style="color: #166534; font-weight: 700; margin-bottom: 0.5rem;"><i class="fas fa-clipboard-check" style="margin-right: 0.5rem;"></i> Track Order</p>
                             <p style="color: #4b6351; font-size: 0.9rem;">You can monitor the status of your order in the "My Bookings" section of your dashboard.</p>
                         </div>
 
-                        <a href="/customer/bookings" class="btn-wizard-next" style="display: block; text-align: center; max-width: 320px; margin: 0 auto;">
+                        <a href="/customer/orders" class="btn-wizard-next" style="display: block; text-align: center; max-width: 320px; margin: 0 auto;">
                             VIEW MY ORDERS <i class="fas fa-arrow-right" style="margin-left: 0.75rem;"></i>
                         </a>
                     </div>
                 </div>
+
             </form>
         </div>
 
@@ -704,11 +754,15 @@
 
                 <div class="bill-row">
                     <span>Base Total</span>
-                    <span id="sum-base-price">₱0.00</span>
+                    <span id="sum-base-total">₱0.00</span>
                 </div>
                 <div class="bill-row" id="delivery-row">
                     <span>Delivery Fee</span>
-                    <span id="sum-delivery-fee">₱150.00</span>
+                    <span id="sum-delivery-fee">₱{{ "%.2f"|format(caterer.base_delivery_fee or 150.0) }}</span>
+                </div>
+                <div class="bill-row" id="deposit-row" style="display: none;">
+                    <span>Security Deposit (Refundable)</span>
+                    <span id="sum-deposit-fee">₱0.00</span>
                 </div>
 
                 <div class="bill-divider"></div>
@@ -718,9 +772,8 @@
                     <span class="bill-total-value" id="sum-grand-total">₱0.00</span>
                 </div>
 
-                <button type="button" class="btn-secure-checkout" onclick="nextScreen(window.currentScreen + 1)">
-                    <i class="fas fa-shield-alt"></i>
-                    SECURE CHECKOUT
+                <button type="button" class="btn-secure-checkout" id="sidebar-next-btn" onclick="nextScreen(window.currentScreen + 1)">
+                    PROCEED TO PAYMENT <i class="fas fa-arrow-right" style="margin-left: 0.5rem;"></i>
                 </button>
             </div>
         </aside>
@@ -728,12 +781,95 @@
 </div>
 {% endblock %}
 
+
+{% block modals %}
+    <!-- Dynamic Payment Modal -->
+    <div id="paymentModalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div id="paymentModalCard" style="background: white; width: 95%; max-width: 450px; border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); display: flex; flex-direction: column; max-height: 90vh;">
+            
+            <div style="background: #f8fafc; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0;">
+                <h3 id="modalTitle" style="margin: 0; font-size: 1.25rem; color: var(--up-slate-900); display: flex; align-items: center; gap: 8px; font-weight: 800;">
+                    <i class="fas fa-wallet"></i> Payment Details
+                </h3>
+                <button type="button" onclick="closePaymentModal()" style="background: none; border: none; font-size: 1.25rem; color: var(--up-slate-400); cursor: pointer;"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div style="padding: 2rem; overflow-y: auto;">
+                <div style="background: #eff6ff; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left; border: 1px solid #bfdbfe;">
+                    <h4 style="font-size: 0.9rem; font-weight: 800; color: #1e3a8a; margin-top: 0; margin-bottom: 0.5rem;"><i class="fas fa-robot"></i> AI Receipt Validation</h4>
+                    <div style="font-size:0.85rem; color: #1e3a8a;">Our AI will scan your receipt to verify the exact amount (<strong>₱<span id="ai-modal-amount">0.00</span></strong>), date, caterer details, and reference number. Please ensure the screenshot is clear and unedited.</div>
+                </div>
+                
+                <div id="modalContentGCASH" style="display: none; text-align: center;">
+                    <img src="{{ caterer.gcash_qr_url }}" alt="GCash QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bfdbfe; margin-bottom: 1rem;">
+                    
+                    <div style="background: #eff6ff; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left;">
+                        <h4 style="font-size: 0.9rem; font-weight: 800; color: #1e3a8a; margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> GCash Payment Steps</h4>
+                        <div style="font-size:0.85rem; margin-bottom:5px;">1. Open GCash App.</div>
+                        <div style="font-size:0.85rem; margin-bottom:5px;">2. Scan QR or send to <strong>{{ caterer.gcash_number }}</strong>.</div>
+                        <div style="font-size:0.85rem;">3. Upload the screenshot below.</div>
+                    </div>
+                </div>
+                
+                <div id="modalContentMAYA" style="display: none; text-align: center;">
+                    <img src="{{ caterer.maya_qr_url }}" alt="Maya QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bbf7d0; margin-bottom: 1rem;">
+                    
+                    <div style="background: #f0fdf4; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left;">
+                        <h4 style="font-size: 0.9rem; font-weight: 800; color: #14532d; margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> Maya Payment Steps</h4>
+                        <div style="font-size:0.85rem; margin-bottom:5px;">1. Open Maya App.</div>
+                        <div style="font-size:0.85rem; margin-bottom:5px;">2. Scan QR or send to <strong>{{ caterer.maya_number }}</strong>.</div>
+                        <div style="font-size:0.85rem;">3. Upload the screenshot below.</div>
+                    </div>
+                </div>
+                
+                <div id="modalContentBANK" style="display: none;">
+                    <div style="background: #fefce8; padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem; border: 1px solid #fef08a;">
+                        <div style="margin-bottom: 1rem;">
+                            <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Bank Name</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #713f12;">{{ caterer.bank_name }}</div>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Account Name</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #713f12;">{{ caterer.bank_account_name }}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Account Number</div>
+                            <div style="font-size: 1.25rem; font-weight: 800; color: #713f12; letter-spacing: 1px;">{{ caterer.bank_account_number }}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 2rem 0;">
+                
+                <div>
+                    <h4 style="font-size: 1rem; color: var(--up-slate-900); margin-bottom: 1rem; font-weight: 800;"><i class="fas fa-cloud-upload-alt" style="color: var(--up-emerald-500);"></i> Submit Proof of Payment</h4>
+                    <div style="margin-bottom: 1.25rem;">
+                        <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;">Receipt Image</label>
+                        <input type="file" id="proofImageInput" accept="image/*" style="width: 100%; padding: 0.75rem; border: 2px dashed #cbd5e1; border-radius: 8px; background: #f8fafc;">
+                    </div>
+                    <div id="uploadErrorMsg" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 1rem; border-radius: 12px; font-size: 0.85rem; margin-bottom: 1.25rem; font-weight: 500;"></div>
+                </div>
+
+                <button type="button" id="submit-payment-btn" onclick="finalSubmitOrder()" style="width: 100%; background: var(--up-emerald-500); color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: 0.2s;">
+                    Upload Proof & Finish Booking
+                </button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
 {% block step_js %}
 <script>
     window.catererId = "{{ caterer.id }}";
-    window.menuId = "{{ menu_id_raw }}";
+    window.menuId = "{{ items_raw }}";
     window.isVerified = {% if user.is_verified %}true{% else %}false{% endif %};
     window.bookingLeadTime = {{ caterer.booking_lead_time or 7 }};
+    window.catererRules = {{ (caterer.scheduling_rules or {}) | tojson | safe }};
+    window.catererBaseDeliveryFee = {{ caterer.base_delivery_fee or 150.0 }};
+    window.catererGcashNumber = "{{ caterer.gcash_number or '' }}";
+    window.catererMayaNumber = "{{ caterer.maya_number or '' }}";
+    window.catererBankName = "{{ caterer.bank_name or '' }}";
+    window.catererBankAccountName = "{{ caterer.bank_account_name or '' }}";
+    window.catererBankAccountNumber = "{{ caterer.bank_account_number or '' }}";
     window.backendMenuItems = [
         {% for item in menu_items %}
         {
@@ -754,6 +890,9 @@
             type: "Equipment",
             name: {{ (item.name or '')|tojson }},
             price: {{ item.rental_price or 0 }},
+            cost_value: {{ item.cost_value or 0 }},
+            security_deposit_pct: {{ item.security_deposit_pct or 20.0 }},
+            requires_kyc: {{ 'true' if item.requires_kyc else 'false' }},
             pricing_unit: "{{ item.unit_type or 'per_unit' }}",
             image_url: "{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}",
             is_combo: false,

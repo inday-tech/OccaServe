@@ -22,48 +22,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Dynamic Location Data via PSGC ---
     const PROVINCE_CODES = {
-        "Abra": "140100000",
-        "Albay": "050500000",
-        "Apayao": "148100000",
-        "Aurora": "037700000",
-        "Bataan": "030800000",
-        "Batanes": "020900000",
-        "Batangas": "041000000",
-        "Benguet": "141100000",
-        "Bulacan": "031400000",
-        "Cagayan": "021500000",
-        "Camarines Norte": "051600000",
-        "Camarines Sur": "051700000",
-        "Catanduanes": "052000000",
-        "Cavite": "042100000",
-        "Ifugao": "142700000",
-        "Ilocos Norte": "012800000",
-        "Ilocos Sur": "012900000",
-        "Isabela": "023100000",
-        "Kalinga": "143200000",
-        "La Union": "013300000",
+        "NATIONAL CAPITAL REGION (NCR)": "130000000",
         "Laguna": "043400000",
-        "Marinduque": "174000000",
-        "Masbate": "054100000",
-        "Metro Manila - 1st District": "133900000",
-        "Metro Manila - 2nd District": "137400000",
-        "Metro Manila - 3rd District": "137500000",
-        "Metro Manila - 4th District": "137600000",
-        "Mountain Province": "144400000",
-        "Nueva Ecija": "034900000",
-        "Nueva Vizcaya": "025000000",
-        "Occidental Mindoro": "175100000",
-        "Oriental Mindoro": "175200000",
-        "Palawan": "175300000",
-        "Pampanga": "035400000",
-        "Pangasinan": "015500000",
-        "Quezon": "045600000",
-        "Quirino": "025700000",
-        "Rizal": "045800000",
-        "Romblon": "175900000",
-        "Sorsogon": "056200000",
-        "Tarlac": "036900000",
-        "Zambales": "037100000"
+        "Batangas": "041000000",
+        "Quezon": "045600000"
     };
 
     let cachedCities = {};
@@ -107,8 +69,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Base package price
         let total = 0;
+        let basePackageTotal = 0;
+        let excessGuestsTotal = 0;
+
         if (window.pricingMode === 'fixed') {
-            total = window.basePrice;
+            basePackageTotal = window.basePrice;
+            if (guests > window.minGuests && window.additionalGuestPrice > 0) {
+                excessGuestsTotal = (guests - window.minGuests) * window.additionalGuestPrice;
+            }
+            total = basePackageTotal + excessGuestsTotal;
         } else {
             total = guests * pricePerHead;
         }
@@ -125,6 +94,18 @@ document.addEventListener('DOMContentLoaded', function () {
         if (calcAddonsTotal) calcAddonsTotal.innerText = '+₱' + addonsTotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
         
         total += addonsTotal;
+        total += (window.currentDeliveryFee || 0);
+
+        const calcDeliveryFee = document.getElementById('calc-delivery-fee');
+        if (calcDeliveryFee) {
+            if (window.deliveryFeeStatus === "manual_quote") {
+                calcDeliveryFee.innerText = "TBD (Manual Quote)";
+            } else if (window.deliveryFeeStatus === "error" || window.deliveryFeeStatus === "pending") {
+                calcDeliveryFee.innerText = "---";
+            } else {
+                calcDeliveryFee.innerText = '+₱' + (window.currentDeliveryFee || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
+            }
+        }
 
         calcTotal.innerText = '₱' + total.toLocaleString(undefined, { minimumFractionDigits: 2 });
 
@@ -132,12 +113,40 @@ document.addEventListener('DOMContentLoaded', function () {
         if (reservationFeeInput) reservationFeeInput.value = total * 0.3; // 30% reservation
     };
 
+    window.toggleCardSelection = function(card) {
+        // If card is disabled due to limit, do nothing
+        if (card.style.cursor === 'not-allowed') return;
+        
+        const checkbox = card.querySelector('input[type="checkbox"]');
+        if (!checkbox) return;
+        
+        // Only toggle if checkbox is not explicitly disabled (e.g. from limit rules)
+        if (checkbox.disabled && !checkbox.checked) return;
+        
+        checkbox.checked = !checkbox.checked;
+        
+        if (card.classList.contains('addon')) {
+            window.handleMenuCardToggle(checkbox);
+        } else {
+            window.handleSelectionRuleLimit(checkbox);
+        }
+    };
+
     window.handleMenuCardToggle = function(checkbox) {
         const card = checkbox.closest('.menu-item-card');
+        const indicator = card.querySelector('.indicator-circle');
         if (checkbox.checked) {
             card.classList.add('selected');
+            if (indicator) {
+                indicator.classList.add('active');
+                indicator.innerHTML = '<i class="fas fa-check"></i>';
+            }
         } else {
             card.classList.remove('selected');
+            if (indicator) {
+                indicator.classList.remove('active');
+                indicator.innerHTML = '';
+            }
         }
         updateCalculator();
     };
@@ -148,10 +157,19 @@ document.addEventListener('DOMContentLoaded', function () {
         const catId = group.dataset.category;
         
         const card = checkbox.closest('.menu-item-card');
+        const indicator = card.querySelector('.indicator-circle');
         if (checkbox.checked) {
             card.classList.add('selected');
+            if (indicator) {
+                indicator.classList.add('active');
+                indicator.innerHTML = '<i class="fas fa-check"></i>';
+            }
         } else {
             card.classList.remove('selected');
+            if (indicator) {
+                indicator.classList.remove('active');
+                indicator.innerHTML = '';
+            }
         }
 
         const checkedBoxes = group.querySelectorAll('input[type="checkbox"]:checked');
@@ -247,6 +265,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- 5. Cascading Location Choice (PSGC API) ---
+    
+    function fallbackLocationInputs() {
+        const cityGroup = document.getElementById('city_select').parentElement;
+        cityGroup.innerHTML = '<label class="form-label">Municipality / City</label><input type="text" name="city" id="city_select" class="form-input" placeholder="e.g. Santa Cruz" required oninput="updateHiddenVenue()">';
+        
+        const brgyGroup = document.getElementById('barangay_select').parentElement;
+        brgyGroup.innerHTML = '<label class="form-label">Barangay</label><input type="text" name="barangay" id="barangay_select" class="form-input" placeholder="e.g. Patimbao" required oninput="updateHiddenVenue()">';
+    }
     async function populateCities(province, selectedCity = null, selectedBrgy = null) {
         citySelect.innerHTML = '<option value="">-- Select City --</option>';
         barangaySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
@@ -258,18 +284,30 @@ document.addEventListener('DOMContentLoaded', function () {
                 const code = PROVINCE_CODES[province];
                 let cities = cachedCities[code];
                 if (!cities) {
-                    citySelect.innerHTML = '<option value="">Loading...</option>';
+                    const cityEl = document.getElementById('city_select');
+                    if(cityEl.tagName !== 'SELECT') return; // already fallback
+                    
+                    cityEl.innerHTML = '<option value="">Loading...</option>';
                     let url = `https://psgc.gitlab.io/api/provinces/${code}/cities-municipalities/`;
-                    if (code.startsWith('13')) {
-                        url = `https://psgc.gitlab.io/api/districts/${code}/cities-municipalities/`;
+                    if (code === '130000000') {
+                        url = `https://psgc.gitlab.io/api/regions/${code}/cities-municipalities/`;
                     }
-                    const res = await fetch(url);
+                    
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 2500);
+                    
+                    const res = await fetch(url, { signal: controller.signal });
+                    clearTimeout(timeoutId);
+                    
                     cities = await res.json();
                     cities.sort((a, b) => a.name.localeCompare(b.name));
                     cachedCities[code] = cities;
                 }
                 
-                citySelect.innerHTML = '<option value="">-- Select City --</option>';
+                const cityEl = document.getElementById('city_select');
+                if(cityEl.tagName !== 'SELECT') return;
+                
+                cityEl.innerHTML = '<option value="">-- Select City --</option>';
                 cities.forEach(city => {
                     const opt = document.createElement('option');
                     opt.value = city.name;
@@ -287,41 +325,53 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
             } catch (e) {
-                console.error('API Error:', e);
+                console.warn('API Error, falling back to text inputs:', e);
+                fallbackLocationInputs();
             }
         } else {
-            citySelect.disabled = true;
+            const cityEl = document.getElementById('city_select');
+            if(cityEl && cityEl.tagName === 'SELECT') cityEl.disabled = true;
         }
     }
 
     async function populateBarangays(cityCode, selectedBrgy = null) {
-        barangaySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
+        const brgyEl = document.getElementById('barangay_select');
+        if(!brgyEl) return;
+        if(brgyEl.tagName !== 'SELECT') return;
+        
+        brgyEl.innerHTML = '<option value="">-- Select Barangay --</option>';
         if (cityCode) {
-            barangaySelect.disabled = true;
+            brgyEl.disabled = true;
             try {
                 let brgys = cachedBarangays[cityCode];
                 if (!brgys) {
-                    barangaySelect.innerHTML = '<option value="">Loading...</option>';
-                    const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays/`);
+                    brgyEl.innerHTML = '<option value="">Loading...</option>';
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 2500);
+                    
+                    const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays/`, { signal: controller.signal });
+                    clearTimeout(timeoutId);
+                    
                     brgys = await res.json();
                     brgys.sort((a, b) => a.name.localeCompare(b.name));
                     cachedBarangays[cityCode] = brgys;
                 }
                 
-                barangaySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
+                brgyEl.innerHTML = '<option value="">-- Select Barangay --</option>';
                 brgys.forEach(b => {
                     const opt = document.createElement('option');
                     opt.value = b.name;
                     opt.textContent = b.name;
                     if (b.name === selectedBrgy) opt.selected = true;
-                    barangaySelect.appendChild(opt);
+                    brgyEl.appendChild(opt);
                 });
-                barangaySelect.disabled = false;
+                brgyEl.disabled = false;
             } catch (e) {
-                console.error('API Error:', e);
+                console.warn('API Error, falling back to text inputs:', e);
+                fallbackLocationInputs();
             }
         } else {
-            barangaySelect.disabled = true;
+            brgyEl.disabled = true;
         }
     }
 
@@ -341,14 +391,57 @@ document.addEventListener('DOMContentLoaded', function () {
         barangaySelect.addEventListener('change', updateHiddenVenue);
     }
 
-    function updateHiddenVenue() {
-        const p = provinceSelect.value;
-        const c = citySelect.value;
-        const b = barangaySelect.value;
-        if (p && c && b) {
+    window.currentDeliveryFee = 0;
+    window.deliveryFeeStatus = "pending";
+
+    window.updateHiddenVenue = async function() {
+        const provEl = document.getElementById('province_select');
+        const cityEl = document.getElementById('city_select');
+        const brgyEl = document.getElementById('barangay_select');
+        
+        const p = provEl ? (provEl.tagName === 'SELECT' ? (provEl.options[provEl.selectedIndex]?.text || '') : provEl.value) : '';
+        const c = cityEl ? (cityEl.tagName === 'SELECT' ? (cityEl.options[cityEl.selectedIndex]?.text || '') : cityEl.value) : '';
+        const b = brgyEl ? (brgyEl.tagName === 'SELECT' ? (brgyEl.options[brgyEl.selectedIndex]?.text || '') : brgyEl.value) : '';
+        
+        if (p && c && b && p !== '-- Province --' && c !== '-- Select City --' && b !== '-- Select Barangay --') {
             venueHidden.value = `${b}, ${c}, ${p}`;
+            
+            // Fetch dynamic delivery fee
+            try {
+                const res = await fetch(`/customer/api/caterer/${catererId}/delivery-fee?province=${encodeURIComponent(p)}&municipality=${encodeURIComponent(c)}`);
+                const data = await res.json();
+                
+                if (data.found) {
+                    if (data.is_manual_quote) {
+                        window.currentDeliveryFee = 0;
+                        window.deliveryFeeStatus = "manual_quote";
+                    } else {
+                        window.currentDeliveryFee = data.fee;
+                        window.deliveryFeeStatus = "calculated";
+                    }
+                } else {
+                    if (data.out_of_coverage_action === 'manual') {
+                        window.currentDeliveryFee = 0;
+                        window.deliveryFeeStatus = "manual_quote";
+                    } else if (data.out_of_coverage_action === 'reject') {
+                        window.currentDeliveryFee = 0;
+                        window.deliveryFeeStatus = "error";
+                    } else {
+                        window.currentDeliveryFee = data.base_fee || 0;
+                        window.deliveryFeeStatus = "calculated";
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to fetch delivery fee", e);
+                window.currentDeliveryFee = 0;
+                window.deliveryFeeStatus = "error";
+            }
+            updateCalculator();
         } else {
             venueHidden.value = "";
+            window.currentDeliveryFee = 0;
+            window.deliveryFeeStatus = "pending";
+            updateCalculator();
         }
     }
 
@@ -627,4 +720,14 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initial run
     updateCalculator();
     loadExistingLocation();
+
+    // Initialize checkmarks for already selected items (like back navigation or edit mode)
+    document.querySelectorAll('.menu-item-card input[type="checkbox"]:checked').forEach(cb => {
+        if (cb.closest('.selection-group')) {
+            // Trigger rule limit UI without resetting the others immediately
+            window.handleSelectionRuleLimit(cb);
+        } else {
+            window.handleMenuCardToggle(cb);
+        }
+    });
 });

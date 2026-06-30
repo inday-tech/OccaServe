@@ -6,6 +6,11 @@
 <link rel="stylesheet"
     href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}?v={{ range(1, 9999) | random }}">
 <style>
+    /* --- Dynamic Caterer Branding --- */
+    :root {
+        --wiz-primary: {{ caterer.primary_color if caterer and caterer.primary_color else '#FF7B54' }};
+    }
+
     /* --- Other event type reveal --- */
     #other-event-wrap {
         display: none;
@@ -101,6 +106,11 @@
                         <span class="field-error" id="err-other-type">Please describe.</span>
                     </div>
                 </div>
+                
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label class="form-label">Theme / Motif <small>(Optional)</small></label>
+                    <input type="text" name="theme_motif" class="form-input" placeholder="e.g., Rustic, Filipiniana, Blue & Gold" value="{{ booking.custom_requirements.theme_motif if booking and booking.custom_requirements else '' }}">
+                </div>
 
                 <div class="grid-2-col">
                     <div class="form-group">
@@ -179,14 +189,14 @@
                                 </div>
                                 <div class="menu-item-cards selection-group" data-limit="{{ rule_limit }}" data-category="{{ cat.grouper|replace(' ', '') }}">
                                     {% for item in cat.list %}
-                                    <label class="menu-item-card selectable">
-                                        <input type="checkbox" name="selected_items" value="{{ item.id }}" style="display: none;" onchange="handleSelectionRuleLimit(this)">
+                                    <div class="menu-item-card selectable" onclick="window.toggleCardSelection(this)">
+                                        <input type="checkbox" name="selected_items" value="{{ item.id }}" style="display: none;">
                                         <div class="indicator-circle"></div>
                                         <div class="mic-info">
                                             <span class="mic-name">{{ item.name }}</span>
                                             <span class="mic-cat">{{ item.description|truncate(40) if item.description else 'Included' }}</span>
                                         </div>
-                                    </label>
+                                    </div>
                                     {% endfor %}
                                 </div>
                             </div>
@@ -223,48 +233,48 @@
                         <label class="form-label">Optional Add-ons</label>
                         <div class="menu-item-cards">
                             {% for item in addon_items %}
-                            <label class="menu-item-card addon {% if item.id in selected_addon_ids %}selected{% endif %}">
+                            <div class="menu-item-card addon {% if item.id in selected_addon_ids %}selected{% endif %}" onclick="window.toggleCardSelection(this)">
                                 <input type="checkbox" name="selected_addons" value="{{ item.id }}" 
                                     {% if item.id in selected_addon_ids %}checked{% endif %} 
                                     data-price="{{ item.addon_price or 0 }}"
-                                    onchange="handleMenuCardToggle(this)" style="display: none;">
+                                    style="display: none;">
                                 <div class="indicator-circle"></div>
                                 <div class="mic-info">
                                     <span class="mic-name">{{ item.name }}</span>
                                     <span class="mic-cat">{{ item.category }}</span>
                                 </div>
                                 <span class="mic-price">+₱{{ "{:,.2f}".format(item.addon_price or 0) }}</span>
-                            </label>
+                            </div>
                             {% endfor %}
                             
                             {% for item in addon_equipment %}
-                            <label class="menu-item-card addon {% if item.id in selected_addon_equipment_ids %}selected{% endif %}">
+                            <div class="menu-item-card addon {% if item.id in selected_addon_equipment_ids %}selected{% endif %}" onclick="window.toggleCardSelection(this)">
                                 <input type="checkbox" name="selected_equipment_addons" value="{{ item.id }}" 
                                     {% if item.id in selected_addon_equipment_ids %}checked{% endif %} 
                                     data-price="{{ item.addon_price or 0 }}"
-                                    onchange="handleMenuCardToggle(this)" style="display: none;">
+                                    style="display: none;">
                                 <div class="indicator-circle"></div>
                                 <div class="mic-info">
                                     <span class="mic-name">{{ item.name }} <i class="fas fa-chair" style="color: var(--wiz-slate-400); font-size: 0.7rem; margin-left: 4px;"></i></span>
                                     <span class="mic-cat">{{ item.category or 'Equipment' }}</span>
                                 </div>
                                 <span class="mic-price">+₱{{ "{:,.2f}".format(item.addon_price or 0) }}</span>
-                            </label>
+                            </div>
                             {% endfor %}
 
                             {% for item in addon_services %}
-                            <label class="menu-item-card addon {% if item.id in selected_addon_service_ids %}selected{% endif %}">
+                            <div class="menu-item-card addon {% if item.id in selected_addon_service_ids %}selected{% endif %}" onclick="window.toggleCardSelection(this)">
                                 <input type="checkbox" name="selected_service_addons" value="{{ item.id }}" 
                                     {% if item.id in selected_addon_service_ids %}checked{% endif %} 
                                     data-price="{{ item.addon_price or 0 }}"
-                                    onchange="handleMenuCardToggle(this)" style="display: none;">
+                                    style="display: none;">
                                 <div class="indicator-circle"></div>
                                 <div class="mic-info">
                                     <span class="mic-name">{{ item.name }} <i class="fas fa-user-tie" style="color: var(--wiz-slate-400); font-size: 0.7rem; margin-left: 4px;"></i></span>
                                     <span class="mic-cat">{{ item.category or 'Service' }}</span>
                                 </div>
                                 <span class="mic-price">+₱{{ "{:,.2f}".format(item.addon_price or 0) }}</span>
-                            </label>
+                            </div>
                             {% endfor %}
                         </div>
                     </div>
@@ -284,48 +294,10 @@
                         <label class="form-label">Province</label>
                         <select name="province" id="province_select" class="filter-select-pro form-input" required>
                             <option value="">-- Province --</option>
-                            <option value="Abra">Abra</option>
-                            <option value="Albay">Albay</option>
-                            <option value="Apayao">Apayao</option>
-                            <option value="Aurora">Aurora</option>
-                            <option value="Bataan">Bataan</option>
-                            <option value="Batanes">Batanes</option>
+                            <option value="NATIONAL CAPITAL REGION (NCR)">NATIONAL CAPITAL REGION (NCR)</option>
+                            <option value="Laguna">Laguna</option>
                             <option value="Batangas">Batangas</option>
-                            <option value="Benguet">Benguet</option>
-                            <option value="Bulacan">Bulacan</option>
-                            <option value="Cagayan">Cagayan</option>
-                            <option value="Camarines Norte">Camarines Norte</option>
-                            <option value="Camarines Sur">Camarines Sur</option>
-                            <option value="Catanduanes">Catanduanes</option>
-                            <option value="Cavite">Cavite</option>
-                            <option value="Ifugao">Ifugao</option>
-                            <option value="Ilocos Norte">Ilocos Norte</option>
-                            <option value="Ilocos Sur">Ilocos Sur</option>
-                            <option value="Isabela">Isabela</option>
-                            <option value="Kalinga">Kalinga</option>
-                            <option value="La Union">La Union</option>
-                            <option value="Laguna" selected>Laguna</option>
-                            <option value="Marinduque">Marinduque</option>
-                            <option value="Masbate">Masbate</option>
-                            <option value="Metro Manila - 1st District">Metro Manila - 1st District</option>
-                            <option value="Metro Manila - 2nd District">Metro Manila - 2nd District</option>
-                            <option value="Metro Manila - 3rd District">Metro Manila - 3rd District</option>
-                            <option value="Metro Manila - 4th District">Metro Manila - 4th District</option>
-                            <option value="Mountain Province">Mountain Province</option>
-                            <option value="Nueva Ecija">Nueva Ecija</option>
-                            <option value="Nueva Vizcaya">Nueva Vizcaya</option>
-                            <option value="Occidental Mindoro">Occidental Mindoro</option>
-                            <option value="Oriental Mindoro">Oriental Mindoro</option>
-                            <option value="Palawan">Palawan</option>
-                            <option value="Pampanga">Pampanga</option>
-                            <option value="Pangasinan">Pangasinan</option>
                             <option value="Quezon">Quezon</option>
-                            <option value="Quirino">Quirino</option>
-                            <option value="Rizal">Rizal</option>
-                            <option value="Romblon">Romblon</option>
-                            <option value="Sorsogon">Sorsogon</option>
-                            <option value="Tarlac">Tarlac</option>
-                            <option value="Zambales">Zambales</option>
                         </select>
                         <span class="field-error" id="err-province">Province required.</span>
                     </div>
@@ -371,6 +343,10 @@
                 <div class="calc-row">
                     <span class="calc-label">Add-ons (<span id="calc-addons-count">0</span>)</span>
                     <span class="calc-val" id="calc-addons-total">+₱0.00</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Delivery & Travel</span>
+                    <span class="calc-val" id="calc-delivery-fee">₱0.00</span>
                 </div>
 
                 <div class="calc-divider"></div>
@@ -437,6 +413,7 @@
     window.pricingMode = "{{ package.pricing_mode if package.pricing_mode else ('per_pax' if package.price_unit == 'per_guest' else 'fixed') }}";
     window.pricePerHead = parseFloat("{{ package.price_per_head or package.price or 0 }}") || 0;
     window.basePrice = parseFloat("{{ package.price or 0 }}") || 0;
+    window.additionalGuestPrice = parseFloat("{{ package.additional_guest_price or 0 }}") || 0;
     window.catererId = "{{ caterer.id }}";
     window.minGuests = parseInt("{{ package.min_guests or caterer.min_pax or 1 }}") || 1;
     window.maxGuests = parseInt("{{ package.max_guests or 0 }}") || 0;

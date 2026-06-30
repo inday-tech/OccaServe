@@ -50,6 +50,15 @@
     {% if is_balance %}
     <h2 class="wizard-title">Pay Remaining Balance</h2>
     <p class="wizard-subtitle">Complete your payment to finalize the event.</p>
+    {% elif booking.document_type == 'invoice' %}
+    <h2 class="wizard-title">Pay for Food Order</h2>
+    <p class="wizard-subtitle">Secure your order by settling the total amount.</p>
+    {% elif booking.document_type == 'rental_agreement' %}
+    <h2 class="wizard-title">Pay Equipment Rental</h2>
+    <p class="wizard-subtitle">Finalize your rental by settling the required fee.</p>
+    {% elif booking.document_type == 'service_agreement' %}
+    <h2 class="wizard-title">Pay Service Booking</h2>
+    <p class="wizard-subtitle">Finalize your booking by settling the required amount.</p>
     {% else %}
     <h2 class="wizard-title">Secure Payment Selection</h2>
     <p class="wizard-subtitle">Finalize your booking by settling the contractual deposit or full amount.</p>
@@ -115,11 +124,13 @@
             {% endif %}
         </div>
 
+        {% if booking.transaction_type != 'fast_track' %}
         <div style="margin-top: 1.5rem; text-align: center;">
             <a href="/bookings/step/quotation/{{ booking.id }}" style="font-size: 0.75rem; color: var(--up-slate-400); text-decoration: underline;">
                 <i class="fas fa-eye"></i> View Signed Service Agreement
             </a>
         </div>
+        {% endif %}
     </div>
 
     <!-- ── PAYMENT PLAN SELECTION (STRICT ENFORCEMENT) ── -->

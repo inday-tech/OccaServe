@@ -354,7 +354,7 @@
                 </a>
                 {% endif %}
                 
-                <a href="/customer/messages?caterer_id={{ booking.caterer_id }}" class="btn-action-elite btn-outline-slate">
+                <a href="/customer/messages?caterer_id={{ booking.caterer.user_id }}&caterer_name={{ booking.caterer.business_name | urlencode }}" class="btn-action-elite btn-outline-slate">
                     Message Caterer <i class="fas fa-comments"></i>
                 </a>
                 

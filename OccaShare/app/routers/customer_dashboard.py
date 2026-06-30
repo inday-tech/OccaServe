@@ -132,7 +132,7 @@ async def customer_dashboard(
     # Elite Tier Data Additions
     reviews_count = db.query(models.Review).filter(models.Review.user_id == user.id).count()
     
-    total_spent = sum(float(b.total_amount or 0) for b in bookings if b.status != 'cancelled')
+    total_spent = sum(float(b.total_amount or 0) for b in bookings if b.status not in ['cancelled', 'pending', 'draft'])
     
     # Get the single most recent active booking for the Journey Tracker
     latest_booking = db.query(models.Booking).filter(
@@ -175,6 +175,38 @@ async def customer_dashboard(
         "client_id": f"dashboard_{user.id}"
     })
 
+@router.get("/api/caterer/{caterer_id}/delivery-fee")
+async def get_caterer_delivery_fee(
+    caterer_id: int,
+    province: str,
+    municipality: str,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    profile = db.query(models.CatererProfile).get(caterer_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Caterer not found")
+        
+    zone = db.query(models.DeliveryZone).filter(
+        models.DeliveryZone.caterer_id == profile.id,
+        models.DeliveryZone.province.ilike(f"%{province}%"),
+        models.DeliveryZone.city_municipality.ilike(f"%{municipality}%")
+    ).first()
+    
+    if zone:
+        return {
+            "is_manual_quote": zone.is_manual_quote,
+            "fee": zone.fee,
+            "found": True
+        }
+        
+    # Return out of coverage logic
+    return {
+        "found": False,
+        "base_fee": profile.base_delivery_fee or 0.0,
+        "out_of_coverage_action": profile.out_of_coverage_action or "reject"
+    }
+
 @router.get("/feedback/{booking_id}", response_class=HTMLResponse)
 async def feedback_page(
     request: Request,
@@ -186,9 +218,14 @@ async def feedback_page(
     if not booking or booking.user_id != user.id:
         return RedirectResponse(url="/customer/dashboard?error_msg=Booking+not+found", status_code=303)
     
-    if booking.status != 'completed':
-        return RedirectResponse(url="/customer/dashboard?error_msg=Booking+is+not+completed", status_code=303)
-        
+    is_food_order = (booking.document_type == 'invoice')
+    if is_food_order:
+        if booking.status not in ['arrived', 'completed']:
+            return RedirectResponse(url="/customer/dashboard?error_msg=Order+must+be+delivered+before+reviewing", status_code=303)
+    else:
+        if booking.status != 'completed':
+            return RedirectResponse(url="/customer/dashboard?error_msg=Booking+is+not+completed", status_code=303)
+
     if booking.review:
         return RedirectResponse(url="/customer/dashboard?error_msg=Booking+already+reviewed", status_code=303)
 
@@ -248,7 +285,8 @@ async def customer_bookings(
     user: models.User = Depends(customer_only)
 ):
     # Calculate Intelligence Stats
-    active_bookings = [b for b in user.bookings if not b.customer_archived]
+    # Filter out Food Orders (invoice) from the Event Bookings timeline
+    active_bookings = [b for b in user.bookings if not b.customer_archived and b.document_type != 'invoice']
     total_reservations = len(active_bookings)
     total_spent = sum([b.total_amount for b in active_bookings if b.status in ['confirmed', 'completed'] and b.total_amount])
     
@@ -272,6 +310,35 @@ async def customer_bookings(
         "active_page": "bookings"
     })
 
+@router.get("/orders", response_class=HTMLResponse)
+async def customer_orders(
+    request: Request, 
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    # Calculate Intelligence Stats
+    food_orders = [b for b in user.bookings if not b.customer_archived and b.document_type == 'invoice']
+    total_orders = len(food_orders)
+    total_spent = sum([b.total_amount for b in food_orders if b.status in ['confirmed', 'completed'] and b.total_amount])
+    
+    pending_obligations = 0
+    for b in food_orders:
+        if b.status in ['pending', 'pending_payment', 'awaiting_payment']:
+            balance = float(b.total_amount or 0) - float(b.reservation_fee or 0)
+            pending_obligations += max(0, balance)
+    
+    return templates.TemplateResponse("customer/orders.html", {
+        "request": request,
+        "user": user,
+        "bookings": sorted(food_orders, key=lambda x: x.id, reverse=True),
+        "stats": {
+            "total_reservations": total_orders,
+            "total_spent": total_spent,
+            "pending_obligations": pending_obligations
+        },
+        "active_page": "orders"
+    })
+
 @router.get("/bookings/manage/{booking_id}", response_class=HTMLResponse)
 async def manage_booking(
     booking_id: int,
@@ -285,9 +352,16 @@ async def manage_booking(
     
     # Calculate status progress for timeline
     current_status = (booking.status or "pending").lower()
-    is_food_order = booking.package_id is None
+    # Track Determination:
+    has_equipment = any(item.equipment_id is not None for item in booking.selected_items)
+    has_service = any(item.service_id is not None for item in booking.selected_items)
+    has_menu = any(item.menu_item_id is not None for item in booking.selected_items)
     
-    if is_food_order:
+    # Use transaction_type to determine Fast-Track timeline
+    is_fast_track = (booking.transaction_type == 'fast_track')
+    is_food_order = (booking.document_type == 'invoice')
+    
+    if is_fast_track:
         # Auto-fix for legacy bookings with 0 reservation fee (ONLY if not CASH/COD)
         is_cash = booking.payment_method in ["CASH", "COD"]
         
@@ -306,25 +380,42 @@ async def manage_booking(
                 db.commit()
                 db.refresh(booking)
 
-        # 8-Step Food Order Flow
-        if current_status in ["pending", "pending_quotation", "awaiting_caterer", "draft"]:
-            current_step_idx = 1 # Pending
-        elif current_status in ["confirmed", "pending_payment", "awaiting_payment", "deposit_paid"]:
-            current_step_idx = 2 # Confirmed
-        elif current_status == "preparing":
-            current_step_idx = 3 # Preparing Food
-        elif current_status == "ready_for_delivery":
-            current_step_idx = 4 # Ready for Delivery
-        elif current_status == "on_the_way":
-            current_step_idx = 5 # Out for Delivery
-        elif current_status == "arrived":
-            current_step_idx = 6 # Arrived
-        elif current_status in ["setup_ongoing", "in_progress"]:
-            current_step_idx = 7 # Setup Ongoing
-        elif current_status in ["completed", "paid"]:
-            current_step_idx = 8 # Completed
+        if is_food_order:
+            # 6-Step Food Delivery Flow
+            if current_status in ["pending", "pending_payment", "awaiting_payment", "draft"]:
+                current_step_idx = 1 # Order Placed
+            elif current_status == "confirmed":
+                current_step_idx = 2 # Order Accepted
+            elif current_status == "preparing":
+                current_step_idx = 3 # Preparing
+            elif current_status in ["out_for_delivery", "ready_for_pickup", "ready_for_delivery", "on_the_way"]:
+                current_step_idx = 4 # On the Way / Ready for Pickup
+            elif current_status in ["delivered", "arrived"]:
+                current_step_idx = 5 # Delivered
+            elif current_status in ["completed", "paid"]:
+                current_step_idx = 6 # Completed
+            else:
+                current_step_idx = 1
         else:
-            current_step_idx = 1
+            # 8-Step Fast Track Flow (Services/Rentals)
+            if current_status in ["pending", "pending_quotation", "awaiting_caterer", "draft"]:
+                current_step_idx = 1 # Pending
+            elif current_status in ["confirmed", "pending_payment", "awaiting_payment", "deposit_paid"]:
+                current_step_idx = 2 # Confirmed
+            elif current_status == "preparing":
+                current_step_idx = 3 # Preparing
+            elif current_status == "ready_for_delivery":
+                current_step_idx = 4 # Ready
+            elif current_status == "on_the_way":
+                current_step_idx = 5 # On Way
+            elif current_status == "arrived":
+                current_step_idx = 6 # Arrived
+            elif current_status in ["setup_ongoing", "in_progress"]:
+                current_step_idx = 7 # Setup
+            elif current_status in ["completed", "paid"]:
+                current_step_idx = 8 # Completed
+            else:
+                current_step_idx = 1
     else:
         # Standard 6-Step Package Flow
         if current_status == "draft":
@@ -335,7 +426,7 @@ async def manage_booking(
                 models.Booking.status.notin_(['draft', 'cancelled', 'pending_quotation'])
             ).first() is not None
             current_step_idx = 2 if (user.is_kyc_complete or user.is_verified or has_history) else 1
-        elif current_status in ["pending", "pending_quotation", "awaiting_caterer"]:
+        elif current_status in ["pending", "pending_quotation", "awaiting_caterer", "pending_review"]:
             current_step_idx = 3 # Quotation phase
         elif current_status in ["pending_payment", "awaiting_payment", "confirmed"]:
             # If confirmed but not even a deposit is paid, they are in Payment phase (Step 4)
@@ -352,7 +443,10 @@ async def manage_booking(
             current_step_idx = 1 # Fallback
         
     # Decide which template to use
-    template_name = "customer/booking_manage_alacarte.html" if is_food_order else "customer/booking_manage_package.html"
+    if is_food_order:
+        template_name = "customer/food_order_manage.html"
+    else:
+        template_name = "customer/booking_manage_universal.html"
 
     from datetime import date as date_cls, datetime as datetime_cls
     return templates.TemplateResponse(template_name, {
@@ -361,7 +455,7 @@ async def manage_booking(
         "booking": booking,
         "is_food_order": is_food_order,
         "current_step_idx": current_step_idx,
-        "active_page": "bookings",
+        "active_page": "orders" if is_food_order else "bookings",
         "today": date_cls.today(),
         "now": datetime_cls.now()
     })
@@ -460,7 +554,7 @@ async def upload_public_proof_of_payment(
             raise HTTPException(status_code=400, detail="Reference number looks invalid (excessive repeating characters).")
     
     # Save the uploaded proof image
-    UPLOAD_DIR = "app/static/uploads/payments"
+    UPLOAD_DIR = "app/static/uploads/payment_proofs"
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     
     file_extension = os.path.splitext(proof_image.filename)[1]
@@ -470,7 +564,7 @@ async def upload_public_proof_of_payment(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(proof_image.file, buffer)
         
-    booking.payment_proof_url = f"/static/uploads/payments/{filename}"
+    booking.payment_proof_url = f"/static/uploads/payment_proofs/{filename}"
     if reference_no:
         booking.special_requests = (booking.special_requests or "") + f"\n[Payment Ref: {reference_no}]"
     if payment_method:
@@ -1040,6 +1134,9 @@ async def caterer_detail(
         (caterer.status != 'Published')
     )
 
+    # Extract public portfolios
+    public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public']
+
     return templates.TemplateResponse("customer/caterer_profile_view.html", {
         "request": request, 
         "caterer": caterer,
@@ -1047,6 +1144,7 @@ async def caterer_detail(
         "active_menu": active_menu,
         "active_inventory": active_inventory,
         "gallery_items": caterer.gallery_items,
+        "public_portfolios": public_portfolios,
         "reviews": caterer.reviews,
         "user": user,
         "has_previous_bookings": has_previous_bookings,

@@ -62,13 +62,14 @@ class EmailService:
         return EmailService._send_email(email, subject, body)
 
     @staticmethod
-    def send_booking_confirmation(email: str, booking_id: int):
-        subject = f"Booking Request Received #{booking_id}"
+    def send_booking_confirmation(email: str, booking_id: int, doc_type: str = "booking"):
+        prefix = "ORD" if doc_type == "invoice" else "BK"
+        subject = f"{'Order' if doc_type == 'invoice' else 'Booking'} Request Received #{prefix}-{booking_id}"
         body = f"""
         Hello,
         
-        We have received your booking request #{booking_id}.
-        We will verify your ID and contact you shortly with further details.
+        We have received your {'order' if doc_type == 'invoice' else 'booking request'} #{prefix}-{booking_id}.
+        We will verify your details and contact you shortly with further updates.
         
         Thank you for choosing OccaServe.
         """
@@ -200,10 +201,10 @@ class EmailService:
         return EmailService._send_email(email, subject, body)
 
     @staticmethod
-    def send_payment_receipt(email: str, booking_id: int, amount: float, ref: str, pay_type: str = "Downpayment"):
-
-        subject = f"Official Receipt: Payment for Booking #{booking_id}"
-        body = f"Hello,\n\nWe have received your payment of ₱{amount:,.2f} ({pay_type}) for Booking #{booking_id}. Your reference number is {ref}.\n\nThank you for your payment."
+    def send_payment_receipt(email: str, booking_id: int, amount: float, ref: str, pay_type: str = "Downpayment", doc_type: str = "booking"):
+        prefix = "ORD" if doc_type == "invoice" else "BK"
+        subject = f"Official Receipt: Payment for {'Order' if doc_type == 'invoice' else 'Booking'} #{prefix}-{booking_id}"
+        body = f"Hello,\n\nWe have received your payment of ₱{amount:,.2f} ({pay_type}) for {'Order' if doc_type == 'invoice' else 'Booking'} #{prefix}-{booking_id}. Your reference number is {ref}.\n\nThank you for your payment."
         
         html_body = f"""
         <!DOCTYPE html>
@@ -225,7 +226,7 @@ class EmailService:
             <div class="receipt-container">
                 <div class="receipt-header">
                     <h2 style="margin:0;">Payment Confirmation</h2>
-                    <p style="opacity:0.8; margin: 5px 0 0 0;">Booking #{booking_id}</p>
+                    <p style="opacity:0.8; margin: 5px 0 0 0;">{'Order' if doc_type == 'invoice' else 'Booking'} #{prefix}-{booking_id}</p>
                 </div>
                 <div class="receipt-body">
                     <p>Hello,</p>

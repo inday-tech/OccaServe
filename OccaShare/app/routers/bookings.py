@@ -16,6 +16,7 @@ import json
 import httpx
 from ..services.realtime import manager
 from ..services.notification import NotificationService
+from ..services.payment_verification import payment_verification_service
 from PIL import Image
 try:
     import pytesseract
@@ -81,20 +82,20 @@ async def my_bookings_redirect():
 # --- Wizard Steps ---
 
 # --- Dedicated A La Carte Checkout ---
-@router.get("/alacarte/{caterer_id}/{menu_id}", response_class=HTMLResponse)
-async def alacarte_checkout_page(request: Request, caterer_id: int, menu_id: str, db: Session = Depends(database.get_db)):
+@router.get("/alacarte/checkout/{caterer_id}", response_class=HTMLResponse)
+async def alacarte_checkout_page(request: Request, caterer_id: int, items: str, booking_id: Optional[int] = None, db: Session = Depends(database.get_db)):
     caterer = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id).first()
     if not caterer or caterer.verification_status != 'Verified' or not caterer.user.is_verified:
         return RedirectResponse(url="/customer/marketplace?error_msg=This partner is not currently authorized to accept bookings.")
     user = get_current_user_from_session(request, db)
     if not user:
-        return RedirectResponse(url=f"/auth/login?next=/bookings/alacarte/checkout/{caterer_id}?menu_id={menu_id}")
+        return RedirectResponse(url=f"/auth/login?next=/bookings/alacarte/checkout/{caterer_id}?items={items}")
     
     caterer = db.query(models.CatererProfile).get(caterer_id)
     
     # Parse multiple IDs with type prefixes (m_ for MenuItem, e_ for Equipment, s_ for Service)
     m_ids, e_ids, s_ids = [], [], []
-    for id_str in menu_id.split(","):
+    for id_str in items.split(","):
         id_str = id_str.strip()
         if not id_str: continue
         if id_str.startswith('m_'):
@@ -124,6 +125,8 @@ async def alacarte_checkout_page(request: Request, caterer_id: int, menu_id: str
     if not caterer or (not menu_items and not equipment_items and not service_items):
         return RedirectResponse(url="/marketplace", status_code=303)
         
+    booking = db.query(models.Booking).get(booking_id) if booking_id else None
+    
     return templates.TemplateResponse("customer/booking_wizard/alacarte_checkout.html", {
         "request": request,
         "user": user,
@@ -131,7 +134,8 @@ async def alacarte_checkout_page(request: Request, caterer_id: int, menu_id: str
         "menu_items": menu_items,
         "equipment_items": equipment_items,
         "service_items": service_items,
-        "menu_id_raw": menu_id,
+        "items_raw": items,
+        "booking": booking,
         "current_step": 1
     })
 
@@ -139,7 +143,7 @@ async def alacarte_checkout_page(request: Request, caterer_id: int, menu_id: str
 async def alacarte_checkout_draft(
     request: Request,
     caterer_id: int = Form(...),
-    menu_id: str = Form(""),
+    items: str = Form(""),
     cart_data: Optional[str] = Form(None),
     full_name: str = Form(...),
     contact_number: str = Form(...),
@@ -157,12 +161,50 @@ async def alacarte_checkout_draft(
         event_date_obj = date.fromisoformat(delivery_date)
         event_time_obj = datetime.strptime(delivery_time, "%H:%M").time()
         
+        # Determine Booking Type for Draft
+        is_rental = False
+        has_services = False
+        has_food = False
+        if cart_data:
+            cart_items = json.loads(cart_data)
+            for item in cart_items:
+                i_type = item.get('type', 'Menu')
+                if i_type == 'Equipment': is_rental = True
+                elif i_type == 'Service': has_services = True
+                else: has_food = True
+        elif items:
+            for id_str in items.split(","):
+                id_str = id_str.strip()
+                if not id_str: continue
+                if id_str.startswith('e_'): is_rental = True
+                elif id_str.startswith('s_'): has_services = True
+                else: has_food = True
+                
+        is_mixed = ((has_food and is_rental) or (has_food and has_services) or (is_rental and has_services))
+        
+        if is_mixed:
+            document_type = "booking_agreement"
+            event_name = f"Mixed Order (Draft): {full_name}"
+            event_type = "Mixed Order"
+        elif is_rental:
+            document_type = "rental_agreement"
+            event_name = f"Equipment Rental (Draft): {full_name}"
+            event_type = "Equipment Rental"
+        elif has_services:
+            document_type = "service_agreement"
+            event_name = f"Service Booking (Draft): {full_name}"
+            event_type = "Service Booking"
+        else:
+            document_type = "invoice"
+            event_name = f"Food Order (Draft): {full_name}"
+            event_type = "Ala Carte Order"
+
         # Create Draft Booking
         new_booking = models.Booking(
             user_id=user.id,
             caterer_id=caterer_id,
-            event_name=f"Food Order (Draft): {full_name}",
-            event_type="Ala Carte Order",
+            event_name=event_name,
+            event_type=event_type,
             event_date=event_date_obj,
             event_time=event_time_obj,
             venue_address=address,
@@ -170,7 +212,13 @@ async def alacarte_checkout_draft(
             total_amount=total_amount,
             total_price=total_amount,
             reservation_fee=total_amount,
-            status="draft" 
+            status="draft",
+            transaction_type="fast_track",
+            document_type=document_type,
+            custom_requirements={
+                "recipient_name": full_name,
+                "recipient_contact": contact_number
+            }
         )
         db.add(new_booking)
         db.flush()
@@ -179,27 +227,46 @@ async def alacarte_checkout_draft(
         if cart_data:
             cart_items = json.loads(cart_data)
             for item in cart_items:
-                m_item = db.query(models.MenuItem).get(int(item['id']))
-                if m_item:
-                    booking_item = models.BookingMenuItem(
-                        booking_id=new_booking.id,
-                        menu_item_id=m_item.id,
-                        price=m_item.price,
-                        quantity=int(item.get('quantity', 1)),
-                        choices=item.get('choices')
-                    )
-                    db.add(booking_item)
-        elif menu_id:
-            id_list = [int(id_str.strip()) for id_str in menu_id.split(",") if id_str.strip()]
-            menu_items = db.query(models.MenuItem).filter(models.MenuItem.id.in_(id_list)).all()
-            
-            for m_item in menu_items:
-                booking_item = models.BookingMenuItem(
-                    booking_id=new_booking.id,
-                    menu_item_id=m_item.id,
-                    price=m_item.price
-                )
-                db.add(booking_item)
+                item_type = item.get('type', 'Menu')
+                qty = int(item.get('qty', item.get('quantity', 1)))
+                if item_type == 'Equipment':
+                    e_item = db.query(models.Equipment).get(int(item['id']))
+                    if e_item:
+                        price = item.get('price')
+                        if price is None: price = e_item.rental_price
+                        db.add(models.BookingMenuItem(booking_id=new_booking.id, equipment_id=e_item.id, price=float(price or 0), quantity=qty))
+                elif item_type == 'Service':
+                    s_item = db.query(models.Service).get(int(item['id']))
+                    if s_item:
+                        price = item.get('price')
+                        if price is None: price = s_item.selling_price
+                        db.add(models.BookingMenuItem(booking_id=new_booking.id, service_id=s_item.id, price=float(price or 0), quantity=qty))
+                else:
+                    m_item = db.query(models.MenuItem).get(int(item['id']))
+                    if m_item:
+                        price = item.get('price')
+                        if price is None: price = m_item.price
+                        db.add(models.BookingMenuItem(
+                            booking_id=new_booking.id,
+                            menu_item_id=m_item.id,
+                            price=float(price or 0),
+                            quantity=qty,
+                            choices=item.get('choices')
+                        ))
+        elif items:
+            for id_str in items.split(","):
+                id_str = id_str.strip()
+                if not id_str: continue
+                if id_str.startswith('e_'):
+                    e_item = db.query(models.Equipment).get(int(id_str[2:]))
+                    if e_item: db.add(models.BookingMenuItem(booking_id=new_booking.id, equipment_id=e_item.id, price=e_item.rental_price))
+                elif id_str.startswith('s_'):
+                    s_item = db.query(models.Service).get(int(id_str[2:]))
+                    if s_item: db.add(models.BookingMenuItem(booking_id=new_booking.id, service_id=s_item.id, price=s_item.selling_price))
+                else:
+                    item_id = int(id_str[2:]) if id_str.startswith('m_') else int(id_str)
+                    m_item = db.query(models.MenuItem).get(item_id)
+                    if m_item: db.add(models.BookingMenuItem(booking_id=new_booking.id, menu_item_id=m_item.id, price=m_item.price))
             
         db.commit()
 
@@ -212,7 +279,7 @@ async def alacarte_checkout_draft(
 async def alacarte_checkout_submit(
     request: Request,
     caterer_id: int = Form(...),
-    menu_id: str = Form(""), # Legacy
+    items: str = Form(""), # Legacy
     cart_data: Optional[str] = Form(None), # New JSON cart payload: [{"id": 1, "quantity": 2, "choices": [...]}]
     full_name: str = Form(...),
     contact_number: str = Form(...),
@@ -226,6 +293,12 @@ async def alacarte_checkout_submit(
     landmark: Optional[str] = Form(None),
     booking_id: Optional[int] = Form(None),
     terms_agreement: Optional[str] = Form(None),
+    pullout_time: Optional[str] = Form(None),
+    event_duration: Optional[int] = Form(None),
+    province: Optional[str] = Form(None),
+    municipality: Optional[str] = Form(None),
+    security_deposit_amount: float = Form(0.0),
+    payment_proof: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db)
 ):
     user = get_current_user_from_session(request, db)
@@ -233,6 +306,17 @@ async def alacarte_checkout_submit(
         return {"success": False, "message": "Unauthorized"}
     
     try:
+        # Save payment proof if uploaded
+        proof_url = None
+        if payment_proof and payment_proof.filename:
+            upload_dir = "app/static/uploads/payment_proofs"
+            os.makedirs(upload_dir, exist_ok=True)
+            ext = payment_proof.filename.split('.')[-1]
+            filename = f"proof_{uuid.uuid4().hex}.{ext}"
+            file_path = os.path.join(upload_dir, filename)
+            with open(file_path, "wb") as f:
+                shutil.copyfileobj(payment_proof.file, f)
+            proof_url = f"/static/uploads/payment_proofs/{filename}"
         # Spam Limit Validation (Flow B Rule 1)
         unpaid_spam_count = db.query(models.Booking).filter(
             models.Booking.user_id == user.id,
@@ -241,29 +325,100 @@ async def alacarte_checkout_submit(
         ).count()
         if unpaid_spam_count >= 2:
             return {"success": False, "message": "Spam Protection: You have 2 or more unpaid/pending bookings. Please complete them first."}
+            
+        booking = db.query(models.Booking).get(booking_id) if booking_id else None
+        
+        # --- AI Receipt Verification (Zero-Trust) ---
+        if proof_url and payment_method not in ["CASH", "COD"]:
+            verify_booking = booking if booking else models.Booking(id=0, total_amount=total_amount)
+            
+            # We must temporarily set total_amount so check_for_fraud can use it
+            original_amount = verify_booking.total_amount
+            verify_booking.total_amount = total_amount
+            
+            verify_results = payment_verification_service.check_for_fraud(db, verify_booking, file_path)
+            
+            # Revert amount if validation fails
+            verify_booking.total_amount = original_amount
+            
+            if verify_results["confidence"] < 40:
+                # Delete the invalid file
+                if os.path.exists(file_path): os.remove(file_path)
+                flags = verify_results.get("flags", [])
+                error_detail = flags[0] if flags else "The uploaded image does not appear to be a valid receipt for the required amount."
+                return {"success": False, "message": f"AI Detection Failed: {error_detail}"}
+            
+            # Extract ref if missing
+            extracted_ref = verify_results.get("extracted_data", {}).get("reference_no")
+            extracted_hash = payment_verification_service.get_image_hash(file_path)
+            
+            if booking:
+                if extracted_ref: booking.payment_reference = extracted_ref
+                booking.proof_image_hash = extracted_hash
 
         # 1. Update or Create Booking
         event_date_obj = date.fromisoformat(delivery_date)
         event_time_obj = datetime.strptime(delivery_time, "%H:%M").time()
         
         # New Payment Logic for Ala Carte:
+        reservation_fee = total_amount
         if payment_method in ["CASH", "COD"]:
-            reservation_fee = 0
-            status = "confirmed"
+            status = "pending"
+            payment_status = "pending"
         else:
-            reservation_fee = total_amount
-            status = "pending_payment"
+            if proof_url:
+                status = "pending"
+                payment_status = "proof_submitted"
+            else:
+                status = "pending_payment"
+                payment_status = "pending"
         
-        booking = None
-        if booking_id:
-            booking = db.query(models.Booking).get(booking_id)
-            if booking and booking.user_id == user.id:
+        if booking:
+            if booking.user_id == user.id:
                 booking.status = status
+                booking.payment_status = payment_status
                 booking.payment_method = payment_method
                 booking.venue_address = address if fulfillment == "delivery" else "PICKUP"
                 booking.special_requests = landmark
                 booking.total_amount = total_amount
                 booking.reservation_fee = reservation_fee
+                booking.security_deposit_amount = security_deposit_amount
+                if security_deposit_amount > 0:
+                    booking.security_deposit_status = "held" if payment_status in ["paid", "proof_submitted"] else "unpaid"
+                
+                if fulfillment == "delivery" and province and municipality:
+                    caterer = db.query(models.CatererProfile).get(caterer_id)
+                    if caterer:
+                        zone = db.query(models.DeliveryZone).filter(
+                            models.DeliveryZone.caterer_id == caterer.id,
+                            models.DeliveryZone.province.ilike(f"%{province}%"),
+                            models.DeliveryZone.city_municipality.ilike(f"%{municipality}%")
+                        ).first()
+                        if zone:
+                            if zone.is_manual_quote:
+                                booking.travel_fee_status = "manual_quote"
+                                booking.travel_fee = 0.0
+                            else:
+                                booking.travel_fee_status = "calculated"
+                                booking.travel_fee = zone.fee
+                        else:
+                            if caterer.out_of_coverage_action == "manual":
+                                booking.travel_fee_status = "manual_quote"
+                                booking.travel_fee = 0.0
+                            else:
+                                booking.travel_fee_status = "calculated"
+                                booking.travel_fee = caterer.base_delivery_fee or 150.0
+                else:
+                    booking.travel_fee_status = "waived"
+                    booking.travel_fee = 0.0
+                
+                custom_reqs = booking.custom_requirements or {}
+                if pullout_time: custom_reqs["pullout_time"] = pullout_time
+                if event_duration: custom_reqs["event_duration"] = event_duration
+                custom_reqs["recipient_name"] = full_name
+                custom_reqs["recipient_contact"] = contact_number
+                booking.custom_requirements = custom_reqs
+                
                 if terms_agreement:
                     booking.terms_accepted_at = datetime.utcnow()
                     booking.terms_accepted_ip = request.client.host if request.client else "unknown"
@@ -279,35 +434,43 @@ async def alacarte_checkout_submit(
             cart_items = json.loads(cart_data)
             for item in cart_items:
                 i_type = item.get('type', 'Menu')
-                if i_type == 'Equipment':
-                    is_rental = True
-                elif i_type == 'Service':
-                    has_services = True
-                else:
-                    m_item = db.query(models.MenuItem).get(int(item['id']))
-                    if m_item and m_item.category:
-                        cat = m_item.category.lower()
-                        if 'rental' in cat or 'equipment' in cat:
-                            is_rental = True
-                        elif 'service' in cat or 'staff' in cat or 'waiter' in cat:
-                            has_services = True
-                        else:
-                            has_food = True
+                if i_type == 'Equipment': is_rental = True
+                elif i_type == 'Service': has_services = True
+                else: has_food = True
+        elif items:
+            for id_str in items.split(","):
+                id_str = id_str.strip()
+                if not id_str: continue
+                if id_str.startswith('e_'): is_rental = True
+                elif id_str.startswith('s_'): has_services = True
+                else: has_food = True
+                
+        is_mixed = ((has_food and is_rental) or (has_food and has_services) or (is_rental and has_services))
         
         # Phase 2: Dynamic Document Routing Algorithm
-        document_type = "invoice"
-        if is_rental:
+        if is_mixed:
+            document_type = "booking_agreement"
+            event_name = f"Mixed Order: {full_name}"
+            event_type = "Mixed Order"
+        elif is_rental:
             document_type = "rental_agreement"
+            event_name = f"Equipment Rental: {full_name}"
+            event_type = "Equipment Rental"
         elif has_services:
             document_type = "service_agreement"
-
-        event_name = f"Equipment Rental: {full_name}" if is_rental else f"Food Order: {full_name}"
-        event_type = "Equipment Rental" if is_rental else "Ala Carte Order"
+            event_name = f"Service Booking: {full_name}"
+            event_type = "Service Booking"
+        else:
+            document_type = "invoice"
+            event_name = f"Food Order: {full_name}"
+            event_type = "Ala Carte Order"
         
         if booking:
             booking.event_name = event_name
             booking.event_type = event_type
             booking.document_type = document_type
+            if proof_url:
+                booking.payment_proof_url = proof_url
             
         if not booking:
             booking = models.Booking(
@@ -322,12 +485,55 @@ async def alacarte_checkout_submit(
                 total_amount=total_amount,
                 total_price=total_amount,
                 reservation_fee=reservation_fee,
+                security_deposit_amount=security_deposit_amount,
+                security_deposit_status="held" if security_deposit_amount > 0 and status == "awaiting_payment" else "unpaid",
                 status=status,
+                payment_status=payment_status,
                 payment_method=payment_method,
+                payment_proof_url=proof_url,
                 special_requests=landmark,
                 transaction_type="fast_track",
-                document_type=document_type
+                document_type=document_type,
+                custom_requirements={
+                    "pullout_time": pullout_time if pullout_time else None,
+                    "event_duration": event_duration if event_duration else None,
+                    "recipient_name": full_name,
+                    "recipient_contact": contact_number
+                }
             )
+            
+            if fulfillment == "delivery" and province and municipality:
+                caterer = db.query(models.CatererProfile).get(caterer_id)
+                if caterer:
+                    zone = db.query(models.DeliveryZone).filter(
+                        models.DeliveryZone.caterer_id == caterer.id,
+                        models.DeliveryZone.province.ilike(f"%{province}%"),
+                        models.DeliveryZone.city_municipality.ilike(f"%{municipality}%")
+                    ).first()
+                    if zone:
+                        if zone.is_manual_quote:
+                            booking.travel_fee_status = "manual_quote"
+                            booking.travel_fee = 0.0
+                        else:
+                            booking.travel_fee_status = "calculated"
+                            booking.travel_fee = zone.fee
+                    else:
+                        if caterer.out_of_coverage_action == "manual":
+                            booking.travel_fee_status = "manual_quote"
+                            booking.travel_fee = 0.0
+                        else:
+                            booking.travel_fee_status = "calculated"
+                            booking.travel_fee = caterer.base_delivery_fee or 150.0
+            else:
+                booking.travel_fee_status = "waived"
+                booking.travel_fee = 0.0
+                
+            # Apply extracted data from AI if this is a new booking
+            if 'extracted_ref' in locals() and extracted_ref:
+                booking.payment_reference = extracted_ref
+            if 'extracted_hash' in locals() and extracted_hash:
+                booking.proof_image_hash = extracted_hash
+
             if terms_agreement:
                 booking.terms_accepted_at = datetime.utcnow()
                 booking.terms_accepted_ip = request.client.host if request.client else "unknown"
@@ -343,10 +549,12 @@ async def alacarte_checkout_submit(
                 if i_type == 'Equipment':
                     e_item = db.query(models.Equipment).get(int(item['id']))
                     if e_item:
+                        price = item.get('price')
+                        if price is None: price = e_item.rental_price
                         booking_item = models.BookingMenuItem(
                             booking_id=booking.id,
                             equipment_id=e_item.id,
-                            price=e_item.rental_price,
+                            price=float(price or 0),
                             quantity=int(item.get('quantity', 1)),
                             choices=item.get('choices')
                         )
@@ -354,10 +562,12 @@ async def alacarte_checkout_submit(
                 elif i_type == 'Service':
                     s_item = db.query(models.Service).get(int(item['id']))
                     if s_item:
+                        price = item.get('price')
+                        if price is None: price = s_item.selling_price
                         booking_item = models.BookingMenuItem(
                             booking_id=booking.id,
                             service_id=s_item.id,
-                            price=s_item.selling_price,
+                            price=float(price or 0),
                             quantity=int(item.get('quantity', 1)),
                             choices=item.get('choices')
                         )
@@ -365,17 +575,19 @@ async def alacarte_checkout_submit(
                 else:
                     m_item = db.query(models.MenuItem).get(int(item['id']))
                     if m_item:
+                        price = item.get('price')
+                        if price is None: price = m_item.price
                         booking_item = models.BookingMenuItem(
                             booking_id=booking.id,
                             menu_item_id=m_item.id,
-                            price=m_item.price,
+                            price=float(price or 0),
                             quantity=int(item.get('quantity', 1)),
                             choices=item.get('choices')
                         )
                         db.add(booking_item)
-        elif menu_id:
+        elif items:
             # Legacy Fallback
-            id_list = [int(id_str.strip()) for id_str in menu_id.split(",") if id_str.strip()]
+            id_list = [int(id_str.strip()) for id_str in items.split(",") if id_str.strip()]
             menu_items = db.query(models.MenuItem).filter(models.MenuItem.id.in_(id_list)).all()
             for m_item in menu_items:
                 booking_item = models.BookingMenuItem(
@@ -387,6 +599,13 @@ async def alacarte_checkout_submit(
                 db.add(booking_item)
 
         db.commit()
+        
+        # Trigger real-time notifications
+        from ..services.notification import NotificationService
+        await NotificationService.notify_new_booking(db, booking)
+        if proof_url:
+            await NotificationService.notify_payment_received(db, booking, float(total_amount), "Payment")
+            
         return {"success": True, "booking_id": booking.id}
     except Exception as e:
         db.rollback()
@@ -507,9 +726,37 @@ async def custom_booking_submit(
     db.commit()
     db.refresh(new_booking)
     
-    # Optionally redirect to KYC or directly to manage
-    # Usually standard bookings redirect to KYC. We'll do the same for Custom.
-    return RedirectResponse(url=f"/bookings/step/kyc/{new_booking.id}", status_code=303)
+    # Send Notification to Caterer
+    from ..services.notification import NotificationService
+    import asyncio
+    from ..services.realtime import manager
+
+    caterer_msg = f"New Custom Event Request from {user.first_name or user.email}."
+    notif = models.Notification(
+        user_id=caterer.user_id,
+        title="Custom Request Received",
+        message=caterer_msg,
+        type="Booking",
+        link=f"/caterer/dashboard?page=bookings"
+    )
+    db.add(notif)
+    db.commit()
+
+    asyncio.create_task(manager.broadcast_to_user(caterer.user_id, {
+        "type": "new_notification",
+        "title": notif.title,
+        "message": notif.message,
+        "url": notif.link
+    }))
+    
+    # Broadcast Dashboard Update
+    asyncio.create_task(manager.broadcast_to_user(caterer.user_id, {
+        "type": "dashboard_update",
+        "message": "New custom request received."
+    }))
+    
+    # Redirect straight to the management dashboard to show the pending review status
+    return RedirectResponse(url=f"/customer/bookings/manage/{new_booking.id}", status_code=303)
 
 @router.get("/continue/{booking_id}")
 async def continue_draft_booking(booking_id: int, request: Request, db: Session = Depends(database.get_db)):
@@ -538,6 +785,35 @@ async def continue_draft_booking(booking_id: int, request: Request, db: Session 
     }
     
     # Step logic routing
+    
+    # 0. Ala Carte / Fast-Track Logic
+    if booking.event_type in ["Ala Carte Order", "Equipment Rental", "Service Booking"] or not booking.package_id:
+        if booking.status == 'draft':
+            # Reconstruct menu_id parameter
+            items = db.query(models.BookingMenuItem).filter(models.BookingMenuItem.booking_id == booking.id).all()
+            menu_parts = []
+            for item in items:
+                if item.equipment_id: menu_parts.append(f"e_{item.equipment_id}")
+                elif item.service_id: menu_parts.append(f"s_{item.service_id}")
+                elif item.menu_item_id: menu_parts.append(f"m_{item.menu_item_id}")
+            items_str = ",".join(menu_parts)
+            
+            # Stale Data Validation (Inventory Check)
+            from datetime import date
+            is_valid = True
+            if booking.event_date and booking.event_date < date.today():
+                is_valid = False
+                request.session["flash_error"] = "The draft's delivery date has passed. Please select a new date."
+                
+            if not is_valid:
+                db.delete(booking)
+                db.commit()
+                return RedirectResponse(url=f"/bookings/alacarte/checkout/{booking.caterer_id}?items={items_str}", status_code=303)
+                
+            # If valid, just go to checkout and pass booking_id
+            return RedirectResponse(url=f"/bookings/alacarte/checkout/{booking.caterer_id}?items={items_str}&booking_id={booking.id}", status_code=303)
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
+
     # 1. Does user need KYC?
     # NEW: Skip KYC if user has booking history
     has_history = db.query(models.Booking).filter(
@@ -658,9 +934,9 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
     selected_addon_equipment_ids = []
     selected_addon_service_ids = []
     if booking:
-        selected_addon_ids = [item.menu_item_id for item in booking.items if item.is_add_on and item.menu_item_id]
-        selected_addon_equipment_ids = [item.equipment_id for item in booking.items if item.is_add_on and item.equipment_id]
-        selected_addon_service_ids = [item.service_id for item in booking.items if item.is_add_on and item.service_id]
+        selected_addon_ids = [item.menu_item_id for item in booking.selected_items if item.is_add_on and item.menu_item_id]
+        selected_addon_equipment_ids = [item.equipment_id for item in booking.selected_items if item.is_add_on and item.equipment_id]
+        selected_addon_service_ids = [item.service_id for item in booking.selected_items if item.is_add_on and item.service_id]
 
     return templates.TemplateResponse("customer/booking_wizard/step_details.html", {
         "request": request,
@@ -691,15 +967,20 @@ async def step_details_submit(
     event_date: date = Form(...),
     event_time: time = Form(...),
     event_end_time_str: Optional[str] = Form(None, alias="event_end_time"),
-    guest_count: int = Form(...),
-    venue_address: str = Form(...),
-    total_price: float = Form(0.0),
-    reservation_fee: float = Form(0.0),
-    selected_items: list[int] = Form([]),
-    selected_addons: list[int] = Form([]),
-    selected_equipment_addons: list[int] = Form([]),
-    selected_service_addons: list[int] = Form([]),
+    guest_count: Optional[int] = Form(0),
+    venue_address: Optional[str] = Form(""),
+    total_price: Optional[float] = Form(0.0),
+    reservation_fee: Optional[float] = Form(0.0),
+    selected_items: list[int] = Form(default=[]),
+    selected_addons: list[int] = Form(default=[]),
+    selected_equipment_addons: list[int] = Form(default=[]),
+    selected_service_addons: list[int] = Form(default=[]),
     special_requests: Optional[str] = Form(""),
+    theme_motif: Optional[str] = Form(None),
+    province: Optional[str] = Form(None),
+    city: Optional[str] = Form(None),
+    barangay: Optional[str] = Form(None),
+    other_event_type: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
     # Safely parse times and IDs
@@ -713,9 +994,18 @@ async def step_details_submit(
     package_id = int(package_id_str) if package_id_str and package_id_str.strip() else None
     booking_id = int(booking_id_str) if booking_id_str and booking_id_str.strip() else None
 
+    # Handle custom event type
+    final_event_type = event_type
+    if event_type == "Other" and other_event_type and other_event_type.strip():
+        final_event_type = other_event_type.strip()
+
     user = get_current_user_from_session(request, db)
     redirect_base = f"/bookings/step/details/{booking_id}" if booking_id else "/bookings/step/details"
     if not user: return RedirectResponse(url=f"/auth/login?next={redirect_base}")
+
+    # Construct venue address if missing from hidden field
+    if not venue_address and province and city and barangay:
+        venue_address = f"{barangay}, {city}, {province}"
 
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer: return RedirectResponse(url=f"/customer/marketplace", status_code=303)
@@ -807,7 +1097,7 @@ async def step_details_submit(
     if booking and booking.user_id == user.id:
         # Update existing
         booking.event_name = event_name
-        booking.event_type = event_type
+        booking.event_type = final_event_type
         booking.event_date = event_date
         booking.event_time = event_time
         booking.event_end_time = event_end_time
@@ -819,6 +1109,11 @@ async def step_details_submit(
         booking.reservation_fee = reservation_fee
         booking.special_requests = special_requests
         booking.document_type = "booking_agreement"
+        
+        custom_reqs = booking.custom_requirements or {}
+        if theme_motif: custom_reqs["theme_motif"] = theme_motif
+        booking.custom_requirements = custom_reqs
+        
         # Clear old items to re-save
         db.query(models.BookingMenuItem).filter(models.BookingMenuItem.booking_id == booking.id).delete()
     else:
@@ -828,7 +1123,7 @@ async def step_details_submit(
             caterer_id=caterer_id,
             package_id=package_id,
             event_name=event_name,
-            event_type=event_type,
+            event_type=final_event_type,
             event_date=event_date,
             event_time=event_time,
             event_end_time=event_end_time,
@@ -840,10 +1135,35 @@ async def step_details_submit(
             reservation_fee=reservation_fee,
             special_requests=special_requests,
             status="draft",
-            document_type="booking_agreement"
+            document_type="booking_agreement",
+            custom_requirements={"theme_motif": theme_motif} if theme_motif else None
         )
         db.add(booking)
     
+    # Update Travel Fee
+    if province and city:
+        zone = db.query(models.DeliveryZone).filter(
+            models.DeliveryZone.caterer_id == caterer.id,
+            models.DeliveryZone.province.ilike(f"%{province}%"),
+            models.DeliveryZone.city_municipality.ilike(f"%{city}%")
+        ).first()
+        if zone:
+            if zone.is_manual_quote:
+                booking.travel_fee_status = "manual_quote"
+                booking.travel_fee = 0.0
+            else:
+                booking.travel_fee_status = "calculated"
+                booking.travel_fee = zone.fee
+        else:
+            if caterer.out_of_coverage_action == "manual":
+                booking.travel_fee_status = "manual_quote"
+                booking.travel_fee = 0.0
+            else:
+                booking.travel_fee_status = "calculated"
+                booking.travel_fee = caterer.base_delivery_fee or 150.0
+    else:
+        booking.travel_fee_status = "pending"
+
     db.commit()
     db.refresh(booking)
 
@@ -935,9 +1255,18 @@ async def step_kyc_page(booking_id: int, request: Request, db: Session = Depends
         
     booking = db.query(models.Booking).get(booking_id)
     if not booking: raise HTTPException(status_code=404)
+
+    # Dynamic Routing for Fast-Track
+    if booking.transaction_type == 'fast_track':
+        if booking.document_type == 'invoice':
+            return RedirectResponse(url=f"/bookings/step/payment/{booking.id}", status_code=303)
+        elif booking.document_type == 'service_agreement':
+            return RedirectResponse(url=f"/bookings/step/quotation/{booking.id}", status_code=303)
+
     return templates.TemplateResponse("customer/booking_wizard/step_kyc.html", {
         "request": request,
         "booking_id": booking_id,
+        "booking": booking,
         "user": user,
         "current_step": 2,
         "active_page": "bookings"
@@ -953,6 +1282,10 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
     booking = db.query(models.Booking).get(booking_id)
     if not booking: raise HTTPException(status_code=404)
     
+    # Dynamic Routing for Fast-Track
+    if booking.transaction_type == 'fast_track' and booking.document_type == 'invoice':
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
+    
     # STRICT GATE: Ensure user is verified before seeing quotation/contract
     # NEW: Also allow if user has booking history
     has_history = db.query(models.Booking).filter(
@@ -961,8 +1294,10 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
         models.Booking.status.notin_(['draft', 'cancelled', 'pending_quotation'])
     ).first() is not None
 
-    if not user.is_verified and not has_history:
-        return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}?auth_needed=1", status_code=303)
+    has_equipment = any(item.equipment_id is not None for item in booking.selected_items)
+    if booking.transaction_type != 'fast_track' or has_equipment:
+        if not user.is_verified and not has_history:
+            return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}?auth_needed=1", status_code=303)
 
     # NEW: Transition status from draft to pending_quotation so it's visible to caterer
     if booking.status == 'draft':
@@ -973,7 +1308,7 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
     from ..services.quotation import quotation_service
     quotation = quotation_service.get_quotation_by_booking(db, booking_id)
     if not quotation:
-        if booking.is_custom_event:
+        if booking.is_custom_event or booking.travel_fee_status == "manual_quote":
             return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?msg=Waiting+for+caterer+proposal", status_code=303)
         quotation = quotation_service.create_quotation(db, booking, 30)
     
@@ -1048,6 +1383,7 @@ async def _validate_receipt_with_gemini(filepath: str, payment_method: str, expe
                     for p in tess_paths:
                         if os.path.exists(p):
                             pytesseract.pytesseract.tesseract_cmd = p
+                            os.environ["TESSDATA_PREFIX"] = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "tessdata"))
                             break
                 img = Image.open(filepath)
                 img.thumbnail((800, 800))
@@ -1066,29 +1402,36 @@ async def step_payment_v2_page(booking_id: int, request: Request, db: Session = 
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/step/payment/{booking_id}")
         
-    # STRICT GATE: Ensure user is verified before payment
-    # NEW: Also allow if user has booking history
-    has_history = db.query(models.Booking).filter(
-        models.Booking.user_id == user.id,
-        models.Booking.id != booking_id,
-        models.Booking.status.notin_(['draft', 'cancelled', 'pending_quotation'])
-    ).first() is not None
-
-    if not user.is_verified and not has_history:
-        return RedirectResponse(url=f"/bookings/step/kyc/{booking_id}?auth_needed=1", status_code=303)
-
     booking = db.query(models.Booking).get(booking_id)
     if not booking: raise HTTPException(status_code=404)
+
+    # STRICT GATE: Ensure user is verified before payment (Skip for fast-track unless it's equipment rental)
+    has_equipment = any(item.equipment_id is not None for item in booking.selected_items)
+    if booking.transaction_type != 'fast_track' or has_equipment:
+        has_history = db.query(models.Booking).filter(
+            models.Booking.user_id == user.id,
+            models.Booking.id != booking_id,
+            models.Booking.status.notin_(['draft', 'cancelled', 'pending_quotation'])
+        ).first() is not None
+
+        if not user.is_verified and not has_history:
+            return RedirectResponse(url=f"/bookings/step/kyc/{booking_id}?auth_needed=1", status_code=303)
 
     # Get signed quotation to enforce contractual amounts
     from ..services.quotation import quotation_service
     quotation = quotation_service.get_quotation_by_booking(db, booking_id)
 
-    # STRICT GATE: Ensure both parties have signed before allowing payment
-    if not quotation or quotation.status != 'signed':
-        return RedirectResponse(url=f"/bookings/step/quotation/{booking_id}?error_msg=Both+parties+must+sign+the+contract+before+proceeding+to+payment", status_code=303)
+    # STRICT GATE: Ensure both parties have signed before allowing payment (ONLY for contract-track)
+    if booking.transaction_type != 'fast_track':
+        if not quotation or quotation.status != 'signed':
+            return RedirectResponse(url=f"/bookings/step/quotation/{booking_id}?error_msg=Both+parties+must+sign+the+contract+before+proceeding+to+payment", status_code=303)
+    else:
+        # Fast-track (Ala Carte) orders should use their own manage page for payments
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking_id}", status_code=303)
 
-    return templates.TemplateResponse("customer/booking_wizard/step_payment.html", {
+    template_name = "customer/booking_wizard/step_payment.html"
+    
+    return templates.TemplateResponse(template_name, {
         "request": request,
         "booking_id": booking_id,
         "booking": booking,
@@ -1128,8 +1471,9 @@ async def step_payment_submit(
         raise HTTPException(status_code=404, detail="Booking not found")
 
     # STRICT GATE: Ensure both parties have signed before processing payment
-    if not booking.quotation or booking.quotation.status != 'signed':
-        return RedirectResponse(url=f"/bookings/step/quotation/{actual_booking_id}?error_msg=Both+parties+must+sign+the+contract+before+proceeding+to+payment", status_code=303)
+    if booking.transaction_type != 'fast_track':
+        if not booking.quotation or booking.quotation.status != 'signed':
+            return RedirectResponse(url=f"/bookings/step/quotation/{actual_booking_id}?error_msg=Both+parties+must+sign+the+contract+before+proceeding+to+payment", status_code=303)
 
     # Save payment plan
     booking.payment_plan = payment_plan
@@ -1245,6 +1589,83 @@ async def step_payment_submit(
         if proof_url:
             await NotificationService.notify_payment_received(db, booking, expected_fee, "Downpayment Proof")
         return RedirectResponse(url=f"/bookings/success/{booking.id}", status_code=303)
+
+
+
+@router.post("/alacarte/payment/{booking_id}")
+async def alacarte_manage_payment_submit(
+    booking_id: int,
+    request: Request,
+    payment_method: str = Form("GCash"),
+    proof_image: UploadFile = File(...),
+    db: Session = Depends(database.get_db)
+):
+    user = get_current_user_from_session(request, db)
+    if not user:
+        return {"success": False, "message": "Unauthorized"}
+        
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.user_id != user.id:
+        return {"success": False, "message": "Booking not found"}
+        
+    # File validation
+    allowed_types = ["image/jpeg", "image/png", "image/jpg", "image/webp", "application/pdf"]
+    if proof_image.content_type not in allowed_types:
+        return {"success": False, "message": "Invalid file type. Only JPG, PNG, WEBP, and PDF are allowed."}
+        
+    proof_image.file.seek(0, os.SEEK_END)
+    if proof_image.file.tell() > 5 * 1024 * 1024:
+        return {"success": False, "message": "File too large. Maximum size is 5MB."}
+    proof_image.file.seek(0)
+    
+    import uuid
+    import shutil
+    ext = os.path.splitext(proof_image.filename)[1]
+    filename = f"{booking.id}_alacarte_{uuid.uuid4().hex}{ext}"
+    filepath = os.path.join(PROOF_UPLOAD_DIR, filename)
+    
+    with open(filepath, "wb") as buffer:
+        shutil.copyfileobj(proof_image.file, buffer)
+        
+    # AI Receipt Validation
+    from ..services.payment_verification import payment_verification_service
+    verify_results = payment_verification_service.check_for_fraud(db, booking, filepath)
+    
+    if verify_results["confidence"] < 40:
+        if os.path.exists(filepath): os.remove(filepath)
+        flags = verify_results.get("flags", [])
+        error_detail = flags[0] if flags else "The uploaded image does not appear to be a valid receipt for the required amount."
+        return {"success": False, "message": f"{error_detail}"}
+        
+    # Save extracted details
+    extracted_ref = verify_results.get("extracted_data", {}).get("reference_no")
+    extracted_hash = payment_verification_service.get_image_hash(filepath)
+    
+    if extracted_ref: booking.payment_reference = extracted_ref
+    booking.proof_image_hash = extracted_hash
+    
+    proof_url = f"/static/uploads/payment_proofs/{filename}"
+    booking.payment_proof_url = proof_url
+    booking.payment_method = payment_method
+    booking.payment_status = "proof_submitted"
+    if booking.status in ['draft', 'pending_payment', 'awaiting_payment']:
+        booking.status = "pending"
+        
+    # History
+    history = models.BookingHistory(
+        booking_id=booking.id,
+        status="pending",
+        notes=f"Ala Carte payment proof submitted via {payment_method}. Awaiting caterer verification."
+    )
+    db.add(history)
+    db.commit()
+    
+    # Notify
+    from ..services.notification import NotificationService
+    import asyncio
+    asyncio.create_task(NotificationService.notify_payment_received(db, booking, float(booking.total_amount or 0), "Payment"))
+    
+    return {"success": True}
 
 
 @router.post("/reupload-proof/{booking_id}")

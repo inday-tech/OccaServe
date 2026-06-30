@@ -1,0 +1,1031 @@
+{% extends "customer/layout.html" %}
+
+{% block title %}Service Checkout - OccaServe{% endblock %}
+
+{% block content %}
+<style>
+    /* Checkout Specific Styles - Inherited from Alacarte Design */
+    :root {
+        --chk-primary: #FF7B54;
+        --chk-bg: #f8fafc;
+        --chk-card: #ffffff;
+        --chk-border: #e2e8f0;
+        --chk-text: #0f172a;
+        --chk-text-light: #64748b;
+    }
+
+    body {
+        background-color: var(--chk-bg);
+    }
+
+    .checkout-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 2rem;
+    }
+
+    @media (max-width: 992px) {
+        .checkout-container {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Screen Management */
+    .checkout-screen {
+        display: none;
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    .checkout-screen.active {
+        display: block;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Steps Header */
+    .wizard-steps {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        background: var(--chk-card);
+        padding: 1.5rem 2rem;
+        border-radius: 16px;
+        border: 1px solid var(--chk-border);
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    }
+
+    .step-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--chk-text-light);
+        flex: 1;
+        position: relative;
+    }
+
+    .step-item:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        width: 100%;
+        height: 2px;
+        background: var(--chk-border);
+        z-index: 1;
+    }
+
+    .step-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--chk-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        border: 2px solid var(--chk-border);
+        z-index: 2;
+        transition: all 0.3s ease;
+    }
+
+    .step-item.active {
+        color: var(--chk-primary);
+    }
+
+    .step-item.active .step-icon {
+        background: var(--chk-primary);
+        border-color: var(--chk-primary);
+        color: white;
+        box-shadow: 0 0 0 4px rgba(255, 123, 84, 0.1);
+    }
+
+    .step-item.completed {
+        color: var(--chk-text);
+    }
+
+    .step-item.completed .step-icon {
+        background: var(--chk-card);
+        border-color: var(--chk-primary);
+        color: var(--chk-primary);
+    }
+
+    .step-item.completed:not(:last-child)::after {
+        background: var(--chk-primary);
+    }
+
+    .step-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    /* Cards & Forms */
+    .chk-card {
+        background: var(--chk-card);
+        border-radius: 16px;
+        padding: 2rem;
+        border: 1px solid var(--chk-border);
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        margin-bottom: 1.5rem;
+    }
+
+    .chk-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--chk-text);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Bill Summary Sidebar */
+    .bill-sidebar {
+        background: var(--chk-card);
+        border-radius: 16px;
+        border: 1px solid var(--chk-border);
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        position: sticky;
+        top: 2rem;
+        overflow: hidden;
+    }
+
+    .bill-header {
+        background: #0f172a;
+        color: white;
+        padding: 1.5rem;
+    }
+
+    .bill-body {
+        padding: 1.5rem;
+    }
+
+    .btn-next {
+        display: block;
+        width: 100%;
+        background: var(--chk-primary);
+        color: white;
+        text-align: center;
+        padding: 1rem;
+        border-radius: 12px;
+        font-weight: 800;
+        font-size: 1rem;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-next:hover {
+        background: #ea580c;
+        transform: translateY(-2px);
+    }
+    
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+    
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--chk-border);
+        border-radius: 8px;
+        font-family: inherit;
+    }
+    
+    .field-error {
+        color: #ef4444;
+        font-size: 0.8rem;
+        margin-top: 4px;
+        display: none;
+    }
+    
+    .payment-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .payment-opt {
+        border: 2px solid var(--chk-border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+        background: white;
+    }
+    
+    .payment-opt:hover {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+    }
+    
+    .payment-opt.active {
+        border-color: var(--chk-primary);
+        background: #fff5f2;
+    }
+    
+    .payment-opt .selection-indicator {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--chk-primary);
+        color: white;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+    }
+    
+    .payment-opt.active .selection-indicator {
+        display: flex;
+    }
+    
+    .pay-icon {
+        font-size: 2rem;
+        color: var(--chk-text-light);
+        margin-bottom: 0.75rem;
+        display: block;
+    }
+    
+    .payment-opt.active .pay-icon {
+        color: var(--chk-primary);
+    }
+    
+    .pay-label {
+        font-weight: 800;
+        display: block;
+        color: var(--chk-text);
+        font-size: 0.95rem;
+    }
+    
+    .pay-sub {
+        font-size: 0.75rem;
+        color: var(--chk-text-light);
+        display: block;
+        margin-top: 0.25rem;
+    }
+</style>
+
+<div class="checkout-container">
+    <!-- Main Content -->
+    <div class="checkout-main">
+        <!-- Wizard Progress -->
+        <div class="wizard-steps">
+            <div class="step-item active" id="step-nav-1">
+                <div class="step-icon">1</div>
+                <div class="step-label">Schedule</div>
+            </div>
+            <div class="step-item" id="step-nav-2">
+                <div class="step-icon">2</div>
+                <div class="step-label">Details</div>
+            </div>
+            <div class="step-item" id="step-nav-3">
+                <div class="step-icon">3</div>
+                <div class="step-label">Payment</div>
+            </div>
+        </div>
+
+        <form id="service-checkout-form">
+            <input type="hidden" name="caterer_id" value="{{ caterer.id }}">
+            <input type="hidden" name="service_id" value="{{ service.id }}">
+            <input type="hidden" id="service_price" value="{{ service.selling_price }}">
+            <input type="hidden" id="service_unit" value="{{ service.unit_type }}">
+            <input type="hidden" id="requires_agreement" value="{{ 'true' if service.requires_agreement else 'false' }}">
+            <input type="hidden" id="downpayment_percentage" value="{{ service.downpayment_percentage or 50 }}">
+
+            <!-- SCREEN 1: SCHEDULE -->
+            <div class="checkout-screen active" id="screen-1">
+                <div class="chk-card">
+                    <h2 class="chk-title"><i class="fas fa-calendar-check" style="color: var(--chk-primary);"></i> Service Schedule</h2>
+                    <p style="color: var(--chk-text-light); font-size: 0.9rem; margin-bottom: 1.5rem;">Select the date and time block for this service.</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label>Event Date <span style="color:red;">*</span></label>
+                            <input type="date" class="form-control" name="event_date" id="event_date" required min="{{ (today + timedelta(days=1)).strftime('%Y-%m-%d') }}">
+                            <span class="field-error" id="err-event_date">Event Date is required.</span>
+                        </div>
+                        <div class="form-group">
+                            <label>Start Time <span style="color:red;">*</span></label>
+                            <input type="time" class="form-control" name="start_time" id="start_time" required>
+                            <span class="field-error" id="err-start_time">Start Time is required.</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label>Duration (Hours) <span style="color:red;">*</span></label>
+                        <select class="form-control" name="duration" id="duration" onchange="calculateServiceTotal()">
+                            {% for i in range(service.minimum_hours|default(1), service.base_duration_hours|default(3) + 1) %}
+                            <option value="{{ i }}">{{ i }} Hour{{ 's' if i > 1 else '' }}</option>
+                            {% endfor %}
+                        </select>
+                        <small style="color: var(--chk-text-light);">Maximum allowed: {{ service.base_duration_hours|default(3) }} hour(s).</small>
+                        <span class="field-error" id="err-duration">Please select a valid duration.</span>
+                    </div>
+                </div>
+
+                <div style="text-align: right;">
+                    <button type="button" class="btn-next" style="width: auto; display: inline-block; padding: 1rem 3rem;" onclick="nextScreen(2)">Continue to Details <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+
+            <!-- SCREEN 2: DETAILS -->
+            <div class="checkout-screen" id="screen-2">
+                <div class="chk-card">
+                    <h2 class="chk-title"><i class="fas fa-map-marker-alt" style="color: var(--chk-primary);"></i> Event Information</h2>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>Full Name <span style="color:red;">*</span></label>
+                            <input type="text" class="form-control" name="full_name" id="full_name" value="{{ user.first_name }} {{ user.last_name }}" required>
+                            <span class="field-error" id="err-full_name">Full Name is required.</span>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>Contact Number <span style="color:red;">*</span></label>
+                            <input type="text" class="form-control" name="contact_number" id="contact_number" value="{{ user.phone_number or '' }}" required>
+                            <span class="field-error" id="err-contact_number">Contact Number is required.</span>
+                        </div>
+                    </div>
+                    
+                    <div id="address-section">
+                        <div style="display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 0.5rem;">
+                            
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Province <span style="color:red;">*</span></label>
+                                <select id="prov_select" class="form-control" required onchange="handleProvinceChange()">
+                                    <option value="">-- Select Province --</option>
+                                </select>
+                                <span class="field-error" id="err-prov_select">Please select a province.</span>
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Municipality / City <span style="color:red;">*</span></label>
+                                <select id="city_select" class="form-control" required onchange="handleCityChange()" disabled>
+                                    <option value="">-- Select Municipality --</option>
+                                </select>
+                                <span class="field-error" id="err-city_select">Please select a municipality.</span>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Barangay <span style="color:red;">*</span></label>
+                                <select id="brgy_select" class="form-control" required onchange="syncAddress()" disabled>
+                                    <option value="">-- Select Barangay --</option>
+                                </select>
+                                <span class="field-error" id="err-brgy_select">Please select a barangay.</span>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Street / House No. <span style="color:red;">*</span></label>
+                                <input type="text" id="street_input" class="form-control" placeholder="e.g. 123 Diamond St." oninput="syncAddress()" required>
+                                <span class="field-error" id="err-street_input">Please provide a street or house number.</span>
+                            </div>
+                        </div>
+                        <!-- Hidden field for combined address -->
+                        <input type="hidden" name="address" id="address">
+                        <input type="hidden" name="province" id="hidden_province">
+                        <input type="hidden" name="municipality" id="hidden_municipality">
+                        <input type="hidden" name="barangay" id="hidden_barangay">
+                    </div>
+
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label>Landmark / Special Instructions (Optional)</label>
+                        <input type="text" name="landmark" class="form-control" placeholder="e.g. Near Blue Mall / White Gate">
+                    </div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between;">
+                    <button type="button" class="btn-next" style="width: auto; background: var(--chk-border); color: var(--chk-text);" onclick="nextScreen(1)"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button type="button" class="btn-next" style="width: auto; padding: 1rem 3rem;" onclick="nextScreen(3)">Continue to Payment <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+            
+            <!-- SCREEN 3: PAYMENT -->
+            <div class="checkout-screen" id="screen-3">
+                <div class="chk-card">
+                    <h2 class="chk-title"><i class="fas fa-wallet" style="color: var(--chk-primary);"></i> Payment & Confirmation</h2>
+                    <p style="color: var(--chk-text-light); font-size: 0.9rem; margin-bottom: 1.5rem;">Choose your payment method and confirm your order.</p>
+                    
+                    <div class="form-group">
+                        <label>Payment Method</label>
+                        <div class="payment-grid">
+                            {% if caterer.cash_instructions %}
+                            <div class="payment-opt active" onclick="selectPayment('CASH', this)">
+                                <div class="selection-indicator"><i class="fas fa-check"></i></div>
+                                <i class="fas fa-hand-holding-usd pay-icon"></i>
+                                <span class="pay-label">CASH / MANUAL</span>
+                                <span class="pay-sub">PAY IN PERSON</span>
+                            </div>
+                            {% endif %}
+                            {% if caterer.gcash_number or caterer.gcash_qr_url %}
+                            <div class="payment-opt {% if not caterer.cash_instructions %}active{% endif %}" onclick="selectPayment('GCASH', this)">
+                                <div class="selection-indicator"><i class="fas fa-check"></i></div>
+                                <i class="fas fa-mobile-alt pay-icon"></i>
+                                <span class="pay-label">GCASH TRANSFER</span>
+                                <span class="pay-sub">ONLINE PAYMENT</span>
+                            </div>
+                            {% endif %}
+                            {% if caterer.maya_number or caterer.maya_qr_url %}
+                            <div class="payment-opt {% if not caterer.cash_instructions and not (caterer.gcash_number or caterer.gcash_qr_url) %}active{% endif %}" onclick="selectPayment('MAYA', this)">
+                                <div class="selection-indicator"><i class="fas fa-check"></i></div>
+                                <i class="fas fa-wallet pay-icon"></i>
+                                <span class="pay-label">MAYA TRANSFER</span>
+                                <span class="pay-sub">ONLINE PAYMENT</span>
+                            </div>
+                            {% endif %}
+                            {% if caterer.bank_name %}
+                            <div class="payment-opt {% if not caterer.cash_instructions and not (caterer.gcash_number or caterer.gcash_qr_url) and not (caterer.maya_number or caterer.maya_qr_url) %}active{% endif %}" onclick="selectPayment('BANK', this)">
+                                <div class="selection-indicator"><i class="fas fa-check"></i></div>
+                                <i class="fas fa-university pay-icon"></i>
+                                <span class="pay-label">BANK TRANSFER</span>
+                                <span class="pay-sub">ONLINE PAYMENT</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <input type="hidden" name="payment_method" id="payment_method" value="{% if caterer.cash_instructions %}CASH{% elif caterer.gcash_number or caterer.gcash_qr_url %}GCASH{% elif caterer.maya_number or caterer.maya_qr_url %}MAYA{% elif caterer.bank_name %}BANK{% endif %}">
+                    </div>
+
+                    <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 2.5rem 0;">
+
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 1.5rem; overflow: hidden; margin-bottom: 1.5rem;">
+                        <div style="background: #0f172a; padding: 1.25rem 1.5rem;">
+                            <h3 style="font-weight: 800; font-size: 1.1rem; margin: 0; color: white;"><i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: var(--chk-primary);"></i> Order Review</h3>
+                        </div>
+                        <div style="padding: 1.5rem;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                                <div style="grid-column: 1 / -1; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0;">
+                                    <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem;">Service Details</div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <div style="font-weight: 800; color: #0f172a; font-size: 1.1rem;">{{ service.name }}</div>
+                                            <div style="font-size: 0.85rem; color: #64748b;" id="rev-duration">Duration: -</div>
+                                        </div>
+                                        <div style="font-weight: 800; color: var(--chk-primary); font-size: 1.1rem;" id="rev-price">-</div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.25rem;">Recipient</div>
+                                    <div id="rev-name" style="font-weight: 600; color: #0f172a;">-</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.25rem;">Schedule</div>
+                                    <div id="rev-datetime" style="font-weight: 600; color: #0f172a;">-</div>
+                                </div>
+                                <div style="grid-column: 1 / -1;">
+                                    <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.25rem;">Venue</div>
+                                    <div id="rev-location" style="font-weight: 600; color: #0f172a;">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% set doc_name = "Event Service Agreement" if service.requires_agreement else "Service Order" %}
+                    {% set active_terms = caterer.terms_and_conditions if service.requires_agreement else caterer.general_terms %}
+                    
+                    {% if active_terms %}
+                    <div style="background: #f8fafc; padding: 1.5rem; border-radius: 1rem; border: 1px solid #cbd5e1;">
+                        <h4 style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;">
+                            <i class="fas fa-file-signature" style="color: var(--chk-primary); margin-right: 0.5rem;"></i> {{ doc_name }} Terms
+                        </h4>
+                        <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; max-height: 150px; overflow-y: auto; font-size: 0.85rem; color: #475569; margin-bottom: 1rem;">
+                            {{ active_terms | replace('\n', '<br>') | safe }}
+                        </div>
+                        
+                        <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
+                            <input type="checkbox" id="termsAgreement" name="terms_agreement" required style="margin-top: 4px; width: 1.2rem; height: 1.2rem; accent-color: var(--chk-primary);">
+                            <span style="font-size: 0.9rem; color: #1e293b; font-weight: 600;">
+                                I have read and agree to the <strong>{{ doc_name }}</strong>.
+                            </span>
+                        </label>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div style="display: flex; justify-content: space-between;">
+                    <button type="button" class="btn-next" style="width: auto; background: var(--chk-border); color: var(--chk-text);" onclick="nextScreen(2)"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button type="button" class="btn-next" style="width: auto; background: #10b981; padding: 1rem 3rem;" onclick="processPayment()">Confirm Booking <i class="fas fa-check"></i></button>
+                </div>
+            </div>
+
+        </form>
+    </div>
+
+    <!-- Sidebar -->
+    <aside>
+        <div class="bill-sidebar">
+            <div class="bill-header">
+                <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 0.5rem;">Booking Summary</div>
+                <div style="font-size: 1.25rem; font-weight: 800;">{{ service.name }}</div>
+                <div style="font-size: 0.9rem; color: #cbd5e1; margin-top: 4px;">with {{ caterer.business_name }}</div>
+            </div>
+            <div class="bill-body">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px dashed var(--chk-border);">
+                    <span style="color: var(--chk-text-light); font-weight: 600;">Base Rate</span>
+                    <span style="font-weight: 800;">₱<span id="display_base_rate">{{ '{:,.2f}'.format(service.selling_price) }}</span></span>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; margin-bottom: 1.5rem;">
+                    <span style="font-weight: 800; font-size: 1.1rem;">Total Amount</span>
+                    <span style="font-weight: 900; font-size: 1.25rem; color: var(--chk-primary);">₱<span id="display_total">0.00</span></span>
+                </div>
+                
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1rem; border-radius: 8px;">
+                    <div style="font-size: 0.75rem; color: #166534; font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">Required Downpayment ({{ service.downpayment_percentage or 50 }}%)</div>
+                    <div style="font-size: 1.1rem; font-weight: 900; color: #15803d;">₱<span id="display_downpayment">0.00</span></div>
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>
+
+<script>
+    let currentScreen = 1;
+    
+    function calculateServiceTotal() {
+        const price = parseFloat(document.getElementById('service_price').value);
+        const unit = document.getElementById('service_unit').value;
+        const duration = parseInt(document.getElementById('duration').value) || 1;
+        const dpPercent = parseInt(document.getElementById('downpayment_percentage').value) || 50;
+        
+        let total = price;
+        if (unit === 'hourly') {
+            total = price * duration;
+        }
+        
+        const dp = total * (dpPercent / 100);
+        
+        document.getElementById('display_total').innerText = total.toLocaleString('en-PH', {minimumFractionDigits: 2});
+        document.getElementById('display_downpayment').innerText = dp.toLocaleString('en-PH', {minimumFractionDigits: 2});
+    }
+
+    function nextScreen(n) {
+        // Reset all errors
+        document.querySelectorAll('.field-error').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.form-control').forEach(el => el.style.borderColor = 'var(--chk-border)');
+        let isValid = true;
+        
+        // Strict Validation for Step 1
+        if (currentScreen === 1 && n === 2) {
+            const dateVal = document.getElementById('event_date').value;
+            const timeVal = document.getElementById('start_time').value;
+            const duration = document.getElementById('duration').value;
+            
+            if (!dateVal) {
+                document.getElementById('err-event_date').style.display = 'block';
+                document.getElementById('event_date').style.borderColor = '#ef4444';
+                isValid = false;
+            } else {
+                // Validate Date (Must be in the future)
+                const selectedDate = new Date(dateVal);
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                if (selectedDate <= today) {
+                    document.getElementById('err-event_date').innerText = 'Event date must be a future date.';
+                    document.getElementById('err-event_date').style.display = 'block';
+                    document.getElementById('event_date').style.borderColor = '#ef4444';
+                    isValid = false;
+                }
+            }
+            if (!timeVal) {
+                document.getElementById('err-start_time').style.display = 'block';
+                document.getElementById('start_time').style.borderColor = '#ef4444';
+                isValid = false;
+            }
+            if (!duration || parseInt(duration) < 1) {
+                document.getElementById('err-duration').style.display = 'block';
+                document.getElementById('duration').style.borderColor = '#ef4444';
+                isValid = false;
+            }
+            
+            if (!isValid) return;
+        }
+        
+        // Strict Validation for Step 2
+        if (currentScreen === 2 && n === 3) {
+            const fullName = document.getElementById('full_name').value.trim();
+            const contactNumber = document.getElementById('contact_number').value.trim();
+            const province = document.getElementById('hidden_province').value;
+            const municipality = document.getElementById('hidden_municipality').value;
+            const barangay = document.getElementById('hidden_barangay').value;
+            const street = document.getElementById('street_input').value.trim();
+            
+            if (!fullName) {
+                document.getElementById('err-full_name').style.display = 'block';
+                document.getElementById('full_name').style.borderColor = '#ef4444';
+                isValid = false;
+            }
+            if (!contactNumber) {
+                document.getElementById('err-contact_number').style.display = 'block';
+                document.getElementById('contact_number').style.borderColor = '#ef4444';
+                isValid = false;
+            }
+            if (!province) {
+                document.getElementById('err-prov_select').style.display = 'block';
+                document.getElementById('prov_select').style.borderColor = '#ef4444';
+                isValid = false;
+            }
+            if (!municipality) {
+                document.getElementById('err-city_select').style.display = 'block';
+                document.getElementById('city_select').style.borderColor = '#ef4444';
+                isValid = false;
+            }
+            if (!barangay) {
+                document.getElementById('err-brgy_select').style.display = 'block';
+                document.getElementById('brgy_select').style.borderColor = '#ef4444';
+                isValid = false;
+            }
+            if (!street) {
+                document.getElementById('err-street_input').style.display = 'block';
+                document.getElementById('street_input').style.borderColor = '#ef4444';
+                isValid = false;
+            }
+            
+            if (!isValid) return;
+            
+            updateReview();
+        }
+        
+        document.querySelectorAll('.checkout-screen').forEach(el => el.classList.remove('active'));
+        document.getElementById('screen-' + n).classList.add('active');
+        
+        document.querySelectorAll('.step-item').forEach((el, index) => {
+            el.classList.remove('active');
+            if (index + 1 < n) {
+                el.classList.add('completed');
+            } else {
+                el.classList.remove('completed');
+            }
+            if (index + 1 === n) {
+                el.classList.add('active');
+            }
+        });
+        
+        currentScreen = n;
+        window.scrollTo(0, 0);
+    }
+    
+    function selectPayment(method, element) {
+        document.querySelectorAll('.payment-opt').forEach(el => el.classList.remove('active'));
+        element.classList.add('active');
+        document.getElementById('payment_method').value = method;
+        
+        if (method !== 'CASH') {
+            openPaymentModal(method);
+        }
+    }
+    
+    function updateReview() {
+        document.getElementById('rev-name').innerText = document.querySelector('input[name="full_name"]').value || '-';
+        document.getElementById('rev-datetime').innerText = (document.getElementById('event_date').value || '-') + ' at ' + (document.getElementById('start_time').value || '-');
+        document.getElementById('rev-location').innerText = document.querySelector('input[name="address"]').value || '-';
+        
+        const duration = document.getElementById('duration').value;
+        const totalAmountText = document.getElementById('display_total').innerText;
+        document.getElementById('rev-duration').innerText = 'Duration: ' + duration + ' Hour(s)';
+        document.getElementById('rev-price').innerText = '₱' + totalAmountText;
+    }
+
+    // --- PSGC Address Functions ---
+    let psgcData = {
+        provinces: [],
+        cities: [],
+        barangays: []
+    };
+
+    async function loadProvinces() {
+        const provSelect = document.getElementById('prov_select');
+        if (!provSelect) return;
+        
+        provSelect.innerHTML = '<option value="">-- Select Province --</option>';
+        
+        const allowedProvinces = [
+            { code: "130000000", name: "NATIONAL CAPITAL REGION (NCR)" },
+            { code: "043400000", name: "Laguna" },
+            { code: "041000000", name: "Batangas" },
+            { code: "045600000", name: "Quezon" }
+        ];
+        
+        allowedProvinces.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.code;
+            opt.textContent = p.name;
+            provSelect.appendChild(opt);
+        });
+    }
+
+    async function handleProvinceChange() {
+        const provSelect = document.getElementById('prov_select');
+        const code = provSelect.value;
+        const name = provSelect.options[provSelect.selectedIndex]?.text || '';
+        document.getElementById('hidden_province').value = name;
+        
+        const citySelect = document.getElementById('city_select');
+        const brgySelect = document.getElementById('brgy_select');
+        
+        citySelect.innerHTML = '<option value="">-- Select Municipality --</option>';
+        brgySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
+        citySelect.disabled = true;
+        brgySelect.disabled = true;
+        syncAddress();
+
+        if (!code) return;
+
+        try {
+            citySelect.innerHTML = '<option value="">Loading...</option>';
+            let endpoint = `https://psgc.gitlab.io/api/provinces/${code}/cities-municipalities/`;
+            if (code === "130000000") endpoint = `https://psgc.gitlab.io/api/regions/${code}/cities-municipalities/`;
+            
+            const res = await fetch(endpoint);
+            psgcData.cities = await res.json();
+            
+            citySelect.innerHTML = '<option value="">-- Select Municipality --</option>';
+            psgcData.cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.code;
+                opt.textContent = c.name;
+                citySelect.appendChild(opt);
+            });
+            citySelect.disabled = false;
+        } catch (err) {
+            console.error("Error loading PSGC Cities", err);
+        }
+    }
+
+    async function handleCityChange() {
+        const cityCode = document.getElementById('city_select').value;
+        const brgySelect = document.getElementById('brgy_select');
+        
+        // Save name to hidden input
+        const selectedCityOpt = document.getElementById('city_select').options[document.getElementById('city_select').selectedIndex];
+        document.getElementById('hidden_municipality').value = selectedCityOpt.value ? selectedCityOpt.textContent : "";
+
+        // Reset lower levels
+        brgySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
+        brgySelect.disabled = true;
+        syncAddress();
+
+        if (!cityCode) return;
+
+        try {
+            brgySelect.innerHTML = '<option value="">Loading...</option>';
+            const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays/`);
+            psgcData.barangays = await res.json();
+            
+            brgySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
+            psgcData.barangays.sort((a, b) => a.name.localeCompare(b.name)).forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.code;
+                opt.textContent = b.name;
+                brgySelect.appendChild(opt);
+            });
+            brgySelect.disabled = false;
+        } catch (err) {
+            console.error("Error loading PSGC Barangays", err);
+        }
+    }
+
+    function syncAddress() {
+        const prov = document.getElementById('hidden_province').value;
+        const city = document.getElementById('hidden_municipality').value;
+        
+        const brgyOpt = document.getElementById('brgy_select').options[document.getElementById('brgy_select').selectedIndex];
+        const brgy = brgyOpt.value ? brgyOpt.textContent : "";
+        document.getElementById('hidden_barangay').value = brgy;
+
+        const street = document.getElementById('street_input').value;
+        
+        let full = [];
+        if (street) full.push(street);
+        if (brgy) full.push(brgy);
+        if (city) full.push(city);
+        if (prov) full.push(prov);
+        
+        document.getElementById('address').value = full.join(', ');
+    }
+
+    function processPayment() {
+        const method = document.getElementById('payment_method').value;
+        const agreed = document.getElementById('termsAgreement');
+        if (agreed && !agreed.checked) {
+            alert('Please agree to the terms and conditions.');
+            return;
+        }
+        
+        if (method !== 'CASH') {
+            const proof = document.getElementById('payment_proof').files[0];
+            if (!proof) {
+                alert('Please upload your payment receipt before confirming.');
+                openPaymentModal(method);
+                return;
+            }
+        }
+        
+        submitBooking();
+    }
+    
+    function openPaymentModal(method) {
+        document.getElementById('paymentModalOverlay').style.display = 'flex';
+        document.getElementById('modalContentGCash').style.display = 'none';
+        document.getElementById('modalContentMaya').style.display = 'none';
+        document.getElementById('modalContentBank').style.display = 'none';
+        
+        if (method === 'GCASH') document.getElementById('modalContentGCash').style.display = 'block';
+        if (method === 'MAYA') document.getElementById('modalContentMaya').style.display = 'block';
+        if (method === 'BANK') document.getElementById('modalContentBank').style.display = 'block';
+    }
+    
+    function closePaymentModal() {
+        document.getElementById('paymentModalOverlay').style.display = 'none';
+        const proof = document.getElementById('payment_proof').files[0];
+        if (!proof) {
+            document.getElementById('err-payment_proof').style.display = 'block';
+        } else {
+            document.getElementById('err-payment_proof').style.display = 'none';
+        }
+    }
+
+    async function submitBooking() {
+        const form = document.getElementById('service-checkout-form');
+        const formData = new FormData(form);
+        
+        // Prepare required fields for /alacarte/checkout/submit
+        formData.append('items', 's_' + formData.get('service_id'));
+        formData.append('quantity', '1');
+        formData.append('fulfillment', 'delivery');
+        formData.append('delivery_date', formData.get('event_date'));
+        formData.append('delivery_time', formData.get('start_time'));
+        
+        // Duration goes into custom requirements via the backend automatically if sent as event_duration (requires integer)
+        formData.append('event_duration', formData.get('duration'));
+        
+        // Total amount based on calculated UI
+        const price = parseFloat(document.getElementById('service_price').value);
+        const unit = document.getElementById('service_unit').value;
+        const duration = parseInt(document.getElementById('duration').value) || 1;
+        let totalAmount = unit === 'hourly' ? price * duration : price;
+        formData.append('total_amount', totalAmount);
+        
+        // Add terms agreement
+        formData.append('terms_agreement', 'on');
+        
+        const proofInput = document.getElementById('payment_proof');
+        if (proofInput && proofInput.files.length > 0) {
+            formData.append('payment_proof', proofInput.files[0]);
+        }
+
+        try {
+            const btn = document.querySelector('#screen-3 .btn-next:last-child');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            btn.disabled = true;
+
+            const res = await fetch('/bookings/alacarte/checkout/submit', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                window.location.href = "/customer/bookings";
+            } else {
+                alert(data.message || "Failed to submit booking. Please try again.");
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        } catch (err) {
+            console.error("Submission Error", err);
+            alert("An error occurred. Please try again.");
+            const btn = document.querySelector('#screen-3 .btn-next:last-child');
+            btn.innerHTML = 'Confirm Booking <i class="fas fa-check"></i>';
+            btn.disabled = false;
+        }
+    }
+
+    // Init
+    calculateServiceTotal();
+    loadProvinces();
+</script>
+{% endblock %}
+
+{% block modals %}
+                <!-- Online Payment Instructions & Receipt Upload Modal -->
+                <div id="paymentModalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.7); z-index: 99999; align-items: center; justify-content: center; padding: 1rem; box-sizing: border-box; backdrop-filter: blur(4px);">
+                    <div style="background: white; width: 100%; max-width: 500px; border-radius: 1.5rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); max-height: 90vh; display: flex; flex-direction: column; position: relative;">
+                        <div style="padding: 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="font-size: 1.25rem; font-weight: 800; color: #1e293b; margin: 0;">Complete Payment</h3>
+                            <button type="button" onclick="document.getElementById('paymentModalOverlay').style.display='none'" style="background: none; border: none; font-size: 1.5rem; color: #64748b; cursor: pointer; transition: color 0.2s;">&times;</button>
+                        </div>
+                        <div id="online-payment-instructions" style="padding: 1.5rem; overflow-y: auto; flex: 1;">
+                            <div id="modalContentGCash" style="display: none; text-align: center;">
+                                {% if caterer.gcash_qr_url %}
+                                <img src="{{ caterer.gcash_qr_url }}" alt="GCash QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bfdbfe; margin-bottom: 1rem; display: inline-block;">
+                                {% endif %}
+                                <div style="background: #eff6ff; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left; border: 1px solid #bfdbfe;">
+                                    <h4 style="font-size: 0.9rem; font-weight: 800; color: #1e3a8a; margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> GCash Payment Steps</h4>
+                                    <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                                        <div style="background: #bfdbfe; color: #1e3a8a; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; flex-shrink: 0;">1</div>
+                                        <div style="font-size: 0.85rem; color: #1e293b;">Open your GCash App.</div>
+                                    </div>
+                                    <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                                        <div style="background: #bfdbfe; color: #1e3a8a; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; flex-shrink: 0;">2</div>
+                                        <div style="font-size: 0.85rem; color: #1e293b;"><strong>Scan the QR Code</strong> above OR "Send Money" to <strong style="color: #1e3a8a; font-size: 1rem;">{{ caterer.gcash_number }}</strong>.</div>
+                                    </div>
+                                    <div style="display: flex; gap: 12px;">
+                                        <div style="background: #bfdbfe; color: #1e3a8a; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; flex-shrink: 0;">3</div>
+                                        <div style="font-size: 0.85rem; color: #1e293b;">Take a screenshot of the <strong>"Send Money Successful"</strong> screen.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="modalContentMaya" style="display: none; text-align: center;">
+                                {% if caterer.maya_qr_url %}
+                                <img src="{{ caterer.maya_qr_url }}" alt="Maya QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bbf7d0; margin-bottom: 1rem; display: inline-block;">
+                                {% endif %}
+                                <div style="background: #f0fdf4; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left; border: 1px solid #bbf7d0;">
+                                    <h4 style="font-size: 0.9rem; font-weight: 800; color: #14532d; margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> Maya Payment Steps</h4>
+                                    <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                                        <div style="background: #dcfce7; color: #14532d; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; flex-shrink: 0;">1</div>
+                                        <div style="font-size: 0.85rem; color: #1e293b;">Open your Maya App.</div>
+                                    </div>
+                                    <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                                        <div style="background: #dcfce7; color: #14532d; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; flex-shrink: 0;">2</div>
+                                        <div style="font-size: 0.85rem; color: #1e293b;"><strong>Scan the QR Code</strong> above OR "Send Money" to <strong style="color: #14532d; font-size: 1rem;">{{ caterer.maya_number }}</strong>.</div>
+                                    </div>
+                                    <div style="display: flex; gap: 12px;">
+                                        <div style="background: #dcfce7; color: #14532d; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; flex-shrink: 0;">3</div>
+                                        <div style="font-size: 0.85rem; color: #1e293b;">Take a screenshot of the <strong>"Transfer Successful"</strong> screen.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="modalContentBank" style="display: none;">
+                                <div style="background: #fefce8; padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem; border: 1px solid #fef08a;">
+                                    <div style="margin-bottom: 1rem;">
+                                        <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Bank Name</div>
+                                        <div style="font-size: 1.1rem; font-weight: 700; color: #713f12;">{{ caterer.bank_name }}</div>
+                                    </div>
+                                    <div style="margin-bottom: 1rem;">
+                                        <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Account Name</div>
+                                        <div style="font-size: 1.1rem; font-weight: 700; color: #713f12;">{{ caterer.bank_account_name }}</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Account Number</div>
+                                        <div style="font-size: 1.25rem; font-weight: 800; color: #713f12; letter-spacing: 1px;">{{ caterer.bank_account_number }}</div>
+                                    </div>
+                                </div>
+                                
+                                <div style="background: #fefce8; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid #fef08a; text-align: left;">
+                                    <h4 style="font-size: 0.9rem; font-weight: 800; color: #713f12; margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> Bank Transfer Steps</h4>
+                                    <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                                        <div style="background: #fef08a; color: #854d0e; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; flex-shrink: 0;">1</div>
+                                        <div style="font-size: 0.85rem; color: #1e293b;">Open your preferred Banking App (e.g. BPI, BDO, UnionBank).</div>
+                                    </div>
+                                    <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                                        <div style="background: #fef08a; color: #854d0e; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; flex-shrink: 0;">2</div>
+                                        <div style="font-size: 0.85rem; color: #1e293b;">Select "Transfer via InstaPay / PESONet" and input the <strong>exact Account Details</strong> above.</div>
+                                    </div>
+                                    <div style="display: flex; gap: 12px;">
+                                        <div style="background: #fef08a; color: #854d0e; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; flex-shrink: 0;">3</div>
+                                        <div style="font-size: 0.85rem; color: #1e293b;">Screenshot the <strong>Transaction Successful</strong> page with the reference number visible.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="text-align: left; background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0;">
+                                <h4 style="font-size: 1rem; color: #0f172a; margin-bottom: 1rem; font-weight: 800;"><i class="fas fa-cloud-upload-alt" style="color: var(--chk-primary);"></i> Submit Proof of Payment</h4>
+                                
+                                <div style="margin-bottom: 1.25rem;">
+                                    <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 6px; color: #0f172a;">Receipt Image</label>
+                                    <input type="file" id="payment_proof" name="payment_proof" accept="image/png, image/jpeg, image/jpg" style="width: 100%; padding: 0.75rem; border: 2px dashed #cbd5e1; border-radius: 8px; background: #f8fafc; cursor: pointer;">
+                                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">Max 5MB. PNG or JPG only.</div>
+                                    <span class="field-error" id="err-payment_proof" style="display: none; color: #ef4444; font-size: 0.8rem; margin-top: 4px;">Please upload your payment receipt to proceed.</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="padding: 1.25rem 1.5rem; border-top: 1px solid #e2e8f0; text-align: right; background: #f8fafc; border-bottom-left-radius: 1.5rem; border-bottom-right-radius: 1.5rem;">
+                            <button type="button" onclick="closePaymentModal()" style="background: var(--chk-primary); color: white; border: none; padding: 0.75rem 2rem; border-radius: 99px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: all 0.2s;">Done</button>
+                        </div>
+                    </div>
+                </div>
+{% endblock %}
+

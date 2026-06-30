@@ -43,6 +43,7 @@ class PaymentVerificationService:
             for path in TESSERACT_PATHS:
                 if os.path.exists(path):
                     pytesseract.pytesseract.tesseract_cmd = path
+                    os.environ["TESSDATA_PREFIX"] = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "tessdata"))
                     break
 
     def get_image_hash(self, file_path: str) -> str:
@@ -135,6 +136,13 @@ class PaymentVerificationService:
         # 2. OCR Extraction
         ocr_data = self.extract_payment_data(file_path)
         results["extracted_data"] = ocr_data
+        
+        # Check if the OCR engine itself failed (e.g. Tesseract not installed)
+        if "error" in ocr_data:
+            results["flags"].append(f"System OCR Engine Error: {ocr_data['error']}. The AI scanner is currently unavailable on this server.")
+            results["confidence"] = 0
+            return results
+
         raw_text = ocr_data.get("raw_text", "").upper()
 
         # [ZERO-TRUST] 2.1 Keyword Authenticity Check
@@ -164,7 +172,7 @@ class PaymentVerificationService:
                 ).first()
                 if duplicate_ref:
                     results["is_duplicate_ref"] = True
-                    results["flags"].append(f"Reference No. {ref} has already been used in Booking #{duplicate_ref.id}")
+                    results["flags"].append(f"Duplicate reference: Ref No. {ref} has already been used.")
 
             # 4. Amount Matching
             if ocr_data.get("amount"):
@@ -176,13 +184,35 @@ class PaymentVerificationService:
                 if diff < threshold:
                     results["amount_match"] = True
                 else:
-                    results["flags"].append(f"Amount mismatch: Found ₱{ocr_data['amount']:,}, Expected ₱{expected:,}")
+                    results["flags"].append(f"Amount mismatch: Found ₱{ocr_data['amount']:,}, but required is ₱{expected:,}")
             else:
-                results["flags"].append("Invalid Proof: Could not detect payment amount on receipt.")
+                results["flags"].append("Invalid Proof: Could not detect any payment amount on the receipt.")
 
             # [ZERO-TRUST] 4.1 Missing Core Data penalty
             if not ocr_data.get("reference_no"):
-                results["flags"].append("Invalid Proof: Reference Number missing or unreadable.")
+                results["flags"].append("Invalid Proof: Reference Number is missing or unreadable.")
+
+            # [ZERO-TRUST] 4.2 Caterer Identity Match
+            has_caterer_match = False
+            if booking.caterer_id:
+                caterer = db.query(models.CatererProfile).get(booking.caterer_id)
+                if caterer:
+                    search_terms = []
+                    if caterer.business_name: search_terms.append(caterer.business_name.upper())
+                    if caterer.gcash_number: search_terms.append(caterer.gcash_number)
+                    if caterer.maya_number: search_terms.append(caterer.maya_number)
+                    if caterer.bank_account_name: search_terms.append(caterer.bank_account_name.upper())
+                    
+                    # Remove common words or short terms to prevent false positives
+                    search_terms = [t for t in search_terms if t and len(t) > 3]
+                    
+                    for term in search_terms:
+                        if term in raw_text:
+                            has_caterer_match = True
+                            break
+                            
+            if booking.caterer_id and not has_caterer_match:
+                results["flags"].append("Recipient mismatch: Caterer's name or number was not found on the receipt.")
 
             # 5. Confidence Score (Stricter weighting)
             score = 0
@@ -190,17 +220,20 @@ class PaymentVerificationService:
             if ocr_data.get("reference_no"): score += 30
             if ocr_data.get("date"): score += 10
             if has_keywords: score += 40
+            if has_caterer_match: score += 20
             
             # Heavy Penalties
             if results["is_duplicate_ref"]: score -= 60
             if not results["amount_match"] and ocr_data.get("amount"): score -= 30
             if not has_keywords: score -= 50
+            if booking.caterer_id and not has_caterer_match: score -= 30
             if not ocr_data.get("reference_no") and not ocr_data.get("amount"): score = 0 # Instant fail
             
             results["confidence"] = max(0, min(100, score))
 
             if results["confidence"] < 40:
-                results["flags"].append("High Risk: AI Confidence is very low. Possible fraudulent submission.")
+                if not results["flags"]:
+                    results["flags"].append("High Risk: AI Confidence is very low. Please upload a clearer image.")
 
         return results
 

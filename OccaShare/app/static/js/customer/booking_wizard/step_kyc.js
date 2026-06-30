@@ -1970,7 +1970,11 @@ const initKyc = () => {
         document.getElementById('node-4').classList.remove('active');
 
         setTimeout(() => {
-            window.location.href = `/bookings/step/quotation/${bookingId}`;
+            if (window.transactionType === 'fast_track') {
+                window.location.href = `/bookings/step/payment/${bookingId}`;
+            } else {
+                window.location.href = `/bookings/step/quotation/${bookingId}`;
+            }
         }, 2000);
     }
 

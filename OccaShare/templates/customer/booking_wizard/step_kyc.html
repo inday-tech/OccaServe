@@ -1298,8 +1298,13 @@
     </div>
 
     <div class="wizard-header-content">
+        {% if booking.document_type == 'rental_agreement' %}
+        <h1 class="wizard-title">Anti-Theft Verification</h1>
+        <p class="wizard-subtitle">Verify your identity to rent equipment securely</p>
+        {% else %}
         <h1 class="wizard-title">SECTION B: User Verification</h1>
         <p class="wizard-subtitle">Automatically verify your identity for a secure booking experience</p>
+        {% endif %}
 
         {% if request.query_params.get('auth_needed') %}
         <div class="alert alert-warning">
@@ -1938,9 +1943,12 @@
         </div>
     </div>
 
-    <div class="wizard-actions" style="justify-content: center; border-top: none;">
+    <div class="wizard-actions" style="border-top: none;">
+        <a href="/bookings/step/details/{{ booking_id }}" class="btn-wizard-back">
+            <i class="fas fa-arrow-left"></i> Back
+        </a>
         <button type="button" id="btn-next" class="btn-wizard-next" style="display: none; max-width: 300px;"
-            onclick="window.location.href='/bookings/step/quotation/{{ booking_id }}'">
+            onclick="window.location.href='{% if booking.transaction_type == 'fast_track' %}/bookings/step/payment/{{ booking_id }}{% else %}/bookings/step/quotation/{{ booking_id }}{% endif %}'">
             Next Step <i class="fas fa-chevron-right"></i>
         </button>
     </div>
@@ -1948,7 +1956,10 @@
 {% endblock %}
 
 {% block step_js %}
-<script>window.bookingId = "{{ booking_id }}";</script>
+<script>
+    window.bookingId = "{{ booking_id }}";
+    window.transactionType = "{{ booking.transaction_type }}";
+</script>
 <script type="module"
     src="{{ url_for('static', path='/js/customer/booking_wizard/step_kyc.js') }}?v={{ range(10000000, 99999999) | random }}"></script>
 {% endblock %}

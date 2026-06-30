@@ -211,8 +211,8 @@
 {% set urgent_events = [] %}
 
 {% for b in bookings %}
-    {% set is_early_stage = b.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment'] %}
-    {% set caterer_action_needed = b.status in ['pending', 'awaiting_caterer'] or (b.payment_status == 'proof_submitted' and is_early_stage) %}
+    {% set is_early_stage = b.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'] %}
+    {% set caterer_action_needed = b.status in ['pending', 'awaiting_caterer', 'pending_review'] or (b.payment_status == 'proof_submitted' and is_early_stage) %}
     {% if b.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
         {% set caterer_action_needed = False %}
     {% endif %}
@@ -220,11 +220,11 @@
     {% if is_urgent %}
         {% set _ = urgent_events.append(b) %}
     {% else %}
-        {% set is_early_stage = b.status in ['draft', 'pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment', 'pending_payment'] %}
+        {% set is_early_stage = b.status in ['draft', 'pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'] %}
         {% if b.payment_status == 'balance_proof_submitted' or (b.payment_status == 'proof_submitted' and is_early_stage) %}
             {% set _ = payments_to_verify.append(b) %}
         {% endif %}
-        {% if b.status in ['awaiting_caterer'] %}
+        {% if b.status in ['awaiting_caterer', 'pending_review'] %}
             {% set _ = contracts_to_sign.append(b) %}
         {% endif %}
     {% endif %}
@@ -380,8 +380,8 @@
             </thead>
             <tbody>
                 {% for booking in bookings %}
-                {% set is_early_stage = booking.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment'] %}
-                {% set caterer_action_needed = booking.status in ['pending', 'awaiting_caterer'] or (booking.payment_status == 'proof_submitted' and is_early_stage) %}
+                {% set is_early_stage = booking.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'] %}
+                {% set caterer_action_needed = booking.status in ['pending', 'awaiting_caterer', 'pending_review'] or (booking.payment_status == 'proof_submitted' and is_early_stage) %}
                 {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
                     {% set caterer_action_needed = False %}
                 {% endif %}
@@ -397,7 +397,7 @@
                             {% if row_is_urgent %}
                                 <div class="urgent-pulse-indicator" title="Event Happening Soon!"></div>
                             {% endif %}
-                            BK-{{ "%03d" | format(booking.id) }}
+                            {% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ "%03d" | format(booking.id) }}
                         </div>
                     </td>
 
@@ -445,8 +445,8 @@
                     <!-- DATE -->
                     <td class="booking-cell-first" style="padding: 1.5rem;">
                         <div class="flex-column">
-                            {% set is_early_stage = booking.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment'] %}
-                            {% set caterer_action_needed_cell = booking.status in ['pending', 'awaiting_caterer'] or (booking.payment_status == 'proof_submitted' and is_early_stage) %}
+                            {% set is_early_stage = booking.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'] %}
+                            {% set caterer_action_needed_cell = booking.status in ['pending', 'awaiting_caterer', 'pending_review'] or (booking.payment_status == 'proof_submitted' and is_early_stage) %}
                             {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
                                 {% set caterer_action_needed_cell = False %}
                             {% endif %}
@@ -537,7 +537,7 @@
                                 data-id="{{ booking.id }}" data-event-name="{{ booking.event_name or 'N/A' }}"
                                 data-event-date="{{ booking.event_date.isoformat() }}"
                                 data-event-type="{{ booking.event_type or 'N/A' }}"
-                                data-venue="{{ booking.venue_address or 'TBD' }}"
+                                data-venue="{{ booking.venue_address or booking.event_address or booking.event_location or 'TBD' }}"
                                 data-requests="{{ booking.special_requests or 'None' }}" 
                                 data-payment-ref="{{ booking.payment_reference or '' }}"
                                 data-caterer-notes="{{ booking.caterer_notes or '' }}"
@@ -557,6 +557,7 @@
                                 data-is-package="{{ 'true' if booking.package_id else 'false' }}"
                                 data-is-verified="{{ 'true' if (booking.user and booking.user.is_verified) else 'false' }}"
                                 data-target-user-id="{{ booking.user_id or '' }}"
+                                data-is-food-order="{{ 'true' if booking.is_food_order else 'false' }}"
                                 data-has-contract="{{ 'true' if booking.quotation else 'false' }}">
                                 <i class="far fa-eye" style="color: #64748b;"></i> View Details
                             </button>
@@ -857,11 +858,14 @@
 
         <div class="occ-modal-body" style="padding: 0; background: #fafbfc;">
             <!-- Tabs Header -->
-            <div class="modal-tabs-pro" style="display: flex; gap: 0; border-bottom: 1px solid #e2e8f0; background: white;">
-                <button class="mtab-btn-pro active" onclick="switchBookingTab('overview', this)" style="padding: 1rem 1.5rem; background: transparent; border: none; border-bottom: 2px solid var(--primary-color); color: var(--primary-color); font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-info-circle" style="margin-right: 6px;"></i>Overview</button>
-                <button class="mtab-btn-pro" onclick="switchBookingTab('chat', this)" style="padding: 1rem 1.5rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-comments" style="margin-right: 6px;"></i>Chat</button>
-                <button class="mtab-btn-pro" onclick="switchBookingTab('operations', this)" style="padding: 1rem 1.5rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-tasks" style="margin-right: 6px;"></i>Ops & Notes</button>
-                <button class="mtab-btn-pro" onclick="switchBookingTab('expenses', this)" style="padding: 1rem 1.5rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-receipt" style="margin-right: 6px;"></i>Expenses</button>
+            <div class="modal-tabs-pro" style="display: flex; gap: 0; border-bottom: 1px solid #e2e8f0; background: white; overflow-x: auto; white-space: nowrap; padding: 0 1rem;">
+                <button class="mtab-btn-pro active" onclick="switchBookingTab('overview', this)" style="padding: 1rem 1.2rem; background: transparent; border: none; border-bottom: 2px solid var(--primary-color); color: var(--primary-color); font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-info-circle" style="margin-right: 6px;"></i>Event Overview</button>
+                <button class="mtab-btn-pro" onclick="switchBookingTab('food', this)" style="padding: 1rem 1.2rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-utensils" style="margin-right: 6px;"></i>Food Tasks</button>
+                <button class="mtab-btn-pro" onclick="switchBookingTab('service', this)" style="padding: 1rem 1.2rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-user-tie" style="margin-right: 6px;"></i>Services</button>
+                <button class="mtab-btn-pro" onclick="switchBookingTab('equipment', this)" style="padding: 1rem 1.2rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-chair" style="margin-right: 6px;"></i>Equipment</button>
+                <button class="mtab-btn-pro" onclick="switchBookingTab('financials', this)" style="padding: 1rem 1.2rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-file-invoice-dollar" style="margin-right: 6px;"></i>Financials</button>
+                <button class="mtab-btn-pro" onclick="switchBookingTab('docs', this)" style="padding: 1rem 1.2rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-file-signature" style="margin-right: 6px;"></i>Contracts & Docs</button>
+                <button class="mtab-btn-pro" onclick="switchBookingTab('chat', this)" style="padding: 1rem 1.2rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-comments" style="margin-right: 6px;"></i>Chat</button>
             </div>
 
             <!-- Overview Tab -->
@@ -1072,8 +1076,8 @@
                 </div>
             </div>
 
-            <!-- Operations Tab -->
-            <div id="btab-operations" class="mtab-pane-pro" style="padding: 1.5rem 2rem;">
+            <!-- Food Tasks Tab -->
+            <div id="btab-food" class="mtab-pane-pro" style="padding: 1.5rem 2rem;">
                 <!-- Operational Checklist & Memo -->
                 <div id="modalChecklistSection" style="background: white; border-radius: var(--border-radius, 12px); border: 1px solid #e2e8f0; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                     <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #f1f5f9;">
@@ -1103,8 +1107,41 @@
                 </div>
             </div>
 
-            <!-- Event Expenses Tab -->
-            <div id="btab-expenses" class="mtab-pane-pro" style="padding: 1.5rem 2rem;">
+            <!-- Services Tab -->
+            <div id="btab-service" class="mtab-pane-pro" style="padding: 1.5rem 2rem;">
+                <div style="background: white; border-radius: var(--border-radius, 12px); border: 1px solid #e2e8f0; padding: 2rem; text-align: center; color: #64748b; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <i class="fas fa-user-tie" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.4; color: var(--primary-color);"></i>
+                    <h4 style="font-size: 1.1rem; color: #1e293b; font-weight: 700; margin-bottom: 0.5rem;">Service & Staff Assignments</h4>
+                    <p style="font-size: 0.9rem; margin-bottom: 1.5rem;">Assign staff and manage specific service requests for this event.</p>
+                    <button class="btn-primary-pro"><span class="btn-text">Assign Staff</span></button>
+                </div>
+            </div>
+
+            <!-- Equipment Tab -->
+            <div id="btab-equipment" class="mtab-pane-pro" style="padding: 1.5rem 2rem;">
+                <div style="background: white; border-radius: var(--border-radius, 12px); border: 1px solid #e2e8f0; padding: 2rem; text-align: center; color: #64748b; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <i class="fas fa-chair" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.4; color: var(--primary-color);"></i>
+                    <h4 style="font-size: 1.1rem; color: #1e293b; font-weight: 700; margin-bottom: 0.5rem;">Equipment Management</h4>
+                    <p style="font-size: 0.9rem; margin-bottom: 1.5rem;">Track rental releases, perform return inspections, and process damages.</p>
+                    <button class="btn-outline input-sm" style="border: 1px solid #cbd5e1; font-weight: 700; color: #475569; margin: 0 auto;">View Inspection Records</button>
+                </div>
+            </div>
+
+            <!-- Contracts & Docs Tab -->
+            <div id="btab-docs" class="mtab-pane-pro" style="padding: 1.5rem 2rem;">
+                <div style="background: white; border-radius: var(--border-radius, 12px); border: 1px solid #e2e8f0; padding: 2rem; text-align: center; color: #64748b; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <i class="fas fa-file-signature" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.4; color: var(--primary-color);"></i>
+                    <h4 style="font-size: 1.1rem; color: #1e293b; font-weight: 700; margin-bottom: 0.5rem;">Unified Agreements & KYC</h4>
+                    <p style="font-size: 0.9rem; margin-bottom: 1.5rem;">Manage the Master Service Agreement and view customer ID verifications.</p>
+                    <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                        <button class="btn-primary-pro"><span class="btn-text">View Contract</span></button>
+                        <button class="btn-outline input-sm" style="border: 1px solid #cbd5e1; font-weight: 700; color: #475569;">View Customer ID</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financials & Payments Tab -->
+            <div id="btab-financials" class="mtab-pane-pro" style="padding: 1.5rem 2rem;">
                 <form id="expenseTrackerForm" onsubmit="submitExpenses(event)">
                     <input type="hidden" id="expenseBookingId">
                     <input type="hidden" id="bookingTotalAmount" value="0">
@@ -1452,6 +1489,76 @@
             </button>
         </div>
     </div>
+    </div>
+</div>
+
+<!-- Rental Release Modal -->
+<div id="rentalReleaseModal" class="occ-modal-overlay" style="z-index: 9999;">
+    <div class="occ-modal-box sz-sm occ-content-zoom-in">
+        <div class="occ-modal-header glass-header">
+            <div>
+                <h2 class="occ-modal-title"><i class="fas fa-camera" style="color:var(--primary-color);"></i> Release Equipment</h2>
+                <div class="occ-modal-subtitle">Upload proof of condition before releasing to the customer.</div>
+            </div>
+            <button type="button" onclick="closeRentalReleaseModal()" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="occ-modal-body">
+            <form id="rentalReleaseForm" onsubmit="submitRentalRelease(event)">
+                <input type="hidden" id="releaseBookingId">
+                <div class="occ-form-group">
+                    <label>Condition Photo (Mandatory)</label>
+                    <input type="file" id="releasePhoto" class="occ-input" accept="image/*" required>
+                    <small style="color: #64748b;">This protects you from disputes by documenting the equipment's original state.</small>
+                </div>
+            </form>
+        </div>
+        <div class="occ-modal-footer">
+            <button type="button" onclick="closeRentalReleaseModal()" class="btn-secondary-pro">Cancel</button>
+            <button type="submit" form="rentalReleaseForm" id="releaseSubmitBtn" class="btn-primary-pro bg-primary" style="background:var(--primary-color) !important;">
+                Release Equipment
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Rental Inspection Modal -->
+<div id="rentalInspectionModal" class="occ-modal-overlay" style="z-index: 9999;">
+    <div class="occ-modal-box sz-sm occ-content-zoom-in">
+        <div class="occ-modal-header glass-header">
+            <div>
+                <h2 class="occ-modal-title"><i class="fas fa-clipboard-check" style="color:#10b981;"></i> Inspect & Process Return</h2>
+                <div class="occ-modal-subtitle">Assess returned equipment and manage security deposit deductions.</div>
+            </div>
+            <button type="button" onclick="closeRentalInspectionModal()" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="occ-modal-body">
+            <form id="rentalInspectionForm" onsubmit="submitRentalInspection(event)">
+                <input type="hidden" id="inspectBookingId">
+                <div class="occ-form-group">
+                    <label>Missing Items Count</label>
+                    <input type="number" id="missingItems" class="occ-input" value="0" min="0">
+                </div>
+                <div class="occ-form-group">
+                    <label>Damage Deduction Amount (₱)</label>
+                    <input type="number" id="deductionAmount" class="occ-input" value="0" min="0" step="0.01" onchange="toggleDamagePhotoRequirement()">
+                    <small style="color: #64748b;">If deducting from the deposit, you MUST upload proof.</small>
+                </div>
+                <div class="occ-form-group" id="damagePhotoGroup" style="display: none;">
+                    <label>Damage Proof Photo <span style="color:red;">*</span></label>
+                    <input type="file" id="damagePhoto" class="occ-input" accept="image/*">
+                </div>
+            </form>
+        </div>
+        <div class="occ-modal-footer">
+            <button type="button" onclick="closeRentalInspectionModal()" class="btn-secondary-pro">Cancel</button>
+            <button type="submit" form="rentalInspectionForm" id="inspectSubmitBtn" class="btn-primary-pro" style="background:#10b981 !important;">
+                Complete Return
+            </button>
+        </div>
     </div>
 </div>
 

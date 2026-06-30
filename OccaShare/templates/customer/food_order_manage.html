@@ -1,0 +1,662 @@
+{% extends "customer/layout.html" %}
+
+{% block title %}Manage Food Order #{{ booking.id }} - OccaServe Elite{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_manage.css') }}?v=11.1">
+<style>
+    :root {
+        --up-slate-900: #0f172a;
+        --up-orange: #FF7B54;
+        --up-emerald: #10b981;
+        --up-amber: #f59e0b;
+        --dm-slate-50: #f8fafc;
+        --dm-slate-100: #f1f5f9;
+        --dm-slate-400: #94a3b8;
+    }
+    
+    body, .btn-action-elite {
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    body, .customer-page-content { background-color: #f1f5f9 !important; }
+
+    /* ── PAGE HEADER ── */
+    .dash-header { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-end; }
+    .dash-header h1 {
+        font-size: 1.6rem; font-weight: 800;
+        color: var(--up-slate-900); letter-spacing: -0.03em; margin: 0; display: flex; align-items: center; gap: 0.5rem;
+    }
+    .dash-header p {
+        font-size: 0.88rem; color: var(--dm-slate-400);
+        font-weight: 500; margin: 4px 0 0;
+    }
+
+    /* ── REFINED STEPPER ── */
+    .stepper-panel {
+        background: white; border-radius: 1.25rem; border: 1px solid var(--dm-slate-100);
+        padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
+    }
+    .steps-row { display: flex; justify-content: space-between; position: relative; padding: 0 2rem; }
+    .steps-row::before {
+        content: ''; position: absolute; top: 22px; left: 60px; right: 60px;
+        height: 2px; background: var(--dm-slate-100); z-index: 0;
+    }
+    .step { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100px; }
+    .step-dot {
+        width: 44px; height: 44px; border-radius: 12px;
+        background: #fff; border: 2px solid var(--dm-slate-100);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; color: var(--dm-slate-300); transition: all 0.3s;
+    }
+    .step.done .step-dot { background: var(--up-emerald); border-color: var(--up-emerald); color: #fff; }
+    .step.active .step-dot { border-color: var(--up-orange); color: var(--up-orange); box-shadow: 0 0 0 4px rgba(255,123,84,0.1); }
+    .step-label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: var(--dm-slate-400); text-align: center; }
+    .step.done .step-label, .step.active .step-label { color: var(--up-slate-900); }
+
+    /* ── INTELLIGENCE PANELS ── */
+    .panel { background: #ffffff; border-radius: 1.25rem; border: 1px solid rgba(0,0,0,0.05); overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01); margin-bottom: 1.5rem; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .panel-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--dm-slate-50); display: flex; justify-content: space-between; align-items: center; }
+    .panel-header h3 { font-size: 0.95rem; font-weight: 850; color: var(--up-slate-900); margin: 0; text-transform: uppercase; letter-spacing: 0.05em; }
+    .panel-body { padding: 1.5rem; }
+
+    /* ── DETAIL ROWS ── */
+    .detail-item { display: flex; justify-content: space-between; padding: 0.85rem 0; border-bottom: 1px solid #f8fafc; align-items: center; }
+    .detail-item:last-child { border-bottom: none; }
+    .detail-label { font-size: 0.8rem; font-weight: 700; color: var(--dm-slate-400); text-transform: uppercase; letter-spacing: 0.04em; }
+    .detail-value { font-size: 0.95rem; font-weight: 750; color: var(--up-slate-900); text-align: right; }
+    
+    @media (max-width: 768px) {
+        .detail-item { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+        .detail-value { text-align: left; }
+    }
+
+    /* ── FINANCIAL TERMINAL ── */
+    .financial-card { background: var(--up-slate-900); color: white; border-radius: 1.5rem; padding: 1.75rem; margin-bottom: 1.25rem; position: relative; overflow: hidden; }
+    .financial-card::after { content: ''; position: absolute; top: -50%; right: -20%; width: 200px; height: 200px; background: rgba(255,255,255,0.03); border-radius: 50%; }
+    .fin-label { font-size: 0.7rem; font-weight: 800; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.25rem; display: block; }
+    .fin-value { font-size: 1.75rem; font-weight: 900; letter-spacing: -0.02em; }
+    .fin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); }
+
+    /* ── ACTION BUTTONS ── */
+    .btn-action-elite { width: 100%; padding: 1rem; border-radius: 50px; font-weight: 850; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.85rem; border: none; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center; gap: 0.75rem; text-decoration: none; }
+    .btn-primary-orange { background: var(--up-orange); color: white; box-shadow: 0 4px 14px rgba(255, 123, 84, 0.3); }
+    .btn-primary-orange:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 123, 84, 0.4); }
+    .btn-outline-slate { background: transparent; border: 2px solid var(--dm-slate-100); color: var(--up-slate-900); }
+    .btn-outline-slate:hover { background: var(--dm-slate-50); border-color: var(--dm-slate-400); transform: translateY(-2px); }
+
+    /* ── UPLOAD AREA ── */
+    .upload-area { border: 2px dashed #cbd5e1; border-radius: 16px; padding: 2rem; text-align: center; cursor: pointer; background: #f8fafc; transition: all 0.2s; }
+    .upload-area:hover { border-color: var(--up-orange); background: #fffaf9; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem;">
+    <a href="/customer/orders" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 6px 14px; background: white; border-radius: 50px; border: 1px solid var(--dm-slate-200); color: var(--up-slate-900); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s;"><i class="fas fa-arrow-left"></i> Back to Orders</a>
+</div>
+
+<div class="dash-header">
+    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        <h1><i class="fas fa-shopping-bag" style="color: var(--up-orange);"></i> Food Order #{{ booking.id }}</h1>
+        <p>Placed with <span style="background: var(--dm-slate-100); padding: 2px 8px; border-radius: 6px; color: var(--up-slate-900); font-weight: 800;">{{ booking.caterer.business_name if booking.caterer else 'Unknown Caterer' }}</span></p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        {% set status_cfg = {
+            'draft': ('Draft', '#f1f5f9', '#475569'),
+            'pending': ('Submitted', '#fef3c7', '#b45309'),
+            'pending_payment': ('Awaiting Payment', '#fffbeb', '#b45309'),
+            'awaiting_payment': ('Verifying', '#fffbeb', '#b45309'),
+            'confirmed': ('Confirmed', '#ecfdf5', '#10b981'),
+            'preparing': ('Preparing', '#eff6ff', '#3b82f6'),
+            'out_for_delivery': ('On The Way', '#fce7f3', '#be185d'),
+            'ready_for_pickup': ('Ready for Pickup', '#fce7f3', '#be185d'),
+            'delivered': ('Delivered', '#d1fae5', '#047857'),
+            'arrived': ('Delivered', '#d1fae5', '#047857'),
+            'completed': ('Completed', '#f8fafc', '#64748b'),
+            'cancelled': ('Cancelled', '#fef2f2', '#dc2626')
+        }.get(booking.status, (booking.status|capitalize, '#f1f5f9', '#475569')) %}
+        <span style="background: {{ status_cfg[1] }}; color: {{ status_cfg[2] }}; padding: 8px 20px; border-radius: 30px; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
+            {{ status_cfg[0] }}
+        </span>
+    </div>
+</div>
+
+<div class="stepper-panel">
+    <div class="steps-row" style="padding: 0 0.25rem;">
+        <div class="step {{ 'done' if current_step_idx > 1 else ('active' if current_step_idx == 1 else '') }}">
+            <div class="step-dot"><i class="fas fa-receipt"></i></div>
+            <span class="step-label">Placed</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 2 else ('active' if current_step_idx == 2 else '') }}">
+            <div class="step-dot"><i class="fas fa-check-circle"></i></div>
+            <span class="step-label">Accepted</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 3 else ('active' if current_step_idx == 3 else '') }}">
+            <div class="step-dot"><i class="fas fa-fire-burner"></i></div>
+            <span class="step-label">Preparing</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 4 else ('active' if current_step_idx == 4 else '') }}">
+            <div class="step-dot"><i class="fas fa-truck"></i></div>
+            <span class="step-label">{% if booking.venue_address == 'PICKUP' %}Ready<br>for Pickup{% else %}On the<br>Way{% endif %}</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx > 5 else ('active' if current_step_idx == 5 else '') }}">
+            <div class="step-dot"><i class="fas fa-box-open"></i></div>
+            <span class="step-label">Delivered</span>
+        </div>
+        <div class="step {{ 'done' if current_step_idx == 6 else ('active' if current_step_idx == 6 else '') }}">
+            <div class="step-dot"><i class="fas fa-star"></i></div>
+            <span class="step-label">Done</span>
+        </div>
+    </div>
+</div>
+
+{# ── DYNAMIC URGENT ACTION BANNER ── #}
+{% if booking.status in ['pending', 'draft'] %}
+<div style="background:#fffbeb;border:2px solid #f59e0b;border-radius:1rem;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;">
+    <div style="width:44px;height:44px;background:#f59e0b;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.25rem;color:#fff;"><i class="fas fa-clock"></i></div>
+    <div>
+        <div style="font-weight:800;font-size:0.9rem;color:#b45309;">Waiting for Caterer to Accept</div>
+        <div style="font-size:0.78rem;color:#92400e;margin-top:2px;">Your order has been submitted. The caterer will accept or decline it shortly. You'll be notified right away.</div>
+    </div>
+</div>
+{% elif booking.payment_status == 'reupload_requested' %}
+<div style="background:#fef2f2;border:2px solid #ef4444;border-radius:1rem;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;">
+    <div style="width:44px;height:44px;background:#ef4444;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.25rem;color:#fff;"><i class="fas fa-exclamation-triangle"></i></div>
+    <div>
+        <div style="font-weight:800;font-size:0.9rem;color:#b91c1c;">Action Required — Re-upload Your Receipt</div>
+        <div style="font-size:0.78rem;color:#991b1b;margin-top:2px;">Your receipt was rejected. Please upload a clearer photo of your payment proof below.</div>
+    </div>
+</div>
+{% elif booking.payment_status == 'proof_submitted' %}
+<div style="background:#eff6ff;border:2px solid #3b82f6;border-radius:1rem;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;">
+    <div style="width:44px;height:44px;background:#3b82f6;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.25rem;color:#fff;"><i class="fas fa-spinner fa-spin"></i></div>
+    <div>
+        <div style="font-weight:800;font-size:0.9rem;color:#1e40af;">Verifying Your Receipt</div>
+        <div style="font-size:0.78rem;color:#1e3a8a;margin-top:2px;">Your proof of payment was submitted. The caterer will verify it shortly — no action needed from you.</div>
+    </div>
+</div>
+{% elif booking.status == 'confirmed' and booking.payment_method != 'CASH' and booking.payment_status not in ['paid','deposit_paid','proof_submitted'] %}
+<div style="background:#fff7ed;border:2px solid #f97316;border-radius:1rem;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;">
+    <div style="width:44px;height:44px;background:#f97316;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.25rem;color:#fff;"><i class="fas fa-file-invoice"></i></div>
+    <div>
+        <div style="font-weight:800;font-size:0.9rem;color:#c2410c;">Order Accepted — Submit Payment to Proceed</div>
+        <div style="font-size:0.78rem;color:#9a3412;margin-top:2px;">{{ booking.caterer.business_name }} accepted your order! Please upload your receipt below so they can start preparing your food.</div>
+    </div>
+</div>
+{% elif booking.status == 'confirmed' %}
+<div style="background:#ecfdf5;border:2px solid #10b981;border-radius:1rem;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;">
+    <div style="width:44px;height:44px;background:#10b981;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.25rem;color:#fff;"><i class="fas fa-check-circle"></i></div>
+    <div>
+        <div style="font-weight:800;font-size:0.9rem;color:#065f46;">Order Accepted!</div>
+        <div style="font-size:0.78rem;color:#047857;margin-top:2px;">{{ booking.caterer.business_name }} has accepted your order. Preparation will start soon.</div>
+    </div>
+</div>
+{% elif booking.status == 'preparing' %}
+<div style="background:#f5f3ff;border:2px solid #6366f1;border-radius:1rem;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;">
+    <div style="width:44px;height:44px;background:#6366f1;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.25rem;color:#fff;"><i class="fas fa-fire-burner"></i></div>
+    <div>
+        <div style="font-weight:800;font-size:0.9rem;color:#3730a3;">Your Food is Being Prepared!</div>
+        <div style="font-size:0.78rem;color:#4338ca;margin-top:2px;">The kitchen is working on your order. It will be on its way soon.</div>
+    </div>
+</div>
+{% elif booking.status in ['out_for_delivery','on_the_way','ready_for_delivery'] %}
+<div style="background:linear-gradient(135deg,#FF7B54,#f97316);border-radius:1rem;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;">
+    <div style="width:44px;height:44px;background:rgba(255,255,255,0.2);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.25rem;color:#fff;"><i class="fas fa-truck"></i></div>
+    <div>
+        <div style="font-weight:800;font-size:0.9rem;color:#fff;">Your Order is On the Way!</div>
+        <div style="font-size:0.78rem;color:rgba(255,255,255,0.85);margin-top:2px;">The delivery team is heading to your location. Please be ready to receive your order.</div>
+    </div>
+</div>
+{% elif booking.status == 'ready_for_pickup' %}
+<div style="background:linear-gradient(135deg,#FF7B54,#f97316);border-radius:1rem;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;">
+    <div style="width:44px;height:44px;background:rgba(255,255,255,0.2);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.25rem;color:#fff;"><i class="fas fa-store"></i></div>
+    <div>
+        <div style="font-weight:800;font-size:0.9rem;color:#fff;">Ready for Pickup!</div>
+        <div style="font-size:0.78rem;color:rgba(255,255,255,0.85);margin-top:2px;">Your food is packed and ready. Head to the caterer to pick it up.</div>
+    </div>
+</div>
+{% elif booking.status in ['arrived','delivered'] %}
+<div style="background:#ecfdf5;border:2px solid #10b981;border-radius:1rem;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;">
+    <div style="width:44px;height:44px;background:#10b981;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.25rem;color:#fff;"><i class="fas fa-box-open"></i></div>
+    <div>
+        <div style="font-weight:800;font-size:0.9rem;color:#065f46;">Order Delivered — Enjoy your meal!</div>
+        <div style="font-size:0.78rem;color:#047857;margin-top:2px;">Your food has arrived. Don't forget to leave a review for the caterer.</div>
+    </div>
+</div>
+{% elif booking.status == 'completed' %}
+<div style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:1rem;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;">
+    <div style="width:44px;height:44px;background:var(--up-orange);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.25rem;color:#fff;"><i class="fas fa-star"></i></div>
+    <div>
+        <div style="font-weight:800;font-size:0.9rem;color:var(--up-slate-900);">Order Completed — Thank you!</div>
+        <div style="font-size:0.78rem;color:var(--dm-slate-400);margin-top:2px;">We hope you enjoyed your food! Leave a review to help other customers find great caterers.</div>
+    </div>
+</div>
+{% elif booking.status == 'cancelled' %}
+<div style="background:#fef2f2;border:2px solid #ef4444;border-radius:1rem;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;">
+    <div style="width:44px;height:44px;background:#ef4444;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.25rem;color:#fff;"><i class="fas fa-times-circle"></i></div>
+    <div>
+        <div style="font-weight:800;font-size:0.9rem;color:#b91c1c;">Order Cancelled</div>
+        <div style="font-size:0.78rem;color:#991b1b;margin-top:2px;">This food order has been cancelled. You can browse other caterers to place a new order.</div>
+    </div>
+</div>
+{% endif %}
+
+<div class="manage-grid">
+    <div class="left-col">
+        <!-- Fulfillment Details -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>{% if booking.venue_address == 'PICKUP' %}Pickup Information{% else %}Delivery Information{% endif %}</h3>
+            </div>
+            <div class="panel-body">
+                <div class="detail-item">
+                    <span class="detail-label">Date & Time</span>
+                    <span class="detail-value">
+                        {% if booking.event_date %}{{ booking.event_date.strftime('%b %d, %Y') }}{% else %}N/A{% endif %} at 
+                        {% if booking.event_time %}{{ booking.event_time.strftime('%I:%M %p') }}{% else %}N/A{% endif %}
+                    </span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Recipient</span>
+                    <span class="detail-value">{{ booking.custom_requirements.recipient_name if booking.custom_requirements and booking.custom_requirements.recipient_name else (booking.user.first_name ~ ' ' ~ booking.user.last_name) }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Contact</span>
+                    <span class="detail-value">{{ booking.custom_requirements.recipient_contact if booking.custom_requirements and booking.custom_requirements.recipient_contact else booking.user.phone_number }}</span>
+                </div>
+                {% if booking.venue_address != 'PICKUP' %}
+                <div class="detail-item" style="flex-direction: column; align-items: flex-start; gap: 0.5rem; border-bottom: none; margin-top: 0.5rem;">
+                    <span class="detail-label">Delivery Address</span>
+                    <div style="font-size: 0.95rem; color: var(--up-slate-900); font-weight: 600;">{{ booking.venue_address }}</div>
+                </div>
+                {% endif %}
+                {% if booking.special_requests %}
+                <div class="detail-item" style="flex-direction: column; align-items: flex-start; gap: 0.5rem; border-bottom: none; margin-top: 0.5rem;">
+                    <span class="detail-label">Special Instructions</span>
+                    <div style="font-size: 0.85rem; color: var(--up-slate-900); background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; width: 100%;">{{ booking.special_requests }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Ordered Items -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Ordered Items</h3>
+            </div>
+            <div class="panel-body">
+                {% if booking.selected_items %}
+                    <div class="menu-items-grid">
+                        {% for item in booking.selected_items %}
+                        <div style="background: #fff; border: 1px solid var(--dm-slate-100); padding: 0.75rem; border-radius: 12px; display: flex; gap: 1rem; align-items: center; margin-bottom: 0.5rem;">
+                            {% if item.menu_item %}
+                                <img src="{{ item.menu_item.image_url or '/static/img/default_food.png' }}" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover; background: #f1f5f9;">
+                                <div style="flex: 1;">
+                                    <div style="font-size: 0.9rem; font-weight: 700; color: var(--up-slate-900);">{{ item.menu_item.name }}</div>
+                                    {% if item.choices %}
+                                        <div style="font-size: 0.75rem; color: var(--dm-slate-400); margin-top: 2px;">Choices: {{ item.choices | join(', ') }}</div>
+                                    {% endif %}
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 0.9rem; font-weight: 800; color: var(--up-slate-900);">₱{{ "{:,.2f}".format(item.price or item.menu_item.price or 0) }}</div>
+                                    <div style="font-size: 0.75rem; color: var(--dm-slate-400); font-weight: 600;">Qty: {{ item.quantity or 1 }}</div>
+                                </div>
+                            {% elif item.equipment %}
+                                <img src="{{ item.equipment.image_url or '/static/img/default_equipment.png' }}" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover; background: #f1f5f9;">
+                                <div style="flex: 1;">
+                                    <div style="font-size: 0.9rem; font-weight: 700; color: var(--up-slate-900);">{{ item.equipment.name }}</div>
+                                    <div style="font-size: 0.75rem; color: var(--dm-slate-400); margin-top: 2px;">Rental</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 0.9rem; font-weight: 800; color: var(--up-slate-900);">₱{{ "{:,.2f}".format(item.price or item.equipment.rental_price or 0) }}</div>
+                                    <div style="font-size: 0.75rem; color: var(--dm-slate-400); font-weight: 600;">Qty: {{ item.quantity or 1 }}</div>
+                                </div>
+                            {% elif item.service %}
+                                <img src="{{ item.service.image_url or '/static/img/default_service.png' }}" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover; background: #f1f5f9;">
+                                <div style="flex: 1;">
+                                    <div style="font-size: 0.9rem; font-weight: 700; color: var(--up-slate-900);">{{ item.service.name }}</div>
+                                    <div style="font-size: 0.75rem; color: var(--dm-slate-400); margin-top: 2px;">Service</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 0.9rem; font-weight: 800; color: var(--up-slate-900);">₱{{ "{:,.2f}".format(item.price or item.service.selling_price or 0) }}</div>
+                                    <div style="font-size: 0.75rem; color: var(--dm-slate-400); font-weight: 600;">Qty: {{ item.quantity or 1 }}</div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div style="text-align: center; color: var(--dm-slate-400); padding: 2rem;">
+                        <i class="fas fa-box-open fa-2x" style="opacity: 0.3; margin-bottom: 0.5rem; display: block;"></i>
+                        No item breakdown available.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="right-col">
+        <!-- FINANCIAL TERMINAL -->
+        <div class="financial-card">
+            <span class="fin-label">Total Amount</span>
+            <div class="fin-value">₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</div>
+            
+            <div class="fin-grid">
+                <div>
+                    <span class="fin-label">Payment Method</span>
+                    <b style="font-size: 0.95rem;">{{ booking.payment_method or 'N/A' }}</b>
+                </div>
+                <div style="text-align: right;">
+                    <span class="fin-label">Status</span>
+                    <b style="font-size: 0.95rem; color: {% if booking.payment_status == 'paid' %}var(--up-emerald){% elif booking.payment_status in ['proof_submitted', 'pending'] %}#f59e0b{% elif booking.payment_status == 'reupload_requested' %}#ef4444{% else %}white{% endif %}; text-transform: capitalize;">
+                        {{ (booking.payment_status or 'Pending').replace('_', ' ') }}
+                    </b>
+                </div>
+            </div>
+
+            {% set subtotal = namespace(value=0) %}
+            {% for i in booking.selected_items %}
+                {% set subtotal.value = subtotal.value + ((i.price or 0) * (i.quantity or 1)) %}
+            {% endfor %}
+
+            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                <span class="fin-label" style="margin-bottom: 0.75rem;">Summary</span>
+                <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.8rem; color: rgba(255,255,255,0.8);">
+                    {% if subtotal.value > 0 %}
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Subtotal</span>
+                        <b>₱{{ "{:,.2f}".format(subtotal.value) }}</b>
+                    </div>
+                    {% elif booking.total_amount %}
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Base Amount</span>
+                        <b>₱{{ "{:,.2f}".format((booking.total_amount|float) - (booking.travel_fee|float if booking.travel_fee else 0)) }}</b>
+                    </div>
+                    {% endif %}
+                    
+                    {% if booking.venue_address != 'PICKUP' %}
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Delivery Fee</span>
+                        <b>
+                            {% if booking.travel_fee_status == 'waived' %}
+                                FREE
+                            {% elif booking.travel_fee_status == 'manual_quote' and booking.status == 'draft' %}
+                                TBD
+                            {% else %}
+                                ₱{{ "{:,.2f}".format(booking.travel_fee or 0) }}
+                            {% endif %}
+                        </b>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ACTION CENTER (UPLOAD PROOF) -->
+        {% if booking.status in ['pending', 'pending_payment', 'awaiting_payment', 'draft'] or booking.payment_status in ['reupload_requested', 'pending', 'proof_submitted'] %}
+            {% if booking.status != 'draft' and booking.payment_status not in ['paid', 'proof_submitted'] and booking.payment_method != 'CASH' %}
+            <div class="panel" style="border: 2px solid var(--up-orange);">
+                <div class="panel-header" style="background: var(--brand-orange-light); border-bottom: none;">
+                    <h3 style="color: var(--up-orange);"><i class="fas fa-file-upload"></i> Submit Receipt</h3>
+                </div>
+                <div class="panel-body">
+                    {% if booking.payment_status == 'reupload_requested' %}
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
+                        <div style="color: #b91c1c; font-size: 0.8rem; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-exclamation-circle"></i> Verification Failed
+                        </div>
+                        <p style="color: #991b1b; font-size: 0.75rem; margin: 4px 0 0; font-weight: 500;">Your submitted receipt was rejected. Please upload a clearer copy.</p>
+                    </div>
+                    {% endif %}
+
+                    <p style="font-size: 0.75rem; color: var(--dm-slate-400); margin-bottom: 1rem; line-height: 1.4;">
+                        Please send your payment of <strong>₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</strong> via your chosen method. Our AI will verify the receipt amount and date.
+                    </p>
+
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
+                        {% if booking.caterer.gcash_number %}
+                        <div class="method-card" onclick="selectManagePayment('GCash')" id="mc-GCash" style="border: 2px solid var(--dm-slate-200); border-radius: 8px; padding: 0.75rem 0.25rem; text-align: center; cursor: pointer; transition: 0.2s;">
+                            <i class="fas fa-mobile-alt text-blue-500" style="font-size: 1.25rem; margin-bottom: 0.25rem; color: #3b82f6;"></i><br><span style="font-size: 0.7rem; font-weight: 700; color: var(--up-slate-900);">GCash</span>
+                        </div>
+                        {% endif %}
+                        {% if booking.caterer.maya_number %}
+                        <div class="method-card" onclick="selectManagePayment('Maya')" id="mc-Maya" style="border: 2px solid var(--dm-slate-200); border-radius: 8px; padding: 0.75rem 0.25rem; text-align: center; cursor: pointer; transition: 0.2s;">
+                            <i class="fas fa-wallet text-gray-800" style="font-size: 1.25rem; margin-bottom: 0.25rem; color: #1f2937;"></i><br><span style="font-size: 0.7rem; font-weight: 700; color: var(--up-slate-900);">Maya</span>
+                        </div>
+                        {% endif %}
+                        {% if booking.caterer.bank_account_number %}
+                        <div class="method-card" onclick="selectManagePayment('Bank')" id="mc-Bank" style="border: 2px solid var(--dm-slate-200); border-radius: 8px; padding: 0.75rem 0.25rem; text-align: center; cursor: pointer; transition: 0.2s;">
+                            <i class="fas fa-university text-blue-700" style="font-size: 1.25rem; margin-bottom: 0.25rem; color: #1d4ed8;"></i><br><span style="font-size: 0.7rem; font-weight: 700; color: var(--up-slate-900);">Bank</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div id="manageUploadSection" style="display: none;">
+                        <div id="manage-instr-GCash" style="display: none; background: #eff6ff; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.8rem; color: #1e3a8a;">
+                            <strong>GCash:</strong> {{ booking.caterer.gcash_number }}
+                        </div>
+                        <div id="manage-instr-Maya" style="display: none; background: #f0fdf4; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.8rem; color: #14532d;">
+                            <strong>Maya:</strong> {{ booking.caterer.maya_number }}
+                        </div>
+                        <div id="manage-instr-Bank" style="display: none; background: #fefce8; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.8rem; color: #713f12;">
+                            <strong>Bank:</strong> {{ booking.caterer.bank_name }} - {{ booking.caterer.bank_account_name }} ({{ booking.caterer.bank_account_number }})
+                        </div>
+
+                        <div class="upload-area" onclick="document.getElementById('manageProofInput').click()">
+                            <i class="fas fa-cloud-upload-alt text-3xl mb-2" style="color: var(--dm-slate-400); font-size: 2rem;"></i>
+                            <div style="font-weight: 700; font-size: 0.85rem; color: var(--up-slate-900);">Select Image</div>
+                            <input type="file" id="manageProofInput" accept="image/*" style="display: none;" onchange="previewManageFile(this)">
+                            <img id="managePreview" style="max-width: 100%; max-height: 150px; margin-top: 1rem; display: none; border-radius: 8px; margin-left: auto; margin-right: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        </div>
+                        
+                        <div id="manageUploadError" style="display: none; color: #ef4444; font-size: 0.75rem; font-weight: 600; margin-top: 0.75rem; text-align: center;"></div>
+
+                        <button type="button" class="btn-action-elite btn-primary-orange" id="manageSubmitBtn" onclick="submitManagePayment()" style="margin-top: 1rem; opacity: 0.5;" disabled>
+                            Submit Proof <i class="fas fa-check"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% elif booking.payment_status == 'proof_submitted' %}
+            <div class="panel" style="border: 2px solid var(--up-emerald);">
+                <div class="panel-header" style="background: rgba(16, 185, 129, 0.1); border-bottom: none;">
+                    <h3 style="color: var(--up-emerald);"><i class="fas fa-check-circle"></i> Receipt Submitted</h3>
+                </div>
+                <div class="panel-body">
+                    <p style="font-size: 0.8rem; color: var(--dm-slate-400); margin-bottom: 0; line-height: 1.4;">
+                        Your proof of payment has been uploaded successfully. It is currently being verified by our AI and the caterer.
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+        {% endif %}
+        
+        <!-- Standard Actions -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Options</h3>
+            </div>
+            <div class="panel-body" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <a href="/customer/messages?caterer_id={{ booking.caterer.user_id }}&caterer_name={{ booking.caterer.business_name | urlencode }}" class="btn-action-elite btn-outline-slate">
+                    Message Caterer <i class="fas fa-comments"></i>
+                </a>
+                
+                {% if not booking.review and booking.status in ['completed', 'arrived', 'delivered'] %}
+                    <a href="/customer/feedback/{{ booking.id }}" class="btn-action-elite" style="background: var(--up-emerald); color: white; border: none;">
+                        Rate Order <i class="fas fa-star"></i>
+                    </a>
+                {% endif %}
+                
+                {% if booking.status in ['pending', 'draft', 'pending_payment'] and booking.payment_status not in ['paid', 'deposit_paid', 'proof_submitted'] %}
+                    <form action="/customer/bookings/manage/{{ booking.id }}/cancel" method="POST" onsubmit="return confirm('Are you sure you want to cancel this order?');">
+                        <button type="submit" class="btn-action-elite" style="background: transparent; border: 2px solid #fee2e2; color: #ef4444;">
+                            Cancel Order <i class="fas fa-times"></i>
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    let manageSelectedMethod = '';
+    
+    function selectManagePayment(method) {
+        manageSelectedMethod = method;
+        document.querySelectorAll('.method-card').forEach(el => {
+            el.style.borderColor = 'var(--dm-slate-200)';
+            el.style.background = 'transparent';
+        });
+        
+        const selectedCard = document.getElementById('mc-' + method);
+        if(selectedCard) {
+            selectedCard.style.borderColor = 'var(--up-orange)';
+            selectedCard.style.background = '#fffaf9';
+        }
+        
+        document.getElementById('manageUploadSection').style.display = 'block';
+        document.getElementById('manage-instr-GCash').style.display = 'none';
+        document.getElementById('manage-instr-Maya').style.display = 'none';
+        document.getElementById('manage-instr-Bank').style.display = 'none';
+        
+        const instr = document.getElementById('manage-instr-' + method);
+        if(instr) instr.style.display = 'block';
+    }
+    
+    function previewManageFile(input) {
+        const preview = document.getElementById('managePreview');
+        const btn = document.getElementById('manageSubmitBtn');
+        const err = document.getElementById('manageUploadError');
+        
+        err.style.display = 'none';
+        
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            if (file.size > 5 * 1024 * 1024) {
+                err.innerText = 'File is too large (Max 5MB)';
+                err.style.display = 'block';
+                input.value = '';
+                preview.style.display = 'none';
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            }
+            reader.readAsDataURL(file);
+        } else {
+            preview.style.display = 'none';
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+        }
+    }
+    
+    async function submitManagePayment() {
+        const input = document.getElementById('manageProofInput');
+        if (!input.files || input.files.length === 0) return;
+        
+        const formData = new FormData();
+        formData.append('proof_image', input.files[0]);
+        formData.append('payment_method', manageSelectedMethod);
+        
+        const btn = document.getElementById('manageSubmitBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = 'Verifying with AI... <i class="fas fa-spinner fa-spin"></i>';
+        btn.disabled = true;
+        
+        const err = document.getElementById('manageUploadError');
+        err.style.display = 'none';
+        
+        try {
+            const res = await fetch('/bookings/alacarte/payment/{{ booking.id }}', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Receipt Verified!',
+                    text: 'Your payment proof has been verified and submitted successfully.',
+                    confirmButtonColor: '#10b981'
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                err.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + data.message;
+                err.style.display = 'block';
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Verification Failed',
+                    text: data.message,
+                    confirmButtonColor: '#f59e0b'
+                });
+            }
+        } catch (e) {
+            err.innerText = 'Network error occurred. Please try again.';
+            err.style.display = 'block';
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+
+    // Auto-select based on existing payment method if previously rejected
+    const existingMethod = "{{ booking.payment_method }}";
+    if(existingMethod && existingMethod !== 'CASH' && existingMethod !== 'None') {
+        if(document.getElementById('mc-' + existingMethod)) {
+            selectManagePayment(existingMethod);
+        }
+    }
+
+    // Realtime UI Sync
+    const clientId = "manage_{{ booking.id }}_{{ user.id }}";
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    let ws = null;
+    
+    function initWebSocket() {
+        if (ws) {
+            ws.close();
+        }
+        ws = new WebSocket(`${proto}//${location.host}/ws/${clientId}`);
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            if (data.type === 'booking_update' && String(data.booking_id) === "{{ booking.id }}") {
+                Swal.fire({
+                    title: 'Status Updated',
+                    text: 'The caterer has updated your order status.',
+                    icon: 'info',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else if (data.type === 'payment_rejected' && String(data.booking_id) === "{{ booking.id }}") {
+                window.location.reload();
+            }
+        };
+        ws.onclose = function() {
+            setTimeout(initWebSocket, 3000); // Reconnect
+        };
+    }
+    
+    // Start websocket connection
+    initWebSocket();
+</script>
+{% endblock %}

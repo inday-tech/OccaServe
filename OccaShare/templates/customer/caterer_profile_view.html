@@ -1048,6 +1048,7 @@
 
     <script>
         // GLOBAL HUB ENGINE (Priority Execution)
+        window.catererRules = {{ (caterer.scheduling_rules or {}) | tojson | safe }};
         window.hubSwitchTab = function(tabId, btn) {
             console.log('Hub: Switching to', tabId);
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -1117,6 +1118,14 @@
                      <span style="font-weight:800;color:var(--hub-text-dark);">₱${pkg.overtime_fee.toLocaleString('en-PH',{minimumFractionDigits:2})}/hr</span>
                    </div>` : '';
 
+            const pRules = window.catererRules.package_rules || {};
+            const prepHtml = (pRules.setup_time_hours || pRules.cleanup_time_hours) ? `
+                <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.5rem 0;border-bottom:1px solid var(--hub-slate-100);">
+                    <span style="color:var(--hub-slate-400);font-weight:700;">REQUIRED PREP TIME</span>
+                    <span style="font-weight:800;color:var(--hub-text-dark);">${pRules.setup_time_hours || 0}h Setup / ${pRules.cleanup_time_hours || 0}h Cleanup</span>
+                </div>
+            ` : '';
+
             const serviceHtml = `
                 <div style="background:var(--hub-slate-50);border-radius:12px;padding:1rem;border:1px solid var(--hub-slate-100);margin-bottom:1.25rem;">
                     <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.5rem 0;border-bottom:1px solid var(--hub-slate-100);">
@@ -1127,8 +1136,9 @@
                     </div>
                     <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.5rem 0;border-bottom:1px solid var(--hub-slate-100);">
                         <span style="color:var(--hub-slate-400);font-weight:700;">SERVICE DURATION</span>
-                        <span style="font-weight:800;color:var(--hub-text-dark);">${pkg.duration}</span>
+                        <span style="font-weight:800;color:var(--hub-text-dark);">${pRules.max_event_duration ? pRules.max_event_duration + " hours" : pkg.duration}</span>
                     </div>
+                    ${prepHtml}
                     ${addGuestHtml}
                     ${overtimeHtml}
                 </div>`;
@@ -1147,8 +1157,20 @@
                     </div>
                 </div>` : '';
 
-            // Section 3: Included Dishes
-            const dishHtml = (pkg.dishes && pkg.dishes.length > 0) ? `
+            // Section 3: Included Dishes / Selection Limits
+            let dishHtml = '';
+            if (pkg.selection_rules && Object.keys(pkg.selection_rules).length > 0) {
+                dishHtml = `
+                <div style="margin-bottom:1.25rem;">
+                    <h4 style="font-size:0.72rem;font-weight:800;color:var(--hub-slate-400);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
+                        <i class="fas fa-utensils" style="color:var(--hub-primary);margin-right:6px;"></i>Menu Selection Limits
+                    </h4>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                        ${Object.entries(pkg.selection_rules).map(([cat, limit]) => `<span style="background:var(--hub-slate-50);color:var(--hub-slate-600);padding:4px 12px;border-radius:100px;font-size:0.72rem;font-weight:700;border:1px solid var(--hub-slate-200);">${limit} ${cat}</span>`).join('')}
+                    </div>
+                </div>`;
+            } else if (pkg.dishes && pkg.dishes.length > 0) {
+                dishHtml = `
                 <div style="margin-bottom:1.25rem;">
                     <h4 style="font-size:0.72rem;font-weight:800;color:var(--hub-slate-400);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
                         <i class="fas fa-utensils" style="color:var(--hub-primary);margin-right:6px;"></i>Dishes Included
@@ -1156,7 +1178,8 @@
                     <div style="display:flex;flex-wrap:wrap;gap:6px;">
                         ${pkg.dishes.map(d => `<span style="background:var(--hub-slate-50);color:var(--hub-slate-600);padding:4px 12px;border-radius:100px;font-size:0.72rem;font-weight:700;border:1px solid var(--hub-slate-200);">${d}</span>`).join('')}
                     </div>
-                </div>` : '';
+                </div>`;
+            }
 
             const contentHtml = `
                 <div style="margin-bottom:1.25rem;">
@@ -1241,14 +1264,19 @@
                     </div>
                 </div>
 
-                <!-- EVENT HIGHLIGHTS (GALLERY STREAMLINED) -->
-                {% if gallery_items %}
-                <div class="intel-card">
-                    <h2 class="section-title">Recent Events</h2>
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;">
-                        {% for item in gallery_items[:3] %}
-                        <div style="height: 140px; border-radius: 12px; overflow: hidden;">
-                            <img src="{{ item.media_url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                <!-- VISUAL PORTFOLIO -->
+                {% if public_portfolios %}
+                <div class="intel-card" style="padding: 1.75rem;">
+                    <h2 class="section-title" style="margin-bottom: 1.25rem;">Visual Portfolio</h2>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;">
+                        {% for p in public_portfolios %}
+                        {% set cover_img = (p.images | selectattr('is_cover', 'equalto', True) | first) %}
+                        {% set img_url = cover_img.image_url if cover_img else (p.images[0].image_url if p.images else '/static/images/default-portfolio.jpg') %}
+                        <div style="height: 140px; border-radius: 12px; overflow: hidden; cursor: pointer; position: relative;" onclick="window.openPortfolioViewModal('{{ p.id }}')" class="hover:shadow-md transition">
+                            <img src="{{ img_url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                            <div style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.8)); padding: 8px; color: white; font-size: 0.75rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                {{ p.title }}
+                            </div>
                         </div>
                         {% endfor %}
                     </div>
@@ -1650,7 +1678,8 @@ window.hubPkgs = {
             {% if pkg.equipment_links %}{% for el in pkg.equipment_links %}{{ el.equipment.name|tojson }},{% endfor %}{% endif %}
             {% if pkg.service_links %}{% for sl in pkg.service_links %}{{ sl.service.name|tojson }},{% endfor %}{% endif %}
         ].filter(Boolean),
-        dishes: [{% for item in pkg.menu_items %}{% if item.category not in ['Rentals', 'Services'] %}{{ item.name|tojson }},{% endif %}{% endfor %}].filter(Boolean)
+        dishes: [{% for item in pkg.menu_items %}{% if item.category not in ['Rentals', 'Services'] %}{{ item.name|tojson }},{% endif %}{% endfor %}].filter(Boolean),
+        selection_rules: {{ (pkg.selection_rules)|tojson if pkg.selection_rules else 'null' }}
     }{{ ',' if not loop.last }}
     {% endfor %}
 };
@@ -1686,13 +1715,19 @@ window.updateCartUI = function() {
     list.innerHTML = items.length === 0
         ? `<p style="color:var(--hub-slate-400);font-size:0.82rem;text-align:center;padding:1rem 0;">No items added yet.</p>`
         : items.map(item => {
+            const UNIT_MAP = {
+                'per_serving': '', 'per_tray': ' / Tray', 'per_bilao': ' / Bilao',
+                'per_pax': ' / Pax', 'per_hour': ' / Hr', 'per_unit': ' / Unit', 'per_set': ' / Set',
+                'per_kg': ' / Kg', 'whole': ' / Whole'
+            };
+            const unitLabel = item.pricing_unit ? (UNIT_MAP[item.pricing_unit] || ' / ' + item.pricing_unit) : '';
             const subtotal = (item.qty * item.price).toLocaleString('en-PH', {minimumFractionDigits:2});
             const unitPrice = parseFloat(item.price).toLocaleString('en-PH', {minimumFractionDigits:2});
             return `
             <div class="drawer-item" id="di-${item.id}" style="display:flex;justify-content:space-between;align-items:flex-start;padding:0.75rem 0;border-bottom:1px solid var(--hub-slate-100);gap:0.5rem;">
                 <div style="flex:1;min-width:0;">
                     <div style="font-size:0.82rem;font-weight:800;color:var(--hub-text-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.name}</div>
-                    <div style="font-size:0.72rem;color:var(--hub-slate-400);margin-top:2px;">₱${unitPrice} × ${item.qty}</div>
+                    <div style="font-size:0.72rem;color:var(--hub-slate-400);margin-top:2px;">₱${unitPrice}${unitLabel} × ${item.qty}</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
                     <span style="font-size:0.85rem;font-weight:900;color:var(--hub-primary);">₱${subtotal}</span>
@@ -1721,7 +1756,7 @@ window.removeCartItem = function(id, type) {
     const mbtn = document.getElementById(type === 'Menu' ? 'mbtn-' + id : `mbtn-${type}-${id}`);
     const mqty = document.getElementById(type === 'Menu' ? 'mq-' + id : `mq-${type}-${id}`);
     
-    if (mbtn) { mbtn.classList.remove('selected'); mbtn.textContent = (type === 'Equipment') ? 'Rent' : 'Add'; }
+    if (mbtn) { mbtn.classList.remove('selected'); mbtn.textContent = (type === 'Equipment') ? 'Rent' : (type === 'Service' ? 'Book' : 'Add'); }
     if (mqty) mqty.disabled = false;
     window.updateCartUI();
 };
@@ -1754,14 +1789,22 @@ window.toggleMenuItem = function(id, name, price) {
 // ---- Checkout: redirect to alacarte checkout ----
 window.checkoutOrder = function() {
     if (window.selectedItems.length === 0) return;
+    const catererId = {{ caterer.id }};
+    
+    // Route Standalone Services to dedicated Service Checkout Workflow
+    if (window.selectedItems.length === 1 && window.selectedItems[0].type === 'Service') {
+        const serviceId = window.selectedItems[0].id;
+        window.location.href = `/services/checkout/${catererId}?service_id=${serviceId}`;
+        return;
+    }
+
     const menuIds = window.selectedItems.map(i => {
         if (i.type === 'Equipment') return 'e_' + i.id;
         if (i.type === 'Service') return 's_' + i.id;
         return 'm_' + i.id;
     }).join(',');
-    const catererId = {{ caterer.id }};
     sessionStorage.setItem('alacarte_cart_' + catererId, JSON.stringify(window.selectedItems));
-    window.location.href = `/bookings/alacarte/checkout/${catererId}?menu_id=${menuIds}`;
+    window.location.href = `/bookings/alacarte/checkout/${catererId}?items=${menuIds}`;
 };
 
 // ---- Init on load ----
@@ -2005,10 +2048,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 let optionsHtml = '';
                 
                 if (item.pricing_type === 'weight_based' && item.weight_prices && item.weight_prices.length > 0) {
-                    optionsHtml = '<select class="dish-row-qty" id="opt-' + item.id + '" style="width: auto; margin-right: 4px; border: 1px solid var(--hub-slate-200); border-radius: 6px; padding: 4px 8px; font-size: 0.75rem;">' + item.weight_prices.map(wp => `<option value="${wp.weight_label}|${wp.price}">${wp.weight_label} - ₱${parseFloat(wp.price).toLocaleString('en-PH', {minimumFractionDigits:0})}</option>`).join('') + '</select>';
+                    optionsHtml = '<select class="dish-row-qty" id="opt-' + item.id + '" style="width: auto; margin-right: 4px; border: 1px solid var(--hub-slate-200); border-radius: 6px; padding: 4px 8px; font-size: 0.75rem;">' + item.weight_prices.map(wp => `<option value="${wp.weight_label}|${wp.price}">${wp.weight_label} - ₱${parseFloat(wp.price).toLocaleString('en-PH', {minimumFractionDigits:0})}${unitSuffix}</option>`).join('') + '</select>';
                     priceDisplay = '<span style="font-size:0.75rem;font-weight:800;color:var(--hub-brand);">Weight Options Available</span>';
                 } else if (item.pricing_type === 'size_based' && item.size_prices && item.size_prices.length > 0) {
-                    optionsHtml = '<select class="dish-row-qty" id="opt-' + item.id + '" style="width: auto; margin-right: 4px; border: 1px solid var(--hub-slate-200); border-radius: 6px; padding: 4px 8px; font-size: 0.75rem;">' + item.size_prices.map(sp => `<option value="${sp.size_name}|${sp.price}">${sp.size_name} - ₱${parseFloat(sp.price).toLocaleString('en-PH', {minimumFractionDigits:0})}</option>`).join('') + '</select>';
+                    optionsHtml = '<select class="dish-row-qty" id="opt-' + item.id + '" style="width: auto; margin-right: 4px; border: 1px solid var(--hub-slate-200); border-radius: 6px; padding: 4px 8px; font-size: 0.75rem;">' + item.size_prices.map(sp => `<option value="${sp.size_name}|${sp.price}">${sp.size_name} - ₱${parseFloat(sp.price).toLocaleString('en-PH', {minimumFractionDigits:0})}${unitSuffix}</option>`).join('') + '</select>';
                     priceDisplay = '<span style="font-size:0.75rem;font-weight:800;color:var(--hub-brand);">Size Options Available</span>';
                 } else {
                     priceDisplay = item.price > 0
@@ -2017,6 +2060,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 const isSelected = window.selectedItems.some(s => String(s.id) === String(item.id) && (s.type ? s.type === 'Menu' : true));
+                const isFixedQty = ['whole', 'per_event', 'per event', 'package'].includes(String(item.pricing_unit).toLowerCase());
+                
+                const qtyHtml = isFixedQty ? 
+                    `<input type="hidden" id="mq-${item.id}" value="1"><span style="font-size:0.75rem;font-weight:700;color:var(--hub-slate-400);padding:4px 8px;background:var(--hub-slate-50);border-radius:4px;border:1px solid var(--hub-slate-200); margin-right:4px;">Qty: 1</span>` : 
+                    `<input type="number" class="dish-row-qty" id="mq-${item.id}" value="1" min="1" ${isSelected ? 'disabled' : ''}>`;
 
                 const dietHtml = (item.dietary_tags && item.dietary_tags.length > 0)
                     ? item.dietary_tags.map(t => `<span style="font-size:0.65rem;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:100px;padding:2px 8px;font-weight:700;">${DIET_ICONS[t]||''} ${t}</span>`).join('')
@@ -2050,8 +2098,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="dish-row-action">
                         ${optionsHtml}
-                        <input type="number" class="dish-row-qty" id="mq-${item.id}" value="1" min="1"
-                               ${isSelected ? 'disabled' : ''}>
+                        ${qtyHtml}
                         <button type="button"
                             class="dish-row-btn ${isSelected ? 'selected' : ''}"
                             id="mbtn-${item.id}"
@@ -2085,6 +2132,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     ? '\u20b1' + parseFloat(item.price).toLocaleString('en-PH', {minimumFractionDigits:2}) + unitSuffix
                     : '<span style="font-size:0.78rem;font-weight:700;color:var(--hub-slate-400);">Contact for Price</span>';
                 const isSelected = window.selectedItems.some(s => String(s.id) === String(item.id) && s.type === item.type);
+                const isFixedQty = ['whole', 'per_event', 'per event', 'package'].includes(String(item.pricing_unit).toLowerCase());
+                
+                const qtyHtml = isFixedQty ? 
+                    `<input type="hidden" id="mq-${item.type}-${item.id}" value="1"><span style="font-size:0.75rem;font-weight:700;color:var(--hub-slate-400);padding:4px 8px;background:var(--hub-slate-50);border-radius:4px;border:1px solid var(--hub-slate-200); margin-right:4px;">Qty: 1</span>` : 
+                    `<input type="number" class="dish-row-qty" id="mq-${item.type}-${item.id}" value="1" min="1" ${isSelected ? 'disabled' : ''}>`;
 
                 const descHtml = item.description
                     ? `<div style="font-size:0.72rem;color:var(--hub-slate-400);line-height:1.5;margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${item.description}</div>`
@@ -2100,13 +2152,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         ${descHtml}
                     </div>
                     <div class="dish-row-action">
-                        <input type="number" class="dish-row-qty" id="mq-${item.type}-${item.id}" value="1" min="1"
-                               ${isSelected ? 'disabled' : ''}>
+                        ${qtyHtml}
                         <button type="button"
                             class="dish-row-btn ${isSelected ? 'selected' : ''}"
                             id="mbtn-${item.type}-${item.id}"
                             onclick="window.toggleInventoryModalItem(${item.id}, '${item.type}')">
-                            ${isSelected ? (item.type === 'Equipment' ? 'Rented ✓' : 'Added ✓') : (item.type === 'Equipment' ? 'Rent' : 'Add')}
+                            ${isSelected ? (item.type === 'Equipment' ? 'Rented ✓' : 'Booked ✓') : (item.type === 'Equipment' ? 'Rent' : 'Book')}
                         </button>
                     </div>
                 </div>`;
@@ -2152,15 +2203,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     type: 'Menu',
                     name: finalName,
                     price: finalPrice,
-                    qty: qtyVal
+                    qty: qtyVal,
+                    pricing_unit: menuItem ? menuItem.pricing_unit : ''
                 });
-                if (btn) { btn.classList.add('selected'); btn.textContent = (menuItem && menuItem.category === 'Rentals') ? 'Rented ✓' : 'Added ✓'; }
+                if (btn) { btn.classList.add('selected'); btn.textContent = (menuItem && menuItem.category === 'Rentals') ? 'Rented ✓' : ((menuItem && menuItem.category === 'Services') ? 'Booked ✓' : 'Added ✓'); }
                 if (qty) qty.disabled = true;
                 if (opt) opt.disabled = true;
             } else {
                 // Toggle off
                 window.selectedItems.splice(idx, 1);
-                if (btn) { btn.classList.remove('selected'); btn.textContent = (menuItem && menuItem.category === 'Rentals') ? 'Rent' : 'Add'; }
+                if (btn) { btn.classList.remove('selected'); btn.textContent = (menuItem && menuItem.category === 'Rentals') ? 'Rent' : ((menuItem && menuItem.category === 'Services') ? 'Book' : 'Add'); }
                 if (qty) { qty.disabled = false; qty.value = 1; }
                 const opt = document.getElementById('opt-' + sid);
                 if (opt) opt.disabled = false;
@@ -2199,13 +2251,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     type: type,
                     name: menuItem ? menuItem.name : type + ' #' + sid,
                     price: menuItem ? (parseFloat(menuItem.price) || 0) : 0,
-                    qty: qtyVal
+                    qty: qtyVal,
+                    pricing_unit: menuItem ? menuItem.pricing_unit : ''
                 });
-                if (btn) { btn.classList.add('selected'); btn.textContent = (type === 'Equipment') ? 'Rented ✓' : 'Added ✓'; }
+                if (btn) { btn.classList.add('selected'); btn.textContent = (type === 'Equipment') ? 'Rented ✓' : 'Booked ✓'; }
                 if (qty) qty.disabled = true;
             } else {
                 window.selectedItems.splice(idx, 1);
-                if (btn) { btn.classList.remove('selected'); btn.textContent = (type === 'Equipment') ? 'Rent' : 'Add'; }
+                if (btn) { btn.classList.remove('selected'); btn.textContent = (type === 'Equipment') ? 'Rent' : 'Book'; }
                 if (qty) { qty.disabled = false; qty.value = 1; }
             }
 

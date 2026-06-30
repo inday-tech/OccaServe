@@ -177,8 +177,7 @@
                 <div class="form-group">
                     <label for="years_of_operation">Years of Experience (Optional)</label>
                     <div class="input-wrapper" id="yearsWrapper">
-                        <input type="text" id="years_of_operation" name="years_of_operation" class="minimal-input js-format-comma"
-                            inputmode="numeric">
+                        <input type="number" id="years_of_operation" name="years_of_operation" class="minimal-input" min="0" max="100" placeholder="e.g. 5">
                         <div id="yearsError" class="error-drawer"></div>
                     </div>
                 </div>

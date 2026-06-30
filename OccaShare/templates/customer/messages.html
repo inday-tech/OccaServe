@@ -418,8 +418,9 @@
             <div class="input-terminal">
                 <form id="chatForm" class="input-box">
                     <input type="file" id="fileInput" style="display: none;" accept="image/*,.pdf,.doc,.docx,.txt">
-                    <button type="button" class="btn-icon" id="attachBtn" style="color: var(--dm-slate-400); font-size: 1.1rem; margin-right: 0.5rem; background: transparent; border: none; cursor: pointer;">
+                    <button type="button" class="btn-icon" id="attachBtn" style="color: var(--dm-slate-400); font-size: 1.1rem; margin-right: 0.5rem; background: transparent; border: none; cursor: pointer; display:flex; align-items:center; gap:5px;">
                         <i class="fas fa-paperclip"></i>
+                        <span id="customerAttachLabel" style="font-size:0.7rem;font-weight:700;display:none;color:var(--up-orange);max-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
                     </button>
                     <input type="text" id="messageInput" placeholder="Type your message here..." autocomplete="off" maxlength="1000">
                     <button type="submit" class="btn-send-elite"><i class="fas fa-paper-plane"></i></button>
@@ -461,7 +462,22 @@
 
         fileInput.onchange = async (e) => {
             const file = e.target.files[0];
-            if (!file || !currentPeerId) return;
+            if (!file) return;
+
+            // Show filename preview on button
+            const customerAttachLabel = document.getElementById('customerAttachLabel');
+            if (customerAttachLabel) {
+                customerAttachLabel.textContent = file.name;
+                customerAttachLabel.style.display = 'inline';
+            }
+            attachBtn.style.color = 'var(--up-orange)';
+
+            if (!currentPeerId) {
+                fileInput.value = '';
+                if (customerAttachLabel) customerAttachLabel.style.display = 'none';
+                attachBtn.style.color = 'var(--dm-slate-400)';
+                return;
+            }
 
             // Loading state using SweetAlert
             Swal.fire({
@@ -483,13 +499,16 @@
                 Swal.fire('Error', 'Failed to upload file. Please check file type and size.', 'error');
             }
             fileInput.value = ''; // Reset
+            if (customerAttachLabel) customerAttachLabel.style.display = 'none';
+            attachBtn.style.color = 'var(--dm-slate-400)';
         };
 
         // Check for caterer ID in URL
         const urlParams = new URLSearchParams(window.location.search);
         const autoCaterer = urlParams.get('caterer_id');
+        const autoCatererName = urlParams.get('caterer_name') || 'Caterer';
         if (autoCaterer) {
-            setTimeout(() => selectConversation(Number(autoCaterer), 'Caterer'), 300);
+            setTimeout(() => selectConversation(Number(autoCaterer), autoCatererName), 300);
         }
 
         document.getElementById('chatForm').addEventListener('submit', async (e) => {
@@ -518,7 +537,7 @@
         }
 
         listDiv.innerHTML = conversations.map(conv => `
-            <div class="conv-item ${currentPeerId == conv.peer.id ? 'active' : ''}" onclick="selectConversation(${conv.peer.id}, '${conv.peer.name}', '${conv.peer.logo || ''}', ${conv.peer.profile_id || 'null'})">
+            <div class="conv-item ${currentPeerId == conv.peer.id ? 'active' : ''}" onclick="selectConversation(${conv.peer.id}, '${conv.peer.name.replace(/'/g, "\\'")}', '${conv.peer.logo || ''}', ${conv.peer.profile_id || 'null'})">
                 <div class="avatar-wrapper">
                     ${conv.peer.logo ? `<img src="${conv.peer.logo}" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null; this.parentElement.innerHTML='<b style=\\'color:var(--up-slate-900);\\'>${conv.peer.name.charAt(0)}</b>'">` : `<b style="color:var(--up-slate-900);">${conv.peer.name.charAt(0)}</b>`}
                     ${conv.peer.is_online ? `<div class="online-indicator"></div>` : ''}

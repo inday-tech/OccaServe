@@ -24,8 +24,14 @@
     <!-- Pricing Section: Adaptive Grid -->
     <div class="modal-pkg-pricing">
         <div class="pricing-card">
-            <span class="pricing-label">RATE PER HEAD</span>
-            <span class="pricing-value">₱{{ "{:,.0f}".format(package.price_per_head or (package.price / package.min_guests if package.price and package.min_guests else 0)) }}</span>
+            <span class="pricing-label">
+                {% if package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest' %}
+                RATE PER HEAD
+                {% else %}
+                PACKAGE TOTAL
+                {% endif %}
+            </span>
+            <span class="pricing-value">₱{{ "{:,.0f}".format(package.price_per_head or package.price or 0) }}</span>
         </div>
         <div class="pricing-card">
             <span class="pricing-label">BASE PRICE</span>

@@ -216,6 +216,7 @@ function initHeartbeat() {
 }
 
 async function fetchIntelligence() {
+    if (window.customerConfig && window.customerConfig.userRole && window.customerConfig.userRole !== 'customer') return;
     try {
         const msgRes = await fetch('/customer/api/messages/recent');
         const msgs   = await msgRes.json();
@@ -314,32 +315,65 @@ function initInactivityTimer() {
 }
 
 /* ============================================================
-/* ============================================================
    WEBSOCKET — Live push
    ============================================================ */
 function initWebSocket() {
     if (!window.customerConfig || !window.customerConfig.userId) return;
+    if (window.customerConfig.userRole && window.customerConfig.userRole !== 'customer') return;
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const clientId = `user_${window.customerConfig.userId}_${Math.random().toString(36).substr(2, 9)}`;
-    const ws    = new WebSocket(`${proto}//${location.host}/ws/${clientId}`);
+    const ws = new WebSocket(`${proto}//${location.host}/ws/${clientId}`);
 
     ws.onmessage = ({ data }) => {
         try {
             const d = JSON.parse(data);
-            if (d.type === 'notification' || d.type === 'message' || d.type === 'new_notification') {
+
+            // 1. Messages — instantly refresh message badge + dropdown
+            if (['message', 'chat_message'].includes(d.type)) {
                 fetchIntelligence();
+            }
+
+            // 2. Any notification-class event — instantly refresh notification badge + panel
+            const notifTypes = ['notification', 'new_notification', 'Booking', 'Payment',
+                                'booking_update', 'payment_update', 'status_update',
+                                'booking_rejected', 'booking_cancelled', 'payment_rejected'];
+            if (notifTypes.includes(d.type)) {
                 if (window.fetchGlobalNotifications) window.fetchGlobalNotifications(true);
             }
-            
-            if (d.type === 'booking_update' || d.type === 'payment_update' || d.type === 'status_update') {
-                if (window.showToast) window.showToast("Real-time Update: " + (d.message || "Status changed"), "info");
-                setTimeout(() => {
-                    if (window.softRefresh) window.softRefresh();
-                    else window.location.reload();
-                }, 1500);
+
+            // 3. Per-event toasts and soft DOM refresh (no full page reload)
+            const refresh = () => setTimeout(() => {
+                if (window.softRefresh) window.softRefresh();
+            }, 900);
+
+            if (d.type === 'booking_update' || d.type === 'status_update') {
+                if (window.showToast)
+                    window.showToast(d.message || 'Your booking status has been updated.', 'info');
+                refresh();
+            }
+            if (d.type === 'payment_update') {
+                if (window.showToast)
+                    window.showToast(d.message || 'Your payment has been verified.', 'success');
+                refresh();
+            }
+            if (d.type === 'payment_rejected') {
+                if (window.showToast)
+                    window.showToast(d.message || 'Your payment proof was rejected. Please re-upload.', 'warning');
+                refresh();
+            }
+            if (d.type === 'booking_rejected') {
+                if (window.showToast)
+                    window.showToast(d.message || 'Your booking request has been declined.', 'error');
+                refresh();
+            }
+            if (d.type === 'booking_cancelled') {
+                if (window.showToast)
+                    window.showToast(d.message || 'Your booking has been cancelled.', 'warning');
+                refresh();
             }
         } catch {}
     };
+    ws.onerror = () => {};
     ws.onclose = () => setTimeout(initWebSocket, 5000);
 }
 

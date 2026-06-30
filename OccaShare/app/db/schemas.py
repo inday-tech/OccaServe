@@ -45,6 +45,7 @@ class CatererProfileBase(BaseModel):
     description: Optional[str] = None
     contact_phone: Optional[str] = None
     logo_url: Optional[str] = None
+    scheduling_rules: Optional[dict] = None
 
 class CatererProfileCreate(CatererProfileBase):
     pass

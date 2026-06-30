@@ -76,6 +76,7 @@
                         data-usage-type="{{ item.usage_type or 'both' }}"
                         data-is-addon="{{ 'true' if item.is_addon else 'false' }}"
                         data-addon-price="{{ item.addon_price or 0 }}"
+                        data-base-duration-hours="{{ getattr(item, 'base_duration_hours', 3) }}"
                         data-image-url="{{ item.image_url or '' }}"
                         onclick="viewMenuItem(this)">
                         <i class="fas fa-eye"></i> View
@@ -95,6 +96,7 @@
                         data-usage-type="{{ item.usage_type or 'both' }}"
                         data-is-addon="{{ 'true' if item.is_addon else 'false' }}"
                         data-addon-price="{{ item.addon_price or 0 }}"
+                        data-base-duration-hours="{{ getattr(item, 'base_duration_hours', 3) }}"
                         data-image-url="{{ item.image_url or '' }}"
                         onclick="editMenuItem(this)">
                         <i class="fas fa-edit"></i> Edit
@@ -220,6 +222,13 @@
                             <option value="available">Available</option>
                             <option value="unavailable">Out of Stock</option>
                         </select>
+                    </div>
+                </div>
+                
+                <div class="form-row-pro" id="serviceDurationGroup" style="display: none;">
+                    <div class="form-group-pro">
+                        <label>Service Duration (Hours) * <i class="fas fa-info-circle text-muted" title="Standard duration provided for the service"></i></label>
+                        <input type="number" name="base_duration_hours" id="baseDurationInput" class="control-pro" placeholder="e.g. 3" min="1" max="24" value="3">
                     </div>
                 </div>
                 
@@ -394,13 +403,16 @@
         
         const qtyGroup = document.getElementById('qtyGroup');
         const qtyInput = document.getElementById('availableQtyInput');
+        const durationGroup = document.getElementById('serviceDurationGroup');
         if (type === 'Service') {
             qtyGroup.style.display = 'none';
             qtyInput.required = false;
             qtyInput.value = 1; // Default fallback for services
+            if (durationGroup) durationGroup.style.display = 'flex';
         } else {
             qtyGroup.style.display = 'block';
             qtyInput.required = true;
+            if (durationGroup) durationGroup.style.display = 'none';
         }
 
         toggleCustomCategory();
@@ -508,6 +520,7 @@
                 usage_type: el.dataset.usageType || 'both',
                 is_addon: el.dataset.isAddon === 'true',
                 addon_price: el.dataset.addonPrice || 0,
+                base_duration_hours: el.dataset.baseDurationHours || 3,
                 image_url: el.dataset.imageUrl
             };
 
@@ -546,6 +559,7 @@
             form.status.value = item.status || 'available';
             if (form.visibility) form.visibility.value = item.is_hidden === 'true' ? 'hidden' : 'public';
             if (form.usage_type) form.usage_type.value = item.usage_type;
+            if (form.base_duration_hours) form.base_duration_hours.value = item.base_duration_hours;
             
             if (form.is_addon) {
                 form.is_addon.checked = item.is_addon;

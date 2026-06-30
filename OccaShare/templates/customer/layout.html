@@ -35,7 +35,8 @@
 <body class="no-transition">
     <script>
         window.customerConfig = {
-            userId: {{ user.id if user else 'null' }}
+            userId: {{ user.id if user else 'null' }},
+            userRole: '{{ user.role if user else "guest" }}'
         };
         (function () {
             const isCollapsed = localStorage.getItem('customerSidebarCollapsed') === 'true';
@@ -116,10 +117,17 @@
                     <a href="/customer/bookings" class="nav-item {{ 'active' if active_page == 'bookings' }}"
                         onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-calendar-check"></i></div>
-                        <span class="nav-label">My Bookings</span>
+                        <span class="nav-label">My Events</span>
                         {% if user and user.bookings|selectattr('status', 'equalto', 'confirmed')|list|count > 0 %}
                         <span class="nav-badge">LIVE</span>
                         {% endif %}
+                    </a>
+                </li>
+                <li>
+                    <a href="/customer/orders" class="nav-item {{ 'active' if active_page == 'orders' }}"
+                        onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-burger"></i></div>
+                        <span class="nav-label">My Food Orders</span>
                     </a>
                 </li>
                 <li>
@@ -215,7 +223,7 @@
                     <button class="hdr-btn" id="msgBtn" title="Messages"
                         onclick="toggleHeaderDropdown('msgDropdown', this)">
                         <i class="fas fa-comment-dots"></i>
-                        <span class="hdr-badge" id="headerMsgBadge" style="display:none;"></span>
+                        <span class="action-badge" id="headerMsgBadge" style="display:none;"></span>
                     </button>
                     <div class="hdr-dropdown" id="msgDropdown">
                         <div class="hdr-dropdown-head">
@@ -316,7 +324,8 @@
                         <ul class="hdr-profile-links">
                             <li><a href="/customer/profile"><i class="fas fa-user"></i> My Profile</a></li>
                             <li><a href="/customer/payments"><i class="fas fa-wallet"></i> Payments</a></li>
-                            <li><a href="/customer/bookings"><i class="fas fa-calendar-check"></i> My Bookings</a></li>
+                            <li><a href="/customer/bookings"><i class="fas fa-calendar-check"></i> My Events</a></li>
+                            <li><a href="/customer/orders"><i class="fas fa-burger"></i> My Food Orders</a></li>
                             <li><a href="/customer/archives"><i class="fas fa-archive"></i> Archived Bookings</a></li>
                         </ul>
                         <div style="height: 1px; background: var(--dm-slate-50); margin: 0.25rem 0;"></div>
@@ -386,7 +395,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="{{ url_for('static', path='/js/main.js') }}?v=7414d5fc"></script>
     <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=1.4"></script>
-    <script src="{{ url_for('static', path='/js/customer/layout.js') }}?v=3.3"></script>
+    <script src="{{ url_for('static', path='/js/customer/layout.js') }}?v=3.5"></script>
 
 
     

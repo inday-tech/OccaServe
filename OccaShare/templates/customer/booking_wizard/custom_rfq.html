@@ -1,8 +1,8 @@
-{% extends "customer/booking_wizard/wizard_base.html" %}
+{% extends "customer/layout.html" %}
 
-{% block wizard_title %}Request Custom Event{% endblock %}
+{% block title %}Request Custom Event - OccaServe{% endblock %}
 
-{% block step_css %}
+{% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}?v={{ range(1, 9999) | random }}">
 <style>
     .wizard-title { font-size: 2rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
@@ -35,13 +35,14 @@
 </style>
 {% endblock %}
 
-{% block wizard_content %}
-<div class="wizard-header-content text-center mb-8">
-    <h2 class="wizard-title">Request Custom Proposal</h2>
-    <p class="wizard-subtitle">Provide details for your dream event and get a customized quote from <strong>{{ caterer.business_name }}</strong>.</p>
-</div>
+{% block content %}
+<div style="padding: 3rem 1rem; background: var(--dm-slate-50); min-height: 100vh;">
+    <div class="wizard-header-content text-center mb-8">
+        <h2 class="wizard-title">Request Custom Proposal</h2>
+        <p class="wizard-subtitle">Provide details for your dream event and get a customized quote from <strong>{{ caterer.business_name }}</strong>.</p>
+    </div>
 
-<div class="max-w-3xl mx-auto w-full">
+    <div class="max-w-3xl mx-auto w-full">
     {% if request.query_params.get('error') %}
     <div class="bg-red-50 text-red-600 p-4 rounded-xl mb-6 text-sm font-bold border border-red-200">
         {{ request.query_params.get('error') }}
@@ -229,4 +230,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+</div>
 {% endblock %}

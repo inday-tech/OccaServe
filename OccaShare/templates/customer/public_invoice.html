@@ -128,8 +128,8 @@
                 <p style="margin: 4px 0 0; color: var(--text-muted); font-size: 0.9rem;">Menu Selection for {{ booking.guest_count or 0 }} Guests</p>
             </div>
             <div style="padding: 0 1.5rem;">
-                {% if booking.items %}
-                    {% for item in booking.items %}
+                {% if booking.selected_items %}
+                    {% for item in booking.selected_items %}
                         {% if not item.is_add_on %}
                         <div style="padding: 1rem 0; border-bottom: 1px dashed var(--border); display: flex; justify-content: space-between; align-items: center;">
                             <div>
@@ -149,7 +149,7 @@
         </div>
 
         {% set has_addons = False %}
-        {% for item in booking.items %}
+        {% for item in booking.selected_items %}
             {% if item.is_add_on %}
                 {% set has_addons = True %}
             {% endif %}
@@ -165,7 +165,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for item in booking.items %}
+                {% for item in booking.selected_items %}
                     {% if item.is_add_on %}
                     <tr>
                         <td>

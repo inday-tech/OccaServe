@@ -304,8 +304,12 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                     {% if ps in ['reupload_requested','balance_reupload_requested'] %}
                         <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-settle">Upload Proof</a>
                     {% elif bs in ['pending_payment','awaiting_payment'] %}
-                        <a href="/bookings/step/payment/{{ b.id }}" class="bk-btn btn-pay">Pay</a>
-                        <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">Manage</a>
+                        {% if b.document_type == 'invoice' %}
+                            <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-pay">Manage Order</a>
+                        {% else %}
+                            <a href="/bookings/step/payment/{{ b.id }}" class="bk-btn btn-pay">Pay</a>
+                            <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">Manage</a>
+                        {% endif %}
                     {% elif bs in ['pending_quotation', 'awaiting_customer'] %}
                         <a href="/bookings/step/quotation/{{ b.id }}" class="bk-btn btn-resume">Sign Contract</a>
                         <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">Manage</a>

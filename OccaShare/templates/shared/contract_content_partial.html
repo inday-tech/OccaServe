@@ -24,7 +24,7 @@
         <div class="formal-doc-header">
             <h2 class="formal-doc-main-title">{{ doc_title }}</h2>
             <div class="formal-doc-meta">
-                <span>Reference No: <strong>#BK-{{ booking.id }}</strong></span>
+                <span>Reference No: <strong>#{% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ booking.id }}</strong></span>
                 <span>Date generated: <strong>{{ (quotation.updated_at or quotation.created_at).strftime('%B %d, %Y') }}</strong></span>
             </div>
         </div>
@@ -109,29 +109,30 @@
                 </tr>
             </thead>
             <tbody>
+                {% if quotation and quotation.package_details and quotation.package_details.base_amount|float > 0 %}
                 <tr class="summary-row-item">
                     <td class="summary-td-desc">
-                        <strong>Base Package: {{ booking.package.name if booking.package else 'Custom' }}</strong><br>
-                        <span class="summary-desc-subtext">Includes {{ quotation.package_details.guest_count }} guests at
-                            ₱{{
-                            "{:,.2f}".format((quotation.package_details.unit_price|float) if quotation.package_details and
-                            quotation.package_details.unit_price else 0.0) }}/head</span>
+                        <strong>Base Package: {{ quotation.package_details.name }}</strong><br>
+                        <span class="summary-desc-subtext">Includes {{ quotation.package_details.guest_count or 1 }} guests at
+                            ₱{{ "{:,.2f}".format(quotation.package_details.unit_price|float) }}/head</span>
                     </td>
                     <td class="summary-td-amount">
-                        ₱{{ "{:,.2f}".format((quotation.package_details.base_amount|float) if quotation.package_details and
-                        quotation.package_details.base_amount else (booking.total_price or booking.total_amount or
-                        0.0)|float) }}
+                        ₱{{ "{:,.2f}".format(quotation.package_details.base_amount|float) }}
                     </td>
                 </tr>
+                {% endif %}
 
                 {% if quotation.addons %}
                 {% for addon in quotation.addons %}
                 <tr class="addon-row-item">
                     <td class="addon-td-desc">
-                        Additional: {{ addon.name }}
+                        <strong>{{ addon.name }}</strong><br>
+                        <span class="summary-desc-subtext">
+                            Qty: {{ addon.quantity if addon.quantity else 1 }} &times; ₱{{ "{:,.2f}".format(addon.unit_price|float if addon.unit_price else addon.price|float) }}
+                        </span>
                     </td>
                     <td class="summary-td-amount">
-                        ₱{{ "{:,.2f}".format(addon.price) }}
+                        ₱{{ "{:,.2f}".format(addon.price|float) }}
                     </td>
                 </tr>
                 {% endfor %}
@@ -145,7 +146,7 @@
                     </td>
                 </tr>
                 {% set min_term = (booking.caterer.accepted_payment_terms|sort)[0] if booking.caterer and booking.caterer.accepted_payment_terms else (quotation.downpayment_percent or 30) %}
-                {% set dp_amount = (quotation.total_amount|float) * (min_term / 100.0) %}
+                {% set dp_amount = (quotation.total_amount|float) * ((min_term|float) / 100.0) %}
                 <tr>
                     <td class="deposit-info-label-cell">Required Security Deposit (<span id="contract-dp-pct">{{ min_term }}</span>%):</td>
                     <td class="deposit-info-amount-cell">
@@ -360,7 +361,7 @@
 <script>
     function downloadContractPDF() {
         const element = document.getElementById('printable-contract');
-        const refNo = "BK-{{ booking.id }}";
+        const refNo = "{% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ booking.id }}";
         
         // Show loading state
         const btn = document.querySelector('.pdf-action-bar button');

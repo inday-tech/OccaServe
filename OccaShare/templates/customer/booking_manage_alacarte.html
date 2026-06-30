@@ -203,7 +203,7 @@
                 <button onclick="initiatePaymongo('dp')" class="btn-action-elite btn-primary-orange" style="background: #4f46e5;">Pay Now <i class="fas fa-shield-check"></i></button>
                 {% endif %}
                 <a href="javascript:void(0)" onclick="openContractModal('{{ booking.id }}')" class="btn-action-elite btn-outline-slate">View Contract <i class="fas fa-file-contract"></i></a>
-                <a href="/customer/messages?caterer_id={{ booking.caterer_id }}" class="btn-action-elite btn-outline-slate">Message <i class="fas fa-comments"></i></a>
+                <a href="/customer/messages?caterer_id={{ booking.caterer.user_id }}&caterer_name={{ booking.caterer.business_name | urlencode }}" class="btn-action-elite btn-outline-slate">Message <i class="fas fa-comments"></i></a>
             </div>
         </div>
     </div>

@@ -88,6 +88,7 @@ class CatererProfile(Base):
     contact_address = Column(Text)
     city = Column(String)
     coverage_area = Column(Text, nullable=True)
+    out_of_coverage_action = Column(String, default="reject")
     cuisine_types = Column(ARRAY(String)) # Requires PostgreSQL
     event_types = Column(ARRAY(String)) # Supported events like Wedding, Birthday, etc.
     rating = Column(Float, default=0.0)
@@ -175,6 +176,19 @@ class CatererProfile(Base):
     default_reservation_type = Column(String, default='fixed') # 'fixed' or 'percentage'
     default_reservation_value = Column(Float, default=0.0)
     
+    # NEW: Delivery Settings
+    delivery_fee_type = Column(String, default="area") # "area", "manual", "disabled"
+    base_delivery_fee = Column(Float, default=150.0)
+    
+    # NEW: Universal Scheduling Rules
+    scheduling_rules = Column(JSONB, default={
+        "business_hours": {"open_time": "08:00", "close_time": "20:00"},
+        "food_rules": {"delivery_available": True, "pickup_available": True, "delivery_start": "09:00", "delivery_end": "19:00", "lead_time_hours": 24, "allow_same_day": False},
+        "equipment_rules": {"pickup_start": "08:00", "pickup_end": "18:00", "return_start": "08:00", "return_end": "18:00", "min_rental_hours": 24, "max_rental_hours": 72},
+        "service_rules": {"min_duration_hours": 3, "max_duration_hours": 8, "earliest_start": "08:00", "latest_end": "22:00"},
+        "package_rules": {"min_event_duration": 4, "max_event_duration": 6, "setup_time_hours": 2, "cleanup_time_hours": 1}
+    })
+    
     # NEW: Notification Preferences (JSONB for flexibility)
     notification_preferences = Column(JSONB, default={
         "email_new_booking": True,
@@ -209,6 +223,20 @@ class CatererProfile(Base):
     service_items = relationship("Service", back_populates="caterer", cascade="all, delete-orphan")
     business_expenses = relationship("BusinessExpense", back_populates="caterer", cascade="all, delete-orphan")
     portfolios = relationship("Portfolio", back_populates="caterer", cascade="all, delete-orphan")
+    delivery_zones = relationship("DeliveryZone", back_populates="caterer", cascade="all, delete-orphan")
+
+class DeliveryZone(Base):
+    __tablename__ = "delivery_zones"
+    id = Column(Integer, primary_key=True, index=True)
+    caterer_id = Column(Integer, ForeignKey("caterer_profiles.id", ondelete="CASCADE"))
+    province = Column(String, nullable=False)
+    city_municipality = Column(String, nullable=False)
+    barangay = Column(String, nullable=True) # Optional for more granular pricing
+    fee = Column(Float, default=0.0)
+    is_manual_quote = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    caterer = relationship("CatererProfile", back_populates="delivery_zones")
 
 class PackageMenu(Base):
     __tablename__ = "package_menus"
@@ -376,6 +404,11 @@ class Equipment(Base):
     status = Column(String, default="available")
     is_hidden = Column(Boolean, default=False)
     
+    # Strict Rental Fields
+    security_deposit_pct = Column(Float, default=20.0) # Percentage of cost_value
+    maintenance_buffer_hours = Column(Integer, default=12) # Gap required before next rental
+    requires_kyc = Column(Boolean, default=False) # Forced ID verification for high-value items
+    
     is_archived = Column(Boolean, default=False)
     usage_type = Column(String, default="both") # 'package_only', 'order_only', 'both'
     is_addon = Column(Boolean, default=False)
@@ -394,6 +427,8 @@ class Service(Base):
     description = Column(Text, nullable=True)
     image_url = Column(String, nullable=True)
     
+    base_duration_hours = Column(Integer, default=3)
+    
     cost = Column(Float, default=0.0)
     selling_price = Column(Float, default=0.0)
     unit_type = Column(String, default="per_event")
@@ -405,6 +440,12 @@ class Service(Base):
     usage_type = Column(String, default="both") # 'package_only', 'order_only', 'both'
     is_addon = Column(Boolean, default=False)
     addon_price = Column(Float, default=0.0)
+    
+    # New Service Booking Specific Fields
+    requires_agreement = Column(Boolean, default=False) # Contract-Track vs Fast-Track
+    downpayment_percentage = Column(Integer, default=50) # Specific to services, overrides caterer default
+    minimum_hours = Column(Integer, default=1) # Duration validation
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     caterer = relationship("CatererProfile", back_populates="service_items")
@@ -452,6 +493,8 @@ class Booking(Base):
     actual_cost_breakdown = Column(JSONB, nullable=True)
     total_price = Column(Float, nullable=True) # Alias to match user request structure
     reservation_fee = Column(DECIMAL, nullable=True)
+    travel_fee = Column(Float, default=0.0)
+    travel_fee_status = Column(String, default="confirmed") # "confirmed", "tbd", "pending_quote"
     status = Column(String, default="pending")
     payment_status = Column(String, default="pending") # pending, paid, deposit_paid
     payment_method = Column(String, nullable=True) # GCash, Credit Card, etc.
@@ -473,6 +516,17 @@ class Booking(Base):
     caterer_notes = Column(Text, nullable=True)
     is_archived = Column(Boolean, default=False)
     booking_source = Column(String, default="OccaServe") # OccaServe, Facebook, Walk-in, Other
+    
+    # Strict Equipment Rental Lifecycle Fields
+    security_deposit_amount = Column(Float, default=0.0)
+    security_deposit_status = Column(String, default="unpaid") # unpaid, held, partially_refunded, fully_refunded, forfeited
+    damage_deduction_amount = Column(Float, default=0.0)
+    missing_items_count = Column(Integer, default=0)
+    release_photo_url = Column(String, nullable=True) # Proof of condition on handover
+    return_photo_url = Column(String, nullable=True) # Proof of condition on return
+    damage_proof_url = Column(String, nullable=True) # Mandatory if deduction > 0
+    rental_disputed = Column(Boolean, default=False) # Flagged if customer challenges deductions
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     

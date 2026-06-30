@@ -1,14 +1,26 @@
 {% extends "customer/booking_wizard/wizard_base.html" %}
 
-{% block wizard_title %}Quotation &amp; Contract{% endblock %}
+{% block wizard_title %}
+    {% if booking.document_type == 'service_agreement' %}Service Agreement
+    {% elif booking.document_type == 'rental_agreement' %}Rental Agreement
+    {% else %}Quotation &amp; Contract{% endif %}
+{% endblock %}
 
 {% block wizard_content %}
 <div class="quotation-step animate-up">
     <!-- Header Section -->
     <header class="q-page-header">
         <div class="header-main">
+            {% if booking.document_type == 'service_agreement' %}
+            <h1 class="q-title">Service Agreement</h1>
+            <p class="q-subtitle">Review and sign the agreement to secure your service booking.</p>
+            {% elif booking.document_type == 'rental_agreement' %}
+            <h1 class="q-title">Rental Agreement</h1>
+            <p class="q-subtitle">Review and sign the agreement to secure your equipment rental.</p>
+            {% else %}
             <h1 class="q-title">Quotation & Agreement</h1>
             <p class="q-subtitle">Select your downpayment terms and sign the service agreement to seal the deal.</p>
+            {% endif %}
         </div>
         <div class="header-badges">
             <span class="q-badge">Ref: #BK-{{ quotation.booking_id }}</span>
@@ -124,21 +136,18 @@
                         </div>
 
                         <div class="land-dep-options" style="gap: 0.5rem; margin: 0.5rem 0;">
-                            <div class="dp-option-landscape {% if quotation.customer_signature and quotation.downpayment_percent == 30 %}active{% endif %}"
-                                {% if not quotation.customer_signature %}onclick="setDPTier(30)" {% endif %} style="padding: 0.4rem;">
-                                <span class="dp-pct" style="font-size: 0.85rem;">30%</span>
-                                <span class="dp-label" style="font-size: 0.55rem;">Deposit</span>
+                            {% set terms = booking.caterer.accepted_payment_terms if booking.caterer.accepted_payment_terms else [30, 50, 100] %}
+                            {% for term in terms %}
+                            <div class="dp-option-landscape {% if quotation.customer_signature and quotation.downpayment_percent == term|int %}active{% endif %}"
+                                {% if not quotation.customer_signature %}onclick="setDPTier({{ term|int }})" {% endif %} style="padding: 0.4rem;">
+                                <span class="dp-pct" style="font-size: 0.85rem;">{{ term }}%</span>
+                                <span class="dp-label" style="font-size: 0.55rem;">
+                                    {% if term|int < 50 %}Deposit
+                                    {% elif term|int < 100 %}Standard
+                                    {% else %}Full Pay{% endif %}
+                                </span>
                             </div>
-                            <div class="dp-option-landscape {% if quotation.customer_signature and quotation.downpayment_percent == 50 %}active{% endif %}"
-                                {% if not quotation.customer_signature %}onclick="setDPTier(50)" {% endif %} style="padding: 0.4rem;">
-                                <span class="dp-pct" style="font-size: 0.85rem;">50%</span>
-                                <span class="dp-label" style="font-size: 0.55rem;">Standard</span>
-                            </div>
-                            <div class="dp-option-landscape {% if quotation.customer_signature and quotation.downpayment_percent == 100 %}active{% endif %}"
-                                {% if not quotation.customer_signature %}onclick="setDPTier(100)" {% endif %} style="padding: 0.4rem;">
-                                <span class="dp-pct" style="font-size: 0.85rem;">100%</span>
-                                <span class="dp-label" style="font-size: 0.55rem;">Full Pay</span>
-                            </div>
+                            {% endfor %}
                         </div>
 
                         <div class="land-dep-total" style="flex-direction: row; justify-content: space-between; align-items: center; border-left: none; padding-left: 0; padding-top: 0.5rem; border-top: 1px dashed var(--up-border);">

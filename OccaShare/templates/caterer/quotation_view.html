@@ -1,6 +1,6 @@
 {% extends "caterer/layout.html" %}
 
-{% block title %}Invoice #BK-{{ booking.id }} - OccaServe{% endblock %}
+{% block title %}Invoice #{% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ booking.id }} - OccaServe{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -190,7 +190,7 @@
         </div>
         <div class="invoice-meta">
             <h2>INVOICE</h2>
-            <p>Ref: #BK-{{ booking.id }}</p>
+            <p>Ref: #{% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ booking.id }}</p>
             <p>Date: {{ booking.created_at.strftime('%B %d, %Y') }}</p>
         </div>
     </div>
@@ -214,27 +214,61 @@
         <thead>
             <tr>
                 <th>Description</th>
+                <th style="text-align: center;">Qty</th>
+                <th style="text-align: right;">Unit Price</th>
                 <th style="text-align: right;">Amount</th>
             </tr>
         </thead>
         <tbody>
+            {% if quotation and quotation.package_details and quotation.package_details.base_amount > 0 %}
             <tr>
                 <td>
-                    <div class="item-name">{{ booking.event_name or booking.event_type }}</div>
-                    <div class="item-desc">Core service package and event management.</div>
+                    <div class="item-name">{{ quotation.package_details.name }}</div>
+                    <div class="item-desc">{{ quotation.package_details.description or 'Core service package.' }}</div>
                 </td>
-                <td style="text-align: right; font-weight: 700;">₱{{ "{:,.2f}".format(booking.total_amount) }}</td>
+                <td style="text-align: center; font-weight: 600; color: var(--color-neutral-600);">
+                    {{ quotation.package_details.guest_count or 1 }}
+                </td>
+                <td style="text-align: right; color: var(--color-neutral-600);">
+                    ₱{{ "{:,.2f}".format(quotation.package_details.unit_price) }}
+                </td>
+                <td style="text-align: right; font-weight: 700;">₱{{ "{:,.2f}".format(quotation.package_details.base_amount) }}</td>
             </tr>
+            {% endif %}
+            
             {% if quotation and quotation.addons %}
                 {% for addon in quotation.addons %}
                 <tr>
                     <td>
                         <div class="item-name">{{ addon.name }}</div>
-                        <div class="item-desc">Additional service/item.</div>
+                        <div class="item-desc">
+                            {% if addon.category == 'food' %}Ala Carte / Add-on Food
+                            {% elif addon.category == 'equipment' %}Equipment Rental
+                            {% elif addon.category == 'service' %}Service Assignment
+                            {% elif addon.category == 'fee' %}Surcharge / Fee
+                            {% else %}Additional Component{% endif %}
+                        </div>
+                    </td>
+                    <td style="text-align: center; font-weight: 600; color: var(--color-neutral-600);">
+                        {{ addon.quantity if addon.quantity else 1 }}
+                    </td>
+                    <td style="text-align: right; color: var(--color-neutral-600);">
+                        ₱{{ "{:,.2f}".format(addon.unit_price if addon.unit_price else addon.price) }}
                     </td>
                     <td style="text-align: right; font-weight: 700;">₱{{ "{:,.2f}".format(addon.price) }}</td>
                 </tr>
                 {% endfor %}
+            {% endif %}
+            
+            {% if not quotation %}
+            <!-- Legacy Fallback -->
+            <tr>
+                <td colspan="3">
+                    <div class="item-name">{{ booking.event_name or booking.event_type }}</div>
+                    <div class="item-desc">Core service package and event management.</div>
+                </td>
+                <td style="text-align: right; font-weight: 700;">₱{{ "{:,.2f}".format(booking.total_amount) }}</td>
+            </tr>
             {% endif %}
         </tbody>
     </table>
@@ -242,15 +276,17 @@
     <div class="totals-section">
         <div class="total-row">
             <span>Subtotal</span>
-            <span>₱{{ "{:,.2f}".format(booking.total_amount) }}</span>
+            <span>₱{{ "{:,.2f}".format(quotation.total_amount if quotation else booking.total_amount) }}</span>
         </div>
-        <div class="total-row">
-            <span>Tax (0%)</span>
-            <span>₱0.00</span>
+        {% if booking.security_deposit_amount and booking.security_deposit_amount > 0 %}
+        <div class="total-row" style="color: var(--color-neutral-500);">
+            <span>Security Deposit (Refundable)</span>
+            <span>₱{{ "{:,.2f}".format(booking.security_deposit_amount) }}</span>
         </div>
+        {% endif %}
         <div class="total-row grand-total">
-            <span>Total Amount</span>
-            <span>₱{{ "{:,.2f}".format(booking.total_amount) }}</span>
+            <span>Total Payable</span>
+            <span>₱{{ "{:,.2f}".format((quotation.total_amount if quotation else booking.total_amount) + (booking.security_deposit_amount or 0)) }}</span>
         </div>
     </div>
 

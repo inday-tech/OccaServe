@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 from fastapi.staticfiles import StaticFiles
 from .db.database import engine, Base, get_db
-from .routers import website, auth, admin, bookings, social_auth, caterers, packages, caterer_dashboard, customer_dashboard, verification, kyc, quotations, payments, contact, notifications, chat, caterer_feed, inventory_api, caterer_portfolio
+from .routers import website, auth, admin, bookings, social_auth, caterers, packages, caterer_dashboard, customer_dashboard, verification, kyc, quotations, payments, contact, notifications, chat, caterer_feed, inventory_api, caterer_portfolio, service_bookings
 from .db import models
 from sqlalchemy.orm import Session
 from .services.realtime import manager
@@ -256,6 +256,7 @@ app.include_router(chat.router)
 app.include_router(caterer_feed.router)
 app.include_router(inventory_api.router)
 app.include_router(caterer_portfolio.router)
+app.include_router(service_bookings.router)
 
 # --- WebSocket Implementation ---
 

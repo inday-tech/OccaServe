@@ -383,7 +383,7 @@ async def admin_dashboard(
     booking_count = len(all_bookings)
     
     # Ensure we get proper floats for currency logic
-    total_sales = float(sum(b.total_amount for b in all_bookings if b.status != 'cancelled') or 0.0)
+    total_sales = float(sum(b.total_amount for b in all_bookings if b.status not in ['cancelled', 'inquiry', 'negotiating', 'quoted']) or 0.0)
     
     # Platform earnings only based on completed/paid bookings effectively
     paid_bookings = [b for b in all_bookings if b.payment_status == 'paid']
@@ -415,7 +415,7 @@ async def admin_dashboard(
         month_bookings = db.query(models.Booking).filter(
             models.Booking.created_at >= first_day_of_month,
             models.Booking.created_at <= last_day_of_month,
-            models.Booking.status != 'cancelled'
+            models.Booking.status.not_in(['cancelled', 'inquiry', 'negotiating', 'quoted'])
         ).all()
 
         month_new_users = db.query(models.User).filter(
@@ -468,7 +468,7 @@ async def admin_dashboard(
         joinedload(models.Booking.caterer)
     ).filter(
         models.Booking.payment_status == 'paid',
-        models.Booking.status != 'cancelled'
+        models.Booking.status.not_in(['cancelled', 'inquiry', 'negotiating', 'quoted'])
     ).order_by(models.Booking.created_at.desc()).limit(10).all()
 
     return templates.TemplateResponse("admin/dashboard.html", {
@@ -2917,16 +2917,19 @@ async def reconcile_booking_payment(
     booking.payment_status = "paid"
     booking.status = "confirmed"
     
+    prefix = "ORD" if booking.document_type == "invoice" else "BK"
+    word = "Order" if booking.document_type == "invoice" else "Booking"
+    
     # Log the governance reconciliation
     audit = models.AuditLog(
         user_id=user.id,
         action="GOVERNANCE_RECONCILE",
-        notes=f"Administrative payment reconciliation for #BK-{booking_id}. Reason: {notes}"
+        notes=f"Administrative payment reconciliation for #{prefix}-{booking_id}. Reason: {notes}"
     )
     db.add(audit)
     db.commit()
     
-    return {"success": True, "message": f"Booking #BK-{booking_id} has been manually verified and reconciled."}
+    return {"success": True, "message": f"{word} #{prefix}-{booking_id} has been manually verified and reconciled."}
 
 @router.post("/api/bookings/{booking_id}/force-complete")
 async def force_complete_booking(
@@ -2942,16 +2945,19 @@ async def force_complete_booking(
     booking.status = "completed"
     booking.payment_status = "paid"
     
+    prefix = "ORD" if booking.document_type == "invoice" else "BK"
+    word = "Order" if booking.document_type == "invoice" else "Booking"
+
     # Log action
     audit = models.AuditLog(
         user_id=user.id,
         action="FORCE_COMPLETE",
-        notes=f"Administrative force completion for #BK-{booking_id}. Reason: {notes}"
+        notes=f"Administrative force completion for #{prefix}-{booking_id}. Reason: {notes}"
     )
     db.add(audit)
     db.commit()
     
-    return {"success": True, "message": f"Booking #BK-{booking_id} marked as completed via administrative override."}
+    return {"success": True, "message": f"{word} #{prefix}-{booking_id} marked as completed via administrative override."}
 
 @router.post("/api/bookings/{booking_id}/cancel")
 async def administrative_cancel_booking(
@@ -2967,6 +2973,9 @@ async def administrative_cancel_booking(
     booking.status = "cancelled"
     booking.payment_status = "cancelled"
     
+    prefix = "ORD" if booking.document_type == "invoice" else "BK"
+    word = "Order" if booking.document_type == "invoice" else "Booking"
+
     # Timeline
     history = models.BookingHistory(booking_id=booking.id, status="CANCELLED BY ADMIN", notes=reason)
     db.add(history)
@@ -2975,7 +2984,7 @@ async def administrative_cancel_booking(
     audit = models.AuditLog(
         user_id=user.id,
         action="FORCE_CANCEL_BOOKING",
-        notes=f"System Administrator cancelled booking #BK-{booking_id}. Reason: {reason}"
+        notes=f"System Administrator cancelled {word.lower()} #{prefix}-{booking_id}. Reason: {reason}"
     )
     db.add(audit)
     
@@ -2984,14 +2993,14 @@ async def administrative_cancel_booking(
         if target_id:
             db.add(models.Notification(
                 user_id=target_id,
-                title="Booking Cancelled by Administrator",
-                message=f"Your booking #BK-{booking_id} has been cancelled by the System Administrator. Reason: {reason}",
+                title=f"{word} Cancelled by Administrator",
+                message=f"Your {word.lower()} #{prefix}-{booking_id} has been cancelled by the System Administrator. Reason: {reason}",
                 type="warning"
             ))
             
     db.commit()
     
-    return {"success": True, "message": f"Booking #BK-{booking_id} terminated."}
+    return {"success": True, "message": f"{word} #{prefix}-{booking_id} terminated."}
 
 @router.post("/api/bookings/{booking_id}/flag-dispute")
 async def flag_booking_dispute(
@@ -3007,6 +3016,9 @@ async def flag_booking_dispute(
     
     booking.status = "under_dispute"
     
+    prefix = "ORD" if booking.document_type == "invoice" else "BK"
+    word = "Order" if booking.document_type == "invoice" else "Booking"
+
     # Timeline
     history = models.BookingHistory(booking_id=booking.id, status="UNDER DISPUTE", notes=f"{reason}: {description}")
     db.add(history)
@@ -3014,7 +3026,7 @@ async def flag_booking_dispute(
     audit = models.AuditLog(
         user_id=user.id,
         action="FLAG_DISPUTE",
-        notes=f"Flagged booking #BK-{booking_id} for dispute. Category: {reason}. Notes: {description}"
+        notes=f"Flagged {word.lower()} #{prefix}-{booking_id} for dispute. Category: {reason}. Notes: {description}"
     )
     db.add(audit)
     
@@ -3022,14 +3034,14 @@ async def flag_booking_dispute(
         if target_id:
             db.add(models.Notification(
                 user_id=target_id,
-                title="Booking Under Dispute",
-                message=f"Booking #BK-{booking_id} has been placed under dispute review. Reason: {reason}",
+                title=f"{word} Under Dispute",
+                message=f"{word} #{prefix}-{booking_id} has been placed under dispute review. Reason: {reason}",
                 type="warning"
             ))
             
     db.commit()
     
-    return {"success": True, "message": f"Booking #BK-{booking_id} flagged for resolution."}
+    return {"success": True, "message": f"{word} #{prefix}-{booking_id} flagged for resolution."}
 
 @router.post("/api/bookings/{booking_id}/send-alert")
 async def dispatch_booking_alert(
@@ -3043,13 +3055,16 @@ async def dispatch_booking_alert(
     if not booking:
         return {"success": False, "message": "Booking not found"}
     
+    prefix = "ORD" if booking.document_type == "invoice" else "BK"
+    word = "Order" if booking.document_type == "invoice" else "Booking"
+
     # Send alert to both Customer and Caterer
     for target_id in [booking.user_id, booking.caterer.user_id if booking.caterer else None]:
         if target_id:
             new_notif = models.Notification(
                 user_id=target_id,
                 title=f"System Notification: {category}",
-                message=f"Regarding #BK-{booking_id}: {message}",
+                message=f"Regarding #{prefix}-{booking_id}: {message}",
                 type="info"
             )
             db.add(new_notif)
@@ -3057,11 +3072,11 @@ async def dispatch_booking_alert(
     audit = models.AuditLog(
         user_id=user.id,
         action="SEND_SYSTEM_ALERT",
-        notes=f"Sent {category} alert for #BK-{booking_id}"
+        notes=f"Sent {category} alert for #{prefix}-{booking_id}"
     )
     db.add(audit)
     db.commit()
-    return {"success": True, "message": "Global booking alert dispatched successfully."}
+    return {"success": True, "message": f"Global {word.lower()} alert dispatched successfully."}
 
 @router.post("/api/bookings/{booking_id}/verify-payment")
 async def admin_verify_payment(
@@ -3074,6 +3089,9 @@ async def admin_verify_payment(
     if not booking:
         return {"success": False, "message": "Booking not found"}
         
+    prefix = "ORD" if booking.document_type == "invoice" else "BK"
+    word = "Order" if booking.document_type == "invoice" else "Booking"
+
     if action == "approve":
         booking.payment_status = "verified"
         history = models.BookingHistory(booking_id=booking.id, status="PAYMENT VERIFIED", notes="Payment proof verified by Administration")
@@ -3081,9 +3099,9 @@ async def admin_verify_payment(
         
         # Notify
         if booking.user_id:
-            db.add(models.Notification(user_id=booking.user_id, title="Payment Verified", message=f"Your payment for Booking #BK-{booking.id} has been verified successfully.", type="success"))
+            db.add(models.Notification(user_id=booking.user_id, title="Payment Verified", message=f"Your payment for {word} #{prefix}-{booking.id} has been verified successfully.", type="success"))
         if booking.caterer and booking.caterer.user_id:
-            db.add(models.Notification(user_id=booking.caterer.user_id, title="Payment Verified", message=f"Payment for Booking #BK-{booking.id} has been verified.", type="success"))
+            db.add(models.Notification(user_id=booking.caterer.user_id, title="Payment Verified", message=f"Payment for {word} #{prefix}-{booking.id} has been verified.", type="success"))
             
     elif action == "reject":
         booking.payment_status = "pending"
@@ -3092,14 +3110,14 @@ async def admin_verify_payment(
         
         # Notify
         if booking.user_id:
-            db.add(models.Notification(user_id=booking.user_id, title="Payment Rejected", message=f"Your payment proof for Booking #BK-{booking.id} was rejected. Please upload a valid proof of payment.", type="warning"))
+            db.add(models.Notification(user_id=booking.user_id, title="Payment Rejected", message=f"Your payment proof for {word} #{prefix}-{booking.id} was rejected. Please upload a valid proof of payment.", type="warning"))
         if booking.caterer and booking.caterer.user_id:
-            db.add(models.Notification(user_id=booking.caterer.user_id, title="Payment Verification Failed", message=f"Payment verification failed for Booking #BK-{booking.id}.", type="warning"))
+            db.add(models.Notification(user_id=booking.caterer.user_id, title="Payment Verification Failed", message=f"Payment verification failed for {word} #{prefix}-{booking.id}.", type="warning"))
             
     audit = models.AuditLog(
         user_id=user.id,
         action=f"PAYMENT_{action.upper()}",
-        notes=f"{action.capitalize()}d payment for #BK-{booking_id}"
+        notes=f"{action.capitalize()}d payment for #{prefix}-{booking_id}"
     )
     db.add(audit)
     db.commit()

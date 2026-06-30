@@ -89,7 +89,8 @@ if PYTESSERACT_AVAILABLE:
         for path in TESSERACT_PATHS:
             if os.path.exists(path):
                 pytesseract.pytesseract.tesseract_cmd = path
-                print(f"[KYC DEBUG] Tesseract found at: {path}")
+                os.environ["TESSDATA_PREFIX"] = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "tessdata"))
+                print(f"[KYC DEBUG] Tesseract found at: {path}, Prefix set to: {os.environ['TESSDATA_PREFIX']}")
                 break
         else:
             print("[KYC DEBUG] Tesseract NOT found in common Windows paths. Using system default.")
