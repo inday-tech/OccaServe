@@ -3219,10 +3219,12 @@ async def submit_caterer_review(
         identity.verification_status = status
         
     if status == "Verified":
+        profile.is_verified = True
         if profile.user:
             profile.user.is_verified = True
             profile.user.is_kyc_complete = True
     else:
+        profile.is_verified = False
         if profile.user:
             profile.user.is_verified = False
             if status == "Suspended":
