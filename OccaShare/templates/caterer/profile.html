@@ -895,8 +895,8 @@
     const publicPackages = {
         {% for pkg in packages %}
         "{{ pkg.id }}": {
-            name: "{{ pkg.name }}",
-            desc: `{{ pkg.description or '' }}`,
+            name: {{ pkg.name|tojson }},
+            desc: {{ (pkg.description or '')|tojson }},
             {% if pkg.pricing_mode == 'per_pax' or pkg.price_unit == 'per_guest' %}
             price: '₱{{ "{:,.2f}".format(pkg.price_per_head if pkg.price_per_head else (pkg.price if pkg.price else 0)) }} <span class="text-[10px] text-slate-400 font-bold ml-1">/pax</span>',
             {% else %}
@@ -916,60 +916,60 @@
             dishes: [{% for item in pkg.menu_items %}{% if item.category not in ['Rentals', 'Services'] %}{{ item.name|tojson }},{% endif %}{% endfor %}].filter(Boolean),
             selection_rules: {{ (pkg.selection_rules)|tojson if pkg.selection_rules else 'null' }}
         },
-    {% endfor %}
+        {% endfor %}
     };
 
     const menuDishes = {
         {% for cat in categories %}
-    "{{ cat }}": [
-        {% for item in active_menu if item.category == cat %}
-    {
-        name: { { item.name | tojson } },
-        image_url: "{{ item.image_url if item.image_url else '' }}",
-            serving_size: { { (item.serving_size if item.serving_size else 'Single')| tojson } },
-        price: { { (item.price if item.price else 0)| tojson } },
-        pricing_type: "{{ item.pricing_type or 'fixed' }}",
-            weight_prices: [
-                {% for wp in item.weight_prices %}
-    { weight_label: { { wp.weight_label | tojson } }, price: { { wp.price | tojson } } } { { ',' if not loop.last else '' } }
-    {% endfor %}
+        "{{ cat }}": [
+            {% for item in active_menu if item.category == cat %}
+            {
+                name: {{ item.name|tojson }},
+                image_url: "{{ item.image_url if item.image_url else '' }}",
+                serving_size: {{ (item.serving_size if item.serving_size else 'Single')|tojson }},
+                price: {{ (item.price if item.price else 0)|tojson }},
+                pricing_type: "{{ item.pricing_type or 'fixed' }}",
+                weight_prices: [
+                    {% for wp in item.weight_prices %}
+                    { weight_label: {{ wp.weight_label|tojson }}, price: {{ wp.price|tojson }} }{{ ',' if not loop.last else '' }}
+                    {% endfor %}
                 ],
-    size_prices: [
-        {% for sp in item.size_prices %}
-    { size_name: { { sp.size_name | tojson } }, price: { { sp.price | tojson } }, capacity: { { (sp.capacity or '')| tojson } } } { { ',' if not loop.last else '' } }
-    {% endfor %}
+                size_prices: [
+                    {% for sp in item.size_prices %}
+                    { size_name: {{ sp.size_name|tojson }}, price: {{ sp.price|tojson }}, capacity: {{ (sp.capacity or '')|tojson }} }{{ ',' if not loop.last else '' }}
+                    {% endfor %}
                 ]
             },
-    {% endfor %}
+            {% endfor %}
         ],
-    {% endfor %}
+        {% endfor %}
     };
 
     const inventoryItems = {
         {% set inventory_categories = [] %}
-    {% for item in active_inventory %}
-    {% set cat_name = item.category if item.category else ('Equipment' if item.equipment_type else 'Service') %}
-    {% if cat_name not in inventory_categories %}
-    {% set _ = inventory_categories.append(cat_name) %}
-    {% endif %}
-    {% endfor %}
-
-    {% for cat in inventory_categories %}
-    "{{ cat }}": [
         {% for item in active_inventory %}
-    {% set item_cat = item.category if item.category else ('Equipment' if item.equipment_type else 'Service') %}
-    {% if item_cat == cat %}
-    {
-        name: { { item.name | tojson } },
-        image_url: "{{ item.image_url if item.image_url else '' }}",
-            price: { { (item.rental_price if item.rental_price is defined else item.selling_price)| tojson } },
-        unit_type: { { (item.unit_type if item.unit_type else 'piece')| tojson } },
-        type: "{{ 'Equipment' if item.rental_price is defined else 'Service' }}"
-    },
-    {% endif %}
-    {% endfor %}
+        {% set cat_name = item.category if item.category else ('Equipment' if item.equipment_type else 'Service') %}
+        {% if cat_name not in inventory_categories %}
+        {% set _ = inventory_categories.append(cat_name) %}
+        {% endif %}
+        {% endfor %}
+
+        {% for cat in inventory_categories %}
+        "{{ cat }}": [
+            {% for item in active_inventory %}
+            {% set item_cat = item.category if item.category else ('Equipment' if item.equipment_type else 'Service') %}
+            {% if item_cat == cat %}
+            {
+                name: {{ item.name|tojson }},
+                image_url: "{{ item.image_url if item.image_url else '' }}",
+                price: {{ (item.rental_price if item.rental_price is defined else item.selling_price)|tojson }},
+                unit_type: {{ (item.unit_type if item.unit_type else 'piece')|tojson }},
+                type: "{{ 'Equipment' if item.rental_price is defined else 'Service' }}"
+            },
+            {% endif %}
+            {% endfor %}
         ],
-    {% endfor %}
+        {% endfor %}
     };
 
     function openInventoryShowcase(categoryName) {
