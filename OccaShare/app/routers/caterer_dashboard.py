@@ -6034,7 +6034,10 @@ async def submit_verification(
 
         # Phase 1: Notify Admins of Caterer Document Submission
         from ..services.realtime import manager
+        from ..core.email_service import send_notification_email
+        from ..core.config import settings
         import asyncio
+        
         admins = db.query(models.User).filter(models.User.role == "admin").all()
         for admin in admins:
             new_notif = models.Notification(
@@ -6047,12 +6050,22 @@ async def submit_verification(
             db.add(new_notif)
             db.commit()
             
+            # Send Email Alert to Admin
+            if admin.email:
+                send_notification_email(
+                    to_email=admin.email,
+                    subject=f"New KYC Submission: {profile.business_name}",
+                    message=f"Hello Admin,\n\nA caterer ({profile.business_name}) has just submitted their identity and business documents for KYC verification.\n\nPlease log in to the OccaServe Admin Panel to review their application and verify their account.",
+                    link=f"{settings.SITE_URL.rstrip('/')}/admin/caterers?caterer_id={user.id}&action=verify"
+                )
+            
             count = db.query(models.Notification).filter(models.Notification.user_id == admin.id, models.Notification.is_read == False).count()
             asyncio.create_task(manager.broadcast_to_user(admin.id, {
                 "type": "new_notification",
                 "message": f"KYC update from {profile.business_name}",
                 "count": count
             }))
+            
         return JSONResponse(content={"success": True, "message": "Verification submitted successfully."})
     except Exception as e:
         db.rollback()
