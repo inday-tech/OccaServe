@@ -501,18 +501,25 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
         
         # Simulate processing time
         await asyncio.sleep(0.5)
-        
         result = await verification_service.verify_identity_v2(
             id_path, selfie_paths, full_name, id_number, id_type, db, user_id, dob, address,
             completed_challenges=completed_challenges,
             assigned_challenges=assigned_challenges
         )
         
-        print(f"[KYC BACKGROUND] Verification Service result status: {result.get('status')}")
+        status = result.get("status")
+        print(f"[KYC BACKGROUND] Verification Service result status: {status}")
+        
+        # Force all successful auto-verifications to pending_manual_review for manual check by caterer
+        if status == "verified":
+            print("[KYC BACKGROUND] Auto-verification passed. Redirecting to caterer manual review...")
+            status = "pending_manual_review"
+            result["status"] = "pending_manual_review"
+            result["failure_reason"] = "Identity Verification Pending | Your verification is pending evaluation by the caterer."
         
         # Update VerificationSession
         if session:
-            session.status = result.get("status", "failed")
+            session.status = status
             session.liveness_score = float(result.get("liveness_score", 0.0))
             session.anti_spoof_score = float(result.get("anti_spoof_score", 0.0))
             session.face_match_score = float(result.get("face_match_score", 0.0))
@@ -522,7 +529,7 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
             db.commit()
             
         # Update User & IdentityVerification records if verified
-        if result.get("status") == "verified":
+        if status == "verified":
             user.is_verified = True
             user.is_kyc_complete = True
             if kyc_record:
@@ -544,10 +551,19 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
                 "kyc_update"
             )
             
-        elif result.get("status") == "pending_manual_review":
+        elif status == "pending_manual_review":
             if kyc_record:
                 kyc_record.verification_status = "pending_manual_review"
-                kyc_record.failure_reason = result.get("failure_reason")
+                kyc_record.failure_reason = result.get("failure_reason") or "Identity Verification Pending | Your verification is pending evaluation by the caterer."
+                
+            # Send Notification for pending evaluation
+            await NotificationService.notify_status_update(
+                db, user_id, 
+                "Verification Pending", 
+                f"Your identity verification is pending manual evaluation by the caterer.",
+                f"/bookings/step/kyc/{booking.id}",
+                "kyc_update"
+            )
                 
         elif result.get("status") == "liveliness_failed":
             if kyc_record:
