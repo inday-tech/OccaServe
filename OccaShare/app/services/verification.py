@@ -3205,7 +3205,7 @@ class VerificationService:
 
             if not name_matched:
                 status = "rejected"
-                failure_reason = "Identity Verification Failed | Ang pangalan sa iyong in-upload na ID ay hindi tugma sa iyong registered name. Mangyaring i-upload ang sarili mong valid ID."
+                failure_reason = "Identity Verification Failed | The name on the uploaded ID does not match the name registered on your account. Please upload a valid government-issued ID that matches your registered information."
             elif liveness_failure:
                 status = "liveliness_failed"
                 failure_reason = liveness_failure

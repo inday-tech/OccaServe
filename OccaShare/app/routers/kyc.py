@@ -127,9 +127,10 @@ async def extract_id(
     print(f"[KYC EXTRACT] Name matching - Registered: '{user_full_name}', Extracted: '{ocr_full_name}', Matched: {name_matched}")
     
     if not name_matched:
+        debug_info = f"Registered: '{user_full_name}', OCR Extracted First: '{ocr_first_name}', Middle: '{ocr_middle_name}', Last: '{ocr_last_name}'"
         raise HTTPException(
             status_code=400,
-            detail="Identity Verification Failed | Ang pangalan sa iyong in-upload na ID ay hindi tugma sa iyong registered name. Mangyaring i-upload ang sarili mong valid ID."
+            detail=f"Identity Verification Failed | The name on the uploaded ID does not match the name registered on your account. Please upload a valid government-issued ID that matches your registered information.\n\n[DEBUG INFO]: {debug_info}"
         )
     
     # Update/Create verification record as pending_confirmation
