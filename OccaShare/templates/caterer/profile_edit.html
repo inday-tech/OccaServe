@@ -1653,6 +1653,11 @@ currentPassInput.addEventListener('input', validateRequirements);
         const mapDiv = document.getElementById('pickerMap');
         if (!mapDiv || mapDiv.offsetWidth === 0) return; // Still hidden
         
+        if (typeof google === 'undefined' || !google.maps) {
+            console.warn("Google Maps SDK not loaded. Skipping initialization.");
+            return;
+        }
+
         mapInitialized = true;
 
         // Initialize Google Map

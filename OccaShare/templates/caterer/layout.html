@@ -26,8 +26,27 @@
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=1.4">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v=5.0">
     <!-- Google Maps API -->
+    <script>
+        window.gm_authFailure = function() {
+            console.warn("Google Maps failed to load/authenticate (ApiTargetBlockedMapError or other restriction). Using fallback.");
+            const pickerMapEl = document.getElementById('pickerMap');
+            if (pickerMapEl) {
+                pickerMapEl.style.height = 'auto';
+                pickerMapEl.style.border = 'none';
+                pickerMapEl.innerHTML = `
+                    <div class="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center space-y-2">
+                        <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                            <i class="fas fa-map-marker-alt text-xl"></i>
+                        </div>
+                        <h4 class="text-xs font-bold text-slate-800">Location Picker Offline</h4>
+                        <p class="text-[11px] text-slate-500 max-w-xs">The interactive location pin picker is currently offline. You can still manually input your address in the form below.</p>
+                    </div>
+                `;
+            }
+        };
+    </script>
     <script
-        src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key() }}&libraries=places,geocoding"></script>
+        src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key() }}&libraries=places"></script>
 
     {% if wconfig and wconfig.favicon_url %}
     <link rel="icon" href="{{ wconfig.favicon_url }}">

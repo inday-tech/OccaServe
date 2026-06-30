@@ -82,3 +82,6 @@ def google_maps_api_key():
     return os.getenv("GOOGLE_MAPS_API_KEY", "AIzaSyBpFEUgMDrteQk_BIYKSRRID1mhuCEEykY")
 
 templates.env.globals["google_maps_api_key"] = google_maps_api_key
+
+# Trigger template reload and verify changes
+

@@ -343,6 +343,11 @@
         }
     }
 </style>
+<script>
+    window.gm_authFailure = function() {
+        console.warn("Google Maps failed to load/authenticate in marketplace. Using geolocation fallbacks.");
+    };
+</script>
 <script
     src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key() }}&libraries=places"></script>
 {% endblock %}

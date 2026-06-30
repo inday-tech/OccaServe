@@ -196,6 +196,42 @@
     }
 </style>
 <!-- Google Maps API -->
+<script>
+    window.gm_authFailure = function() {
+        console.warn("Google Maps failed to load (ApiTargetBlockedMapError or other restriction). Using fallback.");
+        const mapEl = document.getElementById('map');
+        if (mapEl) {
+            const businessName = mapEl.getAttribute('data-business-name') || '';
+            const fullAddress = mapEl.getAttribute('data-address') || '';
+            const lat = mapEl.getAttribute('data-lat') || '';
+            const lng = mapEl.getAttribute('data-lng') || '';
+            
+            let query = encodeURIComponent(fullAddress || businessName);
+            if (lat && lng && lat !== '0' && lng !== '0') {
+                query = `${lat},${lng}`;
+            }
+            const googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${query}`;
+            
+            mapEl.style.height = 'auto';
+            mapEl.style.border = 'none';
+            mapEl.innerHTML = `
+                <div class="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center space-y-4">
+                    <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                        <i class="fas fa-map-marked-alt text-2xl"></i>
+                    </div>
+                    <div class="space-y-1">
+                        <h4 class="text-sm font-bold text-slate-800">Map View Offline</h4>
+                        <p class="text-xs text-slate-500 max-w-sm">We couldn't load the interactive map on this page, but you can view the location and get directions directly on Google Maps.</p>
+                    </div>
+                    <a href="${googleMapsLink}" target="_blank" 
+                       class="inline-flex items-center gap-2 px-5 py-2.5 bg-brand text-white text-xs uppercase font-black tracking-widest rounded-full shadow-md hover:shadow-lg transition-all decoration-none">
+                        <i class="fas fa-external-link-alt text-[10px]"></i> Open in Google Maps
+                    </a>
+                </div>
+            `;
+        }
+    };
+</script>
 <script
     src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key() }}&libraries=places"></script>
 {% endblock %}
@@ -672,7 +708,11 @@
                 <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                     <span class="w-8 h-[1px] bg-slate-200"></span> Verified Location
                 </h2>
-                <div id="map" class="rounded-2xl border border-slate-100" style="height: 300px;"></div>
+                <div id="map" class="rounded-2xl border border-slate-100" style="height: 300px;"
+                     data-business-name="{{ caterer.business_name }}"
+                     data-address="{{ caterer.address_details or caterer.contact_address or caterer.city or '' }}"
+                     data-lat="{{ caterer.latitude or '' }}"
+                     data-lng="{{ caterer.longitude or '' }}"></div>
                 <div
                     class="mt-5 flex flex-col sm:flex-row gap-4 items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
                     <div class="flex items-center gap-3 w-full sm:w-auto">
@@ -1324,6 +1364,11 @@
 
     const mapElement = document.getElementById('map');
     if (!mapElement) return;
+
+    if (typeof google === 'undefined' || !google.maps) {
+        console.warn("Google Maps SDK not loaded. Skipping initialization.");
+        return;
+    }
 
     const map = new google.maps.Map(mapElement, {
         zoom: 16,
