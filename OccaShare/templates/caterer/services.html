@@ -76,7 +76,7 @@
                         data-usage-type="{{ item.usage_type or 'both' }}"
                         data-is-addon="{{ 'true' if item.is_addon else 'false' }}"
                         data-addon-price="{{ item.addon_price or 0 }}"
-                        data-base-duration-hours="{{ getattr(item, 'base_duration_hours', 3) }}"
+                        data-base-duration-hours="{{ item.base_duration_hours | default(3, true) }}"
                         data-image-url="{{ item.image_url or '' }}"
                         onclick="viewMenuItem(this)">
                         <i class="fas fa-eye"></i> View
@@ -96,7 +96,7 @@
                         data-usage-type="{{ item.usage_type or 'both' }}"
                         data-is-addon="{{ 'true' if item.is_addon else 'false' }}"
                         data-addon-price="{{ item.addon_price or 0 }}"
-                        data-base-duration-hours="{{ getattr(item, 'base_duration_hours', 3) }}"
+                        data-base-duration-hours="{{ item.base_duration_hours | default(3, true) }}"
                         data-image-url="{{ item.image_url or '' }}"
                         onclick="editMenuItem(this)">
                         <i class="fas fa-edit"></i> Edit

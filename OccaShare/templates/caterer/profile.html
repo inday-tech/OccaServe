@@ -894,7 +894,6 @@
 <script>
     const publicPackages = {
         {% for pkg in packages %}
-<<<<<<< HEAD
         "{{ pkg.id }}": {
             name: "{{ pkg.name }}",
             desc: `{{ pkg.description or '' }}`,
@@ -916,41 +915,6 @@
             ].filter(Boolean),
             dishes: [{% for item in pkg.menu_items %}{% if item.category not in ['Rentals', 'Services'] %}{{ item.name|tojson }},{% endif %}{% endfor %}].filter(Boolean),
             selection_rules: {{ (pkg.selection_rules)|tojson if pkg.selection_rules else 'null' }}
-        },
-=======
-    "{{ pkg.id }}": {
-        name: "{{ pkg.name }}",
-            {% if pkg.pricing_mode == 'per_pax' or pkg.price_unit == 'per_guest' %}
-    price: '₱{{ "{:,.2f}".format(pkg.price_per_head if pkg.price_per_head else (pkg.price if pkg.price else 0)) }} <span class="text-[10px] text-slate-400 font-bold ml-1">/pax</span>',
-        {% else %}
-    price: '₱{{ "{:,.2f}".format(pkg.price if pkg.price else (pkg.price_per_head if pkg.price_per_head else 0)) }} <span class="text-[10px] text-slate-400 font-bold ml-1">total</span>',
-        {% endif %}
-    description: `{{ pkg.description or 'Premium package.' }}`,
-        inclusions: [
-            {% if pkg.menu_items %}
-    {% for m in pkg.menu_items %}
-    "Dish: {{ m.name }} ({{ m.category }})",
->>>>>>> f1d6c67e46b12026fd92233427a76f07187ea5dd
-        {% endfor %}
-    {% endif %}
-    {% if pkg.equipment_links %}
-    {% for eq_link in pkg.equipment_links %}
-    "Equipment: {{ eq_link.equipment.name }} {% if eq_link.quantity > 1 %}(x{{ eq_link.quantity }}){% endif %}",
-        {% endfor %}
-    {% endif %}
-    {% if pkg.service_links %}
-    {% for svc_link in pkg.service_links %}
-    "Service: {{ svc_link.service.name }} {% if svc_link.quantity > 1 %}(x{{ svc_link.quantity }}){% endif %}",
-        {% endfor %}
-    {% endif %}
-    {% if pkg.inclusions and pkg.inclusions is iterable %}
-    {% for inc in pkg.inclusions %}
-    "{{ inc }}",
-        {% endfor %}
-    {% endif %}
-            ],
-    service_duration: "{{ pkg.service_duration or 4 }} Hours",
-        service_type: "{{ pkg.service_type or 'General' }}"
         },
     {% endfor %}
     };
@@ -1195,7 +1159,6 @@
         const pkg = publicPackages[id];
         if (!pkg) return;
 
-<<<<<<< HEAD
         let addGuestHtml = '';
         if (pkg.additional_guest_price > 0) {
             addGuestHtml = `
@@ -1266,16 +1229,6 @@
                 </div>
             </div>`;
         }
-=======
-        let incHtml = "";
-        // Use real inclusions if available, else show high-quality defaults
-        const defaultInclusions = ["Full Event Setup & Cleanup", "Premium Buffet Table Design", "Professional Uniformed Servers", "Standard Sound System", "Complete Dining Utensils"];
-        const displayInclusions = (pkg.inclusions && pkg.inclusions.length > 0) ? pkg.inclusions : defaultInclusions;
-
-        incHtml = `<ul class="space-y-2 mt-3">
-            ${displayInclusions.map(i => `<li class="text-xs text-slate-600 flex items-center gap-2"><i class="fas fa-check-circle text-[var(--primary-color)]"></i> ${i}</li>`).join('')}
-        </ul>`;
->>>>>>> f1d6c67e46b12026fd92233427a76f07187ea5dd
 
         const html = `
             <div style="margin-bottom:1.25rem;">

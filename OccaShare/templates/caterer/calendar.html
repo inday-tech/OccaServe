@@ -430,10 +430,13 @@
                 <div class="weekly-event-card type-{{ booking.event_type.lower().split(' ')[0] if booking.event_type else 'other' }}"
                     data-id="{{ booking.id }}"
                     data-customer="{{ (booking.user.first_name ~ ' ' ~ booking.user.last_name) if booking.user else (booking.customer_name or 'Walk-in') }}"
-                    data-type="{{ booking.event_type or 'Other' }}" data-title="{{ booking.event_name or 'Event' }}"
+                    data-type="{{ booking.event_type or 'Food Order' }}" data-title="{{ booking.event_name or (booking.user.first_name if booking.user else 'Order') }}"
                     data-datetime="{{ booking.event_date.strftime('%A, %B %d, %Y') }} at {{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBD' }}"
                     data-venue="{{ booking.venue_address or 'TBD' }}"
-                    data-package="{{ booking.guest_count }} Guests - {{ booking.package.name if booking.package else 'Custom' }}"
+                    data-package="{{ booking.guest_count }} Guests - {{ booking.package.name if booking.package else 'Ala Carte' }}"
+                    data-is-food-order="{{ 'true' if (booking.venue_address == 'PICKUP' or (not booking.event_type)) else 'false' }}"
+                    data-payment-status="{{ booking.payment_status or 'pending' }}"
+                    data-fulfillment="{{ 'Pickup at Caterer' if booking.venue_address == 'PICKUP' else 'Delivery' }}"
                     onclick="openSidebarEventModal(this)">
                     <div class="weekly-event-date">
                         <span>{{ booking.event_date.strftime('%b') }}</span>
