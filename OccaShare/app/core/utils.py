@@ -183,7 +183,7 @@ def background_geocode(caterer_id: int):
             if not addr:
                 return
                 
-            api_key = os.getenv('GOOGLE_MAPS_API_KEY')
+            api_key = os.getenv('GOOGLE_MAPS_API_KEY', 'AIzaSyBpFEUgMDrteQk_BIYKSRRID1mhuCEEykY')
             if not api_key:
                 print('[Geocode] No API key found')
                 return

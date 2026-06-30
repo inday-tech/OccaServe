@@ -79,6 +79,6 @@ templates.env.filters["hex_to_rgb"] = hex_to_rgb
 
 # Google Maps API Key global function
 def google_maps_api_key():
-    return os.getenv("GOOGLE_MAPS_API_KEY", "AIzaSyDB1SLholKPKD5ewgc6c6P56RqFRMcpkEI")
+    return os.getenv("GOOGLE_MAPS_API_KEY", "AIzaSyBpFEUgMDrteQk_BIYKSRRID1mhuCEEykY")
 
 templates.env.globals["google_maps_api_key"] = google_maps_api_key

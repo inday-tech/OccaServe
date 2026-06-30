@@ -1796,7 +1796,7 @@ async def clear_user_audit(
     if user.role == "caterer":
         profile = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == user_id).first()
         if profile:
-            profile.account_status = "Approved"
+            profile.account_status = "Active"
 
     # Log Audit
     audit = models.AuditLog(
