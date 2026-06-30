@@ -217,12 +217,14 @@ async def register(
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or \
               "application/json" in request.headers.get("Accept", "")
     
+    # Always initialize mn to prevent UnboundLocalError
+    mn = (middle_name or "").strip()
+
     # Compose full_name from separate fields if provided, otherwise split existing full_name
     if first_name and last_name:
         # Separate fields provided (caterer form)
         first_name = first_name.strip()
         last_name = last_name.strip()
-        mn = (middle_name or "").strip()
         full_name = f"{first_name} {mn + ' ' if mn else ''}{last_name}".strip()
     elif full_name and full_name.strip():
         # Legacy: single full_name field — split into first and last
@@ -602,8 +604,11 @@ async def register(
         response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
         return response
 
-    if is_ajax and role == "caterer":
-        return JSONResponse(content={"status": "success", "email": email, "redirect": f"/auth/verify?email={email}"})
+    if is_ajax:
+        verify_url = f"/auth/verify?email={email}"
+        if next_url:
+            verify_url += f"&next={next_url}"
+        return JSONResponse(content={"status": "success", "email": email, "redirect": verify_url})
 
     verify_url = f"/auth/verify?email={email}"
     if next_url:

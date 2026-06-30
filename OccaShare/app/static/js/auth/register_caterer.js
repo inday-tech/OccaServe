@@ -251,6 +251,17 @@
                     setError('years', "", false);
                 }
             }
+
+            const minPaxInput = document.getElementById('min_pax_cat');
+            if (minPaxInput) {
+                const pax = parseInt(minPaxInput.value.replace(/,/g, ''));
+                if (isNaN(pax) || pax < 1 || pax > 5000) {
+                    valid = false;
+                    setError('minPaxCat', "Must be between 1 and 5,000 guests");
+                } else {
+                    setError('minPaxCat', "", false);
+                }
+            }
         }
 
         if (currentStepCat === 3) {
@@ -369,9 +380,11 @@
                 body: formData
             });
 
-            if (response.redirected) {
-                const url = new URL(response.url);
-                const email = url.searchParams.get('email');
+            const result = await response.json();
+
+            if (response.ok && result.status === 'success') {
+                // Registration succeeded — open email verification modal
+                const email = result.email;
 
                 if (window.openAuthModal) {
                     const emailDisplay = document.getElementById('email-display');
@@ -394,17 +407,23 @@
                         });
                     }
                 } else {
-                    window.location.href = response.url;
+                    // Fallback: navigate to verify page
+                    window.location.href = result.redirect || `/auth/verify?email=${encodeURIComponent(email)}`;
                 }
             } else {
-                const result = await response.json();
+                // Server returned an error
+                const message = result.message || 'Please check your information and try again.';
                 if (window.Swal) {
-                    Swal.fire({ icon: 'error', title: 'Registration Failed', text: result.message || 'Please check your information and try again.' });
+                    Swal.fire({ icon: 'error', title: 'Registration Failed', text: message });
                 }
             }
         } catch (error) {
             console.error('Registration error:', error);
+            if (window.Swal) {
+                Swal.fire({ icon: 'error', title: 'Connection Error', text: 'Could not reach the server. Please try again.' });
+            }
         } finally {
+
             if (submitBtn) submitBtn.disabled = false;
             if (btnText) btnText.innerText = originalText;
         }
