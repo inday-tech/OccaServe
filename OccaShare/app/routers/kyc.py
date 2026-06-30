@@ -99,6 +99,22 @@ async def extract_id(
     ocr_middle_name = get_field_val("middle_name")
     raw_ocr = extracted_data.get("raw_text", "")
     
+    # Log variables to ocr_debug.log to see why name matching failed
+    try:
+        with open("ocr_debug.log", "a", encoding="utf-8") as f:
+            f.write(f"\n--- KYC MATCH DEBUG ---\n")
+            f.write(f"current_user.id: {current_user.id}\n")
+            f.write(f"current_user.first_name: {current_user.first_name!r}\n")
+            f.write(f"current_user.middle_name: {current_user.middle_name!r}\n")
+            f.write(f"current_user.last_name: {current_user.last_name!r}\n")
+            f.write(f"user_full_name: {user_full_name!r}\n")
+            f.write(f"ocr_full_name: {ocr_full_name!r}\n")
+            f.write(f"ocr_first_name: {ocr_first_name!r}\n")
+            f.write(f"ocr_middle_name: {ocr_middle_name!r}\n")
+            f.write(f"ocr_last_name: {ocr_last_name!r}\n")
+    except Exception as log_err:
+        pass
+        
     name_matched = verification_service.match_name(
         user_full_name,
         ocr_full_name,
