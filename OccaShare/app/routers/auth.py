@@ -241,6 +241,58 @@ async def register(
         
     otp = None # Initialize OTP to prevent NameError later
 
+    # Check if a user with this email already exists and is not verified
+    user = db.query(models.User).filter(func.lower(models.User.email) == email.lower().strip()).first()
+    if user and not user.is_email_verified:
+        otp = utils.get_random_digits(6)
+        user.verification_code = otp
+        from datetime import datetime, timedelta, timezone
+        user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+        
+        # Update details if provided
+        if first_name and last_name:
+            user.first_name = first_name.strip()
+            user.last_name = last_name.strip()
+        if mobile_number:
+            user.phone_number = mobile_number.strip().replace(" ", "")
+        if address:
+            user.address = address.strip()
+            
+        if role == "caterer":
+            profile = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == user.id).first()
+            if profile:
+                if business_name:
+                    profile.business_name = business_name.strip()
+                if mobile_number:
+                    profile.contact_phone = mobile_number.strip().replace(" ", "")
+                if address:
+                    profile.contact_address = address.strip()
+                if min_pax:
+                    profile.min_pax = min_pax
+                if city:
+                    profile.city = city
+                if coverage_area:
+                    profile.coverage_area = coverage_area
+        
+        db.commit()
+        
+        try:
+            from ..services.email import EmailService
+            EmailService.send_verification_email(user.email, otp)
+        except Exception as e:
+            print(f"[AUTH ERROR] Failed to send verification email: {e}")
+            
+        if is_ajax:
+            verify_url = f"/auth/verify?email={user.email}"
+            if next_url:
+                verify_url += f"&next={next_url}"
+            return JSONResponse(content={"status": "success", "email": user.email, "redirect": verify_url})
+        else:
+            verify_url = f"/auth/verify?email={user.email}"
+            if next_url:
+                verify_url += f"&next={next_url}"
+            return RedirectResponse(url=verify_url, status_code=status.HTTP_303_SEE_OTHER)
+
     # server‑side validation
     errors = {}
     import re
