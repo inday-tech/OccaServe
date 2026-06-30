@@ -3038,6 +3038,75 @@ class VerificationService:
                     liveness_failure = "Insufficient Lighting | The environment is too dark for accurate verification. Please move to a brighter location and try again."
                     break
 
+            # 2. Gemini Multi-modal Selfie Audit (Sunglasses, Mask, Obstructions, Tilted head, Multiple faces, etc.)
+            if not liveness_failure and os.getenv("GEMINI_API_KEY") and selfie_paths:
+                try:
+                    print("[KYC DEBUG] Running Gemini Selfie Audit...")
+                    audit_prompt = (
+                        "Analyze the uploaded selfie image to ensure it meets strict KYC face verification standards.\n"
+                        "Evaluate the following check criteria:\n"
+                        "1. No sunglasses: Is the person wearing sunglasses or tinted glasses?\n"
+                        "2. No glare on glasses: If they wear eyeglasses, is there glare/reflection that covers or obstructs their eyes?\n"
+                        "3. No face mask: Is the person wearing a medical mask, dust mask, or cloth mask?\n"
+                        "4. No head/face covering: Is the person wearing a helmet, hood, hat, or anything else that covers their face?\n"
+                        "5. No hair obstruction: Is their hair covering their eyes or face?\n"
+                        "6. No object obstruction: Is there a hand, cellphone, finger, or other object covering any part of their face?\n"
+                        "7. Full face visible: Is their entire face (from forehead to chin, ear to ear) clearly visible?\n"
+                        "8. Correct head tilt: Is the head tilted too much (e.g. tilted up, down, or to the side)?\n"
+                        "9. Looking at camera: Is the person looking straight at the camera?\n"
+                        "10. Single face: Is there exactly one face in the image? (No multiple faces, no background faces).\n"
+                        "11. Face present: Is there a face present in the image?\n\n"
+                        "Return a JSON object in exactly this format:\n"
+                        "{\n"
+                        "  \"face_present\": true,\n"
+                        "  \"single_face\": true,\n"
+                        "  \"no_sunglasses\": true,\n"
+                        "  \"no_glare_on_glasses\": true,\n"
+                        "  \"no_face_mask\": true,\n"
+                        "  \"no_face_covering\": true,\n"
+                        "  \"no_hair_obstruction\": true,\n"
+                        "  \"no_object_obstruction\": true,\n"
+                        "  \"full_face_visible\": true,\n"
+                        "  \"head_straight\": true,\n"
+                        "  \"looking_at_camera\": true,\n"
+                        "  \"all_checks_passed\": true,\n"
+                        "  \"failure_reason\": \"\"\n"
+                        "}\n"
+                        "If 'all_checks_passed' is false, 'failure_reason' must be a simple, easy-to-understand English sentence explaining what failed "
+                        "(e.g. \"Please remove your sunglasses.\", \"Please make sure your face is not covered.\", \"Please look straight at the camera.\", \"Please ensure only one face is visible.\").\n"
+                        "Do not return any other text, only the raw JSON."
+                    )
+                    audit_res = await self._call_gemini_ocr(selfie_paths[0], audit_prompt)
+                    if audit_res and isinstance(audit_res, dict):
+                        print(f"[KYC DEBUG] Gemini Selfie Audit Result: {audit_res}")
+                        if not audit_res.get("all_checks_passed", True):
+                            if not audit_res.get("face_present", True):
+                                liveness_failure = "No Face Detected | Face not found. Please look at the camera."
+                            elif not audit_res.get("single_face", True):
+                                liveness_failure = "Multiple Faces | Only one face should be visible."
+                            elif not audit_res.get("no_sunglasses", True):
+                                liveness_failure = "Sunglasses Detected | Please remove your sunglasses."
+                            elif not audit_res.get("no_glare_on_glasses", True):
+                                liveness_failure = "Glasses Glare | Avoid reflection on your glasses."
+                            elif not audit_res.get("no_face_mask", True):
+                                liveness_failure = "Mask Detected | Please remove your face mask."
+                            elif not audit_res.get("no_face_covering", True):
+                                liveness_failure = "Face Covered | Remove your hat, hood, or helmet."
+                            elif not audit_res.get("no_hair_obstruction", True):
+                                liveness_failure = "Hair Obstruction | Keep your hair away from your face."
+                            elif not audit_res.get("no_object_obstruction", True):
+                                liveness_failure = "Object Obstruction | Do not block your face."
+                            elif not audit_res.get("full_face_visible", True):
+                                liveness_failure = "Face Hidden | Ensure your entire face is visible."
+                            elif not audit_res.get("head_straight", True):
+                                liveness_failure = "Head Tilted | Keep your head straight."
+                            elif not audit_res.get("looking_at_camera", True):
+                                liveness_failure = "Not Looking | Please look straight at the camera."
+                            else:
+                                liveness_failure = f"Liveness Failed | {audit_res.get('failure_reason', 'Face verification failed.')}"
+                except Exception as audit_err:
+                    print(f"[KYC WARNING] Gemini Selfie Audit failed: {audit_err}")
+
             vps_url = os.getenv("VPS_AI_URL")
             vps_api_key = os.getenv("VPS_API_KEY")
             vps_success = False

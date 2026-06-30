@@ -145,7 +145,7 @@
                     </td>
                 </tr>
                 {% set min_term = (booking.caterer.accepted_payment_terms|sort)[0] if booking.caterer and booking.caterer.accepted_payment_terms else (quotation.downpayment_percent or 30) %}
-                {% set dp_amount = (quotation.total_amount|float) * (min_term / 100.0) %}
+                {% set dp_amount = (quotation.total_amount|float) * (min_term|float / 100.0) %}
                 <tr>
                     <td class="deposit-info-label-cell">Required Security Deposit (<span id="contract-dp-pct">{{ min_term }}</span>%):</td>
                     <td class="deposit-info-amount-cell">

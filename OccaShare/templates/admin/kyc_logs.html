@@ -255,7 +255,7 @@
                                 audit.user.role|upper }}</div>
                         </td>
                         <td>
-                            {% if audit.verification_status == 'approved' %}
+                            {% if audit.verification_status == 'approved' or audit.verification_status == 'verified' %}
                             <span class="badge-clean" style="background: #ecfdf5; color: #059669;">APPROVED</span>
                             {% else %}
                             <span class="badge-clean" style="background: #fef2f2; color: #dc2626;">REJECTED</span>
