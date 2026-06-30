@@ -1030,7 +1030,7 @@ class VerificationService:
         
         # 1. Resolution Check
         if width < 500 or height < 300:
-            return {"valid": False, "reason": f"Resolution too low ({width}x{height}). Please take a higher resolution photo."}
+            return {"valid": False, "reason": "Resolution Too Low | Photo quality is too low. Please take a higher resolution picture."}
         
         if not CV2_AVAILABLE:
             print("[KYC WARNING] Skipping detailed quality checks: OpenCV not available.")
@@ -1041,9 +1041,9 @@ class VerificationService:
         # 2. Brightness Check
         mean_brightness = np.mean(gray)
         if mean_brightness < 45:
-            return {"valid": False, "reason": "Image is too dark. Please take the photo in a well-lit area."}
+            return {"valid": False, "reason": "Image Too Dark | Photo is too dark. Please take the picture in a well-lit room."}
         if mean_brightness > 220:
-            return {"valid": False, "reason": "Image is too bright or washed out. Please adjust the lighting."}
+            return {"valid": False, "reason": "Image Too Bright | Photo is too bright. Please avoid direct light reflection on your ID."}
             
         # 3. Blur Detection (Laplacian Variance)
         blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
@@ -1051,13 +1051,13 @@ class VerificationService:
         
         # Require a reasonable sharpness threshold (e.g. 10) for production quality
         if blur_score < 10:
-            return {"valid": False, "reason": "Image is too blurry. Please keep your hand steady and retake."}
+            return {"valid": False, "reason": "Image Too Blurry | Photo is blurry. Please hold your camera steady and try again."}
             
         # 4. Glare Check (Excessive bright spots)
         glare_pixels = np.sum(gray > 250)
         glare_pct = glare_pixels / gray.size
         if glare_pct > 0.25:
-            return {"valid": False, "reason": "Glare detected on ID card. Please avoid direct overhead lights or flash reflections."}
+            return {"valid": False, "reason": "Glare Detected | Camera glare detected. Please turn off camera flash or avoid overhead lights."}
             
         return {"valid": True}
 
@@ -2408,7 +2408,7 @@ class VerificationService:
             if db and user_id and id_number:
                 if self.check_duplicate_id(db, id_number, user_id):
                     return {"status": "rejected", "ocr_match": False, "pattern_valid": True, 
-                            "failure_reason": "❌ This ID has already been registered."}
+                            "failure_reason": "Duplicate ID Detected | This ID is already registered to another account. Please use a different ID."}
 
             # 2. ID Pattern Validation
             pattern_valid = self.validate_id_pattern(id_type, id_number)
@@ -3241,20 +3241,23 @@ class VerificationService:
 
             if not name_matched:
                 status = "rejected"
-                failure_reason = "Identity Verification Failed | The name on the uploaded ID does not match the name registered on your account. Please upload a valid government-issued ID that matches your registered information."
+                if not str(rich_data.get("first_name", "")).strip() and not str(rich_data.get("last_name", "")).strip():
+                    failure_reason = "Extraction Error | Could not read your ID. Please make sure the photo is clear and not blurry."
+                else:
+                    failure_reason = "Identity Verification Failed | The name on your ID does not match your registered name. Please upload your own valid ID."
             elif liveness_failure:
                 status = "liveliness_failed"
                 failure_reason = liveness_failure
             elif not liveness_passed:
                 status = "liveliness_failed"
                 if challenge_completion_score < 100:
-                    failure_reason = "Blink Verification Failed | We could not detect the required blink action. Please look directly at the camera and blink naturally when prompted."
+                    failure_reason = "Blink Verification Failed | Blink not detected. Please look directly at the camera and blink naturally."
                 elif not vps_success and liveness_score < 40:
-                    failure_reason = "Face Not Detected | We couldn't detect your face clearly. Please position your face inside the frame and try again."
+                    failure_reason = "Face Not Detected | Face not detected. Please center your face inside the frame and try again."
                 elif vps_success and anti_spoof_score < 70:
-                    failure_reason = "Verification Rejected | A potential spoofing attempt was detected. Please complete the verification using your live face and avoid using photos, videos, or screen displays."
+                    failure_reason = "Verification Rejected | Verification rejected. Please use your live face and avoid using photos or screens."
                 else:
-                    failure_reason = "Blink Verification Failed | We could not detect the required blink action. Please look directly at the camera and blink naturally when prompted."
+                    failure_reason = "Blink Verification Failed | Blink not detected. Please look directly at the camera and blink naturally."
             else:
                 # Liveness passed. Check face match score.
                 # Thresholds: >= 90 VERIFIED, 85-89 pending_manual_review, < 85 rejected
@@ -3263,10 +3266,10 @@ class VerificationService:
                     failure_reason = None
                 elif face_match_score >= 85:
                     status = "pending_manual_review"
-                    failure_reason = "Face match is in the manual review range (85-89%)."
+                    failure_reason = "Face Match Review | Face match score is slightly low. Your ID verification will be manually reviewed."
                 else:
                     status = "rejected"
-                    failure_reason = "Identity Verification Failed | The captured selfie does not sufficiently match the photo on the uploaded ID. Please ensure you are using your own valid ID and try again."
+                    failure_reason = "Identity Verification Failed | Your selfie does not match the photo on your ID. Please upload a clear photo of yourself."
 
             # Write liveness and verification details to ocr_debug.log
             try:

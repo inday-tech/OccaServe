@@ -126,11 +126,17 @@ async def extract_id(
     
     print(f"[KYC EXTRACT] Name matching - Registered: '{user_full_name}', Extracted: '{ocr_full_name}', Matched: {name_matched}")
     
+    if not ocr_first_name.strip() and not ocr_last_name.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Extraction Error | Could not read your ID. Please make sure the photo is clear and not blurry."
+        )
+        
     if not name_matched:
         debug_info = f"Registered: '{user_full_name}', OCR Extracted First: '{ocr_first_name}', Middle: '{ocr_middle_name}', Last: '{ocr_last_name}'"
         raise HTTPException(
             status_code=400,
-            detail=f"Identity Verification Failed | The name on the uploaded ID does not match the name registered on your account. Please upload a valid government-issued ID that matches your registered information.\n\n[DEBUG INFO]: {debug_info}"
+            detail=f"Identity Verification Failed | The name on your ID does not match your registered name. Please upload your own valid ID.\n\n[DEBUG INFO]: {debug_info}"
         )
     
     # Update/Create verification record as pending_confirmation
@@ -310,10 +316,30 @@ async def upload_id(
         address=address
     )
     
-    if id_result.get("name_matched") == False:
+    if id_result.get("status") in ["rejected", "mismatched", "error"] and id_result.get("failure_reason"):
         raise HTTPException(
             status_code=400,
-            detail="Identity Verification Failed | Ang pangalan sa iyong in-upload na ID ay hindi tugma sa iyong registered name. Mangyaring i-upload ang sarili mong valid ID."
+            detail=f"Identity Verification Failed | {id_result.get('failure_reason')}"
+        )
+
+    if id_result.get("name_matched") == False:
+        ocr_data = id_result.get("ocr_data", {})
+        ocr_first = ocr_data.get("first_name", "") or ocr_data.get("given_names", "")
+        ocr_last = ocr_data.get("last_name", "")
+        
+        # Resolve dict values if needed
+        if isinstance(ocr_first, dict): ocr_first = ocr_first.get("value", "")
+        if isinstance(ocr_last, dict): ocr_last = ocr_last.get("value", "")
+        
+        if not str(ocr_first).strip() and not str(ocr_last).strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Extraction Error | Could not read your ID. Please make sure the photo is clear and not blurry."
+            )
+            
+        raise HTTPException(
+            status_code=400,
+            detail="Identity Verification Failed | The name on your ID does not match your registered name. Please upload your own valid ID."
         )
         
     # Ensure ocr_data is populated even if verification service fails to extract it
