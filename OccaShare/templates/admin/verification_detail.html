@@ -271,9 +271,13 @@
                 <div class="artifact-grid {{ 'three-cols' if target_user.role == 'caterer' else 'two-cols' }}">
                     <!-- ID Document -->
                     <div class="image-scanner">
-                        <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">ID Document</label>
-                        {% if verification.document_url %}
-                            {% set doc_url = verification.document_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if '/static/uploads/verification/' in verification.document_url else verification.document_url %}
+                        <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">Gov ID Front</label>
+                        {% set raw_doc_url = verification.document_url %}
+                        {% if not raw_doc_url and target_user.role == 'caterer' and target_user.caterer_profile and target_user.caterer_profile.gov_id_url %}
+                            {% set raw_doc_url = target_user.caterer_profile.gov_id_url %}
+                        {% endif %}
+                        {% if raw_doc_url %}
+                            {% set doc_url = raw_doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if '/static/uploads/verification/' in raw_doc_url else raw_doc_url %}
                             <img src="{{ doc_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;" onerror="this.onerror=null; this.src='/static/images/default-avatar.png';">
                         {% else %}
                             <div style="width: 100%; height: 260px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #94a3b8; font-weight: 700;"><i class="fas fa-image" style="margin-right: 8px;"></i> No ID Uploaded</div>
@@ -281,9 +285,13 @@
                     </div>
                     <!-- Selfie -->
                     <div class="image-scanner">
-                        <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">Selfie Photo</label>
-                        {% if verification.selfie_url %}
-                            {% set selfie_url = verification.selfie_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if '/static/uploads/verification/' in verification.selfie_url else verification.selfie_url %}
+                        <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">Selfie / Proof of Life 1</label>
+                        {% set raw_selfie_url = verification.selfie_url %}
+                        {% if not raw_selfie_url and target_user.profile_image_url %}
+                            {% set raw_selfie_url = target_user.profile_image_url %}
+                        {% endif %}
+                        {% if raw_selfie_url %}
+                            {% set selfie_url = raw_selfie_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if '/static/uploads/verification/' in raw_selfie_url else raw_selfie_url %}
                             <img src="{{ selfie_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;" onerror="this.onerror=null; this.src='/static/images/default-avatar.png';">
                         {% else %}
                             <div style="width: 100%; height: 260px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #94a3b8; font-weight: 700;"><i class="fas fa-camera" style="margin-right: 8px;"></i> No Selfie Uploaded</div>

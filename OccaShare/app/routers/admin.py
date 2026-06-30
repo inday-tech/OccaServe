@@ -3171,15 +3171,29 @@ async def get_caterer_documents(
             return url.replace("/static/uploads/verification/", "/api/bookings/kyc/view/")
         return url
 
+    # Determine gov_id_url: prefer IdentityVerification, fallback to CatererProfile
+    gov_id_url_raw = None
+    if identity and identity.document_url:
+        gov_id_url_raw = identity.document_url
+    elif profile.gov_id_url:
+        gov_id_url_raw = profile.gov_id_url
+    
+    # Determine selfie_url: prefer IdentityVerification, fallback to User profile image
+    selfie_url_raw = None
+    if identity and identity.selfie_url:
+        selfie_url_raw = identity.selfie_url
+    elif profile.user and profile.user.profile_image_url:
+        selfie_url_raw = profile.user.profile_image_url
+
     docs = {
         "permit_url": fix_url(profile.permit_url),
         "permit_expiry_date": str(profile.permit_expiry_date) if profile.permit_expiry_date else None,
         "dti_url": fix_url(profile.dti_url),
         "bir_url": fix_url(profile.bir_url),
         "mayors_permit_url": fix_url(profile.mayors_permit_url),
-        "gov_id_url": fix_url(identity.document_url) if identity else None,
+        "gov_id_url": fix_url(gov_id_url_raw),
         "gov_id_back_url": fix_url(identity.document_back_url) if identity else None,
-        "selfie_url": fix_url(identity.selfie_url) if identity else None,
+        "selfie_url": fix_url(selfie_url_raw),
         "selfie_2_url": fix_url(identity.selfie_2_url) if identity else None,
         "selfie_3_url": fix_url(identity.selfie_3_url) if identity else None
     }

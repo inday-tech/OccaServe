@@ -712,7 +712,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (el.value === 'pickup') {
             deliveryFee = 0;
             document.getElementById('delivery-row').style.display = 'none';
-            if (addressSection) addressSection.classList.add('hidden-address');
+            if (addressSection) addressSection.style.display = 'none';
             if (lblDelDate) lblDelDate.innerText = 'Pickup Date';
             if (lblDelTime) lblDelTime.innerText = 'Pickup Time';
             updateCheckoutSummary();
@@ -721,7 +721,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 deliveryFee = 0;
             }
             document.getElementById('delivery-row').style.display = 'flex';
-            if (addressSection) addressSection.classList.remove('hidden-address');
+            if (addressSection) addressSection.style.display = 'block';
             if (lblDelDate) lblDelDate.innerText = window.isServiceOnly ? 'Event Date' : (window.isRentalOnly ? 'Delivery & Setup Date' : 'Delivery Date');
             if (lblDelTime) lblDelTime.innerText = window.isServiceOnly ? 'Call Time' : (window.isRentalOnly ? 'Setup Time' : 'Delivery Time');
             if (typeof window.syncAddress === 'function') window.syncAddress(); 

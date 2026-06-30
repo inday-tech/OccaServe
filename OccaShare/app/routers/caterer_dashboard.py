@@ -5101,6 +5101,12 @@ async def verify_customer_compliance(
             kyc_record.verification_status = "verified"
             kyc_record.verified_at = func.now()
         
+        # Update latest verification session
+        from ..db.models import VerificationSession
+        session = db.query(VerificationSession).filter(VerificationSession.user_id == user_id).order_by(VerificationSession.created_at.desc()).first()
+        if session:
+            session.status = "verified"
+        
         # Also update all bookings for this user with this caterer
         db.query(models.Booking).filter(
             models.Booking.user_id == user_id,
@@ -5121,6 +5127,12 @@ async def verify_customer_compliance(
             kyc_record.verification_status = "rejected"
             kyc_record.failure_reason = reason
         target_user.is_verified = False
+        
+        # Update latest verification session
+        from ..db.models import VerificationSession
+        session = db.query(VerificationSession).filter(VerificationSession.user_id == user_id).order_by(VerificationSession.created_at.desc()).first()
+        if session:
+            session.status = "rejected"
 
         # NOTIFY: Failure alert for customer
         await NotificationService.notify_status_update(

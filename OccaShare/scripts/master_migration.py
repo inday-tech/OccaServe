@@ -146,7 +146,12 @@ def master_migration():
             ("max_bookings_per_day", "INTEGER DEFAULT 1"),
             ("auto_block_enabled", "BOOLEAN DEFAULT TRUE"),
             ("outstanding_balance", "FLOAT DEFAULT 0.0"),
-            ("commission_rate", "FLOAT DEFAULT 0.05")
+            ("commission_rate", "FLOAT DEFAULT 0.05"),
+            ("default_labor_cost", "FLOAT DEFAULT 0.0"),
+            ("default_utility_cost", "FLOAT DEFAULT 0.0"),
+            ("default_transport_cost", "FLOAT DEFAULT 0.0"),
+            ("default_reservation_type", "VARCHAR DEFAULT 'fixed'"),
+            ("default_reservation_value", "FLOAT DEFAULT 0.0")
         ]
         
         # Menu Items
@@ -195,7 +200,12 @@ def master_migration():
             ("booking_lead_time", "INTEGER DEFAULT 7"),
             ("cost_price", "FLOAT DEFAULT 0.0"),
             ("cost_breakdown", "JSONB"),
-            ("selection_rules", "JSONB NULL")
+            ("selection_rules", "JSONB NULL"),
+            ("pricing_mode", "VARCHAR DEFAULT 'per_pax'"),
+            ("transportation_cost", "FLOAT DEFAULT 0.0"),
+            ("miscellaneous_cost", "FLOAT DEFAULT 0.0"),
+            ("reservation_fee_type", "VARCHAR DEFAULT 'fixed'"),
+            ("reservation_fee_value", "FLOAT DEFAULT 0.0")
         ]
         
         # Identity Verifications
@@ -304,7 +314,11 @@ def master_migration():
         # Booking Menu Items (Custom Selection Lists)
         booking_menu_items_cols = [
             ("quantity", "INTEGER DEFAULT 1"),
-            ("choices", "JSONB NULL")
+            ("choices", "JSONB NULL"),
+            ("equipment_id", "INTEGER REFERENCES equipment(id) ON DELETE SET NULL"),
+            ("service_id", "INTEGER REFERENCES services(id) ON DELETE SET NULL"),
+            ("is_add_on", "BOOLEAN DEFAULT FALSE"),
+            ("price", "FLOAT")
         ]
 
         # Apply helper
@@ -331,6 +345,25 @@ def master_migration():
         add_cols("caterer_gallery", gallery_cols)
         add_cols("platform_feedback", feedback_cols)
         add_cols("booking_menu_items", booking_menu_items_cols)
+
+        # Fix foreign key in package_services table if it points to menu_items instead of services
+        print("  Checking package_services foreign key...")
+        try:
+            with engine.begin() as conn:
+                # 1. Drop existing constraint if it exists
+                conn.execute(text("""
+                    ALTER TABLE package_services 
+                    DROP CONSTRAINT IF EXISTS package_services_service_id_fkey;
+                """))
+                # 2. Re-create the constraint pointing to services(id)
+                conn.execute(text("""
+                    ALTER TABLE package_services 
+                    ADD CONSTRAINT package_services_service_id_fkey 
+                    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE;
+                """))
+                print("  [OK] Corrected package_services foreign key constraint to point to services(id).")
+        except Exception as e:
+            print(f"    Warning: Could not correct package_services foreign key constraint: {e}")
 
         # Legacy Data Migration: Sync middle_initial to middle_name
         print("  Synchronizing middle_initial data to middle_name...")

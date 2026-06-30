@@ -361,7 +361,14 @@
 {% block content %}
 <div class="page-header" id="page-header">
     <div class="header-welcome-section">
-        <h1>Welcome back, {{ user.first_name }}!</h1>
+        <h1 style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            Welcome back, {{ user.first_name }}!
+            {% if profile.status == 'Published' %}
+            <span style="font-size: 0.75rem; background: #dcfce7; color: #15803d; padding: 4px 12px; border-radius: 50px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #bbf7d0;"><i class="fas fa-check-circle"></i> Live & Published</span>
+            {% else %}
+            <span style="font-size: 0.75rem; background: #fee2e2; color: #b91c1c; padding: 4px 12px; border-radius: 50px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #fecaca;"><i class="fas fa-eye-slash"></i> Offline (Draft)</span>
+            {% endif %}
+        </h1>
         <div style="display: flex; align-items: center; gap: 15px;">
             <p class="header-subtitle" style="margin: 0;">Your business overview as of <strong>{{ now().strftime('%B %d,
                     %Y') if now else 'today' }}</strong></p>
@@ -454,7 +461,7 @@
                     <span style="{% if has_cover %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_cover else 'underline' }};">Cover Image <span style="font-size:0.7rem; color:#94a3b8;">(+5%)</span></span>
                 </a>
 
-                <a href="/caterer/profile#payments" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_starting_price else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
+                <a href="/caterer/profile#booking-policies" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_starting_price else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
                     <i class="fas {{ 'fa-check-circle' if has_starting_price else 'fa-circle-notch' }}" style="color: {{ 'var(--accent-color)' if has_starting_price else '#cbd5e1' }};"></i>
                     <span style="{% if has_starting_price %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_starting_price else 'underline' }};">Starting Price <span style="font-size:0.7rem; color:#94a3b8;">(+5%)</span></span>
                 </a>
@@ -1037,7 +1044,13 @@
         <i class="fas fa-chart-line" style="font-size: 2rem; color: #94a3b8;"></i>
     </div>
     <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 10px;">Analytics Locked</h3>
-    <p style="color: #64748b; font-size: 0.95rem; max-width: 500px; margin: 0 auto;">Complete your business setup and start receiving bookings to unlock analytics and performance insights.</p>
+    <p style="color: #64748b; font-size: 0.95rem; max-width: 500px; margin: 0 auto;">
+        {% if profile.status == 'Published' %}
+        Your listing is successfully published! Once you start receiving bookings, your analytics and performance insights will appear here.
+        {% else %}
+        Complete your business setup and start receiving bookings to unlock analytics and performance insights.
+        {% endif %}
+    </p>
 </div>
 {% endif %}
 {% endblock %}

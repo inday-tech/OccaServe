@@ -236,47 +236,83 @@ class VerificationService:
     def match_name(self, full_name: str, ocr_full_name: str, ocr_last_name: str = None, ocr_first_name: str = None, ocr_middle_name: str = None, full_ocr_text: str = None) -> bool:
         if not full_name:
             return False
-        clean_input = " ".join(full_name.lower().split())
-        full_ocr_lower = full_ocr_text.lower() if full_ocr_text else ""
-        
-        # 1. Try exact match on full name / presence in full ocr text
-        if (ocr_full_name and clean_input in ocr_full_name.lower()) or (full_ocr_lower and clean_input in full_ocr_lower):
+            
+        # Helper to normalize a string
+        def normalize(text: str) -> str:
+            if not text:
+                return ""
+            # Lowercase and replace punctuation/special characters with spaces
+            t = text.lower()
+            t = re.sub(r'[^a-z0-9\s]', ' ', t)
+            # Remove common suffixes and titles
+            stopwords = {'jr', 'sr', 'ii', 'iii', 'iv', 'mr', 'ms', 'mrs', 'dr', 'prof'}
+            words = [w for w in t.split() if w not in stopwords]
+            return " ".join(words)
+
+        clean_input = normalize(full_name)
+        clean_ocr_full = normalize(ocr_full_name)
+        clean_ocr_last = normalize(ocr_last_name)
+        clean_ocr_first = normalize(ocr_first_name)
+        clean_ocr_middle = normalize(ocr_middle_name)
+        clean_ocr_text = normalize(full_ocr_text)
+
+        # 1. Exact or Substring match
+        if (clean_ocr_full and clean_input in clean_ocr_full) or (clean_ocr_text and clean_input in clean_ocr_text):
             return True
             
-        # 2. Typo tolerance (Fuzzy) on full name
-        if ocr_full_name:
-            ratio = difflib.SequenceMatcher(None, clean_input, ocr_full_name.lower()).ratio()
-            if ratio > 0.70:
+        # 2. Fuzzy match on full name
+        if clean_ocr_full:
+            if difflib.SequenceMatcher(None, clean_input, clean_ocr_full).ratio() > 0.70:
                 return True
                 
-        # 3. Check individual parts against full OCR text
-        input_parts = [p for p in clean_input.split() if len(p) > 2]
-        if input_parts and full_ocr_lower:
-            matches = 0
-            for part in input_parts:
-                if part in full_ocr_lower or any(difflib.SequenceMatcher(None, part, w).ratio() > 0.75 for w in full_ocr_lower.split()):
-                    matches += 1
-            if (matches / len(input_parts)) >= 0.50:
+        # 3. Check individual tokens of the registered name against OCR text
+        input_tokens = [w for w in clean_input.split() if len(w) > 1]
+        ocr_tokens = set(clean_ocr_text.split() + clean_ocr_full.split() + clean_ocr_first.split() + clean_ocr_last.split() + clean_ocr_middle.split())
+        ocr_tokens = {w for w in ocr_tokens if w}
+
+        if input_tokens and ocr_tokens:
+            matched_tokens = 0
+            for token in input_tokens:
+                # Direct check
+                if token in ocr_tokens or (clean_ocr_text and token in clean_ocr_text):
+                    matched_tokens += 1
+                # Fuzzy check against all ocr tokens
+                elif any(difflib.SequenceMatcher(None, token, ot).ratio() > 0.75 for ot in ocr_tokens):
+                    matched_tokens += 1
+            
+            # If at least 60% of the registered name tokens are found, consider it a match
+            # (This safely handles middle name mismatches, e.g. "Naomi Trillana Caragay" vs "Naomi Caragay" or "Naomi T. Caragay")
+            match_ratio = matched_tokens / len(input_tokens)
+            print(f"[KYC MATCH DEBUG] Token match ratio: {matched_tokens}/{len(input_tokens)} = {match_ratio:.2f}")
+            if match_ratio >= 0.60:
                 return True
+
+        # 4. Fallback: First Name and Last Name matching (the absolute core identity)
+        # Split registered full name into parts
+        registered_parts = clean_input.split()
+        if len(registered_parts) >= 2:
+            first_reg = registered_parts[0]
+            last_reg = registered_parts[-1]
+            
+            first_matched = False
+            last_matched = False
+            
+            # Check first name
+            if first_reg in ocr_tokens or (clean_ocr_text and first_reg in clean_ocr_text):
+                first_matched = True
+            elif any(difflib.SequenceMatcher(None, first_reg, ot).ratio() > 0.75 for ot in ocr_tokens):
+                first_matched = True
                 
-        # 4. Check individual parts against individual name fields
-        input_parts_lenient = [p for p in clean_input.split() if len(p) > 1]
-        extracted_last = (ocr_last_name or "").lower()
-        extracted_first = (ocr_first_name or "").lower()
-        extracted_middle = (ocr_middle_name or "").lower()
-        
-        if extracted_last or extracted_first or extracted_middle:
-            parts_found = 0
-            total_parts = len(input_parts_lenient)
-            for part in input_parts_lenient:
-                if part in extracted_last or part in extracted_first or part in extracted_middle:
-                    parts_found += 1
-                elif any(difflib.SequenceMatcher(None, part, w).ratio() > 0.70 
-                         for w in [extracted_last, extracted_first, extracted_middle] if w):
-                    parts_found += 1
-            if total_parts > 0 and (parts_found / total_parts) >= 0.40:
+            # Check last name
+            if last_reg in ocr_tokens or (clean_ocr_text and last_reg in clean_ocr_text):
+                last_matched = True
+            elif any(difflib.SequenceMatcher(None, last_reg, ot).ratio() > 0.75 for ot in ocr_tokens):
+                last_matched = True
+                
+            if first_matched and last_matched:
+                print(f"[KYC MATCH DEBUG] First and Last name matched successfully: '{first_reg}' & '{last_reg}'")
                 return True
-                
+
         return False
 
     def _prepare_image(self, encrypted_path: str, is_id: bool = True) -> np.ndarray:
@@ -995,7 +1031,7 @@ class VerificationService:
         
         # 1. Resolution Check
         if width < 500 or height < 300:
-            return {"valid": False, "reason": f"Resolution too low ({width}x{height}). Please take a higher resolution photo."}
+            return {"valid": False, "reason": "Resolution Too Low | Photo quality is too low. Please take a higher resolution picture."}
         
         if not CV2_AVAILABLE:
             print("[KYC WARNING] Skipping detailed quality checks: OpenCV not available.")
@@ -1006,9 +1042,9 @@ class VerificationService:
         # 2. Brightness Check
         mean_brightness = np.mean(gray)
         if mean_brightness < 45:
-            return {"valid": False, "reason": "Image is too dark. Please take the photo in a well-lit area."}
+            return {"valid": False, "reason": "Image Too Dark | Photo is too dark. Please take the picture in a well-lit room."}
         if mean_brightness > 220:
-            return {"valid": False, "reason": "Image is too bright or washed out. Please adjust the lighting."}
+            return {"valid": False, "reason": "Image Too Bright | Photo is too bright. Please avoid direct light reflection on your ID."}
             
         # 3. Blur Detection (Laplacian Variance)
         blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
@@ -1016,13 +1052,13 @@ class VerificationService:
         
         # Require a reasonable sharpness threshold (e.g. 10) for production quality
         if blur_score < 10:
-            return {"valid": False, "reason": "Image is too blurry. Please keep your hand steady and retake."}
+            return {"valid": False, "reason": "Image Too Blurry | Photo is blurry. Please hold your camera steady and try again."}
             
         # 4. Glare Check (Excessive bright spots)
         glare_pixels = np.sum(gray > 250)
         glare_pct = glare_pixels / gray.size
         if glare_pct > 0.25:
-            return {"valid": False, "reason": "Glare detected on ID card. Please avoid direct overhead lights or flash reflections."}
+            return {"valid": False, "reason": "Glare Detected | Camera glare detected. Please turn off camera flash or avoid overhead lights."}
             
         return {"valid": True}
 
@@ -2373,7 +2409,7 @@ class VerificationService:
             if db and user_id and id_number:
                 if self.check_duplicate_id(db, id_number, user_id):
                     return {"status": "rejected", "ocr_match": False, "pattern_valid": True, 
-                            "failure_reason": "❌ This ID has already been registered."}
+                            "failure_reason": "Duplicate ID Detected | This ID is already registered to another account. Please use a different ID."}
 
             # 2. ID Pattern Validation
             pattern_valid = self.validate_id_pattern(id_type, id_number)
@@ -3003,6 +3039,75 @@ class VerificationService:
                     liveness_failure = "Insufficient Lighting | The environment is too dark for accurate verification. Please move to a brighter location and try again."
                     break
 
+            # 2. Gemini Multi-modal Selfie Audit (Sunglasses, Mask, Obstructions, Tilted head, Multiple faces, etc.)
+            if not liveness_failure and os.getenv("GEMINI_API_KEY") and selfie_paths:
+                try:
+                    print("[KYC DEBUG] Running Gemini Selfie Audit...")
+                    audit_prompt = (
+                        "Analyze the uploaded selfie image to ensure it meets strict KYC face verification standards.\n"
+                        "Evaluate the following check criteria:\n"
+                        "1. No sunglasses: Is the person wearing sunglasses or tinted glasses?\n"
+                        "2. No glare on glasses: If they wear eyeglasses, is there glare/reflection that covers or obstructs their eyes?\n"
+                        "3. No face mask: Is the person wearing a medical mask, dust mask, or cloth mask?\n"
+                        "4. No head/face covering: Is the person wearing a helmet, hood, hat, or anything else that covers their face?\n"
+                        "5. No hair obstruction: Is their hair covering their eyes or face?\n"
+                        "6. No object obstruction: Is there a hand, cellphone, finger, or other object covering any part of their face?\n"
+                        "7. Full face visible: Is their entire face (from forehead to chin, ear to ear) clearly visible?\n"
+                        "8. Correct head tilt: Is the head tilted too much (e.g. tilted up, down, or to the side)?\n"
+                        "9. Looking at camera: Is the person looking straight at the camera?\n"
+                        "10. Single face: Is there exactly one face in the image? (No multiple faces, no background faces).\n"
+                        "11. Face present: Is there a face present in the image?\n\n"
+                        "Return a JSON object in exactly this format:\n"
+                        "{\n"
+                        "  \"face_present\": true,\n"
+                        "  \"single_face\": true,\n"
+                        "  \"no_sunglasses\": true,\n"
+                        "  \"no_glare_on_glasses\": true,\n"
+                        "  \"no_face_mask\": true,\n"
+                        "  \"no_face_covering\": true,\n"
+                        "  \"no_hair_obstruction\": true,\n"
+                        "  \"no_object_obstruction\": true,\n"
+                        "  \"full_face_visible\": true,\n"
+                        "  \"head_straight\": true,\n"
+                        "  \"looking_at_camera\": true,\n"
+                        "  \"all_checks_passed\": true,\n"
+                        "  \"failure_reason\": \"\"\n"
+                        "}\n"
+                        "If 'all_checks_passed' is false, 'failure_reason' must be a simple, easy-to-understand English sentence explaining what failed "
+                        "(e.g. \"Please remove your sunglasses.\", \"Please make sure your face is not covered.\", \"Please look straight at the camera.\", \"Please ensure only one face is visible.\").\n"
+                        "Do not return any other text, only the raw JSON."
+                    )
+                    audit_res = await self._call_gemini_ocr(selfie_paths[0], audit_prompt)
+                    if audit_res and isinstance(audit_res, dict):
+                        print(f"[KYC DEBUG] Gemini Selfie Audit Result: {audit_res}")
+                        if not audit_res.get("all_checks_passed", True):
+                            if not audit_res.get("face_present", True):
+                                liveness_failure = "No Face Detected | Face not found. Please look at the camera."
+                            elif not audit_res.get("single_face", True):
+                                liveness_failure = "Multiple Faces | Only one face should be visible."
+                            elif not audit_res.get("no_sunglasses", True):
+                                liveness_failure = "Sunglasses Detected | Please remove your sunglasses."
+                            elif not audit_res.get("no_glare_on_glasses", True):
+                                liveness_failure = "Glasses Glare | Avoid reflection on your glasses."
+                            elif not audit_res.get("no_face_mask", True):
+                                liveness_failure = "Mask Detected | Please remove your face mask."
+                            elif not audit_res.get("no_face_covering", True):
+                                liveness_failure = "Face Covered | Remove your hat, hood, or helmet."
+                            elif not audit_res.get("no_hair_obstruction", True):
+                                liveness_failure = "Hair Obstruction | Keep your hair away from your face."
+                            elif not audit_res.get("no_object_obstruction", True):
+                                liveness_failure = "Object Obstruction | Do not block your face."
+                            elif not audit_res.get("full_face_visible", True):
+                                liveness_failure = "Face Hidden | Ensure your entire face is visible."
+                            elif not audit_res.get("head_straight", True):
+                                liveness_failure = "Head Tilted | Keep your head straight."
+                            elif not audit_res.get("looking_at_camera", True):
+                                liveness_failure = "Not Looking | Please look straight at the camera."
+                            else:
+                                liveness_failure = f"Liveness Failed | {audit_res.get('failure_reason', 'Face verification failed.')}"
+                except Exception as audit_err:
+                    print(f"[KYC WARNING] Gemini Selfie Audit failed: {audit_err}")
+
             vps_url = os.getenv("VPS_AI_URL")
             vps_api_key = os.getenv("VPS_API_KEY")
             vps_success = False
@@ -3206,20 +3311,23 @@ class VerificationService:
 
             if not name_matched:
                 status = "rejected"
-                failure_reason = "Identity Verification Failed | Ang pangalan sa iyong in-upload na ID ay hindi tugma sa iyong registered name. Mangyaring i-upload ang sarili mong valid ID."
+                if not str(rich_data.get("first_name", "")).strip() and not str(rich_data.get("last_name", "")).strip():
+                    failure_reason = "Extraction Error | Could not read your ID. Please make sure the photo is clear and not blurry."
+                else:
+                    failure_reason = "Identity Verification Failed | The name on your ID does not match your registered name. Please upload your own valid ID."
             elif liveness_failure:
                 status = "liveliness_failed"
                 failure_reason = liveness_failure
             elif not liveness_passed:
                 status = "liveliness_failed"
                 if challenge_completion_score < 100:
-                    failure_reason = "Blink Verification Failed | We could not detect the required blink action. Please look directly at the camera and blink naturally when prompted."
+                    failure_reason = "Blink Verification Failed | Blink not detected. Please look directly at the camera and blink naturally."
                 elif not vps_success and liveness_score < 40:
-                    failure_reason = "Face Not Detected | We couldn't detect your face clearly. Please position your face inside the frame and try again."
+                    failure_reason = "Face Not Detected | Face not detected. Please center your face inside the frame and try again."
                 elif vps_success and anti_spoof_score < 70:
-                    failure_reason = "Verification Rejected | A potential spoofing attempt was detected. Please complete the verification using your live face and avoid using photos, videos, or screen displays."
+                    failure_reason = "Verification Rejected | Verification rejected. Please use your live face and avoid using photos or screens."
                 else:
-                    failure_reason = "Blink Verification Failed | We could not detect the required blink action. Please look directly at the camera and blink naturally when prompted."
+                    failure_reason = "Blink Verification Failed | Blink not detected. Please look directly at the camera and blink naturally."
             else:
                 # Liveness passed. Check face match score.
                 # Thresholds: >= 90 VERIFIED, 85-89 pending_manual_review, < 85 rejected
@@ -3228,10 +3336,10 @@ class VerificationService:
                     failure_reason = None
                 elif face_match_score >= 85:
                     status = "pending_manual_review"
-                    failure_reason = "Face match is in the manual review range (85-89%)."
+                    failure_reason = "Face Match Review | Face match score is slightly low. Your ID verification will be manually reviewed."
                 else:
                     status = "rejected"
-                    failure_reason = "Identity Verification Failed | The captured selfie does not sufficiently match the photo on the uploaded ID. Please ensure you are using your own valid ID and try again."
+                    failure_reason = "Identity Verification Failed | Your selfie does not match the photo on your ID. Please upload a clear photo of yourself."
 
             # Write liveness and verification details to ocr_debug.log
             try:

@@ -99,6 +99,22 @@ async def extract_id(
     ocr_middle_name = get_field_val("middle_name")
     raw_ocr = extracted_data.get("raw_text", "")
     
+    # Log variables to ocr_debug.log to see why name matching failed
+    try:
+        with open("ocr_debug.log", "a", encoding="utf-8") as f:
+            f.write(f"\n--- KYC MATCH DEBUG ---\n")
+            f.write(f"current_user.id: {current_user.id}\n")
+            f.write(f"current_user.first_name: {current_user.first_name!r}\n")
+            f.write(f"current_user.middle_name: {current_user.middle_name!r}\n")
+            f.write(f"current_user.last_name: {current_user.last_name!r}\n")
+            f.write(f"user_full_name: {user_full_name!r}\n")
+            f.write(f"ocr_full_name: {ocr_full_name!r}\n")
+            f.write(f"ocr_first_name: {ocr_first_name!r}\n")
+            f.write(f"ocr_middle_name: {ocr_middle_name!r}\n")
+            f.write(f"ocr_last_name: {ocr_last_name!r}\n")
+    except Exception as log_err:
+        pass
+        
     name_matched = verification_service.match_name(
         user_full_name,
         ocr_full_name,
@@ -110,10 +126,17 @@ async def extract_id(
     
     print(f"[KYC EXTRACT] Name matching - Registered: '{user_full_name}', Extracted: '{ocr_full_name}', Matched: {name_matched}")
     
-    if not name_matched:
+    if not ocr_first_name.strip() and not ocr_last_name.strip():
         raise HTTPException(
             status_code=400,
-            detail="Identity Verification Failed | Ang pangalan sa iyong in-upload na ID ay hindi tugma sa iyong registered name. Mangyaring i-upload ang sarili mong valid ID."
+            detail="Extraction Error | Could not read your ID. Please make sure the photo is clear and not blurry."
+        )
+        
+    if not name_matched:
+        debug_info = f"Registered: '{user_full_name}', OCR Extracted First: '{ocr_first_name}', Middle: '{ocr_middle_name}', Last: '{ocr_last_name}'"
+        raise HTTPException(
+            status_code=400,
+            detail=f"Identity Verification Failed | The name on your ID does not match your registered name. Please upload your own valid ID.\n\n[DEBUG INFO]: {debug_info}"
         )
     
     # Update/Create verification record as pending_confirmation
@@ -293,10 +316,30 @@ async def upload_id(
         address=address
     )
     
-    if id_result.get("name_matched") == False:
+    if id_result.get("status") in ["rejected", "mismatched", "error"] and id_result.get("failure_reason"):
         raise HTTPException(
             status_code=400,
-            detail="Identity Verification Failed | Ang pangalan sa iyong in-upload na ID ay hindi tugma sa iyong registered name. Mangyaring i-upload ang sarili mong valid ID."
+            detail=f"Identity Verification Failed | {id_result.get('failure_reason')}"
+        )
+
+    if id_result.get("name_matched") == False:
+        ocr_data = id_result.get("ocr_data", {})
+        ocr_first = ocr_data.get("first_name", "") or ocr_data.get("given_names", "")
+        ocr_last = ocr_data.get("last_name", "")
+        
+        # Resolve dict values if needed
+        if isinstance(ocr_first, dict): ocr_first = ocr_first.get("value", "")
+        if isinstance(ocr_last, dict): ocr_last = ocr_last.get("value", "")
+        
+        if not str(ocr_first).strip() and not str(ocr_last).strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Extraction Error | Could not read your ID. Please make sure the photo is clear and not blurry."
+            )
+            
+        raise HTTPException(
+            status_code=400,
+            detail="Identity Verification Failed | The name on your ID does not match your registered name. Please upload your own valid ID."
         )
         
     # Ensure ocr_data is populated even if verification service fails to extract it
@@ -458,18 +501,25 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
         
         # Simulate processing time
         await asyncio.sleep(0.5)
-        
         result = await verification_service.verify_identity_v2(
             id_path, selfie_paths, full_name, id_number, id_type, db, user_id, dob, address,
             completed_challenges=completed_challenges,
             assigned_challenges=assigned_challenges
         )
         
-        print(f"[KYC BACKGROUND] Verification Service result status: {result.get('status')}")
+        status = result.get("status")
+        print(f"[KYC BACKGROUND] Verification Service result status: {status}")
+        
+        # Force all successful auto-verifications to pending_manual_review for manual check by caterer
+        if status == "verified":
+            print("[KYC BACKGROUND] Auto-verification passed. Redirecting to caterer manual review...")
+            status = "pending_manual_review"
+            result["status"] = "pending_manual_review"
+            result["failure_reason"] = "Identity Verification Pending | Your verification is pending evaluation by the caterer."
         
         # Update VerificationSession
         if session:
-            session.status = result.get("status", "failed")
+            session.status = status
             session.liveness_score = float(result.get("liveness_score", 0.0))
             session.anti_spoof_score = float(result.get("anti_spoof_score", 0.0))
             session.face_match_score = float(result.get("face_match_score", 0.0))
@@ -479,7 +529,7 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
             db.commit()
             
         # Update User & IdentityVerification records if verified
-        if result.get("status") == "verified":
+        if status == "verified":
             user.is_verified = True
             user.is_kyc_complete = True
             if kyc_record:
@@ -501,10 +551,19 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
                 "kyc_update"
             )
             
-        elif result.get("status") == "pending_manual_review":
+        elif status == "pending_manual_review":
             if kyc_record:
                 kyc_record.verification_status = "pending_manual_review"
-                kyc_record.failure_reason = result.get("failure_reason")
+                kyc_record.failure_reason = result.get("failure_reason") or "Identity Verification Pending | Your verification is pending evaluation by the caterer."
+                
+            # Send Notification for pending evaluation
+            await NotificationService.notify_status_update(
+                db, user_id, 
+                "Verification Pending", 
+                f"Your identity verification is pending manual evaluation by the caterer.",
+                f"/bookings/step/kyc/{booking.id}",
+                "kyc_update"
+            )
                 
         elif result.get("status") == "liveliness_failed":
             if kyc_record:
@@ -682,8 +741,25 @@ async def view_kyc_document(
         filename.startswith(f"temp_ocr_{current_user.id}_") or
         filename.startswith(f"cropped_temp_ocr_{current_user.id}_") or
         filename.startswith(f"cropped_user_{current_user.id}_") or
+<<<<<<< HEAD
         f"_{current_user.id}_" in filename  # Caterer documents: field_name_{user_id}_{timestamp}.enc
+=======
+        filename.startswith(f"selfie_{current_user.id}_")
+>>>>>>> f1d6c67e46b12026fd92233427a76f07187ea5dd
     )
+    
+    # Check IdentityVerification record for ownership (handles registration-uploaded files)
+    if not is_owner:
+        file_url = f"/static/uploads/verification/{filename}"
+        proxy_url = f"/api/bookings/kyc/view/{filename}"
+        identity = db.query(models.IdentityVerification).filter(
+            models.IdentityVerification.user_id == current_user.id
+        ).first()
+        if identity:
+            identity_urls = [identity.document_url, identity.selfie_url,
+                           getattr(identity, 'selfie_2_url', None), getattr(identity, 'selfie_3_url', None)]
+            if file_url in identity_urls or proxy_url in identity_urls:
+                is_owner = True
     
     if current_user.role == "caterer" and current_user.caterer_profile:
         file_url = f"/static/uploads/verification/{filename}"
@@ -735,10 +811,21 @@ async def view_kyc_document(
         raise HTTPException(status_code=404, detail="Document not found.")
 
     with open(path, "rb") as f:
-        encrypted_data = f.read()
+        file_data = f.read()
     
+    # Infer MIME type from the original filename extension
+    ext = os.path.splitext(filename)[1].lower()
+    mime_map = {
+        ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+        ".png": "image/png", ".webp": "image/webp",
+        ".pdf": "application/pdf", ".enc": "image/jpeg"
+    }
+    media_type = mime_map.get(ext, "image/jpeg")
+    
+    # Try decryption first (most files are encrypted)
     try:
         from cryptography.fernet import InvalidToken
+<<<<<<< HEAD
         decrypted_data = decrypt_data(encrypted_data)
     except InvalidToken:
         # Fallback: If it's not a valid token, it might be an unencrypted legacy file.
@@ -766,3 +853,27 @@ async def view_kyc_document(
     # Infer MIME type from filename or just use image/jpeg as default
     # Real app would store MIME in DB
     return Response(content=decrypted_data, media_type="image/jpeg")
+=======
+        decrypted_data = decrypt_data(file_data)
+        return Response(content=decrypted_data, media_type=media_type)
+    except (InvalidToken, Exception) as e:
+        # Decryption failed — check if the file is actually a valid raw image
+        # (uploaded before encryption was enabled, or key has changed)
+        image_signatures = {
+            b'\xff\xd8\xff': "image/jpeg",      # JPEG
+            b'\x89PNG': "image/png",             # PNG
+            b'RIFF': "image/webp",               # WebP
+            b'%PDF': "application/pdf",          # PDF
+        }
+        for sig, detected_mime in image_signatures.items():
+            if file_data[:len(sig)] == sig:
+                print(f"[KYC VIEW] File '{filename}' is not encrypted, serving raw {detected_mime}")
+                return Response(content=file_data, media_type=detected_mime)
+        
+        # Neither valid decryption nor valid raw image — file is truly corrupted
+        print(f"[KYC VIEW ERROR] Cannot decrypt or read file '{filename}': {e}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
+            detail="Document cannot be displayed. The file may be corrupted or the encryption key has changed. Please ask the user to re-upload."
+        )
+>>>>>>> f1d6c67e46b12026fd92233427a76f07187ea5dd

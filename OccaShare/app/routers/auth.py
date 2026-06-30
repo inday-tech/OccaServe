@@ -400,14 +400,14 @@ async def register(
                     "request": request, "error": "Please provide a valid legal name."
                 })
 
-            # Process Selfie Upload
+            # Process Selfie Upload (saved as plain file for reliable viewing)
             selfie_url = None
             if selfie:
                 content = await selfie.read()
                 filename = f"selfie_{uuid.uuid4().hex}_{selfie.filename}"
                 path = os.path.join(UPLOAD_DIR, filename)
                 with open(path, "wb") as f:
-                    f.write(encrypt_data(content))
+                    f.write(content)
                 selfie_url = f"/static/uploads/verification/{filename}"
 
             temp_id = str(uuid.uuid4())
@@ -428,7 +428,7 @@ async def register(
                 content = await gov_id.read()
                 file_path = os.path.join(UPLOAD_DIR, f"{temp_id}_gov_id_{gov_id.filename}")
                 with open(file_path, "wb") as buffer:
-                    buffer.write(encrypt_data(content))
+                    buffer.write(content)
                 gov_id_url = f"/static/uploads/verification/{temp_id}_gov_id_{gov_id.filename}"
                 
             if permit and permit.filename:
@@ -443,7 +443,7 @@ async def register(
 
                 file_path = os.path.join(UPLOAD_DIR, f"{temp_id}_permit_{permit.filename}")
                 with open(file_path, "wb") as buffer:
-                    buffer.write(encrypt_data(content))
+                    buffer.write(content)
                 permit_url = f"/static/uploads/verification/{temp_id}_permit_{permit.filename}"
 
             if sample_menu and sample_menu.filename:
@@ -458,7 +458,7 @@ async def register(
 
                 file_path = os.path.join(UPLOAD_DIR, f"{temp_id}_menu_{sample_menu.filename}")
                 with open(file_path, "wb") as buffer:
-                    buffer.write(encrypt_data(content))
+                    buffer.write(content)
                 sample_menu_url = f"/static/uploads/verification/{temp_id}_menu_{sample_menu.filename}"
 
         event_list = []
@@ -513,6 +513,18 @@ async def register(
                 team_size=team_size
             )
             db.add(new_profile)
+
+            # Create IdentityVerification record so admin can view docs in verification detail
+            if gov_id_url or selfie_url:
+                identity_record = models.IdentityVerification(
+                    user_id=new_user.id,
+                    document_url=gov_id_url if gov_id_url else None,
+                    selfie_url=selfie_url if selfie_url else None,
+                    verification_type=id_type or "Government ID",
+                    id_number=id_number,
+                    verification_status="pending"
+                )
+                db.add(identity_record)
 
 
 

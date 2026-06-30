@@ -137,12 +137,12 @@
             <span class="step-label">Preparing</span>
         </div>
         <div class="step {{ 'done' if current_step_idx > 4 else ('active' if current_step_idx == 4 else '') }}">
-            <div class="step-dot"><i class="fas fa-truck"></i></div>
+            <div class="step-dot"><i class="fas {% if booking.venue_address == 'PICKUP' %}fa-store{% else %}fa-truck{% endif %}"></i></div>
             <span class="step-label">{% if booking.venue_address == 'PICKUP' %}Ready<br>for Pickup{% else %}On the<br>Way{% endif %}</span>
         </div>
         <div class="step {{ 'done' if current_step_idx > 5 else ('active' if current_step_idx == 5 else '') }}">
-            <div class="step-dot"><i class="fas fa-box-open"></i></div>
-            <span class="step-label">Delivered</span>
+            <div class="step-dot"><i class="fas {% if booking.venue_address == 'PICKUP' %}fa-shopping-bag{% else %}fa-box-open{% endif %}"></i></div>
+            <span class="step-label">{% if booking.venue_address == 'PICKUP' %}Picked Up{% else %}Delivered{% endif %}</span>
         </div>
         <div class="step {{ 'done' if current_step_idx == 6 else ('active' if current_step_idx == 6 else '') }}">
             <div class="step-dot"><i class="fas fa-star"></i></div>
@@ -218,10 +218,10 @@
 </div>
 {% elif booking.status in ['arrived','delivered'] %}
 <div style="background:#ecfdf5;border:2px solid #10b981;border-radius:1rem;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;">
-    <div style="width:44px;height:44px;background:#10b981;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.25rem;color:#fff;"><i class="fas fa-box-open"></i></div>
+    <div style="width:44px;height:44px;background:#10b981;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.25rem;color:#fff;"><i class="fas {% if booking.venue_address == 'PICKUP' %}fa-shopping-bag{% else %}fa-box-open{% endif %}"></i></div>
     <div>
-        <div style="font-weight:800;font-size:0.9rem;color:#065f46;">Order Delivered — Enjoy your meal!</div>
-        <div style="font-size:0.78rem;color:#047857;margin-top:2px;">Your food has arrived. Don't forget to leave a review for the caterer.</div>
+        <div style="font-weight:800;font-size:0.9rem;color:#065f46;">Order {% if booking.venue_address == 'PICKUP' %}Picked Up{% else %}Delivered{% endif %} — Enjoy your meal!</div>
+        <div style="font-size:0.78rem;color:#047857;margin-top:2px;">Your food has been {% if booking.venue_address == 'PICKUP' %}picked up{% else %}delivered{% endif %}. Don't forget to leave a review for the caterer.</div>
     </div>
 </div>
 {% elif booking.status == 'completed' %}

@@ -1052,7 +1052,7 @@ function showBookingDetails(btn) {
         
         // Add Copy Payment Link Button (useful for sending to FB Walk-in customers)
         const noLinkStatuses = ['draft', 'pending_quotation', 'awaiting_caterer', 'awaiting_customer', 'pending', 'cancelled', 'completed'];
-        if (!noLinkStatuses.includes(data.status)) {
+        if (!noLinkStatuses.includes(data.status) && data.paymentStatus !== 'paid' && data.amount !== "₱0.00") {
             actionsEl.innerHTML += `
                 <button type="button" class="btn-footer-action" onclick="window.copyInvoiceLink(${data.id})" style="background: white; color: #475569; border: 1px solid #cbd5e1;">
                     <i class="fas fa-link"></i> Copy Payment Link
