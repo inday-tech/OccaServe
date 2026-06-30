@@ -306,24 +306,26 @@ function validateTab(tabName, silent = false) {
             addError(form.min_guests, "Minimum guests must be at least 10.");
         }
         
-        const rawResFee = form.reservation_fee_value.value.replace(/,/g, '');
-        const resFee = parseFloat(rawResFee);
-        const resType = form.reservation_fee_type ? form.reservation_fee_type.value : 'fixed';
-        if (isNaN(resFee) || resFee < 0) {
-            addError(form.reservation_fee_value, "Reservation fee cannot be negative.");
-        } else if (price > 0) {
-            if (resType === 'fixed' && mode === 'per_pax' && minGuests > 0) {
-                const maxAllowedFee = (price * minGuests) * 0.5; // 50% limit
-                if (resFee > maxAllowedFee) {
-                    addError(form.reservation_fee_value, `Reservation fee cannot exceed 50% of the base package (₱${maxAllowedFee.toLocaleString()}).`);
+        if (form.reservation_fee_value) {
+            const rawResFee = form.reservation_fee_value.value.replace(/,/g, '');
+            const resFee = parseFloat(rawResFee);
+            const resType = form.reservation_fee_type ? form.reservation_fee_type.value : 'fixed';
+            if (isNaN(resFee) || resFee < 0) {
+                addError(form.reservation_fee_value, "Reservation fee cannot be negative.");
+            } else if (price > 0) {
+                if (resType === 'fixed' && mode === 'per_pax' && minGuests > 0) {
+                    const maxAllowedFee = (price * minGuests) * 0.5; // 50% limit
+                    if (resFee > maxAllowedFee) {
+                        addError(form.reservation_fee_value, `Reservation fee cannot exceed 50% of the base package (₱${maxAllowedFee.toLocaleString()}).`);
+                    }
+                } else if (resType === 'fixed' && mode === 'fixed') {
+                    const maxAllowedFee = price * 0.5;
+                    if (resFee > maxAllowedFee) {
+                        addError(form.reservation_fee_value, `Reservation fee cannot exceed 50% of the fixed price (₱${maxAllowedFee.toLocaleString()}).`);
+                    }
+                } else if (resType === 'percentage' && resFee > 50) {
+                    addError(form.reservation_fee_value, "Reservation fee percentage cannot exceed 50%.");
                 }
-            } else if (resType === 'fixed' && mode === 'fixed') {
-                const maxAllowedFee = price * 0.5;
-                if (resFee > maxAllowedFee) {
-                    addError(form.reservation_fee_value, `Reservation fee cannot exceed 50% of the fixed price (₱${maxAllowedFee.toLocaleString()}).`);
-                }
-            } else if (resType === 'percentage' && resFee > 50) {
-                addError(form.reservation_fee_value, "Reservation fee percentage cannot exceed 50%.");
             }
         }
         

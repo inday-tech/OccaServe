@@ -1313,14 +1313,14 @@
 
     // Initialize Google Maps for Verified Location
     document.addEventListener('DOMContentLoaded', function () {
-        const businessName = "{{ caterer.business_name|safe }}";
-        const savedAddress = "{{ caterer.address_details or caterer.contact_address or '' }}";
-        const savedCity = "{{ caterer.city or '' }}";
+        const businessName = {{ caterer.business_name | tojson }};
+        const savedAddress = {{ (caterer.address_details or caterer.contact_address or '') | tojson }};
+        const savedCity = {{ (caterer.city or '') | tojson }};
         const fullAddress = savedAddress || [savedCity, 'Philippines'].filter(Boolean).join(', ');
 
         // Use null to distinguish "not set" from 0.0
-        let cLat = {{ caterer.latitude if caterer.latitude is not none else 'null' }};
-        let cLon = {{ caterer.longitude if caterer.longitude is not none else 'null' }};
+        let cLat = {{ caterer.latitude if (caterer.latitude is not none and caterer.latitude != '') else 'null' }};
+        let cLon = {{ caterer.longitude if (caterer.longitude is not none and caterer.longitude != '') else 'null' }};
 
     const mapElement = document.getElementById('map');
     if (!mapElement) return;
