@@ -314,7 +314,11 @@ def master_migration():
         # Booking Menu Items (Custom Selection Lists)
         booking_menu_items_cols = [
             ("quantity", "INTEGER DEFAULT 1"),
-            ("choices", "JSONB NULL")
+            ("choices", "JSONB NULL"),
+            ("equipment_id", "INTEGER REFERENCES equipment(id) ON DELETE SET NULL"),
+            ("service_id", "INTEGER REFERENCES services(id) ON DELETE SET NULL"),
+            ("is_add_on", "BOOLEAN DEFAULT FALSE"),
+            ("price", "FLOAT")
         ]
 
         # Apply helper
