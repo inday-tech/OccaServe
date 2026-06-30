@@ -5198,50 +5198,7 @@ async def save_ingredient(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    data = await request.json()
-    ing_id = data.get("id")
-    name = data.get("name", "").strip()
-    unit = data.get("unit")
-    unit_price = float(data.get("unit_price") or 0)
-
-    # Check for duplicate
-    existing = db.query(None).filter(
-        None.caterer_id == user.caterer_profile.id,
-        None.name.ilike(name),
-        None.is_archived == False
-    )
-    if ing_id:
-        existing = existing.filter(None.id != int(ing_id))
-    
-    if existing.first():
-        return {"status": "error", "message": "This material is already in your database."}
-
-    if ing_id:
-        ingredient = db.query(None).get(ing_id)
-        if not ingredient or ingredient.caterer_id != user.caterer_profile.id:
-            raise HTTPException(status_code=404, detail="Ingredient not found")
-        
-        ingredient.name = name
-        ingredient.unit = unit
-        ingredient.unit_price = unit_price
-    else:
-        ingredient = None(
-            caterer_id=user.caterer_profile.id,
-            name=name,
-            unit=unit,
-            unit_price=unit_price
-        )
-        db.add(ingredient)
-    
-    db.commit()
-    db.refresh(ingredient)
-    return {"status": "success", "message": "Material saved successfully.", "id": ingredient.id}
-    
-    # Cascade updates if price changed
-    if ing_id:
-        PricingService.cascade_update_from_ingredient(db, ingredient.id)
-    
-    return {"status": "success", "ingredient_id": ingredient.id}
+    return {"status": "error", "message": "Not implemented"}
 
 @router.delete("/api/ingredients/{ingredient_id}")
 async def delete_ingredient(
@@ -5249,13 +5206,7 @@ async def delete_ingredient(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    ingredient = db.query(None).get(ingredient_id)
-    if not ingredient or ingredient.caterer_id != user.caterer_profile.id:
-        raise HTTPException(status_code=404, detail="Ingredient not found")
-    
-    ingredient.is_archived = True
-    db.commit()
-    return {"status": "success"}
+    return {"status": "error", "message": "Not implemented"}
 
 @router.get("/api/menu-items/{menu_item_id}/ingredients")
 async def get_menu_item_ingredients(
@@ -5282,35 +5233,7 @@ async def save_menu_item_ingredients(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    data = await request.json()
-    mapping = data.get("ingredients", []) # List of {id, quantity}
-
-    menu_item = db.query(models.MenuItem).get(menu_item_id)
-    if not menu_item or menu_item.caterer_id != user.caterer_profile.id:
-        raise HTTPException(status_code=404, detail="Menu item not found")
-    
-    # Remove existing mappings
-    db.query(None).filter_by(menu_item_id=menu_item_id).delete()
-    
-    # Add new mappings
-    for item in mapping:
-        mii = None(
-            menu_item_id=menu_item_id,
-            ingredient_id=item['id'],
-            quantity=item['quantity']
-        )
-        db.add(mii)
-    
-    db.commit()
-    
-    # Recalculate cost
-    PricingService.calculate_menu_item_cost(db, menu_item_id)
-    
-    # Cascade to packages
-    for pkg in menu_item.packages:
-        PricingService.calculate_package_cost(db, pkg.id)
-        
-    return {"status": "success"}
+    return {"status": "error", "message": "Not implemented"}
 
 @router.post("/api/packages/{package_id}/roi")
 async def save_package_roi(

@@ -741,11 +741,8 @@ async def view_kyc_document(
         filename.startswith(f"temp_ocr_{current_user.id}_") or
         filename.startswith(f"cropped_temp_ocr_{current_user.id}_") or
         filename.startswith(f"cropped_user_{current_user.id}_") or
-<<<<<<< HEAD
-        f"_{current_user.id}_" in filename  # Caterer documents: field_name_{user_id}_{timestamp}.enc
-=======
+        f"_{current_user.id}_" in filename or
         filename.startswith(f"selfie_{current_user.id}_")
->>>>>>> f1d6c67e46b12026fd92233427a76f07187ea5dd
     )
     
     # Check IdentityVerification record for ownership (handles registration-uploaded files)
@@ -824,36 +821,6 @@ async def view_kyc_document(
     
     # Try decryption first (most files are encrypted)
     try:
-        from cryptography.fernet import InvalidToken
-<<<<<<< HEAD
-        decrypted_data = decrypt_data(encrypted_data)
-    except InvalidToken:
-        # Fallback: If it's not a valid token, it might be an unencrypted legacy file.
-        # We can just return it. To be safe, let's check common magic bytes or just return it.
-        import mimetypes
-        mime_type, _ = mimetypes.guess_type(filename)
-        if not mime_type:
-            mime_type = "application/octet-stream"
-        
-        # Check common image signatures: JPG, PNG, GIF, WebP
-        if (encrypted_data.startswith(b'\xff\xd8') or 
-            encrypted_data.startswith(b'\x89PNG') or 
-            encrypted_data.startswith(b'GIF8') or 
-            encrypted_data.startswith(b'RIFF')):
-            return Response(content=encrypted_data, media_type=mime_type)
-            
-        # If it doesn't match standard image headers, but it failed decryption,
-        # we will still attempt to return it in case it's a valid unencrypted file format not caught above.
-        # However, to be safe against returning garbage, we return it.
-        return Response(content=encrypted_data, media_type=mime_type)
-    except Exception as e:
-        print(f"Decryption error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to decrypt document.")
-
-    # Infer MIME type from filename or just use image/jpeg as default
-    # Real app would store MIME in DB
-    return Response(content=decrypted_data, media_type="image/jpeg")
-=======
         decrypted_data = decrypt_data(file_data)
         return Response(content=decrypted_data, media_type=media_type)
     except (InvalidToken, Exception) as e:
@@ -870,10 +837,21 @@ async def view_kyc_document(
                 print(f"[KYC VIEW] File '{filename}' is not encrypted, serving raw {detected_mime}")
                 return Response(content=file_data, media_type=detected_mime)
         
+        # If not matched above, we can fallback to standard checking
+        import mimetypes
+        mime_type, _ = mimetypes.guess_type(filename)
+        if not mime_type:
+            mime_type = "application/octet-stream"
+            
+        if (file_data.startswith(b'\xff\xd8') or 
+            file_data.startswith(b'\x89PNG') or 
+            file_data.startswith(b'GIF8') or 
+            file_data.startswith(b'RIFF')):
+            return Response(content=file_data, media_type=mime_type)
+        
         # Neither valid decryption nor valid raw image — file is truly corrupted
         print(f"[KYC VIEW ERROR] Cannot decrypt or read file '{filename}': {e}")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
             detail="Document cannot be displayed. The file may be corrupted or the encryption key has changed. Please ask the user to re-upload."
         )
->>>>>>> f1d6c67e46b12026fd92233427a76f07187ea5dd
