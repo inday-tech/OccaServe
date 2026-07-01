@@ -635,7 +635,8 @@
                                     <h4 style="font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem;"><i class="fas fa-utensils"></i> Dish Selection</h4>
                                     
                                     {% if booking.selected_items %}
-                                        {% for group in booking.selected_items|groupby('menu_item.category') %}
+                                        {% set valid_items = booking.selected_items | selectattr('menu_item', 'defined') | selectattr('menu_item', 'ne', None) | list %}
+                                        {% for group in valid_items|groupby('menu_item.category') %}
                                             <div class="menu-cat-group">
                                                 <div class="menu-cat-label">{{ group.grouper or 'Main Dishes' }}</div>
                                                 <div class="menu-items-flex">
