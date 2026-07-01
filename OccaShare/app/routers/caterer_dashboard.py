@@ -24,6 +24,25 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # Standard dependency for caterer access
 caterer_only = auth.RoleChecker(["caterer"])
 
+
+def process_base64_image(content_bytes: bytes, max_size=(600, 600), quality=75) -> str:
+    """Compress uploaded image to WebP base64 data URL to reduce payload size."""
+    import base64
+    import io
+    try:
+        from PIL import Image
+        img = Image.open(io.BytesIO(content_bytes))
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="WEBP", quality=quality)
+        encoded = base64.b64encode(buf.getvalue()).decode("utf-8")
+        return f"data:image/webp;base64,{encoded}"
+    except Exception:
+        encoded = base64.b64encode(content_bytes).decode("utf-8")
+        return f"data:image/jpeg;base64,{encoded}"
+
 def create_default_booking_tasks(db: Session, booking_id: int):
     # Idempotency check: Don't add if tasks already exist
     existing_count = db.query(models.BookingTask).filter(models.BookingTask.booking_id == booking_id).count()
@@ -2591,9 +2610,7 @@ async def add_service_item(
         try:
             content_bytes = await image.read()
             if content_bytes:
-                encoded = base64.b64encode(content_bytes).decode("utf-8")
-                mime = image.content_type or "image/jpeg"
-                image_url = f"data:{mime};base64,{encoded}"
+                image_url = process_base64_image(content_bytes)
         except Exception:
             pass
 
@@ -2669,9 +2686,7 @@ async def update_service_item(
         try:
             content_bytes = await image.read()
             if content_bytes:
-                encoded = base64.b64encode(content_bytes).decode("utf-8")
-                mime = image.content_type or "image/jpeg"
-                image_url = f"data:{mime};base64,{encoded}"
+                image_url = process_base64_image(content_bytes)
         except Exception:
             pass
 
@@ -2861,9 +2876,7 @@ async def add_package(
         try:
             content_bytes = await image.read()
             if content_bytes:
-                encoded = base64.b64encode(content_bytes).decode("utf-8")
-                mime = image.content_type or "image/jpeg"
-                image_url = f"data:{mime};base64,{encoded}"
+                image_url = process_base64_image(content_bytes)
         except Exception:
             pass
 
@@ -3036,9 +3049,7 @@ async def add_menu_item(
         try:
             content_bytes = await image.read()
             if content_bytes:
-                encoded = base64.b64encode(content_bytes).decode("utf-8")
-                mime = image.content_type or "image/jpeg"
-                image_url = f"data:{mime};base64,{encoded}"
+                image_url = process_base64_image(content_bytes)
         except Exception:
             pass
 
@@ -3385,6 +3396,8 @@ async def update_profile(
     import base64
     # Handle Single File Uploads
     logo_file = logo if (logo and logo.filename) else logo_brand
+    # Size limits: logo/cover 400px, QR codes 300px, permit stored raw (PDF support)
+    size_map = {"logo": (400, 400), "cover_image": (1200, 600), "gcash_qr": (300, 300), "maya_qr": (300, 300), "bank_qr": (300, 300)}
     for field_name, file_obj in [("logo", logo_file), ("cover_image", cover_image), ("gcash_qr", gcash_qr), ("maya_qr", maya_qr), ("bank_qr", bank_qr), ("permit", permit_file)]:
         if file_obj and file_obj.filename:
             try:
@@ -3393,25 +3406,28 @@ async def update_profile(
                     if field_name == 'permit':
                         return RedirectResponse(url="/caterer/profile?error_msg=The+uploaded+business+permit+file+is+empty.+Please+upload+a+valid+document.", status_code=303)
                     continue
-                    
-                encoded = base64.b64encode(content_bytes).decode("utf-8")
-                mime = file_obj.content_type or "image/jpeg"
-                data_url = f"data:{mime};base64,{encoded}"
-                setattr(profile, f"{field_name}_url" if field_name != 'logo' else 'logo_url', data_url)
-                if field_name == 'logo':
-                    # Sync Caterer's User profile image with their Business Logo
-                    db_user = db.query(models.User).filter(models.User.id == user.id).first()
-                    if db_user:
-                        db_user.profile_image_url = data_url
+
                 if field_name == 'permit':
+                    # Permit may be PDF — store raw base64
+                    mime = file_obj.content_type or "image/jpeg"
                     if mime.lower() not in ["image/png", "image/jpeg", "image/jpg", "application/pdf"]:
                         return RedirectResponse(url="/caterer/profile?error_msg=Invalid+business+permit+file+type.+Only+PNG,+JPEG,+and+PDF+are+allowed.", status_code=303)
+                    data_url = f"data:{mime};base64,{base64.b64encode(content_bytes).decode('utf-8')}"
+                    profile.permit_url = data_url
                     profile.permit_status = 'Pending Review'
-                    # Reset verification status if they uploaded a new permit to require re-review
                     profile.verification_status = 'Pending Review'
                     profile.is_verified = False
                     if profile.user:
                         profile.user.is_verified = False
+                else:
+                    max_size = size_map.get(field_name, (600, 600))
+                    data_url = process_base64_image(content_bytes, max_size=max_size)
+                    attr_name = 'logo_url' if field_name == 'logo' else f"{field_name}_url"
+                    setattr(profile, attr_name, data_url)
+                    if field_name == 'logo':
+                        db_user = db.query(models.User).filter(models.User.id == user.id).first()
+                        if db_user:
+                            db_user.profile_image_url = data_url
             except Exception as e:
                 import traceback
                 print(f"[IMAGE UPLOAD ERROR] Failed on {field_name}: {str(e)}")
@@ -3424,10 +3440,8 @@ async def update_profile(
                 try:
                     content_bytes = await file_obj.read()
                     if content_bytes:
-                        encoded = base64.b64encode(content_bytes).decode("utf-8")
-                        mime = file_obj.content_type or "image/jpeg"
-                        data_url = f"data:{mime};base64,{encoded}"
-                        
+                        # Compress gallery images to 800x600 WebP
+                        data_url = process_base64_image(content_bytes, max_size=(800, 600), quality=80)
                         new_gallery_item = models.CatererGallery(
                             caterer_id=profile.id,
                             media_url=data_url,
@@ -3654,9 +3668,7 @@ async def update_package(
         try:
             content_bytes = await image.read()
             if content_bytes:
-                encoded = base64.b64encode(content_bytes).decode("utf-8")
-                mime = image.content_type or "image/jpeg"
-                package.image_url = f"data:{mime};base64,{encoded}"
+                package.image_url = process_base64_image(content_bytes, max_size=(600, 400))
         except Exception:
             pass
 
@@ -3785,9 +3797,7 @@ async def add_menu_to_package(
         try:
             content_bytes = await image.read()
             if content_bytes:
-                encoded = base64.b64encode(content_bytes).decode("utf-8")
-                mime = image.content_type or "image/jpeg"
-                image_url = f"data:{mime};base64,{encoded}"
+                image_url = process_base64_image(content_bytes)
         except Exception:
             pass
 
@@ -4014,9 +4024,7 @@ async def update_menu_item(
         try:
             content_bytes = await image.read()
             if content_bytes:
-                encoded = base64.b64encode(content_bytes).decode("utf-8")
-                mime = image.content_type or "image/jpeg"
-                item.image_url = f"data:{mime};base64,{encoded}"
+                item.image_url = process_base64_image(content_bytes, max_size=(600, 400))
         except Exception:
             pass
 

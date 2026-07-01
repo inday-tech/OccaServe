@@ -44,7 +44,8 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
         raise HTTPException(status_code=404, detail="Caterer not found")
         
     # Check if profile is public, otherwise restrict to owner
-    is_public = (caterer.status == 'Published' and caterer.is_verified == True and caterer.account_status == 'Active')
+    is_verified = (caterer.verification_status == 'Verified') or (caterer.is_verified == True)
+    is_public = (caterer.status == 'Published' and is_verified and caterer.account_status == 'Active')
     if not is_public:
         if not user or user.id != caterer.user_id:
             raise HTTPException(status_code=404, detail="Caterer not found")
@@ -123,7 +124,8 @@ def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(datab
         except: pass
 
     # Check if profile is public, otherwise restrict to owner
-    is_public = (caterer.status == 'Published' and caterer.is_verified == True and caterer.account_status == 'Active')
+    is_verified = (caterer.verification_status == 'Verified') or (caterer.is_verified == True)
+    is_public = (caterer.status == 'Published' and is_verified and caterer.account_status == 'Active')
     if not is_public:
         if not user or user.id != caterer.user_id:
             raise HTTPException(status_code=404, detail="Caterer not found")

@@ -296,16 +296,17 @@
                 <div class="form-group">
                     <label>Birthday <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
                     <input type="date" name="dob" class="form-input" value="{{ user.dob.strftime('%Y-%m-%d') if user.dob else '' }}">
-                    <span class="error-msg">Please enter a valid date.</span>
+                    <span class="error-msg">You must be at least 18 years old (and no more than 50 years old).</span>
                 </div>
                 <div class="form-group">
                     <label>Gender <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
                     <select name="gender" class="form-input">
-                        <option value="">Select Gender</option>
+                        <option value="" disabled selected hidden>Select Gender</option>
                         <option value="Male" {% if user.gender == 'Male' %}selected{% endif %}>Male</option>
                         <option value="Female" {% if user.gender == 'Female' %}selected{% endif %}>Female</option>
-                        <option value="Other" {% if user.gender == 'Other' %}selected{% endif %}>Other</option>
+                        <option value="Prefer not to say" {% if user.gender == 'Prefer not to say' %}selected{% endif %}>Prefer not to say</option>
                     </select>
+                    <span class="error-msg">Please select a valid gender.</span>
                 </div>
             </div>
 
@@ -345,6 +346,7 @@
                 <select name="barangay" id="addr-barangay" class="form-input" disabled>
                     <option value="" disabled selected hidden>-- Barangay --</option>
                 </select>
+                <span class="error-msg">Please select a valid barangay.</span>
             </div>
 
             <!-- Street / Landmark -->
@@ -354,6 +356,7 @@
                     value="{{ user.street_address or '' }}"
                     placeholder="e.g. 123 Rizal St., near SM City" maxlength="255">
                 <small style="color:var(--dm-slate-400); margin-top:4px;">Add details to make it easier for the caterer to locate.</small>
+                <span class="error-msg">Please enter a valid address.</span>
             </div>
 
             <!-- Summary Preview -->
@@ -448,6 +451,7 @@
                         <div id="req-upper" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> At least 1 uppercase letter</div>
                         <div id="req-special" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> At least 1 special character</div>
                     </div>
+                    <span class="error-msg">Please ensure your new password meets the requirements above.</span>
                 </div>
                 <div class="form-group">
                     <label>Confirm Password</label>
@@ -620,7 +624,9 @@
         if (dobInput) {
             const today = new Date();
             const maxDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+            const minDate = new Date(today.getFullYear() - 50, today.getMonth(), today.getDate());
             dobInput.max = maxDate.toISOString().split("T")[0];
+            dobInput.min = minDate.toISOString().split("T")[0]; // Limit to max 50 years old
         }
 
         const newPwd = document.getElementById('new_password');
