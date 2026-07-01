@@ -210,14 +210,14 @@
                     <div class="form-group-pro">
                         <label class="form-label">Province <span class="text-danger">*</span></label>
                         <select id="regProv" name="province" class="form-control" required onchange="window.loadCities(this.value, 'regCity')">
-                            <option value="">Select Province</option>
+                            <option value="" disabled selected>Select Province</option>
                         </select>
                         <div class="invalid-feedback" id="error-regProv"></div>
                     </div>
                     <div class="form-group-pro">
                         <label class="form-label">City / Municipality <span class="text-danger">*</span></label>
                         <select id="regCity" name="city" class="form-control" required disabled onchange="window.loadBarangays(this.value, 'regBrgy')">
-                            <option value="">Select City</option>
+                            <option value="" disabled selected>Select City</option>
                         </select>
                         <div class="invalid-feedback" id="error-regCity"></div>
                     </div>
@@ -227,7 +227,7 @@
                     <div class="form-group-pro">
                         <label class="form-label">Barangay <span class="text-danger">*</span></label>
                         <select id="regBrgy" name="barangay" class="form-control" required disabled>
-                            <option value="">Select Barangay</option>
+                            <option value="" disabled selected>Select Barangay</option>
                         </select>
                         <div class="invalid-feedback" id="error-regBrgy"></div>
                     </div>

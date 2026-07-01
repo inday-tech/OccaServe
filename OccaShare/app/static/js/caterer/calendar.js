@@ -1299,36 +1299,26 @@ const PSGC_BASE = 'https://psgc.gitlab.io/api';
 
 async function initPSGC() {
     try {
-        const res = await fetch(`${PSGC_BASE}/provinces/`);
-        const provinces = await res.json();
         const sel = document.getElementById('manProvince');
         if (!sel) return;
 
-        provinces.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+        // Lock to Laguna only
+        sel.innerHTML = '<option value="043400000" selected>Laguna</option>';
+        document.getElementById('manProvinceText').value = "Laguna";
+
+        const citySel = document.getElementById('manMunicipality');
+        citySel.innerHTML = '<option value="" disabled selected>Loading...</option>';
+        document.getElementById('manBarangay').innerHTML = '<option value="" disabled selected>Barangay</option>';
+
+        // Fetch Laguna Cities automatically
+        const res = await fetch(`${PSGC_BASE}/provinces/043400000/cities-municipalities/`);
+        const cities = await res.json();
+        citySel.innerHTML = '<option value="" disabled selected>Municipality / City</option>';
+        cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
             const opt = document.createElement('option');
-            opt.value = p.code;
-            opt.textContent = p.name;
-            sel.appendChild(opt);
-        });
-
-        sel.addEventListener('change', async function () {
-            // Get text, not code, to store in input if needed, but for now value is code.
-            // Actually, we should store text in a hidden input if backend expects text.
-            document.getElementById('manProvinceText').value = this.options[this.selectedIndex].text;
-
-            const citySel = document.getElementById('manMunicipality');
-            citySel.innerHTML = '<option value="" disabled selected>Municipality / City</option>';
-            document.getElementById('manBarangay').innerHTML = '<option value="" disabled selected>Barangay</option>';
-
-            if (!this.value) return;
-            const res = await fetch(`${PSGC_BASE}/provinces/${this.value}/cities-municipalities/`);
-            const cities = await res.json();
-            cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.code;
-                opt.textContent = c.name;
-                citySel.appendChild(opt);
-            });
+            opt.value = c.code;
+            opt.textContent = c.name;
+            citySel.appendChild(opt);
         });
 
         document.getElementById('manMunicipality').addEventListener('change', async function () {

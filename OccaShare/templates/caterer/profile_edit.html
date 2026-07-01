@@ -255,7 +255,7 @@
                         <div class="form-group">
                             <label><i class="fas fa-flag"></i> Province</label>
                             <select id="locationProvince" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: var(--border-radius, 8px);">
-                                <option value="">Select Province</option>
+                                <option value="" disabled selected>Select Province</option>
                             </select>
                             <input type="hidden" name="province_code" id="provinceCodeHidden" value="{{ profile.province_code or '' }}">
                             <input type="hidden" name="province" id="provinceNameHidden" value="">
@@ -264,7 +264,7 @@
                         <div class="form-group">
                             <label><i class="fas fa-city"></i> Municipality / City</label>
                             <select id="locationMunicipality" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: var(--border-radius, 8px);" disabled>
-                                <option value="">Select Municipality</option>
+                                <option value="" disabled selected>Select Municipality</option>
                             </select>
                             <input type="hidden" name="city_code" id="cityCodeHidden" value="{{ profile.city_code or '' }}">
                             <input type="hidden" name="municipality" id="cityNameHidden" value="{{ profile.city or '' }}">
@@ -275,7 +275,7 @@
                         <div class="form-group">
                             <label><i class="fas fa-map-pin"></i> Barangay</label>
                             <select id="locationBarangay" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: var(--border-radius, 8px);" disabled>
-                                <option value="">Select Barangay</option>
+                                <option value="" disabled selected>Select Barangay</option>
                             </select>
                             <input type="hidden" name="brgy_code" id="brgyCodeHidden" value="{{ profile.brgy_code or '' }}">
                             <input type="hidden" name="barangay" id="brgyNameHidden" value="">
@@ -1984,8 +1984,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         provCodeHidden.value = code;
         provNameHidden.value = name;
         
-        citySelect.innerHTML = '<option value="">Select Municipality</option>';
-        brgySelect.innerHTML = '<option value="">Select Barangay</option>';
+        citySelect.innerHTML = '<option value="" disabled selected>Select Municipality</option>';
+        brgySelect.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
         citySelect.disabled = true;
         brgySelect.disabled = true;
         cityCodeHidden.value = '';
@@ -2005,7 +2005,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         cityCodeHidden.value = code;
         cityNameHidden.value = name;
         
-        brgySelect.innerHTML = '<option value="">Select Barangay</option>';
+        brgySelect.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
         brgySelect.disabled = true;
         brgyCodeHidden.value = '';
         brgyNameHidden.value = '';
@@ -2038,7 +2038,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetch(endpoint);
             const cities = await res.json();
             
-            citySelect.innerHTML = '<option value="">Select Municipality</option>';
+            citySelect.innerHTML = '<option value="" disabled selected>Select Municipality</option>';
             cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c.code;
@@ -2076,7 +2076,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetch(`${PSGC_BASE}/cities-municipalities/${cityCode}/barangays/`);
             const brgys = await res.json();
             
-            brgySelect.innerHTML = '<option value="">Select Barangay</option>';
+            brgySelect.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
             brgys.sort((a, b) => a.name.localeCompare(b.name)).forEach(b => {
                 const opt = document.createElement('option');
                 opt.value = b.code;
@@ -2131,13 +2131,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="form-group">
                     <label>Province</label>
                     <select id="zoneProvince" name="province" class="form-control" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
-                        <option value="">Select Province</option>
+                        <option value="" disabled selected>Select Province</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Municipality / City</label>
                     <select id="zoneCity" name="city_municipality" class="form-control" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;" disabled>
-                        <option value="">Select Municipality</option>
+                        <option value="" disabled selected>Select Municipality</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -2212,7 +2212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('addZoneModal').classList.remove('active');
         document.getElementById('addZoneForm').reset();
         document.getElementById('zoneCity').disabled = true;
-        document.getElementById('zoneCity').innerHTML = '<option value="">Select Municipality</option>';
+        document.getElementById('zoneCity').innerHTML = '<option value="" disabled selected>Select Municipality</option>';
         document.getElementById('zoneFeeGroup').style.display = 'block';
     }
 
@@ -2246,20 +2246,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (provSelect.options.length > 1) return; // Already loaded
 
         try {
-            const res = await fetch('https://psgc.gitlab.io/api/provinces/');
-            const provinces = await res.json();
-            
-            provinces.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.code;
-                opt.textContent = p.name;
-                provSelect.appendChild(opt);
-            });
-
-            const optNCR = document.createElement('option');
-            optNCR.value = "130000000";
-            optNCR.textContent = "NATIONAL CAPITAL REGION (NCR)";
-            provSelect.appendChild(optNCR);
+            // Lock to Laguna only
+            provSelect.innerHTML = '<option value="043400000" selected>Laguna</option>';
+            provSelect.dispatchEvent(new Event('change'));
         } catch (e) {
             console.error('Failed to load provinces:', e);
         }
@@ -2268,7 +2257,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('zoneProvince')?.addEventListener('change', async (e) => {
         const code = e.target.value;
         const citySelect = document.getElementById('zoneCity');
-        citySelect.innerHTML = '<option value="">Select Municipality</option>';
+        citySelect.innerHTML = '<option value="" disabled selected>Select Municipality</option>';
         citySelect.disabled = true;
 
         if (!code) return;
@@ -2283,7 +2272,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetch(endpoint);
             const cities = await res.json();
             
-            citySelect.innerHTML = '<option value="">Select Municipality</option>';
+            citySelect.innerHTML = '<option value="" disabled selected>Select Municipality</option>';
             cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c.code;

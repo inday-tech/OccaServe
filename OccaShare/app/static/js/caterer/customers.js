@@ -685,15 +685,9 @@ window.loadProvinces = async function(selectId) {
     const select = document.getElementById(selectId);
     if(!select) return;
     try {
-        const res = await fetch(`${PSGC_BASE}/provinces/`);
-        const data = await res.json();
-        data.sort((a,b) => a.name.localeCompare(b.name));
-        select.innerHTML = '<option value="">Select Province</option>';
-        data.forEach(p => select.innerHTML += `<option value="${p.name}" data-code="${p.code}">${p.name}</option>`);
-        
-        const resNcr = await fetch(`${PSGC_BASE}/regions/130000000/districts/`);
-        const distData = await resNcr.json();
-        distData.forEach(d => select.innerHTML += `<option value="${d.name}" data-code="${d.code}">${d.name}</option>`);
+        // Lock to Laguna only
+        select.innerHTML = '<option value="Laguna" data-code="043400000" selected>Laguna</option>';
+        window.loadCities('Laguna', 'regCity');
     } catch(err) {}
 };
 
@@ -705,14 +699,14 @@ window.loadCities = async function(provName, citySelectId) {
     citySelect.innerHTML = '<option value="">Loading...</option>';
     citySelect.disabled = true;
     if(brgySelect) {
-        brgySelect.innerHTML = '<option value="">Select Barangay</option>';
+        brgySelect.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
         brgySelect.disabled = true;
     }
     
     const provSelect = document.getElementById('regProv');
     const selectedOption = provSelect.options[provSelect.selectedIndex];
     if(!selectedOption || !selectedOption.dataset.code) {
-        citySelect.innerHTML = '<option value="">Select City/Municipality</option>';
+        citySelect.innerHTML = '<option value="" disabled selected>Select City/Municipality</option>';
         return;
     }
     
@@ -725,7 +719,7 @@ window.loadCities = async function(provName, citySelectId) {
         const data = await res.json();
         data.sort((a,b) => a.name.localeCompare(b.name));
         
-        citySelect.innerHTML = '<option value="">Select City/Municipality</option>';
+        citySelect.innerHTML = '<option value="" disabled selected>Select City/Municipality</option>';
         data.forEach(c => citySelect.innerHTML += `<option value="${c.name}" data-code="${c.code}">${c.name}</option>`);
         citySelect.disabled = false;
         setFieldStatus('regProv', 'success');
@@ -738,13 +732,13 @@ window.loadBarangays = async function(cityName, brgySelectId) {
     const brgySelect = document.getElementById(brgySelectId);
     if(!brgySelect) return;
     
-    brgySelect.innerHTML = '<option value="">Loading...</option>';
+    brgySelect.innerHTML = '<option value="" disabled selected>Loading...</option>';
     brgySelect.disabled = true;
     
     const citySelect = document.getElementById('regCity');
     const selectedOption = citySelect.options[citySelect.selectedIndex];
     if(!selectedOption || !selectedOption.dataset.code) {
-        brgySelect.innerHTML = '<option value="">Select Barangay</option>';
+        brgySelect.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
         return;
     }
     
@@ -753,7 +747,7 @@ window.loadBarangays = async function(cityName, brgySelectId) {
         const data = await res.json();
         data.sort((a,b) => a.name.localeCompare(b.name));
         
-        brgySelect.innerHTML = '<option value="">Select Barangay</option>';
+        brgySelect.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
         data.forEach(b => brgySelect.innerHTML += `<option value="${b.name}">${b.name}</option>`);
         brgySelect.disabled = false;
         setFieldStatus('regCity', 'success');
