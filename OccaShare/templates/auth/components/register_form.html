@@ -70,11 +70,8 @@
                 <label for="province_cust">Province</label>
                 <div class="input-wrapper" id="provinceCustWrapper">
                     <select id="province_cust" class="minimal-input" required>
-                        <option value="">-- Province --</option>
+                        <option value="" disabled selected hidden>-- Province --</option>
                         <option value="Laguna">Laguna</option>
-                        <option value="Batangas">Batangas</option>
-                        <option value="Cavite">Cavite</option>
-                        <option value="Rizal">Rizal</option>
                     </select>
                     <div id="provinceCustError" class="error-drawer">Required</div>
                 </div>
@@ -83,7 +80,7 @@
                 <label for="city_cust">City / Municipality</label>
                 <div class="input-wrapper" id="cityCustWrapper">
                     <select id="city_cust" class="minimal-input" required disabled>
-                        <option value="">-- City --</option>
+                        <option value="" disabled selected hidden>-- City --</option>
                     </select>
                     <div id="cityCustError" class="error-drawer">Required</div>
                 </div>
@@ -94,7 +91,7 @@
                 <label for="barangay_cust">Barangay</label>
                 <div class="input-wrapper" id="barangayCustWrapper">
                     <select id="barangay_cust" class="minimal-input" required disabled>
-                        <option value="">-- Barangay --</option>
+                        <option value="" disabled selected hidden>-- Barangay --</option>
                     </select>
                     <div id="barangayCustError" class="error-drawer">Required</div>
                 </div>
@@ -223,10 +220,10 @@
             if (provSelect && citySelect) {
                 provSelect.addEventListener('change', () => {
                     citySelect.disabled = false;
-                    citySelect.innerHTML = '<option value="">-- City --</option>';
+                    citySelect.innerHTML = '<option value="" disabled selected hidden>-- City --</option>';
                     if (brgySelect) {
                         brgySelect.disabled = false; 
-                        brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
+                        brgySelect.innerHTML = '<option value="" disabled selected hidden>-- Barangay --</option>';
                     }
                     
                     const prov = provSelect.value;
@@ -258,7 +255,7 @@
                 citySelect.addEventListener('change', () => {
                     if (brgySelect) {
                         brgySelect.disabled = false;
-                        brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
+                        brgySelect.innerHTML = '<option value="" disabled selected hidden>-- Barangay --</option>';
                         const prov = provSelect.value;
                         const city = citySelect.value;
                         if (prov && city && typeof LOCATION_DATA !== 'undefined' && LOCATION_DATA[prov] && LOCATION_DATA[prov][city]) {

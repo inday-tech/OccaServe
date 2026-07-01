@@ -16,7 +16,12 @@ class User(Base):
     last_name = Column(String, nullable=True)
     dob = Column(Date, nullable=True)
     phone_number = Column(String, nullable=True)
-    address = Column(Text, nullable=True)
+    address = Column(Text, nullable=True)  # Legacy single-field address (kept for backward compat)
+    # Structured Address Fields (PSGC-based)
+    province = Column(String, nullable=True)
+    city_municipality = Column(String, nullable=True)
+    barangay = Column(String, nullable=True)
+    street_address = Column(Text, nullable=True)  # House/Unit No., Street, Landmark
     profile_image_url = Column(String, nullable=True)
     status = Column(String, default="active")
     status_reason = Column(Text, nullable=True)

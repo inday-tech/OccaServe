@@ -682,7 +682,7 @@ async def customer_profile(
     total_points = 5
     if user.first_name and user.last_name: completion_points += 1
     if user.phone_number: completion_points += 1
-    if user.address: completion_points += 1
+    if user.province and user.city_municipality: completion_points += 1
     if user.emergency_contact_name and user.emergency_contact_phone: completion_points += 1
     if user.profile_image_url or user.is_verified: completion_points += 1
     profile_completion = int((completion_points / total_points) * 100)
@@ -726,13 +726,25 @@ async def customer_update_personal(
 @router.post("/profile/update-address")
 async def customer_update_address(
     request: Request,
-    address: str = Form(...),
+    province: Optional[str] = Form(None),
+    city_municipality: Optional[str] = Form(None),
+    barangay: Optional[str] = Form(None),
+    street_address: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
-    user.address = address
+    user.province = province or None
+    user.city_municipality = city_municipality or None
+    user.barangay = barangay or None
+    user.street_address = street_address or None
+
+    # Also build the legacy single-line address for backward compatibility
+    parts = [p for p in [street_address, barangay, city_municipality, province] if p]
+    user.address = ", ".join(parts) if parts else None
+
     db.commit()
     return {"success": True, "message": "Address updated successfully."}
+
 
 @router.post("/profile/update-emergency")
 async def customer_update_emergency(
