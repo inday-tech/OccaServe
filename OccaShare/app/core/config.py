@@ -39,5 +39,9 @@ class Settings:
     PAYMONGO_SECRET_KEY = os.getenv("PAYMONGO_SECRET_KEY", "")
     PAYMONGO_WEBHOOK_SIG_KEY = os.getenv("PAYMONGO_WEBHOOK_SIG_KEY", "")
 
+    # SUPABASE STORAGE CONFIG
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+    SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+
 settings = Settings()
 # Env reload trigger

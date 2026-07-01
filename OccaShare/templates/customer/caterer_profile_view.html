@@ -329,7 +329,7 @@
 
     .cat-card-img {
         width: 100%;
-        height: 100px;
+        height: 70px;
         object-fit: cover;
         display: block;
         background: var(--hub-slate-50);
@@ -448,9 +448,9 @@
     }
     .dish-row:hover { border-color: var(--hub-primary); }
     .dish-row-img {
-        width: 60px;
-        height: 60px;
-        border-radius: 10px;
+        width: 44px;
+        height: 44px;
+        border-radius: 8px;
         object-fit: cover;
         flex-shrink: 0;
         background: var(--hub-slate-50);
@@ -521,10 +521,10 @@
             grid-template-columns: repeat(2, 1fr) !important;
             gap: 0.6rem !important;
         }
-        .cat-card-img { height: 80px !important; }
+        .cat-card-img { height: 60px !important; }
         .cat-card-name { font-size: 0.8rem !important; }
         .dish-modal-box { max-height: 92vh; border-radius: 16px; }
-        .dish-row-img { width: 50px; height: 50px; }
+        .dish-row-img { width: 36px; height: 36px; }
         .dish-row-name { font-size: 0.8rem; }
         .dish-row-price { font-size: 0.8rem; }
         .dish-row-btn { padding: 0 0.6rem; font-size: 0.65rem; }
@@ -631,7 +631,7 @@
 
         /* Package card adjustments */
         .pkg-grid .ei-img-box {
-            height: 100px !important;
+            height: 80px !important;
         }
         .pkg-grid .ei-body {
             padding: 0.6rem !important;
@@ -656,7 +656,7 @@
 
         /* Dish card adjustments */
         .dish-grid .ei-img-box {
-            height: 95px !important;
+            height: 70px !important;
         }
         .dish-grid .ei-body {
             padding: 0.6rem !important;
@@ -749,7 +749,7 @@
     }
 
     .ei-img-box {
-        height: 155px;
+        height: 110px;
         position: relative;
         overflow: hidden;
         background: var(--hub-slate-50);
@@ -1024,6 +1024,20 @@
                     <div class="meta-pill"><i class="fas fa-eye"></i> <span>{{ caterer.profile_views or 0 }} Views</span></div>
                     <div class="meta-pill"><i class="fas fa-clock"></i> <span>{{ caterer.equipment_turnover_hours if caterer.equipment_turnover_hours is not none else 24 }}h Turnover Buffer</span></div>
                 </div>
+                <!-- SPECIALTIES PREVIEW (Phase 1.4) -->
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1rem;">
+                    {% if packages %}
+                        {% set service_types = [] %}
+                        {% for pkg in packages %}
+                            {% if pkg.service_type and pkg.service_type not in service_types %}
+                                {% set _ = service_types.append(pkg.service_type) %}
+                            {% endif %}
+                        {% endfor %}
+                        {% for st in service_types[:3] %}
+                            <span style="background: rgba(255,255,255,0.2); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700;"><i class="fas fa-glass-cheers" style="margin-right: 4px;"></i>{{ st }}</span>
+                        {% endfor %}
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
@@ -1272,8 +1286,8 @@
                         {% for p in public_portfolios %}
                         {% set cover_img = (p.images | selectattr('is_cover', 'equalto', True) | first) %}
                         {% set img_url = cover_img.image_url if cover_img else (p.images[0].image_url if p.images else '/static/images/default-portfolio.jpg') %}
-                        <div style="height: 140px; border-radius: 12px; overflow: hidden; cursor: pointer; position: relative;" onclick="window.openPortfolioViewModal('{{ p.id }}')" class="hover:shadow-md transition">
-                            <img src="{{ img_url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <div style="height: 130px; border-radius: 12px; overflow: hidden; cursor: pointer; position: relative;" onclick="window.openPortfolioViewModal('{{ p.id }}')" class="hover:shadow-md transition">
+                            <img src="{{ img_url }}" onerror="this.src='/static/images/default-portfolio.jpg'" style="width: 100%; height: 100%; object-fit: cover;">
                             <div style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.8)); padding: 8px; color: white; font-size: 0.75rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 {{ p.title }}
                             </div>
@@ -1298,6 +1312,7 @@
                         <div class="elite-item-card pkg-item">
                             <div class="ei-img-box">
                                 <img src="{{ pkg.image_url if pkg.image_url else 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400' }}"
+                                    onerror="this.src='https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400'"
                                     class="ei-img">
                             </div>
                             <div class="ei-body">
@@ -1310,6 +1325,17 @@
                                 {% endif %}
                                 {% if pkg.min_guests %}
                                 <span style="font-size:0.7rem;color:var(--hub-slate-400);font-weight:700;">Min. {{ pkg.min_guests }} pax{% if pkg.max_guests %} · Max. {{ pkg.max_guests }} pax{% endif %}</span>
+                                {% endif %}
+                                <!-- PACKAGE HIGHLIGHTS (Phase 1.3) -->
+                                {% if pkg.dishes and pkg.dishes|length > 0 %}
+                                <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:0.5rem; max-height:45px; overflow:hidden;">
+                                    {% for dish in pkg.dishes[:3] %}
+                                    <span style="font-size:0.65rem; background:var(--hub-slate-50); color:var(--hub-slate-600); padding:2px 8px; border-radius:100px; border:1px solid var(--hub-slate-100); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;">{{ dish }}</span>
+                                    {% endfor %}
+                                    {% if pkg.dishes|length > 3 %}
+                                    <span style="font-size:0.65rem; background:var(--hub-slate-100); color:var(--hub-slate-600); padding:2px 8px; border-radius:100px; font-weight:700;">+{{ pkg.dishes|length - 3 }}</span>
+                                    {% endif %}
+                                </div>
                                 {% endif %}
                                 <div style="display:flex;gap:0.5rem;margin-top:1rem;flex-direction:column;">
                                     <button type="button" onclick='window.openPkgDetails("{{ pkg.id }}")' class="btn-elite-sm">
@@ -1373,11 +1399,19 @@
                         {% endif %}
                         
                         <div class="cat-card" onclick="window.openCategoryModal('{{ cat|e }}')">
-                            <img src="{{ final_img }}" class="cat-card-img" alt="{{ cat }}" loading="lazy" style="object-fit: cover;">
+                            <img src="{{ final_img }}" onerror="this.src='https://ui-avatars.com/api/?name={{ cat|urlencode }}&background=f1f5f9&color=FF7B54&size=400&font-size=0.33&bold=true'" class="cat-card-img" alt="{{ cat }}" loading="lazy" style="object-fit: cover;">
                             <div class="cat-card-body">
                                 <span class="cat-card-name">{{ cat }}</span>
-                                <span class="cat-card-desc" style="font-size: 0.75rem; color: #64748b; margin-top: 2px; display: block; line-height: 1.3;">{{ dynamic_desc }}</span>
-                                <span class="cat-card-count" style="margin-top: 6px; display: inline-block;">{{ cat_items|length }} item{{ 's' if cat_items|length != 1 else '' }}</span>
+                                <!-- GAP 1: Dish preview chips -->
+                                <div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:4px;">
+                                    {% for item in cat_items[:2] %}
+                                    <span style="font-size:0.6rem; background:#fff7f5; color:var(--hub-primary); padding:1px 6px; border-radius:100px; border:1px solid #ffe0d6; font-weight:700; white-space:nowrap; max-width:90px; overflow:hidden; text-overflow:ellipsis;">{{ item.name }}</span>
+                                    {% endfor %}
+                                    {% if cat_items|length > 2 %}
+                                    <span style="font-size:0.6rem; background:var(--hub-slate-100); color:var(--hub-slate-500); padding:1px 6px; border-radius:100px; font-weight:700;">+{{ cat_items|length - 2 }}</span>
+                                    {% endif %}
+                                </div>
+                                <span class="cat-card-count" style="margin-top:5px; display:inline-block;">{{ cat_items|length }} item{{ 's' if cat_items|length != 1 else '' }}</span>
                             </div>
                             <div class="cat-card-footer">
                                 <span>Browse {{ 'Items' if cat in ['Rentals', 'Services'] else 'Dishes' }}</span>
@@ -1415,9 +1449,24 @@
                         {% endfor %}
                         
                         {% set display_img = namespace(url='') %}
+                        {% set min_price = namespace(val=0) %}
+                        {% set max_price = namespace(val=0) %}
+                        {% set price_unit = namespace(val='') %}
                         {% for item in cat_items %}
                             {% if item.image_url and not display_img.url %}
                                 {% set display_img.url = item.image_url %}
+                            {% endif %}
+                            {% set item_price = (item.rental_price if item.rental_price is defined else item.selling_price) or 0 %}
+                            {% if item_price > 0 %}
+                                {% if min_price.val == 0 or item_price < min_price.val %}
+                                    {% set min_price.val = item_price %}
+                                {% endif %}
+                                {% if item_price > max_price.val %}
+                                    {% set max_price.val = item_price %}
+                                {% endif %}
+                            {% endif %}
+                            {% if not price_unit.val and item.unit_type %}
+                                {% set price_unit.val = item.unit_type %}
                             {% endif %}
                         {% endfor %}
                         
@@ -1428,10 +1477,30 @@
                         {% endif %}
                         
                         <div class="cat-card" onclick="window.openInventoryModal('{{ cat|e }}')">
-                            <img src="{{ final_img }}" class="cat-card-img" alt="{{ cat }}" loading="lazy" style="object-fit: cover;">
+                            <img src="{{ final_img }}" onerror="this.src='https://ui-avatars.com/api/?name={{ cat|urlencode }}&background=f1f5f9&color=FF7B54&size=400&font-size=0.33&bold=true'" class="cat-card-img" alt="{{ cat }}" loading="lazy" style="object-fit: cover;">
                             <div class="cat-card-body">
                                 <span class="cat-card-name">{{ cat }}</span>
-                                <span class="cat-card-count" style="margin-top: 6px; display: inline-block;">{{ cat_items|length }} item{{ 's' if cat_items|length != 1 else '' }}</span>
+                                <!-- GAP 2: Price range + item name chips for equipment -->
+                                <div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:4px;">
+                                    {% for item in cat_items[:2] %}
+                                    <span style="font-size:0.6rem; background:#fff7f5; color:var(--hub-primary); padding:1px 6px; border-radius:100px; border:1px solid #ffe0d6; font-weight:700; white-space:nowrap; max-width:90px; overflow:hidden; text-overflow:ellipsis;">{{ item.name }}</span>
+                                    {% endfor %}
+                                    {% if cat_items|length > 2 %}
+                                    <span style="font-size:0.6rem; background:var(--hub-slate-100); color:var(--hub-slate-500); padding:1px 6px; border-radius:100px; font-weight:700;">+{{ cat_items|length - 2 }}</span>
+                                    {% endif %}
+                                </div>
+                                <div style="display:flex; align-items:center; justify-content:space-between; margin-top:5px;">
+                                    <span class="cat-card-count">{{ cat_items|length }} item{{ 's' if cat_items|length != 1 else '' }}</span>
+                                    {% if min_price.val > 0 %}
+                                    <span style="font-size:0.65rem; font-weight:800; color:var(--hub-primary);">
+                                        {% if min_price.val == max_price.val %}
+                                            ₱{{ "{:,.0f}".format(min_price.val) }}
+                                        {% else %}
+                                            ₱{{ "{:,.0f}".format(min_price.val) }}–{{ "{:,.0f}".format(max_price.val) }}
+                                        {% endif %}
+                                    </span>
+                                    {% endif %}
+                                </div>
                             </div>
                             <div class="cat-card-footer">
                                 <span>Browse Items</span>
@@ -1457,10 +1526,10 @@
                     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
                         {% for p in public_portfolios %}
                         <div style="background: #fff; border: 1px solid var(--hub-slate-200); border-radius: var(--hub-radius); overflow: hidden; display: flex; flex-direction: column; cursor: pointer; transition: transform 0.2s;" onclick="openPortfolioViewModal({{ p.id }})">
-                            <div style="position: relative; height: 180px; background: var(--hub-slate-50);">
+                            <div style="position: relative; height: 130px; background: var(--hub-slate-50);">
                                 {% set cover = p.images | selectattr('is_cover', 'equalto', True) | first %}
                                 {% if cover %}
-                                <img src="{{ cover.image_url }}" alt="{{ p.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                <img src="{{ cover.image_url }}" onerror="this.src='/static/images/default-portfolio.jpg'" alt="{{ p.title }}" style="width: 100%; height: 100%; object-fit: cover;">
                                 {% else %}
                                 <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--hub-slate-400);">
                                     <i class="fas fa-image" style="font-size: 3rem;"></i>
@@ -1758,6 +1827,83 @@ window.removeCartItem = function(id, type) {
     
     if (mbtn) { mbtn.classList.remove('selected'); mbtn.textContent = (type === 'Equipment') ? 'Rent' : (type === 'Service' ? 'Book' : 'Add'); }
     if (mqty) mqty.disabled = false;
+    window.updateCartUI();
+};
+
+// ---- Phase 2.1: Open Inventory/Services Category Modal ----
+window.openInventoryModal = function(cat) {
+    const modal = document.getElementById('dish-cat-modal');
+    const title = document.getElementById('dish-modal-cat-title');
+    const body  = document.getElementById('dish-modal-body');
+    const items = window.hubInventoryItems.filter(i => i.category === cat);
+
+    title.textContent = cat + ' (' + items.length + ' item' + (items.length !== 1 ? 's' : '') + ')';
+
+    const UNIT_MAP = {
+        'per_piece': '/pc', 'per_set': '/set', 'per_day': '/day', 'per_event': '/event',
+        'per_hour': '/hr', 'per_person': '/person', 'per_session': '/session', 'piece': '/pc'
+    };
+
+    body.innerHTML = items.length === 0
+        ? `<p style="color:var(--hub-slate-400);text-align:center;padding:2rem 0;">No items in this category.</p>`
+        : items.map(item => {
+            const img = item.image || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(item.name) + '&background=f1f5f9&color=FF7B54&size=200';
+            const unitSuffix = UNIT_MAP[item.pricing_unit] || (item.pricing_unit ? '/' + item.pricing_unit : '');
+            const priceDisplay = item.price > 0
+                ? '₱' + parseFloat(item.price).toLocaleString('en-PH', {minimumFractionDigits:2}) + unitSuffix
+                : '<span style="font-size:0.72rem;color:var(--hub-slate-400);font-weight:700;">Included in Package</span>';
+
+            const isPackageOnly = item.price === 0;
+            const isEquipment = item.type === 'Equipment';
+            const isSelected = window.selectedItems.some(s => String(s.id) === String(item.id) && s.type === item.type);
+            const actionBtnId = `mbtn-${item.type}-${item.id}`;
+            const qtyId = `mq-${item.type}-${item.id}`;
+
+            // Type badge
+            const typeBadge = isEquipment
+                ? `<span style="font-size:0.6rem;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:100px;padding:2px 7px;font-weight:700;margin-left:4px;"><i class="fas fa-cube"></i> Equipment</span>`
+                : `<span style="font-size:0.6rem;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;border-radius:100px;padding:2px 7px;font-weight:700;margin-left:4px;"><i class="fas fa-hands-helping"></i> Service</span>`;
+
+            const actionHtml = isPackageOnly
+                ? `<span style="font-size:0.7rem;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:8px;padding:4px 10px;font-weight:700;white-space:nowrap;"><i class="fas fa-box-open"></i> In Packages</span>`
+                : `<div class="dish-row-action">
+                    <input type="number" class="dish-row-qty" id="${qtyId}" value="1" min="1" ${isSelected ? 'disabled' : ''} style="width:36px;border:none;border-right:1.5px solid var(--hub-slate-200);background:var(--hub-slate-50);text-align:center;font-size:0.8rem;font-weight:800;height:100%;outline:none;">
+                    <button class="dish-row-btn ${isSelected ? 'selected' : ''}" id="${actionBtnId}"
+                        onclick="window.toggleInventoryItem('${item.id}', '${item.name.replace(/'/g,\'\\\'\')}', ${item.price}, '${item.type}', '${item.pricing_unit || ''}', '${qtyId}', '${actionBtnId}')">
+                        ${isSelected ? 'Added' : (isEquipment ? 'Rent' : 'Book')}
+                    </button>
+                  </div>`;
+
+            return `<div class="dish-row">
+                <img src="${img}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(item.name)}&background=f1f5f9&color=FF7B54&size=200'" class="dish-row-img" alt="${item.name}">
+                <div class="dish-row-info">
+                    <div class="dish-row-name">${item.name}${typeBadge}</div>
+                    ${item.description ? `<div style="font-size:0.7rem;color:var(--hub-slate-400);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.description}</div>` : ''}
+                    <div class="dish-row-price">${priceDisplay}</div>
+                </div>
+                ${actionHtml}
+            </div>`;
+        }).join('');
+
+    modal.classList.add('active');
+};
+
+// ---- Toggle Equipment/Service item into cart ----
+window.toggleInventoryItem = function(id, name, price, type, pricingUnit, qtyId, btnId) {
+    const qty = document.getElementById(qtyId);
+    const btn = document.getElementById(btnId);
+    const qtyVal = qty ? (parseInt(qty.value) || 1) : 1;
+    const idx = window.selectedItems.findIndex(i => String(i.id) === String(id) && i.type === type);
+
+    if (idx === -1) {
+        window.selectedItems.push({ id: String(id), name, price: parseFloat(price), qty: qtyVal, type, pricing_unit: pricingUnit });
+        if (btn) { btn.classList.add('selected'); btn.textContent = 'Added'; }
+        if (qty) qty.disabled = true;
+    } else {
+        window.selectedItems.splice(idx, 1);
+        if (btn) { btn.classList.remove('selected'); btn.textContent = type === 'Equipment' ? 'Rent' : 'Book'; }
+        if (qty) qty.disabled = false;
+    }
     window.updateCartUI();
 };
 

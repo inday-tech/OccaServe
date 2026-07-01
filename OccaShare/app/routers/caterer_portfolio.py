@@ -11,6 +11,7 @@ from PIL import Image
 from app.db import database, models
 from app.core.security import get_current_user, RoleChecker
 from app.core.templates import templates
+from app.services.storage import upload_file_to_supabase, delete_file_from_supabase
 caterer_only = RoleChecker(["caterer"])
 
 router = APIRouter(prefix="/caterer/portfolio", tags=["portfolio"])
@@ -20,8 +21,8 @@ THUMBNAIL_DIR = "app/static/uploads/portfolios/thumbnails"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(THUMBNAIL_DIR, exist_ok=True)
 
-def process_and_save_image(file: UploadFile, is_cover: bool = False) -> str:
-    """Compresses image to WebP and generates a thumbnail if it's a cover photo."""
+def process_image_to_bytes(file: UploadFile, max_size=(1920, 1080), quality=85) -> bytes:
+    """Compresses image to WebP and returns bytes."""
     try:
         content = file.file.read()
         image = Image.open(io.BytesIO(content))
@@ -30,22 +31,10 @@ def process_and_save_image(file: UploadFile, is_cover: bool = False) -> str:
         if image.mode in ("RGBA", "P"):
             image = image.convert("RGB")
             
-        filename = f"{uuid.uuid4()}.webp"
-        filepath = os.path.join(UPLOAD_DIR, filename)
-        
-        # Save compressed high-res image (max 1920x1080)
-        image.thumbnail((1920, 1080), Image.Resampling.LANCZOS)
-        image.save(filepath, "WEBP", quality=85)
-        
-        if is_cover:
-            # Generate a 600x600 thumbnail for the landing page
-            thumb = image.copy()
-            thumb.thumbnail((600, 600), Image.Resampling.LANCZOS)
-            thumb_filename = f"thumb_{filename}"
-            thumbnail_filepath = os.path.join(THUMBNAIL_DIR, thumb_filename)
-            thumb.save(thumbnail_filepath, "WEBP", quality=80)
-            
-        return f"/static/uploads/portfolios/{filename}"
+        image.thumbnail(max_size, Image.Resampling.LANCZOS)
+        buf = io.BytesIO()
+        image.save(buf, format="WEBP", quality=quality)
+        return buf.getvalue()
     except Exception as e:
         print(f"Error processing image: {e}")
         raise HTTPException(status_code=400, detail="Invalid image file format")
@@ -113,17 +102,26 @@ async def create_portfolio(
     
     # 2. Process Cover Photo
     if cover_photo and cover_photo.filename:
-        cover_url = process_and_save_image(cover_photo, is_cover=True)
-        db.add(models.PortfolioImage(portfolio_id=new_portfolio.id, image_url=cover_url, is_cover=True))
+        # Upload main cover image to Supabase
+        img_bytes = process_image_to_bytes(cover_photo, max_size=(1920, 1080), quality=85)
+        cover_url = await upload_file_to_supabase(img_bytes, f"{uuid.uuid4().hex}.webp", folder="portfolios")
+        
+        if cover_url:
+            db.add(models.PortfolioImage(portfolio_id=new_portfolio.id, image_url=cover_url, is_cover=True))
+        else:
+            raise HTTPException(status_code=500, detail="Failed to upload cover photo. Please check storage configuration.")
         
     # 3. Process Additional Photos (Limit to 10 for safety)
     if additional_photos:
         count = 0
         for photo in additional_photos:
             if photo.filename and count < 10:
-                img_url = process_and_save_image(photo, is_cover=False)
-                db.add(models.PortfolioImage(portfolio_id=new_portfolio.id, image_url=img_url, is_cover=False))
-                count += 1
+                img_bytes = process_image_to_bytes(photo, max_size=(1920, 1080), quality=85)
+                img_url = await upload_file_to_supabase(img_bytes, f"{uuid.uuid4().hex}.webp", folder="portfolios")
+                
+                if img_url:
+                    db.add(models.PortfolioImage(portfolio_id=new_portfolio.id, image_url=img_url, is_cover=False))
+                    count += 1
                 
     db.commit()
     
@@ -144,18 +142,23 @@ async def delete_portfolio(
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
         
-    # Delete images from disk
+    # Delete images from Supabase or Disk
     for img in portfolio.images:
         try:
-            filename = img.image_url.split('/')[-1]
-            filepath = os.path.join(UPLOAD_DIR, filename)
-            if os.path.exists(filepath):
-                os.remove(filepath)
-            # Delete thumbnail if cover
-            if img.is_cover:
-                thumb_path = os.path.join(THUMBNAIL_DIR, f"thumb_{filename}")
-                if os.path.exists(thumb_path):
-                    os.remove(thumb_path)
+            if img.image_url.startswith("http"):
+                # Supabase CDN URL
+                await delete_file_from_supabase(img.image_url)
+            else:
+                # Legacy Local File
+                filename = img.image_url.split('/')[-1]
+                filepath = os.path.join(UPLOAD_DIR, filename)
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                # Delete thumbnail if cover (legacy)
+                if img.is_cover:
+                    thumb_path = os.path.join(THUMBNAIL_DIR, f"thumb_{filename}")
+                    if os.path.exists(thumb_path):
+                        os.remove(thumb_path)
         except Exception as e:
             print(f"Error deleting image {img.image_url}: {e}")
             

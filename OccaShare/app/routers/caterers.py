@@ -67,9 +67,26 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
         db.commit()
     
     # Calculate active menu & inventory
-    active_menu = [m for m in caterer.menu_items if not m.is_archived and not m.is_hidden and m.status == 'available' and m.usage_type in ['order_only', 'both'] and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']]
-    active_services = [s for s in getattr(caterer, 'service_items', []) if not s.is_archived and not s.is_hidden and s.status == 'available' and s.usage_type in ['order_only', 'both']]
-    active_equipment = [e for e in getattr(caterer, 'equipment_items', []) if not e.is_archived and not e.is_hidden and e.status == 'available' and e.usage_type in ['order_only', 'both']]
+    # GAP 5 FIX: Include items that are public (not hidden), regardless of usage_type.
+    # 'package_only' items with public visibility should still be discoverable by customers
+    # (shown with an 'Included in Packages' badge). Only truly hidden items are excluded.
+    active_menu = [
+        m for m in caterer.menu_items
+        if not m.is_archived
+        and not m.is_hidden
+        and m.status == 'available'
+        and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental',
+                                'Entertainment', 'Event Coordination', 'Food Cart',
+                                'Equipment Rental', 'Staffing Services', 'Packages']
+    ]
+    active_services = [
+        s for s in getattr(caterer, 'service_items', [])
+        if not s.is_archived and not s.is_hidden and s.status == 'available'
+    ]
+    active_equipment = [
+        e for e in getattr(caterer, 'equipment_items', [])
+        if not e.is_archived and not e.is_hidden and e.status == 'available'
+    ]
     active_inventory = active_services + active_equipment
     public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public']
 
