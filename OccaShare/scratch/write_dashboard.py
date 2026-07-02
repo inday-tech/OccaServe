@@ -1,4 +1,6 @@
-{% extends "caterer/layout.html" %}
+import os
+
+html_content = """{% extends "caterer/layout.html" %}
 
 {% block title %}Operations Dashboard{% endblock %}
 
@@ -23,15 +25,15 @@
         background: white;
         border-radius: 12px;
         box-shadow: var(--card-shadow);
-        padding: 15px;
+        padding: 20px;
         border: 1px solid #e2e8f0;
     }
     
     .card-title {
-        font-size: 0.9rem;
+        font-size: 1rem;
         font-weight: 600;
         color: #1e293b;
-        margin-bottom: 10px;
+        margin-bottom: 15px;
         display: flex;
         align-items: center;
         gap: 10px;
@@ -40,12 +42,12 @@
     /* Summary Cards */
     .summary-section { grid-column: span 12; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
     .stat-card {
-        background: white; border-radius: 12px; padding: 12px 15px;
+        background: white; border-radius: 12px; padding: 20px;
         border: 1px solid #e2e8f0; border-left: 4px solid var(--primary-color);
-        display: flex; flex-direction: column; gap: 4px;
+        display: flex; flex-direction: column; gap: 8px;
     }
     .stat-title { font-size: 0.85rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-    .stat-value { font-size: 1.4rem; font-weight: 700; color: #0f172a; }
+    .stat-value { font-size: 1.8rem; font-weight: 700; color: #0f172a; }
     .stat-desc { font-size: 0.8rem; color: #94a3b8; }
     
     /* Quick Actions */
@@ -64,7 +66,7 @@
     /* Pending Actions */
     .action-item {
         display: flex; justify-content: space-between; align-items: center;
-        padding: 8px 12px; background: #f8fafc; border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: 0.2s;
+        padding: 12px 15px; background: #f8fafc; border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: 0.2s;
     }
     .action-item:hover { background: #f1f5f9; transform: translateX(5px); }
     .action-badge { 
@@ -97,18 +99,18 @@
 {% endblock %}
 
 {% block content %}
-<div class="page-header" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+<div class="page-header" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
     <div>
-        <h1 style="margin: 0; font-size: 1.8rem; color: #0f172a;">Operations Dashboard</h1>
-        <p style="color: #64748b; margin: 5px 0 0 0;">Welcome back, {{ user.first_name }}! Here's what needs your attention today.</p>
+        <h1>Operations Dashboard</h1>
+        <p style="color: #64748b;">Welcome back, {{ user.first_name }}! Here's what needs your attention today.</p>
     </div>
+</div>
 
-    <!-- SECTION 12: Quick Actions -->
-    <div class="quick-actions" style="grid-column: unset; padding-bottom: 0; margin: 0; align-items: center;">
-        <button class="action-btn" onclick="window.location.href='/caterer/bookings?new=walkin'"><i class="fas fa-plus"></i> Walk-in Booking</button>
-        <button class="action-btn" onclick="window.location.href='/caterer/packages'"><i class="fas fa-box-open"></i> Add Package</button>
-        <button class="action-btn" onclick="window.location.href='/caterer/profile'"><i class="fas fa-user"></i> Profile Settings</button>
-    </div>
+<!-- SECTION 12: Quick Actions -->
+<div class="quick-actions">
+    <button class="action-btn" onclick="window.location.href='/caterer/bookings?new=walkin'"><i class="fas fa-plus"></i> Walk-in Booking</button>
+    <button class="action-btn" onclick="window.location.href='/caterer/packages'"><i class="fas fa-box-open"></i> Add Package</button>
+    <button class="action-btn" onclick="window.location.href='/caterer/profile'"><i class="fas fa-user"></i> Profile Settings</button>
 </div>
 
 <div class="dashboard-grid">
@@ -374,3 +376,9 @@
     });
 </script>
 {% endblock %}
+"""
+
+with open(r'c:\OccaServe\OccaShare\templates\caterer\index.html', 'w', encoding='utf-8') as f:
+    f.write(html_content)
+
+print("Dashboard rewritten successfully!")
