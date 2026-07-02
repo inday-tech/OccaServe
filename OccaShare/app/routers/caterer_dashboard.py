@@ -1252,6 +1252,11 @@ async def dashboard_overview_api(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    try:
+        from app.services.reminders import generate_caterer_reminders
+        generate_caterer_reminders(user.id, db)
+    except Exception as e:
+        print(f'Reminder generation error: {e}')
     from fastapi.responses import JSONResponse
     profile = user.caterer_profile
     bookings = [b for b in profile.bookings if b.status not in ['draft', 'pending_quotation', 'pending_review'] and not b.is_archived]
@@ -1260,6 +1265,13 @@ async def dashboard_overview_api(
     start_date = request.query_params.get('start_date')
     end_date = request.query_params.get('end_date')
     stats = _get_caterer_stats(profile, bookings, timeframe=timeframe, start_date=start_date, end_date=end_date)
+    
+    # Generate intelligent calendar reminders proactively
+    try:
+        from app.services.reminders import generate_caterer_reminders
+        generate_caterer_reminders(user.id, db)
+    except Exception as e:
+        print(f"Error generating reminders: {e}")
     
     # Process complex objects for JSON
     serializable_upcoming = []
