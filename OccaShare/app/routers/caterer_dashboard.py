@@ -26,9 +26,10 @@ caterer_only = auth.RoleChecker(["caterer"])
 
 
 def process_base64_image(content_bytes: bytes, max_size=(600, 600), quality=75) -> str:
-    """Compress uploaded image to WebP base64 data URL to reduce payload size."""
-    import base64
+    """Saves image locally as WebP and returns URL instead of base64."""
     import io
+    import uuid
+    import os
     try:
         from PIL import Image
         img = Image.open(io.BytesIO(content_bytes))
@@ -37,11 +38,17 @@ def process_base64_image(content_bytes: bytes, max_size=(600, 600), quality=75) 
         img.thumbnail(max_size, Image.Resampling.LANCZOS)
         buf = io.BytesIO()
         img.save(buf, format="WEBP", quality=quality)
-        encoded = base64.b64encode(buf.getvalue()).decode("utf-8")
-        return f"data:image/webp;base64,{encoded}"
+        file_bytes = buf.getvalue()
+        ext = ".webp"
     except Exception:
-        encoded = base64.b64encode(content_bytes).decode("utf-8")
-        return f"data:image/jpeg;base64,{encoded}"
+        file_bytes = content_bytes
+        ext = ".jpg"
+        
+    filename = f"img_{uuid.uuid4().hex}{ext}"
+    filepath = os.path.join(UPLOAD_DIR, filename)
+    with open(filepath, "wb") as f:
+        f.write(file_bytes)
+    return f"/static/uploads/caterer/{filename}"
 
 def create_default_booking_tasks(db: Session, booking_id: int):
     # Idempotency check: Don't add if tasks already exist
@@ -2806,7 +2813,7 @@ async def add_package(
     markup_value: float = Form(0.0),
     min_contract_amount: float = Form(0.0),
     min_guests: int = Form(1),
-    max_guests: Optional[int] = Form(None),
+    max_guests: Optional[str] = Form(None),
     inclusions: Optional[List[str]] = Form(None),
     linked_menu_ids: Optional[List[str]] = Form(None),
     additional_guest_price: float = Form(0.0),
@@ -2822,6 +2829,12 @@ async def add_package(
     reservation_fee_value: float = Form(0.0),
     booking_lead_time: int = Form(7),
     selection_rules: Optional[str] = Form(None),
+    status: str = Form("active"),
+    policies_cancellation: Optional[str] = Form(None),
+    policies_internal: Optional[str] = Form(None),
+    menu_addons: Optional[str] = Form(None),
+    service_addons: Optional[str] = Form(None),
+    equipment_addons: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -2852,8 +2865,7 @@ async def add_package(
         max_allowed_fee = (price_per_head * min_guests) * 0.5
         if reservation_fee_value > max_allowed_fee:
             errors.append(f"Reservation fee cannot exceed 50% of the total base package cost.")
-    if price_per_head < internal_cost_per_pax:
-        errors.append(f"Selling Price cannot be lower than the Est. Cost / Pax.")
+
 
     # Smart Validation: Detect existing package with the same name
     existing_pkg = db.query(models.CateringPackage).filter(
@@ -2895,7 +2907,7 @@ async def add_package(
         markup_value=markup_value,
         min_contract_amount=min_contract_amount,
         min_guests=min_guests,
-        max_guests=max_guests,
+        max_guests=int(max_guests) if max_guests and str(max_guests).strip() else None,
         image_url=image_url,
         inclusions={inc: True for inc in inclusions} if inclusions else {},
         base_pax=base_pax,
@@ -2910,8 +2922,9 @@ async def add_package(
         reservation_fee_value=reservation_fee_value,
         booking_lead_time=booking_lead_time,
         selection_rules=json.loads(selection_rules) if selection_rules else None,
-        is_active=True,
-        status='active'
+        policies={"cancellation": policies_cancellation, "internal": policies_internal},
+        is_active=status == 'active',
+        status=status
     )
     
     # Handle linked items
@@ -2950,6 +2963,23 @@ async def add_package(
                 db.add(models.PackageService(package_id=new_pkg.id, service_id=sid, quantity=qty))
     else:
         db.add(new_pkg)
+        db.flush()
+        
+    # Save addons
+    try:
+        import json
+        if menu_addons:
+            for ma in json.loads(menu_addons):
+                db.add(models.PackageMenuAddon(package_id=new_pkg.id, menu_item_id=int(str(ma['id']).replace('leg_', '')), price=float(ma['price']), selection_type=ma.get('selection_type', 'single'), min_quantity=ma.get('min_quantity', 1), max_quantity=ma.get('max_quantity')))
+        if service_addons:
+            for sa in json.loads(service_addons):
+                db.add(models.PackageServiceAddon(package_id=new_pkg.id, service_id=int(str(sa['id']).replace('svc_', '')), price=float(sa['price']), selection_type=ma.get('selection_type', 'single'), min_quantity=sa.get('min_quantity', 1), max_quantity=sa.get('max_quantity')))
+        if equipment_addons:
+            for ea in json.loads(equipment_addons):
+                db.add(models.PackageEquipmentAddon(package_id=new_pkg.id, equipment_id=int(str(ea['id']).replace('eq_', '')), price=float(ea['price']), min_quantity=ea.get('min_quantity', 1), max_quantity=ea.get('max_quantity')))
+    except Exception as e:
+        pass
+
     db.commit()
     
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -3000,44 +3030,26 @@ async def add_menu_item(
     available_for_package = usage_type in ["package_only", "both"]
     available_for_order = usage_type in ["order_only", "both"]
     
-    pricing_type = form_data.get("pricing_type", "fixed")
-    
-    # Base Price and Serving Size for Fixed Price
-    price = None
+    pricing_mode = form_data.get("pricing_mode", "single")
+    pricing_type = pricing_mode # Save as pricing_type for backwards compatibility
+
+    price = 0.0
     serving_size = None
-    if not (usage_type == "package_only"):
-        if pricing_type in ["fixed", "per_pax"]:
-            try:
-                price = float(form_data.get("price", "0").replace(",", ""))
-            except ValueError:
-                price = 0.0
-            serving_size = form_data.get("serving_size")
+    if not (usage_type == "package_only") and pricing_mode == "single":
+        try:
+            price = float(form_data.get("price", "0").replace(",", ""))
+        except ValueError:
+            price = 0.0
+        serving_size = form_data.get("serving_size")
     
     is_hidden = form_data.get("visibility") == "hidden"
     
-    is_addon = form_data.get("is_addon") == "true"
+    is_addon = False
     addon_price = 0.0
-    if is_addon:
-        try:
-            addon_price = float(form_data.get("addon_price", "0").replace(",", ""))
-        except ValueError:
-            addon_price = 0.0
-
-    try:
-        cost_price = float(str(form_data.get("cost_price", "0")).replace(",", ""))
-    except ValueError:
-        cost_price = 0.0
-    
-    # Combo / Bento Logic
-    is_combo = form_data.get("is_combo") == "true"
+    cost_price = 0.0
+    is_combo = False
     max_choices = 0
     combo_options = []
-    if is_combo:
-        try:
-            max_choices = int(form_data.get("max_choices", "1"))
-        except:
-            max_choices = 1
-        combo_options = form_data.getlist("combo_options_list[]")
     
     dietary_tags = form_data.getlist("dietary_tags")
     allergen_info = form_data.getlist("allergen_info")
@@ -3053,14 +3065,7 @@ async def add_menu_item(
         except Exception:
             pass
 
-    # Map pricing_type to pricing_unit to maintain legacy compatibility
-    pricing_unit = "per_tray"
-    if pricing_type == "per_pax":
-        pricing_unit = "per_pax"
-    elif pricing_type == "weight_based":
-        pricing_unit = "per_kg"
-    elif pricing_type == "size_based":
-        pricing_unit = "per_size"
+    pricing_unit = pricing_type
 
     new_item = models.MenuItem(
         caterer_id=user.caterer_profile.id,
@@ -3090,44 +3095,31 @@ async def add_menu_item(
     db.add(new_item)
     db.flush() # To get new_item.id
 
-    # Handle dynamic pricing tables
-    if not (usage_type == "package_only"):
-        if pricing_type == "size_based":
-            size_names = form_data.getlist("size_names[]")
-            size_caps = form_data.getlist("size_capacities[]")
-            size_prices = form_data.getlist("size_prices[]")
-            for i in range(len(size_names)):
-                s_name = size_names[i].strip()
-                s_cap = size_caps[i] if i < len(size_caps) else None
+    if not (usage_type == "package_only") and pricing_mode == "variants":
+        v_names = form_data.getlist("variant_names[]")
+        v_prices = form_data.getlist("variant_prices[]")
+        v_servings = form_data.getlist("variant_servings[]")
+        v_statuses = form_data.getlist("variant_statuses[]")
+
+        for i, name in enumerate(v_names):
+            if name.strip():
                 try:
-                    s_price = float(size_prices[i].replace(",", ""))
+                    v_price = float(v_prices[i].replace(",", ""))
                 except:
-                    s_price = 0.0
-                if s_name:
-                    sz_pricing = models.MenuSizePricing(
-                        menu_item_id=new_item.id,
-                        size_name=s_name,
-                        capacity=s_cap,
-                        price=s_price
-                    )
-                    db.add(sz_pricing)
-        
-        elif pricing_type == "weight_based":
-            weight_labels = form_data.getlist("weight_labels[]")
-            weight_prices = form_data.getlist("weight_prices[]")
-            for i in range(len(weight_labels)):
-                w_label = weight_labels[i].strip()
-                try:
-                    w_price = float(weight_prices[i].replace(",", ""))
-                except:
-                    w_price = 0.0
-                if w_label:
-                    wt_pricing = models.MenuWeightPricing(
-                        menu_item_id=new_item.id,
-                        weight_label=w_label,
-                        price=w_price
-                    )
-                    db.add(wt_pricing)
+                    v_price = 0.0
+                serving = v_servings[i].strip() if i < len(v_servings) else None
+                v_status = v_statuses[i] if i < len(v_statuses) else 'available'
+                
+                variant = models.MenuVariant(
+                    menu_item_id=new_item.id,
+                    variant_name=name.strip(),
+                    measurement=None,
+                    price=v_price,
+                    serving_capacity=serving,
+                    status=v_status,
+                    display_order=i
+                )
+                db.add(variant)
 
     db.commit()
 
@@ -3412,7 +3404,13 @@ async def update_profile(
                     mime = file_obj.content_type or "image/jpeg"
                     if mime.lower() not in ["image/png", "image/jpeg", "image/jpg", "application/pdf"]:
                         return RedirectResponse(url="/caterer/profile?error_msg=Invalid+business+permit+file+type.+Only+PNG,+JPEG,+and+PDF+are+allowed.", status_code=303)
-                    data_url = f"data:{mime};base64,{base64.b64encode(content_bytes).decode('utf-8')}"
+                    ext = '.pdf' if 'pdf' in mime.lower() else '.jpg'
+                    import uuid, os
+                    filename = f'permit_{uuid.uuid4().hex}{ext}'
+                    filepath = os.path.join(UPLOAD_DIR, filename)
+                    with open(filepath, 'wb') as _f:
+                        _f.write(content_bytes)
+                    data_url = f'/static/uploads/caterer/{filename}'
                     profile.permit_url = data_url
                     profile.permit_status = 'Pending Review'
                     profile.verification_status = 'Pending Review'
@@ -3520,7 +3518,7 @@ async def update_package(
     markup_value: float = Form(0.0),
     min_contract_amount: float = Form(0.0),
     min_guests: int = Form(1),
-    max_guests: Optional[int] = Form(None),
+    max_guests: Optional[str] = Form(None),
     inclusions: Optional[List[str]] = Form(None),
     linked_menu_ids: Optional[List[str]] = Form(None),
     additional_guest_price: float = Form(0.0),
@@ -3536,6 +3534,12 @@ async def update_package(
     reservation_fee_value: float = Form(0.0),
     booking_lead_time: int = Form(7),
     selection_rules: Optional[str] = Form(None),
+    status: str = Form("active"),
+    policies_cancellation: Optional[str] = Form(None),
+    policies_internal: Optional[str] = Form(None),
+    menu_addons: Optional[str] = Form(None),
+    service_addons: Optional[str] = Form(None),
+    equipment_addons: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -3573,8 +3577,7 @@ async def update_package(
         max_allowed_fee = (price_per_head * min_guests) * 0.5
         if reservation_fee_value > max_allowed_fee:
             errors.append(f"Reservation fee cannot exceed 50% of the total base package cost.")
-    if price_per_head < internal_cost_per_pax:
-        errors.append(f"Selling Price cannot be lower than the Est. Cost / Pax.")
+
 
     # Smart Validation: Detect existing package with the same name, excluding this package
     existing_pkg = db.query(models.CateringPackage).filter(
@@ -3604,7 +3607,7 @@ async def update_package(
         package.cost_breakdown = json.loads(cost_breakdown) if cost_breakdown else None
     package.min_contract_amount = min_contract_amount
     package.min_guests = min_guests
-    package.max_guests = max_guests
+    package.max_guests = int(max_guests) if max_guests and str(max_guests).strip() else None
     package.base_pax = base_pax
     package.additional_guest_price = additional_guest_price
     package.labor_cost = labor_cost
@@ -3732,6 +3735,61 @@ async def toggle_package_status(
         "message": f"Package '{package.name}' is now {'active' if package.is_active else 'hidden'}."
     })
 
+@router.get("/packages/{package_id}/addons")
+async def get_package_addons(
+    package_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    package = db.query(models.CateringPackage).filter(
+        models.CateringPackage.id == package_id,
+        models.CateringPackage.caterer_id == user.caterer_profile.id
+    ).first()
+    if not package:
+        raise HTTPException(status_code=404, detail="Package not found")
+
+    res = {"menu": [], "service": [], "equipment": []}
+    
+    for a in package.menu_addons:
+        m = db.query(models.MenuItem).filter(models.MenuItem.id == a.menu_item_id).first()
+        if m:
+            res["menu"].append({
+                "id": m.id,
+                "name": m.name,
+                "price": a.price,
+                "selection_type": a.selection_type,
+                "min_quantity": a.min_quantity,
+                "max_quantity": a.max_quantity,
+                "is_enabled": a.is_enabled
+            })
+            
+    for a in package.service_addons:
+        s = db.query(models.Service).filter(models.Service.id == a.service_id).first()
+        if s:
+            res["service"].append({
+                "id": f"svc_{s.id}",
+                "name": s.name,
+                "price": a.price,
+                "selection_type": a.selection_type,
+                "min_quantity": a.min_quantity,
+                "max_quantity": a.max_quantity,
+                "is_enabled": a.is_enabled
+            })
+            
+    for a in package.equipment_addons:
+        e = db.query(models.Equipment).filter(models.Equipment.id == a.equipment_id).first()
+        if e:
+            res["equipment"].append({
+                "id": f"eq_{e.id}",
+                "name": e.name,
+                "price": a.price,
+                "min_quantity": a.min_quantity,
+                "max_quantity": a.max_quantity,
+                "is_enabled": a.is_enabled
+            })
+            
+    return res
+
 @router.get("/packages/{package_id}/menu")
 async def get_package_menu(
     package_id: int,
@@ -3853,10 +3911,10 @@ async def get_all_menu_items_api(
 ):
     items = db.query(models.MenuItem).filter(
         models.MenuItem.caterer_id == user.caterer_profile.id,
-        models.MenuItem.is_archived == False,
-        models.MenuItem.available_for_package == True
+        models.MenuItem.is_archived == False
     ).all()
-    return [
+    
+    result = [
         {
             "id": i.id,
             "name": i.name,
@@ -3868,6 +3926,38 @@ async def get_all_menu_items_api(
         }
         for i in items
     ]
+    
+    eqs = db.query(models.Equipment).filter(
+        models.Equipment.caterer_id == user.caterer_profile.id,
+        models.Equipment.is_archived == False
+    ).all()
+    for e in eqs:
+        result.append({
+            "id": f"eq_{e.id}",
+            "name": e.name,
+            "category": e.category or 'Equipment',
+            "image_url": e.image_url,
+            "cost_price": e.cost_value,
+            "price": e.rental_price,
+            "is_addon": getattr(e, 'is_addon', False)
+        })
+        
+    svcs = db.query(models.Service).filter(
+        models.Service.caterer_id == user.caterer_profile.id,
+        models.Service.is_archived == False
+    ).all()
+    for s in svcs:
+        result.append({
+            "id": f"svc_{s.id}",
+            "name": s.name,
+            "category": s.category or 'Service',
+            "image_url": s.image_url,
+            "cost_price": s.cost,
+            "price": s.selling_price,
+            "is_addon": getattr(s, 'is_addon', False)
+        })
+        
+    return result
 
 @router.post("/packages/{package_id}/menu/link")
 async def link_menu_to_package(
@@ -3945,44 +4035,26 @@ async def update_menu_item(
     available_for_package = usage_type in ["package_only", "both"]
     available_for_order = usage_type in ["order_only", "both"]
     
-    pricing_type = form_data.get("pricing_type", "fixed")
-    
-    # Base Price and Serving Size for Fixed Price
-    price = None
+    pricing_mode = form_data.get("pricing_mode", "single")
+    pricing_type = pricing_mode
+
+    price = 0.0
     serving_size = None
-    if not (usage_type == "package_only"):
-        if pricing_type in ["fixed", "per_pax"]:
-            try:
-                price = float(form_data.get("price", "0").replace(",", ""))
-            except ValueError:
-                price = 0.0
-            serving_size = form_data.get("serving_size")
+    if not (usage_type == "package_only") and pricing_mode == "single":
+        try:
+            price = float(form_data.get("price", "0").replace(",", ""))
+        except ValueError:
+            price = 0.0
+        serving_size = form_data.get("serving_size")
     
     is_hidden = form_data.get("visibility") == "hidden"
     
-    is_addon = form_data.get("is_addon") == "true"
+    is_addon = False
     addon_price = 0.0
-    if is_addon:
-        try:
-            addon_price = float(form_data.get("addon_price", "0").replace(",", ""))
-        except ValueError:
-            addon_price = 0.0
-
-    try:
-        cost_price = float(str(form_data.get("cost_price", "0")).replace(",", ""))
-    except ValueError:
-        cost_price = 0.0
-    
-    # Combo / Bento Logic
-    is_combo = form_data.get("is_combo") == "true"
+    cost_price = 0.0
+    is_combo = False
     max_choices = 0
     combo_options = []
-    if is_combo:
-        try:
-            max_choices = int(form_data.get("max_choices", "1"))
-        except:
-            max_choices = 1
-        combo_options = form_data.getlist("combo_options_list[]")
     
     dietary_tags = form_data.getlist("dietary_tags")
     allergen_info = form_data.getlist("allergen_info")
@@ -4000,16 +4072,7 @@ async def update_menu_item(
     item.available_for_package = available_for_package
     item.available_for_order = available_for_order
     item.pricing_type = pricing_type
-    
-    # Map pricing_type to pricing_unit to maintain legacy compatibility
-    if pricing_type == "fixed":
-        item.pricing_unit = "per_tray"
-    elif pricing_type == "per_pax":
-        item.pricing_unit = "per_pax"
-    elif pricing_type == "weight_based":
-        item.pricing_unit = "per_kg"
-    elif pricing_type == "size_based":
-        item.pricing_unit = "per_size"
+    item.pricing_unit = pricing_type
         
     item.is_hidden = is_hidden
     item.is_addon = is_addon
@@ -4029,47 +4092,33 @@ async def update_menu_item(
             pass
 
     # Clear existing pricing
-    db.query(models.MenuSizePricing).filter(models.MenuSizePricing.menu_item_id == item.id).delete()
-    db.query(models.MenuWeightPricing).filter(models.MenuWeightPricing.menu_item_id == item.id).delete()
+    db.query(models.MenuVariant).filter(models.MenuVariant.menu_item_id == item.id).delete()
 
-    # Handle dynamic pricing tables
-    if not (usage_type == "package_only"):
-        if pricing_type == "size_based":
-            size_names = form_data.getlist("size_names[]")
-            size_caps = form_data.getlist("size_capacities[]")
-            size_prices = form_data.getlist("size_prices[]")
-            for i in range(len(size_names)):
-                s_name = size_names[i].strip()
-                s_cap = size_caps[i] if i < len(size_caps) else None
+    if not (usage_type == "package_only") and pricing_mode == "variants":
+        v_names = form_data.getlist("variant_names[]")
+        v_prices = form_data.getlist("variant_prices[]")
+        v_servings = form_data.getlist("variant_servings[]")
+        v_statuses = form_data.getlist("variant_statuses[]")
+
+        for i, name in enumerate(v_names):
+            if name.strip():
                 try:
-                    s_price = float(size_prices[i].replace(",", ""))
+                    v_price = float(v_prices[i].replace(",", ""))
                 except:
-                    s_price = 0.0
-                if s_name:
-                    sz_pricing = models.MenuSizePricing(
-                        menu_item_id=item.id,
-                        size_name=s_name,
-                        capacity=s_cap,
-                        price=s_price
-                    )
-                    db.add(sz_pricing)
-        
-        elif pricing_type == "weight_based":
-            weight_labels = form_data.getlist("weight_labels[]")
-            weight_prices = form_data.getlist("weight_prices[]")
-            for i in range(len(weight_labels)):
-                w_label = weight_labels[i].strip()
-                try:
-                    w_price = float(weight_prices[i].replace(",", ""))
-                except:
-                    w_price = 0.0
-                if w_label:
-                    wt_pricing = models.MenuWeightPricing(
-                        menu_item_id=item.id,
-                        weight_label=w_label,
-                        price=w_price
-                    )
-                    db.add(wt_pricing)
+                    v_price = 0.0
+                serving = v_servings[i].strip() if i < len(v_servings) else None
+                v_status = v_statuses[i] if i < len(v_statuses) else 'available'
+                
+                variant = models.MenuVariant(
+                    menu_item_id=item.id,
+                    variant_name=name.strip(),
+                    measurement=None,
+                    price=v_price,
+                    serving_capacity=serving,
+                    status=v_status,
+                    display_order=i
+                )
+                db.add(variant)
 
     db.commit()
 

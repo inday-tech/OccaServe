@@ -127,13 +127,6 @@
                     <span class="price-label">Selling Price</span>
                     <span class="price-value">₱{{ "{:,.0f}".format(item.price or 0) }} / {{ item.unit_type }}</span>
                 </div>
-                <div class="margin-stack">
-                    {% set profit = ((item.price or 0) - (item.cost_price or 0)) %}
-                    <span class="price-label">Est. Profit</span>
-                    <span class="margin-value {{ 'negative' if profit < 0 else 'positive' if profit > 0 else 'neutral' }}">
-                        ₱{{ "{:,.0f}".format(profit) }}
-                    </span>
-                </div>
                 {% endif %}
             </div>
         </div>
@@ -213,14 +206,13 @@
 
                 <div class="form-row-pro">
                     <div class="form-group-pro" id="qtyGroup">
-                        <label>Available Quantity *</label>
+                        <label id="qtyLabel">Available Quantity *</label>
                         <input type="number" name="available_qty" id="availableQtyInput" class="control-pro" placeholder="e.g. 100" min="1" required>
                     </div>
                     <div class="form-group-pro">
-                        <label>Physical Status *</label>
+                        <label>Status *</label>
                         <select name="status" id="modalStatus" class="control-pro" required>
-                            <option value="available">Available</option>
-                            <option value="unavailable">Out of Stock</option>
+                            <!-- Populated dynamically via JS -->
                         </select>
                     </div>
                 </div>
@@ -240,14 +232,7 @@
                     </select>
                 </div>
 
-                <div class="form-group-pro">
-                    <label>Usage Type * <i class="fas fa-info-circle text-muted" title="Controls how customers can book this item."></i></label>
-                    <select name="usage_type" id="modalUsageType" class="control-pro" required>
-                        <option value="both">Both (A la Carte & Package)</option>
-                        <option value="order_only">A la Carte Only</option>
-                        <option value="package_only">Package Only</option>
-                    </select>
-                </div>
+                <!-- Removed Usage Type as it's not in the prompt for this form -->
 
                 <div class="form-group-pro">
                     <label>Description</label>
@@ -256,29 +241,10 @@
 
                 <div id="servicePricingSection">
                     <div class="form-row-pro">
-                        <div class="form-group-pro">
-                            <label>Estimated Cost (₱) <i class="fas fa-info-circle text-muted" title="Internal business cost used for ROI"></i></label>
-                            <input type="text" name="cost_price" id="cost_price_input" class="control-pro js-format-comma" placeholder="0" inputmode="numeric" maxlength="10">
-                        </div>
                         <div class="form-group-pro" id="serviceSellingPriceGroup">
-                            <label>Selling Price (₱) <i class="fas fa-info-circle text-muted" title="Price charged to customers (can be 0 if hidden/package only)"></i></label>
-                            <input type="text" name="price" id="servicePriceInput" class="control-pro js-format-comma" placeholder="0" inputmode="numeric" maxlength="10">
+                            <label id="priceLabel">Selling Price (₱) *</label>
+                            <input type="text" name="price" id="servicePriceInput" class="control-pro js-format-comma" placeholder="0" inputmode="numeric" maxlength="10" required>
                         </div>
-                    </div>
-                    
-                    <div class="margin-analytics-pro" id="roiMarginBadge" style="margin-bottom: 20px;">Profit: --</div>
-
-                    <div class="form-group-pro" style="margin-top: 15px; border-top: 1px dashed #e2e8f0; padding-top: 15px;">
-                        <label style="display: flex; align-items: center; gap: 8px;">
-                            <input type="checkbox" name="is_addon" id="isAddonCheckbox" value="true" onchange="document.getElementById('addonPriceGroup').style.display = this.checked ? 'block' : 'none';">
-                            <strong>Make available as Package Add-on</strong>
-                        </label>
-                        <p style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">Allow customers to add this to standard packages for an extra fee.</p>
-                    </div>
-
-                    <div class="form-group-pro" id="addonPriceGroup" style="display: none; background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
-                        <label>Add-on Price (₱) <i class="fas fa-info-circle text-muted" title="Price when added to a package"></i></label>
-                        <input type="text" name="addon_price" id="addonPriceInput" class="control-pro js-format-comma" placeholder="0" inputmode="numeric" maxlength="10">
                     </div>
                 </div>
 
@@ -342,14 +308,10 @@
             <h3 id="viewItemName" style="font-size: 1.5rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;"></h3>
             <p id="viewItemDesc" style="font-size: 0.95rem; color: #64748b; line-height: 1.6; margin-bottom: 1.5rem;"></p>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; background: #f8fafc; padding: 1rem; border-radius: var(--border-radius); border: 1px solid #e2e8f0;">
+            <div style="display: grid; grid-template-columns: 1fr; gap: 1rem; background: #f8fafc; padding: 1rem; border-radius: var(--border-radius); border: 1px solid #e2e8f0;">
                 <div>
-                    <span style="display: block; font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Selling Price</span>
+                    <span style="display: block; font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;" id="viewPriceLabel">Selling Price</span>
                     <span id="viewItemPrice" style="font-size: 1.1rem; font-weight: 800; color: #1e293b;"></span>
-                </div>
-                <div>
-                    <span style="display: block; font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Est. Cost</span>
-                    <span id="viewItemCost" style="font-size: 1.1rem; font-weight: 800; color: #1e293b;"></span>
                 </div>
             </div>
         </div>
@@ -373,72 +335,47 @@
     const unitSelect = document.getElementById('modalPricingUnit');
     const customCat = document.getElementById('customCategoryInput');
 
-    const equipmentCats = ['Tables', 'Chairs', 'Furniture Sets', 'Tents & Canopies', 'Stage & Platform', 'Audio Equipment', 'Lighting Equipment', 'Visual Equipment', 'Buffet Equipment', 'Tableware & Utensils', 'Decorations', 'Event Styling', 'Furniture', 'Others'];
-    const serviceCats = ['Catering Staff', 'Event Coordination', 'Entertainment', 'Photography', 'Videography', 'Audio & Visual Services', 'Decoration Services', 'Transportation', 'Security Services', 'Others'];
-
-    const equipmentUnits = ['Per Piece', 'Per Set', 'Per Day', 'Per Event'];
-    const serviceUnits = ['Per Person', 'Per Event', 'Per Hour', 'Per Day', 'Per Session'];
+    const equipmentCats = ['Chairs', 'Tables', 'Furniture Sets', 'Tents & Canopies', 'Stage & Platform', 'Audio Equipment', 'Lighting Equipment', 'Visual Equipment', 'Buffet Equipment', 'Tableware & Utensils', 'Decorations', 'Event Styling', 'Miscellaneous', 'Others'];
+    const serviceCats = ['Event Staff', 'Entertainment', 'Photography', 'Videography', 'Coordination', 'Styling', 'Security', 'Transportation', 'Audio & Visual Services', 'Others'];
+    const equipmentUnits = ['Per Piece', 'Per Set', 'Per Bundle', 'Per Day', 'Per Event'];
+    const serviceUnits = ['Per Staff', 'Per Hour', 'Per Event', 'Per Package', 'Per Session'];
 
     function handleTypeChange() {
         const type = typeSelect.value;
-        let cats = [];
-        let units = [];
-
-        if (type === 'Equipment') { cats = equipmentCats; units = equipmentUnits; }
-        else if (type === 'Service') { cats = serviceCats; units = serviceUnits; }
+        const cats = type === 'Equipment' ? equipmentCats : serviceCats;
+        const units = type === 'Equipment' ? equipmentUnits : serviceUnits;
 
         catSelect.innerHTML = '';
-        cats.forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c; opt.innerText = c;
-            catSelect.appendChild(opt);
-        });
-
+        cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.innerText = c; catSelect.appendChild(o); });
         unitSelect.innerHTML = '';
-        units.forEach(u => {
-            const opt = document.createElement('option');
-            opt.value = u; opt.innerText = u;
-            unitSelect.appendChild(opt);
-        });
-        
-        const qtyGroup = document.getElementById('qtyGroup');
+        units.forEach(u => { const o = document.createElement('option'); o.value = u; o.innerText = u; unitSelect.appendChild(o); });
+
+        const qtyLabel = document.getElementById('qtyLabel');
         const qtyInput = document.getElementById('availableQtyInput');
+        const priceLabel = document.getElementById('priceLabel');
+        const statusSelect = document.getElementById('modalStatus');
         const durationGroup = document.getElementById('serviceDurationGroup');
+
+        statusSelect.innerHTML = '';
         if (type === 'Service') {
-            qtyGroup.style.display = 'none';
+            qtyLabel.innerText = 'Maximum Personnel Available';
+            priceLabel.innerText = 'Service Fee (₱) *';
             qtyInput.required = false;
-            qtyInput.value = 1; // Default fallback for services
+            statusSelect.innerHTML = '<option value="available">Available</option><option value="unavailable">Fully Booked</option><option value="maintenance">Temporarily Unavailable</option>';
             if (durationGroup) durationGroup.style.display = 'flex';
         } else {
-            qtyGroup.style.display = 'block';
+            qtyLabel.innerText = 'Available Quantity *';
+            priceLabel.innerText = 'Rental Price (₱) *';
             qtyInput.required = true;
+            statusSelect.innerHTML = '<option value="available">Available</option><option value="unavailable">Unavailable</option><option value="maintenance">Under Maintenance</option>';
             if (durationGroup) durationGroup.style.display = 'none';
         }
-
         toggleCustomCategory();
     }
 
-    function toggleServicePricing() {
-        const vis = document.getElementById('modalVisibility').value;
-        const sellingGroup = document.getElementById('serviceSellingPriceGroup');
-        const roiBadge = document.getElementById('roiMarginBadge');
-        if (vis === 'hidden') {
-            sellingGroup.style.display = 'none';
-            roiBadge.style.display = 'none';
-        } else {
-            sellingGroup.style.display = 'block';
-            roiBadge.style.display = 'flex';
-        }
-    }
-
     function toggleCustomCategory() {
-        if (catSelect.value === 'Others') {
-            customCat.style.display = 'block';
-            customCat.required = true;
-        } else {
-            customCat.style.display = 'none';
-            customCat.required = false;
-        }
+        if (catSelect.value === 'Others') { customCat.style.display = 'block'; customCat.required = true; }
+        else { customCat.style.display = 'none'; customCat.required = false; }
     }
 
     function openAddMenuModal() {
@@ -447,19 +384,11 @@
         form.reset();
         document.getElementById('updateItemType').value = '';
         removeImage();
-        typeSelect.disabled = false; // Allow changing type for new item
+        typeSelect.disabled = false;
         handleTypeChange();
-        toggleServicePricing();
-        
         if (document.getElementById('menuErrorDrawer')) document.getElementById('menuErrorDrawer').style.display = 'none';
-        
-        if (window.openModal) {
-            window.openModal('menuModal');
-        } else {
-            modal.style.display = 'flex';
-            requestAnimationFrame(() => modal.classList.add('active'));
-        }
-        calculateMenuCosts();
+        if (window.openModal) window.openModal('menuModal');
+        else { modal.style.display = 'flex'; requestAnimationFrame(() => modal.classList.add('active')); }
     }
 
     function viewMenuItem(el) {
@@ -467,24 +396,13 @@
         document.getElementById('viewItemType').innerText = el.dataset.type;
         document.getElementById('viewItemCat').innerText = el.dataset.category;
         document.getElementById('viewItemDesc').innerText = el.dataset.description || 'No description provided.';
-        
-        if (el.dataset.isHidden === 'true') {
-            document.getElementById('viewItemPrice').innerText = 'Included in Package';
-            document.getElementById('viewItemCost').innerText = '--';
-        } else {
-            document.getElementById('viewItemPrice').innerText = '₱' + parseFloat(el.dataset.price).toLocaleString() + ' / ' + el.dataset.pricingUnit;
-            document.getElementById('viewItemCost').innerText = '₱' + parseFloat(el.dataset.costPrice).toLocaleString();
-        }
-        
+        const priceLbl = el.dataset.type === 'Equipment' ? 'Rental Price' : 'Service Fee';
+        document.getElementById('viewPriceLabel').innerText = priceLbl;
+        document.getElementById('viewItemPrice').innerText = '₱' + (parseFloat(el.dataset.price) || 0).toLocaleString() + ' / ' + (el.dataset.pricingUnit || '');
         const statusSpan = document.getElementById('viewItemStatus');
-        if (el.dataset.status === 'available') {
-            statusSpan.className = 'status-chip available';
-            statusSpan.innerText = 'Available';
-        } else {
-            statusSpan.className = 'status-chip unavailable';
-            statusSpan.innerText = 'Unavailable';
-        }
-
+        const statusMap = { available: ['status-chip available', 'Available'], unavailable: ['status-chip unavailable', 'Unavailable'], maintenance: ['status-chip unavailable', 'Under Maintenance'] };
+        const [cls, txt] = statusMap[el.dataset.status] || statusMap.available;
+        statusSpan.className = cls; statusSpan.innerText = txt;
         if (el.dataset.imageUrl) {
             document.getElementById('viewItemImage').src = el.dataset.imageUrl;
             document.getElementById('viewItemImage').style.display = 'block';
@@ -493,12 +411,8 @@
             document.getElementById('viewItemImage').style.display = 'none';
             document.getElementById('viewItemNoImage').style.display = 'flex';
         }
-
-        if (window.openModal) {
-            window.openModal('viewItemModal');
-        } else {
-            document.getElementById('viewItemModal').style.display = 'flex';
-        }
+        if (window.openModal) window.openModal('viewItemModal');
+        else document.getElementById('viewItemModal').style.display = 'flex';
     }
 
     async function editMenuItem(el) {
@@ -506,139 +420,54 @@
         if (btn) btn.disabled = false;
         try {
             const item = {
-                id: el.dataset.id,
-                name: el.dataset.name,
-                type: el.dataset.type, // 'Equipment', 'Decoration', 'Service'
-                category: el.dataset.category,
-                description: el.dataset.description,
-                price: el.dataset.price,
-                cost_price: el.dataset.costPrice,
-                pricing_unit: el.dataset.pricingUnit,
-                available_qty: el.dataset.availableQty,
-                status: el.dataset.status,
-                is_hidden: el.dataset.isHidden,
-                usage_type: el.dataset.usageType || 'both',
-                is_addon: el.dataset.isAddon === 'true',
-                addon_price: el.dataset.addonPrice || 0,
-                base_duration_hours: el.dataset.baseDurationHours || 3,
+                id: el.dataset.id, name: el.dataset.name, type: el.dataset.type,
+                category: el.dataset.category, description: el.dataset.description,
+                price: el.dataset.price, pricing_unit: el.dataset.pricingUnit,
+                available_qty: el.dataset.availableQty, status: el.dataset.status,
+                is_hidden: el.dataset.isHidden, base_duration_hours: el.dataset.baseDurationHours || 3,
                 image_url: el.dataset.imageUrl
             };
-
-            modalTitle.innerHTML = '<i class="fas fa-edit"></i> Edit Inventory Item';
+            modalTitle.innerHTML = '<i class="fas fa-edit"></i> Edit Item';
             form.action = `/caterer/services/${item.id}/update`;
-            
             document.getElementById('updateItemType').value = item.type;
             typeSelect.value = item.type;
-            typeSelect.disabled = true; // Prevent changing type once created
+            typeSelect.disabled = true;
             handleTypeChange();
-
             form.name.value = item.name;
-            
             const catOptions = Array.from(catSelect.options).map(o => o.value);
-            if (catOptions.includes(item.category)) {
-                catSelect.value = item.category;
-            } else {
-                catSelect.value = 'Others';
-                customCat.value = item.category;
-            }
+            if (catOptions.includes(item.category)) { catSelect.value = item.category; }
+            else { catSelect.value = 'Others'; customCat.value = item.category; }
             toggleCustomCategory();
-
             form.description.value = item.description || '';
             form.price.value = item.price || 0;
-            form.cost_price.value = item.cost_price || 0;
-            
-            // Allow any unit previously saved
             if (!Array.from(unitSelect.options).map(o => o.value).includes(item.pricing_unit)) {
-                const opt = document.createElement('option');
-                opt.value = item.pricing_unit; opt.innerText = item.pricing_unit;
-                unitSelect.appendChild(opt);
+                const opt = document.createElement('option'); opt.value = item.pricing_unit; opt.innerText = item.pricing_unit; unitSelect.appendChild(opt);
             }
-            form.unit_type.value = item.pricing_unit || 'Piece';
-            
+            form.unit_type.value = item.pricing_unit || '';
             form.available_qty.value = item.available_qty || 1;
             form.status.value = item.status || 'available';
             if (form.visibility) form.visibility.value = item.is_hidden === 'true' ? 'hidden' : 'public';
-            if (form.usage_type) form.usage_type.value = item.usage_type;
             if (form.base_duration_hours) form.base_duration_hours.value = item.base_duration_hours;
-            
-            if (form.is_addon) {
-                form.is_addon.checked = item.is_addon;
-                document.getElementById('addonPriceGroup').style.display = item.is_addon ? 'block' : 'none';
-            }
-            if (form.addon_price) {
-                form.addon_price.value = item.addon_price;
-            }
-
-            toggleServicePricing();
-
-            if (window.applyCommaFormatting) {
-                window.applyCommaFormatting(form.price);
-                window.applyCommaFormatting(form.cost_price);
-            }
-
+            if (window.applyCommaFormatting) window.applyCommaFormatting(form.price);
             if (item.image_url) {
-                imagePreview.src = item.image_url;
-                imagePreviewContainer.style.display = 'block';
-                photoDropzone.style.display = 'none';
-            } else {
-                removeImage();
-            }
-
+                imagePreview.src = item.image_url; imagePreviewContainer.style.display = 'block'; photoDropzone.style.display = 'none';
+            } else { removeImage(); }
             if (window.openModal) window.openModal('menuModal');
             else modal.style.display = 'flex';
-            
-            calculateMenuCosts();
-            form.dispatchEvent(new Event('input', { bubbles: true }));
         } catch (err) { console.error("Edit error:", err); }
-    }
-
-    function calculateMenuCosts() {
-        const sellInput = document.querySelector('input[name="price"]');
-        const costInput = document.getElementById('cost_price_input');
-        const badge = document.getElementById('roiMarginBadge');
-        if (!sellInput || !costInput || !badge) return;
-        const sell = parseFloat(sellInput.value.replace(/,/g, '')) || 0;
-        const cost = parseFloat(costInput.value.replace(/,/g, '')) || 0;
-        
-        if (sell > 0) {
-            const profit = sell - cost;
-            const margin = (profit / sell) * 100;
-            
-            badge.innerText = `Estimated Profit: ₱${profit.toLocaleString(undefined, {minimumFractionDigits: 2})} (${margin.toFixed(1)}%)`;
-            if (margin < 0) {
-                badge.innerText = `Estimated Loss: ₱${Math.abs(profit).toLocaleString(undefined, {minimumFractionDigits: 2})} (${Math.abs(margin).toFixed(1)}%)`;
-                badge.style.background = 'var(--danger-color, #ef4444)';
-                badge.style.color = 'white';
-            } else if (margin < 20) {
-                badge.style.background = '#fef3c7';
-                badge.style.color = '#d97706';
-            } else {
-                badge.style.background = '#dcfce7';
-                badge.style.color = '#166534';
-            }
-        } else {
-            badge.innerText = 'Profit: --';
-            badge.style.background = '#f1f5f9';
-            badge.style.color = '#64748b';
-        }
     }
 
     function previewImage(event) {
         const file = event.target.files[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = e => {
-                imagePreview.src = e.target.result;
-                imagePreviewContainer.style.display = 'block';
-                photoDropzone.style.display = 'none';
-            };
+            reader.onload = e => { imagePreview.src = e.target.result; imagePreviewContainer.style.display = 'block'; photoDropzone.style.display = 'none'; };
             reader.readAsDataURL(file);
         }
     }
 
     function removeImage() {
-        imagePreview.src = '';
-        imagePreviewContainer.style.display = 'none';
+        imagePreview.src = ''; imagePreviewContainer.style.display = 'none';
         if (photoDropzone) photoDropzone.style.display = 'flex';
         document.getElementById('menuImageInput').value = '';
     }
@@ -656,9 +485,9 @@
         applyFilters(cat);
     }
 
-    function filterMenu() { 
+    function filterMenu() {
         const activeChip = document.querySelector('.cat-chip.active');
-        applyFilters(activeChip ? activeChip.dataset.cat : 'all'); 
+        applyFilters(activeChip ? activeChip.dataset.cat : 'all');
     }
 
     function applyFilters(cat) {
@@ -666,121 +495,79 @@
         const cards = document.querySelectorAll('.menu-item-card-premium');
         let count = 0;
         cards.forEach(card => {
-            const textContent = card.textContent.toLowerCase();
-            const matchQuery = textContent.includes(query);
-            const matchCat = cat === 'all' || card.dataset.category === cat;
-            if (matchQuery && matchCat) {
-                card.style.display = 'flex';
-                count++;
-            } else card.style.display = 'none';
+            const match = card.textContent.toLowerCase().includes(query) && (cat === 'all' || card.dataset.category === cat);
+            card.style.display = match ? 'flex' : 'none';
+            if (match) count++;
         });
-        const empty = document.querySelector('.empty-state:not(#searchEmptyState)');
         const searchEmpty = document.getElementById('searchEmptyState');
-        if (empty && cards.length > 0) empty.style.display = 'none';
         if (searchEmpty) searchEmpty.style.display = count === 0 ? 'flex' : 'none';
     }
 
-    let archiveTargetId = null;
-    let archiveTargetType = null;
+    let archiveTargetId = null, archiveTargetType = null;
     function confirmArchiveDish(id, type) {
-        const archiveModal = document.getElementById('archiveDishModal');
         const btn = document.querySelector(`.dropdown-item-pro[data-id="${id}"][data-type="${type}"]`);
         document.getElementById('archiveItemName').innerText = btn ? btn.dataset.name : 'this item';
-        archiveTargetId = id;
-        archiveTargetType = type;
-        
+        archiveTargetId = id; archiveTargetType = type;
         if (window.openModal) window.openModal('archiveDishModal');
-        else archiveModal.style.display = 'flex';
+        else document.getElementById('archiveDishModal').style.display = 'flex';
     }
-    
+
     document.getElementById('confirmArchiveBtn').onclick = async () => {
         if (!archiveTargetId || !archiveTargetType) return;
         const res = await window.apiAction(`/caterer/services/${archiveTargetId}/archive?type=${archiveTargetType}`, { method: 'POST' });
-        if (res) {
-            if (window.closeModal) window.closeModal('archiveDishModal');
-            setTimeout(() => window.location.reload(), 500);
-        }
+        if (res) { if (window.closeModal) window.closeModal('archiveDishModal'); setTimeout(() => window.location.reload(), 500); }
     };
 
     form.addEventListener('submit', async function (e) {
         e.preventDefault();
-        typeSelect.disabled = false; // Temporarily enable to get value if disabled
-        
-        if (!this.checkValidity()) {
-            this.reportValidity();
-            if (document.getElementById('updateItemType').value) typeSelect.disabled = true;
-            return;
+        typeSelect.disabled = false;
+        const type = typeSelect.value;
+        const updateType = document.getElementById('updateItemType').value;
+        const name = (form.name.value || '').trim();
+        const priceInput = document.getElementById('servicePriceInput');
+        const sellPrice = parseFloat((priceInput?.value || '0').replace(/,/g, '')) || 0;
+        const qty = parseInt(document.getElementById('availableQtyInput')?.value) || 0;
+
+        if (!name || name.length < 2) {
+            alert('Name must be at least 2 characters.'); if (updateType) typeSelect.disabled = true; return;
         }
-        const btn = this.querySelector('button[type="submit"]');
-        this.querySelectorAll('.js-format-comma').forEach(i => i.value = i.value.replace(/,/g, ''));
-        
-        // --- CUSTOM CATEGORY LOGIC ---
+        if (sellPrice <= 0) {
+            alert(`${type === 'Equipment' ? 'Rental Price' : 'Service Fee'} must be greater than zero.`);
+            if (updateType) typeSelect.disabled = true; return;
+        }
+        if (type === 'Equipment' && qty < 1) {
+            alert('Available Quantity must be at least 1 for Equipment.'); if (updateType) typeSelect.disabled = true; return;
+        }
         if (catSelect.value === 'Others' && customCat && customCat.value.trim() !== '') {
-            const newOpt = new Option(customCat.value.trim(), customCat.value.trim(), true, true);
-            catSelect.appendChild(newOpt);
-        }
-        
-        // --- PRICING VALIDATION ---
-        const visibility = document.getElementById('modalVisibility').value;
-        const sellPrice = parseFloat(this.querySelector('input[name="price"]').value) || 0;
-        const costPrice = parseFloat(document.getElementById('cost_price_input').value) || 0;
-        
-        if (visibility === 'public' && sellPrice <= 0) {
-            alert("Selling Price must be greater than zero if the item is visible on your profile (A La Carte).");
-            if (btn) btn.disabled = false;
-            if (document.getElementById('updateItemType').value) typeSelect.disabled = true;
-            return;
-        }
-        if (costPrice < 0) {
-            alert("Estimated Cost cannot be negative.");
-            if (btn) btn.disabled = false;
-            if (document.getElementById('updateItemType').value) typeSelect.disabled = true;
-            return;
+            catSelect.appendChild(new Option(customCat.value.trim(), customCat.value.trim(), true, true));
         }
 
+        const btn = this.querySelector('button[type="submit"]');
+        this.querySelectorAll('.js-format-comma').forEach(i => i.value = i.value.replace(/,/g, ''));
         const data = new FormData(this);
         data.set('price', sellPrice);
-        data.set('cost_price', costPrice);
-        
-        // Ensure addon_price is sent as a valid number, even if empty
-        const addonPriceInput = document.getElementById('addonPriceInput');
-        if (addonPriceInput) {
-            data.set('addon_price', parseFloat(addonPriceInput.value.replace(/,/g, '')) || 0);
-        }
-        
-        // Use hidden input for type if updating
-        const updateType = document.getElementById('updateItemType').value;
+        data.set('cost_price', 0);
+        data.set('addon_price', 0);
+        data.set('usage_type', 'both');
         if (updateType) data.set('type', updateType);
 
         if (window.apiAction) {
             const res = await window.apiAction(this.action, { method: 'POST', body: data }, btn);
             if (res) setTimeout(() => window.location.reload(), 800);
-            else if (updateType) typeSelect.disabled = true; // Restore disabled state on fail
+            else if (updateType) typeSelect.disabled = true;
         }
     });
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const sp = document.querySelector('input[name="price"]');
-        const cp = document.getElementById('cost_price_input');
-        if (sp) sp.addEventListener('input', calculateMenuCosts);
-        if (cp) cp.addEventListener('input', calculateMenuCosts);
-        calculateMenuCosts();
-        handleTypeChange();
-    });
+    document.addEventListener('DOMContentLoaded', () => { handleTypeChange(); });
 
     window.addEventListener('click', e => {
-        if (!e.target.closest('.card-options-glass')) {
-            document.querySelectorAll('.dropdown-menu-glass').forEach(d => d.classList.remove('active'));
-        }
+        if (!e.target.closest('.card-options-glass')) document.querySelectorAll('.dropdown-menu-glass').forEach(d => d.classList.remove('active'));
     });
 
-    // Listen to global header search
     window.addEventListener('globalSearch', function(e) {
-        const hiddenInput = document.getElementById('menuSearchInput');
-        if (hiddenInput) {
-            hiddenInput.value = e.detail.value;
-            filterMenu();
-        }
+        const h = document.getElementById('menuSearchInput');
+        if (h) { h.value = e.detail.value; filterMenu(); }
     });
 </script>
 {% endblock %}
+

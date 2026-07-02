@@ -1,114 +1,11 @@
-{% set active_page = 'packages' %}
-{% extends "caterer/layout.html" %}
+import re
 
-{% block title %}Manage Packages - OccaShare Caterer{% endblock %}
+def rewrite_packages_html():
+    html_path = r"c:\OccaServe\OccaShare\templates\caterer\packages.html"
+    with open(html_path, "r", encoding="utf-8") as f:
+        content = f.read()
 
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/packages.css') }}?v=12.0">
-{% endblock %}
-
-{% block content %}
-<div class="page-header">
-    <div class="header-title-group">
-        <h1>Service Packages</h1>
-        <p>High-impact menu offerings and professional pricing tiers.</p>
-    </div>
-    <div class="pkg-header-actions" style="display: flex; align-items: center; gap: 1rem;">
-        <input type="hidden" id="packageSearchInput">
-        <button class="btn-primary-pro" onclick="window.openAddPackageModal()">
-            <span>CREATE NEW PACKAGE</span>
-        </button>
-    </div>
-</div>
-
-{% if packages %}
-<div class="packages-grid-pro animate-up delay-1">
-    {% for package in packages %}
-    <div class="package-card-pro" id="package-{{ package.id }}">
-        <div class="package-media-pro" style="position: relative; overflow: hidden; height: 200px; background: #f8fafc;">
-            <div class="pkg-badge-category" style="position: absolute; top: 12px; left: 12px; z-index: 10; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); color: white; padding: 4px 12px; border-radius: var(--border-radius, 99px); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid rgba(255,255,255,0.2);">
-                {{ package.service_type or 'General' }}
-            </div>
-            
-            {% if package.image_url %}
-            <img src="{{ package.image_url }}" alt="{{ package.name }}" style="width: 100%; height: 100%; object-fit: cover;" 
-                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="no-image-placeholder" style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; background: #f1f5f9; color: #cbd5e1;">
-                <i class="fas fa-box-open" style="font-size: 3rem;"></i>
-            </div>
-            {% else %}
-            <div class="no-image-placeholder" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #cbd5e1;">
-                <i class="fas fa-box-open" style="font-size: 3rem;"></i>
-            </div>
-            {% endif %}
-
-            <div class="card-overlay-actions" style="position: absolute; bottom: 0; left: 0; right: 0; padding: 1.25rem; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); display: flex; gap: 0.75rem; opacity: 0; transition: all 0.3s ease; transform: translateY(10px); z-index: 5;">
-                <button type="button" class="btn-overlay-action" onclick="window.editPackage({{ package.id }})" style="flex: 1; background: white; color: #1e293b; border: none; padding: 8px; border-radius: var(--border-radius, 8px); font-size: 0.8rem; font-weight: 800; cursor: pointer; transition: all 0.2s;"><i class="fas fa-pen"></i> Edit Package</button>
-            </div>
-        </div>
-
-        <div class="package-body-pro" style="padding: 1.5rem; flex: 1; display: flex; flex-direction: column;">
-            <div class="pkg-header-row" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-                <h3 class="package-name-pro" style="font-size: 1.15rem; font-weight: 800; color: #1e293b; margin: 0; line-height: 1.3;">{{ package.name }}</h3>
-                <div class="pkg-status-indicator" style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-                    <div style="width: 8px; height: 8px; border-radius: 50%; background: {{ 'var(--accent-color)' if package.is_active else '#94a3b8' }};"></div>
-                    <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">{{ 'Active' if package.is_active else 'Hidden' }}</span>
-                </div>
-            </div>
-
-            <div class="package-stats-pro" style="display: flex; margin-bottom: 1rem;">
-                <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600;">
-                    <i class="fas fa-calendar-check" style="margin-right: 4px;"></i> {{ package.bookings|length if package.bookings else 0 }} bookings
-                </div>
-            </div>
-
-            <p class="package-desc-pro" style="color: #64748b; font-size: 0.85rem; line-height: 1.6; margin-bottom: 1.5rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.7rem;">
-                {{ package.description or 'No description provided for this professional service package.' }}
-            </p>
-
-            <div class="package-price-pro" style="margin-top: auto; background: #f8fafc; padding: 1rem; border-radius: var(--border-radius, 1rem); border: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <span style="display: block; font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">Starting at</span>
-                    <span style="font-size: 1.5rem; font-weight: 900; color: #1e293b;">₱{{ "{:,.0f}".format(package.price_per_head or 0) }}<small style="font-size: 0.7rem; color: #64748b; font-weight: 600;">{{ ' / pax' if package.pricing_mode == 'per_pax' else ' total' }}</small></span>
-                </div>
-                <button type="button" class="btn-archive-minimal" onclick="window.archivePackage({{ package.id }})" style="width: 32px; height: 32px; border-radius: var(--border-radius, 8px); border: 1px solid #fee2e2; background: #fff5f5; color: #ef4444; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;"><i class="fas fa-archive"></i></button>
-            </div>
-        </div>
-    </div>
-    {% endfor %}
-
-    <!-- No Search Results Empty State -->
-    <div id="searchEmptyState" class="packages-empty-pro animate-up delay-1 d-flex flex-column align-items-center justify-content-center text-center py-5" style="display: none; width: 100%; grid-column: 1 / -1;">
-        <div class="empty-icon-pro text-brand" style="opacity: 0.5; font-size: 3rem; margin-bottom: 1rem;">
-            <i class="fas fa-search"></i>
-        </div>
-        <h2 class="mt-3 text-secondary" style="font-size: 1.25rem; font-weight: 700;">No packages found</h2>
-        <p class="max-w-md mx-auto" style="color: #64748b; font-size: 0.9rem;">Try adjusting your search criteria to find what you're looking for.</p>
-    </div>
-</div>
-{% else %}
-    {% if user and user.caterer_profile and user.caterer_profile.verification_status != 'Verified' %}
-    <div class="packages-empty-pro animate-up delay-1 d-flex flex-column align-items-center justify-content-center text-center py-5" style="background: white; border-radius: var(--border-radius, 1.5rem); border: 2px dashed #e2e8f0; margin-top: 2rem;">
-        <div class="empty-icon-pro text-brand" style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; opacity: 0.5; margin-bottom: 1.5rem;">
-            <i class="fas fa-hard-hat"></i>
-        </div>
-        <h2 class="text-secondary" style="font-weight: 800; margin-bottom: 0.5rem;">Prepare Your Packages</h2>
-        <p style="color: #64748b; max-width: 400px; margin: 0 auto 1.5rem;">While waiting for your account to be verified, you can start drafting your service packages here. They will automatically be published once you are verified.</p>
-        <button type="button" class="btn-primary-pro" onclick="window.openAddPackageModal()" style="padding: 0.75rem 2rem; font-weight: 800;">Draft First Package</button>
-    </div>
-    {% else %}
-    <div class="packages-empty-pro animate-up delay-1 d-flex flex-column align-items-center justify-content-center text-center py-5" style="background: white; border-radius: var(--border-radius, 1.5rem); border: 2px dashed #e2e8f0; margin-top: 2rem;">
-        <div class="empty-icon-pro text-brand" style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; opacity: 0.5; margin-bottom: 1.5rem;">
-            <i class="fas fa-layer-group"></i>
-        </div>
-        <h2 class="text-secondary" style="font-weight: 800; margin-bottom: 0.5rem;">No Packages Available</h2>
-        <p style="color: #64748b; max-width: 400px; margin: 0 auto 1.5rem;">Your menu offerings drive your bookings. Start creating your first professional package now.</p>
-        <button type="button" class="btn-primary-pro" onclick="window.openAddPackageModal()" style="padding: 0.75rem 2rem; font-weight: 800;">Get Started</button>
-    </div>
-    {% endif %}
-{% endif %}
-
-<!-- Create/Edit Package Form Modal -->
+    new_modal = """<!-- Create/Edit Package Form Modal -->
 <div id="packageModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-lg occ-content-pop" style="max-width: 900px;">
         <div class="occ-modal-header glass-header">
@@ -316,45 +213,14 @@
                     
                     <!-- STEP 4: OPTIONAL ADD-ONS -->
                     <div id="tab-addons" class="tab-pane-pro">
-                        <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1.5rem; line-height: 1.5;">Configure optional items that customers can add during package booking. Each add-on is specific to this package.</p>
-                        
-                        <!-- Menu Addons -->
-                        <div style="margin-bottom: 2rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; margin-bottom: 1rem;">
-                                <h5 style="margin:0; font-size: 1rem; color: #1e293b;"><i class="fas fa-utensils text-brand" style="margin-right: 8px;"></i> Menu Add-ons</h5>
-                                <button type="button" class="btn-secondary-pro" onclick="window.openAddonPicker('menu')" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;"><i class="fas fa-plus"></i> Add Menu</button>
-                            </div>
-                            <div id="pkg-addons-menu-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
-                                <div class="text-slate-400 text-sm italic">No menu add-ons configured.</div>
+                        <div class="form-group-pro">
+                            <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1rem;">Offer optional upgrades that are NOT included in the base package (e.g. Lechon, Chocolate Fountain, Photo Booth).</p>
+                            <div style="background:var(--color-neutral-50); border-radius:var(--border-radius); padding:var(--space-md); border:1px solid var(--color-neutral-200); margin-bottom:var(--space-md); max-height:350px; overflow-y:auto;">
+                                <div class="menu-grid-scroll" id="addonsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem;">
+                                    <!-- Will be populated dynamically by JS -->
+                                </div>
                             </div>
                         </div>
-
-                        <!-- Service Addons -->
-                        <div style="margin-bottom: 2rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; margin-bottom: 1rem;">
-                                <h5 style="margin:0; font-size: 1rem; color: #1e293b;"><i class="fas fa-concierge-bell text-brand" style="margin-right: 8px;"></i> Service Add-ons</h5>
-                                <button type="button" class="btn-secondary-pro" onclick="window.openAddonPicker('service')" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;"><i class="fas fa-plus"></i> Add Service</button>
-                            </div>
-                            <div id="pkg-addons-service-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
-                                <div class="text-slate-400 text-sm italic">No service add-ons configured.</div>
-                            </div>
-                        </div>
-
-                        <!-- Equipment Addons -->
-                        <div style="margin-bottom: 1rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; margin-bottom: 1rem;">
-                                <h5 style="margin:0; font-size: 1rem; color: #1e293b;"><i class="fas fa-chair text-brand" style="margin-right: 8px;"></i> Equipment Add-ons</h5>
-                                <button type="button" class="btn-secondary-pro" onclick="window.openAddonPicker('equipment')" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;"><i class="fas fa-plus"></i> Add Equipment</button>
-                            </div>
-                            <div id="pkg-addons-equipment-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
-                                <div class="text-slate-400 text-sm italic">No equipment add-ons configured.</div>
-                            </div>
-                        </div>
-
-                        <!-- Hidden Inputs for form submission -->
-                        <input type="hidden" name="menu_addons" id="hidden_menu_addons" value="[]">
-                        <input type="hidden" name="service_addons" id="hidden_service_addons" value="[]">
-                        <input type="hidden" name="equipment_addons" id="hidden_equipment_addons" value="[]">
                     </div>
 
                     <!-- STEP 5: PRICING -->
@@ -453,77 +319,35 @@
             
             <div class="occ-modal-footer" id="pkgWizardFooter" style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <button type="button" onclick="window.closePackageModal()" style="background: none; border: none; color: #64748b; font-weight: 700; font-size: 0.85rem; cursor: pointer; padding: 0.5rem 1rem;">Cancel</button>
+                    <button type="button" class="btn-secondary-pro" onclick="window.goToWizardBackStep()" id="btnWizardBack" style="display: none;"><i class="fas fa-arrow-left"></i> Back</button>
                 </div>
                 <div style="display: flex; gap: 12px;">
-                    <button type="button" class="btn-secondary-pro" onclick="window.goToWizardBackStep()" id="btnWizardBack" style="display: none;"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button type="button" class="btn-secondary-pro" onclick="window.closePackageModal()">Cancel</button>
                     <button type="button" class="btn-primary-pro" id="btnWizardNext" onclick="window.goToWizardNextStep()">Next Step <i class="fas fa-arrow-right"></i></button>
-                    <button type="submit" class="btn-primary-pro" id="pkgSaveBtn" style="display: none; background: #22c55e; border-color: #22c55e;">
-                        <i class="fas fa-check-circle" style="margin-right: 6px;"></i> Publish Package
+                    <button type="submit" class="btn-primary-pro" id="pkgSaveBtn" style="display: none;">
+                        Publish Package
                     </button>
                 </div>
             </div>
         </form>
     </div>
 </div>
+"""
 
+    # We need to replace everything from `<!-- Create/Edit Package Form Modal -->` 
+    # to the `{% endblock %}` (excluding the endblock).
+    start_tag = "<!-- Create/Edit Package Form Modal -->"
+    end_tag = "{% endblock %}"
+    
+    start_idx = content.find(start_tag)
+    end_idx = content.find(end_tag, start_idx)
+    
+    if start_idx != -1 and end_idx != -1:
+        new_content = content[:start_idx] + new_modal + "\n" + content[end_idx:]
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(new_content)
+        print("HTML successfully replaced.")
+    else:
+        print("Could not find tags in HTML.")
 
-<!-- Addon Picker Modal -->
-<div id="addonPickerModal" class="occ-modal-overlay" style="z-index: 2100; display: none;">
-    <div class="occ-modal-box sz-md occ-content-pop">
-        <div class="occ-modal-header glass-header">
-            <div>
-                <h3 class="occ-modal-title" id="addonPickerTitle">Select Items</h3>
-            </div>
-            <button type="button" onclick="window.closeAddonPicker()" class="occ-modal-close"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="occ-modal-body" style="padding: 1rem;">
-            <div style="position:relative; margin-bottom: 1rem;">
-                <i class="fas fa-search" style="position:absolute; left:var(--space-sm); top:50%; transform:translateY(-50%); font-size:12px; color:var(--color-neutral-400);"></i>
-                <input type="text" id="addonPickerSearch" placeholder="Search catalog..." onkeyup="window.filterAddonPicker()" class="control-pro" style="padding-left:2rem;">
-            </div>
-            <div id="addonPickerGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem; max-height: 400px; overflow-y: auto; padding: 0.25rem;">
-                <!-- Populated dynamically -->
-            </div>
-        </div>
-        <div class="occ-modal-footer" style="padding: 1rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
-            <button type="button" class="btn-secondary-pro" onclick="window.closeAddonPicker()">Cancel</button>
-            <button type="button" class="btn-primary-pro" onclick="window.proceedToAddonConfig()">Configure Selected <i class="fas fa-arrow-right"></i></button>
-        </div>
-    </div>
-</div>
-
-<!-- Addon Config Modal -->
-<div id="addonConfigModal" class="occ-modal-overlay" style="z-index: 2200; display: none;">
-    <div class="occ-modal-box sz-md occ-content-pop">
-        <div class="occ-modal-header glass-header">
-            <div>
-                <h3 class="occ-modal-title">Configure Add-ons</h3>
-            </div>
-            <button type="button" onclick="window.closeAddonConfig()" class="occ-modal-close"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="occ-modal-body" style="padding: 1rem; max-height: 60vh; overflow-y: auto;" id="addonConfigFormsContainer">
-            <!-- Populated dynamically -->
-        </div>
-        <div class="occ-modal-footer" style="padding: 1rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
-            <button type="button" class="btn-secondary-pro" onclick="window.closeAddonConfig()">Cancel</button>
-            <button type="button" class="btn-primary-pro" onclick="window.saveAddonConfig()"><i class="fas fa-save"></i> Add to Package</button>
-        </div>
-    </div>
-</div>
-
-{% endblock %}
-
-{% block extra_js %}
-<script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v=26.0"></script>
-<script>
-    // Listen to global header search
-    window.addEventListener('globalSearch', function(e) {
-        const hiddenInput = document.getElementById('packageSearchInput');
-        if (hiddenInput && typeof window.filterPackages === 'function') {
-            hiddenInput.value = e.detail.value;
-            window.filterPackages();
-        }
-    });
-</script>
-{% endblock %}
+rewrite_packages_html()

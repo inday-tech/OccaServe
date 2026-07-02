@@ -11,7 +11,6 @@ from PIL import Image
 from app.db import database, models
 from app.core.security import get_current_user, RoleChecker
 from app.core.templates import templates
-from app.services.storage import upload_file_to_supabase, delete_file_from_supabase
 caterer_only = RoleChecker(["caterer"])
 
 router = APIRouter(prefix="/caterer/portfolio", tags=["portfolio"])
@@ -102,14 +101,21 @@ async def create_portfolio(
     
     # 2. Process Cover Photo
     if cover_photo and cover_photo.filename:
-        # Upload main cover image to Supabase
+        # Save main cover image locally
+        filename = f"{uuid.uuid4().hex}.webp"
+        filepath = os.path.join(UPLOAD_DIR, filename)
+        
         img_bytes = process_image_to_bytes(cover_photo, max_size=(1920, 1080), quality=85)
-        cover_url = await upload_file_to_supabase(img_bytes, f"{uuid.uuid4().hex}.webp", folder="portfolios")
+        
+        with open(filepath, "wb") as f:
+            f.write(img_bytes)
+            
+        cover_url = f"/static/uploads/portfolios/{filename}"
         
         if cover_url:
             db.add(models.PortfolioImage(portfolio_id=new_portfolio.id, image_url=cover_url, is_cover=True))
         else:
-            raise HTTPException(status_code=500, detail="Failed to upload cover photo. Please check storage configuration.")
+            raise HTTPException(status_code=500, detail="Failed to save cover photo locally.")
         
     # 3. Process Additional Photos (Limit to 10 for safety)
     if additional_photos:
@@ -117,7 +123,14 @@ async def create_portfolio(
         for photo in additional_photos:
             if photo.filename and count < 10:
                 img_bytes = process_image_to_bytes(photo, max_size=(1920, 1080), quality=85)
-                img_url = await upload_file_to_supabase(img_bytes, f"{uuid.uuid4().hex}.webp", folder="portfolios")
+                
+                filename = f"{uuid.uuid4().hex}.webp"
+                filepath = os.path.join(UPLOAD_DIR, filename)
+                
+                with open(filepath, "wb") as f:
+                    f.write(img_bytes)
+                    
+                img_url = f"/static/uploads/portfolios/{filename}"
                 
                 if img_url:
                     db.add(models.PortfolioImage(portfolio_id=new_portfolio.id, image_url=img_url, is_cover=False))
@@ -142,23 +155,19 @@ async def delete_portfolio(
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
         
-    # Delete images from Supabase or Disk
+    # Delete images from Disk
     for img in portfolio.images:
         try:
-            if img.image_url.startswith("http"):
-                # Supabase CDN URL
-                await delete_file_from_supabase(img.image_url)
-            else:
-                # Legacy Local File
-                filename = img.image_url.split('/')[-1]
-                filepath = os.path.join(UPLOAD_DIR, filename)
-                if os.path.exists(filepath):
-                    os.remove(filepath)
-                # Delete thumbnail if cover (legacy)
-                if img.is_cover:
-                    thumb_path = os.path.join(THUMBNAIL_DIR, f"thumb_{filename}")
-                    if os.path.exists(thumb_path):
-                        os.remove(thumb_path)
+            # Handle Local File Deletion
+            filename = img.image_url.split('/')[-1]
+            filepath = os.path.join(UPLOAD_DIR, filename)
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            # Delete thumbnail if cover
+            if img.is_cover:
+                thumb_path = os.path.join(THUMBNAIL_DIR, f"thumb_{filename}")
+                if os.path.exists(thumb_path):
+                    os.remove(thumb_path)
         except Exception as e:
             print(f"Error deleting image {img.image_url}: {e}")
             

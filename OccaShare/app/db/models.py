@@ -264,6 +264,38 @@ class PackageService(Base):
     quantity = Column(Integer, default=1)
     service = relationship("Service", backref="package_links")
 
+class PackageMenuAddon(Base):
+    __tablename__ = "package_menu_addons"
+    id = Column(Integer, primary_key=True, index=True)
+    package_id = Column(Integer, ForeignKey("catering_packages.id", ondelete="CASCADE"))
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"))
+    price = Column(Float, default=0.0)
+    selection_type = Column(String, default="single") # 'single' or 'multiple'
+    min_quantity = Column(Integer, default=1)
+    max_quantity = Column(Integer, nullable=True)
+    is_enabled = Column(Boolean, default=True)
+
+class PackageServiceAddon(Base):
+    __tablename__ = "package_service_addons"
+    id = Column(Integer, primary_key=True, index=True)
+    package_id = Column(Integer, ForeignKey("catering_packages.id", ondelete="CASCADE"))
+    service_id = Column(Integer, ForeignKey("services.id", ondelete="CASCADE"))
+    price = Column(Float, default=0.0)
+    selection_type = Column(String, default="single") # 'single' or 'manpower'
+    min_quantity = Column(Integer, default=1)
+    max_quantity = Column(Integer, nullable=True)
+    is_enabled = Column(Boolean, default=True)
+
+class PackageEquipmentAddon(Base):
+    __tablename__ = "package_equipment_addons"
+    id = Column(Integer, primary_key=True, index=True)
+    package_id = Column(Integer, ForeignKey("catering_packages.id", ondelete="CASCADE"))
+    equipment_id = Column(Integer, ForeignKey("equipment.id", ondelete="CASCADE"))
+    price = Column(Float, default=0.0)
+    min_quantity = Column(Integer, default=1)
+    max_quantity = Column(Integer, nullable=True)
+    is_enabled = Column(Boolean, default=True)
+
 class CateringPackage(Base):
     __tablename__ = "catering_packages"
 
@@ -323,6 +355,10 @@ class CateringPackage(Base):
     
     equipment_links = relationship("PackageEquipment", cascade="all, delete-orphan", backref="package")
     service_links = relationship("PackageService", cascade="all, delete-orphan", backref="package")
+    
+    menu_addons = relationship("PackageMenuAddon", cascade="all, delete-orphan", backref="package")
+    service_addons = relationship("PackageServiceAddon", cascade="all, delete-orphan", backref="package")
+    equipment_addons = relationship("PackageEquipmentAddon", cascade="all, delete-orphan", backref="package")
 
     bookings = relationship("Booking", back_populates="package")
 
@@ -370,6 +406,20 @@ class MenuItem(Base):
     
     size_prices = relationship("MenuSizePricing", back_populates="menu_item", cascade="all, delete-orphan")
     weight_prices = relationship("MenuWeightPricing", back_populates="menu_item", cascade="all, delete-orphan")
+    variants = relationship("MenuVariant", back_populates="menu_item", cascade="all, delete-orphan", order_by="MenuVariant.display_order")
+
+class MenuVariant(Base):
+    __tablename__ = "menu_variants"
+    id = Column(Integer, primary_key=True, index=True)
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"))
+    variant_name = Column(String)
+    measurement = Column(String, nullable=True)
+    price = Column(Float, default=0.0)
+    serving_capacity = Column(String, nullable=True)
+    status = Column(String, default="available") # available, unavailable, hidden
+    display_order = Column(Integer, default=0)
+    
+    menu_item = relationship("MenuItem", back_populates="variants")
 
 
 class MenuSizePricing(Base):
