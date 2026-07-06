@@ -62,18 +62,65 @@ class EmailService:
         return EmailService._send_email(email, subject, body)
 
     @staticmethod
-    def send_booking_confirmation(email: str, booking_id: int, doc_type: str = "booking"):
+    def send_booking_confirmation(email: str, booking_id: int, doc_type: str = "booking", 
+                                   event_name: str = None, caterer_name: str = None, 
+                                   event_date: str = None, total_amount: float = None,
+                                   guest_count: int = None, venue: str = None):
         prefix = "ORD" if doc_type == "invoice" else "BK"
-        subject = f"{'Order' if doc_type == 'invoice' else 'Booking'} Request Received #{prefix}-{booking_id}"
-        body = f"""
-        Hello,
+        ref_id = f"{prefix}-{booking_id:03d}"
+        is_order = doc_type == "invoice"
+        doc_label = "Order" if is_order else "Booking"
+        subject = f"{doc_label} Request Received — {ref_id}"
         
-        We have received your {'order' if doc_type == 'invoice' else 'booking request'} #{prefix}-{booking_id}.
-        We will verify your details and contact you shortly with further updates.
+        site_url = settings.SITE_URL if hasattr(settings, 'SITE_URL') else "https://occaserve.com"
+        manage_link = f"{site_url}/customer/{'orders' if is_order else 'bookings'}/manage/{booking_id}"
         
-        Thank you for choosing OccaServe.
-        """
-        return EmailService._send_email(email, subject, body)
+        details_rows = ""
+        if event_name:
+            details_rows += f'<tr><td style="color:#64748b;padding:10px 0;border-bottom:1px solid #f1f5f9;font-weight:500;">Event Name</td><td style="text-align:right;font-weight:700;color:#1e293b;padding:10px 0;border-bottom:1px solid #f1f5f9;">{event_name}</td></tr>'
+        if caterer_name:
+            details_rows += f'<tr><td style="color:#64748b;padding:10px 0;border-bottom:1px solid #f1f5f9;font-weight:500;">Caterer</td><td style="text-align:right;font-weight:700;color:#1e293b;padding:10px 0;border-bottom:1px solid #f1f5f9;">{caterer_name}</td></tr>'
+        if event_date:
+            details_rows += f'<tr><td style="color:#64748b;padding:10px 0;border-bottom:1px solid #f1f5f9;font-weight:500;">Event Date</td><td style="text-align:right;font-weight:700;color:#1e293b;padding:10px 0;border-bottom:1px solid #f1f5f9;">{event_date}</td></tr>'
+        if guest_count:
+            details_rows += f'<tr><td style="color:#64748b;padding:10px 0;border-bottom:1px solid #f1f5f9;font-weight:500;">Guest Count</td><td style="text-align:right;font-weight:700;color:#1e293b;padding:10px 0;border-bottom:1px solid #f1f5f9;">{guest_count:,} guests</td></tr>'
+        if venue:
+            details_rows += f'<tr><td style="color:#64748b;padding:10px 0;border-bottom:1px solid #f1f5f9;font-weight:500;">Venue</td><td style="text-align:right;font-weight:700;color:#1e293b;padding:10px 0;border-bottom:1px solid #f1f5f9;">{venue}</td></tr>'
+        if total_amount is not None:
+            details_rows += f'<tr><td style="color:#64748b;padding:10px 0;font-weight:500;">Estimated Total</td><td style="text-align:right;font-weight:800;color:#FF7B54;padding:10px 0;">₱{total_amount:,.2f}</td></tr>'
+
+        html_body = f"""<!DOCTYPE html>
+<html>
+<head><style>
+    body {{font-family:'Segoe UI',sans-serif;margin:0;padding:0;background:#f8fafc;}}
+    .wrap {{max-width:600px;margin:0 auto;}}
+    .hdr {{background:linear-gradient(135deg,#FF7B54,#ff5722);padding:30px;text-align:center;border-radius:12px 12px 0 0;}}
+    .hdr h1 {{color:white;margin:0;font-size:22px;}}
+    .hdr p {{color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:13px;}}
+    .body {{background:#fff;padding:30px;border:1px solid #e2e8f0;border-top:none;}}
+    .badge {{display:inline-block;background:#fff3ed;color:#FF7B54;border:1.5px solid #fed7aa;padding:6px 16px;border-radius:100px;font-weight:800;font-size:15px;margin:16px 0;}}
+    .details-table {{width:100%;border-collapse:collapse;margin:16px 0;}}
+    .btn {{display:inline-block;background:#FF7B54;color:#fff!important;padding:14px 30px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin-top:20px;}}
+    .footer {{background:#f1f5f9;text-align:center;padding:20px;font-size:12px;color:#94a3b8;border-radius:0 0 12px 12px;}}
+</style></head>
+<body>
+<div class="wrap">
+    <div class="hdr"><h1>OccaServe</h1><p>Your Premium Event Catering Platform</p></div>
+    <div class="body">
+        <p style="color:#475569;font-size:15px;">Hello! Thank you for submitting your {doc_label.lower()} request on OccaServe.</p>
+        <p style="color:#475569;font-size:15px;">Your {doc_label.lower()} has been received and is now being reviewed by the caterer. You will be notified once it is confirmed.</p>
+        <div style="text-align:center;"><span class="badge">📋 Reference: {ref_id}</span></div>
+        {'<table class="details-table">' + details_rows + '</table>' if details_rows else ''}
+        <a href="{manage_link}" class="btn">View {doc_label} Status →</a>
+        <p style="color:#94a3b8;font-size:12px;margin-top:20px;">If you did not make this request, please contact our support team immediately.</p>
+    </div>
+    <div class="footer">© 2026 OccaServe Philippines. All rights reserved.</div>
+</div>
+</body></html>"""
+        
+        body = f"Hello,\n\nWe have received your {doc_label.lower()} request {ref_id}.\nEvent: {event_name or 'N/A'}\nCaterer: {caterer_name or 'N/A'}\nDate: {event_date or 'TBD'}\nTotal: ₱{total_amount:,.2f}" if total_amount else f"Hello,\n\nWe have received your {doc_label.lower()} request {ref_id}.\nWe will verify your details and contact you shortly.\n\nThank you for choosing OccaServe."
+        return EmailService._send_email(email, subject, body, html_body)
+
     
     @staticmethod
     def send_verification_email(email: str, code: str):

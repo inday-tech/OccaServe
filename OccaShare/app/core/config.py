@@ -29,7 +29,7 @@ class Settings:
 
     # SMS CONFIGURATION
     SMS_API_KEY = os.getenv("SMS_API_KEY", "")
-    SMS_SENDER_NAME = os.getenv("SMS_SENDER_NAME", "OccaShare")
+    SMS_SENDER_NAME = os.getenv("SMS_SENDER_NAME", "OccaServe")
     SMS_PROVIDER = os.getenv("SMS_PROVIDER", "semaphore") # semaphore, twilio, or mock
 
     # KYC CONFIG

@@ -661,25 +661,30 @@ async def update_booking_status(
     is_food_order = (booking.document_type == 'invoice')
     ref_id = f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}"
     item_type = "food order" if is_food_order else "booking"
+    caterer_name = user.caterer_profile.business_name
+    event_date_str = booking.event_date.strftime('%B %d, %Y') if booking.event_date else 'TBD'
     
     if new_status == "preparing":
         title = "Preparation Started!" if not is_food_order else "Order is Preparing!"
-        message = f"The caterer {user.caterer_profile.business_name} has started preparing for your {item_type} '{booking.event_name}' ({ref_id})."
+        message = f"{caterer_name} has started preparing your {item_type} '{booking.event_name}' ({ref_id}) scheduled on {event_date_str}."
     elif new_status == "ready_for_delivery":
         title = "Ready for Delivery!" if not is_food_order else "Order Ready for Dispatch!"
-        message = f"Preparation is complete! Your {item_type} is packed and ready for dispatch."
+        message = f"Your {item_type} '{booking.event_name}' ({ref_id}) from {caterer_name} is now packed and ready for dispatch to your location."
     elif new_status == "on_the_way":
         title = "In Transit!" if not is_food_order else "Your Order is Dispatched!"
-        message = f"Our delivery team is on the way to your location for '{booking.event_name}' ({ref_id})."
+        message = f"{caterer_name}'s delivery team is now on the way to your location for '{booking.event_name}' ({ref_id})."
     elif new_status == "arrived":
         title = "Caterer has Arrived!" if not is_food_order else "Order Delivered!"
-        message = f"Our team has arrived at your location for '{booking.event_name}' ({ref_id})."
+        message = f"{caterer_name} has arrived at your location for '{booking.event_name}' ({ref_id}). Please be ready to receive your {item_type}."
     elif new_status == "setup_ongoing":
         title = "Dining Setup Ongoing"
-        message = f"Your food service is currently being set up. We are almost ready to serve!"
+        message = f"{caterer_name} is currently setting up your food service for '{booking.event_name}' ({ref_id}). We are almost ready to serve!"
     elif new_status == "completed":
         title = "Transaction Completed!" if not is_food_order else "Order Completed!"
-        message = f"Successfully finalized for your {item_type} '{booking.event_name}' ({ref_id}). Thank you for choosing us!"
+        message = f"Your {item_type} '{booking.event_name}' ({ref_id}) from {caterer_name} has been successfully completed. Thank you for choosing OccaServe!"
+
+    # Route to the correct page based on booking type
+    notif_link = f"/customer/bookings/manage/{booking.id}" if not is_food_order else f"/customer/orders/manage/{booking.id}"
 
     if title and message:
         await NotificationService.notify_status_update(
@@ -687,7 +692,7 @@ async def update_booking_status(
             booking.user_id, 
             title, 
             message, 
-            f"/customer/bookings/manage/{booking.id}"
+            notif_link
         )
 
     # 4. WebSocket Update to Caterer
@@ -1332,7 +1337,12 @@ async def dashboard_overview_api(
         "revenue_by_event": stats['revenue_by_event']
     })
 
+@router.get("/bookings/{booking_id}")
+async def redirect_booking_details(booking_id: int):
+    return RedirectResponse(url=f"/caterer/bookings?focus={booking_id}", status_code=303)
+
 @router.get("/bookings", response_class=HTMLResponse)
+
 async def manage_bookings(
     request: Request, 
     db: Session = Depends(database.get_db),
@@ -3084,6 +3094,9 @@ async def add_menu_item(
         except ValueError:
             price = 0.0
         serving_size = form_data.get("serving_size")
+        min_order_qty = int(form_data.get("min_order_qty", "1") or "1")
+    else:
+        min_order_qty = 1
     
     is_hidden = form_data.get("visibility") == "hidden"
     
@@ -3119,6 +3132,7 @@ async def add_menu_item(
         price=price,
         pricing_unit=pricing_unit,
         serving_size=serving_size,
+        min_order_qty=min_order_qty,
         status=status,
         usage_type=usage_type,
         available_for_package=available_for_package,
@@ -3290,6 +3304,18 @@ async def update_profile(
     package_max_duration: Optional[int] = Form(6),
     package_setup_time: Optional[int] = Form(2),
     package_cleanup_time: Optional[int] = Form(1),
+    refund_policy: Optional[str] = Form(None),
+    reschedule_policy: Optional[str] = Form(None),
+    late_payment_policy: Optional[str] = Form(None),
+    no_show_policy: Optional[str] = Form(None),
+    social_facebook: Optional[str] = Form(None),
+    social_instagram: Optional[str] = Form(None),
+    social_website: Optional[str] = Form(None),
+    holiday_schedule: Optional[str] = Form(None),
+    max_advance_booking_days: Optional[int] = Form(365),
+    business_tags: Optional[str] = Form(None),
+    specialties: Optional[str] = Form(None),
+    languages: Optional[str] = Form(None),
     background_tasks: BackgroundTasks = None,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -3316,6 +3342,26 @@ async def update_profile(
         "package_rules": {
             "min_event_duration": package_min_duration, "max_event_duration": package_max_duration, 
             "setup_time_hours": package_setup_time, "cleanup_time_hours": package_cleanup_time
+        },
+        "booking_rules": {
+            "max_advance_booking_days": max_advance_booking_days,
+            "holiday_schedule": holiday_schedule
+        },
+        "policies": {
+            "refund_policy": refund_policy,
+            "reschedule_policy": reschedule_policy,
+            "late_payment_policy": late_payment_policy,
+            "no_show_policy": no_show_policy
+        },
+        "social_links": {
+            "facebook": social_facebook,
+            "instagram": social_instagram,
+            "website": social_website
+        },
+        "public_profile": {
+            "tags": business_tags,
+            "specialties": specialties,
+            "languages": languages
         }
     }
 
@@ -4613,12 +4659,15 @@ async def cancel_booking(
     # Notify Customer
     from ..services.notification import NotificationService
     import asyncio
+    is_food_order = (booking.document_type == 'invoice')
+    ref_id = f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}"
+    notif_link = f"/customer/orders" if is_food_order else f"/customer/bookings"
     asyncio.create_task(NotificationService.notify_status_update(
         db, 
         booking.user_id, 
-        "Booking Cancelled", 
-        f"Ang iyong booking para sa '{booking.event_name}' ay kinansela ni {user.caterer_profile.business_name}. Reason: {reason}", 
-        f"/customer/bookings"
+        "Booking Cancelled" if not is_food_order else "Order Cancelled", 
+        f"Your {'order' if is_food_order else 'booking'} '{booking.event_name}' ({ref_id}) with {user.caterer_profile.business_name} has been cancelled. Reason: {reason}", 
+        notif_link
     ))
     
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -4677,12 +4726,15 @@ async def reject_booking(
     # Notify Customer
     from ..services.notification import NotificationService
     import asyncio
+    is_food_order = (booking.document_type == 'invoice')
+    ref_id = f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}"
+    notif_link = f"/customer/orders" if is_food_order else f"/customer/bookings"
     asyncio.create_task(NotificationService.notify_status_update(
         db, 
         booking.user_id, 
-        "Booking Rejected", 
-        f"Pasensya na, hindi tinanggap ni {user.caterer_profile.business_name} ang iyong booking request para sa '{booking.event_name}'.", 
-        f"/customer/bookings"
+        "Booking Rejected" if not is_food_order else "Order Rejected", 
+        f"We regret to inform you that your {'order' if is_food_order else 'booking'} '{booking.event_name}' ({ref_id}) with {user.caterer_profile.business_name} was not accepted. Reason: {reason}", 
+        notif_link
     ))
     
     return JSONResponse({"status": "success", "message": "Booking rejected", "new_status": "cancelled"})
@@ -4747,12 +4799,16 @@ async def complete_booking(
     # Notify Customer
     from ..services.notification import NotificationService
     import asyncio
+    is_food_order = (booking.document_type == 'invoice')
+    ref_id = f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}"
+    caterer_name = user.caterer_profile.business_name
+    notif_link = f"/customer/orders/manage/{booking.id}" if is_food_order else f"/customer/bookings/manage/{booking.id}"
     asyncio.create_task(NotificationService.notify_status_update(
         db, 
         booking.user_id, 
-        "Event Service Completed", 
-        f"Salamat! Ang iyong event '{booking.event_name}' ay itinalaga bilang COMPLETED ni {user.caterer_profile.business_name}. Huwag kalimutang i-rate ang kanilang serbisyo!", 
-        f"/customer/reviews"
+        "Event Service Completed" if not is_food_order else "Order Completed!", 
+        f"Your {'booking' if not is_food_order else 'order'} '{booking.event_name}' ({ref_id}) with {caterer_name} has been marked as COMPLETED. Thank you for choosing OccaServe! Don't forget to leave a review.", 
+        notif_link
     ))
     
     return JSONResponse({"status": "success", "message": "Booking completed", "new_status": "completed"})

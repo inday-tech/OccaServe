@@ -214,6 +214,47 @@
                             placeholder="Describe your catering services, specialties, and experience..."
                             required>{{ profile.description }}</textarea>
                     </div>
+                    
+                    {% set rules = profile.scheduling_rules or {} %}
+                    {% set pub = rules.get('public_profile', {}) %}
+                    {% set soc = rules.get('social_links', {}) %}
+                    <div class="section-header-compact" style="margin-top: 2rem;">
+                        <h3><i class="fas fa-globe"></i> Public Profile Settings</h3>
+                        <p>Extra details shown to customers to build trust and brand identity.</p>
+                    </div>
+                    
+                    <div class="form-row-three-col" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div class="form-group">
+                            <label><i class="fab fa-facebook"></i> Facebook Page</label>
+                            <input type="text" name="social_facebook" value="{{ soc.get('facebook', '') }}" placeholder="fb.com/yourbusiness">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fab fa-instagram"></i> Instagram</label>
+                            <input type="text" name="social_instagram" value="{{ soc.get('instagram', '') }}" placeholder="@yourbusiness">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-link"></i> Website</label>
+                            <input type="url" name="social_website" value="{{ soc.get('website', '') }}" placeholder="https://yourwebsite.com">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-tags"></i> Business Tags</label>
+                            <input type="text" name="business_tags" value="{{ pub.get('tags', '') }}" placeholder="e.g. Premium, Affordable, Halal-certified">
+                            <span class="field-hint">Comma separated tags.</span>
+                        </div>
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-star"></i> Specialties</label>
+                            <input type="text" name="specialties" value="{{ pub.get('specialties', '') }}" placeholder="e.g. Filipino Cuisine, Wedding Banquets">
+                            <span class="field-hint">Comma separated specialties.</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label><i class="fas fa-language"></i> Languages Spoken</label>
+                        <input type="text" name="languages" value="{{ pub.get('languages', '') }}" placeholder="e.g. English, Tagalog, Bisaya">
+                    </div>
 
             </div>
             <!-- End Section: Business Info -->
@@ -770,20 +811,45 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <div class="form-group full-width">
-                            <label><i class="fas fa-file-signature"></i> Event Contract Terms (For Large Bookings)</label>
-                            <textarea name="terms_and_conditions" rows="5"
-                                placeholder="These terms will appear on the formal Digital Service Agreement for Packages and Custom Events. e.g. A non-refundable deposit is required...">{{ profile.terms_and_conditions or '' }}</textarea>
-                        </div>
-                        
-                        <div class="form-group full-width" style="margin-top: 1rem;">
-                            <label><i class="fas fa-clipboard-check"></i> General Terms (For Fast-Track Orders)</label>
-                            <textarea name="general_terms" rows="3"
-                                placeholder="These terms will appear as a simple checkbox during quick checkout for food trays and rentals. e.g. No cancellations allowed 48 hrs before delivery.">{{ profile.general_terms or '' }}</textarea>
-                        </div>
-                        <span class="field-hint">This will be attached to your digital booking contract that customers must agree to before checkout.</span>
+                    {% set policies = rules.get('policies', {}) %}
+                    <div class="section-header-compact" style="margin-top: 2rem;">
+                        <h3><i class="fas fa-file-contract"></i> Detailed Business Policies</h3>
+                        <p>Configure specific policies for your catering services.</p>
                     </div>
+                    
+                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-ban"></i> Cancellation Policy</label>
+                            <textarea name="terms_and_conditions" rows="3" placeholder="Explain your cancellation rules. e.g. Cancellations made 7 days prior will receive a 50% refund.">{{ profile.terms_and_conditions or '' }}</textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-undo"></i> Refund Policy</label>
+                            <textarea name="refund_policy" rows="3" placeholder="Detail when and how refunds are processed.">{{ policies.get('refund_policy', '') }}</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-calendar-alt"></i> Reschedule Policy</label>
+                            <textarea name="reschedule_policy" rows="3" placeholder="Rules for moving event dates.">{{ policies.get('reschedule_policy', '') }}</textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-money-bill-wave"></i> Late Payment Policy</label>
+                            <textarea name="late_payment_policy" rows="3" placeholder="Penalties or actions for late balances.">{{ policies.get('late_payment_policy', '') }}</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-user-slash"></i> No-show Policy</label>
+                            <textarea name="no_show_policy" rows="3" placeholder="Policy if client is uncontactable.">{{ policies.get('no_show_policy', '') }}</textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-clipboard-check"></i> General Terms (For Fast-Track Orders)</label>
+                            <textarea name="general_terms" rows="3" placeholder="Quick terms for simple food trays and rentals.">{{ profile.general_terms or '' }}</textarea>
+                        </div>
+                    </div>
+                    <span class="field-hint" style="display:block; margin-top:0.5rem;">These policies will automatically generate your digital contracts and checkout terms, ensuring a Single Source of Truth.</span>
             </div>
             <!-- End Section: Booking Policies -->
 
@@ -796,6 +862,7 @@
 
                 {% set rules = profile.scheduling_rules or {} %}
                 {% set bh = rules.get('business_hours', {'open_time': '08:00', 'close_time': '20:00'}) %}
+                {% set bk = rules.get('booking_rules', {}) %}
                 {% set fr = rules.get('food_rules', {'delivery_available': true, 'pickup_available': true, 'delivery_start': '09:00', 'delivery_end': '19:00', 'lead_time_hours': 24, 'allow_same_day': false}) %}
                 {% set er = rules.get('equipment_rules', {'pickup_start': '08:00', 'pickup_end': '18:00', 'return_start': '08:00', 'return_end': '18:00', 'min_rental_hours': 24, 'max_rental_hours': 72}) %}
                 {% set sr = rules.get('service_rules', {'min_duration_hours': 3, 'max_duration_hours': 8, 'earliest_start': '08:00', 'latest_end': '22:00'}) %}
@@ -826,6 +893,20 @@
                                 <span style="font-size: 0.85rem; font-weight: 600;">{{ day }}</span>
                             </label>
                             {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 1.5rem 0;">
+                    <div class="form-row-two-col">
+                        <div class="form-group">
+                            <label><i class="fas fa-calendar-plus"></i> Max Advance Booking (Days)</label>
+                            <input type="number" name="max_advance_booking_days" value="{{ bk.get('max_advance_booking_days', 365) }}" min="1">
+                            <span class="field-hint">How far in the future can clients book?</span>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-umbrella-beach"></i> Holiday Schedule / Blocked Days</label>
+                            <input type="text" name="holiday_schedule" value="{{ bk.get('holiday_schedule', '') }}" placeholder="e.g. Dec 24, Dec 25, Jan 1">
+                            <span class="field-hint">Comma-separated list of recurring holidays.</span>
                         </div>
                     </div>
                 </div>

@@ -310,6 +310,7 @@ class CateringPackage(Base):
     min_guests = Column(Integer, default=10)
     max_guests = Column(Integer, nullable=True)
     image_url = Column(String)
+    gallery_images = Column(JSONB, nullable=True) # up to 4 additional images
     service_type = Column(String, default="General") # Wedding, Birthday, Corporate, etc.
     
     # NEW: Rich Pricing & Details
@@ -928,8 +929,8 @@ class WebsiteConfig(Base):
     __tablename__ = "website_config"
 
     id = Column(Integer, primary_key=True, index=True)
-    site_name = Column(String, default="OccaShare")
-    support_email = Column(String, default="support@occashare.com")
+    site_name = Column(String, default="OccaServe")
+    support_email = Column(String, default="support@occaserve.com")
     seo_description = Column(Text, default="The premium marketplace for catering services in the Philippines.")
     
     # Branding
@@ -960,7 +961,7 @@ class WebsiteConfig(Base):
     
     # Maintenance
     maintenance_mode = Column(Boolean, default=False)
-    maintenance_message = Column(Text, default="OccaShare is currently undergoing scheduled maintenance. We'll be back online shortly!")
+    maintenance_message = Column(Text, default="OccaServe is currently undergoing scheduled maintenance. We'll be back online shortly!")
     
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

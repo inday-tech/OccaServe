@@ -16,7 +16,8 @@
                     primary: '{{ caterer.primary_color if caterer.primary_color else "var(--primary-color)" }}',
                     secondary: '{{ caterer.secondary_color if caterer.secondary_color else "#334155" }}',
                     accent: '{{ caterer.accent_color if caterer.accent_color else "var(--primary-color)" }}',
-                    highlight: '{{ caterer.highlight_color if caterer.highlight_color else "#fdba74" }}'
+                    highlight: '{{ caterer.highlight_color if caterer.highlight_color else "#fdba74" }}',
+                    brand: '{{ caterer.primary_color if caterer.primary_color else "var(--primary-color)" }}'
                 },
                 borderRadius: {
                     'xl': '{{ caterer.border_radius if caterer.border_radius else 16 }}px',
@@ -350,34 +351,34 @@
 
             <!-- Overview Section (Upgraded) -->
             <section class="{% if caterer.glass_mode %}glass-card{% else %}card-premium{% endif %} p-6">
-                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
-                    <span class="w-8 h-[1px] bg-slate-200"></span> Operation Intel
+                <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
+                    <span class="w-8 h-[1px] bg-slate-200"></span> Business Details
                 </h2>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div
-                        class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1 hover-highlight">
-                        <div class="text-secondary mb-2 text-xl hover:text-white"><i class="far fa-clock"></i></div>
-                        <div class="text-2xl font-black text-slate-800">{{ caterer.years_of_operation or 1 }}+</div>
+                        class="group bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                        <div class="mb-2 text-xl text-slate-400 group-hover:text-brand transition-colors"><i class="far fa-clock"></i></div>
+                        <div class="text-xl font-black text-slate-800">{{ caterer.years_of_operation or 1 }}+</div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Years Exp</div>
                     </div>
                     <div
-                        class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1 hover-highlight">
-                        <div class="text-secondary mb-2 text-xl hover:text-white"><i class="fas fa-utensils"></i></div>
-                        <div class="text-2xl font-black text-slate-800">
+                        class="group bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                        <div class="mb-2 text-xl text-slate-400 group-hover:text-brand transition-colors"><i class="fas fa-utensils"></i></div>
+                        <div class="text-xl font-black text-slate-800">
                             {{ active_menu|length }}
                         </div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Dishes</div>
                     </div>
                     <div
-                        class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1 hover-highlight">
-                        <div class="text-secondary mb-2 text-xl hover:text-white"><i class="fas fa-gift"></i></div>
-                        <div class="text-2xl font-black text-slate-800">{{ packages|length }}</div>
+                        class="group bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                        <div class="mb-2 text-xl text-slate-400 group-hover:text-brand transition-colors"><i class="fas fa-gift"></i></div>
+                        <div class="text-xl font-black text-slate-800">{{ packages|length }}</div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Live Pkgs</div>
                     </div>
                     <div
-                        class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1 hover-highlight">
-                        <div class="text-accent mb-2 text-xl hover:text-white"><i class="fas fa-shield-check"></i></div>
-                        <div class="text-2xl font-black text-slate-800">100%</div>
+                        class="group bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                        <div class="mb-2 text-xl text-slate-400 group-hover:text-brand transition-colors"><i class="fas fa-shield-check"></i></div>
+                        <div class="text-xl font-black text-slate-800">100%</div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Audit Pass</div>
                     </div>
                 </div>
@@ -385,14 +386,14 @@
 
             <!-- Specialized Intelligence Tags -->
             <section class="card-premium p-6">
-                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                    <span class="w-8 h-[1px] bg-slate-200"></span> Expert Specialties
+                <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
+                    <span class="w-8 h-[1px] bg-slate-200"></span> Expertise
                 </h2>
                 <div class="flex flex-wrap gap-3">
                     {% if caterer.event_types %}
                     {% for event in caterer.event_types %}
                     <span
-                        class="px-4 py-2 bg-brand/5 border border-brand/10 rounded-xl text-[10px] font-black text-brand uppercase tracking-widest flex items-center gap-2 hover-highlight transition-colors">
+                        class="px-4 py-2 bg-brand/5 border border-brand/10 rounded-xl text-[10px] font-black text-brand uppercase tracking-widest flex items-center gap-2 transition-colors">
                         <i class="fas fa-check"></i> {{ event }}
                     </span>
                     {% endfor %}
@@ -400,13 +401,13 @@
                     {% if caterer.cuisine_types %}
                     {% if caterer.cuisine_types|length >= 3 %}
                     <span
-                        class="px-4 py-2 bg-secondary/5 border border-secondary/10 rounded-xl text-[10px] font-black text-secondary uppercase tracking-widest flex items-center gap-2 hover-highlight transition-colors">
+                        class="px-4 py-2 bg-secondary/5 border border-secondary/10 rounded-xl text-[10px] font-black text-secondary uppercase tracking-widest flex items-center gap-2 transition-colors">
                         <i class="fas fa-globe"></i> Multi-Cuisine
                     </span>
                     {% else %}
                     {% for cuisine in caterer.cuisine_types %}
                     <span
-                        class="px-4 py-2 bg-secondary/5 border border-secondary/10 rounded-xl text-[10px] font-black text-secondary uppercase tracking-widest flex items-center gap-2 hover-highlight transition-colors">
+                        class="px-4 py-2 bg-secondary/5 border border-secondary/10 rounded-xl text-[10px] font-black text-secondary uppercase tracking-widest flex items-center gap-2 transition-colors">
                         <i class="fas fa-utensils"></i> {{ cuisine }}
                     </span>
                     {% endfor %}
@@ -419,8 +420,8 @@
             {% if active_menu %}
             <section class="card-premium p-6">
                 <div class="flex items-center justify-between mb-8">
-                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                        <span class="w-8 h-[1px] bg-slate-200"></span> Culinary Library
+                    <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
+                        <span class="w-8 h-[1px] bg-slate-200"></span> Menu
                     </h2>
                     <span class="text-[10px] font-black text-accent uppercase bg-accent/10 px-2.5 py-1 rounded-full">
                         {{ active_menu|length }} Dishes Available
@@ -461,44 +462,34 @@
                     '.' %}
                     {% endif %}
 
-                    <div onclick="openCategoryShowcase('{{ cat|e }}')"
-                        class="group cursor-pointer border border-slate-200/80 rounded-3xl overflow-hidden transition-all duration-300 hover:border-secondary/40 hover:-translate-y-2 bg-white hover:shadow-xl relative flex flex-col shadow-sm">
+                    <div class="group relative rounded-3xl overflow-hidden border border-slate-200 bg-white transition-all duration-300 hover:shadow-xl hover:border-brand/30 flex flex-col cursor-pointer"
+                        onclick="openCategoryShowcase('{{ cat|e }}')">
 
-                        <!-- Cover Header Image -->
-                        <div class="h-40 w-full overflow-hidden relative bg-slate-100 flex-shrink-0">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent z-10 pointer-events-none opacity-100 transition-opacity">
+                        </div>
+
+                        <div class="h-32 w-full bg-slate-100 relative overflow-hidden">
                             <img src="{{ cat_cover_image }}"
                                 onerror="this.src='https://ui-avatars.com/api/?name={{ cat|urlencode }}&background=f1f5f9&color=64748b&size=400&font-size=0.2'"
                                 class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                 alt="{{ cat }}">
-                            <div
-                                class="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent">
-                            </div>
+                            <div class="absolute inset-0 bg-black/10 transition-opacity opacity-100"></div>
                         </div>
 
-                        <!-- Floating Centered Icon Ring -->
-                        <div
-                            class="absolute top-[132px] left-1/2 -translate-x-1/2 w-14 h-14 rounded-2xl bg-white text-secondary flex items-center justify-center text-2xl transition-all duration-300 group-hover:scale-110 shadow-md border border-slate-100 group-hover:bg-secondary group-hover:text-white group-hover:border-secondary">
-                            <i class="fas {{ icon_class }}"></i>
+                        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center z-20 border-2 border-white text-slate-400 group-hover:text-brand transition-colors">
+                            <i class="fas {{ icon_class }} text-xl"></i>
                         </div>
 
-                        <!-- Card Body -->
                         <div class="p-6 pt-10 text-center flex-1 flex flex-col">
                             <div class="flex flex-col items-center mb-3">
-                                <h3
-                                    class="text-sm font-black text-slate-800 uppercase tracking-widest mb-1.5 truncate max-w-full px-2">
+                                <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest mb-1.5 truncate max-w-full px-2">
                                     {{ cat }}</h3>
-                                <span
-                                    class="text-[9px] font-bold text-slate-400 bg-slate-100 group-hover:bg-highlight group-hover:text-white px-3 py-1 rounded-full transition-colors flex-shrink-0">
+                                <span class="text-[9px] font-bold text-slate-400 bg-slate-100 group-hover:bg-brand group-hover:text-white px-3 py-1 rounded-full transition-colors flex-shrink-0">
                                     {{ cat_items|length }} Items
                                 </span>
                             </div>
 
-                            <p class="text-[10px] text-slate-500 leading-relaxed font-semibold flex-1">
-                                {{ dynamic_desc }}
-                            </p>
-
-                            <div
-                                class="mt-4 flex items-center justify-center gap-1.5 text-[9px] font-black text-brand uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div class="mt-4 flex items-center justify-center gap-1.5 text-[9px] font-black text-brand uppercase tracking-wider opacity-100 transition-opacity">
                                 Explore Selection <i class="fas fa-arrow-right text-[8px] mt-0.5 animate-bounce"></i>
                             </div>
                         </div>
@@ -512,7 +503,7 @@
             {% if active_inventory %}
             <section class="card-premium p-6 mt-6">
                 <div class="flex items-center justify-between mb-8">
-                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
                         <span class="w-8 h-[1px] bg-slate-200"></span> Rentals & Services
                     </h2>
                     <span class="text-[10px] font-black text-brand uppercase bg-brand/10 px-2.5 py-1 rounded-full">
@@ -555,14 +546,14 @@
                         onclick='openInventoryShowcase({{ cat|tojson|safe }})'>
 
                         <div
-                            class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                            class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent z-10 pointer-events-none opacity-100 transition-opacity">
                         </div>
 
                         <div class="h-32 w-full bg-slate-100 relative overflow-hidden">
                             <img src="{{ cat_cover_image }}"
                                 class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                 alt="{{ cat }}">
-                            <div class="absolute inset-0 bg-black/10 transition-opacity group-hover:opacity-0"></div>
+                            <div class="absolute inset-0 bg-black/10 transition-opacity opacity-100"></div>
                         </div>
 
                         <div
@@ -582,7 +573,7 @@
                             </div>
 
                             <div
-                                class="mt-4 flex items-center justify-center gap-1.5 text-[9px] font-black text-brand uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
+                                class="mt-4 flex items-center justify-center gap-1.5 text-[9px] font-black text-brand uppercase tracking-wider opacity-100 transition-opacity">
                                 Explore Items <i class="fas fa-arrow-right text-[8px] mt-0.5 animate-bounce"></i>
                             </div>
                         </div>
@@ -593,8 +584,8 @@
             {% endif %}
             {% if packages %}
             <section class="card-premium p-6">
-                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                    <span class="w-8 h-[1px] bg-slate-200"></span> Featured Packages
+                <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
+                    <span class="w-8 h-[1px] bg-slate-200"></span> Packages
                 </h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {% for pkg in packages %}
@@ -646,8 +637,8 @@
             <!-- Gallery Section -->
             {% if public_portfolios %}
             <section class="card-premium p-6">
-                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                    <span class="w-8 h-[1px] bg-slate-200"></span> Visual Portfolio
+                <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
+                    <span class="w-8 h-[1px] bg-slate-200"></span> Gallery
                 </h2>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {% for item in public_portfolios %}
@@ -659,7 +650,7 @@
                         <div class="w-full h-full rounded-xl overflow-hidden relative">
                             <img src="{{ img_url }}" class="w-full h-full object-cover" alt="Gallery Photo">
                             <div
-                                class="absolute inset-0 bg-brand/35 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-[2px]">
+                                class="absolute inset-0 bg-brand/35 opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-[2px]">
                                 <i class="fas fa-search-plus text-white text-2xl animate-pulse"></i>
                             </div>
                         </div>
@@ -671,8 +662,8 @@
 
             <!-- Operational Policies & Intelligence -->
             <section class="card-premium p-6">
-                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                    <span class="w-8 h-[1px] bg-slate-200"></span> Governance & Terms
+                <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
+                    <span class="w-8 h-[1px] bg-slate-200"></span> Policies
                 </h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
@@ -705,8 +696,8 @@
 
             <!-- Business Map & Location -->
             <section class="card-premium p-6">
-                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                    <span class="w-8 h-[1px] bg-slate-200"></span> Verified Location
+                <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
+                    <span class="w-8 h-[1px] bg-slate-200"></span> Location
                 </h2>
                 <div id="map" class="rounded-2xl border border-slate-100" style="height: 300px;"
                      data-business-name="{{ caterer.business_name }}"
@@ -724,7 +715,7 @@
                             caterer.contact_address or caterer.city or 'Operational HQ' }}</span>
                     </div>
                     <button onclick="calcProfileDistance()" id="profileDistBtn"
-                        class="w-full sm:w-auto bg-brand text-white hover-highlight px-5 py-2.5 rounded-full text-xs uppercase font-black tracking-widest flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg whitespace-nowrap">
+                        class="w-full sm:w-auto bg-slate-800 text-white hover:bg-slate-900 px-5 py-2.5 rounded-full text-xs uppercase font-black tracking-widest flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg whitespace-nowrap">
                         <i class="fas fa-location-arrow animate-pulse"></i> <span id="profileDistText">Check
                             Distance</span>
                     </button>
@@ -733,8 +724,8 @@
 
             <!-- Reviews Section -->
             <section class="card-premium p-6">
-                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
-                    <span class="w-8 h-[1px] bg-slate-200"></span> Customer Feedback
+                <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
+                    <span class="w-8 h-[1px] bg-slate-200"></span> Reviews
                 </h2>
                 {% if caterer.reviews %}
                 <div class="space-y-8">
@@ -865,8 +856,8 @@
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeAuthChoice()"></div>
     <div
         class="relative bg-white w-full max-w-sm rounded-2xl shadow-xl p-6 animate-in zoom-in-95 duration-300 text-center">
-        <button class="absolute top-4 right-4 text-slate-400 hover:text-slate-600" onclick="closeAuthChoice()">
-            <i class="fas fa-times"></i>
+        <button class="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shadow-sm border border-slate-100" onclick="closeAuthChoice()">
+            <i class="fas fa-times text-sm"></i>
         </button>
 
         <h3 class="text-lg font-bold text-slate-800 mb-2">Sign In Required</h3>
@@ -885,11 +876,11 @@
 <!-- Package Details Modal -->
 <div id="public-pkg-modal" class="fixed inset-0 z-[2000] hidden items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePublicPkg()"></div>
-    <div class="relative bg-white w-full max-w-md rounded-2xl shadow-xl p-6 animate-in zoom-in-95 duration-300">
-        <button class="absolute top-4 right-4 text-slate-400 hover:text-slate-600" onclick="closePublicPkg()">
-            <i class="fas fa-times"></i>
+    <div class="relative bg-white w-full max-w-3xl max-h-[85vh] flex flex-col rounded-3xl shadow-2xl animate-in zoom-in-95 duration-300 border border-slate-100">
+        <button class="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shadow-sm border border-slate-100" onclick="closePublicPkg()">
+            <i class="fas fa-times text-sm"></i>
         </button>
-        <div id="public-pkg-content"></div>
+        <div id="public-pkg-content" class="p-8 overflow-y-auto"></div>
     </div>
 </div>
 
@@ -900,9 +891,7 @@
     <div
         class="relative bg-white w-full max-w-4xl rounded-3xl shadow-2xl p-8 animate-in zoom-in-95 slide-in-from-bottom-12 duration-500 max-h-[85vh] overflow-y-auto border border-slate-100">
 
-        <button
-            class="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shadow-sm"
-            onclick="closeCategoryShowcase()">
+        <button class="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shadow-sm border border-slate-100" onclick="closeCategoryShowcase()">
             <i class="fas fa-times text-sm"></i>
         </button>
 
@@ -935,8 +924,8 @@
 <div id="portfolio-gallery-modal" class="fixed inset-0 z-[2500] hidden items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md transition-all duration-300">
     <div class="absolute inset-0 bg-transparent" onclick="closePortfolioGallery()"></div>
     <div class="relative bg-white w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
-        <button class="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-slate-900/50 backdrop-blur text-white flex items-center justify-center hover:bg-slate-900 transition-colors shadow-sm" onclick="closePortfolioGallery()">
-            <i class="fas fa-times"></i>
+        <button class="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-slate-900/50 flex items-center justify-center text-white hover:bg-slate-900 transition-colors shadow-sm border border-slate-700" onclick="closePortfolioGallery()">
+            <i class="fas fa-times text-sm"></i>
         </button>
         <div class="flex flex-col md:flex-row h-full w-full">
             <!-- Left: Main Image Display -->
@@ -971,6 +960,7 @@
 </div>
 
 <script>
+    const catererScheduling = {{ (caterer.scheduling_rules or {})|tojson }};
     const publicPortfoliosData = {
         {% for item in public_portfolios %}
         "{{ item.id }}": {
@@ -998,7 +988,7 @@
             {% endif %}
             min_guests: {{ (pkg.min_guests or 0)|tojson }},
             max_guests: {{ (pkg.max_guests or 0)|tojson }},
-            duration: "{{ pkg.service_duration or 4 }} Hours",
+            duration: "{{ pkg.service_duration or 4 }} hrs",
             additional_guest_price: {{ (pkg.additional_guest_price or 0)|tojson }},
             overtime_fee: {{ (pkg.overtime_fee or 0)|tojson }},
             inclusions: {{ (pkg.inclusions)|tojson if pkg.inclusions else '[]' }},
@@ -1014,7 +1004,13 @@
     };
 
     const menuDishes = {
-        {% for cat in categories %}
+        {% set js_categories = [] %}
+        {% for item in active_menu %}
+        {% if item.category not in js_categories %}
+        {% set _ = js_categories.append(item.category) %}
+        {% endif %}
+        {% endfor %}
+        {% for cat in js_categories %}
         "{{ cat }}": [
             {% for item in active_menu if item.category == cat %}
             {
@@ -1023,6 +1019,11 @@
                 serving_size: {{ (item.serving_size if item.serving_size else 'Single')|tojson }},
                 price: {{ (item.price if item.price else 0)|tojson }},
                 pricing_type: "{{ item.pricing_type or 'fixed' }}",
+                status: {{ (item.status or 'available')|tojson }},
+                min_order_qty: {{ (item.min_order_qty or 1)|tojson }},
+                description: {{ item.description|default('', true)|tojson }},
+                dietary_tags: {{ item.dietary_tags|default([], true)|tojson }},
+                allergen_info: {{ item.allergen_info|default([], true)|tojson }},
                 weight_prices: [
                     {% for wp in item.weight_prices %}
                     { weight_label: {{ wp.weight_label|tojson }}, price: {{ wp.price|tojson }} }{{ ',' if not loop.last else '' }}
@@ -1031,6 +1032,11 @@
                 size_prices: [
                     {% for sp in item.size_prices %}
                     { size_name: {{ sp.size_name|tojson }}, price: {{ sp.price|tojson }}, capacity: {{ (sp.capacity or '')|tojson }} }{{ ',' if not loop.last else '' }}
+                    {% endfor %}
+                ],
+                variants: [
+                    {% for v in item.variants %}
+                    { variant_name: {{ v.variant_name|tojson }}, measurement: {{ (v.measurement or '')|tojson }}, price: {{ v.price|tojson }}, serving_capacity: {{ (v.serving_capacity or '')|tojson }}, status: {{ (v.status or 'available')|tojson }} }{{ ',' if not loop.last else '' }}
                     {% endfor %}
                 ]
             },
@@ -1056,9 +1062,14 @@
             {
                 name: {{ item.name|tojson }},
                 image_url: "{{ item.image_url if item.image_url else '' }}",
-                price: {{ (item.rental_price if item.rental_price is defined else item.selling_price)|tojson }},
+                price: {{ (item.rental_price if item.rental_price is defined else (item.selling_price if item.selling_price is defined else (item.display_price if item.display_price is defined else 0)))|tojson }},
                 unit_type: {{ (item.unit_type if item.unit_type else 'piece')|tojson }},
-                type: "{{ 'Equipment' if item.rental_price is defined else 'Service' }}"
+                type: "{{ 'Equipment' if item.rental_price is defined else 'Service' }}",
+                status: {{ (item.status or 'available')|tojson }},
+                description: {{ item.description|default('', true)|tojson }},
+                display_qty: {{ (item.available_qty if item.available_qty is defined else (item.max_available if item.max_available is defined else 0))|tojson }},
+                deposit_pct: {{ (item.security_deposit_pct if item.security_deposit_pct is defined else 0)|tojson }},
+                min_hours: {{ (item.minimum_hours if item.minimum_hours is defined else (item.base_duration_hours if item.base_duration_hours is defined else 0))|tojson }}
             },
             {% endif %}
             {% endfor %}
@@ -1089,7 +1100,7 @@
         } else {
             grid.innerHTML = items.map(item => `
                 <div class="group border border-slate-100 rounded-2xl p-4 flex flex-col gap-3 transition-all hover:border-brand/30 hover:shadow-lg bg-slate-50/20 hover:bg-white overflow-hidden text-center">
-                    <div class="relative overflow-hidden rounded-xl h-44 bg-slate-100 shadow-sm border border-slate-100/50">
+                    <div class="relative overflow-hidden rounded-xl h-32 bg-slate-100 shadow-sm border border-slate-100/50">
                         ${item.image_url ?
                     `<img src="${item.image_url}" onerror="this.src='https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400&auto=format&fit=crop'" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="${item.name}">` :
                     `<div class="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-300">
@@ -1097,12 +1108,23 @@
                                 <span class="text-[9px] font-bold uppercase tracking-widest">No Image</span>
                             </div>`
                 }
-                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-100 transition-opacity"></div>
                     </div>
                     <div class="px-1 flex flex-col gap-1.5 items-center w-full">
                         <div class="text-xs font-black text-slate-800 uppercase tracking-wider line-clamp-1">${item.name}</div>
-                        <div class="text-brand font-black text-sm bg-brand/5 px-3 py-1 rounded-full border border-brand/10">₱${parseFloat(item.price).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} <span class="text-[9px] text-slate-400 font-bold">/${item.unit_type}</span></div>
-                        <button onclick="promptBookingAuth()" class="mt-2 w-full text-[10px] font-bold text-white bg-brand rounded-full py-1.5 transition hover:bg-brand/90 shadow-sm uppercase tracking-widest"><i class="fas ${item.type === 'Equipment' ? 'fa-box' : 'fa-calendar-check'}"></i> ${item.type === 'Equipment' ? 'Rent' : 'Book'}</button>
+                        ${item.description ? `<p class="text-[9px] text-slate-500 line-clamp-2 leading-snug px-1 mb-1">${item.description}</p>` : ''}
+                        
+                        <div class="flex flex-wrap justify-center gap-1 mb-1">
+                            ${(item.type === 'Equipment' && item.display_qty) ? `<span class="text-[8px] font-bold px-2 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-sm">📦 ${item.display_qty} In Stock</span>` : ''}
+                            ${item.min_hours ? `<span class="text-[8px] font-bold px-2 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-sm">⏱️ Min ${item.min_hours}h</span>` : ''}
+                            ${item.deposit_pct ? `<span class="text-[8px] font-bold px-2 py-0.5 bg-orange-50 text-orange-600 border border-orange-100 rounded-sm">🔒 ${item.deposit_pct}% Dep</span>` : ''}
+                            <span class="text-[8px] font-bold px-2 py-0.5 ${item.status === 'available' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'} border rounded-sm">${(item.status || 'available').toUpperCase()}</span>
+                            ${(item.type === 'Equipment' && catererScheduling && catererScheduling.equipment_rules) ? `<span class="text-[8px] font-bold px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-sm">Max: ${catererScheduling.equipment_rules.max_rental_hours || 24}h</span>` : ''}
+                            ${(item.type === 'Service' && catererScheduling && catererScheduling.service_rules) ? `<span class="text-[8px] font-bold px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-sm">Max: ${catererScheduling.service_rules.max_duration_hours || 8}h</span>` : ''}
+                        </div>
+
+                        <div class="text-primary font-black text-sm bg-primary/5 px-3 py-1 rounded-full border border-primary/10 mt-auto">₱${parseFloat(item.price).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} <span class="text-[9px] text-slate-400 font-bold">/${item.unit_type}</span></div>
+                        <button onclick="promptBookingAuth()" class="mt-2 w-full text-[10px] font-bold text-white bg-primary rounded-full py-1.5 transition hover:bg-primary/90 shadow-sm uppercase tracking-widest"><i class="fas ${item.type === 'Equipment' ? 'fa-box' : 'fa-calendar-check'}"></i> ${item.type === 'Equipment' ? 'Rent' : 'Book'}</button>
                     </div>
                 </div>
             `).join('');
@@ -1173,9 +1195,19 @@
                 </div>
             `;
         } else {
-            grid.innerHTML = dishes.map(item => `
+            grid.innerHTML = dishes.map(item => {
+                let initialCap = item.serving_size === 'Single' ? '1 Pax' : (String(item.serving_size).toLowerCase().includes('pax') ? item.serving_size : item.serving_size + ' Pax');
+                if (item.variants && item.variants.length > 0) {
+                    let vc = item.variants[0].serving_capacity;
+                    if (vc) initialCap = String(vc).toLowerCase().includes('pax') ? vc : vc + ' Pax';
+                } else if (item.size_prices && item.size_prices.length > 0) {
+                    let sc = item.size_prices[0].capacity;
+                    if (sc) initialCap = String(sc).toLowerCase().includes('pax') ? sc : sc + ' Pax';
+                }
+                
+                return `
                 <div class="group border border-slate-100 rounded-2xl p-4 flex flex-col gap-3 transition-all hover:border-brand/30 hover:shadow-lg bg-slate-50/20 hover:bg-white overflow-hidden text-center">
-                    <div class="relative overflow-hidden rounded-xl h-44 bg-slate-100 shadow-sm border border-slate-100/50">
+                    <div class="relative overflow-hidden rounded-xl h-32 bg-slate-100 shadow-sm border border-slate-100/50">
                         ${item.image_url ?
                     `<img src="${item.image_url}" onerror="this.src='https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400&auto=format&fit=crop'" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="${item.name}">` :
                     `<div class="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-300">
@@ -1183,25 +1215,33 @@
                                 <span class="text-[9px] font-bold uppercase tracking-widest">No Image</span>
                             </div>`
                 }
-                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <div class="absolute top-3 right-3">
-                            <span class="bg-white/90 backdrop-blur px-2.5 py-1 rounded-full text-[9px] font-black text-brand uppercase tracking-wider shadow-sm">
-                                <i class="fas fa-users"></i> ${item.serving_size}
-                            </span>
-                        </div>
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-100 transition-opacity"></div>
                     </div>
                     <div class="px-1 flex flex-col gap-1.5 items-center w-full">
                         <div class="text-xs font-black text-slate-800 uppercase tracking-wider line-clamp-1">${item.name}</div>
-                        ${(item.pricing_type === 'weight_based' && item.weight_prices && item.weight_prices.length > 0)
-                    ? '<div class="flex flex-col gap-1 w-full items-center">' + item.weight_prices.map(wp => `<div class="text-brand font-bold text-[11px]">₱${parseFloat(wp.price).toLocaleString()} <span class="text-[9px] text-slate-400">/${wp.weight_label}</span></div>`).join('') + '</div>'
-                    : (item.pricing_type === 'size_based' && item.size_prices && item.size_prices.length > 0)
-                        ? '<div class="flex flex-col gap-1 w-full items-center">' + item.size_prices.map(sp => `<div class="text-brand font-bold text-[11px]">₱${parseFloat(sp.price).toLocaleString()} <span class="text-[9px] text-slate-400">/${sp.size_name}</span></div>`).join('') + '</div>'
-                        : `<div class="text-brand font-black text-sm bg-brand/5 px-3 py-1 rounded-full border border-brand/10">₱${parseFloat(item.price).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>`
+                        ${item.description ? `<p class="text-[9px] text-slate-500 line-clamp-2 leading-snug px-1 mb-1">${item.description}</p>` : ''}
+                        
+                        <div class="flex flex-wrap justify-center gap-1 mb-1">
+                            ${(item.dietary_tags || []).map(tag => `<span class="text-[8px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-sm">${tag}</span>`).join('')}
+                            ${(item.allergen_info || []).map(allergen => `<span class="text-[8px] font-bold px-2 py-0.5 bg-red-50 text-red-600 border border-red-100 rounded-sm">⚠️ ${allergen}</span>`).join('')}
+                            <span class="text-[8px] font-bold px-2 py-0.5 ${item.status === 'available' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'} border rounded-sm">${(item.status || 'available').toUpperCase()}</span>
+                            ${item.min_order_qty > 1 ? `<span class="text-[8px] font-bold px-2 py-0.5 bg-amber-50 text-amber-600 border border-amber-100 rounded-sm">Min Qty: ${item.min_order_qty}</span>` : ''}
+                            ${(catererScheduling && catererScheduling.food_rules && catererScheduling.food_rules.lead_time_hours) ? `<span class="text-[8px] font-bold px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-sm">Lead: ${catererScheduling.food_rules.lead_time_hours}h</span>` : ''}
+                        </div>
+
+                        ${(item.variants && item.variants.length > 0)
+                    ? `<select onchange="const b = document.getElementById('badge-${item.id}'); if(b) b.innerHTML = '<i class=\'fas fa-users\'></i> ' + this.options[this.selectedIndex].getAttribute('data-capacity');" class="mt-auto text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 outline-none w-full text-center">` + item.variants.map(v => { let cap = v.serving_capacity ? (String(v.serving_capacity).toLowerCase().includes('pax') ? v.serving_capacity : v.serving_capacity + ' Pax') : initialCap; return `<option value="${v.price}" data-capacity="${cap}" ${v.status !== 'available' ? 'disabled' : ''}>${v.status !== 'available' ? '[UNAVAILABLE] ' : ''}₱${parseFloat(v.price).toLocaleString()} - ${v.variant_name} ${v.measurement ? '('+v.measurement+')' : ''} ${v.serving_capacity ? ' | Good for '+v.serving_capacity : ''}</option>`; }).join('') + `</select>`
+                    : (item.pricing_type === 'weight_based' && item.weight_prices && item.weight_prices.length > 0)
+                        ? `<select onchange="const b = document.getElementById('badge-${item.id}'); if(b) b.innerHTML = '<i class=\'fas fa-users\'></i> ' + this.options[this.selectedIndex].getAttribute('data-capacity');" class="mt-auto text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 outline-none w-full text-center">` + item.weight_prices.map(wp => `<option value="${wp.price}" data-capacity="${initialCap}">₱${parseFloat(wp.price).toLocaleString()} / ${wp.weight_label}</option>`).join('') + `</select>`
+                        : (item.pricing_type === 'size_based' && item.size_prices && item.size_prices.length > 0)
+                            ? `<select onchange="const b = document.getElementById('badge-${item.id}'); if(b) b.innerHTML = '<i class=\'fas fa-users\'></i> ' + this.options[this.selectedIndex].getAttribute('data-capacity');" class="mt-auto text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 outline-none w-full text-center">` + item.size_prices.map(sp => { let cap = sp.capacity ? (String(sp.capacity).toLowerCase().includes('pax') ? sp.capacity : sp.capacity + ' Pax') : initialCap; return `<option value="${sp.price}" data-capacity="${cap}">₱${parseFloat(sp.price).toLocaleString()} / ${sp.size_name} ${sp.capacity ? '(Good for '+sp.capacity+')' : ''}</option>`; }).join('') + `</select>`
+                            : (item.price > 0 ? `<div class="text-primary font-black text-sm bg-primary/5 px-3 py-1 rounded-full border border-primary/10 mt-auto">₱${parseFloat(item.price).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>` : `<div class="text-slate-500 font-bold text-[10px] bg-slate-100 px-3 py-1 rounded-full mt-auto border border-slate-200">Price Varies / TBD</div>`)
                 }
-                        <button onclick="promptBookingAuth()" class="mt-2 w-full text-[10px] font-bold text-white bg-brand rounded-full py-1.5 transition hover:bg-brand/90 shadow-sm uppercase tracking-widest"><i class="fas ${categoryName === 'Rentals' ? 'fa-box' : (categoryName === 'Services' ? 'fa-calendar-check' : 'fa-cart-plus')}"></i> ${categoryName === 'Rentals' ? 'Rent' : (categoryName === 'Services' ? 'Book' : 'Order')}</button>
+                        <button onclick="promptBookingAuth()" class="mt-2 w-full text-[10px] font-bold text-white bg-primary rounded-full py-1.5 transition hover:bg-primary/90 shadow-sm uppercase tracking-widest"><i class="fas ${categoryName === 'Rentals' ? 'fa-box' : (categoryName === 'Services' ? 'fa-calendar-check' : 'fa-cart-plus')}"></i> ${categoryName === 'Rentals' ? 'Rent' : (categoryName === 'Services' ? 'Book' : 'Order')}</button>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         // Show Modal
@@ -1334,7 +1374,7 @@
             ${serviceHtml}
             ${incHtml}
             ${dishHtml}
-            <button onclick="promptBookingAuth()" class="w-full py-3 bg-brand text-white hover:bg-brand/90 rounded-2xl text-xs font-bold transition-all shadow-sm" style="margin-top:0.5rem;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <button onclick="promptBookingAuth()" class="w-full py-3 bg-slate-900 text-white hover:bg-slate-800 rounded-2xl text-xs font-bold transition-all shadow-sm" style="margin-top:0.5rem;display:flex;align-items:center;justify-content:center;gap:8px;">
                 <i class="fas fa-calendar-check"></i> Book this Package
             </button>
         `;
@@ -1470,8 +1510,8 @@
 
             const distStr = d.toFixed(1) + ' km away';
             btnText.innerHTML = distStr;
-            btn.classList.add('bg-brand');
-            btn.classList.remove('bg-secondary');
+            btn.classList.add('bg-slate-900');
+            btn.classList.remove('bg-slate-800');
 
             if (window.updateMapDistance) window.updateMapDistance(distStr);
         }, function (error) {
@@ -1483,7 +1523,7 @@
     }
     }
 
-    // Initialize Google Maps for Verified Location
+    // Initialize Google Maps for Location
     document.addEventListener('DOMContentLoaded', function () {
         const businessName = {{ caterer.business_name | tojson }};
         const savedAddress = {{ (caterer.address_details or caterer.contact_address or '') | tojson }};

@@ -1,0 +1,124 @@
+{% extends "landing_base.html" %}
+
+{% block title %}{{ category }} - {{ caterer.business_name }} - OccaServe{% endblock %}
+
+{% block head %}
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        corePlugins: { preflight: false },
+        theme: {
+            extend: {
+                colors: {
+                    primary: '{{ caterer.primary_color if caterer.primary_color else "var(--primary-color)" }}',
+                    secondary: '{{ caterer.secondary_color if caterer.secondary_color else "#334155" }}',
+                    accent: '{{ caterer.accent_color if caterer.accent_color else "var(--primary-color)" }}',
+                    highlight: '{{ caterer.highlight_color if caterer.highlight_color else "#fdba74" }}'
+                },
+                borderRadius: {
+                    'xl': '{{ caterer.border_radius if caterer.border_radius else 16 }}px',
+                    '2xl': '{{ (caterer.border_radius if caterer.border_radius else 16) * 1.5 }}px',
+                }
+            }
+        }
+    }
+</script>
+<link href="https://fonts.googleapis.com/css2?family={{ (caterer.font_family if caterer.font_family else 'Poppins')|replace(' ', '+') }}:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    .container { max-width: 1280px !important; margin: auto !important; padding: 0 1.5rem !important; }
+    body { font-family: '{{ caterer.font_family if caterer.font_family else "Poppins" }}', sans-serif; background: #f8fafc; color: #334155; }
+    .btn-primary { background: var(--brand-primary); color: white; }
+    .text-brand { color: var(--brand-primary); }
+    :root {
+        --brand-primary: {{ caterer.primary_color if caterer.primary_color else "var(--primary-color)" }};
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-8 mt-[20px]">
+    
+    <div class="flex items-center gap-2 text-sm font-semibold text-slate-500 mb-8 flex-wrap">
+        <a href="/caterers" class="hover:text-brand transition-colors">Find Caterers</a>
+        <i class="fas fa-chevron-right text-[10px]"></i>
+        <a href="/caterers/{{ caterer.slug or caterer.id }}" class="hover:text-brand transition-colors">{{ caterer.business_name }}</a>
+        <i class="fas fa-chevron-right text-[10px]"></i>
+        <span class="text-slate-400 capitalize">{{ catalog_type }}</span>
+        <i class="fas fa-chevron-right text-[10px]"></i>
+        <span class="text-slate-800 font-bold">{{ category }}</span>
+    </div>
+
+    <div class="bg-white rounded-3xl p-8 mb-8 border border-slate-200 shadow-sm">
+        <h1 class="text-4xl font-black text-slate-900 mb-2">{{ category }}</h1>
+        <p class="text-slate-500 font-medium">Browse all {{ items|length }} {{ category|lower }} options currently offered by {{ caterer.business_name }}.</p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {% for item in items %}
+        <a href="/caterers/{{ caterer.slug or caterer.id }}/item/{{ catalog_type }}/{{ item.id }}" class="bg-white rounded-2xl overflow-hidden border border-slate-200 hover:shadow-xl hover:border-brand/30 transition-all duration-300 flex flex-col group cursor-pointer" style="text-decoration: none; color: inherit;">
+            
+            {% set img = item.image_url if item.image_url else 'https://ui-avatars.com/api/?name=' ~ (item.name|urlencode) ~ '&background=f1f5f9&color=FF7B54&size=400' %}
+            <div class="h-48 w-full bg-slate-100 relative overflow-hidden flex-shrink-0">
+                <img src="{{ img }}" alt="{{ item.name }}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+            </div>
+            
+            <div class="p-5 flex flex-col flex-1">
+                <h3 class="text-base font-black text-slate-800 mb-2 line-clamp-2 leading-tight">{{ item.name }}</h3>
+                
+                <div class="flex flex-wrap gap-1.5 mb-3">
+                    {% if catalog_type == 'menu' %}
+                        {% if item.serving_size %}
+                        <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[10px] font-bold"><i class="fas fa-utensils mr-1"></i>{{ item.serving_size }}</span>
+                        {% endif %}
+                    {% else %}
+                        {% if item.display_qty > 0 %}
+                        <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold">📦 {{ item.display_qty }} stock</span>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                
+                <p class="text-xs text-slate-500 line-clamp-2 mb-4 flex-1">{{ item.description }}</p>
+                
+                <div class="flex items-center justify-between mt-auto pt-4 border-t border-slate-100">
+                    <div class="text-brand font-black text-lg">
+                        {% if catalog_type == 'menu' %}
+                            {% if item.pricing_type == 'weight_based' or item.pricing_type == 'size_based' %}
+                                <span class="text-[10px] text-slate-400">From</span> 
+                                {% set min_price = 999999 %}
+                                {% if item.pricing_type == 'weight_based' and item.weight_prices %}
+                                    {% for wp in item.weight_prices %}
+                                        {% if wp.price < min_price %}{% set min_price = wp.price %}{% endif %}
+                                    {% endfor %}
+                                {% elif item.pricing_type == 'size_based' and item.size_prices %}
+                                    {% for sp in item.size_prices %}
+                                        {% if sp.price < min_price %}{% set min_price = sp.price %}{% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                                {% if min_price != 999999 %}
+                                    ₱{{ "{:,.2f}".format(min_price) }}
+                                {% else %}
+                                    See Options
+                                {% endif %}
+                            {% else %}
+                                {% if item.price and item.price > 0 %}
+                                    ₱{{ "{:,.2f}".format(item.price) }}<span class="text-[10px] text-slate-400 ml-1 font-semibold">/{{ item.pricing_unit or 'serving' }}</span>
+                                {% else %}
+                                    <span class="text-xs text-slate-400">Included in Package</span>
+                                {% endif %}
+                            {% endif %}
+                        {% else %}
+                            {% if item.display_price and item.display_price > 0 %}
+                                ₱{{ "{:,.2f}".format(item.display_price) }}<span class="text-[10px] text-slate-400 ml-1 font-semibold">/{{ item.unit_type or 'unit' }}</span>
+                            {% else %}
+                                <span class="text-xs text-slate-400">Contact for Price</span>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

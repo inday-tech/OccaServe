@@ -1118,12 +1118,25 @@ async def caterer_detail(
     # Filter active data only
     active_packages = [p for p in caterer.packages if p.is_active]
     # Filter menu items (exclude rentals/services)
-    active_menu = [m for m in caterer.menu_items if not m.is_archived and not m.is_hidden and m.status == 'available' and m.usage_type in ['order_only', 'both'] and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']]
+    active_menu = [m for m in caterer.menu_items if not m.is_archived and not m.is_hidden and m.status == 'available' and m.usage_type in ['order_only', 'both'] and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
+        and getattr(m, 'usage_type', '') != 'package_only'
+    ]
     
     # Filter Services & Equipment that are standalone/both
     active_services = [s for s in caterer.service_items if not s.is_archived and not s.is_hidden and s.status == 'available' and s.usage_type in ['order_only', 'both']]
     active_equipment = [e for e in caterer.equipment_items if not e.is_archived and not e.is_hidden and e.status == 'available' and e.usage_type in ['order_only', 'both']]
     active_inventory = active_services + active_equipment
+
+    for item in active_inventory:
+        item.display_price = getattr(item, 'rental_price', getattr(item, 'selling_price', 0))
+        item.display_type = 'Equipment' if hasattr(item, 'equipment_type') else 'Service'
+        item.display_qty = getattr(item, 'available_qty', getattr(item, 'max_available', 1))
+        item.deposit_pct = getattr(item, 'security_deposit_pct', 0)
+        item.needs_kyc = getattr(item, 'requires_kyc', False)
+        item.min_hours = getattr(item, 'minimum_hours', getattr(item, 'base_duration_hours', None))
+
+    # Force DB Refresh to prevent stale data
+    db.refresh(caterer)
 
     # Check for previous relationship
     has_previous_bookings = db.query(models.Booking).filter(
@@ -1149,7 +1162,7 @@ async def caterer_detail(
     # Extract public portfolios
     public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public']
 
-    return templates.TemplateResponse("customer/caterer_profile_view.html", {
+    response = templates.TemplateResponse("customer/caterer_profile_view.html", {
         "request": request, 
         "caterer": caterer,
         "packages": active_packages,
@@ -1165,6 +1178,10 @@ async def caterer_detail(
         "active_page": "marketplace",
         "nav_page": "caterers"
     })
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
 
 @router.post("/profile/update")
 async def update_profile(

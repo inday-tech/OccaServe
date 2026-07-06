@@ -29,7 +29,7 @@ def generate_caterer_reminders(user_id: int, db: Session):
         title = None
         message = None
         n_type = "info"
-        link = f"/caterer/bookings/{booking.id}"
+        link = f"/caterer/bookings?focus={booking.id}"
         
         if days_until == 7:
             title = "Upcoming Event Next Week"

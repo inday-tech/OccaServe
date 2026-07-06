@@ -75,9 +75,9 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
         if not m.is_archived
         and not m.is_hidden
         and m.status == 'available'
-        and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental',
-                                'Entertainment', 'Event Coordination', 'Food Cart',
-                                'Equipment Rental', 'Staffing Services', 'Packages']
+        and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
+        and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
+        and getattr(m, 'usage_type', '') != 'package_only'
     ]
     active_services = [
         s for s in getattr(caterer, 'service_items', [])
@@ -148,7 +148,9 @@ def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(datab
             raise HTTPException(status_code=404, detail="Caterer not found")
 
     active_packages = [p for p in caterer.packages if p.is_active and p.status == 'active']
-    active_menu = [m for m in caterer.menu_items if not m.is_archived and not m.is_hidden and m.status == 'available' and m.usage_type in ['order_only', 'both'] and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']]
+    active_menu = [m for m in caterer.menu_items if not m.is_archived and not m.is_hidden and m.status == 'available' and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
+        and getattr(m, 'usage_type', '') != 'package_only'
+    ]
     active_services = [s for s in getattr(caterer, 'service_items', []) if not s.is_archived and not s.is_hidden and s.status == 'available' and s.usage_type in ['order_only', 'both']]
     active_equipment = [e for e in getattr(caterer, 'equipment_items', []) if not e.is_archived and not e.is_hidden and e.status == 'available' and e.usage_type in ['order_only', 'both']]
     active_inventory = active_services + active_equipment

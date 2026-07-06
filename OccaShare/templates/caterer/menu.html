@@ -1,7 +1,7 @@
 {% set active_page = 'menu' %}
 {% extends "caterer/layout.html" %}
 
-{% block title %}Menu Library - OccaShare Caterer{% endblock %}
+{% block title %}Menu Library - OccaServe Caterer{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v={{ range(1, 10000) | random }}">
@@ -68,6 +68,7 @@
                         data-category="{{ item.category }}"
                         data-description="{{ item.description or '' }}"
                         data-price="{{ item.price or '' }}"
+                        data-min-order-qty="{{ item.min_order_qty or 1 }}"
                         data-serving-size="{{ item.serving_size or '' }}"
                         data-usage-type="{{ item.usage_type or 'both' }}"
                         data-pricing-mode="{{ item.pricing_type or 'single' }}"
@@ -280,6 +281,12 @@
                                 <input type="text" name="serving_size" id="fixed_capacity_input" class="control-pro" placeholder="e.g. 20-25 Pax, 1 Box">
                             </div>
                         </div>
+                        <div class="form-row-pro" style="margin-top: 1rem;">
+                            <div class="form-group-pro">
+                                <label>Minimum Order Qty</label>
+                                <input type="number" name="min_order_qty" id="min_order_qty_input" class="control-pro" min="1" value="1">
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Variants Inputs -->
@@ -471,6 +478,7 @@
                 price: el.dataset.price,
                 serving_size: el.dataset.servingSize,
                 status: el.dataset.status,
+                min_order_qty: el.dataset.minOrderQty,
                 image_url: el.dataset.imageUrl,
                 usage_type: el.dataset.usageType || 'both',
                 pricing_mode: el.dataset.pricingMode || 'single',
@@ -510,6 +518,7 @@
             // Set Price Fields
             document.getElementById('fixed_price_input').value = item.price || '';
             document.getElementById('fixed_capacity_input').value = item.serving_size || '';
+            document.getElementById('min_order_qty_input').value = item.min_order_qty || 1;
 
             // Load Variants
             document.getElementById('variantsTableBody').innerHTML = '';

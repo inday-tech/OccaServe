@@ -1,37 +1,79 @@
 /* ========================================================================
-   GLOBAL RESPONSIVE ARCHITECTURE v5.0 — Universal Dashboard System
+   GLOBAL RESPONSIVE ARCHITECTURE v6.0 — Universal Dashboard System
    Covers: Admin, Caterer, Customer dashboards + Auth + Landing
-   Breakpoints: 1024px (Tablet), 768px (Mobile), 480px (Small Phone)
+   Breakpoints: 
+   1440px+ Large Desktop
+   1280px  Desktop
+   1024px  Laptop
+   768px   Tablet
+   480px   Large Mobile
+   390px   Large Phones
+   375px   Standard iPhone
+   360px   Standard Android
+   320px   Small Mobile
    ======================================================================== */
 
+/* --- UNIVERSAL RULES --- */
+html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Base Body Text (Readability rule) */
+body {
+    font-size: 16px;
+}
+
+/* Base Inputs & Touch Targets */
+input, select, textarea, button, .btn-primary, .btn-secondary, .btn-outline, .btn-white {
+    min-height: 44px; /* Minimum tap target */
+    font-size: 16px; /* Prevent iOS zoom */
+}
+button {
+    cursor: pointer;
+}
+
 /* ===========================================
-   TABLET (max-width: 1024px)
+   DESKTOP (min-width: 1025px)
    =========================================== */
-@media (max-width: 1024px) {
+@media (min-width: 1025px) {
+    .container, .hub-container, .admin-container {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 0 32px;
+    }
+    
+    h1, .page-title, .hero-content h1 { font-size: 40px !important; }
+    h2, .section-title { font-size: 24px !important; }
+    
+    .btn-primary, .btn-secondary, .btn-outline, .btn-white, button {
+        height: 48px;
+    }
+}
 
-    /* --- Containers & Spacing --- */
-    .container { padding: 0 1.5rem; }
-
-    /* --- Grids: Collapse to 2 columns --- */
-    .caterers-grid,
-    .categories-grid,
-    .testimonials-grid,
-    .footer-grid,
-    .dashboard-grid { gap: 1.5rem; }
-
-    /* --- Dashboard Stats Grids --- */
-    .stats-grid,
-    .stats-grid-standard,
-    .stats-grid-dashboard,
-    .reviews-stats-grid,
-    .reports-stats-grid,
-    .pay-stats-grid,
-    .kpi-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 1rem !important;
+/* ===========================================
+   TABLET (max-width: 1024px, min-width: 769px)
+   =========================================== */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .container, .hub-container, .admin-container { 
+        padding: 0 24px !important; 
+        max-width: 100%;
     }
 
-    /* --- Inline Style Grid Override (2-col → 2-col stays) --- */
+    /* Grids: Collapse to 2 columns */
+    .caterers-grid, .categories-grid, .testimonials-grid, .footer-grid, .dashboard-grid { gap: 16px; }
+
+    .stats-grid, .stats-grid-standard, .stats-grid-dashboard, 
+    .reviews-stats-grid, .reports-stats-grid, .pay-stats-grid, .kpi-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 16px !important;
+    }
+
     div[style*="grid-template-columns: repeat(3"],
     div[style*="grid-template-columns: repeat(4"],
     div[style*="grid-template-columns: 1fr 1fr 1fr"],
@@ -39,40 +81,26 @@
         grid-template-columns: repeat(2, 1fr) !important;
     }
 
-    /* --- Settings/Detail 2-panel layouts → stack --- */
-    .terminal-container,
-    .intelligence-hub,
-    .onboard-grid {
+    /* Stack panels */
+    .terminal-container, .intelligence-hub, .onboard-grid {
         grid-template-columns: 1fr !important;
     }
 
-    /* --- Tables: Horizontal Scroll --- */
-    .table-container,
-    .table-responsive,
-    .elite-table-wrap,
-    .management-terminal-elite {
+    /* Typography */
+    h1, .page-title, .hero-content h1 { font-size: 34px !important; }
+    h2, .section-title { font-size: 22px !important; }
+
+    .btn-primary, .btn-secondary, .btn-outline, .btn-white, button {
+        height: 52px;
+    }
+
+    /* Tables: Horizontal Scroll */
+    .table-container, .table-responsive, .elite-table-wrap, .management-terminal-elite {
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch !important;
     }
-
-    /* --- Page Content Padding --- */
-    .admin-page-content,
-    .caterer-page-content,
-    .customer-page-content {
-        padding-left: 1.25rem !important;
-        padding-right: 1.25rem !important;
-        padding-bottom: 1.25rem !important;
-    }
-
-    /* --- Charts: Ensure responsive --- */
-    .chart-container,
-    .chart-wrapper,
-    canvas {
-        max-width: 100% !important;
-    }
-
-    /* --- Landing Page --- */
-    .hero-content h1 { font-size: 3.5rem !important; }
+    
+    .modal-content, .admin-modal-card { width: 90% !important; max-width: 90% !important; }
 }
 
 /* ===========================================
@@ -80,219 +108,113 @@
    =========================================== */
 @media (max-width: 768px) {
 
-    /* --- Containers --- */
-    .container { padding: 0 1rem; }
-
-    /* --- ALL Grids → Single Column --- */
-    .stats-grid,
-    .stats-grid-standard,
-    .stats-grid-dashboard,
-    .reviews-stats-grid,
-    .reports-stats-grid,
-    .pay-stats-grid,
-    .kpi-grid,
-    .dashboard-grid,
-    .caterers-grid,
-    .categories-grid,
-    .testimonials-grid,
-    .footer-grid {
-        grid-template-columns: 1fr !important;
-        gap: 0.75rem !important;
+    .container, .hub-container, .admin-container { 
+        padding: 0 16px !important; 
     }
 
-    /* --- Override ALL inline grid styles to single column --- */
-    div[style*="grid-template-columns: 1fr 1fr"],
-    div[style*="grid-template-columns: repeat(2"],
-    div[style*="grid-template-columns: repeat(3"],
-    div[style*="grid-template-columns: repeat(4"],
-    div[style*="grid-template-columns: 1.2fr 1fr"],
-    div[style*="grid-template-columns: 1fr 0.4fr 1fr"],
-    div[style*="grid-template-columns: 300px 1fr"],
-    div[style*="grid-template-columns: 160px 1fr"],
-    div[style*="grid-template-columns: 1fr 380px"] {
-        grid-template-columns: 1fr !important;
-    }
-
-    /* --- Form Rows → Stack --- */
-    .form-row,
-    .auth-grid,
-    .intel-grid,
-    .onboard-grid {
-        grid-template-columns: 1fr !important;
+    /* --- ALL Grids -> Single Column --- */
+    .stats-grid, .stats-grid-standard, .stats-grid-dashboard, .reviews-stats-grid, 
+    .reports-stats-grid, .pay-stats-grid, .kpi-grid, .dashboard-grid, .caterers-grid, 
+    .categories-grid, .testimonials-grid, .footer-grid,
+    .top-layout, .profile-layout, .booking-detail-grid, .profile-grid, .caterer-results-grid {
         display: flex !important;
         flex-direction: column !important;
-        gap: 1rem !important;
+        gap: 16px !important;
     }
 
-    /* --- Cards: Full Width --- */
-    .card,
-    .section-card,
-    .auth-card,
-    .contact-form-container,
-    .booking-card,
-    .stat-card,
-    .stat-card-premium,
-    .report-stat-card,
-    .pay-stat-card,
-    .ctp-stat-card {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
+    /* --- Form Rows -> Stack --- */
+    .form-row, .form-row-pro, .auth-grid, .intel-grid, .onboard-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 16px !important;
+    }
+    
+    /* Override ALL inline grid styles */
+    div[style*="grid-template-columns"] {
+        display: flex !important;
+        flex-direction: column !important;
     }
 
     /* --- Typography --- */
-    .auth-card h1,
-    .dashboard-wrapper h1,
-    .admin-page-content h1,
-    .caterer-page-content h1,
-    .customer-page-content h1 {
-        font-size: 1.5rem !important;
-        line-height: 1.2 !important;
+    h1, .page-title, .hero-content h1 { font-size: 28px !important; line-height: 1.2 !important; }
+    h2, .section-title { font-size: 20px !important; line-height: 1.3 !important; }
+    h3 { font-size: 18px !important; }
+
+    /* --- Buttons --- */
+    .btn-primary, .btn-secondary, .btn-outline, .btn-white, .btn-lg, .btn-action-primary, .btn-clean, button[type="submit"] {
+        width: 100% !important;
+        justify-content: center !important;
+        text-align: center !important;
+        height: 56px !important;
+        min-height: 56px !important;
     }
 
-    .auth-card h2,
-    .dashboard-wrapper h2,
-    .admin-page-content h2,
-    .caterer-page-content h2,
-    .customer-page-content h2 {
-        font-size: 1.25rem !important;
-        line-height: 1.3 !important;
+    /* --- Sticky Sidebars Disabled --- */
+    .right-col, .sticky-sidebar, .sidebar-card-sticky {
+        position: static !important;
+        top: auto !important;
     }
 
-    h3 { font-size: 1.1rem !important; }
-
-    /* --- Buttons: Full Width + Touch-Friendly --- */
-    .btn-primary,
-    .btn-secondary,
-    .btn-outline,
-    .btn-white,
-    .btn-lg,
-    .btn-action-primary,
-    .btn-clean,
-    button[type="submit"] {
-        width: 100%;
-        justify-content: center;
-        text-align: center;
-        min-height: 44px; /* Touch-friendly tap target */
+    /* --- Cards --- */
+    .card, .section-card, .auth-card, .contact-form-container, .booking-card, 
+    .stat-card, .stat-card-premium, .report-stat-card, .pay-stat-card, .ctp-stat-card,
+    .caterer-card, .category-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
     }
 
-    /* --- Tables: Must Scroll Horizontally --- */
-    .table-container,
-    .table-responsive,
-    .elite-table-wrap,
-    .management-terminal-elite,
-    table {
+    /* Images */
+    .main-image, .caterer-card img, .category-card img, .product-image {
+        width: 100% !important;
+        height: auto !important;
+        object-fit: cover !important;
+    }
+
+    /* --- Tables: Turn rows into cards OR allow scroll --- */
+    .table-container, .table-responsive, .elite-table-wrap, .management-terminal-elite, table {
         display: block !important;
         width: 100% !important;
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch !important;
     }
     
-    .elite-table th,
-    .elite-table td {
-        padding: 0.75rem 1rem !important;
-        font-size: 0.8rem !important;
-        white-space: nowrap;
+    /* Modals */
+    .modal-content, .admin-modal-card, .sweet-alert, .swal2-popup {
+        width: 95% !important;
+        max-width: 95% !important;
+        margin: 1rem auto !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
     }
 
-    /* --- Admin Tables: Minimum widths for readability --- */
-    .elite-table {
-        min-width: 600px;
-    }
-
-    /* --- Dashboard Wrapper: Stack --- */
-    .dashboard-wrapper {
-        flex-direction: column !important;
-    }
-
-    /* --- Page Headers: Stack Actions --- */
-    .page-header,
-    .section-header,
-    .terminal-header-elite,
-    .page-title-row,
-    .header-actions-row {
+    /* Fix header/nav wrapping */
+    .page-header, .section-header, .terminal-header-elite, .page-title-row, .header-actions-row {
         flex-direction: column !important;
         align-items: flex-start !important;
-        gap: 0.75rem !important;
+        gap: 16px !important;
     }
-
-    .page-header .header-actions,
-    .terminal-header-elite .header-actions,
-    .page-title-row .actions {
+    .page-header .header-actions, .terminal-header-elite .header-actions, .page-title-row .actions {
         width: 100% !important;
         display: flex !important;
         flex-wrap: wrap !important;
-        gap: 0.5rem !important;
+        gap: 12px !important;
     }
 
-    /* --- Filter Bars: Stack --- */
-    .filter-bar,
-    .search-filter-row,
-    .filter-controls {
+    /* Filter bars */
+    .filter-bar, .search-filter-row, .filter-controls {
         flex-direction: column !important;
-        gap: 0.75rem !important;
+        gap: 16px !important;
     }
-
-    .filter-bar input,
-    .filter-bar select,
-    .search-filter-row input,
-    .search-filter-row select {
+    .filter-bar input, .filter-bar select, .search-filter-row input, .search-filter-row select {
         width: 100% !important;
         min-width: 0 !important;
     }
 
-    /* --- Modals: Nearly Full Screen --- */
-    .modal-content,
-    .admin-modal-card,
-    .sweet-alert,
-    .swal2-popup {
-        width: 95% !important;
-        max-width: 95% !important;
-        margin: 1rem auto !important;
-    }
-
-    /* --- Admin Modal Padding Reduction --- */
-    .modal-body-clean {
-        padding: 1.25rem 1rem !important;
-    }
-    .modal-footer-clean {
-        padding: 1rem !important;
-        flex-direction: column !important;
-        gap: 0.5rem !important;
-    }
-    .modal-footer-clean button,
-    .modal-footer-clean .btn-clean {
-        width: 100% !important;
-    }
-
-    /* --- Header Dropdowns --- */
-    .premium-dropdown {
-        position: fixed !important;
-        left: 5% !important;
-        right: 5% !important;
-        width: 90% !important;
-        top: 70px !important;
-        max-height: 70vh !important;
-        overflow-y: auto !important;
-    }
-
-    /* --- Booking Cards / Detail Panels --- */
-    .booking-detail-grid,
-    .booking-info-grid {
-        grid-template-columns: 1fr !important;
-    }
-
-    /* --- Profile View / Edit Pages --- */
-    .profile-grid,
-    .profile-layout {
-        grid-template-columns: 1fr !important;
-    }
-
-    /* --- Tabs: Scrollable Horizontal --- */
-    .tab-navigation,
-    .nav-tabs,
-    .tab-bar,
-    .settings-tabs {
+    /* Tabs Horizontal Scrolling */
+    .tab-navigation, .nav-tabs, .tab-bar, .settings-tabs {
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch !important;
         flex-wrap: nowrap !important;
@@ -300,241 +222,41 @@
         scrollbar-width: none !important;
         -ms-overflow-style: none !important;
     }
-    .tab-navigation::-webkit-scrollbar,
-    .nav-tabs::-webkit-scrollbar,
-    .tab-bar::-webkit-scrollbar,
-    .settings-tabs::-webkit-scrollbar {
+    .tab-navigation::-webkit-scrollbar, .nav-tabs::-webkit-scrollbar, .tab-bar::-webkit-scrollbar, .settings-tabs::-webkit-scrollbar {
         display: none !important;
     }
 
-    .tab-navigation .tab-item,
-    .nav-tabs .nav-tab-item,
-    .settings-tabs button,
-    .settings-tabs a {
-        flex-shrink: 0 !important;
-        white-space: nowrap !important;
-        font-size: 0.8rem !important;
-        padding: 0.5rem 1rem !important;
-    }
-
-    /* --- Flex Row Actions: Wrap --- */
-    .action-row,
-    .actions-bar,
-    .btn-group {
-        flex-wrap: wrap !important;
-        gap: 0.5rem !important;
-    }
-
-    /* --- KYC / Verification Detail --- */
-    .intelligence-hub {
-        grid-template-columns: 1fr !important;
-        gap: 1rem !important;
-    }
-
-    /* --- Stat Cards: Compact --- */
-    .stat-card-premium {
-        padding: 1rem !important;
-    }
-    .stat-value-dashboard,
-    .stat-value {
-        font-size: 1.5rem !important;
-    }
-    .stat-label-dashboard,
-    .stat-label {
-        font-size: 0.7rem !important;
-    }
-
-    /* --- Chat / Messages --- */
-    .chat-container {
-        height: calc(100vh - 140px) !important;
-    }
-
-    /* --- Marketplace Cards Grid --- */
-    .caterer-results-grid {
-        grid-template-columns: 1fr !important;
-    }
-
-    /* --- Map Container --- */
-    #mapViewContainer,
-    #marketplaceMap {
-        height: 350px !important;
-        min-height: 300px !important;
+    /* Text wrap enforcement */
+    p, span, div {
+        word-break: break-word;
+        overflow-wrap: break-word;
     }
 }
 
 /* ===========================================
-   SMALL PHONE (max-width: 480px)
+   SMALL MOBILE (max-width: 480px)
    =========================================== */
 @media (max-width: 480px) {
+    .section { padding: 32px 0 !important; }
 
-    /* --- Maximum Space Efficiency --- */
-    .section { padding: 2rem 0 !important; }
-
-    .hero-content h1 { font-size: 2rem !important; }
-    .hero-content p { font-size: 1rem !important; }
-
-    /* --- Cards: Minimal Padding --- */
-    .caterer-card,
-    .testimonial-card,
-    .category-card,
-    .stat-card,
-    .stat-card-premium {
-        padding: 0.875rem !important;
-        margin: 0 !important;
-        width: 100% !important;
-    }
-
-    /* --- Page Content: Tight Padding --- */
-    .admin-page-content,
-    .caterer-page-content,
-    .customer-page-content {
-        padding-left: 0.75rem !important;
-        padding-right: 0.75rem !important;
-        padding-bottom: 0.75rem !important;
-    }
-
-    /* --- Modals: Full Screen --- */
-    .modal-content,
-    .admin-modal-card,
-    .sweet-alert {
+    /* Modals full screen */
+    .modal-content, .admin-modal-card, .sweet-alert {
         width: 98% !important;
         max-width: 98% !important;
-        padding: 1rem !important;
-        margin: 0.5rem auto !important;
+        padding: 16px !important;
+        margin: 8px auto !important;
         border-radius: 12px !important;
     }
-
-    /* --- Form Inputs: Comfortable Touch Targets --- */
-    .form-group label { font-size: 0.85rem !important; }
-    .form-input,
-    input[type="text"],
-    input[type="email"],
-    input[type="password"],
-    input[type="number"],
-    input[type="tel"],
-    input[type="date"],
-    select,
-    textarea {
-        font-size: 16px !important; /* Prevents iOS zoom on focus */
-        padding: 0.75rem !important;
-        min-height: 44px !important;
-    }
-
-    /* --- Stat Cards: Extra Compact --- */
-    .stat-value-dashboard,
-    .stat-value {
-        font-size: 1.25rem !important;
-    }
-    .stat-icon-bg {
-        width: 40px !important;
-        height: 40px !important;
-        font-size: 1rem !important;
-    }
-
-    /* --- Admin Header: Ultra-Compact --- */
-    .admin-header,
-    .customer-header {
-        padding: 0.5rem 0.75rem !important;
-    }
-
-    /* --- Tables: Very Compact --- */
-    .elite-table th,
-    .elite-table td {
-        padding: 0.5rem 0.75rem !important;
-        font-size: 0.75rem !important;
-    }
-
-    /* --- SweetAlert2 Toast --- */
-    .swal2-container.swal2-bottom-end,
-    .swal2-container.swal2-center,
-    .swal2-container.swal2-top-end {
-        padding: 10px !important;
-    }
-    .swal2-popup.swal2-toast {
-        padding: 0.75rem 1rem !important;
-        width: calc(100% - 20px) !important;
-        max-width: none !important;
-        border-radius: 12px !important;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
-    }
-    .swal2-popup.swal2-toast .swal2-title {
-        font-size: 0.85rem !important;
-        font-weight: 600 !important;
-        line-height: 1.4 !important;
-        margin: 0 0.5rem !important;
-    }
-    .swal2-popup.swal2-toast .swal2-icon {
-        width: 1.5rem !important;
-        height: 1.5rem !important;
-        min-width: 1.5rem !important;
-        margin: 0 !important;
-    }
-    .swal2-popup.swal2-toast .swal2-icon .swal2-icon-content {
-        font-size: 1rem !important;
-    }
-    .swal2-popup.swal2-toast .swal2-success-ring {
-        width: 1.5rem !important;
-        height: 1.5rem !important;
-    }
-
-    /* --- Booking Detail Cards --- */
-    .booking-card-body {
-        padding: 1rem !important;
-    }
-
-    /* --- Dropdown Menus: Full Width --- */
-    .premium-dropdown {
-        left: 2% !important;
-        right: 2% !important;
-        width: 96% !important;
-    }
-
-    /* --- Profile Sections --- */
-    .profile-header-card {
-        flex-direction: column !important;
-        text-align: center !important;
-    }
-
-    /* --- Map Container: Smaller --- */
-    #mapViewContainer,
-    #marketplaceMap {
-        height: 280px !important;
-        min-height: 250px !important;
-    }
-}
-
-/* ===========================================
-   UTILITY: Prevent body overflow on mobile
-   =========================================== */
-html, body {
-    overflow-x: hidden;
-    max-width: 100vw;
-}
-
-/* ===========================================
-   UTILITY: Smooth Image Scaling
-   =========================================== */
-img {
-    max-width: 100%;
-    height: auto;
 }
 
 /* ===========================================
    UTILITY: Print-Safe (hide navigation)
    =========================================== */
 @media print {
-    .admin-sidebar,
-    .caterer-sidebar,
-    .customer-sidebar,
-    .admin-header,
-    .customer-header,
-    .sidebar-overlay,
-    .mobile-menu-btn {
+    .admin-sidebar, .caterer-sidebar, .customer-sidebar, .admin-header, .customer-header, .sidebar-overlay, .mobile-menu-btn {
         display: none !important;
     }
-    .admin-main-wrapper,
-    .caterer-main-wrapper,
-    .customer-main-wrapper {
+    .admin-main-wrapper, .caterer-main-wrapper, .customer-main-wrapper {
         margin-left: 0 !important;
         width: 100% !important;
     }

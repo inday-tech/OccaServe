@@ -368,13 +368,50 @@
                     {% set doc_type_display = "Order Invoice" %}
                 {% endif %}
 
-                {% if profile.terms_and_conditions %}
+                {% if profile.terms_and_conditions or (profile.scheduling_rules and profile.scheduling_rules.get('policies')) %}
                 <div style="margin-bottom: 1.5rem; background: #f8fafc; padding: 1.5rem; border-radius: 1rem; border: 1px solid #cbd5e1;">
                     <h4 style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;">
                         <i class="fas fa-file-signature" style="color: var(--up-emerald-600); margin-right: 0.5rem;"></i> {{ doc_type_display }} Terms
                     </h4>
-                    <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; max-height: 150px; overflow-y: auto; font-size: 0.85rem; color: #475569; margin-bottom: 1rem; line-height: 1.6;">
-                        {{ profile.terms_and_conditions | replace('\n', '<br>') | safe }}
+                    <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; max-height: 200px; overflow-y: auto; font-size: 0.85rem; color: #475569; margin-bottom: 1rem; line-height: 1.6;">
+                        {% if profile.terms_and_conditions %}
+                        <div style="margin-bottom: 1rem;">
+                            <strong><i class="fas fa-ban"></i> Cancellation Policy:</strong><br>
+                            {{ profile.terms_and_conditions | replace('\n', '<br>') | safe }}
+                        </div>
+                        {% endif %}
+                        
+                        {% set pols = profile.scheduling_rules.get('policies', {}) if profile.scheduling_rules else {} %}
+                        {% if pols.get('refund_policy') %}
+                        <div style="margin-bottom: 1rem;">
+                            <strong><i class="fas fa-undo"></i> Refund Policy:</strong><br>
+                            {{ pols.get('refund_policy') | replace('\n', '<br>') | safe }}
+                        </div>
+                        {% endif %}
+                        {% if pols.get('reschedule_policy') %}
+                        <div style="margin-bottom: 1rem;">
+                            <strong><i class="fas fa-calendar-alt"></i> Reschedule Policy:</strong><br>
+                            {{ pols.get('reschedule_policy') | replace('\n', '<br>') | safe }}
+                        </div>
+                        {% endif %}
+                        {% if pols.get('late_payment_policy') %}
+                        <div style="margin-bottom: 1rem;">
+                            <strong><i class="fas fa-money-bill-wave"></i> Late Payment Policy:</strong><br>
+                            {{ pols.get('late_payment_policy') | replace('\n', '<br>') | safe }}
+                        </div>
+                        {% endif %}
+                        {% if pols.get('no_show_policy') %}
+                        <div style="margin-bottom: 1rem;">
+                            <strong><i class="fas fa-user-slash"></i> No-Show Policy:</strong><br>
+                            {{ pols.get('no_show_policy') | replace('\n', '<br>') | safe }}
+                        </div>
+                        {% endif %}
+                        {% if profile.general_terms %}
+                        <div>
+                            <strong><i class="fas fa-clipboard-check"></i> General Order Terms:</strong><br>
+                            {{ profile.general_terms | replace('\n', '<br>') | safe }}
+                        </div>
+                        {% endif %}
                     </div>
                     
                     <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
