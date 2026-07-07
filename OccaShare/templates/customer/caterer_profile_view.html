@@ -211,10 +211,12 @@
     }
 
     .section-title {
-        font-size: 1.15rem;
+        font-size: 0.75rem;
         font-weight: 850;
-        color: var(--hub-text-dark);
-        margin-bottom: 1.5rem;
+        color: var(--hub-slate-400);
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        margin-bottom: 1.25rem;
         display: flex;
         align-items: center;
         gap: 0.75rem;
@@ -1017,30 +1019,12 @@
                     <div class="v-badge-blue" title="OccaServe Verified"><i class="fas fa-circle-check"></i></div>
                     {% endif %}
                 </div>
-
-                <div class="hero-meta">
-                    <div class="meta-pill"><i class="fas fa-map-marker-alt"></i> <span>{{ caterer.address_details or caterer.contact_address or caterer.city or 'Philippines' }}</span></div>
-                    <div class="meta-pill"><i class="fas fa-star"></i> <span>{{ "%.1f"|format(caterer.rating) if caterer.rating else 'New Partner' }} ({{ caterer.review_count or 0 }} Reviews)</span></div>
-                    <div class="meta-pill"><i class="fas fa-eye"></i> <span>{{ caterer.profile_views or 0 }} Views</span></div>
-                    <div class="meta-pill"><i class="fas fa-clock"></i> <span>{{ caterer.equipment_turnover_hours if caterer.equipment_turnover_hours is not none else 24 }}h Turnover Buffer</span></div>
-                </div>
-                <!-- SPECIALTIES PREVIEW (Phase 1.4) -->
-                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1rem;">
-                    {% if packages %}
-                        {% set service_types = [] %}
-                        {% for pkg in packages %}
-                            {% if pkg.service_type and pkg.service_type not in service_types %}
-                                {% set _ = service_types.append(pkg.service_type) %}
-                            {% endif %}
-                        {% endfor %}
-                        {% for st in service_types[:3] %}
-                            <span style="background: rgba(255,255,255,0.2); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700;"><i class="fas fa-glass-cheers" style="margin-right: 4px;"></i>{{ st }}</span>
-                        {% endfor %}
-                    {% endif %}
-                </div>
             </div>
         </div>
     </div>
+
+    <!-- Business Hours Status Banner -->
+    <div id="business-hours-banner" class="hidden" style="background:#fff; border-radius:12px; padding:1.25rem; border:1px solid var(--hub-slate-200); box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom:1.5rem; display:flex; align-items:center; gap:1rem; transition:all 0.3s;"></div>
 
     {% if caterer_unavailable %}
     <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:1rem 1.5rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:0.75rem;">
@@ -1071,6 +1055,93 @@
             if (target) target.classList.add('active');
             if (btn) btn.classList.add('active');
         };
+
+        // Business Hours Logic
+        document.addEventListener('DOMContentLoaded', function() {
+            const rules = window.catererRules;
+            const openTime = (rules && rules.business_hours && rules.business_hours.open_time) ? rules.business_hours.open_time : '08:00';
+            const closeTime = (rules && rules.business_hours && rules.business_hours.close_time) ? rules.business_hours.close_time : '18:00';
+            const operatingDays = (rules && rules.business_hours && rules.business_hours.operating_days) ? rules.business_hours.operating_days : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            const currentTime = currentHour * 60 + currentMinute;
+            
+            const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const currentDayName = daysOfWeek[now.getDay()];
+            
+            const parseTime = (timeStr) => {
+                const [h, m] = timeStr.split(':').map(Number);
+                return h * 60 + m;
+            };
+            
+            const formatTimeAmPm = (timeStr) => {
+                const [h, m] = timeStr.split(':').map(Number);
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                const hr12 = h % 12 || 12;
+                return `${hr12}:${m.toString().padStart(2, '0')} ${ampm}`;
+            };
+            
+            const formatDays = (days) => {
+                if (!days || days.length === 0) return 'Daily';
+                if (days.length === 7) return 'Daily';
+                return days.join(', ');
+            };
+            
+            const openMins = parseTime(openTime);
+            const closeMins = parseTime(closeTime);
+            const formattedDays = formatDays(operatingDays);
+            
+            const isOperatingDay = operatingDays.includes(currentDayName);
+            const isOpen = isOperatingDay && (currentTime >= openMins && currentTime <= closeMins);
+            window.isCatererOpen = isOpen;
+            
+            const banner = document.getElementById('business-hours-banner');
+            if (banner) {
+                if (isOpen) {
+                    banner.classList.remove('hidden');
+                    banner.style.background = '#ecfdf5';
+                    banner.style.borderColor = '#d1fae5';
+                    banner.innerHTML = `
+                        <div style="width:48px; height:48px; border-radius:50%; background:#d1fae5; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                            <i class="fas fa-door-open" style="color:#059669; font-size:1.25rem;"></i>
+                        </div>
+                        <div>
+                            <h3 style="color:#065f46; font-weight:800; font-size:0.95rem; margin-bottom:2px;">Open & Accepting Bookings</h3>
+                            <p style="color:#059669; font-size:0.8rem; margin:0;">Business Hours: <span style="font-weight:900;">${formatTimeAmPm(openTime)} - ${formatTimeAmPm(closeTime)}</span> (${formattedDays})</p>
+                        </div>
+                    `;
+                } else {
+                    banner.classList.remove('hidden');
+                    banner.style.background = '#fef2f2';
+                    banner.style.borderColor = '#fee2e2';
+                    banner.innerHTML = `
+                        <div style="width:48px; height:48px; border-radius:50%; background:#fee2e2; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                            <i class="fas fa-door-closed" style="color:#dc2626; font-size:1.25rem;"></i>
+                        </div>
+                        <div>
+                            <h3 style="color:#991b1b; font-weight:800; font-size:0.95rem; margin-bottom:2px;">Currently Closed</h3>
+                            <p style="color:#dc2626; font-size:0.8rem; line-height:1.4; margin:0;">We are not accepting bookings at this time. Our business hours are from <span style="font-weight:900;">${formatTimeAmPm(openTime)} to ${formatTimeAmPm(closeTime)}</span> (${formattedDays}). Please come back during these hours!</p>
+                        </div>
+                    `;
+                    
+                    // Disable booking buttons visually and functionally
+                    document.querySelectorAll('a[href^="/bookings/start"], .btn-hub-main, .book-action-btn, #btn-contact-caterer, .btn-checkout').forEach(btn => {
+                        // Skip if it's a tab button
+                        if (btn.classList.contains('tab-btn')) return;
+                        
+                        btn.style.pointerEvents = 'none';
+                        btn.style.opacity = '0.5';
+                        btn.style.filter = 'grayscale(100%)';
+                        btn.title = 'Currently Closed for Bookings';
+                        if (btn.tagName === 'A') {
+                            btn.removeAttribute('href');
+                        }
+                    });
+                }
+            }
+        });
 
         window.filterMenu = function(cat, btn) {
             document.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
@@ -1308,6 +1379,21 @@
                             <span class="smb-val">{{ (caterer.rating * 20)|int if caterer.rating else 100 }}%</span>
                             <span class="smb-lab">Trust Score</span>
                         </div>
+                        <div class="stat-mini-box">
+                            <i class="fas fa-star smb-icon"></i>
+                            <span class="smb-val">{{ "%.1f"|format(caterer.rating) if caterer.rating else 'New' }}</span>
+                            <span class="smb-lab">{{ caterer.review_count or 0 }} Reviews</span>
+                        </div>
+                        <div class="stat-mini-box">
+                            <i class="fas fa-eye smb-icon"></i>
+                            <span class="smb-val">{{ caterer.profile_views or 0 }}</span>
+                            <span class="smb-lab">Profile Views</span>
+                        </div>
+                        <div class="stat-mini-box">
+                            <i class="fas fa-hourglass-half smb-icon"></i>
+                            <span class="smb-val">{{ caterer.equipment_turnover_hours if caterer.equipment_turnover_hours is not none else 24 }}h</span>
+                            <span class="smb-lab">Turnover Buffer</span>
+                        </div>
                     </div>
                 </div>
 
@@ -1370,7 +1456,7 @@
                                     {% endif %}
                                 </div>
                                 {% endif %}
-                                <div style="display:flex;gap:0.5rem;margin-top:1rem;flex-direction:column;">
+                                <div style="display:flex;gap:0.5rem;margin-top:auto;padding-top:1rem;flex-direction:column;">
                                     <button type="button" onclick='window.openPkgDetails("{{ pkg.id }}")' class="btn-elite-sm">
                                         <i class="fas fa-list-check"></i> View Inclusions
                                     </button>
@@ -1413,7 +1499,14 @@
                                 {% set display_img.url = item.image_url %}
                             {% endif %}
                             {% set item_price = item.price or 0 %}
-                            {% if item.pricing_type == 'weight_based' and item.weight_prices %}
+                            {% if item.variants and item.variants|length > 0 %}
+                                {% set available_vars = item.variants | selectattr('status', 'equalto', 'available') | list %}
+                                {% if available_vars %}
+                                    {% set item_price = available_vars[0].price %}
+                                {% else %}
+                                    {% set item_price = item.variants[0].price %}
+                                {% endif %}
+                            {% elif item.pricing_type == 'weight_based' and item.weight_prices %}
                                 {% set item_price = item.weight_prices[0].price %}
                             {% elif item.pricing_type == 'size_based' and item.size_prices %}
                                 {% set item_price = item.size_prices[0].price %}
@@ -1431,7 +1524,7 @@
                             {% set final_img = display_img.url %}
                         {% endif %}
                         
-                        <a href="javascript:void(0)" onclick="event.preventDefault(); window.openCategoryModal(this.getAttribute('data-cat'))" data-cat="{{ cat }}" style="text-decoration: none; display: flex; align-items: center; background: white; border: 1px solid var(--hub-slate-200); border-radius: 12px; overflow: hidden; cursor: pointer; transition: all 0.2s; padding: 0.75rem; gap: 1rem;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='var(--hub-primary)'" onmouseout="this.style.transform='none'; this.style.borderColor='var(--hub-slate-200)'">
+                        <a href="javascript:void(0)" onclick="event.preventDefault(); window.openCategoryModal(this.getAttribute('data-cat'))" data-cat="{{ cat }}" style="text-decoration: none; display: flex; align-items: center; background: white; border: 1px solid var(--hub-slate-200); border-radius: 12px; overflow: hidden; cursor: pointer; transition: all 0.2s; padding: 0.75rem; gap: 1rem; height: 100%; box-sizing: border-box;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='var(--hub-primary)'" onmouseout="this.style.transform='none'; this.style.borderColor='var(--hub-slate-200)'">
                             <img src="{{ final_img }}" onerror="this.src='https://ui-avatars.com/api/?name={{ cat|urlencode }}&background=f1f5f9&color=FF7B54&size=400&font-size=0.33&bold=true'" alt="{{ cat }}" loading="lazy" style="width: 70px; height: 70px; object-fit: cover; border-radius: 8px; background: var(--hub-slate-100);">
                             <div style="flex: 1; min-width: 0;">
                                 <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--hub-text-dark); margin-bottom: 0.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ cat }}</h4>
@@ -1494,7 +1587,7 @@
                         {% endif %}
                         
                         {% set cat_type = 'equipment' if cat_items[0].display_type == 'Equipment' else 'services' %}
-                        <a href="javascript:void(0)" onclick="event.preventDefault(); window.openInventoryModal(this.getAttribute('data-cat'))" data-cat="{{ cat }}" style="text-decoration: none; display: flex; align-items: center; background: white; border: 1px solid var(--hub-slate-200); border-radius: 12px; overflow: hidden; cursor: pointer; transition: all 0.2s; padding: 0.75rem; gap: 1rem;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='var(--hub-primary)'" onmouseout="this.style.transform='none'; this.style.borderColor='var(--hub-slate-200)'">
+                        <a href="javascript:void(0)" onclick="event.preventDefault(); window.openInventoryModal(this.getAttribute('data-cat'))" data-cat="{{ cat }}" style="text-decoration: none; display: flex; align-items: center; background: white; border: 1px solid var(--hub-slate-200); border-radius: 12px; overflow: hidden; cursor: pointer; transition: all 0.2s; padding: 0.75rem; gap: 1rem; height: 100%; box-sizing: border-box;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='var(--hub-primary)'" onmouseout="this.style.transform='none'; this.style.borderColor='var(--hub-slate-200)'">
                             <img src="{{ final_img }}" onerror="this.src='https://ui-avatars.com/api/?name={{ cat|urlencode }}&background=f1f5f9&color=FF7B54&size=400&font-size=0.33&bold=true'" alt="{{ cat }}" loading="lazy" style="width: 70px; height: 70px; object-fit: cover; border-radius: 8px; background: var(--hub-slate-100);">
                             <div style="flex: 1; min-width: 0;">
                                 <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--hub-text-dark); margin-bottom: 0.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ cat }}</h4>
@@ -2104,6 +2197,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 dietary_tags: {{ (item.dietary_tags or [])|tojson }},
                 allergen_info: {{ (item.allergen_info or [])|tojson }},
                 pricing_type: "{{ item.pricing_type or 'fixed' }}",
+                variants: [
+                    {% for v in item.variants %}
+                    { variant_name: {{ v.variant_name|tojson }}, price: {{ v.price|tojson }}, measurement: {{ (v.measurement or '')|tojson }}, serving_capacity: {{ (v.serving_capacity or '')|tojson }}, status: {{ (v.status or 'available')|tojson }} }{{ ',' if not loop.last else '' }}
+                    {% endfor %}
+                ],
                 weight_prices: [
                     {% for wp in item.weight_prices %}
                     { weight_label: {{ wp.weight_label|tojson }}, price: {{ wp.price|tojson }} }{{ ',' if not loop.last else '' }}
@@ -2254,16 +2352,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 let priceDisplay = '';
                 let optionsHtml = '';
                 
-                if (item.pricing_type === 'weight_based' && item.weight_prices && item.weight_prices.length > 0) {
-                    optionsHtml = '<select class="dish-row-qty" id="opt-' + item.id + '" style="width: auto; margin-right: 4px; border: 1px solid var(--hub-slate-200); border-radius: 6px; padding: 4px 8px; font-size: 0.75rem;">' + item.weight_prices.map(wp => `<option value="${wp.weight_label}|${wp.price}">${wp.weight_label} - ₱${parseFloat(wp.price).toLocaleString('en-PH', {minimumFractionDigits:0})}${unitSuffix}</option>`).join('') + '</select>';
-                    priceDisplay = '<span style="font-size:0.75rem;font-weight:800;color:var(--hub-brand);">Weight Options Available</span>';
+                if (item.variants && item.variants.length > 0) {
+                    optionsHtml = '<select class="dish-row-qty" id="opt-' + item.id + '" style="width: 100%; max-width: 160px; margin-top: 4px; border: 1px solid var(--hub-slate-200); border-radius: 6px; padding: 4px 8px; font-size: 0.75rem;">' + item.variants.map(v => { 
+                        let cap = v.serving_capacity ? (String(v.serving_capacity).toLowerCase().includes('pax') ? v.serving_capacity : v.serving_capacity + ' Pax') : ''; 
+                        return `<option value="${v.variant_name}|${v.price}" ${v.status !== 'available' ? 'disabled' : ''}>${v.status !== 'available' ? '[UNAVAILABLE] ' : ''}₱${parseFloat(v.price).toLocaleString('en-PH', {minimumFractionDigits:0})} - ${v.variant_name} ${v.measurement ? '('+v.measurement+')' : ''} ${cap ? '| ' + cap : ''}</option>`; 
+                    }).join('') + '</select>';
+                    priceDisplay = optionsHtml;
+                    optionsHtml = ''; // Render inline with name instead of action buttons
+                } else if (item.pricing_type === 'weight_based' && item.weight_prices && item.weight_prices.length > 0) {
+                    optionsHtml = '<select class="dish-row-qty" id="opt-' + item.id + '" style="width: 100%; max-width: 160px; margin-top: 4px; border: 1px solid var(--hub-slate-200); border-radius: 6px; padding: 4px 8px; font-size: 0.75rem;">' + item.weight_prices.map(wp => `<option value="${wp.weight_label}|${wp.price}">${wp.weight_label} - ₱${parseFloat(wp.price).toLocaleString('en-PH', {minimumFractionDigits:0})}${unitSuffix}</option>`).join('') + '</select>';
+                    priceDisplay = optionsHtml;
+                    optionsHtml = ''; // Render inline with name instead of action buttons
                 } else if (item.pricing_type === 'size_based' && item.size_prices && item.size_prices.length > 0) {
-                    optionsHtml = '<select class="dish-row-qty" id="opt-' + item.id + '" style="width: auto; margin-right: 4px; border: 1px solid var(--hub-slate-200); border-radius: 6px; padding: 4px 8px; font-size: 0.75rem;">' + item.size_prices.map(sp => `<option value="${sp.size_name}|${sp.price}">${sp.size_name} - ₱${parseFloat(sp.price).toLocaleString('en-PH', {minimumFractionDigits:0})}${unitSuffix}</option>`).join('') + '</select>';
-                    priceDisplay = '<span style="font-size:0.75rem;font-weight:800;color:var(--hub-brand);">Size Options Available</span>';
+                    optionsHtml = '<select class="dish-row-qty" id="opt-' + item.id + '" style="width: 100%; max-width: 160px; margin-top: 4px; border: 1px solid var(--hub-slate-200); border-radius: 6px; padding: 4px 8px; font-size: 0.75rem;">' + item.size_prices.map(sp => `<option value="${sp.size_name}|${sp.price}">${sp.size_name} - ₱${parseFloat(sp.price).toLocaleString('en-PH', {minimumFractionDigits:0})}${unitSuffix}</option>`).join('') + '</select>';
+                    priceDisplay = optionsHtml;
+                    optionsHtml = ''; // Render inline with name instead of action buttons
                 } else {
                     priceDisplay = item.price > 0
                         ? '₱' + parseFloat(item.price).toLocaleString('en-PH', {minimumFractionDigits:2}) + unitSuffix
-                        : '<span style="font-size:0.78rem;font-weight:700;color:var(--hub-slate-400);">Included in Package</span>';
+                        : '<span style="font-size:0.78rem;font-weight:700;color:var(--hub-slate-400);">Price upon request</span>';
                 }
                 
                 const isSelected = window.selectedItems.some(s => String(s.id) === String(item.id) && (s.type ? s.type === 'Menu' : true));

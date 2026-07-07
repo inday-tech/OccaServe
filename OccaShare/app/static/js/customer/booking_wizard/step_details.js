@@ -1,9 +1,16 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const pricePerHead = Number(window.pricePerHead || 0);
+    try {
+        const pricePerHead = Number(window.pricePerHead || 0);
     const catererId = Number(window.catererId || 0);
     const minGuests = Number(window.minGuests || 1);
     const leadTime = Number(window.bookingLeadTime || 3);
     const phCities = window.PH_CITIES || [];
+    
+    let parsedRules = {};
+    try {
+        parsedRules = typeof window.catererRules === 'string' ? JSON.parse(window.catererRules) : (window.catererRules || {});
+    } catch(e) { console.error("Error parsing catererRules", e); }
+    window.catererRules = parsedRules;
 
     // --- Selectors ---
     const form = document.getElementById('detailsForm');
@@ -22,21 +29,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Dynamic Location Data via PSGC ---
     const PROVINCE_CODES = {
-        "NATIONAL CAPITAL REGION (NCR)": "130000000",
-        "Laguna": "043400000",
-        "Batangas": "041000000",
-        "Quezon": "045600000"
+        "Laguna": "043400000"
     };
 
     let cachedCities = {};
     let cachedBarangays = {};
 
-    // --- 1. Set Min Date based on Lead Time ---
+    // --- 1. Set Min and Max Date based on Lead Time ---
     const minCalendarDate = new Date();
     minCalendarDate.setDate(minCalendarDate.getDate() + leadTime); // Using lead time dynamically
     const minDateString = minCalendarDate.toISOString().split('T')[0];
+    
+    const maxCalendarDate = new Date();
+    maxCalendarDate.setMonth(maxCalendarDate.getMonth() + 7); // Max 7 months in advance
+    const maxDateString = maxCalendarDate.toISOString().split('T')[0];
+    
     if (dateInput) {
         dateInput.setAttribute('min', minDateString);
+        dateInput.setAttribute('max', maxDateString);
     }
 
     // --- 1.5 Format Guest Count ---
@@ -219,10 +229,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const minDate = new Date();
             minDate.setDate(minDate.getDate() + leadTime - 1); // Dynamic lead time constraint
             minDate.setHours(0,0,0,0);
-            if (selectedDate <= minDate) {
-                chip.style.display = 'none'; // Hide chip since inline validation already flags it
-                if (submitBtn) submitBtn.disabled = true;
-                return;
+            
+            if (chip) {
+                if (selectedDate <= minDate) {
+                    chip.style.display = 'none'; // Hide chip since inline validation already flags it
+                    if (submitBtn) submitBtn.disabled = true;
+                    return;
+                }
             }
         }
 
@@ -234,17 +247,17 @@ document.addEventListener('DOMContentLoaded', function () {
             const response = await fetch(`/packages/api/check-availability?caterer_id=${catererId}&date_str=${date}`);
             const data = await response.json();
 
-            if (data.available) {
+            if (data.available && chip) {
                 chip.className = 'availability-chip available';
                 chip.innerHTML = '<i class="fas fa-check-circle"></i> Date Available';
                 if (submitBtn) submitBtn.disabled = false;
-            } else {
+            } else if (chip) {
                 chip.className = 'availability-chip booked';
                 chip.innerHTML = '<i class="fas fa-times-circle"></i> Fully Booked';
                 if (submitBtn) submitBtn.disabled = true;
             }
         } catch (error) {
-            chip.innerHTML = 'Error checking date';
+            if (chip) chip.innerHTML = 'Error checking date';
         }
     };
 
@@ -265,17 +278,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- 5. Cascading Location Choice (PSGC API) ---
-    
-    function fallbackLocationInputs() {
-        const cityGroup = document.getElementById('city_select').parentElement;
-        cityGroup.innerHTML = '<label class="form-label">Municipality / City</label><input type="text" name="city" id="city_select" class="form-input" placeholder="e.g. Santa Cruz" required oninput="updateHiddenVenue()">';
-        
-        const brgyGroup = document.getElementById('barangay_select').parentElement;
-        brgyGroup.innerHTML = '<label class="form-label">Barangay</label><input type="text" name="barangay" id="barangay_select" class="form-input" placeholder="e.g. Patimbao" required oninput="updateHiddenVenue()">';
-    }
     async function populateCities(province, selectedCity = null, selectedBrgy = null) {
-        citySelect.innerHTML = '<option value="">-- Select City --</option>';
-        barangaySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
+        citySelect.innerHTML = '<option value="" disabled selected hidden>-- Select City --</option>';
+        barangaySelect.innerHTML = '<option value="" disabled selected hidden>-- Select Barangay --</option>';
         barangaySelect.disabled = true;
 
         if (PROVINCE_CODES[province]) {
@@ -287,17 +292,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     const cityEl = document.getElementById('city_select');
                     if(cityEl.tagName !== 'SELECT') return; // already fallback
                     
-                    cityEl.innerHTML = '<option value="">Loading...</option>';
+                    cityEl.innerHTML = '<option value="" disabled selected hidden>Loading cities...</option>';
                     let url = `https://psgc.gitlab.io/api/provinces/${code}/cities-municipalities/`;
                     if (code === '130000000') {
                         url = `https://psgc.gitlab.io/api/regions/${code}/cities-municipalities/`;
                     }
                     
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 2500);
-                    
-                    const res = await fetch(url, { signal: controller.signal });
-                    clearTimeout(timeoutId);
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error('API failed');
                     
                     cities = await res.json();
                     cities.sort((a, b) => a.name.localeCompare(b.name));
@@ -307,7 +309,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const cityEl = document.getElementById('city_select');
                 if(cityEl.tagName !== 'SELECT') return;
                 
-                cityEl.innerHTML = '<option value="">-- Select City --</option>';
+                cityEl.innerHTML = '<option value="" disabled selected hidden>-- Select City --</option>';
                 cities.forEach(city => {
                     const opt = document.createElement('option');
                     opt.value = city.name;
@@ -325,8 +327,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
             } catch (e) {
-                console.warn('API Error, falling back to text inputs:', e);
-                fallbackLocationInputs();
+                console.warn('API Error, keeping dropdowns empty:', e);
+                const cityEl = document.getElementById('city_select');
+                if(cityEl && cityEl.tagName === 'SELECT') {
+                    cityEl.innerHTML = '<option value="" disabled selected hidden>Error Loading</option>';
+                    cityEl.disabled = false;
+                }
             }
         } else {
             const cityEl = document.getElementById('city_select');
@@ -339,25 +345,23 @@ document.addEventListener('DOMContentLoaded', function () {
         if(!brgyEl) return;
         if(brgyEl.tagName !== 'SELECT') return;
         
-        brgyEl.innerHTML = '<option value="">-- Select Barangay --</option>';
+        brgyEl.innerHTML = '<option value="" disabled selected hidden>-- Select Barangay --</option>';
         if (cityCode) {
             brgyEl.disabled = true;
             try {
                 let brgys = cachedBarangays[cityCode];
                 if (!brgys) {
-                    brgyEl.innerHTML = '<option value="">Loading...</option>';
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 2500);
+                    brgyEl.innerHTML = '<option value="" disabled selected hidden>Loading barangays...</option>';
                     
-                    const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays/`, { signal: controller.signal });
-                    clearTimeout(timeoutId);
+                    const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays/`);
+                    if (!res.ok) throw new Error('API failed');
                     
                     brgys = await res.json();
                     brgys.sort((a, b) => a.name.localeCompare(b.name));
                     cachedBarangays[cityCode] = brgys;
                 }
                 
-                brgyEl.innerHTML = '<option value="">-- Select Barangay --</option>';
+                brgyEl.innerHTML = '<option value="" disabled selected hidden>-- Select Barangay --</option>';
                 brgys.forEach(b => {
                     const opt = document.createElement('option');
                     opt.value = b.name;
@@ -367,34 +371,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 brgyEl.disabled = false;
             } catch (e) {
-                console.warn('API Error, falling back to text inputs:', e);
-                fallbackLocationInputs();
+                console.warn('API Error, keeping dropdowns empty:', e);
+                brgyEl.innerHTML = '<option value="" disabled selected hidden>Error Loading</option>';
+                brgyEl.disabled = false;
             }
         } else {
             brgyEl.disabled = true;
         }
     }
 
-    if (provinceSelect) {
-        provinceSelect.addEventListener('change', function () {
-            populateCities(this.value);
-            updateHiddenVenue();
-        });
-
-        citySelect.addEventListener('change', function () {
-            const selOpt = this.options[this.selectedIndex];
-            const code = selOpt ? selOpt.dataset.code : null;
-            populateBarangays(code);
-            updateHiddenVenue();
-        });
-
-        barangaySelect.addEventListener('change', updateHiddenVenue);
-    }
-
     window.currentDeliveryFee = 0;
     window.deliveryFeeStatus = "pending";
 
-    window.updateHiddenVenue = async function() {
+    const updateHiddenVenue = async function() {
         const provEl = document.getElementById('province_select');
         const cityEl = document.getElementById('city_select');
         const brgyEl = document.getElementById('barangay_select');
@@ -443,6 +432,23 @@ document.addEventListener('DOMContentLoaded', function () {
             window.deliveryFeeStatus = "pending";
             updateCalculator();
         }
+    };
+    window.updateHiddenVenue = updateHiddenVenue;
+
+    if (provinceSelect) {
+        provinceSelect.addEventListener('change', function () {
+            populateCities(this.value);
+            updateHiddenVenue();
+        });
+
+        citySelect.addEventListener('change', function () {
+            const selOpt = this.options[this.selectedIndex];
+            const code = selOpt ? selOpt.dataset.code : null;
+            populateBarangays(code);
+            updateHiddenVenue();
+        });
+
+        barangaySelect.addEventListener('change', updateHiddenVenue);
     }
 
     // --- 5.1 Load Existing Location Data ---
@@ -493,6 +499,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (eventName) {
         eventName.addEventListener('input', () => validateField(eventName, 'err-name', v => v.trim().length > 0));
         eventName.addEventListener('change', () => validateField(eventName, 'err-name', v => v.trim().length > 0));
+        eventName.addEventListener('blur', () => validateField(eventName, 'err-name', v => v.trim().length > 0));
     }
 
     if (eventTypeSelect) {
@@ -502,9 +509,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 validateField(otherEventInput, 'err-other-type', v => v.trim().length > 0);
             }
         });
+        eventTypeSelect.addEventListener('blur', () => validateField(eventTypeSelect, 'err-type', v => v !== ''));
     }
     if (otherEventInput) {
         otherEventInput.addEventListener('input', () => {
+            if (eventTypeSelect.value === 'Other') validateField(otherEventInput, 'err-other-type', v => v.trim().length > 0);
+        });
+        otherEventInput.addEventListener('blur', () => {
             if (eventTypeSelect.value === 'Other') validateField(otherEventInput, 'err-other-type', v => v.trim().length > 0);
         });
     }
@@ -523,6 +534,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (guestDisplay) {
         guestDisplay.addEventListener('input', validateGuestCount);
         guestDisplay.addEventListener('change', validateGuestCount);
+        guestDisplay.addEventListener('blur', validateGuestCount);
     }
 
     const validateEventDate = () => {
@@ -536,12 +548,38 @@ document.addEventListener('DOMContentLoaded', function () {
             const minDate = new Date();
             minDate.setDate(minDate.getDate() + leadTime - 1); // Dynamic lead time constraint
             minDate.setHours(0,0,0,0);
-            return selectedDate > minDate;
-        }, `Please select a date at least ${leadTime} days in advance.`);
+            
+            const maxDate = new Date();
+            maxDate.setMonth(maxDate.getMonth() + 7); // Exactly 7 months
+            maxDate.setHours(23,59,59,999);
+            
+            if (selectedDate <= minDate) {
+                document.getElementById('err-date').innerText = `Please select a date at least ${leadTime} days in advance.`;
+                return false;
+            }
+            if (selectedDate > maxDate) {
+                document.getElementById('err-date').innerText = `Bookings can only be made up to 7 months in advance.`;
+                return false;
+            }
+            
+            // Operating days check
+            if (window.catererRules && window.catererRules.business_hours && window.catererRules.business_hours.operating_days) {
+                const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                const selectedDayName = daysOfWeek[selectedDate.getDay()];
+                const operatingDays = window.catererRules.business_hours.operating_days;
+                if (operatingDays.length > 0 && operatingDays.length < 7 && !operatingDays.includes(selectedDayName)) {
+                    document.getElementById('err-date').innerText = `Caterer is closed on ${selectedDayName}s. (${operatingDays.join(', ')})`;
+                    return false;
+                }
+            }
+            
+            return true;
+        }, `Invalid date.`);
     };
     if (dateInput) {
         dateInput.addEventListener('input', validateEventDate);
         dateInput.addEventListener('change', validateEventDate);
+        dateInput.addEventListener('blur', validateEventDate);
     }
 
     const validateEventTime = () => {
@@ -551,79 +589,126 @@ document.addEventListener('DOMContentLoaded', function () {
             const parts = v.split(':');
             if (parts.length !== 2) return false;
             const hour = parseInt(parts[0]);
+            const min = parseInt(parts[1]);
             
-            // Standard catering operations: 6:00 AM to 9:00 PM (21:59)
-            if (hour < 6 || hour > 21) {
+            let openTime = '08:00';
+            let closeTime = '20:00';
+            if (window.catererRules && window.catererRules.business_hours) {
+                openTime = window.catererRules.business_hours.open_time || openTime;
+                closeTime = window.catererRules.business_hours.close_time || closeTime;
+            }
+            
+            const parseTime = (timeStr) => {
+                const [h, m] = timeStr.split(':').map(Number);
+                return h * 60 + m;
+            };
+            
+            const selectedMins = hour * 60 + min;
+            const openMins = parseTime(openTime);
+            let closeMins = parseTime(closeTime);
+            
+            // Strict 8 AM - 8 PM fallback limit (as per user request: "8 - 8 pm lqng")
+            const fallbackOpen = 8 * 60; // 8:00 AM
+            const fallbackClose = 20 * 60; // 8:00 PM
+            
+            if (selectedMins < Math.max(openMins, fallbackOpen) || selectedMins > Math.min(closeMins, fallbackClose)) {
                 return false;
             }
             return true;
-        }, "Please select a time between 6:00 AM and 9:00 PM.");
+        }, "Please select a time between 8:00 AM and 8:00 PM (or within caterer's hours).");
     };
     if (timeInput) {
         timeInput.addEventListener('input', validateEventTime);
         timeInput.addEventListener('change', validateEventTime);
+        timeInput.addEventListener('blur', validateEventTime);
     }
 
     if (provinceSelect) {
         provinceSelect.addEventListener('change', () => validateField(provinceSelect, 'err-province', v => v !== ''));
+        provinceSelect.addEventListener('blur', () => validateField(provinceSelect, 'err-province', v => v !== ''));
     }
     if (citySelect) {
         citySelect.addEventListener('change', () => validateField(citySelect, 'err-city', v => v !== ''));
+        citySelect.addEventListener('blur', () => validateField(citySelect, 'err-city', v => v !== ''));
     }
     if (barangaySelect) {
         barangaySelect.addEventListener('change', () => validateField(barangaySelect, 'err-barangay', v => v !== ''));
+        barangaySelect.addEventListener('blur', () => validateField(barangaySelect, 'err-barangay', v => v !== ''));
     }
 
     if (form) {
         form.addEventListener('submit', function (e) {
-            let isValid = true;
+            try {
+                let isValid = true;
+                const check = (result) => { if (!result) isValid = false; };
 
-            if (eventName) isValid = validateField(eventName, 'err-name', v => v.trim().length > 0) && isValid;
-            
-            if (eventTypeSelect) {
-                isValid = validateField(eventTypeSelect, 'err-type', v => v !== '') && isValid;
-                if (eventTypeSelect.value === 'Other') {
-                    isValid = validateField(otherEventInput, 'err-other-type', v => v.trim().length > 0) && isValid;
-                }
-            }
-
-            if (guestDisplay) isValid = validateGuestCount() && isValid;
-            if (dateInput) isValid = validateEventDate() && isValid;
-            if (timeInput) isValid = validateEventTime() && isValid;
-            
-            if (provinceSelect) isValid = validateField(provinceSelect, 'err-province', v => v !== '') && isValid;
-            if (citySelect) isValid = validateField(citySelect, 'err-city', v => v !== '') && isValid;
-            if (barangaySelect) isValid = validateField(barangaySelect, 'err-barangay', v => v !== '') && isValid;
-
-            // Selection Rules Validation
-            const selectionGroups = document.querySelectorAll('.selection-group');
-            let selectionErrorMsg = '';
-            selectionGroups.forEach(group => {
-                const limit = parseInt(group.dataset.limit) || 0;
-                const cat = group.dataset.category;
-                const count = group.querySelectorAll('input[type="checkbox"]:checked').length;
+                if (eventName) check(validateField(eventName, 'err-name', v => (v || '').trim().length > 0));
                 
-                if (count !== limit && limit > 0) {
-                    isValid = false;
-                    selectionErrorMsg += `• Please select exactly ${limit} item(s) for ${cat.replace(/([A-Z])/g, ' $1').trim()}.\n`;
-                    const counterEl = document.getElementById(`counter-${cat}`);
-                    if (counterEl) {
-                        counterEl.style.background = '#fee2e2';
-                        counterEl.style.color = '#b91c1c';
+                if (eventTypeSelect) {
+                    check(validateField(eventTypeSelect, 'err-type', v => v !== ''));
+                    if (eventTypeSelect.value === 'Other') {
+                        check(validateField(otherEventInput, 'err-other-type', v => (v || '').trim().length > 0));
                     }
                 }
-            });
 
-            if (selectionErrorMsg) {
-                alert("Incomplete Menu Setup:\n\n" + selectionErrorMsg);
-            }
-
-            if (!isValid) {
-                e.preventDefault();
-                const firstError = document.querySelector('.field-error.show');
-                if (firstError) {
-                    firstError.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (guestDisplay) check(validateGuestCount());
+                if (dateInput) check(validateEventDate());
+                if (timeInput) check(validateEventTime());
+                
+                if (provinceSelect) check(validateField(provinceSelect, 'err-province', v => v !== ''));
+                if (citySelect) check(validateField(citySelect, 'err-city', v => v !== ''));
+                if (barangaySelect) check(validateField(barangaySelect, 'err-barangay', v => v !== ''));
+                
+                // Selection Rules Validation
+                const selectionGroups = document.querySelectorAll('.selection-group');
+                let selectionErrorMsg = '';
+                if (selectionGroups && selectionGroups.length > 0) {
+                    selectionGroups.forEach(group => {
+                        try {
+                            const limit = parseInt(group.dataset.limit) || 0;
+                            const catRaw = group.dataset.category;
+                            if (!catRaw) return;
+                            const count = group.querySelectorAll('input[type="checkbox"]:checked').length;
+                            
+                            if (count !== limit && limit > 0) {
+                                isValid = false;
+                                selectionErrorMsg += `• Please select exactly ${limit} item(s) for ${catRaw.replace(/([A-Z])/g, ' $1').trim()}.\n`;
+                                const counterEl = document.getElementById(`counter-${catRaw}`);
+                                if (counterEl) {
+                                    counterEl.style.background = '#fee2e2';
+                                    counterEl.style.color = '#b91c1c';
+                                }
+                            }
+                        } catch(err) {
+                            console.error("Selection rule check error:", err);
+                        }
+                    });
                 }
+
+                if (selectionErrorMsg) {
+                    alert("Incomplete Menu Setup:\n\n" + selectionErrorMsg);
+                }
+
+                if (!isValid) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const firstError = document.querySelector('.field-error.show');
+                    if (firstError) {
+                        firstError.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    
+                    // Recover the submit button from loading state if it was activated by main.js
+                    const submitBtn = document.getElementById('submitBtn');
+                    if (submitBtn && submitBtn.classList.contains('is-loading')) {
+                        submitBtn.innerHTML = `Next: Verify Identity <i class="fas fa-id-card"></i>`;
+                        submitBtn.disabled = false;
+                        submitBtn.classList.remove('is-loading');
+                    }
+                }
+            } catch (err) {
+                console.error("Fatal validation error:", err);
+                e.preventDefault();
+                alert("An error occurred during form validation. Please check your inputs.");
             }
         });
     }
@@ -632,12 +717,26 @@ document.addEventListener('DOMContentLoaded', function () {
     const urlParams = new URLSearchParams(window.location.search);
     const bookingError = urlParams.get('booking_error');
     if (bookingError) {
-        const errDate = document.getElementById('err-date');
-        if (errDate && dateInput) {
-            errDate.innerText = decodeURIComponent(bookingError);
-            errDate.classList.add('show');
-            dateInput.classList.add('error');
-            dateInput.scrollIntoView({behavior: 'smooth', block: 'center'});
+        let errorId = 'err-date';
+        let errorMsg = decodeURIComponent(bookingError);
+        let targetInput = dateInput;
+        
+        if (errorMsg.includes(':')) {
+            const parts = errorMsg.split(':');
+            errorId = parts[0];
+            errorMsg = parts.slice(1).join(':');
+            
+            if (errorId === 'err-type') targetInput = eventTypeSelect;
+            else if (errorId === 'err-name') targetInput = eventName;
+            else if (errorId === 'err-time') targetInput = timeInput;
+        }
+        
+        const errSpan = document.getElementById(errorId);
+        if (errSpan && targetInput) {
+            errSpan.innerText = errorMsg;
+            errSpan.classList.add('show');
+            targetInput.classList.add('error');
+            targetInput.scrollIntoView({behavior: 'smooth', block: 'center'});
         }
         
         const url = new URL(window.location.href);
@@ -730,4 +829,8 @@ document.addEventListener('DOMContentLoaded', function () {
             window.handleMenuCardToggle(cb);
         }
     });
+    } catch (globalErr) {
+        console.error("FATAL SCRIPT ERROR:", globalErr);
+        alert("Fatal JS Error: " + globalErr.message);
+    }
 });

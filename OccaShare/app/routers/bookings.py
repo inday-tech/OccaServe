@@ -677,7 +677,7 @@ async def custom_booking_submit(
 ):
     user = get_current_user_from_session(request, db)
     if not user:
-        return RedirectResponse(url=f"/auth/login?next=/bookings/custom/request/{caterer_id}")
+        return RedirectResponse(url=f"/auth/login?next=/bookings/custom/request/{caterer_id}", status_code=303)
     
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer:
@@ -953,7 +953,8 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
         "selected_addon_service_ids": selected_addon_service_ids,
         "user": user,
         "current_step": 1,
-        "active_page": "bookings"
+        "active_page": "bookings",
+        "is_locked": booking.status not in ["draft", "pending", "pending_quotation", "awaiting_caterer"] if booking else False
     })
 
 @router.post("/step/details")
@@ -962,12 +963,12 @@ async def step_details_submit(
     caterer_id: int = Form(...),
     package_id_str: Optional[str] = Form(None, alias="package_id"),
     booking_id_str: Optional[str] = Form(None, alias="booking_id"),
-    event_name: str = Form(...),
-    event_type: str = Form(...),
-    event_date: date = Form(...),
-    event_time: time = Form(...),
+    event_name_str: Optional[str] = Form(None, alias="event_name"),
+    event_type_str: Optional[str] = Form(None, alias="event_type"),
+    event_date_str: Optional[str] = Form(None, alias="event_date"),
+    event_time_str: Optional[str] = Form(None, alias="event_time"),
     event_end_time_str: Optional[str] = Form(None, alias="event_end_time"),
-    guest_count: Optional[int] = Form(0),
+    guest_count_str: Optional[str] = Form("0", alias="guest_count"),
     venue_address: Optional[str] = Form(""),
     total_price: Optional[float] = Form(0.0),
     reservation_fee: Optional[float] = Form(0.0),
@@ -983,16 +984,44 @@ async def step_details_submit(
     other_event_type: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
-    # Safely parse times and IDs
+    # Safely parse times and dates
     event_end_time = None
     if event_end_time_str and event_end_time_str.strip():
         try:
             event_end_time = time.fromisoformat(event_end_time_str)
         except:
             pass
+            
+    event_date = None
+    if event_date_str and event_date_str.strip():
+        try:
+            event_date = date.fromisoformat(event_date_str)
+        except:
+            pass
+            
+    event_time = None
+    if event_time_str and event_time_str.strip():
+        try:
+            # Handle HH:MM format
+            parts = event_time_str.split(':')
+            if len(parts) >= 2:
+                event_time = time(int(parts[0]), int(parts[1]))
+        except:
+            pass
+            
+    guest_count = 0
+    if guest_count_str and guest_count_str.strip():
+        try:
+            guest_count = int(guest_count_str)
+        except:
+            pass
+
     # Safely parse IDs from strings to handle empty form values
     package_id = int(package_id_str) if package_id_str and package_id_str.strip() else None
     booking_id = int(booking_id_str) if booking_id_str and booking_id_str.strip() else None
+
+    event_name = event_name_str.strip() if event_name_str else ""
+    event_type = event_type_str.strip() if event_type_str else ""
 
     # Handle custom event type
     final_event_type = event_type
@@ -1001,7 +1030,21 @@ async def step_details_submit(
 
     user = get_current_user_from_session(request, db)
     redirect_base = f"/bookings/step/details/{booking_id}" if booking_id else "/bookings/step/details"
-    if not user: return RedirectResponse(url=f"/auth/login?next={redirect_base}")
+    if not user: return RedirectResponse(url=f"/auth/login?next={redirect_base}", status_code=303)
+
+    if booking_id:
+        existing_booking = db.query(models.Booking).get(booking_id)
+        if existing_booking and existing_booking.status not in ["draft", "pending", "pending_quotation", "awaiting_caterer"]:
+            return RedirectResponse(url=f"{redirect_base}?booking_error=Booking+is+already+locked+and+cannot+be+modified.", status_code=303)
+
+    if not event_date:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=err-date:Valid+event+date+is+required", status_code=303)
+    if not event_time:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=err-time:Valid+event+time+is+required", status_code=303)
+    if not event_name:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=err-name:Event+name+is+required", status_code=303)
+    if not final_event_type:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=err-type:Event+type+is+required", status_code=303)
 
     # Construct venue address if missing from hidden field
     if not venue_address and province and city and barangay:
@@ -1018,12 +1061,16 @@ async def step_details_submit(
     lead_time = caterer.booking_lead_time or 3
     min_lead_date = today + timedelta(days=lead_time)
     if event_date < min_lead_date:
-        return RedirectResponse(url=f"{redirect_base}?booking_error=Event+date+must+be+at+least+{lead_time}+days+in+advance+for+proper+preparation.", status_code=303)
+        return RedirectResponse(url=f"{redirect_base}?booking_error=err-date:Event+date+must+be+at+least+{lead_time}+days+in+advance+for+proper+preparation.", status_code=303)
+
+    max_advance_date = today + timedelta(days=210)
+    if event_date > max_advance_date:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=err-date:Bookings+can+only+be+made+up+to+7+months+in+advance.", status_code=303)
 
     # 🚨 VALIDATION 1.5: Sensible Operating Hours Check
-    # Restrict events to standard operating hours (6:00 AM to 9:00 PM)
-    if event_time.hour < 6 or event_time.hour > 21:
-        return RedirectResponse(url=f"{redirect_base}?booking_error=Please+select+a+time+between+6:00+AM+and+9:00+PM.", status_code=303)
+    # Restrict events to standard operating hours (8:00 AM to 8:00 PM)
+    if event_time.hour < 8 or event_time.hour >= 21:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=err-time:Please+select+a+time+between+8:00+AM+and+8:00+PM.", status_code=303)
 
     # 🚨 VALIDATION 1.8: Unpaid Booking Spam Limit (Flow B Rule 1)
     unpaid_spam_count = db.query(models.Booking).filter(
@@ -1269,7 +1316,8 @@ async def step_kyc_page(booking_id: int, request: Request, db: Session = Depends
         "booking": booking,
         "user": user,
         "current_step": 2,
-        "active_page": "bookings"
+        "active_page": "bookings",
+        "is_locked": booking.status not in ["draft", "pending", "pending_quotation", "awaiting_caterer"] if booking else False
     })
 
 # Phase 3: Quotation Review & Contract

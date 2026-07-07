@@ -1330,6 +1330,25 @@
     </div>
 
     <div id="kyc-form-container">
+        {% if is_locked %}
+        <div class="locked-banner" style="background: #fee2e2; color: #b91c1c; padding: 0.75rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; font-weight: 700; border: 1px solid #f87171;">
+            <i class="fas fa-lock"></i> This booking is already in progress. Identity verification cannot be modified.
+        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                // Disable all action cards
+                document.querySelectorAll(".action-card").forEach(card => {
+                    card.classList.add("disabled");
+                    card.onclick = null;
+                });
+                // Show the next button
+                const btn = document.getElementById("btn-next");
+                if(btn) {
+                    btn.style.display = "block";
+                }
+            });
+        </script>
+        {% endif %}
         <!-- Enhanced Step Indicator with Icons -->
         {% set kyc_status = user.identity_verification.verification_status if user.identity_verification else 'pending'
         %}

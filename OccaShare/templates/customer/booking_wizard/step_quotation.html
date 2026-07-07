@@ -182,7 +182,7 @@
                 authorize this agreement.
             </p>
 
-            <section class="up-card contract-portrait animate-up" style="animation-delay: 0.4s; padding: 1rem;">
+            <section class="up-card contract-portrait animate-up" style="animation-delay: 0.4s; padding: 0; overflow: hidden; border: none; box-shadow: none; background: transparent;">
                 <div class="contract-doc-content">
                     {% include "shared/contract_content_partial.html" %}
                 </div>
@@ -253,29 +253,29 @@
             </section>
 
             <!-- SECTION 3: FINAL ACTIONS -->
-            <div class="q-page-footer-actions animate-up" style="animation-delay: 0.5s;">
-                <div class="footer-nav-links">
-                    <a href="/bookings/step/kyc/{{ quotation.booking_id }}" class="btn-back-soft">
-                        <i class="fas fa-chevron-left"></i> Modify Booking Details
+            <div class="q-page-footer-actions animate-up" style="animation-delay: 0.5s; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 1rem;">
+                <div class="footer-nav-links" style="flex: 1;">
+                    <a href="/bookings/step/kyc/{{ quotation.booking_id }}" class="btn-back-soft" style="width: 100%; text-align: center; padding: 0.6rem 0.2rem; font-size: 0.65rem; border: 1px solid var(--up-slate-300); border-radius: 6px; background: white; font-family: 'Poppins', sans-serif; font-weight: 700;">
+                        <i class="fas fa-chevron-left"></i> Modify Booking
                     </a>
                 </div>
 
-                <div class="q-footer-main-cta">
+                <div class="q-footer-main-cta" style="flex: 1;">
                     {% if not quotation.customer_signature %}
-                    <button type="button" id="btn-sign" class="btn-confirm-up-main js-loading" style="display: none;"
+                    <button type="button" id="btn-sign" class="btn-confirm-up-main js-loading" style="display: none; width: 100%; padding: 0.6rem 0.2rem; font-size: 0.65rem; border-radius: 6px; font-family: 'Poppins', sans-serif; font-weight: 800;"
                         onclick="submitSignature()">
-                        <i class="fas fa-file-signature"></i> Finalize &amp; Confirm Contract
+                        <i class="fas fa-file-signature"></i> Finalize Contract
                     </button>
-                    <div id="apply-prompt" class="status-waiting-pill">
-                        <i class="fas fa-info-circle"></i> Please apply your signature above to finalize
+                    <div id="apply-prompt" class="status-waiting-pill" style="font-size: 0.55rem; padding: 0.4rem; text-align: center; width: 100%;">
+                        <i class="fas fa-info-circle"></i> Apply signature
                     </div>
                     {% elif not quotation.caterer_signature %}
-                    <div class="status-waiting-pill">
-                        <i class="fas fa-clock fa-spin"></i> Pending Caterer Counter-Signature
+                    <div class="status-waiting-pill" style="font-size: 0.55rem; padding: 0.4rem; text-align: center; width: 100%;">
+                        <i class="fas fa-clock fa-spin"></i> Pending Caterer
                     </div>
                     {% else %}
-                    <a href="/bookings/step/payment/{{ quotation.booking_id }}" class="btn-confirm-up-main">
-                        Proceed to Secure Payment <i class="fas fa-arrow-right"></i>
+                    <a href="/bookings/step/payment/{{ quotation.booking_id }}" class="btn-confirm-up-main" style="width: 100%; padding: 0.6rem 0.2rem; font-size: 0.65rem; border-radius: 6px; font-family: 'Poppins', sans-serif; font-weight: 800; display: block; text-align: center;">
+                        Secure Payment <i class="fas fa-arrow-right"></i>
                     </a>
                     {% endif %}
                 </div>

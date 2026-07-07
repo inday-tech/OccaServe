@@ -307,22 +307,22 @@
     }
 
     @media (max-width: 640px) {
-        .contract-paper-container { padding: 10px 5px; }
-        .contract-paper { padding: 15px 10px; }
+        .contract-paper-container { padding: 0; background: transparent; }
+        .contract-paper { padding: 10px 5px; border-radius: 8px; }
         
-        .formal-doc-main-title { font-size: 0.95rem; }
-        .formal-doc-meta { gap: 0.5rem; font-size: 0.55rem; flex-direction: column; align-items: center; }
+        .formal-doc-main-title { font-size: 0.8rem; line-height: 1.2; }
+        .formal-doc-meta { gap: 0.25rem; font-size: 0.45rem; flex-direction: column; align-items: center; }
         
-        .contract-preamble { font-size: 0.65rem; margin-bottom: 1.25rem; line-height: 1.4; }
+        .contract-preamble { font-size: 0.55rem; margin-bottom: 1rem; line-height: 1.3; }
         
-        .contract-parties-layout { gap: 0.25rem; margin-bottom: 1.5rem; align-items: stretch; }
-        .party-card-pro { padding: 0.35rem; display: flex; flex-direction: column; justify-content: flex-start; height: 100%; box-sizing: border-box; }
-        .party-label-tag { font-size: 0.4rem; margin-bottom: 0.15rem; }
-        .party-name { font-size: 0.5rem; margin-bottom: 0.15rem; word-break: break-word; line-height: 1.1; }
-        .party-detail-text { font-size: 0.45rem; line-height: 1.2; word-break: break-word; }
-        .parties-divider-icon { padding-top: 0.5rem; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; }
+        .contract-parties-layout { gap: 0.2rem; margin-bottom: 1rem; align-items: stretch; grid-template-columns: 1fr 20px 1fr; }
+        .party-card-pro { padding: 0.25rem; display: flex; flex-direction: column; justify-content: flex-start; height: 100%; box-sizing: border-box; }
+        .party-label-tag { font-size: 0.35rem; margin-bottom: 0.1rem; letter-spacing: 0; }
+        .party-name { font-size: 0.45rem; margin-bottom: 0.1rem; word-break: normal; word-wrap: break-word; hyphens: none; line-height: 1.1; }
+        .party-detail-text { font-size: 0.4rem; line-height: 1.1; word-break: normal; }
+        .parties-divider-icon { padding-top: 0.5rem; font-size: 0.6rem; display: flex; align-items: center; justify-content: center; }
         
-        .contract-section-title { font-size: 0.55rem; margin: 1rem 0 0.5rem 0; padding-bottom: 0.2rem; }
+        .contract-section-title { font-size: 0.5rem; margin: 0.75rem 0 0.25rem 0; padding-bottom: 0.1rem; }
         
         .financial-terms-para { font-size: 0.65rem; line-height: 1.4; margin-bottom: 0.5rem; }
         
@@ -342,12 +342,12 @@
         
         .agreement-status-para { font-size: 0.6rem; line-height: 1.3; }
         
-        .signatures-side-by-side { gap: 0.75rem; margin-top: 1.5rem; }
-        .sig-placeholder-area { height: 45px; margin-bottom: 0.3rem; }
-        .formal-sig-img { max-height: 40px; }
-        .sig-name-formal { font-size: 0.6rem; word-break: break-word; line-height: 1.1; }
-        .sig-label-formal { font-size: 0.45rem; line-height: 1.1; }
-        .sig-date-formal { font-size: 0.45rem; }
+        .signatures-side-by-side { gap: 0.5rem; margin-top: 1rem; }
+        .sig-placeholder-area { height: 40px; margin-bottom: 0.2rem; }
+        .formal-sig-img { max-height: 35px; }
+        .sig-name-formal { font-size: 0.45rem; word-break: normal; word-wrap: break-word; hyphens: none; line-height: 1.1; }
+        .sig-label-formal { font-size: 0.4rem; line-height: 1.1; }
+        .sig-date-formal { font-size: 0.35rem; }
         
         .verified-seal-watermark {
             width: 60px; height: 60px;
