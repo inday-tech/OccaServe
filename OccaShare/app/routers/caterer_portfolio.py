@@ -139,6 +139,7 @@ async def update_portfolio(
     booking_id: Optional[int] = Form(None),
     cover_photo: Optional[UploadFile] = File(None),
     additional_photos: List[UploadFile] = File(None),
+    deleted_photos: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -169,8 +170,23 @@ async def update_portfolio(
                 db.delete(old_cover)
             db.add(models.PortfolioImage(portfolio_id=portfolio.id, image_url=cover_url, is_cover=True))
             
+    if deleted_photos:
+        deleted_ids = [int(i.strip()) for i in deleted_photos.split(',') if i.strip().isdigit()]
+        if deleted_ids:
+            db.query(models.PortfolioImage).filter(
+                models.PortfolioImage.portfolio_id == portfolio.id,
+                models.PortfolioImage.id.in_(deleted_ids),
+                models.PortfolioImage.is_cover == False
+            ).delete(synchronize_session=False)
+
     if additional_photos:
-        count = 0
+        # Check how many gallery photos exist
+        existing_count = db.query(models.PortfolioImage).filter(
+            models.PortfolioImage.portfolio_id == portfolio.id,
+            models.PortfolioImage.is_cover == False
+        ).count()
+        
+        count = existing_count
         for photo in additional_photos:
             if photo.filename and count < 10:
                 img_url = process_image_to_base64(photo, max_size=(1920, 1080), quality=85)

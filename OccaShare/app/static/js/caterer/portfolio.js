@@ -3,6 +3,7 @@
 let coverPhotoFile = null;
 let galleryFiles = [];
 let existingGalleryUrls = [];
+let deletedGalleryIds = [];
 let highlightsTagify = null;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -46,6 +47,7 @@ function closePortfolioModal() {
     
     galleryFiles = [];
     existingGalleryUrls = [];
+    deletedGalleryIds = [];
     renderGalleryPreviews();
 }
 
@@ -90,13 +92,14 @@ function renderGalleryPreviews() {
     grid.innerHTML = '';
     grid.appendChild(uploadBox);
     
-    // Render existing photos (no remove button for now, as backend just appends)
-    existingGalleryUrls.forEach(url => {
+    // Render existing photos
+    existingGalleryUrls.forEach((item, index) => {
         const previewBox = document.createElement('div');
         previewBox.className = 'preview-box';
         previewBox.innerHTML = `
-            <img src="${url}">
+            <img src="${item.url}">
             <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5); color: white; font-size: 10px; text-align: center; padding: 2px;">Existing</div>
+            <button type="button" class="preview-remove" onclick="removeExistingGalleryPhoto(${index})"><i class="fas fa-times"></i></button>
         `;
         grid.appendChild(previewBox);
     });
@@ -114,6 +117,12 @@ function renderGalleryPreviews() {
         }
         reader.readAsDataURL(file);
     });
+}
+
+function removeExistingGalleryPhoto(index) {
+    const removedItem = existingGalleryUrls.splice(index, 1)[0];
+    deletedGalleryIds.push(removedItem.id);
+    renderGalleryPreviews();
 }
 
 async function submitPortfolio(e) {
@@ -155,6 +164,10 @@ async function submitPortfolio(e) {
     galleryFiles.forEach(file => {
         formData.append('additional_photos', file);
     });
+    
+    if (deletedGalleryIds.length > 0) {
+        formData.append('deleted_photos', deletedGalleryIds.join(','));
+    }
     
     try {
         const response = await fetch(form.action, {
@@ -208,13 +221,14 @@ function editPortfolio(btn) {
     const coverUrl = btn.dataset.coverUrl;
     
     existingGalleryUrls = [];
+    deletedGalleryIds = [];
     const card = btn.closest('.portfolio-card');
     if (card) {
         const hiddenGallery = card.querySelector('.hidden-gallery-data');
         if (hiddenGallery) {
             const imgs = hiddenGallery.querySelectorAll('img');
             imgs.forEach(img => {
-                if (img.src) existingGalleryUrls.push(img.src);
+                if (img.src) existingGalleryUrls.push({ id: img.dataset.id, url: img.src });
             });
         }
     }

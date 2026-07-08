@@ -75,7 +75,7 @@
             <div class="hidden-gallery-data" style="display: none;">
                 {% for img in p.images %}
                     {% if not img.is_cover %}
-                        <img src="{{ img.image_url }}" alt="gallery-img">
+                        <img src="{{ img.image_url }}" data-id="{{ img.id }}" alt="gallery-img">
                     {% endif %}
                 {% endfor %}
             </div>
