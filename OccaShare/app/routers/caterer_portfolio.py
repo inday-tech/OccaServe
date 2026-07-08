@@ -20,8 +20,9 @@ THUMBNAIL_DIR = "app/static/uploads/portfolios/thumbnails"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(THUMBNAIL_DIR, exist_ok=True)
 
-def process_image_to_bytes(file: UploadFile, max_size=(1920, 1080), quality=85) -> bytes:
-    """Compresses image to WebP and returns bytes."""
+def process_image_to_base64(file: UploadFile, max_size=(1920, 1080), quality=85) -> str:
+    import base64
+    """Compresses image to WebP and returns base64 string."""
     try:
         content = file.file.read()
         image = Image.open(io.BytesIO(content))
@@ -33,7 +34,8 @@ def process_image_to_bytes(file: UploadFile, max_size=(1920, 1080), quality=85) 
         image.thumbnail(max_size, Image.Resampling.LANCZOS)
         buf = io.BytesIO()
         image.save(buf, format="WEBP", quality=quality)
-        return buf.getvalue()
+        b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+        return f"data:image/webp;base64,{b64}"
     except Exception as e:
         print(f"Error processing image: {e}")
         raise HTTPException(status_code=400, detail="Invalid image file format")
@@ -101,37 +103,18 @@ async def create_portfolio(
     
     # 2. Process Cover Photo
     if cover_photo and cover_photo.filename:
-        # Save main cover image locally
-        filename = f"{uuid.uuid4().hex}.webp"
-        filepath = os.path.join(UPLOAD_DIR, filename)
-        
-        img_bytes = process_image_to_bytes(cover_photo, max_size=(1920, 1080), quality=85)
-        
-        with open(filepath, "wb") as f:
-            f.write(img_bytes)
-            
-        cover_url = f"/static/uploads/portfolios/{filename}"
-        
+        cover_url = process_image_to_base64(cover_photo, max_size=(1920, 1080), quality=85)
         if cover_url:
             db.add(models.PortfolioImage(portfolio_id=new_portfolio.id, image_url=cover_url, is_cover=True))
         else:
-            raise HTTPException(status_code=500, detail="Failed to save cover photo locally.")
+            raise HTTPException(status_code=500, detail="Failed to process cover photo.")
         
     # 3. Process Additional Photos (Limit to 10 for safety)
     if additional_photos:
         count = 0
         for photo in additional_photos:
             if photo.filename and count < 10:
-                img_bytes = process_image_to_bytes(photo, max_size=(1920, 1080), quality=85)
-                
-                filename = f"{uuid.uuid4().hex}.webp"
-                filepath = os.path.join(UPLOAD_DIR, filename)
-                
-                with open(filepath, "wb") as f:
-                    f.write(img_bytes)
-                    
-                img_url = f"/static/uploads/portfolios/{filename}"
-                
+                img_url = process_image_to_base64(photo, max_size=(1920, 1080), quality=85)
                 if img_url:
                     db.add(models.PortfolioImage(portfolio_id=new_portfolio.id, image_url=img_url, is_cover=False))
                     count += 1
@@ -155,21 +138,8 @@ async def delete_portfolio(
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
         
-    # Delete images from Disk
-    for img in portfolio.images:
-        try:
-            # Handle Local File Deletion
-            filename = img.image_url.split('/')[-1]
-            filepath = os.path.join(UPLOAD_DIR, filename)
-            if os.path.exists(filepath):
-                os.remove(filepath)
-            # Delete thumbnail if cover
-            if img.is_cover:
-                thumb_path = os.path.join(THUMBNAIL_DIR, f"thumb_{filename}")
-                if os.path.exists(thumb_path):
-                    os.remove(thumb_path)
-        except Exception as e:
-            print(f"Error deleting image {img.image_url}: {e}")
+    # Base64 images are stored in DB, no local files to delete
+    pass
             
     db.delete(portfolio)
     db.commit()

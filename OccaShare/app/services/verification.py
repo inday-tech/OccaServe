@@ -317,25 +317,32 @@ class VerificationService:
 
     def _prepare_image(self, encrypted_path: str, is_id: bool = True) -> np.ndarray:
         """Decrypts a file, handles EXIF orientation, and converts to OpenCV BGR."""
-        filename = os.path.basename(encrypted_path.replace('\\', '/'))
-        real_path = os.path.join("app/static/uploads/verification", filename)
-        
-        if not os.path.exists(real_path):
-            raise FileNotFoundError(f"KYC document not found at {real_path}")
-
         try:
-            with open(real_path, "rb") as f:
-                raw_data = f.read()
-            
-            # Try to decrypt
-            try:
-                decrypted_data = decrypt_data(raw_data)
-                print(f"[KYC DEBUG] Decrypted {filename} successfully.")
-            except Exception:
-                # Fallback: Maybe it's not encrypted? (e.g. from a previous version or direct upload)
-                decrypted_data = raw_data
-                print(f"[KYC DEBUG] Could not decrypt {filename}, using raw data.")
-
+            raw_data = None
+            filename = "base64_image"
+            if encrypted_path.startswith("data:image"):
+                import base64
+                base64_data = encrypted_path.split(",")[1]
+                decrypted_data = base64.b64decode(base64_data)
+            else:
+                filename = os.path.basename(encrypted_path.replace('\\', '/'))
+                real_path = os.path.join("app/static/uploads/verification", filename)
+                
+                if not os.path.exists(real_path):
+                    raise FileNotFoundError(f"KYC document not found at {real_path}")
+    
+                with open(real_path, "rb") as f:
+                    raw_data = f.read()
+                
+                # Try to decrypt
+                try:
+                    decrypted_data = decrypt_data(raw_data)
+                    print(f"[KYC DEBUG] Decrypted {filename} successfully.")
+                except Exception:
+                    # Fallback: Maybe it's not encrypted? (e.g. from a previous version or direct upload)
+                    decrypted_data = raw_data
+                    print(f"[KYC DEBUG] Could not decrypt {filename}, using raw data.")
+    
             # Use PIL to handle EXIF orientation automatically
             pil_img = Image.open(io.BytesIO(decrypted_data))
             pil_img = ImageOps.exif_transpose(pil_img)
@@ -1143,21 +1150,26 @@ class VerificationService:
 
     def _prepare_image_with_status(self, encrypted_path: str) -> Tuple[np.ndarray, bool]:
         """Decrypts a file, handles EXIF orientation, and returns (OpenCV_BGR_image, crop_succeeded)."""
-        filename = os.path.basename(encrypted_path.replace('\\', '/'))
-        real_path = os.path.join("app/static/uploads/verification", filename)
-        
-        if not os.path.exists(real_path):
-            raise FileNotFoundError(f"KYC document not found at {real_path}")
-
         try:
-            with open(real_path, "rb") as f:
-                raw_data = f.read()
-            
-            try:
-                decrypted_data = decrypt_data(raw_data)
-            except Exception:
-                decrypted_data = raw_data
-
+            if encrypted_path.startswith("data:image"):
+                import base64
+                base64_data = encrypted_path.split(",")[1]
+                decrypted_data = base64.b64decode(base64_data)
+            else:
+                filename = os.path.basename(encrypted_path.replace('\\', '/'))
+                real_path = os.path.join("app/static/uploads/verification", filename)
+                
+                if not os.path.exists(real_path):
+                    raise FileNotFoundError(f"KYC document not found at {real_path}")
+        
+                with open(real_path, "rb") as f:
+                    raw_data = f.read()
+                
+                try:
+                    decrypted_data = decrypt_data(raw_data)
+                except Exception:
+                    decrypted_data = raw_data
+    
             pil_img = Image.open(io.BytesIO(decrypted_data))
             pil_img = ImageOps.exif_transpose(pil_img)
             
@@ -3133,27 +3145,35 @@ class VerificationService:
                     files = []
                     
                     # Read ID image
-                    id_filename = os.path.basename(id_path.replace('\\', '/'))
-                    id_real_path = os.path.join("app/static/uploads/verification", id_filename)
-                    with open(id_real_path, "rb") as f:
-                        id_raw_data = f.read()
-                    try:
-                        id_decrypted = decrypt_data(id_raw_data)
-                    except Exception:
-                        id_decrypted = id_raw_data
+                    if id_path.startswith("data:image"):
+                        import base64
+                        id_decrypted = base64.b64decode(id_path.split(",")[1])
+                    else:
+                        id_filename = os.path.basename(id_path.replace('\\', '/'))
+                        id_real_path = os.path.join("app/static/uploads/verification", id_filename)
+                        with open(id_real_path, "rb") as f:
+                            id_raw_data = f.read()
+                        try:
+                            id_decrypted = decrypt_data(id_raw_data)
+                        except Exception:
+                            id_decrypted = id_raw_data
                     
                     files.append(("img1", ("id_card.jpg", id_decrypted, "image/jpeg")))
                     
                     # Read and decrypt selfie images
                     for i, sp in enumerate(selfie_paths):
-                        selfie_filename = os.path.basename(sp.replace('\\', '/'))
-                        selfie_real_path = os.path.join("app/static/uploads/verification", selfie_filename)
-                        with open(selfie_real_path, "rb") as f:
-                            selfie_raw_data = f.read()
-                        try:
-                            selfie_decrypted = decrypt_data(selfie_raw_data)
-                        except Exception:
-                            selfie_decrypted = selfie_raw_data
+                        if sp.startswith("data:image"):
+                            import base64
+                            selfie_decrypted = base64.b64decode(sp.split(",")[1])
+                        else:
+                            selfie_filename = os.path.basename(sp.replace('\\', '/'))
+                            selfie_real_path = os.path.join("app/static/uploads/verification", selfie_filename)
+                            with open(selfie_real_path, "rb") as f:
+                                selfie_raw_data = f.read()
+                            try:
+                                selfie_decrypted = decrypt_data(selfie_raw_data)
+                            except Exception:
+                                selfie_decrypted = selfie_raw_data
                         
                         # Add first selfie as img2
                         if i == 0:

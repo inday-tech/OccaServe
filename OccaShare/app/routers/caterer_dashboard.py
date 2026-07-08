@@ -26,10 +26,9 @@ caterer_only = auth.RoleChecker(["caterer"])
 
 
 def process_base64_image(content_bytes: bytes, max_size=(600, 600), quality=75) -> str:
-    """Saves image locally as WebP and returns URL instead of base64."""
+    """Compresses image and returns a base64 Data URI."""
     import io
-    import uuid
-    import os
+    import base64
     try:
         from PIL import Image
         img = Image.open(io.BytesIO(content_bytes))
@@ -38,17 +37,12 @@ def process_base64_image(content_bytes: bytes, max_size=(600, 600), quality=75) 
         img.thumbnail(max_size, Image.Resampling.LANCZOS)
         buf = io.BytesIO()
         img.save(buf, format="WEBP", quality=quality)
-        file_bytes = buf.getvalue()
-        ext = ".webp"
+        b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+        return f"data:image/webp;base64,{b64}"
     except Exception:
-        file_bytes = content_bytes
-        ext = ".jpg"
-        
-    filename = f"img_{uuid.uuid4().hex}{ext}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-    with open(filepath, "wb") as f:
-        f.write(file_bytes)
-    return f"/static/uploads/caterer/{filename}"
+        # Fallback to direct base64 if not an image
+        b64 = base64.b64encode(content_bytes).decode('utf-8')
+        return f"data:image/jpeg;base64,{b64}"
 
 def create_default_booking_tasks(db: Session, booking_id: int):
     # Idempotency check: Don't add if tasks already exist
@@ -3094,6 +3088,8 @@ async def add_menu_item(
         except ValueError:
             price = 0.0
         serving_size = form_data.get("serving_size")
+
+    if not (usage_type == "package_only"):
         min_order_qty = int(form_data.get("min_order_qty", "1") or "1")
     else:
         min_order_qty = 1
@@ -3489,17 +3485,17 @@ async def update_profile(
                     continue
 
                 if field_name == 'permit':
+                    import base64
                     # Permit may be PDF — store raw base64
                     mime = file_obj.content_type or "image/jpeg"
                     if mime.lower() not in ["image/png", "image/jpeg", "image/jpg", "application/pdf"]:
                         return RedirectResponse(url="/caterer/profile?error_msg=Invalid+business+permit+file+type.+Only+PNG,+JPEG,+and+PDF+are+allowed.", status_code=303)
-                    ext = '.pdf' if 'pdf' in mime.lower() else '.jpg'
-                    import uuid, os
-                    filename = f'permit_{uuid.uuid4().hex}{ext}'
-                    filepath = os.path.join(UPLOAD_DIR, filename)
-                    with open(filepath, 'wb') as _f:
-                        _f.write(content_bytes)
-                    data_url = f'/static/uploads/caterer/{filename}'
+                    
+                    # Convert document directly to base64
+                    b64 = base64.b64encode(content_bytes).decode('utf-8')
+                    # Standardize mime if necessary
+                    actual_mime = "application/pdf" if "pdf" in mime.lower() else "image/jpeg"
+                    data_url = f"data:{actual_mime};base64,{b64}"
                     profile.permit_url = data_url
                     profile.permit_status = 'Pending Review'
                     profile.verification_status = 'Pending Review'
@@ -4135,6 +4131,11 @@ async def update_menu_item(
         except ValueError:
             price = 0.0
         serving_size = form_data.get("serving_size")
+
+    if not (usage_type == "package_only"):
+        min_order_qty = int(form_data.get("min_order_qty", "1") or "1")
+    else:
+        min_order_qty = 1
     
     is_hidden = form_data.get("visibility") == "hidden"
     
@@ -4156,6 +4157,7 @@ async def update_menu_item(
     item.cost_price = cost_price
     item.price = price
     item.serving_size = serving_size
+    item.min_order_qty = min_order_qty
     item.status = status
     item.usage_type = usage_type
     item.available_for_package = available_for_package
@@ -6092,13 +6094,13 @@ async def submit_verification(
         if error:
             raise ValueError(error)
             
-        ext = file_obj.filename.split('.')[-1].lower()
-        filename = f"user_{user.id}_{prefix}_{int(time.time())}.{ext}"
-        filepath = os.path.join(upload_dir, filename)
-        
-        with open(filepath, "wb") as buffer:
-            buffer.write(encrypt_data(content))
-        return f"/api/bookings/kyc/view/{filename}"
+        # Instead of saving locally, convert directly to Base64
+        import base64
+        b64 = base64.b64encode(content).decode('utf-8')
+        mime = file_obj.content_type or "image/jpeg"
+        actual_mime = "application/pdf" if "pdf" in mime.lower() else "image/jpeg"
+        if "png" in mime.lower(): actual_mime = "image/png"
+        return f"data:{actual_mime};base64,{b64}"
     
     try:
         if permit:
