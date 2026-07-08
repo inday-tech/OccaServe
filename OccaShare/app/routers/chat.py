@@ -270,26 +270,20 @@ async def upload_chat_file(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """Upload a file to the chat directory."""
-    # Ensure directory exists
-    chat_upload_dir = os.path.join("app", "static", "uploads", "chat")
-    os.makedirs(chat_upload_dir, exist_ok=True)
-    
     # Security: limit file types (Optional but recommended)
     ext = os.path.splitext(file.filename)[1].lower()
     allowed_exts = ['.jpg', '.jpeg', '.png', '.gif', '.pdf', '.docx', '.txt', '.webp']
     if ext not in allowed_exts:
         raise HTTPException(status_code=400, detail="File type not allowed")
     
-    # Generate unique filename
-    filename = f"{uuid.uuid4()}{ext}"
-    file_path = os.path.join(chat_upload_dir, filename)
-    
-    # Write file
-    with open(file_path, "wb") as buffer:
-        buffer.write(await file.read())
+    import base64
+    content_bytes = await file.read()
+    b64 = base64.b64encode(content_bytes).decode('utf-8')
+    mime = file.content_type or 'application/octet-stream'
+    data_url = f"data:{mime};base64,{b64}"
     
     return {
-        "file_url": f"/static/uploads/chat/{filename}",
+        "file_url": data_url,
         "file_name": file.filename,
         "message_type": "image" if ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp'] else "file"
     }

@@ -31,11 +31,17 @@ document.addEventListener('DOMContentLoaded', function () {
     let selfieFrames = [];
     let isMobile = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    // --- SETUP DATE MIN ---
+    // --- SETUP DATE MIN & MAX ---
     const dateInput = document.getElementById('delivery_date');
     if (dateInput) {
-        const today = new Date().toISOString().split('T')[0];
+        const todayObj = new Date();
+        const today = todayObj.toISOString().split('T')[0];
         dateInput.setAttribute('min', today);
+        
+        // 3 months max limit
+        const maxObj = new Date(todayObj.setMonth(todayObj.getMonth() + 3));
+        const maxDate = maxObj.toISOString().split('T')[0];
+        dateInput.setAttribute('max', maxDate);
     }
 
     // --- COMBO BUILDER LOGIC ---
@@ -715,6 +721,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (addressSection) addressSection.style.display = 'none';
             if (lblDelDate) lblDelDate.innerText = 'Pickup Date';
             if (lblDelTime) lblDelTime.innerText = 'Pickup Time';
+            
+            const pickupInfo = document.getElementById('pickup-address-info');
+            if (pickupInfo) pickupInfo.style.display = 'block';
+            
             updateCheckoutSummary();
         } else {
             if (window.isServiceOnly) {
@@ -724,6 +734,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (addressSection) addressSection.style.display = 'block';
             if (lblDelDate) lblDelDate.innerText = window.isServiceOnly ? 'Event Date' : (window.isRentalOnly ? 'Delivery & Setup Date' : 'Delivery Date');
             if (lblDelTime) lblDelTime.innerText = window.isServiceOnly ? 'Call Time' : (window.isRentalOnly ? 'Setup Time' : 'Delivery Time');
+            
+            const pickupInfo = document.getElementById('pickup-address-info');
+            if (pickupInfo) pickupInfo.style.display = 'none';
+            
             if (typeof window.syncAddress === 'function') window.syncAddress(); 
         }
     };
@@ -757,7 +771,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('rev-datetime').innerText = `${dateStr} @ ${timeStr}`;
         
         const mode = form.fulfillment.value;
-        document.getElementById('rev-location').innerText = mode === 'pickup' ? 'STORE PICKUP' : document.getElementById('address').value;
+        document.getElementById('rev-location').innerText = mode === 'pickup' ? (window.catererAddress || 'STORE PICKUP') : document.getElementById('address').value;
     }
 
     // --- ADDRESS SYNC & DYNAMIC FEE ---
@@ -767,13 +781,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const provSelect = document.getElementById('prov_select');
         if (!provSelect) return;
         
-        provSelect.innerHTML = '<option value="">-- Select Province --</option>';
+        provSelect.innerHTML = '<option value="" disabled selected hidden>-- Select Province --</option>';
         
         const allowedProvinces = [
-            { code: "130000000", name: "NATIONAL CAPITAL REGION (NCR)" },
-            { code: "043400000", name: "Laguna" },
-            { code: "041000000", name: "Batangas" },
-            { code: "045600000", name: "Quezon" }
+            { code: "043400000", name: "Laguna" }
         ];
         
         allowedProvinces.forEach(p => {
@@ -782,20 +793,53 @@ document.addEventListener('DOMContentLoaded', function () {
             opt.textContent = p.name;
             provSelect.appendChild(opt);
         });
+
+        // Autofill logic
+        if (window.userSavedAddress) {
+            if (window.userSavedAddress.street) {
+                const st = document.getElementById('street_input');
+                if (st && !st.value) st.value = window.userSavedAddress.street;
+            }
+            if (window.userSavedAddress.province) {
+                let found = false;
+                Array.from(provSelect.options).forEach(opt => {
+                    if (opt.text.toLowerCase() === window.userSavedAddress.province.toLowerCase() || 
+                        opt.value === window.userSavedAddress.province) {
+                        opt.selected = true;
+                        found = true;
+                    }
+                });
+                if (found) {
+                    await window.handleProvinceChange();
+                }
+            }
+        }
     }
     
-    function fallbackToTextInputs() {
-        // Change selects to text inputs to allow manual entry if API fails
-        const provGroup = document.getElementById('prov_select').parentElement;
-        provGroup.innerHTML = '<label>Province</label><input type="text" id="prov_select" class="form-input" placeholder="e.g. Laguna" required oninput="handleProvinceChange()">';
+    window.showEditAddress = function() {
+        document.getElementById('address-display-section').style.display = 'none';
+        document.getElementById('address-edit-section').style.display = 'block';
+        window.addressEditing = true;
+        if (!window.psgcInitialized) {
+            initPSGC();
+            window.psgcInitialized = true;
+        }
+        // Blank out the hidden fields so syncAddress handles them
+        document.getElementById('address').value = '';
+        if (typeof window.syncAddress === 'function') window.syncAddress();
+    };
+
+    window.cancelEditAddress = function() {
+        document.getElementById('address-display-section').style.display = 'flex';
+        document.getElementById('address-edit-section').style.display = 'none';
+        window.addressEditing = false;
         
-        const cityGroup = document.getElementById('city_select').parentElement;
-        cityGroup.innerHTML = '<label>Municipality / City</label><input type="text" id="city_select" class="form-input" placeholder="e.g. Santa Cruz" required oninput="handleCityChange()">';
-        
-        const brgyGroup = document.getElementById('brgy_select').parentElement;
-        brgyGroup.innerHTML = '<label>Barangay</label><input type="text" id="brgy_select" class="form-input" placeholder="e.g. Patimbao" required oninput="syncAddress()">';
-    }
-    initPSGC();
+        // Restore hidden address from Jinja saved vars
+        document.getElementById('address').value = window.originalSavedAddressString || '';
+        document.getElementById('hidden_province').value = window.userSavedAddress.province || '';
+        document.getElementById('hidden_municipality').value = window.userSavedAddress.city || '';
+        document.getElementById('hidden_barangay').value = window.userSavedAddress.brgy || '';
+    };
 
     window.handleProvinceChange = async function() {
         const provSelect = document.getElementById('prov_select');
@@ -822,10 +866,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (code === "130000000") endpoint = `https://psgc.gitlab.io/api/regions/${code}/cities-municipalities/`;
             
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 2500);
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
 
             const res = await fetch(endpoint, { signal: controller.signal });
             clearTimeout(timeoutId);
+            
+            if (!res.ok) throw new Error("API Error");
             const cities = await res.json();
             
             citySelect.innerHTML = '<option value="">-- Select Municipality --</option>';
@@ -836,9 +882,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 citySelect.appendChild(opt);
             });
             citySelect.disabled = false;
+            
+            // Autofill city
+            if (window.userSavedAddress && window.userSavedAddress.city) {
+                let found = false;
+                Array.from(citySelect.options).forEach(opt => {
+                    if (opt.text.toLowerCase() === window.userSavedAddress.city.toLowerCase() || 
+                        opt.value === window.userSavedAddress.city) {
+                        opt.selected = true;
+                        found = true;
+                    }
+                });
+                if (found) {
+                    window.userSavedAddress.city = null; // consume
+                    await window.handleCityChange();
+                }
+            }
         } catch (e) { 
-            console.warn('Failed to load cities, falling back:', e);
-            fallbackToTextInputs();
+            console.warn('Failed to load cities:', e);
+            citySelect.innerHTML = '<option value="">-- Failed to load. Please refresh --</option>';
+            citySelect.disabled = true;
         }
         if (typeof window.syncAddress === 'function') window.syncAddress();
     };
@@ -860,7 +923,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             brgySelect.innerHTML = '<option value="">Loading...</option>';
-            const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${code}/barangays/`);
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
+            
+            const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${code}/barangays/`, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            
+            if (!res.ok) throw new Error("API Error");
             const brgys = await res.json();
             
             brgySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
@@ -871,11 +941,35 @@ document.addEventListener('DOMContentLoaded', function () {
                 brgySelect.appendChild(opt);
             });
             brgySelect.disabled = false;
-        } catch (e) { console.error('Failed to load barangays:', e); }
+            
+            // Autofill brgy
+            if (window.userSavedAddress && window.userSavedAddress.brgy) {
+                let found = false;
+                Array.from(brgySelect.options).forEach(opt => {
+                    if (opt.text.toLowerCase() === window.userSavedAddress.brgy.toLowerCase() || 
+                        opt.value === window.userSavedAddress.brgy) {
+                        opt.selected = true;
+                        found = true;
+                    }
+                });
+                if (found) {
+                    window.userSavedAddress.brgy = null; // consume
+                    if (typeof window.syncAddress === 'function') window.syncAddress();
+                }
+            }
+        } catch (e) { 
+            console.error('Failed to load barangays:', e);
+            brgySelect.innerHTML = '<option value="">-- Failed to load. Please refresh --</option>';
+            brgySelect.disabled = true;
+        }
         if (typeof window.syncAddress === 'function') window.syncAddress();
     };
 
     window.syncAddress = async function() {
+        if (!window.addressEditing && window.originalSavedAddressString) {
+            return;
+        }
+        
         const provEl = document.getElementById('prov_select');
         const cityEl = document.getElementById('city_select');
         const brgyEl = document.getElementById('brgy_select');
@@ -1211,6 +1305,15 @@ function validateSchedulingRules() {
                     resetError('delivery_date');
                     showError('delivery_date', `Requires ${rules.food_rules.lead_time_hours} hours lead time.`);
                 }
+            }
+            
+            // 3-Month Max Validation
+            const selectedDateObj = new Date(deliveryDateInput.value);
+            const maxDateObj = new Date();
+            maxDateObj.setMonth(maxDateObj.getMonth() + 3);
+            if (selectedDateObj > maxDateObj) {
+                resetError('delivery_date');
+                showError('delivery_date', `Date cannot exceed 3 months from today.`);
             }
         }
     }

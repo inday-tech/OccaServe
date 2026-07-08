@@ -243,7 +243,7 @@
         </div>
         <div class="header-stats-visual" style="display: flex; gap: 2rem; margin-right: 1rem; align-items: center; height: 100%;">
             <div style="text-align: center;">
-                <span style="display: block; font-size: 1.5rem; font-weight: 800; color: #000;">{{ archived_bookings|length + archived_packages|length + archived_menu_items|length + archived_gallery_items|length + archived_ingredients|length }}</span>
+                <span style="display: block; font-size: 1.5rem; font-weight: 800; color: #000;">{{ archived_bookings|length + archived_packages|length + archived_menu_items|length + archived_gallery_items|length + archived_services|length + archived_equipment|length + archived_portfolios|length }}</span>
                 <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Items</span>
             </div>
         </div>
@@ -263,8 +263,14 @@
         <button class="archive-tab-btn" onclick="switchTab('gallery', event)">
             <i class="fas fa-images"></i> Gallery ({{ archived_gallery_items|length }})
         </button>
-        <button class="archive-tab-btn" onclick="switchTab('ingredients', event)">
-            <i class="fas fa-carrot"></i> Ingredients ({{ archived_ingredients|length }})
+        <button class="archive-tab-btn" onclick="switchTab('services', event)">
+            <i class="fas fa-concierge-bell"></i> Services ({{ archived_services|length }})
+        </button>
+        <button class="archive-tab-btn" onclick="switchTab('equipment', event)">
+            <i class="fas fa-tools"></i> Equipment ({{ archived_equipment|length }})
+        </button>
+        <button class="archive-tab-btn" onclick="switchTab('portfolios', event)">
+            <i class="fas fa-briefcase"></i> Portfolios ({{ archived_portfolios|length }})
         </button>
     </div>
 
@@ -446,27 +452,27 @@
         {% endif %}
     </div>
 
-    <!-- Ingredients Tab -->
-    <div id="tab-ingredients" class="archive-tab-pane">
-        {% if archived_ingredients %}
+    <!-- Services Tab -->
+    <div id="tab-services" class="archive-tab-pane">
+        {% if archived_services %}
         <div class="archived-grid">
-            {% for item in archived_ingredients %}
-            <div class="archived-card c-card-premium" id="archive-ingredient-{{ item.id }}">
+            {% for item in archived_services %}
+            <div class="archived-card c-card-premium" id="archive-service-{{ item.id }}">
                 <div class="archived-card-media" style="height: 100px;">
                     <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #cbd5e1; font-size: 2.5rem; background: #f8fafc;">
-                        <i class="fas fa-seedling"></i>
+                        <i class="fas fa-concierge-bell"></i>
                     </div>
                 </div>
                 <div class="archived-card-body">
                     <h3 class="archived-card-title">{{ item.name }}</h3>
                     <div style="margin-bottom: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
-                        <i class="fas fa-tag"></i> ₱{{ "{:,.2f}".format(item.unit_price or 0) }} / {{ item.unit }}
+                        <i class="fas fa-tag"></i> ₱{{ "{:,.2f}".format(item.selling_price or 0) }} / {{ item.unit_type }}
                     </div>
                     <div class="archived-card-actions" style="margin-top: auto;">
-                        <button class="archive-btn btn-restore" onclick="restoreAction('ingredient', {{ item.id }})">
+                        <button class="archive-btn btn-restore" onclick="restoreAction('service', {{ item.id }})">
                             <i class="fas fa-undo"></i> Restore
                         </button>
-                        <button class="archive-btn btn-delete" onclick="deleteAction('ingredient', {{ item.id }})">
+                        <button class="archive-btn btn-delete" onclick="deleteAction('service', {{ item.id }})">
                             <i class="fas fa-trash-alt"></i> Delete
                         </button>
                     </div>
@@ -477,8 +483,86 @@
         {% else %}
         <div class="archive-empty-state">
             <div class="archive-empty-icon"><i class="fas fa-box-open"></i></div>
-            <h3 class="archive-empty-title">No Archived Ingredients</h3>
-            <p class="archive-empty-desc">Ingredients you remove from your inventory will be kept here safely.</p>
+            <h3 class="archive-empty-title">No Archived Services</h3>
+            <p class="archive-empty-desc">Services you remove from your offerings will be kept here safely.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Equipment Tab -->
+    <div id="tab-equipment" class="archive-tab-pane">
+        {% if archived_equipment %}
+        <div class="archived-grid">
+            {% for item in archived_equipment %}
+            <div class="archived-card c-card-premium" id="archive-equipment-{{ item.id }}">
+                <div class="archived-card-media" style="height: 100px;">
+                    <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #cbd5e1; font-size: 2.5rem; background: #f8fafc;">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                </div>
+                <div class="archived-card-body">
+                    <h3 class="archived-card-title">{{ item.name }}</h3>
+                    <div style="margin-bottom: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
+                        <i class="fas fa-tag"></i> ₱{{ "{:,.2f}".format(item.rental_price or 0) }} / {{ item.unit_type }}
+                    </div>
+                    <div class="archived-card-actions" style="margin-top: auto;">
+                        <button class="archive-btn btn-restore" onclick="restoreAction('equipment', {{ item.id }})">
+                            <i class="fas fa-undo"></i> Restore
+                        </button>
+                        <button class="archive-btn btn-delete" onclick="deleteAction('equipment', {{ item.id }})">
+                            <i class="fas fa-trash-alt"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="archive-empty-state">
+            <div class="archive-empty-icon"><i class="fas fa-wrench"></i></div>
+            <h3 class="archive-empty-title">No Archived Equipment</h3>
+            <p class="archive-empty-desc">Equipment items you remove from your inventory will be kept here safely.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Portfolios Tab -->
+    <div id="tab-portfolios" class="archive-tab-pane">
+        {% if archived_portfolios %}
+        <div class="archived-grid">
+            {% for item in archived_portfolios %}
+            <div class="archived-card c-card-premium" id="archive-portfolio-{{ item.id }}">
+                <div class="archived-card-media" style="height: 100px;">
+                    {% if item.images and item.images|length > 0 %}
+                    <img src="{{ item.images[0].image_url }}" alt="{{ item.title }}" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
+                    {% else %}
+                    <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #cbd5e1; font-size: 2.5rem; background: #f8fafc;">
+                        <i class="fas fa-briefcase"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="archived-card-body">
+                    <h3 class="archived-card-title">{{ item.title }}</h3>
+                    <div style="margin-bottom: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
+                        <i class="fas fa-calendar-alt"></i> {{ item.event_date.strftime('%b %d, %Y') if item.event_date else 'N/A' }}
+                    </div>
+                    <div class="archived-card-actions" style="margin-top: auto;">
+                        <button class="archive-btn btn-restore" onclick="restoreAction('portfolio', {{ item.id }})">
+                            <i class="fas fa-undo"></i> Restore
+                        </button>
+                        <button class="archive-btn btn-delete" onclick="deleteAction('portfolio', {{ item.id }})">
+                            <i class="fas fa-trash-alt"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="archive-empty-state">
+            <div class="archive-empty-icon"><i class="fas fa-briefcase"></i></div>
+            <h3 class="archive-empty-title">No Archived Portfolios</h3>
+            <p class="archive-empty-desc">Portfolio projects you remove will be kept here safely.</p>
         </div>
         {% endif %}
     </div>
@@ -539,7 +623,9 @@
         else if (type === 'package') url = `/caterer/packages/${id}/restore`;
         else if (type === 'menu') url = `/caterer/menu/${id}/restore`;
         else if (type === 'gallery') url = `/caterer/gallery/${id}/restore`;
-        else if (type === 'ingredient') url = `/caterer/ingredients/${id}/restore`;
+        else if (type === 'service') url = `/caterer/services/${id}/restore`;
+        else if (type === 'equipment') url = `/caterer/equipment/${id}/restore`;
+        else if (type === 'portfolio') url = `/caterer/portfolio/${id}/restore`;
 
         performAction(type, id, 'restore', url,
             `Are you sure you want to restore this item?`,
@@ -553,7 +639,9 @@
         else if (type === 'package') url = `/caterer/packages/${id}/delete`;
         else if (type === 'menu') url = `/caterer/menu/${id}/delete`;
         else if (type === 'gallery') url = `/caterer/gallery/${id}/delete`;
-        else if (type === 'ingredient') url = `/caterer/ingredients/${id}/delete`;
+        else if (type === 'service') url = `/caterer/services/${id}/delete`;
+        else if (type === 'equipment') url = `/caterer/equipment/${id}/delete`;
+        else if (type === 'portfolio') url = `/caterer/portfolio/${id}/delete`;
 
         performAction(type, id, 'delete', url,
             `WARNING: This deletion is PERMANENT and cannot be undone. Are you sure?`,

@@ -553,18 +553,11 @@ async def upload_public_proof_of_payment(
         if re.search(r"(.)\1{5,}", reference_no):
             raise HTTPException(status_code=400, detail="Reference number looks invalid (excessive repeating characters).")
     
-    # Save the uploaded proof image
-    UPLOAD_DIR = "app/static/uploads/payment_proofs"
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    
-    file_extension = os.path.splitext(proof_image.filename)[1]
-    filename = f"proof_{booking_id}_{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(proof_image.file, buffer)
-        
-    booking.payment_proof_url = f"/static/uploads/payment_proofs/{filename}"
+    import base64
+    content_bytes = await proof_image.read()
+    b64 = base64.b64encode(content_bytes).decode('utf-8')
+    mime = proof_image.content_type or 'image/jpeg'
+    booking.payment_proof_url = f"data:{mime};base64,{b64}"
     if reference_no:
         booking.special_requests = (booking.special_requests or "") + f"\n[Payment Ref: {reference_no}]"
     if payment_method:
@@ -792,26 +785,15 @@ async def customer_upload_image(
     if profile_image.content_type not in allowed_types:
         raise HTTPException(status_code=400, detail="Invalid file type. Only JPG, PNG, and WEBP allowed.")
         
-    UPLOAD_DIR = "app/static/uploads/profiles"
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    import base64
+    content_bytes = await profile_image.read()
+    b64 = base64.b64encode(content_bytes).decode('utf-8')
+    mime = profile_image.content_type or 'image/jpeg'
+    new_profile_image_url = f"data:{mime};base64,{b64}"
     
-    file_extension = os.path.splitext(profile_image.filename)[1]
-    filename = f"user_{user.id}_{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(profile_image.file, buffer)
-        
-    # Delete old image if exists
-    if user.profile_image_url and user.profile_image_url.startswith("/static/uploads/profiles/"):
-        old_path = os.path.join("app", user.profile_image_url.lstrip("/"))
-        if os.path.exists(old_path):
-            try:
-                os.remove(old_path)
-            except:
-                pass
+    # Old file deletion logic removed as files are not physical anymore
                 
-    user.profile_image_url = f"/static/uploads/profiles/{filename}"
+    user.profile_image_url = new_profile_image_url
     db.commit()
     return {"success": True, "image_url": user.profile_image_url, "message": "Profile picture updated."}
 
@@ -1258,17 +1240,11 @@ async def update_profile_photo(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
-    UPLOAD_DIR = "app/static/uploads/profiles"
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    
-    file_extension = os.path.splitext(file.filename)[1]
-    filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    
-    user.profile_image_url = f"/static/uploads/profiles/{filename}"
+    import base64
+    content_bytes = await file.read()
+    b64 = base64.b64encode(content_bytes).decode('utf-8')
+    mime = file.content_type or 'image/jpeg'
+    user.profile_image_url = f"data:{mime};base64,{b64}"
     db.commit()
     
     return RedirectResponse(url="/customer/profile?success_msg=Profile+photo+updated", status_code=303)
@@ -1293,23 +1269,19 @@ async def process_verification(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
-    # Setup upload directory
-    UPLOAD_DIR = "app/static/uploads/verification"
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    import base64
     
     # Save ID Document
-    id_ext = os.path.splitext(id_document.filename)[1]
-    id_filename = f"user_{user.id}_id_{uuid.uuid4()}{id_ext}"
-    id_path = os.path.join(UPLOAD_DIR, id_filename)
-    with open(id_path, "wb") as buffer:
-        shutil.copyfileobj(id_document.file, buffer)
-        
+    id_content = await id_document.read()
+    id_b64 = base64.b64encode(id_content).decode('utf-8')
+    id_mime = id_document.content_type or 'image/jpeg'
+    id_filename = f"data:{id_mime};base64,{id_b64}"
+    
     # Save Selfie
-    selfie_ext = os.path.splitext(selfie.filename)[1]
-    selfie_filename = f"user_{user.id}_selfie_{uuid.uuid4()}{selfie_ext}"
-    selfie_path = os.path.join(UPLOAD_DIR, selfie_filename)
-    with open(selfie_path, "wb") as buffer:
-        shutil.copyfileobj(selfie.file, buffer)
+    selfie_content = await selfie.read()
+    selfie_b64 = base64.b64encode(selfie_content).decode('utf-8')
+    selfie_mime = selfie.content_type or 'image/jpeg'
+    selfie_filename = f"data:{selfie_mime};base64,{selfie_b64}"
         
     # Create Verification Record
     kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user.id).first()

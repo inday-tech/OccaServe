@@ -529,15 +529,11 @@ async def upload_dispatch_proof(
     if not proof_image.filename:
         raise HTTPException(status_code=400, detail="No file selected")
 
-    os.makedirs("app/static/uploads/dispatch_proofs", exist_ok=True)
-    ext = proof_image.filename.split(".")[-1]
-    new_filename = f"dispatch_{booking.id}_{uuid.uuid4().hex[:8]}.{ext}"
-    file_path = f"app/static/uploads/dispatch_proofs/{new_filename}"
-
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(proof_image.file, buffer)
-
-    booking.dispatch_proof_url = f"/static/uploads/dispatch_proofs/{new_filename}"
+    import base64
+    content_bytes = await proof_image.read()
+    b64 = base64.b64encode(content_bytes).decode('utf-8')
+    mime = proof_image.content_type or 'image/jpeg'
+    booking.dispatch_proof_url = f"data:{mime};base64,{b64}"
     
     # Update status simultaneously
     allowed_statuses = ["ready_for_delivery", "ready_for_pickup", "on_the_way"]
@@ -1462,6 +1458,9 @@ async def caterer_archives(
     archived_packages = [pkg for pkg in profile.packages if pkg.status == 'archived']
     archived_gallery_items = [item for item in profile.gallery_items if item.is_archived]
     archived_bookings = [b for b in profile.bookings if b.is_archived]
+    archived_services = [s for s in profile.service_items if getattr(s, 'is_archived', False)]
+    archived_equipment = [e for e in profile.equipment_items if getattr(e, 'is_archived', False)]
+    archived_portfolios = [p for p in profile.portfolios if getattr(p, 'is_archived', False)]
 
     return templates.TemplateResponse("caterer/archives.html", {
         "request": request,
@@ -1470,6 +1469,9 @@ async def caterer_archives(
         "archived_packages": archived_packages,
         "archived_gallery_items": archived_gallery_items,
         "archived_bookings": archived_bookings,
+        "archived_services": archived_services,
+        "archived_equipment": archived_equipment,
+        "archived_portfolios": archived_portfolios,
         "active_page": "archives"
     })
 
@@ -4985,37 +4987,101 @@ async def delete_gallery_item_permanent(
     db.commit()
     return RedirectResponse(url="/caterer/archives?success_msg=Gallery+photo+permanently+deleted", status_code=303)
 
-@router.post("/ingredients/{item_id}/restore")
-async def restore_ingredient(
+@router.post("/services/{item_id}/restore")
+async def restore_service(
     item_id: int,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    item = db.query(None).filter(
-        None.id == item_id,
-        None.caterer_id == user.caterer_profile.id
+    item = db.query(models.Service).filter(
+        models.Service.id == item_id,
+        models.Service.caterer_id == user.caterer_profile.id
     ).first()
     if not item:
-        raise HTTPException(status_code=404, detail="Ingredient not found")
+        raise HTTPException(status_code=404, detail="Service not found")
     item.is_archived = False
     db.commit()
-    return RedirectResponse(url="/caterer/archives?success_msg=Ingredient+restored+successfully", status_code=303)
+    return RedirectResponse(url="/caterer/archives?success_msg=Service+restored+successfully", status_code=303)
 
-@router.post("/ingredients/{item_id}/delete")
-async def delete_ingredient_permanent(
+@router.post("/services/{item_id}/delete")
+async def delete_service_permanent(
     item_id: int,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    item = db.query(None).filter(
-        None.id == item_id,
-        None.caterer_id == user.caterer_profile.id
+    item = db.query(models.Service).filter(
+        models.Service.id == item_id,
+        models.Service.caterer_id == user.caterer_profile.id
     ).first()
     if not item:
-        raise HTTPException(status_code=404, detail="Ingredient not found")
+        raise HTTPException(status_code=404, detail="Service not found")
     db.delete(item)
     db.commit()
-    return RedirectResponse(url="/caterer/archives?success_msg=Ingredient+permanently+deleted", status_code=303)
+    return RedirectResponse(url="/caterer/archives?success_msg=Service+permanently+deleted", status_code=303)
+
+@router.post("/equipment/{item_id}/restore")
+async def restore_equipment(
+    item_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    item = db.query(models.Equipment).filter(
+        models.Equipment.id == item_id,
+        models.Equipment.caterer_id == user.caterer_profile.id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Equipment not found")
+    item.is_archived = False
+    db.commit()
+    return RedirectResponse(url="/caterer/archives?success_msg=Equipment+restored+successfully", status_code=303)
+
+@router.post("/equipment/{item_id}/delete")
+async def delete_equipment_permanent(
+    item_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    item = db.query(models.Equipment).filter(
+        models.Equipment.id == item_id,
+        models.Equipment.caterer_id == user.caterer_profile.id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Equipment not found")
+    db.delete(item)
+    db.commit()
+    return RedirectResponse(url="/caterer/archives?success_msg=Equipment+permanently+deleted", status_code=303)
+
+@router.post("/portfolio/{item_id}/restore")
+async def restore_portfolio(
+    item_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    item = db.query(models.Portfolio).filter(
+        models.Portfolio.id == item_id,
+        models.Portfolio.caterer_id == user.caterer_profile.id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    item.is_archived = False
+    db.commit()
+    return RedirectResponse(url="/caterer/archives?success_msg=Portfolio+restored+successfully", status_code=303)
+
+@router.post("/portfolio/{item_id}/delete")
+async def delete_portfolio_permanent(
+    item_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    item = db.query(models.Portfolio).filter(
+        models.Portfolio.id == item_id,
+        models.Portfolio.caterer_id == user.caterer_profile.id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    db.delete(item)
+    db.commit()
+    return RedirectResponse(url="/caterer/archives?success_msg=Portfolio+permanently+deleted", status_code=303)
 
 @router.get("/messages", response_class=HTMLResponse)
 async def caterer_messages(
@@ -5960,18 +6026,11 @@ async def settle_dues_api(
     if profile.outstanding_balance <= 0:
         raise HTTPException(status_code=400, detail="You do not have any outstanding balance to settle.")
         
-    upload_dir = f"app/static/uploads/receipts/{profile.id}"
-    os.makedirs(upload_dir, exist_ok=True)
-    
-    timestamp = int(time.time())
-    file_ext = proof_file.filename.split('.')[-1] if '.' in proof_file.filename else 'png'
-    filename = f"settlement_{timestamp}.{file_ext}"
-    file_path = f"{upload_dir}/{filename}"
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(proof_file.file, buffer)
-        
-    proof_url = f"/static/uploads/receipts/{profile.id}/{filename}"
+    import base64
+    content_bytes = await proof_file.read()
+    b64 = base64.b64encode(content_bytes).decode('utf-8')
+    mime = proof_file.content_type or 'image/jpeg'
+    proof_url = f"data:{mime};base64,{b64}"
     
     invoice = models.BillingInvoice(
         caterer_id=profile.id,
@@ -6257,15 +6316,11 @@ async def release_rental_equipment(
 
     try:
         # Save Release Photo
-        upload_dir = "app/static/uploads/rentals"
-        os.makedirs(upload_dir, exist_ok=True)
-        ext = release_photo.filename.split('.')[-1]
-        filename = f"release_{booking.id}_{uuid.uuid4().hex}.{ext}"
-        file_path = os.path.join(upload_dir, filename)
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(release_photo.file, buffer)
-
-        booking.release_photo_url = f"/static/uploads/rentals/{filename}"
+        import base64
+        content_bytes = await release_photo.read()
+        b64 = base64.b64encode(content_bytes).decode('utf-8')
+        mime = release_photo.content_type or 'image/jpeg'
+        booking.release_photo_url = f"data:{mime};base64,{b64}"
         booking.status = "released"
         
         # Log History
@@ -6304,14 +6359,11 @@ async def inspect_rental_equipment(
 
     try:
         if damage_photo and damage_photo.filename:
-            upload_dir = "app/static/uploads/rentals"
-            os.makedirs(upload_dir, exist_ok=True)
-            ext = damage_photo.filename.split('.')[-1]
-            filename = f"damage_{booking.id}_{uuid.uuid4().hex}.{ext}"
-            file_path = os.path.join(upload_dir, filename)
-            with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(damage_photo.file, buffer)
-            booking.damage_proof_url = f"/static/uploads/rentals/{filename}"
+            import base64
+            content_bytes = await damage_photo.read()
+            b64 = base64.b64encode(content_bytes).decode('utf-8')
+            mime = damage_photo.content_type or 'image/jpeg'
+            booking.damage_proof_url = f"data:{mime};base64,{b64}"
 
         booking.missing_items_count = missing_items
         booking.damage_deduction_amount = deduction_amount

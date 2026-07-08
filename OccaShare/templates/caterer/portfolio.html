@@ -48,15 +48,36 @@
             {% endif %}
 
             <div class="portfolio-actions-overlay">
-                <button type="button" onclick="togglePortfolioVisibility({{ p.id }})" class="btn-icon-overlay" title="Toggle Visibility">
+                <button type="button" onclick="togglePortfolioVisibility({{ p.id }})" class="btn-icon-overlay" title="Toggle Visibility (Show/Hide from Public)">
                     <i class="fas {{ 'fa-eye' if p.visibility == 'Hidden' else 'fa-eye-slash' }}"></i>
                 </button>
-                <button type="button" onclick="togglePortfolioFeature({{ p.id }})" class="btn-icon-overlay" title="Toggle Feature">
+                <button type="button" onclick="togglePortfolioFeature({{ p.id }})" class="btn-icon-overlay" title="Toggle Feature (Pin to Profile Header)">
                     <i class="fas fa-star" style="color: {{ 'var(--accent-color)' if p.is_featured else '#1e293b' }}"></i>
                 </button>
-                <button type="button" onclick="deletePortfolio({{ p.id }})" class="btn-icon-overlay delete" title="Delete">
-                    <i class="fas fa-trash-alt"></i>
+                <button type="button" onclick="editPortfolio(this)" class="btn-icon-overlay" title="Edit Portfolio"
+                        data-id="{{ p.id }}"
+                        data-title="{{ p.title|e }}"
+                        data-event-type="{{ p.event_type|e }}"
+                        data-description="{{ p.description|e }}"
+                        data-location="{{ p.location|e if p.location else '' }}"
+                        data-event-date="{{ p.event_date.strftime('%Y-%m-%d') if p.event_date else '' }}"
+                        data-highlights="{{ p.highlights|e if p.highlights else '' }}"
+                        data-booking-id="{{ p.booking_id or '' }}"
+                        data-is-featured="{{ 'true' if p.is_featured else 'false' }}"
+                        {% set cover_img = p.images | selectattr('is_cover', 'equalto', True) | first %}
+                        data-cover-url="{{ cover_img.image_url if cover_img else '' }}">
+                    <i class="fas fa-edit"></i>
                 </button>
+                <button type="button" onclick="archivePortfolio({{ p.id }})" class="btn-icon-overlay delete" title="Archive Portfolio">
+                    <i class="fas fa-archive"></i>
+                </button>
+            </div>
+            <div class="hidden-gallery-data" style="display: none;">
+                {% for img in p.images %}
+                    {% if not img.is_cover %}
+                        <img src="{{ img.image_url }}" alt="gallery-img">
+                    {% endif %}
+                {% endfor %}
             </div>
         </div>
         
@@ -97,8 +118,9 @@
             <button type="button" onclick="closePortfolioModal()" class="occ-modal-close" style="color: white; opacity: 0.8;"><i class="fas fa-times"></i></button>
         </div>
         
-        <form id="portfolioForm" onsubmit="submitPortfolio(event)" style="display: flex; flex-direction: column;">
+        <form id="portfolioForm" action="/caterer/portfolio/create" onsubmit="submitPortfolio(event)" style="display: flex; flex-direction: column;">
             <div class="occ-modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <input type="hidden" name="portfolio_id" id="portfolioIdInput" value="">
                 <div class="form-row-pro">
                     <div class="form-group-pro" style="flex: 2;">
                         <label>Portfolio Title *</label>
@@ -151,7 +173,7 @@
                 </div>
 
                 <div class="form-group-pro" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
-                    <label>Cover Photo * <small>(High quality, Landscape preferred)</small></label>
+                    <label>Cover Photo <small>(High quality, Landscape preferred. Leave empty to keep existing during edit.)</small></label>
                     <input type="file" id="coverPhotoInput" accept="image/*" style="display: none;" onchange="previewCoverPhoto(this)">
                     <div id="coverPhotoPreviewBox" class="upload-box" onclick="document.getElementById('coverPhotoInput').click()" style="height: 150px; position: relative; overflow: hidden;">
                         <div id="coverPlaceholder" style="display: flex; flex-direction: column; align-items: center;">
@@ -193,5 +215,5 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify"></script>
-<script src="{{ url_for('static', path='/js/caterer/portfolio.js') }}?v=1.0"></script>
+<script src="{{ url_for('static', path='/js/caterer/portfolio.js') }}?v={{ range(1, 10000) | random }}"></script>
 {% endblock %}

@@ -2887,9 +2887,6 @@ class VerificationService:
             if cropped:
                 try:
                     filename = os.path.basename(id_path.replace('\\', '/'))
-                    cropped_filename = f"cropped_{filename}"
-                    cropped_real_path = os.path.join("app/static/uploads/verification", cropped_filename)
-                    
                     if CV2_AVAILABLE:
                         _, buf = cv2.imencode(".jpg", id_img)
                         cropped_bytes = buf.tobytes()
@@ -2900,15 +2897,12 @@ class VerificationService:
                         pil_img.save(buf, format="JPEG")
                         cropped_bytes = buf.getvalue()
                         
-                    from ..core.encryption import encrypt_data
-                    encrypted_cropped = encrypt_data(cropped_bytes)
-                    with open(cropped_real_path, "wb") as f:
-                        f.write(encrypted_cropped)
-                        
-                    cropped_url = f"/api/bookings/kyc/view/{cropped_filename}"
-                    print(f"[KYC DEBUG] Saved server-cropped image to {cropped_real_path}")
+                    import base64
+                    b64 = base64.b64encode(cropped_bytes).decode('utf-8')
+                    cropped_url = f"data:image/jpeg;base64,{b64}"
+                    print(f"[KYC DEBUG] Successfully created Base64 cropped image")
                 except Exception as save_err:
-                    print(f"[KYC WARNING] Failed to save cropped image: {save_err}")
+                    print(f"[KYC WARNING] Failed to generate Base64 cropped image: {save_err}")
             
             # 1. Blurry / Resolution Check
             quality_check = self.check_image_quality(id_img)

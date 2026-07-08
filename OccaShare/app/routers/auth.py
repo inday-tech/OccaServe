@@ -70,15 +70,10 @@ async def scan_document(
             if file_error:
                 return {"status": "rejected", "failure_reason": f"File Security: {file_error}"}
 
-            temp_id = str(uuid.uuid4())
-            filename = f"temp_{temp_id}_{doc.filename}"
-            path = os.path.join(UPLOAD_DIR, filename)
-            
-            encrypted_content = encrypt_data(content)
-            with open(path, "wb") as f:
-                f.write(encrypted_content)
-            
-            doc_urls.append(f"/static/uploads/verification/{filename}")
+            import base64
+            b64 = base64.b64encode(content).decode('utf-8')
+            mime = doc.content_type or 'image/jpeg'
+            doc_urls.append(f"data:{mime};base64,{b64}")
         
         doc_url = doc_urls[0]
         
@@ -463,11 +458,10 @@ async def register(
             selfie_url = None
             if selfie:
                 content = await selfie.read()
-                filename = f"selfie_{uuid.uuid4().hex}_{selfie.filename}"
-                path = os.path.join(UPLOAD_DIR, filename)
-                with open(path, "wb") as f:
-                    f.write(content)
-                selfie_url = f"/static/uploads/verification/{filename}"
+                import base64
+                b64 = base64.b64encode(content).decode('utf-8')
+                mime = selfie.content_type or 'image/jpeg'
+                selfie_url = f"data:{mime};base64,{b64}"
 
             temp_id = str(uuid.uuid4())
             
@@ -476,19 +470,18 @@ async def register(
             os.makedirs(PROFILE_DIR, exist_ok=True)
 
             if logo and logo.filename:
-                file_ext = os.path.splitext(logo.filename)[1]
-                file_name = f"{temp_id}_logo{file_ext}"
-                file_path = os.path.join(PROFILE_DIR, file_name)
-                with open(file_path, "wb") as buffer:
-                    buffer.write(await logo.read())
-                logo_url = f"/static/uploads/profiles/{file_name}"
+                content = await logo.read()
+                import base64
+                b64 = base64.b64encode(content).decode('utf-8')
+                mime = logo.content_type or 'image/jpeg'
+                logo_url = f"data:{mime};base64,{b64}"
 
             if gov_id and gov_id.filename:
                 content = await gov_id.read()
-                file_path = os.path.join(UPLOAD_DIR, f"{temp_id}_gov_id_{gov_id.filename}")
-                with open(file_path, "wb") as buffer:
-                    buffer.write(content)
-                gov_id_url = f"/static/uploads/verification/{temp_id}_gov_id_{gov_id.filename}"
+                import base64
+                b64 = base64.b64encode(content).decode('utf-8')
+                mime = gov_id.content_type or 'image/jpeg'
+                gov_id_url = f"data:{mime};base64,{b64}"
                 
             if permit and permit.filename:
                 content = await permit.read()
@@ -500,10 +493,10 @@ async def register(
                         "request": request, "error": f"Permit File: {file_error}", "role": role
                     })
 
-                file_path = os.path.join(UPLOAD_DIR, f"{temp_id}_permit_{permit.filename}")
-                with open(file_path, "wb") as buffer:
-                    buffer.write(content)
-                permit_url = f"/static/uploads/verification/{temp_id}_permit_{permit.filename}"
+                import base64
+                b64 = base64.b64encode(content).decode('utf-8')
+                mime = permit.content_type or 'image/jpeg'
+                permit_url = f"data:{mime};base64,{b64}"
 
             if sample_menu and sample_menu.filename:
                 content = await sample_menu.read()
@@ -515,10 +508,10 @@ async def register(
                         "request": request, "error": f"Menu File: {file_error}", "role": role
                     })
 
-                file_path = os.path.join(UPLOAD_DIR, f"{temp_id}_menu_{sample_menu.filename}")
-                with open(file_path, "wb") as buffer:
-                    buffer.write(content)
-                sample_menu_url = f"/static/uploads/verification/{temp_id}_menu_{sample_menu.filename}"
+                import base64
+                b64 = base64.b64encode(content).decode('utf-8')
+                mime = sample_menu.content_type or 'image/jpeg'
+                sample_menu_url = f"data:{mime};base64,{b64}"
 
         event_list = []
         if event_types:

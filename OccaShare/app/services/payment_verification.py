@@ -46,31 +46,34 @@ class PaymentVerificationService:
                     os.environ["TESSDATA_PREFIX"] = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "tessdata"))
                     break
 
-    def get_image_hash(self, file_path: str) -> str:
-        """Generates a SHA-256 hash of the image file to detect exact duplicates."""
-        if not os.path.exists(file_path):
-            return ""
-        sha256_hash = hashlib.sha256()
-        with open(file_path, "rb") as f:
-            for byte_block in iter(lambda: f.read(4096), b""):
-                sha256_hash.update(byte_block)
-        return sha256_hash.hexdigest()
+    def get_image_hash(self, base64_str: str) -> str:
+        """Generates a SHA-256 hash of the image base64 data to detect exact duplicates."""
+        if not base64_str: return ""
+        import base64
+        if "," in base64_str:
+            base64_str = base64_str.split(",", 1)[1]
+        try:
+            raw_bytes = base64.b64decode(base64_str)
+            sha256_hash = hashlib.sha256()
+            sha256_hash.update(raw_bytes)
+            return sha256_hash.hexdigest()
+        except: return ""
 
-    def _prepare_image(self, file_path: str) -> np.ndarray:
-        """Loads and prepares image for OCR."""
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"Proof file not found at {file_path}")
-        
-        # Load using PIL to handle orientation then convert to cv2
-        pil_img = Image.open(file_path)
+    def _prepare_image(self, base64_str: str) -> np.ndarray:
+        """Loads and prepares image for OCR from base64."""
+        import base64
+        if "," in base64_str:
+            base64_str = base64_str.split(",", 1)[1]
+        img_bytes = base64.b64decode(base64_str)
+        pil_img = Image.open(io.BytesIO(img_bytes))
         pil_img = ImageOps.exif_transpose(pil_img)
         img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
         return img
 
-    def extract_payment_data(self, file_path: str) -> dict:
-        """Extracts text details from a payment receipt image."""
+    def extract_payment_data(self, base64_str: str) -> dict:
+        """Extracts text details from a payment receipt image from base64."""
         try:
-            img = self._prepare_image(file_path)
+            img = self._prepare_image(base64_str)
             
             # Basic enhancement for OCR
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -112,8 +115,8 @@ class PaymentVerificationService:
             print(f"[PaymentVerify DEBUG] OCR Error: {e}")
             return {"error": str(e)}
 
-    def check_for_fraud(self, db: Session, booking: models.Booking, file_path: str) -> dict:
-        """Runs a holistic fraud check on the submitted proof."""
+    def check_for_fraud(self, db: Session, booking: models.Booking, base64_str: str) -> dict:
+        """Runs a holistic fraud check on the submitted proof using base64 data."""
         results = {
             "is_duplicate_image": False,
             "is_duplicate_ref": False,
@@ -124,7 +127,7 @@ class PaymentVerificationService:
         }
 
         # 1. Image Hash Check
-        img_hash = self.get_image_hash(file_path)
+        img_hash = self.get_image_hash(base64_str)
         if img_hash:
             # Check if this hash exists in any other booking (excluding current)
             existing_hash = db.query(models.Booking).filter(
@@ -134,7 +137,7 @@ class PaymentVerificationService:
             # Wait, better check a dedicated meta field if we add it
             
         # 2. OCR Extraction
-        ocr_data = self.extract_payment_data(file_path)
+        ocr_data = self.extract_payment_data(base64_str)
         results["extracted_data"] = ocr_data
         
         # Check if the OCR engine itself failed (e.g. Tesseract not installed)

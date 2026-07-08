@@ -38,15 +38,11 @@ async def create_social_post(
     
     image_url = None
     if image:
-        # Save image
-        ext = image.filename.split(".")[-1]
-        filename = f"post_{uuid.uuid4()}.{ext}"
-        filepath = os.path.join(UPLOAD_DIR, filename)
-        
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(image.file, buffer)
-        
-        image_url = f"/static/uploads/caterer/posts/{filename}"
+        import base64
+        content_bytes = await image.read()
+        b64 = base64.b64encode(content_bytes).decode('utf-8')
+        mime = image.content_type or 'image/jpeg'
+        image_url = f"data:{mime};base64,{b64}"
 
     new_post = models.SocialPost(
         caterer_id=user.caterer_profile.id,
@@ -74,12 +70,7 @@ async def delete_social_post(
     if not post:
         raise HTTPException(status_code=404, detail="Post not found or unauthorized")
     
-    # Optional: Delete physical image file
-    if post.image_url:
-        filename = post.image_url.split("/")[-1]
-        filepath = os.path.join(UPLOAD_DIR, filename)
-        if os.path.exists(filepath):
-            os.remove(filepath)
+    # No local file deletion needed for base64
             
     db.delete(post)
     db.commit()

@@ -50,30 +50,17 @@ def get_current_user_from_session(request: Request, db: Session):
         return None
 
 def save_upload_file(upload_file: UploadFile) -> str:
-    file_extension = os.path.splitext(upload_file.filename)[1]
-    unique_filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(upload_file.file, buffer)
-        
-    return f"/static/uploads/verification/{unique_filename}"
+    import base64
+    content_bytes = upload_file.file.read()
+    b64 = base64.b64encode(content_bytes).decode('utf-8')
+    mime = upload_file.content_type or 'image/jpeg'
+    return f"data:{mime};base64,{b64}"
 
 def save_base64_file(base64_str: str) -> str:
     if not base64_str or "," not in base64_str:
         return ""
-    
-    header, encoded = base64_str.split(",", 1)
-    file_extension = ".jpg" # Default to jpg
-    if "png" in header: file_extension = ".png"
-    
-    unique_filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
-    
-    with open(file_path, "wb") as buffer:
-        buffer.write(base64.b64decode(encoded))
-        
-    return f"/static/uploads/verification/{unique_filename}"
+    # Already a data URI, just return it
+    return base64_str
 
 @router.get("/my")
 async def my_bookings_redirect():
@@ -83,15 +70,16 @@ async def my_bookings_redirect():
 
 # --- Dedicated A La Carte Checkout ---
 @router.get("/alacarte/checkout/{caterer_id}", response_class=HTMLResponse)
-async def alacarte_checkout_page(request: Request, caterer_id: int, items: str, booking_id: Optional[int] = None, db: Session = Depends(database.get_db)):
-    caterer = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id).first()
+async def alacarte_checkout_page(request: Request, caterer_id: str, items: str, booking_id: Optional[int] = None, db: Session = Depends(database.get_db)):
+    if caterer_id == "None" or not caterer_id.isdigit():
+        return RedirectResponse(url="/customer/marketplace?error_msg=Invalid caterer selected.", status_code=303)
+    caterer_id_int = int(caterer_id)
+    caterer = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id_int).first()
     if not caterer or caterer.verification_status != 'Verified' or not caterer.user.is_verified:
         return RedirectResponse(url="/customer/marketplace?error_msg=This partner is not currently authorized to accept bookings.")
     user = get_current_user_from_session(request, db)
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/alacarte/checkout/{caterer_id}?items={items}")
-    
-    caterer = db.query(models.CatererProfile).get(caterer_id)
     
     # Parse multiple IDs with type prefixes (m_ for MenuItem, e_ for Equipment, s_ for Service)
     m_ids, e_ids, s_ids = [], [], []
@@ -309,14 +297,11 @@ async def alacarte_checkout_submit(
         # Save payment proof if uploaded
         proof_url = None
         if payment_proof and payment_proof.filename:
-            upload_dir = "app/static/uploads/payment_proofs"
-            os.makedirs(upload_dir, exist_ok=True)
-            ext = payment_proof.filename.split('.')[-1]
-            filename = f"proof_{uuid.uuid4().hex}.{ext}"
-            file_path = os.path.join(upload_dir, filename)
-            with open(file_path, "wb") as f:
-                shutil.copyfileobj(payment_proof.file, f)
-            proof_url = f"/static/uploads/payment_proofs/{filename}"
+            import base64
+            content_bytes = payment_proof.file.read()
+            b64 = base64.b64encode(content_bytes).decode('utf-8')
+            mime = payment_proof.content_type or 'image/jpeg'
+            proof_url = f"data:{mime};base64,{b64}"
         # Spam Limit Validation (Flow B Rule 1)
         unpaid_spam_count = db.query(models.Booking).filter(
             models.Booking.user_id == user.id,
@@ -695,12 +680,11 @@ async def custom_booking_submit(
     if reference_images:
         for file in reference_images:
             if file.filename and file.filename != '':
-                ext = file.filename.split('.')[-1]
-                filename = f"{uuid.uuid4()}.{ext}"
-                file_path = os.path.join(upload_dir, filename)
-                with open(file_path, "wb") as buffer:
-                    shutil.copyfileobj(file.file, buffer)
-                image_urls.append(f"/static/uploads/custom_events/{filename}")
+                import base64
+                content_bytes = file.file.read()
+                b64 = base64.b64encode(content_bytes).decode('utf-8')
+                mime = file.content_type or 'image/jpeg'
+                image_urls.append(f"data:{mime};base64,{b64}")
 
     new_booking = models.Booking(
         caterer_id=caterer_id,
@@ -1371,14 +1355,14 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
     })
 
 # Phase 4: Downpayment
-async def _validate_receipt_with_gemini(filepath: str, payment_method: str, expected_amount: float = 0.0) -> bool:
+async def _validate_receipt_with_gemini(b64_string: str, payment_method: str, expected_amount: float = 0.0) -> bool:
     is_valid = False
     gemini_key = os.getenv("GEMINI_API_KEY")
     if gemini_key:
         import httpx, base64, json, re
         try:
-            with open(filepath, "rb") as image_file:
-                encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+            # Check if b64_string is already prefixed with data:image
+            encoded_string = b64_string.split(",", 1)[1] if "," in b64_string else b64_string
             
             # Try gemini-2.0-flash first, and fallback to gemini-1.5-flash
             models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash"]
@@ -1565,12 +1549,11 @@ async def step_payment_submit(
         if file_size > 5 * 1024 * 1024:
             raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB.")
             
-        ext = os.path.splitext(payment_proof.filename)[1]
-        filename = f"{booking.id}_{payment_plan}_{uuid.uuid4().hex}{ext}"
-        filepath = os.path.join(PROOF_UPLOAD_DIR, filename)
-        
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(payment_proof.file, buffer)
+        import base64
+        content_bytes = payment_proof.file.read()
+        b64 = base64.b64encode(content_bytes).decode('utf-8')
+        mime = payment_proof.content_type or 'image/jpeg'
+        proof_url = f"data:{mime};base64,{b64}"
             
         # --- AI RECEIPT VALIDATION (GEMINI / OCR) ---
         if payment_plan == 'balance':
@@ -1586,16 +1569,12 @@ async def step_payment_submit(
         else:
             expected_fee = float(booking.reservation_fee or 0)
             
-        is_valid_receipt = await _validate_receipt_with_gemini(filepath, payment_method, expected_amount=expected_fee)
+        is_valid_receipt = await _validate_receipt_with_gemini(proof_url, payment_method, expected_amount=expected_fee)
 
         if not is_valid_receipt:
-            if os.path.exists(filepath):
-                os.remove(filepath)
             # Encode URL manually for redirect since we can't use complex URL building easily
             request.session["flash_error"] = "Invalid Receipt Detected: Our AI could not verify the Reference Number or Amount. Please ensure the screenshot is clear."
             return RedirectResponse(url=f"/bookings/step/payment/{booking.id}?error=invalid_receipt&method={payment_method}", status_code=303)
-            
-        proof_url = f"/static/uploads/payment_proofs/{filename}"
         
         if payment_plan == 'balance':
             booking.balance_proof_url = proof_url
@@ -1666,33 +1645,30 @@ async def alacarte_manage_payment_submit(
         return {"success": False, "message": "File too large. Maximum size is 5MB."}
     proof_image.file.seek(0)
     
-    import uuid
-    import shutil
-    ext = os.path.splitext(proof_image.filename)[1]
-    filename = f"{booking.id}_alacarte_{uuid.uuid4().hex}{ext}"
-    filepath = os.path.join(PROOF_UPLOAD_DIR, filename)
-    
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(proof_image.file, buffer)
+    import base64
+    content_bytes = await proof_image.read()
+    b64 = base64.b64encode(content_bytes).decode('utf-8')
+    mime = proof_image.content_type or 'image/jpeg'
+    proof_url = f"data:{mime};base64,{b64}"
         
     # AI Receipt Validation
     from ..services.payment_verification import payment_verification_service
-    verify_results = payment_verification_service.check_for_fraud(db, booking, filepath)
+    verify_results = payment_verification_service.check_for_fraud(db, booking, proof_url)
     
     if verify_results["confidence"] < 40:
-        if os.path.exists(filepath): os.remove(filepath)
         flags = verify_results.get("flags", [])
         error_detail = flags[0] if flags else "The uploaded image does not appear to be a valid receipt for the required amount."
         return {"success": False, "message": f"{error_detail}"}
         
     # Save extracted details
     extracted_ref = verify_results.get("extracted_data", {}).get("reference_no")
-    extracted_hash = payment_verification_service.get_image_hash(filepath)
+    extracted_hash = payment_verification_service.get_image_hash(proof_url)
+    
+    booking.payment_proof_url = proof_url
     
     if extracted_ref: booking.payment_reference = extracted_ref
     booking.proof_image_hash = extracted_hash
     
-    proof_url = f"/static/uploads/payment_proofs/{filename}"
     booking.payment_proof_url = proof_url
     booking.payment_method = payment_method
     booking.payment_status = "proof_submitted"
@@ -1741,22 +1717,17 @@ async def reupload_proof_submit(
     if payment_proof.content_type not in allowed_types:
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?validation_error=Invalid+file+type&open_reupload=1", status_code=303)
 
-    ext = os.path.splitext(payment_proof.filename)[1]
-    filename = f"{booking.id}_reupload_{uuid.uuid4().hex}{ext}"
-    filepath = os.path.join(PROOF_UPLOAD_DIR, filename)
-    
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(payment_proof.file, buffer)
+    import base64
+    content_bytes = await payment_proof.read()
+    b64 = base64.b64encode(content_bytes).decode('utf-8')
+    mime = payment_proof.content_type or 'image/jpeg'
+    proof_url = f"data:{mime};base64,{b64}"
         
     # --- AI RECEIPT VALIDATION (GEMINI / OCR) ---
     expected_fee = float(booking.reservation_fee or 0)
-    is_valid_receipt = await _validate_receipt_with_gemini(filepath, payment_method, expected_amount=expected_fee)
+    is_valid_receipt = await _validate_receipt_with_gemini(proof_url, payment_method, expected_amount=expected_fee)
 
     if not is_valid_receipt:
-        # Delete the invalid file
-        if os.path.exists(filepath):
-            os.remove(filepath)
-            
         import urllib.parse
         encoded_method = urllib.parse.quote(payment_method)
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?validation_error=Invalid+Receipt+Detected:+Our+AI+could+not+verify+the+Reference+Number+or+Amount.+Please+ensure+the+screenshot+is+clear.&method={encoded_method}&open_reupload=1", status_code=303)
@@ -1808,21 +1779,17 @@ async def pay_balance_submit(
         if payment_proof.content_type not in allowed_types:
             raise HTTPException(status_code=400, detail="Invalid file type.")
             
-        ext = os.path.splitext(payment_proof.filename)[1]
-        filename = f"{booking.id}_balance_{uuid.uuid4().hex}{ext}"
-        filepath = os.path.join(PROOF_UPLOAD_DIR, filename)
-        
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(payment_proof.file, buffer)
+        import base64
+        content_bytes = await payment_proof.read()
+        b64 = base64.b64encode(content_bytes).decode('utf-8')
+        mime = payment_proof.content_type or 'image/jpeg'
+        proof_url = f"data:{mime};base64,{b64}"
             
         # --- AI RECEIPT VALIDATION ---
-        is_valid_receipt = await _validate_receipt_with_gemini(filepath, payment_method, expected_amount=outstanding_balance)
+        is_valid_receipt = await _validate_receipt_with_gemini(proof_url, payment_method, expected_amount=outstanding_balance)
         if not is_valid_receipt:
-            if os.path.exists(filepath):
-                os.remove(filepath)
             return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error_msg=Invalid+Receipt+Detected.+Amount+did+not+match+or+receipt+is+illegible.", status_code=303)
             
-        proof_url = f"/static/uploads/payment_proofs/{filename}"
         booking.balance_proof_url = proof_url
         booking.payment_method = payment_method
         booking.payment_status = "balance_proof_submitted"
@@ -1948,14 +1915,11 @@ async def send_booking_message(
         
     attachment_url = None
     if attachment and attachment.filename:
-        upload_dir = "app/static/uploads/chat"
-        os.makedirs(upload_dir, exist_ok=True)
-        ext = attachment.filename.split('.')[-1]
-        filename = f"{uuid.uuid4()}.{ext}"
-        file_path = os.path.join(upload_dir, filename)
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(attachment.file, buffer)
-        attachment_url = f"/static/uploads/chat/{filename}"
+        import base64
+        content_bytes = await attachment.read()
+        b64 = base64.b64encode(content_bytes).decode('utf-8')
+        mime = attachment.content_type or 'image/jpeg'
+        attachment_url = f"data:{mime};base64,{b64}"
         
     new_msg = models.BookingMessage(
         booking_id=booking_id,

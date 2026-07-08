@@ -503,30 +503,20 @@
     }
 
     async function loadProvinces() {
-        selProvince.innerHTML = '<option value="" disabled selected hidden>-- Loading... --</option>';
-        try {
-            const res = await fetch(`${PSGC_BASE}/provinces.json`);
-            let data = await res.json();
-            // Filter to only show Laguna
-            data = data.filter(p => p.name.toUpperCase() === 'LAGUNA');
-            data.sort((a, b) => a.name.localeCompare(b.name));
-            selProvince.innerHTML = '<option value="" disabled selected hidden>-- Province --</option>';
-            data.forEach(p => {
-                const opt = new Option(p.name, p.name);
-                if (p.name === SAVED_PROVINCE) opt.selected = true;
-                selProvince.appendChild(opt);
-            });
+        selProvince.innerHTML = '<option value="" disabled selected hidden>-- Province --</option>';
+        const p = { code: "043400000", name: "Laguna" };
+        const opt = new Option(p.name, p.name);
+        if (p.name === SAVED_PROVINCE) opt.selected = true;
+        selProvince.appendChild(opt);
 
-            // Store code map for cascade
-            selProvince._codeMap = {};
-            data.forEach(p => { selProvince._codeMap[p.name] = p.code; });
+        selProvince._codeMap = {};
+        selProvince._codeMap[p.name] = p.code;
 
-            if (SAVED_PROVINCE) {
-                const code = selProvince._codeMap[SAVED_PROVINCE];
-                if (code) await loadCities(code, true);
-            }
-        } catch(e) {
-            selProvince.innerHTML = '<option value="" disabled selected hidden>-- Error loading, reload page --</option>';
+        if (SAVED_PROVINCE) {
+            await loadCities(p.code, true);
+        } else {
+            opt.selected = true; // Auto-select Laguna
+            await loadCities(p.code, false);
         }
     }
 
@@ -537,7 +527,7 @@
         selBrgy.disabled = true;
 
         try {
-            const res = await fetch(`${PSGC_BASE}/provinces/${provinceCode}/cities-municipalities.json`);
+            const res = await fetch(`${PSGC_BASE}/provinces/${provinceCode}/cities-municipalities/`);
             const data = await res.json();
             data.sort((a, b) => a.name.localeCompare(b.name));
             selCity.innerHTML = '<option value="" disabled selected hidden>-- City/Municipality --</option>';
@@ -564,7 +554,7 @@
         selBrgy.innerHTML = '<option value="" disabled selected hidden>-- Loading... --</option>';
         selBrgy.disabled = false;
         try {
-            const res = await fetch(`${PSGC_BASE}/cities-municipalities/${cityCode}/barangays.json`);
+            const res = await fetch(`${PSGC_BASE}/cities-municipalities/${cityCode}/barangays/`);
             const data = await res.json();
             data.sort((a, b) => a.name.localeCompare(b.name));
             selBrgy.innerHTML = '<option value="" disabled selected hidden>-- Barangay --</option>';

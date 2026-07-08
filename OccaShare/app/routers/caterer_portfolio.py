@@ -47,7 +47,10 @@ async def manage_portfolio_page(
     user: models.User = Depends(caterer_only)
 ):
     profile = user.caterer_profile
-    portfolios = db.query(models.Portfolio).filter(models.Portfolio.caterer_id == profile.id).order_by(models.Portfolio.created_at.desc()).all()
+    portfolios = db.query(models.Portfolio).filter(
+        models.Portfolio.caterer_id == profile.id,
+        models.Portfolio.is_archived == False
+    ).order_by(models.Portfolio.created_at.desc()).all()
     
     # Also fetch completed bookings for linking
     completed_bookings = db.query(models.Booking).filter(
@@ -123,8 +126,63 @@ async def create_portfolio(
     
     return {"status": "success", "message": "Portfolio created successfully!", "portfolio_id": new_portfolio.id}
 
+@router.post("/{portfolio_id}/update")
+async def update_portfolio(
+    portfolio_id: int,
+    title: str = Form(...),
+    event_type: str = Form(...),
+    description: str = Form(...),
+    highlights: Optional[str] = Form(None),
+    location: Optional[str] = Form(None),
+    event_date: Optional[str] = Form(None),
+    is_featured: bool = Form(False),
+    booking_id: Optional[int] = Form(None),
+    cover_photo: Optional[UploadFile] = File(None),
+    additional_photos: List[UploadFile] = File(None),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    portfolio = db.query(models.Portfolio).filter(
+        models.Portfolio.id == portfolio_id,
+        models.Portfolio.caterer_id == profile.id
+    ).first()
+    
+    if not portfolio:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+        
+    portfolio.title = title
+    portfolio.event_type = event_type
+    portfolio.description = description
+    portfolio.highlights = highlights
+    portfolio.location = location
+    portfolio.event_date = event_date
+    portfolio.is_featured = is_featured
+    portfolio.booking_id = booking_id
+    
+    if cover_photo and cover_photo.filename:
+        cover_url = process_image_to_base64(cover_photo, max_size=(1920, 1080), quality=85)
+        if cover_url:
+            # Delete old cover photo
+            old_cover = next((img for img in portfolio.images if img.is_cover), None)
+            if old_cover:
+                db.delete(old_cover)
+            db.add(models.PortfolioImage(portfolio_id=portfolio.id, image_url=cover_url, is_cover=True))
+            
+    if additional_photos:
+        count = 0
+        for photo in additional_photos:
+            if photo.filename and count < 10:
+                img_url = process_image_to_base64(photo, max_size=(1920, 1080), quality=85)
+                if img_url:
+                    db.add(models.PortfolioImage(portfolio_id=portfolio.id, image_url=img_url, is_cover=False))
+                    count += 1
+                    
+    db.commit()
+    return {"status": "success", "message": "Portfolio updated successfully"}
+
 @router.delete("/{portfolio_id}")
-async def delete_portfolio(
+async def archive_portfolio(
     portfolio_id: int,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -138,13 +196,10 @@ async def delete_portfolio(
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
         
-    # Base64 images are stored in DB, no local files to delete
-    pass
-            
-    db.delete(portfolio)
+    portfolio.is_archived = True
     db.commit()
     
-    return {"status": "success", "message": "Portfolio deleted successfully"}
+    return {"status": "success", "message": "Portfolio archived successfully"}
 
 @router.post("/{portfolio_id}/toggle-visibility")
 async def toggle_portfolio_visibility(
