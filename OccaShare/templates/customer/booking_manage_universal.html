@@ -7,16 +7,19 @@
 <style>
     :root {
         --up-slate-900: #0f172a;
-        --up-orange: #FF7B54;
+        --up-orange: #f97316;
         --up-emerald: #10b981;
         --up-amber: #f59e0b;
         --dm-slate-50: #f8fafc;
         --dm-slate-100: #f1f5f9;
+        --dm-slate-300: #cbd5e1;
         --dm-slate-400: #94a3b8;
+        --dm-slate-500: #64748b;
     }
     
     body, .btn-action-elite {
         font-family: 'Poppins', sans-serif !important;
+        -webkit-font-smoothing: antialiased;
     }
 
     /* ── FOCUS MODE: Hiding Sidebar/Header while maintaining BLUR ── */
@@ -27,7 +30,7 @@
         display: none !important;
     }
 
-    body, .customer-page-content { background-color: #f1f5f9 !important; }
+    body, .customer-page-content { background-color: #f8fafc !important; }
     body.contract-modal-open .customer-main-wrapper {
         margin-left: 0 !important;
         padding: 0 !important;
@@ -37,78 +40,105 @@
     }
 
     /* ── PAGE HEADER ── */
-    .dash-header { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-end; }
+    .dash-header { margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end; }
     .dash-header h1 {
-        font-size: 1.6rem; font-weight: 800;
-        color: var(--up-slate-900); letter-spacing: -0.03em; margin: 0;
+        font-size: 1.8rem; font-weight: 800;
+        color: var(--up-slate-900); letter-spacing: -0.04em; margin: 0;
     }
     .dash-header p {
-        font-size: 0.88rem; color: var(--dm-slate-400);
-        font-weight: 500; margin: 4px 0 0;
+        font-size: 0.85rem; color: var(--dm-slate-500);
+        font-weight: 500; margin: 6px 0 0;
     }
 
     /* ── REFINED STEPPER ── */
     .stepper-panel {
-        background: white; border-radius: 1.25rem; border: 1px solid var(--dm-slate-100);
-        padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
+        background: white; border-radius: 1.5rem; border: 1px solid rgba(0,0,0,0.03);
+        padding: 2rem 1.5rem; margin-bottom: 2rem; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.03);
     }
-    .steps-row { display: flex; justify-content: space-between; position: relative; padding: 0 2rem; }
+    .steps-row { display: flex; justify-content: space-between; position: relative; padding: 0 1rem; }
     .steps-row::before {
-        content: ''; position: absolute; top: 22px; left: 60px; right: 60px;
-        height: 2px; background: var(--dm-slate-100); z-index: 0;
+        content: ''; position: absolute; top: 22px; left: 40px; right: 40px;
+        height: 3px; background: var(--dm-slate-100); z-index: 0; border-radius: 10px;
     }
-    .step { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100px; }
+    .step { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 1; min-width: 80px; }
     .step-dot {
-        width: 44px; height: 44px; border-radius: 12px;
+        width: 48px; height: 48px; border-radius: 14px;
         background: #fff; border: 2px solid var(--dm-slate-100);
         display: flex; align-items: center; justify-content: center;
-        font-size: 1.1rem; color: var(--dm-slate-300); transition: all 0.3s;
+        font-size: 1.2rem; color: var(--dm-slate-300); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
     }
-    .step.done .step-dot { background: var(--up-emerald); border-color: var(--up-emerald); color: #fff; }
-    .step.active .step-dot { border-color: var(--up-orange); color: var(--up-orange); box-shadow: 0 0 0 4px rgba(255,123,84,0.1); }
-    .step-label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: var(--dm-slate-400); text-align: center; }
-    .step.done .step-label, .step.active .step-label { color: var(--up-slate-900); }
+    .step.done .step-dot { background: var(--up-emerald); border-color: var(--up-emerald); color: #fff; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
+    .step.active .step-dot { border-color: var(--up-orange); color: var(--up-orange); box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.15), 0 4px 12px rgba(249, 115, 22, 0.2); transform: scale(1.05); }
+    .step-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; line-height: 1.3; color: var(--dm-slate-400); text-align: center; }
+    .step.done .step-label, .step.active .step-label { color: var(--up-slate-900); font-weight: 800; }
 
     /* ── INTELLIGENCE PANELS ── */
-    .panel { background: #ffffff; border-radius: 1.25rem; border: 1px solid rgba(0,0,0,0.05); overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01); margin-bottom: 1.5rem; transition: transform 0.2s ease, box-shadow 0.2s ease; }
-    .panel:hover { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.01); transform: translateY(-2px); }
-    .panel-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--dm-slate-50); display: flex; justify-content: space-between; align-items: center; }
-    .panel-header h3 { font-size: 0.95rem; font-weight: 850; color: var(--up-slate-900); margin: 0; text-transform: uppercase; letter-spacing: 0.05em; }
-    .panel-body { padding: 1.5rem; }
+    .panel { background: #ffffff; border-radius: 1.5rem; border: 1px solid rgba(0,0,0,0.04); overflow: hidden; box-shadow: 0 10px 40px -10px rgba(0,0,0,0.03); margin-bottom: 2rem; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .panel-header { padding: 1.5rem 1.75rem 1rem; border-bottom: none; display: flex; justify-content: space-between; align-items: center; }
+    .panel-header h3 { font-size: 1rem; font-weight: 800; color: var(--up-slate-900); margin: 0; text-transform: uppercase; letter-spacing: 0.05em; }
+    .panel-body { padding: 0 1.75rem 1.5rem; }
 
     /* ── DETAIL ROWS ── */
-    .detail-item { display: flex; justify-content: space-between; padding: 0.85rem 0; border-bottom: 1px solid #f8fafc; align-items: center; }
-    .detail-item:last-child { border-bottom: none; }
-    .detail-label { font-size: 0.8rem; font-weight: 700; color: var(--dm-slate-400); text-transform: uppercase; letter-spacing: 0.04em; }
-    .detail-value { font-size: 0.95rem; font-weight: 750; color: var(--up-slate-900); text-align: right; }
+    .detail-item { display: flex; justify-content: space-between; padding: 1rem 0; border-bottom: 1px dashed var(--dm-slate-100); align-items: center; }
+    .detail-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .detail-item:first-child { padding-top: 0; }
+    .detail-label { font-size: 0.75rem; font-weight: 600; color: var(--dm-slate-500); text-transform: uppercase; letter-spacing: 0.05em; }
+    .detail-value { font-size: 0.95rem; font-weight: 700; color: var(--up-slate-900); text-align: right; }
     
     @media (max-width: 768px) {
-        .detail-item { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+        .dash-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+        .detail-item { flex-direction: column; align-items: flex-start; gap: 0.35rem; }
         .detail-value { text-align: left; }
     }
 
     /* ── FINANCIAL TERMINAL ── */
-    .financial-card { background: var(--up-slate-900); color: white; border-radius: 1.5rem; padding: 1.75rem; margin-bottom: 1.25rem; position: relative; overflow: hidden; }
-    .financial-card::after { content: ''; position: absolute; top: -50%; right: -20%; width: 200px; height: 200px; background: rgba(255,255,255,0.03); border-radius: 50%; }
-    .fin-label { font-size: 0.7rem; font-weight: 800; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.25rem; display: block; }
-    .fin-value { font-size: 1.75rem; font-weight: 900; letter-spacing: -0.02em; }
-    .fin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); }
+    .financial-card { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; border-radius: 1.5rem; padding: 2rem; margin-bottom: 2rem; position: relative; overflow: hidden; box-shadow: 0 15px 35px -10px rgba(15, 23, 42, 0.4); }
+    .financial-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at top right, rgba(255,255,255,0.1), transparent 50%); }
+    .fin-label { font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem; display: block; position: relative; z-index: 1; }
+    .fin-value { font-size: 2.2rem; font-weight: 900; letter-spacing: -0.03em; position: relative; z-index: 1; }
+    .fin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.08); position: relative; z-index: 1; }
 
     /* ── ACTION BUTTONS ── */
-    .btn-action-elite { width: 100%; padding: 1rem; border-radius: 50px; font-weight: 850; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.85rem; border: none; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center; gap: 0.75rem; text-decoration: none; }
-    .btn-primary-orange { background: var(--up-orange); color: white; box-shadow: 0 4px 14px rgba(255, 123, 84, 0.3); }
-    .btn-primary-orange:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 123, 84, 0.4); }
+    .btn-action-elite { width: 100%; padding: 1.1rem; border-radius: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.85rem; border: none; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center; gap: 0.75rem; text-decoration: none; }
+    .btn-primary-orange { background: var(--up-orange); color: white; box-shadow: 0 8px 20px rgba(249, 115, 22, 0.25); }
+    .btn-primary-orange:hover { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(249, 115, 22, 0.35); }
     .btn-outline-slate { background: transparent; border: 2px solid var(--dm-slate-100); color: var(--up-slate-900); }
-    .btn-outline-slate:hover { background: var(--dm-slate-50); border-color: var(--dm-slate-400); transform: translateY(-2px); }
+    .btn-outline-slate:hover { background: var(--dm-slate-50); border-color: var(--dm-slate-300); transform: translateY(-2px); }
 
     /* ── AUDIT LOGS ── */
-    .audit-log-item { display: flex; align-items: center; gap: 12px; padding: 0.75rem; background: var(--dm-slate-50); border-radius: 12px; margin-bottom: 0.5rem; }
-    .audit-info b { font-size: 0.75rem; color: var(--up-slate-900); display: block; }
-    .audit-info span { font-size: 0.65rem; color: var(--dm-slate-400); font-weight: 600; }
+    .audit-log-item { display: flex; align-items: flex-start; gap: 14px; padding: 1rem; background: var(--dm-slate-50); border-radius: 14px; margin-bottom: 0.75rem; border: 1px solid transparent; transition: all 0.2s; }
+    .audit-log-item:hover { background: white; border-color: var(--dm-slate-100); box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+    .audit-info b { font-size: 0.8rem; color: var(--up-slate-900); display: block; margin-bottom: 2px; }
+    .audit-info span { font-size: 0.7rem; color: var(--dm-slate-500); font-weight: 500; }
+
+    @keyframes pulse-glow {
+        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .badge-pulse { animation: pulse-glow 2s infinite cubic-bezier(0.66, 0, 0, 1); }
 </style>
 {% endblock %}
 
 {% block content %}
+{% set is_fast_track = booking.transaction_type == 'fast_track' %}
+{% set food_items = booking.selected_items | rejectattr('menu_item_id', 'none') | list if booking.selected_items else [] %}
+{% set equipment_items = booking.selected_items | rejectattr('equipment_id', 'none') | list if booking.selected_items else [] %}
+{% set service_items = booking.selected_items | rejectattr('service_id', 'none') | list if booking.selected_items else [] %}
+{% set is_rental_only = is_fast_track and equipment_items and not food_items and not service_items %}
+{% set is_service_only = is_fast_track and service_items and not food_items and not equipment_items %}
+{% set display_title = booking.event_type %}
+{% if booking.package %}
+    {% set display_title = booking.package.name %}
+{% elif is_service_only %}
+    {% set display_title = service_items[0].service.name %}
+{% elif is_rental_only %}
+    {% set display_title = equipment_items[0].equipment.name ~ (' (and more)' if equipment_items|length > 1 else '') %}
+{% elif is_food_order %}
+    {% set display_title = 'Food Order' %}
+{% endif %}
+
 <!-- ── BACK BUTTON ── -->
 <div style="margin-bottom: 1.5rem;">
     <a href="/customer/bookings" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 6px 14px; background: white; border-radius: 50px; border: 1px solid var(--dm-slate-200); color: var(--up-slate-900); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s;"><i class="fas fa-arrow-left"></i> Back to Registry</a>
@@ -116,7 +146,7 @@
 
 <div class="dash-header">
     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-        <h1>{{ booking.event_name or 'Logistic Management' }}</h1>
+        <h1>{{ display_title or 'Logistic Management' }}</h1>
         <p>Reference: <span style="background: var(--dm-slate-100); padding: 2px 8px; border-radius: 6px; color: var(--up-slate-900); font-weight: 800;">{% if is_food_order %}ORD-{% else %}BK-{% endif %}{{ "%03d" | format(booking.id) }}</span> &bull; Verified Transaction</p>
     </div>
     <div style="display: flex; align-items: center; gap: 1rem;">
@@ -132,7 +162,7 @@
                 'cancelled': ('Cancelled', '#fef2f2', '#dc2626')
             }.get(booking.status, (booking.status|capitalize, '#f1f5f9', '#475569')) %}
         {% endif %}
-        <span style="background: {{ status_cfg[1] }}; color: {{ status_cfg[2] }}; padding: 8px 20px; border-radius: 30px; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
+        <span class="{{ 'badge-pulse' if 'Action' in status_cfg[0] else '' }}" style="background: {{ status_cfg[1] }}; color: {{ status_cfg[2] }}; padding: 8px 20px; border-radius: 30px; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; border: 1px solid {{ status_cfg[2] }}40; box-shadow: 0 4px 10px {{ status_cfg[2] }}15;">
             {{ status_cfg[0] }}
         </span>
     </div>
@@ -198,62 +228,78 @@
 {% endif %}
 
 <div class="stepper-panel">
-    <div class="steps-row" style="padding: 0 1rem;">
+    <div class="steps-row" style="padding: 0 1rem; overflow-x: auto; padding-bottom: 10px;">
     {% if is_food_order %}
-        <!-- FOOD ORDER TRACK: 5-Step Timeline -->
-        <div class="step {{ 'done' if current_step_idx > 1 else 'active' }}">
+        <!-- FOOD ORDER TRACK: 4-Step Timeline -->
+        <div class="step {{ 'done' if booking.status in ['preparing', 'out_for_delivery', 'completed'] else 'active' }}">
             <div class="step-dot"><i class="fas fa-receipt"></i></div>
             <span class="step-label">Order<br>Submitted</span>
         </div>
-        <div class="step {{ 'done' if current_step_idx > 2 else ('active' if current_step_idx == 2 else '') }}">
+        <div class="step {{ 'done' if booking.status in ['out_for_delivery', 'completed'] else ('active' if booking.status == 'preparing' else '') }}">
             <div class="step-dot"><i class="fas fa-fire-burner"></i></div>
             <span class="step-label">Preparing</span>
         </div>
-        <div class="step {{ 'done' if current_step_idx > 3 else ('active' if current_step_idx == 3 else '') }}">
+        <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status == 'out_for_delivery' else '') }}">
             <div class="step-dot"><i class="fas fa-truck"></i></div>
-            <span class="step-label">Out for<br>Delivery</span>
+            <span class="step-label">Dispatched</span>
         </div>
-        <div class="step {{ 'done' if current_step_idx > 4 else ('active' if current_step_idx == 4 else '') }}">
-            <div class="step-dot"><i class="fas fa-box-open"></i></div>
-            <span class="step-label">Delivered</span>
-        </div>
-        <div class="step {{ 'done' if current_step_idx == 5 else ('active' if current_step_idx == 5 else '') }}">
+        <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status == 'completed' else '') }}">
             <div class="step-dot"><i class="fas fa-check-circle"></i></div>
             <span class="step-label">Completed</span>
         </div>
-    {% elif is_fast_track %}
-        <!-- FAST TRACK (Rentals/Services): 8-Step Timeline -->
-        <div class="step {{ 'done' if current_step_idx > 1 else 'active' }}">
+    {% elif is_rental_only %}
+        <!-- EQUIPMENT RENTAL TRACK: 4-Step Timeline -->
+        <div class="step {{ 'done' if booking.status in ['confirmed', 'preparing', 'ready', 'out_for_delivery', 'arrived', 'completed'] else 'active' }}">
             <div class="step-dot"><i class="fas fa-clock"></i></div>
-            <span class="step-label">Pending</span>
+            <span class="step-label">Reserved</span>
         </div>
-        <div class="step {{ 'done' if current_step_idx > 2 else ('active' if current_step_idx == 2 else '') }}">
-            <div class="step-dot"><i class="fas fa-check-circle"></i></div>
-            <span class="step-label">Confirmed</span>
+        <div class="step {{ 'done' if booking.status in ['preparing', 'ready', 'out_for_delivery', 'arrived', 'completed'] else ('active' if booking.status == 'confirmed' else '') }}">
+            <div class="step-dot"><i class="fas fa-credit-card"></i></div>
+            <span class="step-label">Confirmed &<br>Paid</span>
         </div>
-        <div class="step {{ 'done' if current_step_idx > 3 else ('active' if current_step_idx == 3 else '') }}">
-            <div class="step-dot"><i class="fas fa-fire-burner"></i></div>
-            <span class="step-label">Preparing</span>
-        </div>
-        <div class="step {{ 'done' if current_step_idx > 4 else ('active' if current_step_idx == 4 else '') }}">
-            <div class="step-dot"><i class="fas fa-box"></i></div>
-            <span class="step-label">Ready</span>
-        </div>
-        <div class="step {{ 'done' if current_step_idx > 5 else ('active' if current_step_idx == 5 else '') }}">
+        <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status in ['out_for_delivery', 'arrived'] else '') }}">
             <div class="step-dot"><i class="fas fa-truck"></i></div>
-            <span class="step-label">On Way</span>
+            <span class="step-label">Dispatched</span>
         </div>
-        <div class="step {{ 'done' if current_step_idx > 6 else ('active' if current_step_idx == 6 else '') }}">
-            <div class="step-dot"><i class="fas fa-map-marker-alt"></i></div>
-            <span class="step-label">Arrived</span>
+        <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status == 'completed' else '') }}">
+            <div class="step-dot"><i class="fas fa-undo"></i></div>
+            <span class="step-label">Returned &<br>Completed</span>
         </div>
-        <div class="step {{ 'done' if current_step_idx > 7 else ('active' if current_step_idx == 7 else '') }}">
+    {% elif is_service_only %}
+        <!-- SERVICE BOOKING TRACK: 4-Step Timeline -->
+        <div class="step {{ 'done' if booking.status in ['confirmed', 'preparing', 'ready', 'out_for_delivery', 'arrived', 'setup_in_progress', 'completed'] else 'active' }}">
+            <div class="step-dot"><i class="fas fa-clock"></i></div>
+            <span class="step-label">Reserved</span>
+        </div>
+        <div class="step {{ 'done' if booking.status in ['preparing', 'ready', 'out_for_delivery', 'arrived', 'setup_in_progress', 'completed'] else ('active' if booking.status == 'confirmed' else '') }}">
+            <div class="step-dot"><i class="fas fa-credit-card"></i></div>
+            <span class="step-label">Confirmed &<br>Paid</span>
+        </div>
+        <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status in ['arrived', 'setup_in_progress'] else '') }}">
             <div class="step-dot"><i class="fas fa-tools"></i></div>
-            <span class="step-label">Setup</span>
+            <span class="step-label">Setup &<br>Service</span>
         </div>
-        <div class="step {{ 'done' if current_step_idx == 8 else ('active' if current_step_idx == 8 else '') }}">
+        <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status == 'completed' else '') }}">
             <div class="step-dot"><i class="fas fa-flag-checkered"></i></div>
-            <span class="step-label">Success</span>
+            <span class="step-label">Completed</span>
+        </div>
+    {% elif is_fast_track %}
+        <!-- GENERIC FAST TRACK: 4-Step Timeline -->
+        <div class="step {{ 'done' if booking.status in ['confirmed', 'preparing', 'ready', 'out_for_delivery', 'arrived', 'setup_in_progress', 'completed'] else 'active' }}">
+            <div class="step-dot"><i class="fas fa-clock"></i></div>
+            <span class="step-label">Reserved</span>
+        </div>
+        <div class="step {{ 'done' if booking.status in ['preparing', 'ready', 'out_for_delivery', 'arrived', 'setup_in_progress', 'completed'] else ('active' if booking.status == 'confirmed' else '') }}">
+            <div class="step-dot"><i class="fas fa-credit-card"></i></div>
+            <span class="step-label">Confirmed &<br>Paid</span>
+        </div>
+        <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status in ['out_for_delivery', 'arrived', 'setup_in_progress'] else '') }}">
+            <div class="step-dot"><i class="fas fa-truck"></i></div>
+            <span class="step-label">Dispatched &<br>Prep</span>
+        </div>
+        <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status == 'completed' else '') }}">
+            <div class="step-dot"><i class="fas fa-flag-checkered"></i></div>
+            <span class="step-label">Completed</span>
         </div>
     {% elif booking.status in ['draft', 'pending_review'] %}
         <!-- INQUIRY TRACK: 4-Step Timeline -->
@@ -274,14 +320,10 @@
             <span class="step-label">Customer<br>Decision</span>
         </div>
     {% else %}
-        <!-- CONTRACT TRACK: 6-Step Timeline -->
-        <div class="step {{ 'done' if current_step_idx > 1 else 'active' }}">
-            <div class="step-dot"><i class="fas fa-user-check"></i></div>
-            <span class="step-label">Identity<br>Verified</span>
-        </div>
-        <div class="step {{ 'done' if current_step_idx > 2 else ('active' if current_step_idx == 2 else '') }}">
+        <!-- PACKAGE / CONTRACT TRACK: 5-Step Timeline -->
+        <div class="step {{ 'done' if current_step_idx > 2 else 'active' }}">
             <div class="step-dot"><i class="fas fa-file-invoice-dollar"></i></div>
-            <span class="step-label">Quotation<br>Phase</span>
+            <span class="step-label">Quotation</span>
         </div>
         <div class="step {{ 'done' if current_step_idx > 3 else ('active' if current_step_idx == 3 else '') }}">
             <div class="step-dot"><i class="fas fa-file-signature"></i></div>
@@ -325,7 +367,7 @@
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Service Type</span>
-                    <span class="detail-value">{{ booking.event_type or 'N/A' }}</span>
+                    <span class="detail-value">{{ display_title }}</span>
                 </div>
                 
                 {% if booking.package and booking.package.inclusions %}
@@ -387,10 +429,6 @@
         </div>
         {% endif %}
         
-        {% set food_items = booking.selected_items | rejectattr('menu_item_id', 'none') | list %}
-        {% set equipment_items = booking.selected_items | rejectattr('equipment_id', 'none') | list %}
-        {% set service_items = booking.selected_items | rejectattr('service_id', 'none') | list %}
-        
         {% if food_items or equipment_items or service_items %}
         <div class="panel">
             <div class="panel-header">
@@ -399,8 +437,8 @@
             <div class="panel-body">
                 <div style="background: var(--dm-slate-50); padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <b style="font-size: 0.9rem; color: var(--up-slate-900);">{{ booking.package.name if booking.package else 'Custom Menu' }}</b>
-                        <p style="font-size: 0.75rem; color: var(--dm-slate-400); margin: 2px 0 0; font-weight: 600;">Your Selected Booking Additions</p>
+                        <b style="font-size: 0.9rem; color: var(--up-slate-900);">{{ booking.package.name if booking.package else display_title }}</b>
+                        <p style="font-size: 0.75rem; color: var(--dm-slate-400); margin: 2px 0 0; font-weight: 600;">{{ 'Package Details & Additions' if booking.package else 'Your Selected Items' }}</p>
                     </div>
                     <span style="background: white; border: 1px solid var(--dm-slate-100); padding: 4px 12px; border-radius: 20px; font-size: 0.65rem; font-weight: 800; color: var(--up-slate-900);">VERIFIED</span>
                 </div>
@@ -578,7 +616,7 @@
             </div>
             <div class="panel-body" style="display: flex; flex-direction: column; gap: 0.75rem;">
                 {% if booking.status == 'draft' %}
-                    {% set next_step = '/bookings/step/kyc/' ~ booking.id %}
+                    {% set next_step = '/bookings/continue/' ~ booking.id %}
                     {% if current_step_idx == 2 %} {% set next_step = '/bookings/step/quotation/' ~ booking.id %} {% endif %}
                     {% if current_step_idx == 3 %} {% set next_step = '/bookings/step/payment/' ~ booking.id %} {% endif %}
                     <a href="{{ next_step }}" class="btn-action-elite btn-primary-orange">
@@ -643,25 +681,46 @@
         </div>
 
         <!-- DOCUMENTS REPOSITORY -->
-        {% if not is_food_order %}
+        {% set has_contract = booking.package and booking.quotation %}
+        {% set has_terms = (is_rental_only and (booking.caterer.rental_policies or booking.caterer.general_terms)) or (is_food_order and booking.caterer.general_terms) %}
+        
+        {% if has_contract or has_terms %}
         <div class="panel">
             <div class="panel-header">
                 <h3>Your Documents</h3>
             </div>
             <div class="panel-body">
+                {% if has_contract %}
                 <a href="javascript:void(0)" onclick="openContractModal('{{ booking.id }}')" 
-                   style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 0.85rem; background: var(--dm-slate-50); border-radius: 12px; transition: all 0.2s; border: 1px solid transparent;"
+                   style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 0.85rem; background: var(--dm-slate-50); border-radius: 12px; transition: all 0.2s; border: 1px solid transparent; margin-bottom: 0.5rem;"
                    onmouseover="this.style.borderColor='var(--up-orange)'; this.style.background='#fff';" 
                    onmouseout="this.style.borderColor='transparent'; this.style.background='var(--dm-slate-50)';">
                     <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(255,123,84,0.1); display: flex; align-items: center; justify-content: center; color: var(--up-orange); font-size: 1.1rem;">
                         <i class="fas fa-file-contract"></i>
                     </div>
                     <div style="flex: 1;">
-                        <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">Service Agreement</b>
-                        <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">View Service Agreement</span>
+                        <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">Event Contract</b>
+                        <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">View officially signed contract</span>
                     </div>
                     <i class="fas fa-chevron-right" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
                 </a>
+                {% endif %}
+                
+                {% if has_terms %}
+                <a href="javascript:void(0)" onclick="document.getElementById('termsModalOverlay').style.display='flex'" 
+                   style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 0.85rem; background: var(--dm-slate-50); border-radius: 12px; transition: all 0.2s; border: 1px solid transparent;"
+                   onmouseover="this.style.borderColor='var(--up-orange)'; this.style.background='#fff';" 
+                   onmouseout="this.style.borderColor='transparent'; this.style.background='var(--dm-slate-50)';">
+                    <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(255,123,84,0.1); display: flex; align-items: center; justify-content: center; color: var(--up-orange); font-size: 1.1rem;">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">Terms & Conditions</b>
+                        <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">Agreed terms for this booking</span>
+                    </div>
+                    <i class="fas fa-chevron-right" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
+                </a>
+                {% endif %}
             </div>
         </div>
         {% endif %}
@@ -991,4 +1050,15 @@
         }
     }
 </script>
+
+<!-- Terms Modal -->
+<div id="termsModalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: white; width: 95%; max-width: 600px; border-radius: 20px; position: relative; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
+        <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #fff;">
+            <h2 style="font-size: 1.1rem; font-weight: 900; color: var(--up-slate-900); margin: 0;">Terms & Conditions</h2>
+            <button onclick="document.getElementById('termsModalOverlay').style.display='none'" style="background: var(--dm-slate-50); border: none; width: 36px; height: 36px; border-radius: 10px; color: var(--dm-slate-400); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#fee2e2'; this.style.color='#ef4444';" onmouseout="this.style.background='var(--dm-slate-50)'; this.style.color='var(--dm-slate-400)';"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="padding: 1.5rem; overflow-y: auto; font-size: 0.85rem; color: #475569; line-height: 1.6; white-space: pre-wrap; background: #f8fafc;">{% if is_rental_only %}{{ booking.caterer.rental_policies or booking.caterer.general_terms }}{% elif is_service_only %}{{ booking.caterer.terms_and_conditions or booking.caterer.general_terms }}{% else %}{{ booking.caterer.general_terms }}{% endif %}</div>
+    </div>
+</div>
 {% endblock %}

@@ -705,6 +705,7 @@ class PlatformFeedback(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     rating = Column(Integer)  # 1–5 stars
     comment = Column(Text)
+    attachment_base64 = Column(Text, nullable=True) # Compressed image string
     role = Column(String, nullable=True)  # 'customer' or 'caterer' for context label
     is_highlighted = Column(Boolean, default=False)  # Featured on landing page
     is_archived = Column(Boolean, default=False)

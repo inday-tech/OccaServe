@@ -320,28 +320,48 @@
                     <h2 class="chk-title"><i class="fas fa-calendar-check" style="color: var(--chk-primary);"></i> Service Schedule</h2>
                     <p style="color: var(--chk-text-light); font-size: 0.9rem; margin-bottom: 1.5rem;">Select the date and time block for this service.</p>
                     
+                    {% set max_advance = caterer.scheduling_rules.get('booking_rules', {}).get('max_advance_booking_days', 90) if caterer.scheduling_rules else 90 %}
+                    {% set earliest_start = caterer.scheduling_rules.get('service_rules', {}).get('earliest_start', '08:00') if caterer.scheduling_rules else '08:00' %}
+                    {% set latest_end = caterer.scheduling_rules.get('service_rules', {}).get('latest_end', '22:00') if caterer.scheduling_rules else '22:00' %}
+                    {% set min_dur = caterer.scheduling_rules.get('service_rules', {}).get('min_duration_hours', 1) if caterer.scheduling_rules else 1 %}
+                    {% set max_dur = caterer.scheduling_rules.get('service_rules', {}).get('max_duration_hours', 8) if caterer.scheduling_rules else 8 %}
+                    
+                    {% set h, m = earliest_start.split(':') %}
+                    {% set ampm = 'PM' if h|int >= 12 else 'AM' %}
+                    {% set disp_h = (h|int) - 12 if h|int > 12 else (12 if h|int == 0 else h|int) %}
+                    {% set ampm_earliest = disp_h ~ ':' ~ m ~ ' ' ~ ampm %}
+                    
+                    {% set lh, lm = latest_end.split(':') %}
+                    {% set lampm = 'PM' if lh|int >= 12 else 'AM' %}
+                    {% set ldisp_h = (lh|int) - 12 if lh|int > 12 else (12 if lh|int == 0 else lh|int) %}
+                    {% set ampm_latest = ldisp_h ~ ':' ~ lm ~ ' ' ~ lampm %}
+
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <div class="form-group">
                             <label>Event Date <span style="color:red;">*</span></label>
-                            <input type="date" class="form-control" name="event_date" id="event_date" required min="{{ (today + timedelta(days=1)).strftime('%Y-%m-%d') }}">
+                            <input type="date" class="form-control" name="event_date" id="event_date" required min="{{ (today + timedelta(days=1)).strftime('%Y-%m-%d') }}" max="{{ (today + timedelta(days=max_advance|int)).strftime('%Y-%m-%d') }}">
                             <span class="field-error" id="err-event_date">Event Date is required.</span>
+                            <div style="color: #64748b; font-size: 0.75rem; margin-top: 4px; display: flex; align-items: center; gap: 4px;"><i class="fas fa-info-circle"></i> Max advance booking: {{ max_advance }} days</div>
                         </div>
                         <div class="form-group">
                             <label>Start Time <span style="color:red;">*</span></label>
-                            <input type="time" class="form-control" name="start_time" id="start_time" required>
+                            <input type="time" class="form-control" name="start_time" id="start_time" required min="{{ earliest_start }}" max="{{ latest_end }}">
                             <span class="field-error" id="err-start_time">Start Time is required.</span>
+                            <div style="color: #64748b; font-size: 0.75rem; margin-top: 4px; display: flex; align-items: center; gap: 4px;"><i class="fas fa-info-circle"></i> Operating hours: {{ ampm_earliest }} - {{ ampm_latest }}</div>
                         </div>
                     </div>
                     
                     <div class="form-group" style="margin-top: 1rem;">
                         <label>Duration (Hours) <span style="color:red;">*</span></label>
                         <select class="form-control" name="duration" id="duration" onchange="calculateServiceTotal()">
-                            {% for i in range(service.minimum_hours|default(1), service.base_duration_hours|default(3) + 1) %}
+                            {% set actual_min_dur = service.minimum_hours|default(min_dur) %}
+                            {% set actual_max_dur = service.base_duration_hours|default(max_dur) %}
+                            {% for i in range(actual_min_dur|int, (actual_max_dur|int) + 1) %}
                             <option value="{{ i }}">{{ i }} Hour{{ 's' if i > 1 else '' }}</option>
                             {% endfor %}
                         </select>
-                        <small style="color: var(--chk-text-light);">Maximum allowed: {{ service.base_duration_hours|default(3) }} hour(s).</small>
                         <span class="field-error" id="err-duration">Please select a valid duration.</span>
+                        <div style="color: #64748b; font-size: 0.75rem; margin-top: 4px; display: flex; align-items: center; gap: 4px;"><i class="fas fa-info-circle"></i> Maximum allowed duration: {{ actual_max_dur }} hour(s).</div>
                     </div>
                 </div>
 
@@ -468,8 +488,8 @@
                     <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 2.5rem 0;">
 
                     <div style="background: white; border: 1px solid #e2e8f0; border-radius: 1.5rem; overflow: hidden; margin-bottom: 1.5rem;">
-                        <div style="background: #0f172a; padding: 1.25rem 1.5rem;">
-                            <h3 style="font-weight: 800; font-size: 1.1rem; margin: 0; color: white;"><i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: var(--chk-primary);"></i> Order Review</h3>
+                        <div style="background: var(--chk-primary); padding: 1.25rem 1.5rem;">
+                            <h3 style="font-weight: 800; font-size: 1.1rem; margin: 0; color: white;"><i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: white;"></i> Booking Review</h3>
                         </div>
                         <div style="padding: 1.5rem;">
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
@@ -727,7 +747,18 @@
     
     function updateReview() {
         document.getElementById('rev-name').innerText = document.querySelector('input[name="full_name"]').value || '-';
-        document.getElementById('rev-datetime').innerText = (document.getElementById('event_date').value || '-') + ' at ' + (document.getElementById('start_time').value || '-');
+        
+        // Convert military time to AM/PM
+        let timeVal = document.getElementById('start_time').value;
+        let formattedTime = '-';
+        if (timeVal) {
+            let [hours, minutes] = timeVal.split(':');
+            let ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // the hour '0' should be '12'
+            formattedTime = hours + ':' + minutes + ' ' + ampm;
+        }
+        document.getElementById('rev-datetime').innerText = (document.getElementById('event_date').value || '-') + ' at ' + formattedTime;
         document.getElementById('rev-location').innerText = document.querySelector('input[name="address"]').value || '-';
         
         const duration = document.getElementById('duration').value;
@@ -747,13 +778,10 @@
         const provSelect = document.getElementById('prov_select');
         if (!provSelect) return;
         
-        provSelect.innerHTML = '<option value="">-- Select Province --</option>';
+        provSelect.innerHTML = '<option value="" disabled selected hidden>-- Select Province --</option>';
         
         const allowedProvinces = [
-            { code: "130000000", name: "NATIONAL CAPITAL REGION (NCR)" },
-            { code: "043400000", name: "Laguna" },
-            { code: "041000000", name: "Batangas" },
-            { code: "045600000", name: "Quezon" }
+            { code: "043400000", name: "Laguna" }
         ];
         
         allowedProvinces.forEach(p => {
@@ -773,8 +801,8 @@
         const citySelect = document.getElementById('city_select');
         const brgySelect = document.getElementById('brgy_select');
         
-        citySelect.innerHTML = '<option value="">-- Select Municipality --</option>';
-        brgySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
+        citySelect.innerHTML = '<option value="" disabled selected hidden>-- Select Municipality --</option>';
+        brgySelect.innerHTML = '<option value="" disabled selected hidden>-- Select Barangay --</option>';
         citySelect.disabled = true;
         brgySelect.disabled = true;
         syncAddress();
@@ -789,7 +817,7 @@
             const res = await fetch(endpoint);
             psgcData.cities = await res.json();
             
-            citySelect.innerHTML = '<option value="">-- Select Municipality --</option>';
+            citySelect.innerHTML = '<option value="" disabled selected hidden>-- Select Municipality --</option>';
             psgcData.cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c.code;
@@ -811,7 +839,7 @@
         document.getElementById('hidden_municipality').value = selectedCityOpt.value ? selectedCityOpt.textContent : "";
 
         // Reset lower levels
-        brgySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
+        brgySelect.innerHTML = '<option value="" disabled selected hidden>-- Select Barangay --</option>';
         brgySelect.disabled = true;
         syncAddress();
 
@@ -822,7 +850,7 @@
             const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays/`);
             psgcData.barangays = await res.json();
             
-            brgySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
+            brgySelect.innerHTML = '<option value="" disabled selected hidden>-- Select Barangay --</option>';
             psgcData.barangays.sort((a, b) => a.name.localeCompare(b.name)).forEach(b => {
                 const opt = document.createElement('option');
                 opt.value = b.code;

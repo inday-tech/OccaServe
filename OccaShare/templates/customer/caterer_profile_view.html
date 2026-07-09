@@ -2230,7 +2230,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 available_qty: {{ (item.display_qty or 1)|tojson }},
                 deposit_pct: {{ (item.deposit_pct or 0)|tojson }},
                 needs_kyc: {{ (item.needs_kyc or false)|tojson }},
-                min_hours: {{ (item.min_hours or 0)|tojson }}
+                min_hours: {{ (item.min_hours or 0)|tojson }},
+                min_quantity: {{ (item.min_quantity or 1)|tojson }}
             }{{ ',' if not loop.last else '' }}
             {% endfor %}
         ];
@@ -2450,7 +2451,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 const qtyHtml = isFixedQty ? 
                     `<input type="hidden" id="mq-${item.type}-${item.id}" value="1"><span style="font-size:0.75rem;font-weight:700;color:var(--hub-slate-400);padding:4px 8px;background:var(--hub-slate-50);border-radius:4px;border:1px solid var(--hub-slate-200); margin-right:4px;">Qty: 1</span>` : 
-                    `<input type="number" class="dish-row-qty" id="mq-${item.type}-${item.id}" value="1" min="1" max="${item.available_qty || 99}" ${isSelected ? 'disabled' : ''}>`;
+                    `<input type="number" class="dish-row-qty" id="mq-${item.type}-${item.id}" value="${item.min_quantity || 1}" min="${item.min_quantity || 1}" max="${item.available_qty || 99}" ${isSelected ? 'disabled' : ''}>`;
 
                 const descHtml = item.description
                     ? `<div style="font-size:0.72rem;color:var(--hub-slate-400);line-height:1.5;margin-top:2px;">${item.description}</div>`
@@ -2475,6 +2476,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 if (item.min_hours > 0 && item.type === 'Equipment') {
                     badgesHtml += `<span style="font-size:0.62rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:100px;padding:2px 7px;font-weight:700;">⏱️ Min. ${item.min_hours}hr rental</span>`;
+                }
+                if (item.min_quantity > 1) {
+                    badgesHtml += `<span style="font-size:0.62rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:100px;padding:2px 7px;font-weight:700;">📦 Min. Qty: ${item.min_quantity}</span>`;
                 }
                 badgesHtml += '</div>';
 

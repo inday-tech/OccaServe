@@ -115,8 +115,10 @@ class PaymentVerificationService:
             print(f"[PaymentVerify DEBUG] OCR Error: {e}")
             return {"error": str(e)}
 
-    def check_for_fraud(self, db: Session, booking: models.Booking, base64_str: str) -> dict:
-        """Runs a holistic fraud check on the submitted proof using base64 data."""
+    async def check_for_fraud(self, db: Session, booking: models.Booking, base64_str: str) -> dict:
+        """Runs a holistic fraud check on the submitted proof using Gemini."""
+        import os, httpx, json, asyncio
+        
         results = {
             "is_duplicate_image": False,
             "is_duplicate_ref": False,
@@ -129,115 +131,152 @@ class PaymentVerificationService:
         # 1. Image Hash Check
         img_hash = self.get_image_hash(base64_str)
         if img_hash:
-            # Check if this hash exists in any other booking (excluding current)
-            existing_hash = db.query(models.Booking).filter(
-                models.Booking.payment_reference == img_hash, # Using ref field temporarily or meta
+            pass # TODO: Duplicate hash check logic
+
+        # 2. Gemini OCR Validation
+        gemini_key = os.getenv("GEMINI_API_KEY")
+        if not gemini_key:
+            results["flags"].append("AI Verification Error: Missing Gemini API Key. Cannot verify receipt automatically.")
+            return results
+
+        caterer_name = ""
+        caterer_gcash = ""
+        caterer_maya = ""
+        caterer_bank = ""
+        if booking.caterer_id:
+            caterer = db.query(models.CatererProfile).get(booking.caterer_id)
+            if caterer:
+                caterer_name = caterer.business_name
+                caterer_gcash = caterer.gcash_number or ""
+                caterer_maya = caterer.maya_number or ""
+                caterer_bank = caterer.bank_account_name or ""
+                
+        expected_amount = booking.total_amount or 0.0
+        expected_method = booking.payment_method or "GCASH"
+        
+        prompt = f"""You are a financial receipt verification assistant for OccaServe.
+Analyze the uploaded image. We need to verify if this is a legitimate proof of payment and if the details match our booking requirements.
+
+EXPECTED BOOKING DETAILS:
+- Expected Amount: ₱{expected_amount:,.2f}
+- Expected Payment Method: {expected_method}
+- Expected Caterer Name: {caterer_name}
+- Expected Accounts: GCash={caterer_gcash}, Maya={caterer_maya}, Bank={caterer_bank}
+
+Verify the following:
+1. Is it a valid receipt? (Not a selfie, food pic, or random screenshot)
+2. Does the amount match {expected_amount}? (Allow minor discrepancies like P5.00 transfer fees, but flag if it's completely different)
+3. Does the payment method on the receipt match {expected_method}? (e.g., If we expect GCASH but it's a BDO bank transfer receipt, flag it)
+4. Are the caterer's details present? (Name or account number)
+5. Is the receipt date recent? (It should be within the last 2 days of today. If it is old or has a future date, flag it)
+
+Provide a JSON response strictly in this format:
+{{
+    "is_valid_receipt": bool,
+    "extracted_amount": float or null,
+    "extracted_date": "string or null",
+    "extracted_reference_no": "string or null",
+    "detected_payment_method": "GCASH" | "MAYA" | "BANK" | "OTHER" | null,
+    "caterer_match": bool,
+    "amount_match": bool,
+    "confidence_score": 0 to 100 (integer),
+    "flags": ["list of strings detailing EXACTLY what is wrong, e.g., 'Amount mismatch: found 100 but expected 500', 'Method mismatch: Expected GCASH but received BANK receipt', 'Date is missing']
+}}
+"""
+        
+        # Prepare image payload
+        import base64
+        if "," in base64_str:
+            base64_str = base64_str.split(",", 1)[1]
+            
+        payload = {
+            "contents": [{
+                "parts": [
+                    {"text": prompt},
+                    {
+                        "inlineData": {
+                            "mimeType": "image/jpeg",
+                            "data": base64_str
+                        }
+                    }
+                ]
+            }],
+            "generationConfig": {
+                "response_mime_type": "application/json"
+            }
+        }
+        
+        headers = {"Content-Type": "application/json"}
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
+        
+        gemini_data = None
+        async with httpx.AsyncClient() as client:
+            try:
+                res = await client.post(url, json=payload, headers=headers, timeout=25.0)
+                if res.status_code == 200:
+                    result_json = res.json()
+                    text_resp = result_json.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "{}")
+                    
+                    # Clean up markdown code blocks if present
+                    text_resp = text_resp.strip()
+                    if text_resp.startswith("```json"):
+                        text_resp = text_resp[7:]
+                    if text_resp.startswith("```"):
+                        text_resp = text_resp[3:]
+                    if text_resp.endswith("```"):
+                        text_resp = text_resp[:-3]
+                        
+                    gemini_data = json.loads(text_resp.strip())
+                else:
+                    results["flags"].append(f"AI Verification Error: Received status {res.status_code} from Gemini.")
+                    return results
+            except Exception as e:
+                results["flags"].append(f"AI Verification Error: {str(e)}")
+                return results
+                
+        if not gemini_data:
+            results["flags"].append("AI Verification Error: Failed to parse Gemini response.")
+            return results
+
+        # Process Gemini Response
+        results["extracted_data"] = {
+            "amount": gemini_data.get("extracted_amount"),
+            "reference_no": gemini_data.get("extracted_reference_no"),
+            "date": gemini_data.get("extracted_date"),
+            "bank": gemini_data.get("detected_payment_method")
+        }
+        
+        # Build score and flags based on strict AI feedback
+        score = gemini_data.get("confidence_score", 0)
+        
+        if not gemini_data.get("is_valid_receipt", False):
+            score = 0
+            if not gemini_data.get("flags"):
+                results["flags"].append("Fraud Alert: Image does not appear to be a valid financial receipt.")
+                
+        if gemini_data.get("flags"):
+            results["flags"].extend(gemini_data.get("flags"))
+            
+        results["amount_match"] = gemini_data.get("amount_match", False)
+        
+        # Check Reference Duplicate
+        if results["extracted_data"].get("reference_no"):
+            ref = results["extracted_data"]["reference_no"]
+            duplicate_ref = db.query(models.Booking).filter(
+                models.Booking.payment_reference == ref,
                 models.Booking.id != booking.id
             ).first()
-            # Wait, better check a dedicated meta field if we add it
-            
-        # 2. OCR Extraction
-        ocr_data = self.extract_payment_data(base64_str)
-        results["extracted_data"] = ocr_data
-        
-        # Check if the OCR engine itself failed (e.g. Tesseract not installed)
-        if "error" in ocr_data:
-            results["flags"].append(f"System OCR Engine Error: {ocr_data['error']}. The AI scanner is currently unavailable on this server.")
-            results["confidence"] = 0
-            return results
-
-        raw_text = ocr_data.get("raw_text", "").upper()
-
-        # [ZERO-TRUST] 2.1 Keyword Authenticity Check
-        # Common keywords found in GCash, Maya, and major PH banks
-        receipt_keywords = [
-            "SUCCESSFULLY", "PAID", "SENT", "TRANSFER", "REF NO", "TRANS ID", 
-            "GCASH", "MAYA", "RECEIPT", "BILLER", "AMOUNT PAID", "TRANSACTION"
-        ]
-        has_keywords = any(keyword in raw_text for keyword in receipt_keywords)
-        
-        if not raw_text.strip():
-            results["flags"].append("Fraud Alert: Non-Document detected (Image contains no readable text).")
-            results["confidence"] = 0
-            return results
-
-        if not has_keywords:
-            results["flags"].append("High Risk: Image does not appear to be a valid financial receipt.")
-            results["confidence"] = min(results["confidence"], 10) # Heavy penalty
-
-        if "error" not in ocr_data:
-            # 3. Reference Number Duplicate Check
-            if ocr_data.get("reference_no"):
-                ref = ocr_data["reference_no"]
-                duplicate_ref = db.query(models.Booking).filter(
-                    models.Booking.payment_reference == ref,
-                    models.Booking.id != booking.id
-                ).first()
-                if duplicate_ref:
-                    results["is_duplicate_ref"] = True
-                    results["flags"].append(f"Duplicate reference: Ref No. {ref} has already been used.")
-
-            # 4. Amount Matching
-            if ocr_data.get("amount"):
-                expected = float(booking.total_amount or 0)
-                # Check for full payment or common deposit % (e.g. 20%, 30%, 50%)
-                threshold = 5.0 # P5.00 variance allowed for minor OCR errors
-                diff = abs(ocr_data["amount"] - expected)
+            if duplicate_ref:
+                results["is_duplicate_ref"] = True
+                results["flags"].append(f"Duplicate reference: Ref No. {ref} has already been used.")
+                score -= 60
                 
-                if diff < threshold:
-                    results["amount_match"] = True
-                else:
-                    results["flags"].append(f"Amount mismatch: Found ₱{ocr_data['amount']:,}, but required is ₱{expected:,}")
-            else:
-                results["flags"].append("Invalid Proof: Could not detect any payment amount on the receipt.")
-
-            # [ZERO-TRUST] 4.1 Missing Core Data penalty
-            if not ocr_data.get("reference_no"):
-                results["flags"].append("Invalid Proof: Reference Number is missing or unreadable.")
-
-            # [ZERO-TRUST] 4.2 Caterer Identity Match
-            has_caterer_match = False
-            if booking.caterer_id:
-                caterer = db.query(models.CatererProfile).get(booking.caterer_id)
-                if caterer:
-                    search_terms = []
-                    if caterer.business_name: search_terms.append(caterer.business_name.upper())
-                    if caterer.gcash_number: search_terms.append(caterer.gcash_number)
-                    if caterer.maya_number: search_terms.append(caterer.maya_number)
-                    if caterer.bank_account_name: search_terms.append(caterer.bank_account_name.upper())
-                    
-                    # Remove common words or short terms to prevent false positives
-                    search_terms = [t for t in search_terms if t and len(t) > 3]
-                    
-                    for term in search_terms:
-                        if term in raw_text:
-                            has_caterer_match = True
-                            break
-                            
-            if booking.caterer_id and not has_caterer_match:
-                results["flags"].append("Recipient mismatch: Caterer's name or number was not found on the receipt.")
-
-            # 5. Confidence Score (Stricter weighting)
-            score = 0
-            if ocr_data.get("amount"): score += 20
-            if ocr_data.get("reference_no"): score += 30
-            if ocr_data.get("date"): score += 10
-            if has_keywords: score += 40
-            if has_caterer_match: score += 20
+        results["confidence"] = max(0, min(100, score))
+        
+        # Ensure confidence is lowered if there are serious flags
+        if results["flags"] and results["confidence"] > 40:
+            results["confidence"] = 39 # Force failure if Gemini generated explicit flags
             
-            # Heavy Penalties
-            if results["is_duplicate_ref"]: score -= 60
-            if not results["amount_match"] and ocr_data.get("amount"): score -= 30
-            if not has_keywords: score -= 50
-            if booking.caterer_id and not has_caterer_match: score -= 30
-            if not ocr_data.get("reference_no") and not ocr_data.get("amount"): score = 0 # Instant fail
-            
-            results["confidence"] = max(0, min(100, score))
-
-            if results["confidence"] < 40:
-                if not results["flags"]:
-                    results["flags"].append("High Risk: AI Confidence is very low. Please upload a clearer image.")
-
         return results
 
 payment_verification_service = PaymentVerificationService()

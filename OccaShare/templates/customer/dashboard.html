@@ -805,10 +805,32 @@
 
     <!-- Event Spotlight -->
     {% if latest_booking %}
+    {% set lb = latest_booking %}
+    {% set is_fast_track = lb.transaction_type == 'fast_track' %}
+    {% set is_food_order = lb.document_type == 'invoice' %}
+    {% set food_items = lb.selected_items | rejectattr('menu_item_id', 'none') | list if lb.selected_items else [] %}
+    {% set equipment_items = lb.selected_items | rejectattr('equipment_id', 'none') | list if lb.selected_items else [] %}
+    {% set service_items = lb.selected_items | rejectattr('service_id', 'none') | list if lb.selected_items else [] %}
+    {% set is_rental_only = is_fast_track and equipment_items and not food_items and not service_items %}
+    {% set is_service_only = is_fast_track and service_items and not food_items and not equipment_items %}
+    
+    {% set display_title = lb.event_type %}
+    {% if lb.package %}
+        {% set display_title = lb.package.name %}
+    {% elif is_service_only %}
+        {% set display_title = service_items[0].service.name %}
+    {% elif is_rental_only %}
+        {% set display_title = equipment_items[0].equipment.name ~ (' (and more)' if equipment_items|length > 1 else '') %}
+    {% elif is_food_order %}
+        {% set display_title = 'Food Order' %}
+    {% elif lb.event_name %}
+        {% set display_title = lb.event_name %}
+    {% endif %}
+
     <div class="spotlight-card">
         <div class="spotlight-info">
             <span class="spotlight-label">Next Upcoming Event</span>
-            <div class="spotlight-title">{{ latest_booking.event_name }}</div>
+            <div class="spotlight-title">{{ display_title or 'Booking' }}</div>
             <div class="spotlight-meta">
                 <div class="sm-item"><i class="fas fa-utensils"></i> <span>{{ latest_booking.caterer.business_name if
                         latest_booking.caterer else 'Partner Caterer' }}</span></div>
@@ -870,10 +892,37 @@
                 </thead>
                 <tbody>
                     {% for b in recent_bookings %}
+                    {% set is_fast_track = b.transaction_type == 'fast_track' %}
+                    {% set is_food_order = b.document_type == 'invoice' %}
+                    {% set food_items = b.selected_items | rejectattr('menu_item_id', 'none') | list if b.selected_items else [] %}
+                    {% set equipment_items = b.selected_items | rejectattr('equipment_id', 'none') | list if b.selected_items else [] %}
+                    {% set service_items = b.selected_items | rejectattr('service_id', 'none') | list if b.selected_items else [] %}
+                    {% set is_rental_only = is_fast_track and equipment_items and not food_items and not service_items %}
+                    {% set is_service_only = is_fast_track and service_items and not food_items and not equipment_items %}
+                    
+                    {% set display_title = b.event_type %}
+                    {% if b.package %}
+                        {% set display_title = b.package.name %}
+                    {% elif is_service_only %}
+                        {% set display_title = service_items[0].service.name %}
+                    {% elif is_rental_only %}
+                        {% set display_title = equipment_items[0].equipment.name ~ (' (and more)' if equipment_items|length > 1 else '') %}
+                    {% elif is_food_order %}
+                        {% set display_title = 'Food Order' %}
+                    {% elif b.event_name %}
+                        {% set display_title = b.event_name %}
+                    {% endif %}
+
+                    {% set booking_type_label = 'Package' %}
+                    {% if is_rental_only %} {% set booking_type_label = 'Rental' %}
+                    {% elif is_service_only %} {% set booking_type_label = 'Service' %}
+                    {% elif is_food_order %} {% set booking_type_label = 'Food Order' %}
+                    {% elif is_fast_track %} {% set booking_type_label = 'Custom' %} {% endif %}
+
                     <tr style="cursor:pointer" onclick="location.href='/customer/bookings/manage/{{ b.id }}'">
                         <td>
-                            <div class="booking-name">{{ b.caterer.business_name if b.caterer else 'Unknown' }}</div>
-                            <div class="booking-sub">{{ b.event_name }}</div>
+                            <div class="booking-name">{{ display_title or 'Booking' }}</div>
+                            <div class="booking-sub"><span class="type-chip" style="font-size: 0.65rem; padding: 1px 6px; margin-right: 4px;">{{ booking_type_label }}</span> {{ b.caterer.business_name if b.caterer else 'Unknown' }}</div>
                         </td>
                         <td>
                             <div style="font-weight:700;">{{ b.event_date.strftime('%b %d, %Y') if b.event_date else

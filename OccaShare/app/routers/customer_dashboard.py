@@ -239,6 +239,7 @@ async def feedback_page(
 async def submit_platform_feedback(
     rating: int = Form(...),
     comment: str = Form(...),
+    attachment_base64: str = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
@@ -257,6 +258,7 @@ async def submit_platform_feedback(
         user_id=user.id,
         rating=rating,
         comment=comment.strip(),
+        attachment_base64=attachment_base64,
         role="customer"
     )
     db.add(fb)
@@ -286,7 +288,23 @@ async def customer_bookings(
 ):
     # Calculate Intelligence Stats
     # Filter out Food Orders (invoice) from the Event Bookings timeline
-    active_bookings = [b for b in user.bookings if not b.customer_archived and b.document_type != 'invoice']
+    active_bookings = []
+    for b in user.bookings:
+        if b.customer_archived:
+            continue
+        if b.document_type == 'invoice':
+            continue
+            
+        # Catch older or mislabeled food orders: fast track with ONLY food items
+        if b.transaction_type == 'fast_track' and b.selected_items:
+            has_food = any(i.menu_item_id for i in b.selected_items)
+            has_equip = any(i.equipment_id for i in b.selected_items)
+            has_service = any(i.service_id for i in b.selected_items)
+            
+            if has_food and not has_equip and not has_service:
+                continue
+                
+        active_bookings.append(b)
     total_reservations = len(active_bookings)
     total_spent = sum([b.total_amount for b in active_bookings if b.status in ['confirmed', 'completed'] and b.total_amount])
     

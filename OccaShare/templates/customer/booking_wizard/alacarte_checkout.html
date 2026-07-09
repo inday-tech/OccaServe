@@ -414,16 +414,27 @@
 
 {% block wizard_content %}
 <div class="checkout-container">
-    <!-- Stepper (3 Clear Operations) -->
+    <!-- Stepper -->
     <div class="wizard-steps">
         <div class="step-item active" id="m-step-1">
             <div class="step-icon">1</div>
             <div class="step-label">{{ 'Checkout Details' if is_mixed else ('Rental Details' if is_rental else 'Delivery') }}</div>
         </div>
+        {% if requires_kyc and not user.is_verified and not user.is_kyc_complete %}
+        <div class="step-item" id="m-step-2">
+            <div class="step-icon">2</div>
+            <div class="step-label">Verification</div>
+        </div>
+        <div class="step-item" id="m-step-3">
+            <div class="step-icon">3</div>
+            <div class="step-label">Payment</div>
+        </div>
+        {% else %}
         <div class="step-item" id="m-step-2">
             <div class="step-icon">2</div>
             <div class="step-label">Payment</div>
         </div>
+        {% endif %}
     </div>
 
     <div class="checkout-grid">
@@ -664,8 +675,40 @@
 
 
 
-                <!-- STEP 3: PAYMENT & CONFIRMATION -->
+                </div>
+
+                {% if requires_kyc and not user.is_verified and not user.is_kyc_complete %}
+                <!-- STEP 2: KYC VERIFICATION -->
                 <div class="checkout-screen" id="screen-2">
+                    <div class="checkout-card">
+                        <h3 class="section-title">
+                            <i class="fas fa-id-card" style="color: var(--checkout-primary);"></i> Identity Verification
+                        </h3>
+                        <p class="section-subtitle">
+                            You are renting high-value equipment. Please upload your ID to proceed. Your data is secure and encrypted.
+                        </p>
+                        
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;">
+                            <div class="input-group" style="margin-bottom: 1rem;">
+                                <label style="font-weight: 800; color: var(--up-slate-900); display: block; margin-bottom: 0.5rem;">Government ID (Front) <span style="color: #ef4444;">*</span></label>
+                                <input type="file" name="kyc_id_front" id="kyc_id_front" accept="image/*" class="input-premium" style="padding: 0.75rem; background: white;">
+                            </div>
+                            <div class="input-group">
+                                <label style="font-weight: 800; color: var(--up-slate-900); display: block; margin-bottom: 0.5rem;">Selfie with ID <span style="color: #ef4444;">*</span></label>
+                                <input type="file" name="kyc_selfie" id="kyc_selfie" accept="image/*" class="input-premium" style="padding: 0.75rem; background: white;">
+                                <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;"><i class="fas fa-info-circle"></i> Make sure your face and the ID details are clearly visible.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="checkout-actions">
+                        <button type="button" class="btn-wizard-back" onclick="nextScreen(1)">Back</button>
+                        <button type="button" class="btn-wizard-next" onclick="nextScreen(3)">Proceed to Payment <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- STEP FINAL: PAYMENT & CONFIRMATION -->
+                <div class="checkout-screen" id="screen-{{ 3 if (requires_kyc and not user.is_verified and not user.is_kyc_complete) else 2 }}">
                     <div class="checkout-card">
                         <h2 class="section-title">
                             <i class="fas fa-wallet" style="color: var(--checkout-primary);"></i>
@@ -721,7 +764,7 @@
 
                         <div class="booking-summary-panel" style="background: white; border: 1px solid #e2e8f0; border-radius: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); overflow: hidden;">
                             <div style="background: var(--up-slate-900); padding: 1.25rem 1.5rem;">
-                                <h3 style="font-weight: 800; font-size: 1.1rem; margin: 0; color: white;"><i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: var(--checkout-primary);"></i> Order Review</h3>
+                                <h3 id="review-title" style="font-weight: 800; font-size: 1.1rem; margin: 0; color: white;"><i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: var(--checkout-primary);"></i> Order Review</h3>
                             </div>
                             <div style="padding: 1.5rem;">
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
@@ -823,7 +866,7 @@
                     <div class="checkout-nav-box">
                         <button type="button" class="btn-wizard-back" onclick="nextScreen(1)"><i class="fas fa-chevron-left"></i> Back</button>
                         <div class="nav-right">
-                            <button type="button" class="btn-wizard-next" id="final-submit-btn" onclick="submitAtaCarteOrder()" style="background: var(--checkout-primary); padding: 1rem 3.5rem;">
+                            <button type="button" class="btn-wizard-next" id="final-submit-btn" onclick="submitAtaCarteOrder()" style="background: var(--checkout-primary); padding: 1rem 1.5rem;">
                                 ACCEPT & CHECKOUT <i class="fas fa-check" style="margin-left: 0.75rem;"></i>
                             </button>
                         </div>
@@ -831,7 +874,7 @@
                 </div>
 
                 <!-- SUCCESS SCREEN -->
-                <div class="checkout-screen" id="screen-3">
+                <div class="checkout-screen" id="screen-{{ 4 if (requires_kyc and not user.is_verified and not user.is_kyc_complete) else 3 }}">
                     <div class="checkout-card" style="text-align: center; padding: 4rem 2rem;">
                         <div style="width: 80px; height: 80px; background: #10b981; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 2rem; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.25);">
                             <i class="fas fa-check"></i>
@@ -928,7 +971,7 @@
                 </div>
                 
                 <div id="modalContentGCASH" style="display: none; text-align: center;">
-                    <img src="{{ caterer.gcash_qr_url }}" alt="GCash QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bfdbfe; margin-bottom: 1rem;">
+                    <img src="{{ caterer.gcash_qr_url }}" alt="GCash QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bfdbfe; margin: 0 auto 1rem auto; display: block;">
                     
                     <div style="background: #eff6ff; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left;">
                         <h4 style="font-size: 0.9rem; font-weight: 800; color: #1e3a8a; margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> GCash Payment Steps</h4>
@@ -939,7 +982,7 @@
                 </div>
                 
                 <div id="modalContentMAYA" style="display: none; text-align: center;">
-                    <img src="{{ caterer.maya_qr_url }}" alt="Maya QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bbf7d0; margin-bottom: 1rem;">
+                    <img src="{{ caterer.maya_qr_url }}" alt="Maya QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bbf7d0; margin: 0 auto 1rem auto; display: block;">
                     
                     <div style="background: #f0fdf4; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left;">
                         <h4 style="font-size: 0.9rem; font-weight: 800; color: #14532d; margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> Maya Payment Steps</h4>
@@ -1020,6 +1063,7 @@
             cost_value: {{ item.cost_value or 0 }},
             security_deposit_pct: {{ item.security_deposit_pct or 20.0 }},
             requires_kyc: {{ 'true' if item.requires_kyc else 'false' }},
+            min_quantity: {{ item.min_quantity or 1 }},
             pricing_unit: "{{ item.unit_type or 'per_unit' }}",
             image_url: "{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}",
             is_combo: false,
@@ -1040,6 +1084,10 @@
         }{% if not loop.last %},{% endif %}
         {% endfor %}
     ];
+    
+    // Add dynamic payment step detection
+    window.paymentStep = {{ 3 if (requires_kyc and not user.is_verified and not user.is_kyc_complete) else 2 }};
+    window.requiresKycStep = {{ 'true' if (requires_kyc and not user.is_verified and not user.is_kyc_complete) else 'false' }};
 </script>
 <script src="{{ url_for('static', path='/js/customer/alacarte_checkout.js') }}?v={{ range(1, 9999) | random }}"></script>
 {% endblock %}

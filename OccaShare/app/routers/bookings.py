@@ -113,6 +113,8 @@ async def alacarte_checkout_page(request: Request, caterer_id: str, items: str, 
     if not caterer or (not menu_items and not equipment_items and not service_items):
         return RedirectResponse(url="/marketplace", status_code=303)
         
+    requires_kyc = any(eq.requires_kyc for eq in equipment_items)
+        
     booking = db.query(models.Booking).get(booking_id) if booking_id else None
     
     return templates.TemplateResponse("customer/booking_wizard/alacarte_checkout.html", {
@@ -124,6 +126,7 @@ async def alacarte_checkout_page(request: Request, caterer_id: str, items: str, 
         "service_items": service_items,
         "items_raw": items,
         "booking": booking,
+        "requires_kyc": requires_kyc,
         "current_step": 1
     })
 
@@ -287,6 +290,8 @@ async def alacarte_checkout_submit(
     municipality: Optional[str] = Form(None),
     security_deposit_amount: float = Form(0.0),
     payment_proof: Optional[UploadFile] = File(None),
+    id_document: Optional[UploadFile] = File(None),
+    selfie: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db)
 ):
     user = get_current_user_from_session(request, db)
@@ -302,6 +307,34 @@ async def alacarte_checkout_submit(
             b64 = base64.b64encode(content_bytes).decode('utf-8')
             mime = payment_proof.content_type or 'image/jpeg'
             proof_url = f"data:{mime};base64,{b64}"
+            
+        # Handle KYC Documents if provided
+        if id_document and id_document.filename and selfie and selfie.filename:
+            import base64
+            id_content = id_document.file.read()
+            id_b64 = base64.b64encode(id_content).decode('utf-8')
+            id_mime = id_document.content_type or 'image/jpeg'
+            id_url = f"data:{id_mime};base64,{id_b64}"
+            
+            selfie_content = selfie.file.read()
+            selfie_b64 = base64.b64encode(selfie_content).decode('utf-8')
+            selfie_mime = selfie.content_type or 'image/jpeg'
+            selfie_url = f"data:{selfie_mime};base64,{selfie_b64}"
+            
+            kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user.id).first()
+            if not kyc_record:
+                kyc_record = models.IdentityVerification(user_id=user.id)
+                db.add(kyc_record)
+            
+            kyc_record.document_url = id_url
+            kyc_record.selfie_url = selfie_url
+            kyc_record.verification_status = "pending_manual_review"
+            kyc_record.fraud_score = 0.0
+            
+            user.is_verified = False
+            user.is_kyc_complete = False
+            db.commit()
+
         # Spam Limit Validation (Flow B Rule 1)
         unpaid_spam_count = db.query(models.Booking).filter(
             models.Booking.user_id == user.id,
@@ -315,27 +348,27 @@ async def alacarte_checkout_submit(
         
         # --- AI Receipt Verification (Zero-Trust) ---
         if proof_url and payment_method not in ["CASH", "COD"]:
-            verify_booking = booking if booking else models.Booking(id=0, total_amount=total_amount)
+            verify_booking = booking if booking else models.Booking(id=0, total_amount=total_amount, caterer_id=caterer_id, payment_method=payment_method)
             
-            # We must temporarily set total_amount so check_for_fraud can use it
+            # We must temporarily set total_amount and method so check_for_fraud can use it
             original_amount = verify_booking.total_amount
+            original_method = verify_booking.payment_method
             verify_booking.total_amount = total_amount
+            verify_booking.payment_method = payment_method
             
-            verify_results = payment_verification_service.check_for_fraud(db, verify_booking, file_path)
+            verify_results = await payment_verification_service.check_for_fraud(db, verify_booking, proof_url)
             
             # Revert amount if validation fails
             verify_booking.total_amount = original_amount
             
             if verify_results["confidence"] < 40:
-                # Delete the invalid file
-                if os.path.exists(file_path): os.remove(file_path)
                 flags = verify_results.get("flags", [])
-                error_detail = flags[0] if flags else "The uploaded image does not appear to be a valid receipt for the required amount."
-                return {"success": False, "message": f"AI Detection Failed: {error_detail}"}
+                error_detail = flags[0] if flags else "The uploaded image is either not a valid receipt, or the details (amount, date, reference, caterer name) do not match the required booking information."
+                return {"success": False, "message": f"Payment Verification Failed: {error_detail}"}
             
             # Extract ref if missing
             extracted_ref = verify_results.get("extracted_data", {}).get("reference_no")
-            extracted_hash = payment_verification_service.get_image_hash(file_path)
+            extracted_hash = payment_verification_service.get_image_hash(proof_url)
             
             if booking:
                 if extracted_ref: booking.payment_reference = extracted_ref
@@ -571,17 +604,23 @@ async def alacarte_checkout_submit(
                         )
                         db.add(booking_item)
         elif items:
-            # Legacy Fallback
-            id_list = [int(id_str.strip()) for id_str in items.split(",") if id_str.strip()]
-            menu_items = db.query(models.MenuItem).filter(models.MenuItem.id.in_(id_list)).all()
-            for m_item in menu_items:
-                booking_item = models.BookingMenuItem(
-                    booking_id=booking.id,
-                    menu_item_id=m_item.id,
-                    price=m_item.price,
-                    quantity=1
-                )
-                db.add(booking_item)
+            # Legacy Fallback Parsing
+            for id_str in items.split(","):
+                id_str = id_str.strip()
+                if not id_str: continue
+                if id_str.startswith('e_'):
+                    e_item = db.query(models.Equipment).get(int(id_str[2:]))
+                    if e_item:
+                        db.add(models.BookingMenuItem(booking_id=booking.id, equipment_id=e_item.id, price=e_item.rental_price, quantity=1))
+                elif id_str.startswith('s_'):
+                    s_item = db.query(models.Service).get(int(id_str[2:]))
+                    if s_item:
+                        db.add(models.BookingMenuItem(booking_id=booking.id, service_id=s_item.id, price=s_item.selling_price, quantity=1))
+                else:
+                    item_id = int(id_str[2:]) if id_str.startswith('m_') else int(id_str)
+                    m_item = db.query(models.MenuItem).get(item_id)
+                    if m_item:
+                        db.add(models.BookingMenuItem(booking_id=booking.id, menu_item_id=m_item.id, price=m_item.price, quantity=1))
 
         db.commit()
         
@@ -1725,12 +1764,26 @@ async def reupload_proof_submit(
         
     # --- AI RECEIPT VALIDATION (GEMINI / OCR) ---
     expected_fee = float(booking.reservation_fee or 0)
-    is_valid_receipt = await _validate_receipt_with_gemini(proof_url, payment_method, expected_amount=expected_fee)
+    
+    # Temporarily modify booking for validation
+    original_amount = booking.total_amount
+    original_method = booking.payment_method
+    booking.total_amount = expected_fee
+    booking.payment_method = payment_method
+    
+    verify_results = await payment_verification_service.check_for_fraud(db, booking, proof_url)
+    
+    # Revert
+    booking.total_amount = original_amount
+    booking.payment_method = original_method
 
-    if not is_valid_receipt:
+    if verify_results["confidence"] < 40:
         import urllib.parse
         encoded_method = urllib.parse.quote(payment_method)
-        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?validation_error=Invalid+Receipt+Detected:+Our+AI+could+not+verify+the+Reference+Number+or+Amount.+Please+ensure+the+screenshot+is+clear.&method={encoded_method}&open_reupload=1", status_code=303)
+        flags = verify_results.get("flags", [])
+        error_detail = flags[0] if flags else "Amount did not match or receipt is illegible."
+        error_msg = urllib.parse.quote(f"Invalid Receipt Detected: {error_detail}")
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?validation_error={error_msg}&method={encoded_method}&open_reupload=1", status_code=303)
 
     booking.payment_proof_url = f"/static/uploads/payment_proofs/{filename}"
     booking.payment_method = payment_method
@@ -1786,9 +1839,23 @@ async def pay_balance_submit(
         proof_url = f"data:{mime};base64,{b64}"
             
         # --- AI RECEIPT VALIDATION ---
-        is_valid_receipt = await _validate_receipt_with_gemini(proof_url, payment_method, expected_amount=outstanding_balance)
-        if not is_valid_receipt:
-            return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error_msg=Invalid+Receipt+Detected.+Amount+did+not+match+or+receipt+is+illegible.", status_code=303)
+        original_amount = booking.total_amount
+        original_method = booking.payment_method
+        booking.total_amount = outstanding_balance
+        booking.payment_method = payment_method
+        
+        verify_results = await payment_verification_service.check_for_fraud(db, booking, proof_url)
+        
+        # Revert
+        booking.total_amount = original_amount
+        booking.payment_method = original_method
+        
+        if verify_results["confidence"] < 40:
+            import urllib.parse
+            flags = verify_results.get("flags", [])
+            error_detail = flags[0] if flags else "Amount did not match or receipt is illegible."
+            error_msg = urllib.parse.quote(f"Invalid Receipt Detected: {error_detail}")
+            return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error_msg={error_msg}", status_code=303)
             
         booking.balance_proof_url = proof_url
         booking.payment_method = payment_method

@@ -66,6 +66,7 @@ def create_default_booking_tasks(db: Session, booking_id: int):
 async def submit_platform_feedback_caterer(
     rating: int = Form(...),
     comment: str = Form(...),
+    attachment_base64: str = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -84,6 +85,7 @@ async def submit_platform_feedback_caterer(
         user_id=user.id,
         rating=rating,
         comment=comment.strip(),
+        attachment_base64=attachment_base64,
         role="caterer"
     )
     db.add(fb)
