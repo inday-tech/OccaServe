@@ -80,18 +80,46 @@
     
     /* Today's Schedule */
     .schedule-item {
-        display: flex; gap: 15px; padding: 15px 0; border-bottom: 1px solid #e2e8f0;
+        display: flex; gap: 15px; padding: 15px; border-bottom: 1px solid #e2e8f0; cursor: pointer; transition: 0.2s; border-radius: 8px;
     }
+    .schedule-item:hover { background: #f8fafc; transform: translateX(5px); border-color: transparent; }
     .schedule-time { font-weight: 700; color: var(--primary-color); width: 80px; flex-shrink: 0; }
     .schedule-details h4 { margin: 0 0 5px 0; font-size: 1rem; color: #0f172a; }
     .schedule-details p { margin: 0; font-size: 0.85rem; color: #64748b; }
+    
+    /* Recent Bookings Table */
+    .recent-table th { padding: 12px 10px; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid #e2e8f0; }
+    .recent-table td { padding: 12px 10px; border-bottom: 1px solid #f1f5f9; transition: 0.2s; }
+    .recent-table tbody tr:hover td { background: #f8fafc; }
+    .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .status-confirmed { background: #dcfce7; color: #166534; }
+    .status-pending { background: #fef9c3; color: #854d0e; }
+    .status-cancelled { background: #fee2e2; color: #991b1b; }
+    .status-default { background: #e2e8f0; color: #475569; }
+    
+    /* Responsive Flex Containers */
+    .charts-container { display: flex; gap: 20px; height: 300px; }
+    .top-lists-container { display: flex; gap: 20px; }
     
     @media (max-width: 1024px) {
         .summary-section { grid-template-columns: repeat(2, 1fr); }
         .col-left, .col-right { grid-column: span 12; }
     }
+    @media (max-width: 768px) {
+        .charts-container { flex-direction: column; height: 600px; }
+        .top-lists-container { flex-direction: column; }
+        .action-btn { flex: 1 1 calc(50% - 10px); justify-content: center; font-size: 0.85rem; padding: 8px; }
+        .quick-actions { flex-wrap: wrap; overflow: visible; }
+    }
     @media (max-width: 640px) {
-        .summary-section { grid-template-columns: 1fr; }
+        .summary-section { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .stat-card { padding: 10px; gap: 2px; }
+        .stat-title { font-size: 0.65rem; }
+        .stat-value { font-size: 1.1rem; }
+        .stat-desc { font-size: 0.65rem; }
+        
+        .action-btn { flex: 1 1 auto; justify-content: center; font-size: 0.8rem; padding: 8px; min-width: 140px; }
+        .charts-container { height: 500px; }
     }
 </style>
 {% endblock %}
@@ -103,11 +131,10 @@
         <p style="color: #64748b; margin: 5px 0 0 0;">Welcome back, {{ user.first_name }}! Here's what needs your attention today.</p>
     </div>
 
-    <!-- SECTION 12: Quick Actions -->
-    <div class="quick-actions" style="grid-column: unset; padding-bottom: 0; margin: 0; align-items: center;">
-        <button class="action-btn" onclick="window.location.href='/caterer/bookings?new=walkin'"><i class="fas fa-plus"></i> Walk-in Booking</button>
-        <button class="action-btn" onclick="window.location.href='/caterer/packages'"><i class="fas fa-box-open"></i> Add Package</button>
-        <button class="action-btn" onclick="window.location.href='/caterer/profile'"><i class="fas fa-user"></i> Profile Settings</button>
+    <div class="quick-actions" style="grid-column: unset; padding-bottom: 0; margin: 0;">
+        <button class="action-btn" onclick="window.location.href='/caterer/bookings?new=walkin'">Walk-in Booking</button>
+        <button class="action-btn" onclick="window.location.href='/caterer/packages'">Add Package</button>
+        <button class="action-btn" onclick="window.location.href='/caterer/profile'">Profile Settings</button>
     </div>
 </div>
 
@@ -140,35 +167,35 @@
     <div class="col-left">
         <!-- SECTION 2: Pending Actions -->
         <div class="card">
-            <h3 class="card-title"><i class="fas fa-exclamation-circle" style="color: #ef4444;"></i> Pending Actions</h3>
+            <h3 class="card-title">Pending Actions</h3>
             {% if pending_actions.total > 0 %}
                 {% if pending_actions.approvals > 0 %}
                 <div class="action-item" onclick="window.location.href='/caterer/bookings'">
-                    <div><i class="fas fa-file-signature" style="color: #f59e0b; width: 20px;"></i> Booking Approvals</div>
+                    <div>Booking Approvals</div>
                     <span class="action-badge" style="background: #f59e0b;">{{ pending_actions.approvals }}</span>
                 </div>
                 {% endif %}
                 {% if pending_actions.payments > 0 %}
                 <div class="action-item" onclick="window.location.href='/caterer/bookings'">
-                    <div><i class="fas fa-money-bill-wave" style="color: #10b981; width: 20px;"></i> Payment Verifications</div>
+                    <div>Payment Verifications</div>
                     <span class="action-badge" style="background: #10b981;">{{ pending_actions.payments }}</span>
                 </div>
                 {% endif %}
                 {% if pending_actions.identity > 0 %}
                 <div class="action-item" onclick="window.location.href='/caterer/bookings'">
-                    <div><i class="fas fa-id-card" style="color: #3b82f6; width: 20px;"></i> Identity Verification</div>
+                    <div>Identity Verification</div>
                     <span class="action-badge" style="background: #3b82f6;">{{ pending_actions.identity }}</span>
                 </div>
                 {% endif %}
                 {% if pending_actions.contracts > 0 %}
                 <div class="action-item" onclick="window.location.href='/caterer/bookings'">
-                    <div><i class="fas fa-file-contract" style="color: #8b5cf6; width: 20px;"></i> Contracts Awaiting Signature</div>
+                    <div>Contracts Awaiting Signature</div>
                     <span class="action-badge" style="background: #8b5cf6;">{{ pending_actions.contracts }}</span>
                 </div>
                 {% endif %}
                 {% if pending_actions.messages > 0 %}
                 <div class="action-item" onclick="window.location.href='/caterer/chat'">
-                    <div><i class="fas fa-comment-dots" style="color: #64748b; width: 20px;"></i> New Customer Messages</div>
+                    <div>New Customer Messages</div>
                     <span class="action-badge" style="background: #64748b;">{{ pending_actions.messages }}</span>
                 </div>
                 {% endif %}
@@ -179,43 +206,47 @@
 
         <!-- SECTION 7 & 8: Charts -->
         <div class="card">
-            <h3 class="card-title"><i class="fas fa-chart-line"></i> Performance Trends</h3>
-            <div style="display: flex; gap: 20px; height: 300px;">
-                <div style="flex: 1;"><canvas id="revenueChart"></canvas></div>
-                <div style="flex: 1;"><canvas id="bookingsChart"></canvas></div>
+            <h3 class="card-title">Performance Trends</h3>
+            <div class="charts-container">
+                <div style="flex: 1; position: relative;"><canvas id="revenueChart"></canvas></div>
+                <div style="flex: 1; position: relative;"><canvas id="bookingsChart"></canvas></div>
             </div>
         </div>
         
         <!-- SECTION 6: Recent Bookings -->
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 class="card-title" style="margin:0;"><i class="fas fa-history"></i> Recent Bookings</h3>
+                <h3 class="card-title" style="margin:0;">Recent Bookings</h3>
                 <a href="/caterer/bookings" style="font-size: 0.85rem; color: var(--primary-color); text-decoration: none; font-weight: 600;">View All</a>
             </div>
             <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <table class="recent-table" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
                     <thead>
-                        <tr style="border-bottom: 1px solid #e2e8f0; color: #64748b; text-align: left;">
-                            <th style="padding: 10px 5px;">Customer Name</th>
-                            <th style="padding: 10px 5px;">Booking Type</th>
-                            <th style="padding: 10px 5px;">Event Date</th>
-                            <th style="padding: 10px 5px;">Status</th>
-                            <th style="padding: 10px 5px;">Total Amount</th>
+                        <tr style="text-align: left;">
+                            <th>Customer Name</th>
+                            <th>Booking Type</th>
+                            <th>Event Date</th>
+                            <th>Status</th>
+                            <th>Total Amount</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for b in recent_orders %}
-                        <tr style="border-bottom: 1px solid #f1f5f9;">
-                            <td style="padding: 12px 5px; font-weight: 600; color: #0f172a;">{{ b.user.first_name ~ ' ' ~ b.user.last_name if b.user else 'Walk-in Customer' }}</td>
-                            <td style="padding: 12px 5px;">{{ b.package.name if b.package else b.event_type }}</td>
-                            <td style="padding: 12px 5px;">{{ b.event_date.strftime('%B %d, %Y') if b.event_date else 'TBD' }}</td>
-                            <td style="padding: 12px 5px;">
-                                <span style="background: #e2e8f0; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem;">{{ b.status|title|replace('_', ' ') }}</span>
+                        <tr onclick="window.location.href='/caterer/bookings'" style="cursor: pointer;">
+                            <td style="font-weight: 600; color: #0f172a;">{{ b.user.first_name ~ ' ' ~ b.user.last_name if b.user else 'Walk-in Customer' }}</td>
+                            <td>{{ b.package.name if b.package else b.event_type }}</td>
+                            <td>{{ b.event_date.strftime('%B %d, %Y') if b.event_date else 'TBD' }}</td>
+                            <td>
+                                {% set stat_cls = 'status-default' %}
+                                {% if b.status == 'confirmed' or b.status == 'completed' %}{% set stat_cls = 'status-confirmed' %}{% endif %}
+                                {% if b.status == 'pending' or b.status == 'awaiting_payment' %}{% set stat_cls = 'status-pending' %}{% endif %}
+                                {% if b.status == 'cancelled' %}{% set stat_cls = 'status-cancelled' %}{% endif %}
+                                <span class="status-badge {{ stat_cls }}">{{ b.status|title|replace('_', ' ') }}</span>
                             </td>
-                            <td style="padding: 12px 5px; font-weight: 600;">₱{{ "{:,.2f}".format(b.total_amount or 0) }}</td>
+                            <td style="font-weight: 700; color: var(--primary-color);">₱{{ "{:,.2f}".format(b.total_amount or 0) }}</td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="5" style="text-align: center; padding: 20px; color: #94a3b8;">No recent bookings.</td></tr>
+                        <tr><td colspan="5" style="text-align: center; padding: 30px; color: #94a3b8;">No recent bookings to display.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -223,9 +254,9 @@
         </div>
 
         <!-- SECTION 9 & 10: Top Packages & Customers -->
-        <div style="display: flex; gap: 20px;">
+        <div class="top-lists-container">
             <div class="card" style="flex: 1;">
-                <h3 class="card-title"><i class="fas fa-star" style="color: #f59e0b;"></i> Top Packages</h3>
+                <h3 class="card-title">Top Packages</h3>
                 {% for pkg in popular_packages %}
                 <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
                     <div>
@@ -239,7 +270,7 @@
             </div>
             
             <div class="card" style="flex: 1;">
-                <h3 class="card-title"><i class="fas fa-users" style="color: var(--primary-color);"></i> Top Customers</h3>
+                <h3 class="card-title">Top Customers</h3>
                 {% for cust in top_spenders %}
                 <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
                     <div>
@@ -259,15 +290,15 @@
     <div class="col-right">
         <!-- SECTION 3: Today's Schedule -->
         <div class="card">
-            <h3 class="card-title"><i class="fas fa-calendar-day" style="color: var(--primary-color);"></i> Today's Schedule</h3>
+            <h3 class="card-title">Today's Schedule</h3>
             <div class="schedule-list">
                 {% for b in today_schedule %}
-                <div class="schedule-item">
+                <div class="schedule-item" onclick="window.location.href='/caterer/calendar'">
                     <div class="schedule-time">{{ b.event_time.strftime('%I:%M %p') if b.event_time else 'TBD' }}</div>
                     <div class="schedule-details">
                         <h4>{{ b.event_type }}</h4>
                         <p>{{ b.user.first_name ~ ' ' ~ b.user.last_name if b.user else 'Walk-in' }}</p>
-                        <p><i class="fas fa-map-marker-alt"></i> {{ b.venue_address or 'No venue specified' }}</p>
+                        <p>{{ b.venue_address or 'No venue specified' }}</p>
                     </div>
                 </div>
                 {% else %}
@@ -278,7 +309,7 @@
 
         <!-- SECTION 4: Operations Tracker -->
         <div class="card">
-            <h3 class="card-title"><i class="fas fa-tasks" style="color: #8b5cf6;"></i> Operations Tracker</h3>
+            <h3 class="card-title">Operations Tracker</h3>
             {% if upcoming_events|length > 0 %}
                 {% set b = upcoming_events[0] %}
                 <div style="margin-bottom: 10px; font-weight: 600; color: #0f172a;">{{ b.event_type }} ({{ b.event_date.strftime('%b %d') if b.event_date else '' }})</div>
