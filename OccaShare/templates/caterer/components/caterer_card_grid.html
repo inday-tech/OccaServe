@@ -16,20 +16,18 @@
             {{ "%.1f"|format(caterer.rating) if caterer.rating else 'New' }}
             <span>({{ caterer.review_count or 0 }} reviews)</span>
         </div>
-        <p class="elite-card-desc">
+        <p class="elite-card-desc" style="flex-grow: 1; margin-bottom: 1rem; text-align: left;">
             {{ (caterer.description or 'Exquisite culinary experiences tailored for your special occasions.')|truncate(100) }}
         </p>
 
-
-
-        <div class="elite-card-footer" style="display: flex; flex-direction: column; gap: 6px; font-size: 0.8rem; font-weight: 500; color: #64748b; padding-top: 12px; border-top: 1px solid #f1f5f9;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-map-marker-alt" style="color: #94a3b8; width: 14px; text-align: center;"></i> 
-                <span>{{ caterer.contact_address if caterer.contact_address else (caterer.city or "Location TBD") }}</span>
+        <div class="elite-card-footer" style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; font-size: 0.8rem; font-weight: 500; color: #64748b; padding-top: 12px; border-top: 1px solid #f1f5f9; width: 100%;">
+            <div style="display: flex; align-items: flex-start; justify-content: flex-start; gap: 8px; text-align: left; width: 100%;">
+                <i class="fas fa-map-marker-alt" style="color: #94a3b8; width: 16px; text-align: center; margin-top: 3px;"></i> 
+                <span style="flex: 1;">{{ caterer.contact_address if caterer.contact_address else (caterer.city or "Location TBD") }}</span>
             </div>
             
-            <div class="dist-display" data-lat="{{ caterer.latitude or 0 }}" data-lon="{{ caterer.longitude or 0 }}" style="display: flex; align-items: center; gap: 8px; {% if caterer.distance_km is not defined or caterer.distance_km is none %}display: none;{% endif %}">
-                <i class="fas fa-route" style="color: #94a3b8; width: 14px; text-align: center;"></i> 
+            <div class="dist-display" data-lat="{{ caterer.latitude or 0 }}" data-lon="{{ caterer.longitude or 0 }}" style="display: flex; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; text-align: left; {% if caterer.distance_km is not defined or caterer.distance_km is none %}display: none;{% endif %}">
+                <i class="fas fa-route" style="color: #94a3b8; width: 16px; text-align: center;"></i> 
                 <span class="dist-text" style="color: #475569;">
                     {% if caterer.distance_km is defined and caterer.distance_km is not none %}
                         {{ "%.1f"|format(caterer.distance_km) }} km away
@@ -37,8 +35,8 @@
                 </span>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-eye" style="color: #94a3b8; width: 14px; text-align: center;"></i> 
+            <div style="display: flex; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; text-align: left;">
+                <i class="fas fa-eye" style="color: #94a3b8; width: 16px; text-align: center;"></i> 
                 <span>{{ "{:,}".format(caterer.profile_views or 0) }} views</span>
             </div>
         </div>
