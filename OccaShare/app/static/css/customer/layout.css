@@ -205,6 +205,8 @@ html, body {
 }
 .header-search:hover { background: #e8edf5; }
 .search-icon { color: var(--dm-slate-400); font-size: 0.95rem; transition: color 0.2s; flex-shrink: 0; }
+.mobile-search-btn, .mobile-search-close { display: none; background: transparent; border: none; color: var(--dm-slate-400); font-size: 1.1rem; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; }
+.mobile-search-btn { display: none; } /* Default hidden on desktop */
 .header-search input {
     border: none; background: transparent; outline: none;
     font-size: 0.9rem; font-weight: 500;
@@ -513,8 +515,47 @@ html, body {
 
 @media (max-width: 768px) {
     .command-search-wrap {
+        display: flex;
+        width: auto;
+    }
+    .command-search-wrap .header-search {
+        background: transparent;
+        padding: 0;
+        border: none;
+        width: 40px;
+    }
+    .command-search-wrap .desktop-search-icon,
+    .command-search-wrap input,
+    .command-search-wrap .search-kbd {
         display: none;
     }
+    .command-search-wrap .mobile-search-btn {
+        display: flex;
+        width: 40px; height: 40px; border-radius: 12px;
+    }
+    .command-search-wrap .mobile-search-btn:hover { background: #f1f5f9; color: var(--primary-color); }
+    
+    .command-search-wrap.mobile-active {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        width: 100%; height: 100%;
+        background: #fff;
+        z-index: 5000;
+        display: flex; align-items: center;
+        padding: 0 0.75rem;
+    }
+    .command-search-wrap.mobile-active .header-search {
+        background: #f1f5f9;
+        width: 100%; height: 44px;
+        padding: 0 1rem;
+        border-radius: 14px;
+        display: flex;
+    }
+    .command-search-wrap.mobile-active .mobile-search-btn { display: none; }
+    .command-search-wrap.mobile-active .desktop-search-icon { display: block; }
+    .command-search-wrap.mobile-active input { display: block; flex: 1; }
+    .command-search-wrap.mobile-active .mobile-search-close { display: block !important; }
+
     .hdr-chip-info,
     .hdr-chip-arrow {
         display: none;

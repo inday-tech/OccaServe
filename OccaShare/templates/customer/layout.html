@@ -181,7 +181,7 @@
             <div class="nav-signout">
                 <a href="/auth/logout" class="nav-item nav-logout" onclick="confirmLogout(event)">
                     <div class="nav-icon"><i class="fas fa-right-from-bracket"></i></div>
-                    <span class="nav-label brand-text-label">Sign Out</span>
+                    <span class="nav-label brand-text-label">Logout</span>
                 </a>
             </div>
 
@@ -203,10 +203,16 @@
 
                 <div class="command-search-wrap" id="searchWrap">
                     <div class="header-search" id="headerSearchBox">
-                        <i class="fas fa-magnifying-glass search-icon"></i>
+                        <button class="mobile-search-btn" id="mobileSearchToggle" type="button" aria-label="Search">
+                            <i class="fas fa-magnifying-glass"></i>
+                        </button>
+                        <i class="fas fa-magnifying-glass search-icon desktop-search-icon"></i>
                         <input type="text" id="globalSearchInput" placeholder="Search caterers, bookings, events…"
                             autocomplete="off" spellcheck="false">
                         <kbd class="search-kbd">Ctrl K</kbd>
+                        <button class="mobile-search-close" id="mobileSearchClose" type="button" style="display:none;">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
                     <!-- Live Results Panel -->
                     <div class="search-results-panel" id="omniSearchResults">
@@ -331,7 +337,7 @@
                         <div style="height: 1px; background: var(--dm-slate-50); margin: 0.25rem 0;"></div>
                         <ul class="hdr-profile-links">
                             <li><a href="/auth/logout" class="link-danger" onclick="confirmLogout(event)"><i
-                                        class="fas fa-right-from-bracket"></i> Sign Out</a></li>
+                                        class="fas fa-right-from-bracket"></i> Logout</a></li>
                         </ul>
                     </div>
                 </div>
@@ -440,6 +446,31 @@
         function closeUnivLogoutModal() {
             document.getElementById('univLogoutModal').classList.remove('active');
         }
+
+        // Mobile Search Toggle
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchWrap = document.getElementById('searchWrap');
+            const searchInput = document.getElementById('globalSearchInput');
+            const toggleBtn = document.getElementById('mobileSearchToggle');
+            const closeBtn = document.getElementById('mobileSearchClose');
+
+            if (toggleBtn && searchWrap) {
+                toggleBtn.addEventListener('click', (e) => {
+                    if (window.innerWidth <= 768) {
+                        e.stopPropagation();
+                        searchWrap.classList.add('mobile-active');
+                        searchInput.focus();
+                    }
+                });
+            }
+            if (closeBtn && searchWrap) {
+                closeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    searchWrap.classList.remove('mobile-active');
+                    if(window.closeSearch) window.closeSearch();
+                });
+            }
+        });
     </script>
 
 </body>

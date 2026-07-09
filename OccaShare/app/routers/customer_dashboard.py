@@ -132,7 +132,12 @@ async def customer_dashboard(
     # Elite Tier Data Additions
     reviews_count = db.query(models.Review).filter(models.Review.user_id == user.id).count()
     
-    total_spent = sum(float(b.total_amount or 0) for b in bookings if b.status not in ['cancelled', 'pending', 'draft'])
+    def get_actual_paid(b):
+        if b.payment_status == 'paid': return float(b.total_amount or 0.0)
+        elif b.payment_status == 'deposit_paid': return float(b.reservation_fee or 0.0)
+        return 0.0
+        
+    total_spent = sum(get_actual_paid(b) for b in bookings if b.status != 'cancelled')
     
     # Get the single most recent active booking for the Journey Tracker
     latest_booking = db.query(models.Booking).filter(
@@ -306,14 +311,19 @@ async def customer_bookings(
                 
         active_bookings.append(b)
     total_reservations = len(active_bookings)
-    total_spent = sum([b.total_amount for b in active_bookings if b.status in ['confirmed', 'completed'] and b.total_amount])
+    
+    def get_actual_paid(b):
+        if b.payment_status == 'paid': return float(b.total_amount or 0.0)
+        elif b.payment_status == 'deposit_paid': return float(b.reservation_fee or 0.0)
+        return 0.0
+        
+    total_spent = sum([get_actual_paid(b) for b in active_bookings if b.status != 'cancelled'])
     
     # Calculate Pending Obligations (remaining balance of active bookings)
     pending_obligations = 0
     for b in active_bookings:
-        if b.status in ['pending', 'pending_payment', 'awaiting_payment']:
-            # Total minus whatever was already paid (reservation fee)
-            balance = float(b.total_amount or 0) - float(b.reservation_fee or 0)
+        if b.status != 'cancelled' and b.payment_status in ['pending', 'pending_payment', 'awaiting_payment', 'deposit_paid']:
+            balance = float(b.total_amount or 0) - get_actual_paid(b)
             pending_obligations += max(0, balance)
 
     return templates.TemplateResponse("customer/bookings.html", {
@@ -337,12 +347,18 @@ async def customer_orders(
     # Calculate Intelligence Stats
     food_orders = [b for b in user.bookings if not b.customer_archived and b.document_type == 'invoice']
     total_orders = len(food_orders)
-    total_spent = sum([b.total_amount for b in food_orders if b.status in ['confirmed', 'completed'] and b.total_amount])
+    
+    def get_actual_paid(b):
+        if b.payment_status == 'paid': return float(b.total_amount or 0.0)
+        elif b.payment_status == 'deposit_paid': return float(b.reservation_fee or 0.0)
+        return 0.0
+        
+    total_spent = sum([get_actual_paid(b) for b in food_orders if b.status != 'cancelled'])
     
     pending_obligations = 0
     for b in food_orders:
-        if b.status in ['pending', 'pending_payment', 'awaiting_payment']:
-            balance = float(b.total_amount or 0) - float(b.reservation_fee or 0)
+        if b.status != 'cancelled' and b.payment_status in ['pending', 'pending_payment', 'awaiting_payment', 'deposit_paid']:
+            balance = float(b.total_amount or 0) - get_actual_paid(b)
             pending_obligations += max(0, balance)
     
     return templates.TemplateResponse("customer/orders.html", {
@@ -1482,11 +1498,36 @@ async def customer_omni_search(
 
     search_filter = f"%{q}%"
     results = []
+    
+    # 0. Search Modules (Hardcoded)
+    modules = [
+        {"name": "Marketplace", "link": "/customer/marketplace", "icon": "fas fa-store"},
+        {"name": "My Bookings (Events)", "link": "/customer/bookings", "icon": "fas fa-calendar-check"},
+        {"name": "Food Orders", "link": "/customer/orders", "icon": "fas fa-utensils"},
+        {"name": "Payments & Billing", "link": "/customer/payments", "icon": "fas fa-file-invoice-dollar"},
+        {"name": "Messages", "link": "/customer/messages", "icon": "fas fa-envelope"},
+        {"name": "Profile Settings", "link": "/customer/profile", "icon": "fas fa-user-cog"}
+    ]
+    for mod in modules:
+        if q.lower() in mod["name"].lower():
+            results.append({
+                "title": mod["name"],
+                "subtitle": "Customer Module",
+                "icon": mod["icon"],
+                "link": mod["link"],
+                "type": "module"
+            })
+            if len(results) >= 3: break # Limit modules in results
 
-    # 1. Search Caterers
+    # 1. Search Caterers (Name and Location)
     caterers = db.query(models.CatererProfile).filter(
         models.CatererProfile.status == "Published",
-        models.CatererProfile.business_name.ilike(search_filter)
+        or_(
+            models.CatererProfile.business_name.ilike(search_filter),
+            models.CatererProfile.city.ilike(search_filter),
+            models.CatererProfile.contact_address.ilike(search_filter),
+            models.CatererProfile.address_details.ilike(search_filter)
+        )
     ).limit(5).all()
 
     for c in caterers:
@@ -1494,22 +1535,30 @@ async def customer_omni_search(
         results.append({
             "title": c.business_name,
             "subtitle": f"{c.city or 'Various Locations'} • {rating_str}",
-            "icon": "fas fa-utensils",
+            "icon": "fas fa-store-alt",
             "link": f"/customer/marketplace/{c.id}",
             "type": "caterer"
         })
 
-    # 2. Search My Bookings
+    # 2. Search My Bookings (ID, Event Name, Event Type)
+    q_is_id = q.replace("BK-", "").replace("ORD-", "").replace("#", "").isdigit()
+    booking_id_filter = int(q.replace("BK-", "").replace("ORD-", "").replace("#", "")) if q_is_id else 0
+    
     bookings = db.query(models.Booking).filter(
         models.Booking.user_id == user.id,
-        models.Booking.event_name.ilike(search_filter)
+        or_(
+            models.Booking.event_name.ilike(search_filter),
+            models.Booking.event_type.ilike(search_filter),
+            models.Booking.id == booking_id_filter
+        )
     ).limit(5).all()
 
     for b in bookings:
+        prefix = "ORD-" if b.document_type == 'invoice' else "BK-"
         results.append({
-            "title": b.event_name or "Event Booking",
-            "subtitle": f"ID: {b.id} • {b.status.replace('_', ' ').title()}",
-            "icon": "fas fa-calendar-check",
+            "title": b.event_name or b.event_type or "Booking",
+            "subtitle": f"ID: {prefix}{b.id} • {b.status.replace('_', ' ').title()}",
+            "icon": "fas fa-calendar-check" if b.document_type != 'invoice' else "fas fa-shopping-bag",
             "link": f"/customer/bookings/manage/{b.id}",
             "type": "booking"
         })
