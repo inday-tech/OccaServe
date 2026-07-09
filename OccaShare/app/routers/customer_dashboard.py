@@ -1049,11 +1049,23 @@ async def customer_marketplace(
     # Execute
     results = query.all()
     
+    import math
+    def get_dist(lat1, lon1, lat2, lon2):
+        if lat1 is None or lon1 is None or lat2 is None or lon2 is None: return None
+        try:
+            r = 6371
+            dlat = math.radians(float(lat2)-float(lat1))
+            dlon = math.radians(float(lon2)-float(lon1))
+            a = math.sin(dlat/2)**2 + math.cos(math.radians(float(lat1)))*math.cos(math.radians(float(lat2)))*math.sin(dlon/2)**2
+            return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        except: return None
+
     # Map results to objects with computed attributes for the template
     caterers = []
     for profile, min_p, max_c in results:
         profile.min_package_price = min_p or profile.starting_price or 0
         profile.max_capacity = max_c or 0
+        profile.distance_km = get_dist(lat, lon, profile.latitude, profile.longitude)
         caterers.append(profile)
 
     # Dynamic filter options
@@ -1478,9 +1490,10 @@ async def customer_omni_search(
     ).limit(5).all()
 
     for c in caterers:
+        rating_str = f"{float(c.rating):.1f} ⭐" if getattr(c, 'rating', 0) else "New Partner"
         results.append({
             "title": c.business_name,
-            "subtitle": f"{c.city or 'Various Locations'} • {c.rating or 5.0} ⭐",
+            "subtitle": f"{c.city or 'Various Locations'} • {rating_str}",
             "icon": "fas fa-utensils",
             "link": f"/customer/marketplace/{c.id}",
             "type": "caterer"

@@ -28,15 +28,23 @@
             {{ (caterer.description or "Great food and service for your special events.")|truncate(90) }}
         </p>
 
-        <div class="package-specs-minimal">
-            <div class="spec-item-min">
-                <i class="fas fa-location-dot" style="color: var(--primary-color);"></i>
-                <span title="{{ caterer.address_details or caterer.contact_address or caterer.city or 'Location TBD' }}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">
+        <div class="package-specs-minimal" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 0.5rem;">
+            <div class="spec-item-min" style="display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-location-dot" style="color: var(--primary-color); width: 14px; text-align: center;"></i>
+                <span title="{{ caterer.address_details or caterer.contact_address or caterer.city or 'Location TBD' }}">
                     {{ caterer.address_details or caterer.contact_address or caterer.city or "Location TBD" }}
                 </span>
             </div>
-            <div class="spec-item-min">
-                <i class="fas fa-eye" style="color: #94a3b8;"></i>
+            <div class="spec-item-min distance-badge-pro dist-display" data-lat="{{ caterer.latitude or 0 }}" data-lon="{{ caterer.longitude or 0 }}" style="display: {% if caterer.distance_km is not defined or caterer.distance_km is none %}none{% else %}flex{% endif %}; align-items: center; gap: 8px;">
+                <i class="fas fa-route" style="color: #10b981; width: 14px; text-align: center;"></i> 
+                <span class="dist-text">
+                    {% if caterer.distance_km is defined and caterer.distance_km is not none %}
+                        {{ "%.1f"|format(caterer.distance_km) }} km away
+                    {% endif %}
+                </span>
+            </div>
+            <div class="spec-item-min" style="display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-eye" style="color: #94a3b8; width: 14px; text-align: center;"></i>
                 <span>{{ "{:,}".format(caterer.unique_views or caterer.profile_views or 0) }} views</span>
             </div>
         </div>

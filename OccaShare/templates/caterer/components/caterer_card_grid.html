@@ -22,14 +22,14 @@
 
 
 
-        <div class="elite-card-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 500; color: #64748b; padding-top: 12px; border-top: 1px solid #f1f5f9;">
-            <div style="display: flex; align-items: center; gap: 5px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                <i class="fas fa-map-marker-alt" style="color: #94a3b8;"></i> 
+        <div class="elite-card-footer" style="display: flex; flex-direction: column; gap: 6px; font-size: 0.8rem; font-weight: 500; color: #64748b; padding-top: 12px; border-top: 1px solid #f1f5f9;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-map-marker-alt" style="color: #94a3b8; width: 14px; text-align: center;"></i> 
                 <span>{{ caterer.contact_address if caterer.contact_address else (caterer.city or "Location TBD") }}</span>
             </div>
             
-            <div class="dist-display" data-lat="{{ caterer.latitude or 0 }}" data-lon="{{ caterer.longitude or 0 }}" style="display: flex; align-items: center; gap: 5px; white-space: nowrap; {% if caterer.distance_km is not defined or caterer.distance_km is none %}display: none;{% endif %}">
-                <i class="fas fa-route" style="color: #94a3b8;"></i> 
+            <div class="dist-display" data-lat="{{ caterer.latitude or 0 }}" data-lon="{{ caterer.longitude or 0 }}" style="display: flex; align-items: center; gap: 8px; {% if caterer.distance_km is not defined or caterer.distance_km is none %}display: none;{% endif %}">
+                <i class="fas fa-route" style="color: #94a3b8; width: 14px; text-align: center;"></i> 
                 <span class="dist-text" style="color: #475569;">
                     {% if caterer.distance_km is defined and caterer.distance_km is not none %}
                         {{ "%.1f"|format(caterer.distance_km) }} km away
@@ -37,8 +37,8 @@
                 </span>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 5px; white-space: nowrap;">
-                <i class="fas fa-eye" style="color: #94a3b8;"></i> 
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-eye" style="color: #94a3b8; width: 14px; text-align: center;"></i> 
                 <span>{{ "{:,}".format(caterer.profile_views or 0) }} views</span>
             </div>
         </div>
