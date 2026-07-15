@@ -55,6 +55,22 @@
     .pay-header-actions {
         position: relative !important;
     }
+
+    /* Fix Table Overlap and Squeezing */
+    .pay-table-scroll { 
+        width: 100%; 
+        overflow-x: auto; 
+        -webkit-overflow-scrolling: touch; 
+        padding-bottom: 12rem; /* Allow space for dropdown */
+    }
+    .pay-table th, .pay-table td { 
+        white-space: nowrap; 
+    }
+    
+    /* Ensure action dropdowns aren't clipped */
+    .pay-action-wrapper {
+        position: relative;
+    }
 </style>
 {% endblock %}
 
@@ -173,7 +189,8 @@
             <input type="hidden" id="paymentSearch">
             <select id="statusFilter" class="pay-filter-select" onchange="filterPayments()">
                 <option value="all">All Status</option>
-                <option value="completed">Completed (Paid)</option>
+                <option value="paid">Completed (Paid)</option>
+                <option value="verify">Needs Verification</option>
                 <option value="pending">Awaiting Payment</option>
                 <option value="partial">Partially Paid</option>
             </select>
@@ -215,11 +232,13 @@
                     <td><span class="pay-date">{{ b.created_at.strftime('%b %d, %Y') }}</span></td>
                     <td>
                         {% if b.payment_status == 'paid' %}
-                            <span class="pay-status-badge pay-status-completed">Completed</span>
+                            <span class="pay-status-badge pay-status-completed">Paid</span>
+                        {% elif b.payment_status == 'proof_submitted' or b.payment_status == 'balance_proof_submitted' %}
+                            <span class="pay-status-badge pay-status-pending pulse-update" style="background:#fef3c7; color:#d97706; border-color:#fcd34d;">Verify Pay</span>
                         {% elif b.payment_status == 'deposit_paid' %}
-                            <span class="pay-status-badge pay-status-partial">Partial</span>
+                            <span class="pay-status-badge pay-status-partial">Partial Pay</span>
                         {% else %}
-                            <span class="pay-status-badge pay-status-pending">Pending</span>
+                            <span class="pay-status-badge pay-status-pending">Pending Pay</span>
                         {% endif %}
                     </td>
                     <td class="pay-th-right">

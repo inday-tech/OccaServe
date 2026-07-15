@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.toggleActionMenu = function(id, event) {
         if (event) event.stopPropagation();
         
-        document.querySelectorAll('.action-dropdown-menu').forEach(menu => {
+        document.querySelectorAll('.action-dropdown-menu, .pay-dropdown-menu').forEach(menu => {
             if (menu.id !== 'actionMenu-' + id) {
                 menu.style.display = 'none';
                 menu.classList.remove('active');
@@ -123,10 +123,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // Close on outside click
+    // Close on outside click or when an item is clicked
     document.addEventListener('click', function(event) {
-        if (!event.target.closest('.action-dropdown-container') && !event.target.closest('.export-dropdown-container')) {
-            document.querySelectorAll('.action-dropdown-menu, #exportMenu').forEach(menu => {
+        const isClickOutside = !event.target.closest('.action-dropdown-container') && 
+                               !event.target.closest('.export-dropdown-container') && 
+                               !event.target.closest('.pay-action-wrapper');
+        const isClickItem = event.target.closest('.pay-dropdown-item') || event.target.closest('.action-dropdown-item');
+        
+        if (isClickOutside || isClickItem) {
+            document.querySelectorAll('.action-dropdown-menu, .pay-dropdown-menu, #exportMenu').forEach(menu => {
                 menu.classList.remove('active');
                 setTimeout(() => menu.style.display = 'none', 200);
             });
@@ -140,10 +145,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         filteredRows = allRows.filter(row => {
             const textContent = row.textContent.toLowerCase();
-            const rowStatus = row.querySelector('.badge-status-pro').textContent.toLowerCase();
+            const badgeEl = row.querySelector('.pay-status-badge');
+            const rowStatus = badgeEl ? badgeEl.textContent.toLowerCase().trim() : '';
             
             const matchesSearch = textContent.includes(query);
-            const matchesStatus = (status === 'all' || rowStatus === status);
+            const matchesStatus = (status === 'all' || rowStatus.includes(status));
             
             return matchesSearch && matchesStatus;
         });
@@ -527,25 +533,26 @@ document.addEventListener('DOMContentLoaded', function() {
         const displayId = 'BK-' + bookingId;
 
         window.showConfirm('This will move the payment record to archives. You can still view it in the Archives section.', function() {
-            window.apiAction(`/caterer/bookings/${bookingId}/archive`, { method: 'POST' })
-                .then(res => {
-                    if (res.status === 'success' || res.success) {
-                        if (row) {
-                            if (typeof refreshPaymentSummary === 'function') refreshPaymentSummary();
-                            row.classList.add('fade-out-archive');
-                            setTimeout(() => { 
-                                row.remove(); 
-                                const total = document.getElementById('totalEntries');
-                                if (total) total.innerText = parseInt(total.innerText) - 1;
-                            }, 400);
+            if (window.apiAction) {
+                window.apiAction(`/caterer/bookings/${bookingId}/archive`, { method: 'POST' })
+                    .then(res => {
+                        if (res.status === 'success' || res.success) {
+                            if (row) {
+                                if (typeof refreshPaymentSummary === 'function') refreshPaymentSummary();
+                                row.classList.add('fade-out-archive');
+                                setTimeout(() => { 
+                                    row.remove(); 
+                                    const total = document.getElementById('totalEntries');
+                                    if (total) total.innerText = parseInt(total.innerText) - 1;
+                                }, 400);
+                            } else {
+                                location.reload();
+                            }
                         } else {
-                            location.reload();
+                            if (window.showError) window.showError(res.error || 'Failed to archive payment');
                         }
-                    } else {
-                        if (window.showError) window.showError(res.error || 'Failed to archive payment');
-                    }
-                })
-                .catch(err => console.error("Payment Archival Error:", err));
+                    })
+                    .catch(err => console.error("Payment Archival Error:", err));
             } else {
                 const f = document.createElement('form');
                 f.method = 'POST';

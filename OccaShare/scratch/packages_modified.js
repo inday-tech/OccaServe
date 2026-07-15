@@ -144,19 +144,6 @@ window.openAddPackageModal = async function() {
         // Clear checked inclusions
         document.querySelectorAll('input[name="linked_menu_ids"]').forEach(cb => cb.checked = false);
 
-        // Reset toggles to ON
-        let tFood = document.getElementById('toggle-food');
-        let tSvc = document.getElementById('toggle-services');
-        let tEq = document.getElementById('toggle-equipment');
-        if (tFood) tFood.checked = true;
-        if (tSvc) tSvc.checked = true;
-        if (tEq) tEq.checked = true;
-        if (window.togglePackageComponent) {
-            window.togglePackageComponent('food', true);
-            window.togglePackageComponent('services', true);
-            window.togglePackageComponent('equipment', true);
-        }
-
         await loadPkgMenuLibrary();
         
         // Reset wizard to Step 1
@@ -207,31 +194,6 @@ window.editPackage = async function(pkgId) {
         if (form.selection_rules) {
             form.selection_rules.value = pkg.selection_rules ? JSON.stringify(pkg.selection_rules) : '';
         }
-        
-        // Wait for library to load so we can determine toggles based on existing selections
-        await loadPkgMenuLibrary();
-        
-        // Determine what toggles should be on based on what's checked
-        setTimeout(() => {
-            let hasFood = document.querySelectorAll('#tab-food input[name="linked_menu_ids"]:checked').length > 0;
-            let hasServices = document.querySelectorAll('#tab-services input[name="linked_menu_ids"]:checked').length > 0;
-            let hasEquipment = document.querySelectorAll('#tab-equipment input[name="linked_menu_ids"]:checked').length > 0;
-            
-            // If it's a new package, or they really have none, just default them to ON or OFF
-            // Let's assume they only turn on what they have
-            let tFood = document.getElementById('toggle-food');
-            let tSvc = document.getElementById('toggle-services');
-            let tEq = document.getElementById('toggle-equipment');
-            
-            // If nothing is checked (e.g. brand new draft), turn all on by default to be safe
-            if (!hasFood && !hasServices && !hasEquipment) {
-                hasFood = hasServices = hasEquipment = true;
-            }
-            
-            if (tFood) { tFood.checked = hasFood; window.togglePackageComponent('food', hasFood); }
-            if (tSvc) { tSvc.checked = hasServices; window.togglePackageComponent('services', hasServices); }
-            if (tEq) { tEq.checked = hasEquipment; window.togglePackageComponent('equipment', hasEquipment); }
-        }, 100);
 
         // Image Preview Handling
         const preview = document.getElementById('pkgImagePreview');
@@ -680,37 +642,22 @@ window.openAddonPicker = function(type) {
         items = globalPkgLibrary.filter(i => !String(i.id).startsWith('eq_') && !String(i.id).startsWith('svc_'));
     }
     
-    let selectedComponentIds = Array.from(document.querySelectorAll('input[name="linked_menu_ids"]:checked')).map(cb => String(cb.value));
-    let existingAddonIds = configuredAddons[type] ? configuredAddons[type].map(a => String(a.id)) : [];
-    
-    items = items.filter(item => {
-        let isPackageOnly = item.usage_type === 'package_only';
-        let isAlreadyInPackage = selectedComponentIds.includes(String(item.id));
-        let isAlreadyAnAddon = existingAddonIds.includes(String(item.id));
-        return !isPackageOnly && !isAlreadyInPackage && !isAlreadyAnAddon;
-    });
-    
-    if (items.length === 0) {
-        grid.innerHTML = `<div style="grid-column: 1/-1; padding: 2rem; text-align: center; color: #94a3b8; font-size: 0.9rem;">No available items to add. (Items might be set to 'Package Only', or are already included in this package/add-ons).</div>`;
-    } else {
-        grid.innerHTML = items.map(item => `
-            <div class="addon-picker-card" 
-                 data-id="${item.id}"
-                 data-name="${item.name.replace(/"/g, '&quot;')}"
-                 data-price="${item.price || 0}"
-                 data-pricing-type="${item.pricing_type || 'fixed'}"
-                 onclick="window.toggleAddonPickerCard(this)"
-                 style="position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 0.5rem; padding: 1rem 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; background: white; min-height: 80px;">
-                
-                <div style="position: absolute; top: 8px; right: 8px; font-size: 1rem; color: #cbd5e1;">
-                    <i class="far fa-square"></i>
-                </div>
-                
-                <h6 style="margin: 0; font-size: 0.8rem; font-weight: 800; color: #1e293b; line-height: 1.2;">${item.name}</h6>
-                <div style="font-size: 0.65rem; font-weight: 700; color: #64748b;">₱${(item.price || 0).toLocaleString()}</div>
+    grid.innerHTML = items.map(item => `
+        <div class="addon-picker-card" 
+             data-id="${item.id}"
+             data-name="${item.name.replace(/"/g, '&quot;')}"
+             data-price="${item.price || 0}"
+             onclick="window.toggleAddonPickerCard(this)"
+             style="position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; padding: 1rem 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; background: white;">
+            
+            <div style="position: absolute; top: 8px; right: 8px; font-size: 1rem; color: #cbd5e1;">
+                <i class="far fa-square"></i>
             </div>
-        `).join('');
-    }
+            
+            <h6 style="margin: 0; font-size: 0.8rem; font-weight: 800; color: #1e293b; line-height: 1.2;">${item.name}</h6>
+            <div style="font-size: 0.65rem; font-weight: 700; color: #64748b;">₱${(item.price || 0).toLocaleString()}</div>
+        </div>
+    `).join('');
     
     safeOpenModal('addonPickerModal', true);
 };
@@ -755,8 +702,7 @@ window.proceedToAddonConfig = function() {
     selected.forEach(card => {
         const id = card.dataset.id;
         const name = card.dataset.name;
-        const pricingType = card.dataset.pricingType || 'fixed';
-        const basePrice = card.dataset.price || 0;
+        const basePrice = card.dataset.price;
         
         const existing = configuredAddons[currentAddonType].find(a => String(a.id) === String(id));
         if (existing) {
@@ -767,43 +713,20 @@ window.proceedToAddonConfig = function() {
         let fieldsHtml = '';
         
         if (currentAddonType === 'menu') {
-            if (pricingType === 'variants') {
-                fieldsHtml = `
-                    <div style="padding: 0.75rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.85rem; color: #475569;">
-                        <i class="fas fa-info-circle text-brand mr-2"></i> This item uses variant pricing. Customers will select their preferred variant during booking, and its price will be added automatically.
+            fieldsHtml = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group-pro">
+                        <label>Additional Price (₱) *</label>
+                        <input type="number" class="control-pro cfg-price" value="${basePrice}" min="0" required>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div class="form-group-pro" style="display: none;">
-                            <input type="number" class="control-pro cfg-price" value="0" min="0">
-                        </div>
-                        <div class="form-group-pro" style="grid-column: 1 / -1;">
-                            <label>Selection Type</label>
-                            <select class="control-pro cfg-selection-type" onchange="window.toggleAddonQtyFields(this)">
-                                <option value="single">Single Selection (No Quantity)</option>
-                                <option value="multiple">Multiple Selection</option>
-                            </select>
-                        </div>
+                    <div class="form-group-pro">
+                        <label>Selection Type</label>
+                        <select class="control-pro cfg-selection-type" onchange="window.toggleAddonQtyFields(this)">
+                            <option value="single">Single Selection (No Quantity)</option>
+                            <option value="multiple">Multiple Selection</option>
+                        </select>
                     </div>
-                `;
-            } else {
-                fieldsHtml = `
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div class="form-group-pro">
-                            <label>Additional Price (₱) *</label>
-                            <input type="number" class="control-pro cfg-price" value="${basePrice}" min="0" required>
-                        </div>
-                        <div class="form-group-pro">
-                            <label>Selection Type</label>
-                            <select class="control-pro cfg-selection-type" onchange="window.toggleAddonQtyFields(this)">
-                                <option value="single">Single Selection (No Quantity)</option>
-                                <option value="multiple">Multiple Selection</option>
-                            </select>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            fieldsHtml += `
+                </div>
                 <div class="addon-qty-fields" style="display: none; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                     <div class="form-group-pro">
                         <label>Minimum Quantity</label>
@@ -1064,7 +987,7 @@ window.toggleLibItemSelectCard = function(card, id) {
     }
 
     // Only update rules if in menu tab
-    if (card.closest('#tab-food')) {
+    if (card.closest('#tab-menu')) {
         if (typeof updateSelectionRulesBuilder === 'function') {
             updateSelectionRulesBuilder();
         }
@@ -1115,26 +1038,5 @@ window.filterPkgInclusions = function() {
         } else {
             card.style.display = 'none';
         }
-    });
-};
-
-
-window.filterServices = function() {
-    const searchVal = document.getElementById('pkgServicesSearch').value.toLowerCase();
-    const container = document.getElementById('inc-services-grid');
-    if (!container) return;
-    const cards = container.querySelectorAll('.menu-select-card');
-    cards.forEach(card => {
-        card.style.display = card.textContent.toLowerCase().includes(searchVal) ? 'flex' : 'none';
-    });
-};
-
-window.filterEquipment = function() {
-    const searchVal = document.getElementById('pkgEquipmentSearch').value.toLowerCase();
-    const container = document.getElementById('inc-equipment-grid');
-    if (!container) return;
-    const cards = container.querySelectorAll('.menu-select-card');
-    cards.forEach(card => {
-        card.style.display = card.textContent.toLowerCase().includes(searchVal) ? 'flex' : 'none';
     });
 };

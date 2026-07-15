@@ -2,6 +2,10 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/customers.css') }}?v=10.5">
+<style>
+    .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2rem; }
+    .table-dashboard th, .table-dashboard td { white-space: nowrap; }
+</style>
 {% endblock %}
 
 {% block content %}

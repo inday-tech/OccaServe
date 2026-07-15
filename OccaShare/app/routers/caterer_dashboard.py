@@ -4003,18 +4003,37 @@ async def get_all_menu_items_api(
         models.MenuItem.is_archived == False
     ).all()
     
-    result = [
-        {
+    result = []
+    for i in items:
+        # Get variants if pricing_type is variants
+        variants_data = []
+        base_price = getattr(i, 'price', 0.0)
+        
+        if getattr(i, 'pricing_type', '') == 'variants':
+            variants = db.query(models.MenuVariant).filter(models.MenuVariant.menu_item_id == i.id).all()
+            for v in variants:
+                variants_data.append({
+                    "id": v.id,
+                    "name": v.variant_name,
+                    "price": v.price
+                })
+            
+            # Update base_price to the lowest variant price if it exists
+            if variants_data:
+                base_price = min([v['price'] for v in variants_data])
+
+        result.append({
             "id": i.id,
             "name": i.name,
             "category": i.category,
             "image_url": i.image_url,
             "cost_price": i.cost_price,
-            "price": i.price,
-            "is_addon": i.is_addon
-        }
-        for i in items
-    ]
+            "price": base_price,
+            "is_addon": i.is_addon,
+            "usage_type": i.usage_type,
+            "pricing_type": getattr(i, 'pricing_type', 'fixed'),
+            "variants": variants_data
+        })
     
     eqs = db.query(models.Equipment).filter(
         models.Equipment.caterer_id == user.caterer_profile.id,
@@ -4028,7 +4047,8 @@ async def get_all_menu_items_api(
             "image_url": e.image_url,
             "cost_price": e.cost_value,
             "price": e.rental_price,
-            "is_addon": getattr(e, 'is_addon', False)
+            "is_addon": getattr(e, 'is_addon', False),
+            "usage_type": getattr(e, 'usage_type', 'both')
         })
         
     svcs = db.query(models.Service).filter(
@@ -4043,7 +4063,8 @@ async def get_all_menu_items_api(
             "image_url": s.image_url,
             "cost_price": s.cost,
             "price": s.selling_price,
-            "is_addon": getattr(s, 'is_addon', False)
+            "is_addon": getattr(s, 'is_addon', False),
+            "usage_type": getattr(s, 'usage_type', 'both')
         })
         
     return result

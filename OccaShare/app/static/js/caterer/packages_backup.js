@@ -4,56 +4,8 @@ console.log("[Packages] v16.0 Loading...");
 // Constants
 const DISH_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100%25' height='100%25' fill='%23f8fafc'/%3E%3Cpath d='M30 40 L70 40 L50 70 Z' fill='%23e2e8f0'/%3E%3Ctext x='50%25' y='85%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='8' font-weight='800' fill='%23cbd5e1'%3ENO DISH IMAGE%3C/text%3E%3C/svg%3E";
 
-let STEPS_ORDER = ['basic', 'components', 'food', 'services', 'equipment', 'addons', 'review'];
-const ALL_STEPS = ['basic', 'components', 'food', 'services', 'equipment', 'addons', 'review'];
+const STEPS_ORDER = ['basic', 'inclusions', 'menu', 'addons', 'pricing', 'booking', 'review'];
 let currentPackageId = null;
-
-// --- NEW COMPONENT TOGGLE LOGIC ---
-let packageComponents = { food: true, services: true, equipment: true };
-
-window.togglePackageComponent = function(type, isEnabled) {
-    packageComponents[type] = isEnabled;
-    
-    // Update STEPS_ORDER dynamically
-    STEPS_ORDER = ['basic', 'components'];
-    if (packageComponents.food) STEPS_ORDER.push('food');
-    if (packageComponents.services) STEPS_ORDER.push('services');
-    if (packageComponents.equipment) STEPS_ORDER.push('equipment');
-    STEPS_ORDER.push('addons', 'review');
-    
-    // Hide/Show sidebar buttons
-    document.getElementById('step-btn-food').style.display = packageComponents.food ? 'flex' : 'none';
-    document.getElementById('step-btn-services').style.display = packageComponents.services ? 'flex' : 'none';
-    document.getElementById('step-btn-equipment').style.display = packageComponents.equipment ? 'flex' : 'none';
-    
-    // Also clear selections if turned off
-    if (!isEnabled) {
-        let containerId = type === 'food' ? 'tab-food' : `tab-${type}`;
-        let container = document.getElementById(containerId);
-        if (container) {
-            container.querySelectorAll('input[name="linked_menu_ids"]:checked').forEach(cb => {
-                cb.checked = false;
-                let card = cb.closest('.menu-select-card');
-                if (card) {
-                    card.classList.remove('selected');
-                    card.style.background = 'white';
-                    card.style.borderColor = '#e2e8f0';
-                    let icon = card.querySelector('.fa-check-circle');
-                    if(icon) icon.className = 'far fa-circle text-slate-300';
-                }
-            });
-        }
-    }
-};
-
-window.toggleFoodMode = function(mode) {
-    let rulesContainer = document.getElementById('selectionRulesContainer');
-    if (rulesContainer) {
-        rulesContainer.parentElement.style.display = mode === 'customer' ? 'block' : 'none';
-    }
-};
-// ----------------------------------
-
 
 // Global Modal Helpers (Fallback if layout.js is missing or different)
 const safeOpenModal = (id, float = false) => {
@@ -144,19 +96,6 @@ window.openAddPackageModal = async function() {
         // Clear checked inclusions
         document.querySelectorAll('input[name="linked_menu_ids"]').forEach(cb => cb.checked = false);
 
-        // Reset toggles to ON
-        let tFood = document.getElementById('toggle-food');
-        let tSvc = document.getElementById('toggle-services');
-        let tEq = document.getElementById('toggle-equipment');
-        if (tFood) tFood.checked = true;
-        if (tSvc) tSvc.checked = true;
-        if (tEq) tEq.checked = true;
-        if (window.togglePackageComponent) {
-            window.togglePackageComponent('food', true);
-            window.togglePackageComponent('services', true);
-            window.togglePackageComponent('equipment', true);
-        }
-
         await loadPkgMenuLibrary();
         
         // Reset wizard to Step 1
@@ -207,31 +146,6 @@ window.editPackage = async function(pkgId) {
         if (form.selection_rules) {
             form.selection_rules.value = pkg.selection_rules ? JSON.stringify(pkg.selection_rules) : '';
         }
-        
-        // Wait for library to load so we can determine toggles based on existing selections
-        await loadPkgMenuLibrary();
-        
-        // Determine what toggles should be on based on what's checked
-        setTimeout(() => {
-            let hasFood = document.querySelectorAll('#tab-food input[name="linked_menu_ids"]:checked').length > 0;
-            let hasServices = document.querySelectorAll('#tab-services input[name="linked_menu_ids"]:checked').length > 0;
-            let hasEquipment = document.querySelectorAll('#tab-equipment input[name="linked_menu_ids"]:checked').length > 0;
-            
-            // If it's a new package, or they really have none, just default them to ON or OFF
-            // Let's assume they only turn on what they have
-            let tFood = document.getElementById('toggle-food');
-            let tSvc = document.getElementById('toggle-services');
-            let tEq = document.getElementById('toggle-equipment');
-            
-            // If nothing is checked (e.g. brand new draft), turn all on by default to be safe
-            if (!hasFood && !hasServices && !hasEquipment) {
-                hasFood = hasServices = hasEquipment = true;
-            }
-            
-            if (tFood) { tFood.checked = hasFood; window.togglePackageComponent('food', hasFood); }
-            if (tSvc) { tSvc.checked = hasServices; window.togglePackageComponent('services', hasServices); }
-            if (tEq) { tEq.checked = hasEquipment; window.togglePackageComponent('equipment', hasEquipment); }
-        }, 100);
 
         // Image Preview Handling
         const preview = document.getElementById('pkgImagePreview');
@@ -442,42 +356,13 @@ function validateTab(tabName) {
             const minG = parseInt(form.min_guests.value);
             if (isNaN(minG) || minG < 1) addError(form.min_guests, "Minimum guests must be at least 1.");
         }
-        
-        if (form.price_per_head) {
-            const rawPrice = form.price_per_head.value.replace(/,/g, '');
-            const price = parseFloat(rawPrice);
-            if (isNaN(price) || price <= 0) {
-                addError(form.price_per_head, "Selling price must be greater than 0.");
-            }
-        }
-        
-        if (form.reservation_fee && form.reservation_fee.value) {
-            const resFee = parseFloat(form.reservation_fee.value);
-            const price = parseFloat((form.price_per_head.value || '0').replace(/,/g, ''));
-            if (resFee > price) {
-                addError(form.reservation_fee, "Reservation fee cannot exceed selling price.");
-            }
-        }
     }
     
-    if (tabName === 'components') {
-        if (!packageComponents.food && !packageComponents.services && !packageComponents.equipment) {
-            isValid = false;
-            if (window.showError) window.showError("Please include at least one package component (Food, Services, or Equipment).");
-            else alert("Please include at least one package component.");
-        }
-    }
-    
-    if (['food', 'services', 'equipment'].includes(tabName)) {
-        let container = document.getElementById(`tab-${tabName}`);
-        if (container) {
-            let checked = container.querySelectorAll('input[name="linked_menu_ids"]:checked');
-            if (checked.length === 0) {
-                isValid = false;
-                let cap = tabName.charAt(0).toUpperCase() + tabName.slice(1);
-                if (window.showError) window.showError(`Please select at least one item for ${cap}.`);
-                else alert(`Please select at least one item for ${cap}.`);
-            }
+    if (tabName === 'pricing') {
+        const rawPrice = form.price_per_head.value.replace(/,/g, '');
+        const price = parseFloat(rawPrice);
+        if (isNaN(price) || price <= 0) {
+            addError(form.price_per_head, "Selling price must be greater than 0.");
         }
     }
     
@@ -680,37 +565,22 @@ window.openAddonPicker = function(type) {
         items = globalPkgLibrary.filter(i => !String(i.id).startsWith('eq_') && !String(i.id).startsWith('svc_'));
     }
     
-    let selectedComponentIds = Array.from(document.querySelectorAll('input[name="linked_menu_ids"]:checked')).map(cb => String(cb.value));
-    let existingAddonIds = configuredAddons[type] ? configuredAddons[type].map(a => String(a.id)) : [];
-    
-    items = items.filter(item => {
-        let isPackageOnly = item.usage_type === 'package_only';
-        let isAlreadyInPackage = selectedComponentIds.includes(String(item.id));
-        let isAlreadyAnAddon = existingAddonIds.includes(String(item.id));
-        return !isPackageOnly && !isAlreadyInPackage && !isAlreadyAnAddon;
-    });
-    
-    if (items.length === 0) {
-        grid.innerHTML = `<div style="grid-column: 1/-1; padding: 2rem; text-align: center; color: #94a3b8; font-size: 0.9rem;">No available items to add. (Items might be set to 'Package Only', or are already included in this package/add-ons).</div>`;
-    } else {
-        grid.innerHTML = items.map(item => `
-            <div class="addon-picker-card" 
-                 data-id="${item.id}"
-                 data-name="${item.name.replace(/"/g, '&quot;')}"
-                 data-price="${item.price || 0}"
-                 data-pricing-type="${item.pricing_type || 'fixed'}"
-                 onclick="window.toggleAddonPickerCard(this)"
-                 style="position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 0.5rem; padding: 1rem 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; background: white; min-height: 80px;">
-                
-                <div style="position: absolute; top: 8px; right: 8px; font-size: 1rem; color: #cbd5e1;">
-                    <i class="far fa-square"></i>
-                </div>
-                
-                <h6 style="margin: 0; font-size: 0.8rem; font-weight: 800; color: #1e293b; line-height: 1.2;">${item.name}</h6>
-                <div style="font-size: 0.65rem; font-weight: 700; color: #64748b;">₱${(item.price || 0).toLocaleString()}</div>
+    grid.innerHTML = items.map(item => `
+        <div class="addon-picker-card" 
+             data-id="${item.id}"
+             data-name="${item.name.replace(/"/g, '&quot;')}"
+             data-price="${item.price || 0}"
+             onclick="window.toggleAddonPickerCard(this)"
+             style="position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; padding: 1rem 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; background: white;">
+            
+            <div style="position: absolute; top: 8px; right: 8px; font-size: 1rem; color: #cbd5e1;">
+                <i class="far fa-square"></i>
             </div>
-        `).join('');
-    }
+            
+            <h6 style="margin: 0; font-size: 0.8rem; font-weight: 800; color: #1e293b; line-height: 1.2;">${item.name}</h6>
+            <div style="font-size: 0.65rem; font-weight: 700; color: #64748b;">₱${(item.price || 0).toLocaleString()}</div>
+        </div>
+    `).join('');
     
     safeOpenModal('addonPickerModal', true);
 };
@@ -755,8 +625,7 @@ window.proceedToAddonConfig = function() {
     selected.forEach(card => {
         const id = card.dataset.id;
         const name = card.dataset.name;
-        const pricingType = card.dataset.pricingType || 'fixed';
-        const basePrice = card.dataset.price || 0;
+        const basePrice = card.dataset.price;
         
         const existing = configuredAddons[currentAddonType].find(a => String(a.id) === String(id));
         if (existing) {
@@ -767,43 +636,20 @@ window.proceedToAddonConfig = function() {
         let fieldsHtml = '';
         
         if (currentAddonType === 'menu') {
-            if (pricingType === 'variants') {
-                fieldsHtml = `
-                    <div style="padding: 0.75rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.85rem; color: #475569;">
-                        <i class="fas fa-info-circle text-brand mr-2"></i> This item uses variant pricing. Customers will select their preferred variant during booking, and its price will be added automatically.
+            fieldsHtml = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group-pro">
+                        <label>Additional Price (₱) *</label>
+                        <input type="number" class="control-pro cfg-price" value="${basePrice}" min="0" required>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div class="form-group-pro" style="display: none;">
-                            <input type="number" class="control-pro cfg-price" value="0" min="0">
-                        </div>
-                        <div class="form-group-pro" style="grid-column: 1 / -1;">
-                            <label>Selection Type</label>
-                            <select class="control-pro cfg-selection-type" onchange="window.toggleAddonQtyFields(this)">
-                                <option value="single">Single Selection (No Quantity)</option>
-                                <option value="multiple">Multiple Selection</option>
-                            </select>
-                        </div>
+                    <div class="form-group-pro">
+                        <label>Selection Type</label>
+                        <select class="control-pro cfg-selection-type" onchange="window.toggleAddonQtyFields(this)">
+                            <option value="single">Single Selection (No Quantity)</option>
+                            <option value="multiple">Multiple Selection</option>
+                        </select>
                     </div>
-                `;
-            } else {
-                fieldsHtml = `
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div class="form-group-pro">
-                            <label>Additional Price (₱) *</label>
-                            <input type="number" class="control-pro cfg-price" value="${basePrice}" min="0" required>
-                        </div>
-                        <div class="form-group-pro">
-                            <label>Selection Type</label>
-                            <select class="control-pro cfg-selection-type" onchange="window.toggleAddonQtyFields(this)">
-                                <option value="single">Single Selection (No Quantity)</option>
-                                <option value="multiple">Multiple Selection</option>
-                            </select>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            fieldsHtml += `
+                </div>
                 <div class="addon-qty-fields" style="display: none; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                     <div class="form-group-pro">
                         <label>Minimum Quantity</label>
@@ -1064,7 +910,7 @@ window.toggleLibItemSelectCard = function(card, id) {
     }
 
     // Only update rules if in menu tab
-    if (card.closest('#tab-food')) {
+    if (card.closest('#tab-menu')) {
         if (typeof updateSelectionRulesBuilder === 'function') {
             updateSelectionRulesBuilder();
         }
@@ -1115,26 +961,5 @@ window.filterPkgInclusions = function() {
         } else {
             card.style.display = 'none';
         }
-    });
-};
-
-
-window.filterServices = function() {
-    const searchVal = document.getElementById('pkgServicesSearch').value.toLowerCase();
-    const container = document.getElementById('inc-services-grid');
-    if (!container) return;
-    const cards = container.querySelectorAll('.menu-select-card');
-    cards.forEach(card => {
-        card.style.display = card.textContent.toLowerCase().includes(searchVal) ? 'flex' : 'none';
-    });
-};
-
-window.filterEquipment = function() {
-    const searchVal = document.getElementById('pkgEquipmentSearch').value.toLowerCase();
-    const container = document.getElementById('inc-equipment-grid');
-    if (!container) return;
-    const cards = container.querySelectorAll('.menu-select-card');
-    cards.forEach(card => {
-        card.style.display = card.textContent.toLowerCase().includes(searchVal) ? 'flex' : 'none';
     });
 };

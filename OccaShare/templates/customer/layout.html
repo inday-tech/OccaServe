@@ -175,6 +175,14 @@
                         <span class="nav-label">My Profile</span>
                     </a>
                 </li>
+                {% if user and user.role == 'customer' and not user.platform_feedback %}
+                <li>
+                    <a href="#" class="nav-item" onclick="event.preventDefault(); openPlatformFeedbackModal(); closeSidebar();">
+                        <div class="nav-icon"><i class="fas fa-comment-dots" style="color: var(--primary-color);"></i></div>
+                        <span class="nav-label">Review OccaServe</span>
+                    </a>
+                </li>
+                {% endif %}
             </ul>
 
             <!-- SIGN OUT -->
@@ -378,17 +386,27 @@
     {% include "customer/partials/feedback_modal.html" %}
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const snooze = localStorage.getItem('feedbackNudgeSnooze');
-            if (!snooze || Date.now() > parseInt(snooze)) {
+            const hasPoppedUp = localStorage.getItem('feedbackPopupShownOnce');
+            if (!hasPoppedUp) {
                 setTimeout(() => {
                     const modal = document.getElementById('platformFeedbackModal');
                     if (modal) {
                         modal.style.display = 'flex';
                         document.body.style.overflow = 'hidden';
+                        localStorage.setItem('feedbackPopupShownOnce', 'true');
                     }
                 }, 5000); // Elite delay: show after 5s of interaction
             }
         });
+
+        window.openPlatformFeedbackModal = function() {
+            const modal = document.getElementById('platformFeedbackModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+                localStorage.setItem('feedbackPopupShownOnce', 'true'); // Ensure it doesn't pop up again if opened manually
+            }
+        };
     </script>
     {% endif %}
     {% endif %}
