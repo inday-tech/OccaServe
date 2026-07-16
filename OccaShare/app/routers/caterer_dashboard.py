@@ -2451,10 +2451,13 @@ async def caterer_calendar(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    from datetime import date
+    from datetime import date, timedelta
     current_date = date.today()
+    lead_time_days = user.caterer_profile.booking_lead_time or 7
+    min_booking_date = current_date + timedelta(days=lead_time_days)
+    max_advance_days = user.caterer_profile.scheduling_rules.get("max_advance_booking_days", 730) if user.caterer_profile.scheduling_rules else 730
+    max_booking_date = current_date + timedelta(days=max_advance_days)
     
-    # For the list view on the side
     # For the list view on the side (Status Tracker) - Show active non-completed bookings first
     tracker_bookings = db.query(models.Booking).filter(
         models.Booking.caterer_id == user.caterer_profile.id,
@@ -2483,6 +2486,12 @@ async def caterer_calendar(
         "max_bookings_per_day": user.caterer_profile.max_bookings_per_day or 1,
         "auto_block_enabled": user.caterer_profile.auto_block_enabled if user.caterer_profile.auto_block_enabled is not None else True,
         "primary_color": user.caterer_profile.primary_color or "#3b82f6",
+        "booking_lead_time": lead_time_days,
+        "min_booking_date": min_booking_date,
+        "max_booking_date": max_booking_date,
+        "business_open": user.caterer_profile.scheduling_rules.get("business_hours", {}).get("open_time", "08:00") if user.caterer_profile.scheduling_rules else "08:00",
+        "business_close": user.caterer_profile.scheduling_rules.get("business_hours", {}).get("close_time", "20:00") if user.caterer_profile.scheduling_rules else "20:00",
+        "min_pax": user.caterer_profile.min_pax or 20,
         "active_page": "calendar"
     })
 
@@ -3103,12 +3112,15 @@ async def add_menu_item(
     is_addon = False
     addon_price = 0.0
     cost_price = 0.0
-    is_combo = False
+    item_type = form_data.get("item_type", "single")
+    is_combo = (item_type == "preset_combo")
+    included_dishes = form_data.getlist("included_dishes[]")
+    combo_options = {"included_menu_ids": [int(x) for x in included_dishes if x.isdigit()]} if is_combo else {}
     max_choices = 0
-    combo_options = []
     
     dietary_tags = form_data.getlist("dietary_tags")
     allergen_info = form_data.getlist("allergen_info")
+    serving_style = form_data.get("serving_style")
     
     image = form_data.get("image")
     import base64
@@ -3147,6 +3159,7 @@ async def add_menu_item(
         is_combo=is_combo,
         max_choices=max_choices,
         combo_options=combo_options,
+        serving_style=serving_style,
         is_archived=False
     )
     db.add(new_item)
@@ -4167,18 +4180,22 @@ async def update_menu_item(
     is_addon = False
     addon_price = 0.0
     cost_price = 0.0
-    is_combo = False
+    item_type = form_data.get("item_type", "single")
+    is_combo = (item_type == "preset_combo")
+    included_dishes = form_data.getlist("included_dishes[]")
+    combo_options = {"included_menu_ids": [int(x) for x in included_dishes if x.isdigit()]} if is_combo else {}
     max_choices = 0
-    combo_options = []
     
     dietary_tags = form_data.getlist("dietary_tags")
     allergen_info = form_data.getlist("allergen_info")
+    serving_style = form_data.get("serving_style")
     
     image = form_data.get("image")
 
     item.name = name
     item.category = category
     item.description = description
+    item.serving_style = serving_style
     item.cost_price = cost_price
     item.price = price
     item.serving_size = serving_size

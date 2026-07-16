@@ -391,6 +391,7 @@ class MenuItem(Base):
     dietary_tags = Column(ARRAY(String), nullable=True)
     allergen_info = Column(ARRAY(String), nullable=True)
     serving_size = Column(String, nullable=True) 
+    serving_style = Column(String, nullable=True) # V3 Single Serving Style
     is_addon = Column(Boolean, default=False)
     addon_price = Column(Float, default=0.0)
     max_stock_quantity = Column(Integer, nullable=True) 

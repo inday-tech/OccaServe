@@ -248,11 +248,26 @@
     border: 1px solid #e5e7eb !important;
 }
 
+.fc-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.fc-toolbar-chunk:nth-child(2) {
+    display: flex;
+    justify-content: center;
+    flex: 1;
+}
+
 .fc-toolbar-title {
     font-size: 1.5rem !important;
     font-weight: 700 !important;
     color: #111827 !important;
     letter-spacing: -0.02em;
+    text-align: center;
 }
 
 .fc-button {
@@ -677,6 +692,17 @@
     #calendar {
         min-height: 500px;
         padding: 0 !important;
+    }
+
+    /* Force the calendar view to be scrollable rather than squished or hidden on mobile */
+    .fc-view-harness {
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .fc-view {
+        min-width: 700px !important;
     }
 
     .fc-toolbar {

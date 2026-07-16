@@ -588,12 +588,12 @@ async function submitVerification() {
     const hasPermit = document.querySelector('#verif_permit').nextElementSibling?.classList.contains('field-hint');
 
     if (!idFront && !hasId) { 
-        if (typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Government ID (Front) is required.', showConfirmButton: false, timer: 3000 });
+        if (window.showToast) window.showToast('Government ID (Front) is required.', 'warning');
         else alert("Government ID (Front) is required."); 
         return; 
     }
     if (!permit && !hasPermit) { 
-        if (typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Business Permit is required.', showConfirmButton: false, timer: 3000 });
+        if (window.showToast) window.showToast('Business Permit is required.', 'warning');
         else alert("Business Permit is required."); 
         return; 
     }
@@ -625,23 +625,23 @@ async function submitVerification() {
         const response = await fetch('/caterer/verification/submit', { method: 'POST', body: formData });
         const result = await response.json();
         if (result.success) {
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Verification documents submitted!', showConfirmButton: false, timer: 3000 });
+            if (window.showToast) {
+                window.showToast('Verification documents submitted!', 'success');
             } else {
                 alert('Verification documents submitted!');
             }
             setTimeout(() => window.location.reload(), 1500);
         } else {
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: result.message || "Failed to submit documents.", showConfirmButton: false, timer: 3000 });
+            if (window.showToast) {
+                window.showToast(result.message || "Failed to submit documents.", 'error');
             } else {
                 alert(result.message || "Failed to submit documents.");
             }
         }
     } catch (err) {
         console.error(err);
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'An unexpected error occurred.', showConfirmButton: false, timer: 3000 });
+        if (window.showToast) {
+            window.showToast('An unexpected error occurred.', 'error');
         } else {
             alert('An unexpected error occurred.');
         }

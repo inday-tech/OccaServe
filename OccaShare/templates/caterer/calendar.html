@@ -45,14 +45,25 @@
     }
 
     /* Dynamic button colors */
-    .btn-primary-pro {
-        background: var(--primary-color) !important;
+    .btn-primary-pro, .btn-walkin-header {
+        background: var(--caterer-primary) !important;
         color: white !important;
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1) !important;
+        border-color: var(--caterer-primary) !important;
     }
 
-    .btn-primary-pro:hover {
-        background: var(--highlight-color) !important;
+    .btn-primary-pro:hover, .btn-walkin-header:hover, .fc-button-primary:hover {
+        background: var(--caterer-primary-dark) !important;
+        border-color: var(--caterer-primary-dark) !important;
+    }
+    
+    .fc-button-primary {
+        background-color: var(--caterer-primary) !important;
+        border-color: var(--caterer-primary) !important;
+    }
+    .fc-button-primary:not(:disabled):active, .fc-button-primary:not(:disabled).fc-button-active {
+        background-color: var(--caterer-primary-dark) !important;
+        border-color: var(--caterer-primary-dark) !important;
     }
 
     .fc .fc-daygrid-day.fc-day-today {
@@ -657,19 +668,21 @@
                         <div class="form-group-pro">
                             <label>Event Date <span style="color: #ef4444;">*</span></label>
                             <input type="date" id="manDate" name="event_date" class="control-pro" required
-                                min="{{ current_date.strftime('%Y-%m-%d') }}"
+                                min="{{ min_booking_date.strftime('%Y-%m-%d') }}" max="{{ max_booking_date.strftime('%Y-%m-%d') }}"
                                 onchange="validateEventDate(); checkDateConflict(this.value)">
                             <div class="field-error-msg" id="error-manDate"></div>
                         </div>
                         <div class="form-group-pro">
                             <label>Call Time <span style="color: #ef4444;">*</span></label>
-                            <input type="time" id="manTime" class="control-pro" required onchange="validateEventTime()">
+                            <input type="time" id="manTime" name="event_time" class="control-pro" required 
+                                min="{{ business_open }}" max="{{ business_close }}"
+                                onchange="validateEventTime()">
                             <div class="field-error-msg" id="error-manTime"></div>
                         </div>
                         <div class="form-group-pro">
                             <label>Guest Count <span style="color: #ef4444;">*</span></label>
-                            <input type="number" id="manGuests" name="guest_count" class="control-pro" required min="1"
-                                oninput="validateGuestCount()">
+                            <input type="number" id="manGuests" name="guest_count" class="control-pro" required min="{{ min_pax }}"
+                                placeholder="Min {{ min_pax }} Pax" oninput="validateGuestCount()">
                             <div class="field-error-msg" id="error-manGuests"></div>
                         </div>
                     </div>
@@ -770,22 +783,13 @@
                     </div>
 
                     <!-- Financial Summary -->
-                    <div class="financial-summary-box">
-                        <div class="fs-right">
+                    <div class="financial-summary-box" style="justify-content: center; text-align: center;">
+                        <div class="fs-right" style="text-align: center;">
                             <small style="color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem;">Contract Amount</small>
                             <div class="fs-amount-text">
                                 <span id="displayTotal">₱0.00</span>
                             </div>
                             <input type="hidden" id="manAmount" name="total_amount">
-                        </div>
-                        <div class="fs-left">
-                            <div id="roiPreviewLabel" class="roi-preview-pill" style="display: none;">
-                                <i class="fas fa-chart-line"></i> Profit: <strong id="profitAmount">---</strong>
-                            </div>
-                            <button type="button" id="btnQuickQuote" onclick="getQuickQuotation()"
-                                class="btn-secondary-pro" style="display: none; padding: 6px 12px; font-size: 0.8rem; width: max-content;">
-                                View Cost Breakdown
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -805,46 +809,6 @@
 
 
 
-<!-- SMART ROI BREAKDOWN MODAL -->
-<div id="roiBreakdownModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-md occ-content-pop">
-        <div class="occ-modal-header glass-header">
-            <div>
-                <h3 class="occ-modal-title"><i class="fas fa-chart-pie"></i> Cost Breakdown & Profit</h3>
-                <div id="roiBreakdownSubtitle" class="occ-modal-subtitle">Package: ---</div>
-            </div>
-            <button onclick="closeRoiBreakdown()" class="occ-modal-close"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="compact-body">
-            <div class="cal-roi-grid">
-                <div style="background: #eff6ff; padding: 1.25rem; border-radius: var(--border-radius, 12px); border: 1px solid #bfdbfe;">
-                    <span style="font-size: 0.75rem; font-weight: 800; color: #1e40af; text-transform: uppercase; letter-spacing: 0.05em;">Total Food Cost</span>
-                    <div id="breakdownTotalCost" style="font-size: 1.75rem; font-weight: 900; color: #1e40af; margin-top: 8px;">₱0.00</div>
-                </div>
-                <div style="background: #ecfdf5; padding: 1.25rem; border-radius: var(--border-radius, 12px); border: 1px solid #bbf7d0;">
-                    <span style="font-size: 0.75rem; font-weight: 800; color: #15803d; text-transform: uppercase; letter-spacing: 0.05em;">Net Profit</span>
-                    <div id="breakdownRoi" style="font-size: 1.75rem; font-weight: 900; color: #15803d; margin-top: 8px;">₱0.00</div>
-                </div>
-            </div>
-
-            <h4
-                style="font-size: 0.8rem; font-weight: 800; color: var(--secondary-color); text-transform: uppercase; margin-bottom: 1rem;">
-                Recipe Cost Breakdown</h4>
-            <div id="breakdownList" class="cal-roi-breakdown-list" style="max-height: 250px; overflow-y: auto;">
-                <!-- Injected via JS -->
-            </div>
-        </div>
-        <div class="occ-modal-footer" style="background: #f8fafc; padding: 1.25rem;">
-            <div class="roi-footer-layout">
-                <div class="roi-footer-total">
-                    <span class="roi-footer-label">Total Contract Price</span>
-                    <div id="breakdownTotalPrice" class="roi-footer-amount">₱0.00</div>
-                </div>
-                <button onclick="closeRoiBreakdown()" class="btn-primary-pro roi-footer-btn">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- BLOCKED DATE MODAL -->
 <div id="blockedDateModal" class="occ-modal-overlay">
@@ -882,5 +846,13 @@
 {% block extra_js %}
 <!-- FullCalendar JS -->
 <script src='https://unpkg.com/fullcalendar@5.10.1/main.min.js'></script>
+<script>
+    window.CATERER_LEAD_TIME = parseInt("{{ booking_lead_time }}") || 0;
+    window.BUSINESS_OPEN = "{{ business_open }}";
+    window.BUSINESS_CLOSE = "{{ business_close }}";
+    window.CATERER_MIN_PAX = parseInt("{{ min_pax }}") || 20;
+    window.MIN_BOOKING_DATE = "{{ min_booking_date.strftime('%Y-%m-%d') }}";
+    window.MAX_BOOKING_DATE = "{{ max_booking_date.strftime('%Y-%m-%d') }}";
+</script>
 <script src="{{ url_for('static', path='/js/caterer/calendar.js') }}?v={{ range(1, 10000) | random }}"></script>
 {% endblock %}

@@ -151,7 +151,7 @@
 .package-card-pro {
     background: white;
     border-radius: var(--radius-lg);
-    overflow: hidden;
+    overflow: visible;
     border: 1px solid var(--border-color, #e2e8f0);
     box-shadow: var(--shadow-card);
     transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
@@ -510,6 +510,7 @@ textarea.control-pro {
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0;
 }
 
 .package-media-pro img {

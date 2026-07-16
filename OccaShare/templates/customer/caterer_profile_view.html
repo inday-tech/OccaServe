@@ -1363,6 +1363,23 @@
                     </div>
                     {% endif %}
 
+                    {% set soc = caterer.scheduling_rules.get('social_links', {}) if caterer.scheduling_rules else {} %}
+                    {% if soc.get('facebook') or soc.get('instagram') %}
+                    <div style="margin-bottom: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                        {% if soc.get('facebook') %}
+                        {% set fb_link = soc.get('facebook') %}
+                        {% if not fb_link.startswith('http') %}{% set fb_link = 'https://' ~ fb_link %}{% endif %}
+                        <a href="{{ fb_link }}" target="_blank" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(24, 119, 242, 0.1); color: #1877F2; border-radius: 100px; font-size: 0.85rem; font-weight: 700; text-decoration: none; transition: background 0.2s;"><i class="fab fa-facebook"></i> Facebook</a>
+                        {% endif %}
+                        {% if soc.get('instagram') %}
+                        {% set ig_link = soc.get('instagram') %}
+                        {% if not ig_link.startswith('http') and not ig_link.startswith('@') %}{% set ig_link = 'https://instagram.com/' ~ ig_link %}
+                        {% elif ig_link.startswith('@') %}{% set ig_link = 'https://instagram.com/' ~ ig_link[1:] %}{% endif %}
+                        <a href="{{ ig_link }}" target="_blank" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(228, 64, 95, 0.1); color: #E4405F; border-radius: 100px; font-size: 0.85rem; font-weight: 700; text-decoration: none; transition: background 0.2s;"><i class="fab fa-instagram"></i> Instagram</a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
                     <div class="intel-stats-row" style="grid-template-columns: repeat(3, 1fr);">
                         <div class="stat-mini-box">
                             <i class="far fa-clock smb-icon"></i>
