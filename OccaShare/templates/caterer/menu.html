@@ -144,7 +144,7 @@
                             <span style="font-size: 0.75rem; color: #64748b; font-weight: normal; margin-left: 4px;">(From ₱{{ "{:,.0f}".format(item.variants|map(attribute='price')|min) }})</span>
                         {% endif %}
                     {% else %}
-                        <span class="price-value">₱{{ "{:,.0f}".format(item.price or 0) }}</span>
+                        <span class="price-value" style="display:flex; align-items:center; gap:4px;">₱{{ "{:,.0f}".format(item.price or 0) }} <span style="font-size: 0.7rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">/ {{ item.serving_style or 'Order' }}</span></span>
                         {% if item.serving_size %}
                             <span style="font-size: 0.75rem; color: #64748b; font-weight: normal; margin-left: 4px;">({{ item.serving_size }})</span>
                         {% endif %}

@@ -5986,15 +5986,13 @@ async def financials_page(
     ).all()
     
     total_rev = 0
-    total_event_costs = 0
     total_comm = 0
     for b in all_completed_bookings:
         amt = float(b.total_amount or b.total_price or 0)
         total_rev += amt
         total_comm += (amt * (comm_rate / 100.0)) + comm_fixed
-        total_event_costs += float(b.actual_cost or 0)
         
-    net_profit = (total_rev - total_comm) - (total_event_costs + total_expenses)
+    net_earnings = total_rev - total_comm
     
     return templates.TemplateResponse("caterer/financials.html", {
         "request": request,
@@ -6003,7 +6001,9 @@ async def financials_page(
         "expenses": expenses,
         "monthly_overhead": monthly_expenses,
         "total_overhead": total_expenses,
-        "net_profit": net_profit
+        "total_rev": total_rev,
+        "total_comm": total_comm,
+        "net_earnings": net_earnings
     })
 
 @router.post("/api/financials/expense")
