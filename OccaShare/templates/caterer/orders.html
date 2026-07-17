@@ -596,15 +596,31 @@
                                                     <p class="pkg-desc-text">{{ booking.package.description }}</p>
                                                 {% endif %}
                                                 
-                                                {% if booking.package.inclusions %}
+                                                {% if booking.package.inclusions or booking.package.equipment_links or booking.package.service_links %}
                                                     <div class="inclusion-section-p">
                                                         <h4><i class="fas fa-check-circle"></i> Service Inclusions</h4>
                                                         <div class="inclusion-grid-p">
-                                                            {% for inc in booking.package.inclusions %}
-                                                                <div class="inclusion-item-p">
-                                                                    <i class="fas fa-star"></i> {{ inc }}
-                                                                </div>
-                                                            {% endfor %}
+                                                            {% if booking.package.inclusions %}
+                                                                {% for inc in booking.package.inclusions %}
+                                                                    <div class="inclusion-item-p">
+                                                                        <i class="fas fa-star"></i> {{ inc }}
+                                                                    </div>
+                                                                {% endfor %}
+                                                            {% endif %}
+                                                            {% if booking.package.equipment_links %}
+                                                                {% for el in booking.package.equipment_links %}
+                                                                    <div class="inclusion-item-p">
+                                                                        <i class="fas fa-chair"></i> {{ el.equipment.name }}
+                                                                    </div>
+                                                                {% endfor %}
+                                                            {% endif %}
+                                                            {% if booking.package.service_links %}
+                                                                {% for sl in booking.package.service_links %}
+                                                                    <div class="inclusion-item-p">
+                                                                        <i class="fas fa-user-tie"></i> {{ sl.service.name }}
+                                                                    </div>
+                                                                {% endfor %}
+                                                            {% endif %}
                                                         </div>
                                                     </div>
                                                 {% endif %}
@@ -649,6 +665,50 @@
                                                 </div>
                                             </div>
                                         {% endfor %}
+
+                                        {% set valid_equip = booking.selected_items | selectattr('equipment', 'defined') | selectattr('equipment', 'ne', None) | list %}
+                                        {% if valid_equip %}
+                                            <div class="menu-cat-group" style="margin-top: 1rem;">
+                                                <div class="menu-cat-label" style="color: #6366f1;">Equipment & Rentals</div>
+                                                <div class="menu-items-flex">
+                                                    {% for item in valid_equip %}
+                                                        <div class="mi-pill-premium" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 1rem;">
+                                                            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                                                    <span class="mi-name-text">{{ item.equipment.name }}</span>
+                                                                    {% if item.is_add_on %}
+                                                                        <span class="mi-addon-badge">Add-on</span>
+                                                                    {% endif %}
+                                                                </div>
+                                                                <span class="mi-qty-text">x{{ item.quantity if item.quantity else 1 }}</span>
+                                                            </div>
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        {% endif %}
+
+                                        {% set valid_service = booking.selected_items | selectattr('service', 'defined') | selectattr('service', 'ne', None) | list %}
+                                        {% if valid_service %}
+                                            <div class="menu-cat-group" style="margin-top: 1rem;">
+                                                <div class="menu-cat-label" style="color: #f59e0b;">Additional Services</div>
+                                                <div class="menu-items-flex">
+                                                    {% for item in valid_service %}
+                                                        <div class="mi-pill-premium" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 1rem;">
+                                                            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                                                    <span class="mi-name-text">{{ item.service.name }}</span>
+                                                                    {% if item.is_add_on %}
+                                                                        <span class="mi-addon-badge">Add-on</span>
+                                                                    {% endif %}
+                                                                </div>
+                                                                <span class="mi-qty-text">x{{ item.quantity if item.quantity else 1 }}</span>
+                                                            </div>
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        {% endif %}
                                     {% else %}
                                         <div style="text-align: center; padding: 2rem; background: #f8fafc; border-radius: var(--border-radius); border: 1px dashed #cbd5e1;">
                                             <i class="fas fa-info-circle" style="color: #94a3b8; font-size: 1.5rem; margin-bottom: 0.5rem;"></i>

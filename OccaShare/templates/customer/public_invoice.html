@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Booking Invoice - {{ booking.caterer.business_name if booking.caterer else 'OccaServe' }}</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root {
             --primary: #4f46e5;
@@ -84,6 +85,10 @@
 <div class="invoice-container">
     <div class="invoice-header">
         <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                <i class="fas fa-ring" style="color: #6366f1; font-size: 1.5rem;"></i>
+                <span style="font-weight: 800; font-size: 1.25rem; letter-spacing: -0.05em; color: white;">OccaServe</span>
+            </div>
             <h1>Invoice #{{ booking.id }}</h1>
             <p>Issued on {{ booking.created_at.strftime('%B %d, %Y') if booking.created_at else 'Date TBD' }}</p>
             <p style="margin-top: 8px; font-weight: 600; color: #38bdf8;">
@@ -133,8 +138,18 @@
                         {% if not item.is_add_on %}
                         <div style="padding: 1rem 0; border-bottom: 1px dashed var(--border); display: flex; justify-content: space-between; align-items: center;">
                             <div>
-                                <div style="font-weight: 600; color: var(--text-main);">{{ item.menu_item.name if item.menu_item else 'Menu Item' }}</div>
-                                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ item.menu_item.category if item.menu_item else 'Included' }}</div>
+                                <div style="font-weight: 600; color: var(--text-main);">
+                                    {% if item.menu_item %}{{ item.menu_item.name }}
+                                    {% elif item.equipment %}{{ item.equipment.name }}
+                                    {% elif item.service %}{{ item.service.name }}
+                                    {% else %}Included Item{% endif %}
+                                </div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">
+                                    {% if item.menu_item %}{{ item.menu_item.category }}
+                                    {% elif item.equipment %}Equipment
+                                    {% elif item.service %}Service
+                                    {% else %}Included{% endif %}
+                                </div>
                             </div>
                             <span style="color: var(--primary); font-size: 0.85rem; font-weight: 600;"><i class="fas fa-check"></i> Included</span>
                         </div>
@@ -147,6 +162,39 @@
                 {% endif %}
             </div>
         </div>
+
+        <!-- Package Inclusions Section -->
+        {% if booking.package and (booking.package.inclusions or booking.package.equipment_links or booking.package.service_links) %}
+        <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 2rem; overflow: hidden;">
+            <div style="padding: 1.5rem; background: #f1f5f9; border-bottom: 1px solid var(--border);">
+                <h3 style="margin: 0; color: var(--text-main); font-size: 1.1rem;">Package Inclusions</h3>
+                <p style="margin: 4px 0 0; color: var(--text-muted); font-size: 0.9rem;">Equipment & Services included in your package</p>
+            </div>
+            <div style="padding: 1.5rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;">
+                {% if booking.package.inclusions %}
+                    {% for inc in booking.package.inclusions %}
+                        <div style="font-size: 0.9rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-check-circle" style="color: #10b981;"></i> {{ inc }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                {% if booking.package.equipment_links %}
+                    {% for el in booking.package.equipment_links %}
+                        <div style="font-size: 0.9rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-chair" style="color: #6366f1;"></i> {{ el.equipment.name }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                {% if booking.package.service_links %}
+                    {% for sl in booking.package.service_links %}
+                        <div style="font-size: 0.9rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-user-tie" style="color: #f59e0b;"></i> {{ sl.service.name }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
 
         {% set has_addons = False %}
         {% for item in booking.selected_items %}
@@ -169,7 +217,12 @@
                     {% if item.is_add_on %}
                     <tr>
                         <td>
-                            <div style="font-weight: 600; color: var(--text-main);">{{ item.menu_item.name if item.menu_item else 'Add-on Item' }}</div>
+                            <div style="font-weight: 600; color: var(--text-main);">
+                                {% if item.menu_item %}{{ item.menu_item.name }}
+                                {% elif item.equipment %}{{ item.equipment.name }}
+                                {% elif item.service %}{{ item.service.name }}
+                                {% else %}Add-on Item{% endif %}
+                            </div>
                         </td>
                         <td style="text-align: right;">₱{{ "{:,.2f}".format(item.price or 0) }}</td>
                     </tr>
@@ -390,8 +443,24 @@
     document.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('success')) {
-            alert('Your proof of payment has been successfully uploaded! The caterer will verify it shortly.');
-            // Clean up the URL
+            if (typeof Swal !== 'undefined') {
+                Swal.fire('Success!', 'Your proof of payment has been successfully uploaded! The caterer will verify it shortly.', 'success');
+            } else {
+                alert('Your proof of payment has been successfully uploaded! The caterer will verify it shortly.');
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (urlParams.has('error')) {
+            const errorMsgStr = urlParams.get('error');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Verification Failed',
+                    text: errorMsgStr,
+                    footer: 'Please ensure you upload a valid and correct payment receipt.'
+                });
+            } else {
+                alert('PAYMENT VERIFICATION FAILED:\n\n' + errorMsgStr + '\n\nPlease check your receipt and try uploading again.');
+            }
             window.history.replaceState({}, document.title, window.location.pathname);
         }
         

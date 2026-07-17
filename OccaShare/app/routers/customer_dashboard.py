@@ -591,11 +591,27 @@ async def upload_public_proof_of_payment(
     content_bytes = await proof_image.read()
     b64 = base64.b64encode(content_bytes).decode('utf-8')
     mime = proof_image.content_type or 'image/jpeg'
-    booking.payment_proof_url = f"data:{mime};base64,{b64}"
-    if reference_no:
-        booking.special_requests = (booking.special_requests or "") + f"\n[Payment Ref: {reference_no}]"
+    base64_str = f"data:{mime};base64,{b64}"
+    
+    # Optional payment method sync for the verification
     if payment_method:
         booking.payment_method = payment_method
+
+    # Gemini OCR Verification
+    from ..services.payment_verification import payment_verification_service
+    fraud_results = await payment_verification_service.check_for_fraud(db, booking, base64_str)
+    
+    if not fraud_results.get("is_valid_receipt", False) or (fraud_results.get("flags") and fraud_results.get("confidence", 0) < 50):
+        # Format a clean error message
+        flags = fraud_results.get("flags", [])
+        error_text = flags[0] if flags else "Invalid receipt image."
+        import urllib.parse
+        encoded_err = urllib.parse.quote(error_text)
+        return RedirectResponse(url=f"/customer/booking/{booking_id}/invoice?error={encoded_err}", status_code=303)
+
+    booking.payment_proof_url = base64_str
+    if reference_no:
+        booking.special_requests = (booking.special_requests or "") + f"\n[Payment Ref: {reference_no}]"
         
     booking.payment_status = 'proof_submitted'
     if booking.status in ['pending', 'draft', 'pending_payment']:
