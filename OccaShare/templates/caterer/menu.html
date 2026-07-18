@@ -200,6 +200,7 @@
         </div>
 
         <form id="menuForm" action="/caterer/menu/add" method="POST" enctype="multipart/form-data" novalidate>
+            <input type="hidden" name="remove_image" id="removeImageFlag" value="false">
             <div class="occ-modal-body compact-body" style="max-height: 70vh; overflow-y: auto;">
                 <div id="menuErrorDrawer" class="error-drawer"></div>
                 
@@ -254,6 +255,16 @@
                             <option value="Appetizer">Appetizer</option>
                             <option value="Beverage">Beverage</option>
                             <option value="Lechon">Lechon</option>
+                            
+                            {% set standard_cats = ['Mixed/Combo', 'Pork', 'Chicken', 'Beef', 'Fish', 'Seafood', 'Vegetable', 'Noodles', 'Rice', 'Rice Meal', 'Pasta', 'Dessert', 'Appetizer', 'Beverage', 'Lechon', 'Other', 'Others'] %}
+                            {% set custom_cats = [] %}
+                            {% for item in menu_items %}
+                                {% if item.category not in standard_cats and item.category not in custom_cats %}
+                                    {% set _ = custom_cats.append(item.category) %}
+                                    <option value="{{ item.category }}">{{ item.category }}</option>
+                                {% endif %}
+                            {% endfor %}
+
                             <option value="Other">Others</option>
                         </select>
                         <input type="text" name="custom_category" id="customCategoryInput" class="control-pro" placeholder="Type specific category" style="display: none; margin-top: 10px;">
@@ -663,6 +674,7 @@
         modalTitle.innerHTML = '<i class="fas fa-utensils-alt"></i> Add New Menu Item';
         form.action = '/caterer/menu/add';
         form.reset();
+        document.getElementById('removeImageFlag').value = 'false';
         removeImage();
         
         // Reset Serving Styles and Item Type
@@ -714,6 +726,7 @@
 
             modalTitle.innerHTML = '<i class="fas fa-edit"></i> Edit Menu Item';
             form.action = `/caterer/menu/${item.id}/update`;
+            document.getElementById('removeImageFlag').value = 'false';
             form.name.value = item.name;
             
             const catSelect = form.category;
@@ -807,6 +820,7 @@
                 photoDropzone.style.display = 'none';
             };
             reader.readAsDataURL(file);
+            document.getElementById('removeImageFlag').value = 'false';
         }
     }
 
@@ -815,6 +829,7 @@
         imagePreviewContainer.style.display = 'none';
         if (photoDropzone) photoDropzone.style.display = 'flex';
         document.getElementById('menuImageInput').value = '';
+        document.getElementById('removeImageFlag').value = 'true';
     }
 
     function toggleCustomCategory() {

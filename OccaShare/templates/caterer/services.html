@@ -167,6 +167,7 @@
         </div>
 
         <form id="menuForm" action="/caterer/services/add" method="POST" enctype="multipart/form-data" novalidate>
+            <input type="hidden" name="remove_image" id="removeImageFlag" value="false">
             <!-- Hidden field to track item type during update -->
             <input type="hidden" name="update_item_type" id="updateItemType">
             
@@ -350,8 +351,24 @@
     const unitSelect = document.getElementById('modalPricingUnit');
     const customCat = document.getElementById('customCategoryInput');
 
-    const equipmentCats = ['Chairs', 'Tables', 'Furniture Sets', 'Tents & Canopies', 'Stage & Platform', 'Audio Equipment', 'Lighting Equipment', 'Visual Equipment', 'Buffet Equipment', 'Tableware & Utensils', 'Decorations', 'Event Styling', 'Miscellaneous', 'Others'];
-    const serviceCats = ['Event Staff', 'Entertainment', 'Photography', 'Videography', 'Coordination', 'Styling', 'Security', 'Transportation', 'Audio & Visual Services', 'Others'];
+    const baseEquipmentCats = ['Chairs', 'Tables', 'Furniture Sets', 'Tents & Canopies', 'Stage & Platform', 'Audio Equipment', 'Lighting Equipment', 'Visual Equipment', 'Buffet Equipment', 'Tableware & Utensils', 'Decorations', 'Event Styling', 'Miscellaneous'];
+    const baseServiceCats = ['Event Staff', 'Entertainment', 'Photography', 'Videography', 'Coordination', 'Styling', 'Security', 'Transportation', 'Audio & Visual Services'];
+
+    const userEquipmentCats = [
+        {% for item in items if item.item_type == 'Equipment' and item.category %}
+        {{ item.category|tojson|safe }},
+        {% endfor %}
+    ];
+    const userServiceCats = [
+        {% for item in items if item.item_type == 'Service' and item.category %}
+        {{ item.category|tojson|safe }},
+        {% endfor %}
+    ];
+
+    const equipmentCats = Array.from(new Set([...baseEquipmentCats, ...userEquipmentCats]));
+    equipmentCats.push('Others');
+    const serviceCats = Array.from(new Set([...baseServiceCats, ...userServiceCats]));
+    serviceCats.push('Others');
     const equipmentUnits = ['Per Piece', 'Per Set', 'Per Bundle', 'Per Day', 'Per Event'];
     const serviceUnits = ['Per Staff', 'Per Hour', 'Per Event', 'Per Package', 'Per Session'];
 
@@ -398,6 +415,7 @@
         form.action = '/caterer/services/add';
         form.reset();
         document.getElementById('updateItemType').value = '';
+        document.getElementById('removeImageFlag').value = 'false';
         removeImage();
         typeSelect.disabled = false;
         handleTypeChange();
@@ -457,6 +475,7 @@
             modalTitle.innerHTML = '<i class="fas fa-edit"></i> Edit Item';
             form.action = `/caterer/services/${item.id}/update`;
             document.getElementById('updateItemType').value = item.type;
+            document.getElementById('removeImageFlag').value = 'false';
             typeSelect.value = item.type;
             typeSelect.disabled = true;
             handleTypeChange();
@@ -490,6 +509,7 @@
             const reader = new FileReader();
             reader.onload = e => { imagePreview.src = e.target.result; imagePreviewContainer.style.display = 'block'; photoDropzone.style.display = 'none'; };
             reader.readAsDataURL(file);
+            document.getElementById('removeImageFlag').value = 'false';
         }
     }
 
@@ -497,6 +517,7 @@
         imagePreview.src = ''; imagePreviewContainer.style.display = 'none';
         if (photoDropzone) photoDropzone.style.display = 'flex';
         document.getElementById('menuImageInput').value = '';
+        document.getElementById('removeImageFlag').value = 'true';
     }
 
     function toggleDropdown(btn, e) {

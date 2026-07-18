@@ -2884,6 +2884,7 @@ async def update_service_item(
     is_addon: bool = Form(False),
     addon_price: float = Form(0.0),
     base_duration_hours: int = Form(3),
+    remove_image: str = Form("false"),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -2914,7 +2915,9 @@ async def update_service_item(
         item.usage_type = usage_type
         item.is_addon = is_addon
         item.addon_price = addon_price
-        if image_url: item.image_url = image_url
+        if remove_image == "true":
+            item.image_url = None
+        elif image_url: item.image_url = image_url
     elif type == "Legacy":
         item = db.query(models.MenuItem).get(item_id)
         if not item or item.caterer_id != user.caterer_profile.id:
@@ -2931,7 +2934,9 @@ async def update_service_item(
         item.usage_type = usage_type
         item.is_addon = is_addon
         item.addon_price = addon_price
-        if image_url: item.image_url = image_url
+        if remove_image == "true":
+            item.image_url = None
+        elif image_url: item.image_url = image_url
     else:
         item = db.query(models.Service).get(item_id)
         if not item or item.caterer_id != user.caterer_profile.id:
@@ -2949,7 +2954,9 @@ async def update_service_item(
         item.is_addon = is_addon
         item.addon_price = addon_price
         item.base_duration_hours = base_duration_hours
-        if image_url: item.image_url = image_url
+        if remove_image == "true":
+            item.image_url = None
+        elif image_url: item.image_url = image_url
 
     db.commit()
 
@@ -4331,6 +4338,7 @@ async def update_menu_item(
     allergen_info = form_data.getlist("allergen_info")
     serving_style = form_data.get("serving_style")
     
+    remove_image = form_data.get("remove_image", "false")
     image = form_data.get("image")
 
     item.name = name
@@ -4357,7 +4365,9 @@ async def update_menu_item(
     item.max_choices = max_choices
     item.combo_options = combo_options
 
-    if image and hasattr(image, "filename") and image.filename:
+    if remove_image == "true":
+        item.image_url = None
+    elif image and hasattr(image, "filename") and image.filename:
         try:
             content_bytes = await image.read()
             if content_bytes:
