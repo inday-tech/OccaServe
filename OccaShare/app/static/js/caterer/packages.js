@@ -313,13 +313,63 @@ function calculatePricing() {
     
     const mode = form.pricing_mode ? form.pricing_mode.value : 'per_pax';
     const rawPrice = (form.price_per_head.value || '').replace(/,/g, '');
-    const price = parseFloat(rawPrice) || 0;
+    const sellingPrice = parseFloat(rawPrice) || 0;
     
-    if (mode === 'per_pax') {
+    // Sum cost of all checked inclusion items
+    let totalCost = 0;
+    const checkedItems = document.querySelectorAll('input[name="linked_menu_ids"]:checked');
+    checkedItems.forEach(cb => {
+        const itemId = String(cb.value);
+        // Find in globalPkgLibrary
+        const libraryItem = globalPkgLibrary.find(i => String(i.id) === itemId);
+        if (libraryItem && libraryItem.cost_price) {
+            totalCost += parseFloat(libraryItem.cost_price);
+        }
+    });
+
+    const valEl = document.getElementById('estStartingPriceValue');
+    if (valEl && mode === 'per_pax') {
         const minGuests = parseInt(form.min_guests.value) || 0;
-        const estTotal = price * minGuests;
-        const valEl = document.getElementById('estStartingPriceValue');
-        if (valEl) valEl.innerText = '₱' + estTotal.toLocaleString('en-PH', {minimumFractionDigits: 2});
+        const estTotal = sellingPrice * minGuests;
+        valEl.innerText = '₱' + estTotal.toLocaleString('en-PH', {minimumFractionDigits: 2});
+    }
+
+    // Update Profit Widget
+    const costEl = document.getElementById('pkgEstCostValue');
+    const profitEl = document.getElementById('pkgEstProfitValue');
+    const marginEl = document.getElementById('pkgEstMarginValue');
+
+    if (costEl && profitEl && marginEl) {
+        costEl.innerText = '₱' + totalCost.toLocaleString('en-PH', {minimumFractionDigits: 2});
+        
+        const profit = sellingPrice - totalCost;
+        profitEl.innerText = '₱' + profit.toLocaleString('en-PH', {minimumFractionDigits: 2});
+        
+        if (profit <= 0) {
+            profitEl.style.color = '#dc2626';
+            profitEl.parentElement.style.background = '#fef2f2';
+            profitEl.parentElement.style.borderColor = '#fecaca';
+        } else {
+            profitEl.style.color = '#15803d';
+            profitEl.parentElement.style.background = '#f0fdf4';
+            profitEl.parentElement.style.borderColor = '#bbf7d0';
+        }
+
+        let margin = 0;
+        if (sellingPrice > 0) {
+            margin = (profit / sellingPrice) * 100;
+        }
+        marginEl.innerText = margin.toFixed(1) + '%';
+        
+        if (margin < 20) {
+            marginEl.style.color = '#dc2626';
+            marginEl.parentElement.style.background = '#fef2f2';
+            marginEl.parentElement.style.borderColor = '#fecaca';
+        } else {
+            marginEl.style.color = '#1d4ed8';
+            marginEl.parentElement.style.background = '#eff6ff';
+            marginEl.parentElement.style.borderColor = '#bfdbfe';
+        }
     }
 }
 
@@ -658,6 +708,11 @@ window.loadPkgMenuLibrary = async function() {
 
         updateSelectionRulesBuilder();
         renderAddonLists();
+        
+        // Update the Pricing Guide based on pre-selected items
+        if (typeof calculatePricing === 'function') {
+            calculatePricing();
+        }
     } catch (e) {
         console.error('[Packages] Menu library fetch error:', e);
     }

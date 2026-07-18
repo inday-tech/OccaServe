@@ -207,7 +207,7 @@ Provide a JSON response strictly in this format:
         }
         
         headers = {"Content-Type": "application/json"}
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
         
         gemini_data = None
         async with httpx.AsyncClient() as client:

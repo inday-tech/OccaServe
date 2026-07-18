@@ -1122,6 +1122,37 @@ function showBookingDetails(btn) {
         }
     }
     document.getElementById('modalTotalAmount').innerText = data.amount;
+
+    // --- PROFIT SUMMARY INJECTION FOR COMPLETED BOOKINGS ---
+    const profitSummary = document.getElementById('completedProfitSummary');
+    if (profitSummary) {
+        if (data.status === 'completed') {
+            profitSummary.style.display = 'block';
+            const totalRevenue = parseFloat(data.totalRawAmount) || 0;
+            const actualCost = parseFloat(data.actualCost) || 0;
+            const profit = totalRevenue - actualCost;
+            const margin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
+
+            const formatMoney = (val) => '₱' + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            
+            document.getElementById('psRevenue').innerText = formatMoney(totalRevenue);
+            document.getElementById('psCost').innerText = formatMoney(actualCost);
+            
+            const psProfit = document.getElementById('psProfit');
+            psProfit.innerText = formatMoney(profit);
+            psProfit.style.color = profit >= 0 ? '#15803d' : '#ef4444';
+            
+            const psMargin = document.getElementById('psMargin');
+            psMargin.innerText = Math.round(margin) + '%';
+            if (margin >= 25) { psMargin.style.color = '#15803d'; }
+            else if (margin >= 10) { psMargin.style.color = '#b45309'; }
+            else { psMargin.style.color = '#ef4444'; }
+            
+        } else {
+            profitSummary.style.display = 'none';
+        }
+    }
+    // -------------------------------------------------------
     
     const guestCountEl = document.getElementById('modalGuestCount');
     if (guestCountEl) {

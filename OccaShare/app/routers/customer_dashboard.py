@@ -539,11 +539,14 @@ async def view_public_invoice(
             "terms": "Standard terms apply."
         }
         
+    wconfig = db.query(models.WebsiteConfig).first()
+        
     return templates.TemplateResponse("customer/public_invoice.html", {
         "request": request,
         "user": user,
         "booking": booking,
-        "quotation": quotation
+        "quotation": quotation,
+        "wconfig": wconfig
     })
 
 @router.post("/booking/{booking_id}/upload-proof")

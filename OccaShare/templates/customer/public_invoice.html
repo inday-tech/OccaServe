@@ -87,8 +87,12 @@
     <div class="invoice-header">
         <div>
             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                {% if wconfig and wconfig.logo_url %}
+                <img src="{{ wconfig.logo_url }}" alt="OccaServe" style="height: 32px; object-fit: contain;">
+                {% else %}
                 <i class="fas fa-ring" style="color: #6366f1; font-size: 1.5rem;"></i>
                 <span style="font-weight: 800; font-size: 1.25rem; letter-spacing: -0.05em; color: white;">OccaServe</span>
+                {% endif %}
             </div>
             <h1>Invoice #{{ booking.id }}</h1>
             <p>Issued on {{ booking.created_at.strftime('%B %d, %Y') if booking.created_at else 'Date TBD' }}</p>

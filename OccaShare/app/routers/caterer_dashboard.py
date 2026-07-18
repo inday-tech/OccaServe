@@ -562,6 +562,66 @@ async def upload_dispatch_proof(
 class StatusUpdateSchema(BaseModel):
     status: str
 
+def snapshot_booking_actual_cost(booking):
+    # Only snapshot if not already manually set
+    if booking.actual_cost and booking.actual_cost > 0:
+        return
+
+    total_cost = 0.0
+    breakdown = []
+
+    if booking.package:
+        pkg = booking.package
+        pkg_cost = float(pkg.cost_price or 0.0)
+        if pkg.price_unit == 'per_guest':
+            pkg_cost = pkg_cost * (booking.guest_count or 1)
+        
+        if pkg_cost > 0:
+            total_cost += pkg_cost
+            breakdown.append({
+                "category": "Package Base Cost",
+                "name": pkg.name,
+                "amount": pkg_cost
+            })
+
+    for item in booking.selected_items:
+        item_cost = 0.0
+        name = ""
+        category = ""
+
+        if item.menu_item:
+            item_cost = float(item.menu_item.cost_price or 0.0) * (item.quantity or 1)
+            name = item.menu_item.name
+            category = "Menu Item"
+        elif item.equipment:
+            item_cost = float(item.equipment.cost_value or 0.0) * (item.quantity or 1)
+            name = item.equipment.name
+            category = "Equipment"
+        elif item.service:
+            item_cost = float(item.service.cost or 0.0) * (item.quantity or 1)
+            name = item.service.name
+            category = "Service"
+
+        if item_cost > 0:
+            total_cost += item_cost
+            breakdown.append({
+                "category": category,
+                "name": name,
+                "amount": item_cost
+            })
+            
+    for exp in booking.expenses:
+        if exp.amount and exp.amount > 0:
+            total_cost += float(exp.amount)
+            breakdown.append({
+                "category": f"Expense ({exp.category})",
+                "name": exp.description,
+                "amount": float(exp.amount)
+            })
+
+    booking.actual_cost = total_cost
+    booking.actual_cost_breakdown = breakdown
+
 @router.post("/bookings/{booking_id}/update-status")
 async def update_booking_status(
     booking_id: int,
@@ -615,6 +675,9 @@ async def update_booking_status(
 
     old_status = booking.status
     booking.status = new_status
+    
+    if new_status == "completed":
+        snapshot_booking_actual_cost(booking)
     
     # Log History
     history = models.BookingHistory(
@@ -2130,6 +2193,7 @@ async def complete_booking(
 
     booking.status = 'completed'
     booking.payment_status = 'paid'  # Mark as fully settled when event is completed
+    snapshot_booking_actual_cost(booking)
 
     history = models.BookingHistory(
         booking_id=booking.id,
@@ -2190,6 +2254,83 @@ async def update_actual_cost(
     db.commit()
 
     return {"status": "success", "message": "Actual cost updated"}
+
+@router.get("/business-summary", response_class=HTMLResponse)
+async def business_summary(
+    request: Request,
+    timeframe: str = 'month',
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    
+    # We only care about completed bookings for Business Summary
+    completed_bookings = [b for b in profile.bookings if b.status == 'completed' and not getattr(b, 'is_archived', False)]
+    
+    from datetime import date, datetime, timedelta
+    from dateutil.relativedelta import relativedelta
+    today = date.today()
+    
+    stats_start = today.replace(day=1)
+    stats_end = (stats_start + relativedelta(months=1)) - timedelta(days=1)
+    
+    if timeframe == 'today':
+        stats_start = today
+        stats_end = today
+    elif timeframe == 'week':
+        stats_start = today - timedelta(days=today.weekday())
+        stats_end = stats_start + timedelta(days=6)
+    elif timeframe == 'year':
+        stats_start = today.replace(month=1, day=1)
+        stats_end = today.replace(month=12, day=31)
+    
+    total_completed = 0
+    total_revenue = 0.0
+    total_estimated_cost = 0.0
+    
+    analytics_data = []
+    
+    for b in completed_bookings:
+        if b.event_date and stats_start <= b.event_date <= stats_end:
+            total_completed += 1
+            rev = float(b.total_amount or b.total_price or 0.0)
+            cost = float(b.actual_cost or 0.0)
+            
+            total_revenue += rev
+            total_estimated_cost += cost
+            
+            profit = rev - cost
+            margin = (profit / rev * 100) if rev > 0 else 0
+            
+            analytics_data.append({
+                "booking_id": b.id,
+                "document_type": b.document_type,
+                "transaction_type": getattr(b, 'transaction_type', 'contract_track'),
+                "customer_name": f"{b.user.first_name} {b.user.last_name}" if b.user else "Walk-in",
+                "event_date": b.event_date,
+                "completion_date": b.updated_at or b.event_date,
+                "revenue": rev,
+                "cost": cost,
+                "profit": profit,
+                "margin": margin
+            })
+            
+    total_profit = total_revenue - total_estimated_cost
+    avg_margin = (total_profit / total_revenue * 100) if total_revenue > 0 else 0
+    
+    return templates.TemplateResponse("caterer/business_summary.html", {
+        "request": request,
+        "user": user,
+        "active_page": "business-summary",
+        "timeframe": timeframe,
+        "total_completed": total_completed,
+        "total_revenue": total_revenue,
+        "total_estimated_cost": total_estimated_cost,
+        "total_profit": total_profit,
+        "avg_margin": avg_margin,
+        "analytics_data": sorted(analytics_data, key=lambda x: x["event_date"], reverse=True)
+    })
+
 @router.get("/reviews", response_class=HTMLResponse)
 async def caterer_reviews(
     request: Request, 

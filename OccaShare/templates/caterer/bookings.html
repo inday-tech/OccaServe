@@ -582,6 +582,8 @@
                                 data-booked-on="{{ booking.created_at.strftime('%B %d, %Y %I:%M %p') }}"
                                 data-guest-count="{{ booking.guest_count }}"
                                 data-balance-due="{{ booking.balance_due_date.strftime('%Y-%m-%d') if booking.balance_due_date else '' }}"
+                                data-actual-cost="{{ booking.actual_cost or 0 }}"
+                                data-total-raw-amount="{{ booking.total_price or booking.total_amount or 0 }}"
                                 data-payment-plan="{{ booking.payment_plan or 'downpayment' }}"
                                 data-is-package="{{ 'true' if booking.package_id else 'false' }}"
                                 data-is-verified="{{ 'true' if (booking.user and booking.user.is_verified) else 'false' }}"
@@ -1041,6 +1043,32 @@
 
             <!-- Overview Tab -->
             <div id="btab-overview" class="mtab-pane-pro active" style="padding: 1rem 1.5rem;">
+            
+            <!-- Completed Profit Summary -->
+            <div id="completedProfitSummary" style="display: none; background: linear-gradient(to right, #f0fdf4, #ffffff); border: 1px solid #bbf7d0; border-radius: var(--border-radius, 12px); padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                <div style="font-size: 0.85rem; font-weight: 800; color: #166534; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-chart-line"></i> Final Business Summary
+                </div>
+                <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 120px;">
+                        <div style="font-size: 0.65rem; color: #64748b; font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">Revenue</div>
+                        <div id="psRevenue" style="font-size: 1.25rem; font-weight: 800; color: #0f172a;">₱0.00</div>
+                    </div>
+                    <div style="flex: 1; min-width: 120px;">
+                        <div style="font-size: 0.65rem; color: #64748b; font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">Tracked Cost</div>
+                        <div id="psCost" style="font-size: 1.25rem; font-weight: 800; color: #ef4444;">₱0.00</div>
+                    </div>
+                    <div style="flex: 1; min-width: 120px;">
+                        <div style="font-size: 0.65rem; color: #64748b; font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">Actual Profit</div>
+                        <div id="psProfit" style="font-size: 1.25rem; font-weight: 800; color: #15803d;">₱0.00</div>
+                    </div>
+                    <div style="flex: 1; min-width: 120px;">
+                        <div style="font-size: 0.65rem; color: #64748b; font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">Profit Margin</div>
+                        <div id="psMargin" style="font-size: 1.25rem; font-weight: 800; color: #1d4ed8;">0%</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Action Center -->
             <div id="actionCenterWrapper" style="display: none; margin-bottom: 1.5rem; background: white; border: 1px solid #e2e8f0; border-radius: var(--border-radius, 12px); padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                 <div style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
@@ -1321,15 +1349,15 @@
                     <!-- Financial Summary Header -->
                     <div class="financial-summary-pro" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-bottom: 2rem; background: white; padding: 1.25rem; border-radius: var(--border-radius, 12px); border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                         <div class="summary-item">
-                            <div style="font-size: 0.65rem; text-transform: uppercase; color: #64748b; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Total Budget</div>
+                            <div style="font-size: 0.65rem; text-transform: uppercase; color: #64748b; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Revenue</div>
                             <div id="modalBookingTotal" style="font-size: 1.1rem; font-weight: 800; color: #1e293b;">₱0.00</div>
                         </div>
                         <div class="summary-item">
-                            <div style="font-size: 0.65rem; text-transform: uppercase; color: #64748b; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Exp. Profit</div>
+                            <div style="font-size: 0.65rem; text-transform: uppercase; color: #64748b; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Profit</div>
                             <div id="modalEstimateProfit" style="font-size: 1.1rem; font-weight: 800; color: var(--accent-color);">₱0.00</div>
                         </div>
                         <div class="summary-item">
-                            <div style="font-size: 0.65rem; text-transform: uppercase; color: #64748b; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.25rem;">ROI %</div>
+                            <div style="font-size: 0.65rem; text-transform: uppercase; color: #64748b; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Profit Margin</div>
                             <div id="modalRoiPercent" style="font-size: 1.1rem; font-weight: 900; color: #0f172a; display: flex; align-items: center; gap: 0.4rem;">
                                 <span>0%</span>
                                 <span id="roiTrendIcon"><i class="fas fa-minus-circle" style="color:#94a3b8; font-size: 0.8rem;"></i></span>
