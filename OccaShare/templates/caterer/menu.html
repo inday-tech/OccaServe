@@ -426,7 +426,7 @@
                     </div>
                     <div id="imagePreviewContainer" class="preview-box-pro" style="display: none;">
                         <img id="imagePreview" src="" class="img-preview-pro" alt="Preview">
-                        <button type="button" class="btn-remove-img-pro" onclick="removeImage()"><i class="fas fa-times"></i></button>
+                        <button type="button" class="btn-remove-img-pro" onclick="removeImage(true)"><i class="fas fa-times"></i></button>
                     </div>
                 </div>
             </div>
@@ -575,7 +575,9 @@
         `;
         tbody.appendChild(tr);
         if (window.applyCommaFormatting) {
-            window.applyCommaFormatting(tr.querySelector('.js-format-comma'));
+            const priceInput = tr.querySelector('input[name="variant_prices[]"]');
+            priceInput.addEventListener('input', function() { window.applyCommaFormatting(this); });
+            window.applyCommaFormatting(priceInput);
         }
     }
 
@@ -824,7 +826,17 @@
         }
     }
 
-    function removeImage() {
+    async function removeImage(userTriggered = false) {
+        if (userTriggered && form.action.includes('/update')) {
+            const idMatch = form.action.match(/\/menu\/(\d+)\/update/);
+            if (idMatch && document.getElementById('removeImageFlag').value === 'false') {
+                const id = idMatch[1];
+                try {
+                    const res = await fetch(`/caterer/menu/${id}/remove-image`, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    if (res.ok && window.showToast) window.showToast("Image removed from database", "success");
+                } catch(e) {}
+            }
+        }
         imagePreview.src = '';
         imagePreviewContainer.style.display = 'none';
         if (photoDropzone) photoDropzone.style.display = 'flex';
@@ -885,11 +897,12 @@
         const archiveModal = document.getElementById('archiveDishModal');
         const btn = document.querySelector(`.dropdown-item-pro[data-id="${id}"]`);
         document.getElementById('archiveItemName').innerText = btn ? btn.dataset.name : 'this item';
-        document.getElementById('confirmArchiveBtn').onclick = async () => {
-            const res = await window.apiAction(`/caterer/menu/${id}/archive`, { method: 'POST' });
+        document.getElementById('confirmArchiveBtn').onclick = async function() {
+            const btnEl = this;
+            const res = await window.apiAction(`/caterer/menu/${id}/archive`, { method: 'POST' }, btnEl);
             if (res) {
                 if (window.closeModal) window.closeModal('archiveDishModal');
-                setTimeout(() => window.location.reload(), 500);
+                setTimeout(() => window.location.reload(), 1000);
             }
         };
         if (window.openModal) window.openModal('archiveDishModal');

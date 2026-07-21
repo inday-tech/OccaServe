@@ -98,6 +98,11 @@
                     data-is-addon="{{ 'true' if item.is_addon else 'false' }}"
                     data-addon-price="{{ item.addon_price or 0 }}"
                     data-base-duration-hours="{{ item.base_duration_hours | default(3, true) }}"
+                    data-capacity-type="{{ item.capacity_type or 'unit_based' }}"
+                    data-staff-to-pax-ratio="{{ item.staff_to_pax_ratio or 0 }}"
+                    data-min-staff-required="{{ item.min_staff_required or 1 }}"
+                    data-allow-freelancers="{{ 'true' if item.allow_freelancers else 'false' }}"
+                    data-buffer-time-hours="{{ item.buffer_time_hours or 0 }}"
                     data-image-url="{{ item.image_url or '' }}"
                     onclick="editMenuItem(this)">
                     <i class="fas fa-edit"></i> Edit
@@ -111,7 +116,12 @@
         <div class="item-info-premium">
             <div class="item-header-row">
                 <span class="item-cat-tag">{{ item.category }}</span>
-                <span class="item-addon-tag" style="background: #e2e8f0; color: #475569;">{{ item.item_type }}</span>
+                <span class="item-addon-tag" style="background: #e2e8f0; color: #475569;">
+                    {% if item.item_type == 'Equipment' %}Equipment/Rental
+                    {% elif item.item_type == 'Service_Unit' %}Service (Unit-Based)
+                    {% elif item.item_type == 'Service_Staff' %}Service (Staff-Based)
+                    {% else %}{{ item.item_type }}{% endif %}
+                </span>
             </div>
             <h3 class="item-name-premium">{{ item.name }}</h3>
             <p class="item-desc-premium">{{ item.description|truncate(80) if item.description else 'No description provided.' }}</p>
@@ -178,8 +188,9 @@
                     <div class="form-group-pro">
                         <label>Type *</label>
                         <select name="type" id="modalType" class="control-pro" required onchange="handleTypeChange()">
-                            <option value="Equipment">Equipment</option>
-                            <option value="Service">Service</option>
+                            <option value="Equipment">Rental / Equipment (Unit-Based)</option>
+                            <option value="Service_Unit">Service (Unit-Based Team e.g. Photobooth)</option>
+                            <option value="Service_Staff">Service (Staff-Based e.g. Waiters)</option>
                         </select>
                     </div>
                     <div class="form-group-pro">
@@ -223,6 +234,28 @@
                         <label>Service Duration (Hours) * <i class="fas fa-info-circle text-muted" title="Standard duration provided for the service"></i></label>
                         <input type="number" name="base_duration_hours" id="baseDurationInput" class="control-pro" placeholder="e.g. 3" min="1" max="24" value="3">
                     </div>
+                    <div class="form-group-pro service-capacity-group" style="display: none;">
+                        <label>Buffer/Travel Time (Hours) <i class="fas fa-info-circle text-muted" title="Extra time blocked before and after the event for travel/setup."></i></label>
+                        <input type="number" name="buffer_time_hours" id="bufferTimeInput" class="control-pro" placeholder="e.g. 2" min="0" value="0">
+                    </div>
+                </div>
+                
+                <div class="form-row-pro staff-capacity-group" style="display: none;">
+                    <div class="form-group-pro">
+                        <label>Guests per Staff (Ratio) * <i class="fas fa-info-circle text-muted" title="How many guests 1 staff can serve."></i></label>
+                        <input type="number" name="staff_to_pax_ratio" id="staffRatioInput" class="control-pro" placeholder="e.g. 25" min="0">
+                    </div>
+                    <div class="form-group-pro">
+                        <label>Minimum Staff Required * <i class="fas fa-info-circle text-muted" title="Minimum number of staff assigned for small events."></i></label>
+                        <input type="number" name="min_staff_required" id="minStaffInput" class="control-pro" placeholder="e.g. 1" min="1" value="1">
+                    </div>
+                </div>
+                
+                <div class="form-row-pro staff-capacity-group" style="display: none; margin-bottom: 1rem;">
+                    <div class="form-group-pro" style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" name="allow_freelancers" id="allowFreelancersInput" style="width: 18px; height: 18px;">
+                        <label for="allowFreelancersInput" style="margin: 0; font-weight: 500;">Allow Overbooking / Unlimited Staff (Uses Freelancers)</label>
+                    </div>
                 </div>
                 
                 <div class="form-group-pro">
@@ -258,7 +291,7 @@
                     </div>
                     <div id="imagePreviewContainer" class="preview-box-pro" style="display: none;">
                         <img id="imagePreview" src="" class="img-preview-pro" alt="Preview">
-                        <button type="button" class="btn-remove-img-pro" onclick="removeImage()"><i class="fas fa-times"></i></button>
+                        <button type="button" class="btn-remove-img-pro" onclick="removeImage(true)"><i class="fas fa-times"></i></button>
                     </div>
                 </div>
             </div>
@@ -389,8 +422,24 @@
         const durationGroup = document.getElementById('serviceDurationGroup');
 
         statusSelect.innerHTML = '';
-        if (type === 'Service') {
-            qtyLabel.innerText = 'Maximum Personnel Available';
+        const isService = type.startsWith('Service');
+        const isStaff = type === 'Service_Staff';
+
+        // Toggle Capacity Specific Groups
+        document.querySelectorAll('.staff-capacity-group').forEach(el => el.style.display = isStaff ? 'flex' : 'none');
+        document.querySelectorAll('.service-capacity-group').forEach(el => el.style.display = isService ? 'block' : 'none');
+        
+        // Staff-based specifics
+        if (isStaff) {
+            document.getElementById('staffRatioInput').required = true;
+            document.getElementById('minStaffInput').required = true;
+        } else {
+            document.getElementById('staffRatioInput').required = false;
+            document.getElementById('minStaffInput').required = false;
+        }
+
+        if (isService) {
+            qtyLabel.innerText = isStaff ? 'Maximum Personnel Pool' : 'Available Units / Teams';
             priceLabel.innerText = 'Service Fee (₱) *';
             qtyInput.required = false;
             statusSelect.innerHTML = '<option value="available">Available</option><option value="unavailable">Fully Booked</option><option value="maintenance">Temporarily Unavailable</option>';
@@ -437,11 +486,11 @@
         const [cls, txt] = statusMap[el.dataset.status] || statusMap.available;
         statusSpan.className = cls; statusSpan.innerText = txt;
         
-        document.getElementById('viewQtyLabel').innerText = el.dataset.type === 'Equipment' ? 'Available Quantity' : 'Max Personnel';
+        document.getElementById('viewQtyLabel').innerText = el.dataset.type === 'Equipment' ? 'Available Quantity' : 'Max Personnel Pool';
         document.getElementById('viewItemQty').innerText = el.dataset.availableQty || 'N/A';
         document.getElementById('viewItemVisibility').innerText = el.dataset.isHidden === 'true' ? 'Hidden (Package Only)' : 'Public';
         
-        if (el.dataset.type === 'Service') {
+        if (el.dataset.type.startsWith('Service')) {
             document.getElementById('viewDurationContainer').style.display = 'block';
             document.getElementById('viewItemDuration').innerText = (el.dataset.baseDurationHours || '3') + ' Hours';
         } else {
@@ -494,6 +543,11 @@
             form.status.value = item.status || 'available';
             if (form.visibility) form.visibility.value = item.is_hidden === 'true' ? 'hidden' : 'public';
             if (form.base_duration_hours) form.base_duration_hours.value = item.base_duration_hours;
+            
+            if (form.staff_to_pax_ratio) form.staff_to_pax_ratio.value = el.dataset.staffToPaxRatio || 0;
+            if (form.min_staff_required) form.min_staff_required.value = el.dataset.minStaffRequired || 1;
+            if (form.allow_freelancers) form.allow_freelancers.checked = el.dataset.allowFreelancers === 'true';
+            if (form.buffer_time_hours) form.buffer_time_hours.value = el.dataset.bufferTimeHours || 0;
             if (window.applyCommaFormatting) window.applyCommaFormatting(form.price);
             if (item.image_url) {
                 imagePreview.src = item.image_url; imagePreviewContainer.style.display = 'block'; photoDropzone.style.display = 'none';
@@ -513,7 +567,18 @@
         }
     }
 
-    function removeImage() {
+    async function removeImage(userTriggered = false) {
+        if (userTriggered && form.action.includes('/update')) {
+            const idMatch = form.action.match(/\/services\/(\d+)\/update/);
+            const typeVal = document.getElementById('updateItemType').value || 'Service';
+            if (idMatch && document.getElementById('removeImageFlag').value === 'false') {
+                const id = idMatch[1];
+                try {
+                    const res = await fetch(`/caterer/services/${id}/remove-image?type=${typeVal}`, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    if (res.ok && window.showToast) window.showToast("Image removed from database", "success");
+                } catch(e) {}
+            }
+        }
         imagePreview.src = ''; imagePreviewContainer.style.display = 'none';
         if (photoDropzone) photoDropzone.style.display = 'flex';
         document.getElementById('menuImageInput').value = '';
@@ -560,10 +625,11 @@
         else document.getElementById('archiveDishModal').style.display = 'flex';
     }
 
-    document.getElementById('confirmArchiveBtn').onclick = async () => {
+    document.getElementById('confirmArchiveBtn').onclick = async function() {
         if (!archiveTargetId || !archiveTargetType) return;
-        const res = await window.apiAction(`/caterer/services/${archiveTargetId}/archive?type=${archiveTargetType}`, { method: 'POST' });
-        if (res) { if (window.closeModal) window.closeModal('archiveDishModal'); setTimeout(() => window.location.reload(), 500); }
+        const btnEl = this;
+        const res = await window.apiAction(`/caterer/services/${archiveTargetId}/archive?type=${archiveTargetType}`, { method: 'POST' }, btnEl);
+        if (res) { if (window.closeModal) window.closeModal('archiveDishModal'); setTimeout(() => window.location.reload(), 1000); }
     };
 
     form.addEventListener('submit', async function (e) {

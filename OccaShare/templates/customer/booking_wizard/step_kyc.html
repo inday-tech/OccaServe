@@ -1334,6 +1334,37 @@
         <div class="locked-banner" style="background: #fee2e2; color: #b91c1c; padding: 0.75rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; font-weight: 700; border: 1px solid #f87171;">
             <i class="fas fa-lock"></i> This booking is already in progress. Identity verification cannot be modified.
         </div>
+        
+        {% if user.identity_verification and user.identity_verification.document_url %}
+        <div class="kyc-locked-preview" style="text-align: center; margin-bottom: 2rem; animation: fadeIn 0.5s ease;">
+            <p style="color: #64748b; font-size: 0.9rem; font-weight: 600; margin-bottom: 1.5rem;">Your previously verified identity documents are securely attached to your profile.</p>
+            <div style="display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 250px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1rem; text-align: left; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+                    <div style="font-weight: 800; font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-id-card mr-1"></i> Official ID Document</div>
+                    <img src="{{ user.identity_verification.document_url }}" alt="Submitted ID" style="width: 100%; height: 180px; object-fit: cover; border-radius: 0.5rem; border: 1px solid #cbd5e1;">
+                    <div style="margin-top: 0.75rem; font-size: 0.85rem; font-weight: 700; color: #1e293b;">
+                        {{ user.identity_verification.id_type or 'Government ID' }}
+                    </div>
+                </div>
+                {% if user.identity_verification.selfie_url %}
+                <div style="flex: 1; min-width: 250px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1rem; text-align: left; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+                    <div style="font-weight: 800; font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-user mr-1"></i> Biometric Selfie</div>
+                    <img src="{{ user.identity_verification.selfie_url }}" alt="Submitted Selfie" style="width: 100%; height: 180px; object-fit: cover; border-radius: 0.5rem; border: 1px solid #cbd5e1; object-position: top;">
+                    <div style="margin-top: 0.75rem; font-size: 0.85rem; font-weight: 700; color: #10b981;">
+                        <i class="fas fa-check-circle mr-1"></i> Verified Match
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="kyc-locked-preview" style="text-align: center; margin-bottom: 2rem; background: #f0fdf4; padding: 2rem; border-radius: 1rem; border: 1px solid #bbf7d0;">
+            <div style="font-size: 3rem; color: #10b981; margin-bottom: 1rem;"><i class="fas fa-shield-check"></i></div>
+            <h3 style="font-weight: 800; color: #065f46; margin-bottom: 0.5rem;">Identity Verified</h3>
+            <p style="color: #047857; font-size: 0.9rem; font-weight: 600;">Your identity has already been successfully verified and attached to this account.</p>
+        </div>
+        {% endif %}
+
         <script>
             document.addEventListener("DOMContentLoaded", function() {
                 // Disable all action cards
@@ -1341,11 +1372,20 @@
                     card.classList.add("disabled");
                     card.onclick = null;
                 });
+                
                 // Show the next button
                 const btn = document.getElementById("btn-next");
                 if(btn) {
-                    btn.style.display = "block";
+                    btn.style.display = "flex";
                 }
+
+                // ALWAYS hide the stepper and empty forms if locked to avoid confusion
+                const stepper = document.querySelector(".kyc-stepper-minimal");
+                if(stepper) stepper.style.display = "none";
+                const mainContent = document.getElementById("kyc-main-content");
+                if(mainContent) mainContent.style.display = "none";
+                const guideSection = document.querySelector(".kyc-guide-section");
+                if(guideSection) guideSection.style.display = "none";
             });
         </script>
         {% endif %}
@@ -1965,8 +2005,8 @@
         <a href="/bookings/step/details/{{ booking_id }}" class="btn-wizard-back">
             <i class="fas fa-arrow-left"></i> Back
         </a>
-        <button type="button" id="btn-next" class="btn-wizard-next" style="display: none; max-width: 300px;"
-            onclick="window.location.href='{% if booking.transaction_type == 'fast_track' %}/bookings/step/payment/{{ booking_id }}{% else %}/bookings/step/quotation/{{ booking_id }}{% endif %}'">
+        <button type="button" id="btn-next" class="btn-wizard-next" style="display: none;"
+            onclick="window.location.href='{% if booking.transaction_type == "fast_track" %}/bookings/step/payment/{{ booking.id }}{% else %}/bookings/step/quotation/{{ booking.id }}{% endif %}'">
             Next Step <i class="fas fa-chevron-right"></i>
         </button>
     </div>

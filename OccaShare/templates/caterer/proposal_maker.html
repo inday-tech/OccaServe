@@ -6,11 +6,12 @@
 <style>
     .proposal-container {
         max-width: 900px;
-        margin: 0 auto;
-        padding: 2rem;
+        margin: 2rem auto !important;
+        padding: 2.5rem;
         background: #fff;
         border-radius: var(--border-radius, 16px);
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
     }
     
     .proposal-header {
@@ -144,21 +145,23 @@
     }
     
     .btn-submit {
-        background: var(--accent-color);
+        background: #0f172a;
         color: white;
         border: none;
-        padding: 1rem 2rem;
+        padding: 1.25rem 2rem;
         font-size: 1.1rem;
         font-weight: 800;
         border-radius: var(--border-radius, 8px);
         width: 100%;
-        margin-top: 1rem;
+        margin-top: 1.5rem;
         cursor: pointer;
-        transition: background 0.2s;
+        transition: all 0.2s;
+        box-shadow: 0 4px 12px rgba(15,23,42,0.2);
     }
     
     .btn-submit:hover {
-        background: #059669;
+        background: #000000;
+        transform: translateY(-2px);
     }
 </style>
 {% endblock %}
@@ -174,7 +177,7 @@
         <h3 style="font-weight: 800; margin-bottom: 1rem; color: #0f172a;"><i class="fas fa-clipboard-list"></i> Customer Requirements</h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
             <div><strong>Event:</strong> {{ booking.event_name or booking.event_type }}</div>
-            <div><strong>Date & Time:</strong> {{ booking.event_date }} @ {{ booking.event_time.strftime('%H:%M') }}</div>
+            <div><strong>Date & Time:</strong> {{ booking.event_date.strftime('%B %d, %Y') if booking.event_date else 'TBD' }} @ {{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBD' }}</div>
             <div><strong>Guest Count:</strong> {{ booking.guest_count }} pax</div>
             <div><strong>Budget:</strong> ₱{{ "{:,.2f}".format(booking.custom_requirements.get('budget', 0)) if booking.custom_requirements else "N/A" }}</div>
         </div>
@@ -187,11 +190,14 @@
     </div>
     
     <form action="/caterer/bookings/{{ booking.id }}/proposal_maker" method="POST" id="proposalForm">
-        <div class="bg-blue-50 text-blue-800 p-4 rounded-xl mb-6 text-sm flex items-center gap-2 border border-blue-200">
-            <i class="fas fa-info-circle"></i>
+        <div style="background: #f8fafc; border-left: 4px solid #0f172a; padding: 1.25rem; border-radius: 0 8px 8px 0; margin-bottom: 2rem; display: flex; gap: 1rem; align-items: flex-start;">
+            <i class="fas fa-info-circle" style="color: #0f172a; font-size: 1.25rem; margin-top: 2px;"></i>
             <div>
-                <strong>Minimum Constraints:</strong> To ensure service quality, proposals must cover baseline fees of ₱150/head (equipment) and 1 waiter per 20 guests (₱800/waiter).
-                <br><em>Absolute Minimum required for this event: ₱<span id="absoluteMin"></span></em>
+                <strong style="color: #0f172a; font-size: 0.95rem;">Minimum Constraints</strong>
+                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #475569; line-height: 1.5;">To ensure service quality, proposals must cover baseline fees of ₱150/head (equipment) and 1 waiter per 20 guests (₱800/waiter).</p>
+                <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #0f172a; font-weight: 700;">
+                    Absolute Minimum Required for this event: ₱<span id="absoluteMin"></span>
+                </div>
             </div>
         </div>
         
@@ -218,15 +224,6 @@
             </button>
         </div>
         
-        <div style="margin-top: 2rem;">
-            <label class="form-label">Required Downpayment</label>
-            <select name="downpayment_percent" class="form-input" onchange="calculateTotal()" id="dpPercent">
-                <option value="30">30% Downpayment</option>
-                <option value="40">40% Downpayment</option>
-                <option value="50">50% Downpayment</option>
-            </select>
-        </div>
-        
         <div class="totals-section">
             <div class="total-row">
                 <span>Base Amount:</span>
@@ -239,10 +236,6 @@
             <div class="total-row grand">
                 <span>Grand Total:</span>
                 <span id="displayGrandTotal">₱0.00</span>
-            </div>
-            <div class="total-row" style="margin-top: 1rem; color: #34d399; font-weight: 700;">
-                <span>Required Downpayment:</span>
-                <span id="displayDeposit">₱0.00</span>
             </div>
             
             <input type="hidden" name="total_amount" id="hiddenTotalAmount">
@@ -285,34 +278,38 @@
     }
     
     function calculateTotal() {
-        const basePrice = parseFloat(document.getElementById('basePrice').value) || 0;
+        const baseStr = document.getElementById('basePrice').value.replace(/,/g, '');
+        const basePrice = parseFloat(baseStr) || 0;
+        
         const addonInputs = document.querySelectorAll('.addon-price');
         let addonsTotal = 0;
         
         addonInputs.forEach(input => {
-            addonsTotal += parseFloat(input.value) || 0;
+            const addonStr = input.value.replace(/,/g, '');
+            addonsTotal += parseFloat(addonStr) || 0;
         });
         
         const grandTotal = basePrice + addonsTotal;
-        const dpPercent = parseInt(document.getElementById('dpPercent').value) || 30;
-        const deposit = grandTotal * (dpPercent / 100);
         
         document.getElementById('displayBase').textContent = '₱' + basePrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         document.getElementById('displayAddons').textContent = '₱' + addonsTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         document.getElementById('displayGrandTotal').textContent = '₱' + grandTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('displayDeposit').textContent = '₱' + deposit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         
         document.getElementById('hiddenTotalAmount').value = grandTotal;
         
         const submitBtn = document.querySelector('.btn-submit');
         if (grandTotal > 0 && grandTotal < ABSOLUTE_MIN) {
             submitBtn.disabled = true;
-            submitBtn.style.background = '#94a3b8';
+            submitBtn.style.background = '#cbd5e1';
+            submitBtn.style.color = '#64748b';
             submitBtn.innerHTML = '<i class="fas fa-ban"></i> Below Absolute Minimum';
+            submitBtn.style.boxShadow = 'none';
         } else {
             submitBtn.disabled = false;
-            submitBtn.style.background = 'var(--accent-color)';
+            submitBtn.style.background = '#0f172a';
+            submitBtn.style.color = 'white';
             submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Proposal to Customer';
+            submitBtn.style.boxShadow = '0 4px 12px rgba(15,23,42,0.2)';
         }
     }
     

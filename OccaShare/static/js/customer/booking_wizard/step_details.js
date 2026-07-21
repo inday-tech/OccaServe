@@ -40,14 +40,45 @@ document.addEventListener('DOMContentLoaded', function () {
         let total = guests * pricePerHead;
 
         // Add-ons price
-        const checkedAddons = document.querySelectorAll('input[name="selected_addons"]:checked');
+        // Add-ons price
+        const allAddonCheckboxes = document.querySelectorAll('input[name="selected_addons"], input[name="selected_equipment_addons"], input[name="selected_service_addons"]');
         let addonsTotal = 0;
-        checkedAddons.forEach(cb => {
-            const price = parseFloat(cb.getAttribute('data-price')) || 0;
-            addonsTotal += price;
+        let checkedCount = 0;
+
+        allAddonCheckboxes.forEach(cb => {
+            if (cb.name === 'selected_service_addons') {
+                const card = cb.closest('.menu-item-card');
+                const reqLabel = card.querySelector('.staff-req-label');
+                const qtyValSpan = card.querySelector('.qty-val');
+                const priceSpan = card.querySelector('.mic-price');
+                
+                let qty = 1;
+                const capacityType = cb.getAttribute('data-capacity-type') || 'unit_based';
+                const staffRatio = parseInt(cb.getAttribute('data-staff-ratio')) || 0;
+                const minStaff = parseInt(cb.getAttribute('data-min-staff')) || 1;
+                const basePrice = parseFloat(priceSpan ? priceSpan.getAttribute('data-base-price') : 0) || parseFloat(cb.getAttribute('data-price')) || 0;
+                
+                if (capacityType === 'staff_based' && staffRatio > 0) {
+                    qty = Math.max(minStaff, Math.ceil(guests / staffRatio));
+                    if (reqLabel && qtyValSpan) {
+                        reqLabel.style.display = 'block';
+                        qtyValSpan.innerText = qty;
+                    }
+                    if (priceSpan) {
+                        priceSpan.innerText = '+₱' + (basePrice * qty).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                    }
+                    cb.setAttribute('data-price', basePrice * qty);
+                }
+            }
+
+            if (cb.checked) {
+                checkedCount++;
+                const price = parseFloat(cb.getAttribute('data-price')) || 0;
+                addonsTotal += price;
+            }
         });
 
-        if (calcAddonsCount) calcAddonsCount.innerText = checkedAddons.length;
+        if (calcAddonsCount) calcAddonsCount.innerText = checkedCount;
         if (calcAddonsTotal) calcAddonsTotal.innerText = '+₱' + addonsTotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
         
         total += addonsTotal;

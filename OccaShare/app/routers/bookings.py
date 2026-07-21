@@ -231,7 +231,16 @@ async def alacarte_checkout_draft(
                     if s_item:
                         price = item.get('price')
                         if price is None: price = s_item.selling_price
-                        db.add(models.BookingMenuItem(booking_id=new_booking.id, service_id=s_item.id, price=float(price or 0), quantity=qty))
+                        
+                        # --- Smart Capacity Phase 2 ---
+                        item_qty = qty
+                        if getattr(s_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(s_item, 'staff_to_pax_ratio', 0) > 0:
+                            import math
+                            required = max(getattr(s_item, 'min_staff_required', 1), math.ceil(quantity / s_item.staff_to_pax_ratio))
+                            if item_qty < required:
+                                item_qty = required
+                                
+                        db.add(models.BookingMenuItem(booking_id=new_booking.id, service_id=s_item.id, price=float(price or 0), quantity=item_qty))
                 else:
                     m_item = db.query(models.MenuItem).get(int(item['id']))
                     if m_item:
@@ -253,7 +262,12 @@ async def alacarte_checkout_draft(
                     if e_item: db.add(models.BookingMenuItem(booking_id=new_booking.id, equipment_id=e_item.id, price=e_item.rental_price))
                 elif id_str.startswith('s_'):
                     s_item = db.query(models.Service).get(int(id_str[2:]))
-                    if s_item: db.add(models.BookingMenuItem(booking_id=new_booking.id, service_id=s_item.id, price=s_item.selling_price))
+                    if s_item:
+                        qty = 1
+                        if getattr(s_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(s_item, 'staff_to_pax_ratio', 0) > 0:
+                            import math
+                            qty = max(getattr(s_item, 'min_staff_required', 1), math.ceil(quantity / s_item.staff_to_pax_ratio))
+                        db.add(models.BookingMenuItem(booking_id=new_booking.id, service_id=s_item.id, price=s_item.selling_price, quantity=qty))
                 else:
                     item_id = int(id_str[2:]) if id_str.startswith('m_') else int(id_str)
                     m_item = db.query(models.MenuItem).get(item_id)
@@ -374,9 +388,44 @@ async def alacarte_checkout_submit(
                 if extracted_ref: booking.payment_reference = extracted_ref
                 booking.proof_image_hash = extracted_hash
 
-        # 1. Update or Create Booking
+        # --- Phase 2: Capacity Validation ---
         event_date_obj = date.fromisoformat(delivery_date)
         event_time_obj = datetime.strptime(delivery_time, "%H:%M").time()
+        event_end_time_obj = None
+        if event_duration:
+            event_end_time_obj = (datetime.combine(event_date_obj, event_time_obj) + timedelta(hours=event_duration)).time()
+
+        requested_services = []
+        if cart_data:
+            cart_items = json.loads(cart_data)
+            for item in cart_items:
+                if item.get('type', 'Menu') == 'Service':
+                    s_item = db.query(models.Service).get(int(item['id']))
+                    if s_item:
+                        item_qty = int(item.get('quantity', 1))
+                        if getattr(s_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(s_item, 'staff_to_pax_ratio', 0) > 0:
+                            import math
+                            required = max(getattr(s_item, 'min_staff_required', 1), math.ceil(quantity / s_item.staff_to_pax_ratio))
+                            if item_qty < required: item_qty = required
+                        requested_services.append((s_item.id, item_qty))
+        elif items:
+            for id_str in items.split(","):
+                id_str = id_str.strip()
+                if id_str.startswith('s_'):
+                    s_item = db.query(models.Service).get(int(id_str[2:]))
+                    if s_item:
+                        item_qty = 1
+                        if getattr(s_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(s_item, 'staff_to_pax_ratio', 0) > 0:
+                            import math
+                            item_qty = max(getattr(s_item, 'min_staff_required', 1), math.ceil(quantity / s_item.staff_to_pax_ratio))
+                        requested_services.append((s_item.id, item_qty))
+                        
+        from ..services.capacity_service import CapacityService
+        is_capacity_valid, capacity_msg = CapacityService.validate_booking_capacity(db, caterer_id, event_date_obj, event_time_obj, event_end_time_obj, requested_services, booking_id)
+        if not is_capacity_valid:
+            return {"success": False, "message": capacity_msg}
+
+        # 1. Update or Create Booking
         
         # New Payment Logic for Ala Carte:
         reservation_fee = total_amount
@@ -582,11 +631,20 @@ async def alacarte_checkout_submit(
                     if s_item:
                         price = item.get('price')
                         if price is None: price = s_item.selling_price
+                        
+                        # --- Smart Capacity Phase 2 ---
+                        item_qty = int(item.get('quantity', 1))
+                        if getattr(s_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(s_item, 'staff_to_pax_ratio', 0) > 0:
+                            import math
+                            required = max(getattr(s_item, 'min_staff_required', 1), math.ceil(quantity / s_item.staff_to_pax_ratio))
+                            if item_qty < required:
+                                item_qty = required
+
                         booking_item = models.BookingMenuItem(
                             booking_id=booking.id,
                             service_id=s_item.id,
                             price=float(price or 0),
-                            quantity=int(item.get('quantity', 1)),
+                            quantity=item_qty,
                             choices=item.get('choices')
                         )
                         db.add(booking_item)
@@ -615,7 +673,11 @@ async def alacarte_checkout_submit(
                 elif id_str.startswith('s_'):
                     s_item = db.query(models.Service).get(int(id_str[2:]))
                     if s_item:
-                        db.add(models.BookingMenuItem(booking_id=booking.id, service_id=s_item.id, price=s_item.selling_price, quantity=1))
+                        qty = 1
+                        if getattr(s_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(s_item, 'staff_to_pax_ratio', 0) > 0:
+                            import math
+                            qty = max(getattr(s_item, 'min_staff_required', 1), math.ceil(quantity / s_item.staff_to_pax_ratio))
+                        db.add(models.BookingMenuItem(booking_id=booking.id, service_id=s_item.id, price=s_item.selling_price, quantity=qty))
                 else:
                     item_id = int(id_str[2:]) if id_str.startswith('m_') else int(id_str)
                     m_item = db.query(models.MenuItem).get(item_id)
@@ -977,7 +1039,8 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
         "user": user,
         "current_step": 1,
         "active_page": "bookings",
-        "is_locked": booking.status not in ["draft", "pending", "pending_quotation", "awaiting_caterer"] if booking else False
+        "is_locked": booking.status not in ["draft", "pending", "pending_quotation", "awaiting_caterer"] if booking else False,
+        "getattr": getattr
     })
 
 @router.post("/step/details")
@@ -1159,6 +1222,22 @@ async def step_details_submit(
     if availability:
         return RedirectResponse(url=f"{redirect_base}?booking_error=Date+unavailable", status_code=303)
 
+    # 1.5. Capacity Check for Addon Services
+    requested_services = []
+    for serv_id in selected_service_addons:
+        serv_item = db.query(models.Service).get(serv_id)
+        if serv_item:
+            qty = 1
+            if getattr(serv_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(serv_item, 'staff_to_pax_ratio', 0) > 0:
+                import math
+                qty = max(getattr(serv_item, 'min_staff_required', 1), math.ceil(guest_count / serv_item.staff_to_pax_ratio))
+            requested_services.append((serv_id, qty))
+            
+    from ..services.capacity_service import CapacityService
+    is_capacity_valid, capacity_msg = CapacityService.validate_booking_capacity(db, caterer_id, event_date, event_time, event_end_time, requested_services, booking_id)
+    if not is_capacity_valid:
+        return RedirectResponse(url=f"{redirect_base}?booking_error={capacity_msg}", status_code=303)
+
     # 2. Create or Update Booking
     booking = None
     if booking_id:
@@ -1283,11 +1362,18 @@ async def step_details_submit(
     for serv_id in selected_service_addons:
         serv_item = db.query(models.Service).get(serv_id)
         if serv_item:
+            # --- Smart Capacity Phase 2 ---
+            qty = 1
+            if getattr(serv_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(serv_item, 'staff_to_pax_ratio', 0) > 0:
+                import math
+                qty = max(getattr(serv_item, 'min_staff_required', 1), math.ceil(guest_count / serv_item.staff_to_pax_ratio))
+                
             booking_item = models.BookingMenuItem(
                 booking_id=booking.id,
                 service_id=serv_id,
                 is_add_on=True,
-                price=serv_item.addon_price or 0.0
+                price=serv_item.addon_price or 0.0,
+                quantity=qty
             )
             db.add(booking_item)
     

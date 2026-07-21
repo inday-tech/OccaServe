@@ -267,13 +267,17 @@
                                 <input type="checkbox" name="selected_service_addons" value="{{ item.id }}" 
                                     {% if item.id in selected_addon_service_ids %}checked{% endif %} 
                                     data-price="{{ item.addon_price or 0 }}"
+                                    data-capacity-type="{{ getattr(item, 'capacity_type', 'unit_based') }}"
+                                    data-staff-ratio="{{ getattr(item, 'staff_to_pax_ratio', 0) }}"
+                                    data-min-staff="{{ getattr(item, 'min_staff_required', 1) }}"
                                     style="display: none;">
                                 <div class="indicator-circle"></div>
                                 <div class="mic-info">
                                     <span class="mic-name">{{ item.name }} <i class="fas fa-user-tie" style="color: var(--wiz-slate-400); font-size: 0.7rem; margin-left: 4px;"></i></span>
                                     <span class="mic-cat">{{ item.category or 'Service' }}</span>
+                                    <span class="staff-req-label" style="font-size: 0.7rem; color: var(--wiz-primary); display: none;">Requires: <span class="qty-val">1</span> staff</span>
                                 </div>
-                                <span class="mic-price">+₱{{ "{:,.2f}".format(item.addon_price or 0) }}</span>
+                                <span class="mic-price" data-base-price="{{ item.addon_price or 0 }}">+₱{{ "{:,.2f}".format(item.addon_price or 0) }}</span>
                             </div>
                             {% endfor %}
                         </div>
@@ -362,9 +366,15 @@
     </div>
 
     <div class="wizard-actions">
+        {% if is_locked %}
+        <a href="/customer/bookings" class="btn-wizard-back">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+        {% else %}
         <a href="/customer/marketplace/{{ caterer.id }}" class="btn-wizard-back">
             <i class="fas fa-arrow-left"></i> Cancel Booking
         </a>
+        {% endif %}
         <button type="submit" id="submitBtn" class="btn-wizard-next no-submit">
             Next: Verify Identity <i class="fas fa-id-card"></i>
         </button>
@@ -395,8 +405,14 @@
             }
             
             // Hide buttons that add/remove items
-            document.querySelectorAll(".btn-addon, .btn-remove-addon, .btn-swap-item, .add-item-btn").forEach(btn => {
+            document.querySelectorAll(".btn-addon, .btn-remove-addon, .btn-swap-item, .btn-swap-pro, .add-item-btn").forEach(btn => {
                 btn.style.display = 'none';
+            });
+            
+            // Disable clicks on selectable cards
+            document.querySelectorAll(".menu-item-card.selectable, .menu-item-card.addon").forEach(card => {
+                card.onclick = null;
+                card.style.cursor = 'default';
             });
         }
     });

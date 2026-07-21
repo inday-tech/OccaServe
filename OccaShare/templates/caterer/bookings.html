@@ -209,6 +209,7 @@
 {% set payments_to_verify = [] %}
 {% set contracts_to_sign = [] %}
 {% set urgent_events = [] %}
+{% set unpaid_balances = [] %}
 
 {% for b in bookings %}
     {% set is_early_stage = b.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'] %}
@@ -227,10 +228,13 @@
         {% if b.status in ['awaiting_caterer', 'pending_review'] %}
             {% set _ = contracts_to_sign.append(b) %}
         {% endif %}
+        {% if b.status in ['confirmed', 'preparing'] and b.payment_plan == 'downpayment' and b.payment_status not in ['fully_paid', 'balance_proof_submitted'] and (b.event_date - today).days <= 7 and (b.event_date - today).days >= 0 %}
+            {% set _ = unpaid_balances.append(b) %}
+        {% endif %}
     {% endif %}
 {% endfor %}
 
-{% set normal_alerts = (payments_to_verify|length + contracts_to_sign|length) %}
+{% set normal_alerts = (payments_to_verify|length + contracts_to_sign|length + unpaid_balances|length) %}
 {% set total_alerts = (normal_alerts + urgent_events|length) %}
 
 {% if total_alerts > 0 %}
@@ -255,6 +259,7 @@
                         {% set msg_parts = [] %}
                         {% if payments_to_verify %} {% set _ = msg_parts.append('<span style="color: var(--accent-color); font-weight: 800;">' ~ payments_to_verify|length ~ '</span> payments') %} {% endif %}
                         {% if contracts_to_sign %} {% set _ = msg_parts.append('<span style="color: var(--accent-color); font-weight: 800;">' ~ contracts_to_sign|length ~ '</span> contracts') %} {% endif %}
+                        {% if unpaid_balances %} {% set _ = msg_parts.append('<span style="color: #ef4444; font-weight: 800;">' ~ unpaid_balances|length ~ '</span> final balances to collect') %} {% endif %}
                         {{ msg_parts|join(' &bull; ')|safe }}
                     {% endif %}
                 </span>
@@ -950,13 +955,33 @@
             <!-- Tabs Header -->
             <div class="modal-tabs-pro" style="display: flex; gap: 0; border-bottom: 1px solid #e2e8f0; background: white; overflow-x: auto; white-space: nowrap; padding: 0 1rem;">
                 <button class="mtab-btn-pro active" onclick="switchBookingTab('overview', this)" style="padding: 1rem 1.2rem; background: transparent; border: none; border-bottom: 2px solid var(--primary-color); color: var(--primary-color); font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-info-circle" style="margin-right: 6px;"></i>Event Overview</button>
+                <button class="mtab-btn-pro" onclick="switchBookingTab('tasks', this)" style="padding: 1rem 1.2rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-list-check" style="margin-right: 6px;"></i>Preparation Tasks</button>
                 <button class="mtab-btn-pro" onclick="switchBookingTab('verification', this)" style="padding: 1rem 1.2rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-shield-halved" style="margin-right: 6px;"></i>Verification</button>
-                <button class="mtab-btn-pro" onclick="switchBookingTab('food', this)" style="padding: 1rem 1.2rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-utensils" style="margin-right: 6px;"></i>Food Tasks</button>
+                <button class="mtab-btn-pro" onclick="switchBookingTab('food', this)" style="padding: 1rem 1.2rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-utensils" style="margin-right: 6px;"></i>Food</button>
                 <button class="mtab-btn-pro" onclick="switchBookingTab('service', this)" style="padding: 1rem 1.2rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-user-tie" style="margin-right: 6px;"></i>Services</button>
                 <button class="mtab-btn-pro" onclick="switchBookingTab('equipment', this)" style="padding: 1rem 1.2rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-chair" style="margin-right: 6px;"></i>Equipment</button>
                 <button class="mtab-btn-pro" onclick="switchBookingTab('financials', this)" style="padding: 1rem 1.2rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-file-invoice-dollar" style="margin-right: 6px;"></i>Financials</button>
                 <button class="mtab-btn-pro" onclick="switchBookingTab('docs', this)" style="padding: 1rem 1.2rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-file-signature" style="margin-right: 6px;"></i>Contracts & Docs</button>
                 <button class="mtab-btn-pro" onclick="switchBookingTab('chat', this)" style="padding: 1rem 1.2rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-comments" style="margin-right: 6px;"></i>Chat</button>
+            </div>
+
+            <!-- Tasks Tab -->
+            <div id="btab-tasks" class="mtab-pane-pro" style="padding: 1.5rem 2rem; background: #f8fafc;">
+                <div style="max-width: 900px; margin: 0 auto;">
+                    <div style="background: white; border-radius: var(--border-radius, 12px); border: 1px solid #e2e8f0; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <h4 style="margin: 0 0 1rem 0; font-size: 1.1rem; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem;">
+                            <i class="fas fa-list-check" style="color: var(--primary-color); margin-right: 8px;"></i> Event Preparation Tasks
+                        </h4>
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Track everything you need to do before the event day. Checked off tasks will autosave.</p>
+                        <div id="bookingTasksList" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;">
+                            <div style="text-align:center; padding: 1rem; color: #94a3b8;"><i class="fas fa-spinner fa-spin"></i> Loading tasks...</div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="text" id="newTaskInput" class="occ-form-input" placeholder="E.g., Buy ingredients for Beef Caldereta" style="flex: 1;" onkeypress="if(event.key === 'Enter') { event.preventDefault(); addBookingTask(); }">
+                            <button type="button" class="btn-primary-pro" onclick="addBookingTask()" style="padding: 0 1.5rem;"><i class="fas fa-plus"></i> Add</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Verification Tab -->
@@ -1849,7 +1874,107 @@
                 }
             });
         });
+        // Add intercept for switchBookingTab to load tasks
+        const originalSwitchTab = window.switchBookingTab;
+        window.switchBookingTab = function(tabId, targetEl) {
+            if (originalSwitchTab) {
+                originalSwitchTab(tabId, targetEl);
+            } else {
+                document.querySelectorAll('.mtab-pane-pro').forEach(function(p) { p.classList.remove('active'); });
+                document.querySelectorAll('.mtab-btn-pro').forEach(function(b) { 
+                    b.classList.remove('active');
+                    b.style.borderBottomColor = 'transparent';
+                    b.style.color = '#64748b';
+                });
+                var pane = document.getElementById('btab-' + tabId);
+                if (pane) pane.classList.add('active');
+                
+                var activeBtn = targetEl || event?.currentTarget;
+                if (activeBtn) {
+                    activeBtn.classList.add('active');
+                    activeBtn.style.borderBottomColor = 'var(--primary-color)';
+                    activeBtn.style.color = 'var(--primary-color)';
+                }
+            }
+            if (tabId === 'tasks' && window.currentBookingId) {
+                loadBookingTasks(window.currentBookingId);
+            }
+        };
     })();
+
+    async function loadBookingTasks(bookingId) {
+        const container = document.getElementById('bookingTasksList');
+        if (!container) return;
+        try {
+            const response = await fetch(`/caterer/api/bookings/${bookingId}/tasks`);
+            if (!response.ok) throw new Error('Failed to load tasks');
+            const tasks = await response.json();
+            container.innerHTML = '';
+            if (tasks.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding: 1rem; color: #94a3b8; font-size: 0.85rem;">No tasks yet. Add one below.</div>';
+                return;
+            }
+            tasks.forEach(task => {
+                const checked = task.is_completed ? 'checked' : '';
+                const titleStyle = task.is_completed ? 'text-decoration: line-through; color: #94a3b8;' : 'color: #334155;';
+                container.innerHTML += `
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+                        <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; flex: 1; margin: 0;">
+                            <input type="checkbox" onchange="toggleBookingTask(${task.id})" ${checked} style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary-color);">
+                            <span style="font-size: 0.95rem; font-weight: 500; ${titleStyle}">${task.title}</span>
+                        </label>
+                        <button type="button" onclick="deleteBookingTask(${task.id})" style="background: transparent; border: none; color: #ef4444; padding: 0.25rem 0.5rem; cursor: pointer; transition: all 0.2s;"><i class="fas fa-trash"></i></button>
+                    </div>
+                `;
+            });
+        } catch (err) {
+            container.innerHTML = '<div style="color:#ef4444; font-size:0.85rem;">Error loading tasks.</div>';
+        }
+    }
+
+    async function addBookingTask() {
+        if (!window.currentBookingId) return;
+        const input = document.getElementById('newTaskInput');
+        const title = input.value.trim();
+        if (!title) return;
+        
+        try {
+            const response = await fetch(`/caterer/api/bookings/${window.currentBookingId}/tasks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: title })
+            });
+            if (response.ok) {
+                input.value = '';
+                loadBookingTasks(window.currentBookingId);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    async function toggleBookingTask(taskId) {
+        try {
+            const response = await fetch(`/caterer/api/tasks/${taskId}/toggle`, { method: 'POST' });
+            if (response.ok && window.currentBookingId) {
+                loadBookingTasks(window.currentBookingId);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    async function deleteBookingTask(taskId) {
+        if (!confirm('Are you sure you want to delete this task?')) return;
+        try {
+            const response = await fetch(`/caterer/api/tasks/${taskId}`, { method: 'DELETE' });
+            if (response.ok && window.currentBookingId) {
+                loadBookingTasks(window.currentBookingId);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
 </script>
 </div>
 {% endblock %}

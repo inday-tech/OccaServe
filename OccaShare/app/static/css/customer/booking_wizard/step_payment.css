@@ -210,61 +210,68 @@
 
 /* ── METHOD SELECTION ── */
 .method-grid-modern {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
     margin-bottom: 2rem;
 }
 
 .method-card-modern {
     background: white;
-    border: 1.5px solid var(--up-border);
+    border: 2px solid var(--up-border);
     border-radius: 16px;
-    padding: 1.5rem 1rem;
+    padding: 1.5rem;
+    width: 140px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
 }
 
 .method-card-modern:hover {
-    border-color: var(--up-slate-900);
-    transform: scale(1.02);
-}
-
-.method-card-modern.active {
-    border-color: var(--up-slate-900);
-    background: #f1f5f9;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.08);
 }
 
 .method-icon-wrap {
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-    background: var(--up-bg-soft);
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
-    color: var(--up-slate-900);
-}
-
-.method-card-modern.active .method-icon-wrap {
-    background: var(--up-slate-900);
+    font-size: 2.2rem;
     color: white;
+    flex-shrink: 0;
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.1);
 }
 
 .method-label {
-    font-size: 0.7rem;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    font-size: 0.95rem;
+    font-weight: 800;
     color: var(--up-slate-800);
 }
+
+/* Color Variants */
+.method-card-modern.gcash { border-color: #bfdbfe; background: #eff6ff; }
+.method-card-modern.gcash:hover { border-color: #60a5fa; background: #dbeafe; }
+.method-card-modern.gcash .method-icon-wrap { background: #005ce6; }
+.method-card-modern.gcash .method-label { color: #1e3a8a; }
+
+.method-card-modern.maya { border-color: #bbf7d0; background: #f0fdf4; }
+.method-card-modern.maya:hover { border-color: #4ade80; background: #dcfce7; }
+.method-card-modern.maya .method-icon-wrap { background: #16a34a; }
+.method-card-modern.maya .method-label { color: #14532d; }
+
+.method-card-modern.bank { border-color: #fef08a; background: #fefce8; }
+.method-card-modern.bank:hover { border-color: #facc15; background: #fef9c3; }
+.method-card-modern.bank .method-icon-wrap { background: #ca8a04; }
+.method-card-modern.bank .method-label { color: #713f12; }
 
 /* Gateway Badge */
 .gateway-badge {
@@ -311,7 +318,7 @@
 }
 
 @media (max-width: 768px) {
-    .payment-plan-grid, .method-grid-modern {
+    .payment-plan-grid, .method-grid-premium {
         grid-template-columns: 1fr;
     }
 }

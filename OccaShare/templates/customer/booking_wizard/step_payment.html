@@ -4,8 +4,8 @@
 
 {% block step_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v=11.0">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_payment.css') }}?v=11.0">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v=11.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_payment.css') }}?v=13.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v=12.0">
 <style>
     body { background-color: #f1f5f9 !important; }
     
@@ -64,6 +64,58 @@
     <p class="wizard-subtitle">Finalize your booking by settling the contractual deposit or full amount.</p>
     {% endif %}
 </div>
+
+{% if not is_balance and quotation and quotation.status == 'signed' %}
+{% set signed_at = quotation.customer_signed_at if quotation.customer_signed_at else quotation.updated_at %}
+<div class="countdown-banner animate-up" style="background: #fef2f2; border: 1px solid #ef4444; color: #7f1d1d; padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        <i class="fas fa-clock fa-spin" style="color: #ef4444; font-size: 1.5rem;"></i>
+        <div>
+            <h4 style="margin: 0; font-size: 1rem; font-weight: 800; color: #991b1b;">Action Required: 48-Hour Reservation Lock</h4>
+            <p style="margin: 0; font-size: 0.85rem; font-weight: 500; margin-top: 4px;">Upload your payment proof before the timer expires to secure your slot. If the timer expires, the caterer may cancel the booking.</p>
+        </div>
+    </div>
+    <div class="timer-display" style="background: #ef4444; color: white; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 800; font-size: 1.25rem; font-variant-numeric: tabular-nums;" id="paymentTimer" data-start="{{ signed_at.isoformat() if signed_at else '' }}">
+        48:00:00
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const timerEl = document.getElementById('paymentTimer');
+    if (!timerEl) return;
+    
+    const startStr = timerEl.getAttribute('data-start');
+    if (!startStr) return;
+    
+    const signedAt = new Date(startStr).getTime();
+    const expiresAt = signedAt + (48 * 60 * 60 * 1000); // 48 hours later
+    
+    function updateTimer() {
+        const now = new Date().getTime();
+        const distance = expiresAt - now;
+        
+        if (distance < 0) {
+            timerEl.innerHTML = "EXPIRED";
+            timerEl.style.background = "#7f1d1d";
+            return;
+        }
+        
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)) + Math.floor(distance / (1000 * 60 * 60 * 24)) * 24;
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        
+        timerEl.innerHTML = 
+            (hours < 10 ? "0" + hours : hours) + ":" + 
+            (minutes < 10 ? "0" + minutes : minutes) + ":" + 
+            (seconds < 10 ? "0" + seconds : seconds);
+    }
+    
+    updateTimer();
+    setInterval(updateTimer, 1000);
+});
+</script>
+{% endif %}
 
 
 
@@ -157,7 +209,11 @@
             </p>
         </div>
 
-        {% set accepted_terms = profile.accepted_payment_terms if profile.accepted_payment_terms else ([100] if quotation and quotation.downpayment_percent == 100 else [quotation.downpayment_percent or 30, 100]) %}
+        {% set signed_dp = quotation.downpayment_percent if quotation else 100 %}
+        {% set accepted_terms = [signed_dp] %}
+        {% if signed_dp < 100 %}
+            {% set _ = accepted_terms.append(100) %}
+        {% endif %}
         
         <div class="payment-plan-grid animate-up" style="animation-delay: 0.25s;">
             {% for term in accepted_terms|sort %}
@@ -196,26 +252,26 @@
         <p style="font-size: 0.75rem; color: var(--up-slate-500);">Choose your preferred method to settle your booking securely.</p>
     </div>
 
-    <div class="animate-up" style="animation-delay: 0.35s; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 2rem;">
+    <div class="method-grid-modern animate-up" style="animation-delay: 0.35s;">
         {% if profile.gcash_qr_url %}
-        <button type="button" onclick="openPaymentModal('GCash')" style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 1.5rem; width: 140px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
-            <div style="width: 48px; height: 48px; background: #005ce6; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;"><i class="fas fa-mobile-alt"></i></div>
-            <span style="font-weight: 700; color: #1e3a8a;">GCash</span>
-        </button>
+        <div class="method-card-modern gcash" onclick="openPaymentModal('GCash')">
+            <div class="method-icon-wrap" style="background: linear-gradient(135deg, #005ce6, #1e3a8a);"><img src="https://upload.wikimedia.org/wikipedia/commons/f/f6/GCash_logo.png" style="width:40px; filter: brightness(0) invert(1);" alt="GCash"></div>
+            <span class="method-label">GCash</span>
+        </div>
         {% endif %}
         
         {% if profile.maya_qr_url %}
-        <button type="button" onclick="openPaymentModal('Maya')" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1.5rem; width: 140px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
-            <div style="width: 48px; height: 48px; background: #16a34a; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;"><i class="fas fa-wallet"></i></div>
-            <span style="font-weight: 700; color: #14532d;">Maya</span>
-        </button>
+        <div class="method-card-modern maya" onclick="openPaymentModal('Maya')">
+            <div class="method-icon-wrap" style="background: linear-gradient(135deg, #16a34a, #14532d);"><img src="https://upload.wikimedia.org/wikipedia/commons/8/87/Maya_logo.png" style="width:40px; filter: brightness(0) invert(1);" onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/9/9a/PayMaya_Logo.png';" alt="Maya"></div>
+            <span class="method-label">Maya</span>
+        </div>
         {% endif %}
         
         {% if profile.bank_name %}
-        <button type="button" onclick="openPaymentModal('Bank')" style="background: #fefce8; border: 1px solid #fef08a; border-radius: 12px; padding: 1.5rem; width: 140px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
-            <div style="width: 48px; height: 48px; background: #ca8a04; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;"><i class="fas fa-university"></i></div>
-            <span style="font-weight: 700; color: #713f12;">Bank Transfer</span>
-        </button>
+        <div class="method-card-modern bank" onclick="openPaymentModal('Bank')">
+            <div class="method-icon-wrap" style="background: linear-gradient(135deg, #ca8a04, #713f12);"><i class="fas fa-university" style="font-size: 1.8rem;"></i></div>
+            <span class="method-label">Bank Transfer</span>
+        </div>
         {% endif %}
     </div>
 
@@ -236,16 +292,20 @@
     </div>
 
     <!-- Actions -->
-    <div class="wizard-actions animate-up" style="animation-delay: 0.5s; margin-top: 3rem; display: flex; justify-content: space-between; align-items: center;">
+    <div class="wizard-actions animate-up" style="animation-delay: 0.5s; margin-top: 3rem; border-top: none;">
         {% if is_balance %}
-        <a href="/customer/bookings/manage/{{ booking.id }}" class="btn-wizard-back" style="font-weight: 800; color: var(--up-slate-700); text-decoration: none; border-color: #cbd5e1;">
+        <a href="/customer/bookings/manage/{{ booking.id }}" class="btn-wizard-back">
             <i class="fas fa-arrow-left"></i> Back to Dashboard
         </a>
         {% else %}
-        <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-wizard-back" style="font-weight: 800; color: var(--up-slate-700); text-decoration: none; border-color: #cbd5e1;">
-            <i class="fas fa-arrow-left"></i> Back to Agreement
+        <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-wizard-back">
+            <i class="fas fa-chevron-left"></i> Back to Agreement
         </a>
         {% endif %}
+        
+        <button type="button" class="btn-wizard-next" disabled style="flex: 1; background: #e2e8f0; color: #64748b; border: 2px dashed #cbd5e1; cursor: not-allowed; box-shadow: none;">
+            Select Method Above <i class="fas fa-arrow-up"></i>
+        </button>
     </div>
 
 </form>
@@ -265,97 +325,76 @@
             
             <div style="padding: 2rem; overflow-y: auto;">
                 <!-- Dynamic Content Area -->
-                <div id="modalContentGCash" style="display: none; text-align: center;">
-                    <img src="{{ profile.gcash_qr_url }}" alt="GCash QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bfdbfe; margin-bottom: 1rem;">
-                    
-                    <div style="background: #eff6ff; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left;">
-                        <h4 style="font-size: 0.9rem; font-weight: 800; color: #1e3a8a; margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> GCash Payment Steps</h4>
-                        <div class="modal-instruction-step">
-                            <div class="step-num">1</div>
-                            <div class="step-text">Open your GCash App.</div>
+                <div id="modalContentGCash" style="display: none;">
+                    <div style="background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 16px; padding: 1.5rem; text-align: center; margin-bottom: 1.5rem;">
+                        <div style="display: inline-block; background: white; padding: 0.5rem; border-radius: 16px; margin-bottom: 1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+                            <img src="{{ profile.gcash_qr_url }}" alt="GCash QR" style="width: 180px; height: 180px; object-fit: cover; border-radius: 12px;">
                         </div>
-                        <div class="modal-instruction-step">
-                            <div class="step-num">2</div>
-                            <div class="step-text"><strong>Scan the QR Code</strong> above OR "Send Money" to <strong>{{ profile.gcash_number if profile.gcash_number else 'the Caterer\'s Number' }}</strong>.</div>
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 0.5rem;">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/f/f6/GCash_logo.png" style="height: 24px;" alt="GCash">
                         </div>
-                        <div class="modal-instruction-step">
-                            <div class="step-num">3</div>
-                            <div class="step-text">Take a screenshot of the <strong>"Send Money Successful"</strong> screen.</div>
+                        <h4 style="font-size: 1rem; font-weight: 800; color: #1e3a8a; margin: 0 0 0.25rem 0; text-transform: uppercase;">{{ profile.business_name }}</h4>
+                        <div style="font-size: 1.75rem; font-weight: 900; color: #005ce6; letter-spacing: 2px; margin-bottom: 1rem;">{{ profile.gcash_number }}</div>
+                        <div style="background: white; border-radius: 8px; padding: 0.75rem; font-size: 0.8rem; color: #1e40af; font-weight: 700; display: flex; flex-direction: column; gap: 0.25rem;">
+                            <span><i class="fas fa-mobile-alt"></i> 1. Open GCash App</span>
+                            <span><i class="fas fa-qrcode"></i> 2. Scan QR or Send Money</span>
+                            <span><i class="fas fa-camera"></i> 3. Save Screenshot of Receipt</span>
                         </div>
                     </div>
                 </div>
                 
-                <div id="modalContentMaya" style="display: none; text-align: center;">
-                    <img src="{{ profile.maya_qr_url }}" alt="Maya QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bbf7d0; margin-bottom: 1rem;">
-                    
-                    <div style="background: #f0fdf4; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left;">
-                        <h4 style="font-size: 0.9rem; font-weight: 800; color: #14532d; margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> Maya Payment Steps</h4>
-                        <div class="modal-instruction-step">
-                            <div class="step-num" style="background: #dcfce7;">1</div>
-                            <div class="step-text">Open your Maya App.</div>
+                <div id="modalContentMaya" style="display: none;">
+                    <div style="background: #f0fdf4; border: 2px solid #bbf7d0; border-radius: 16px; padding: 1.5rem; text-align: center; margin-bottom: 1.5rem;">
+                        <div style="display: inline-block; background: white; padding: 0.5rem; border-radius: 16px; margin-bottom: 1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+                            <img src="{{ profile.maya_qr_url }}" alt="Maya QR" style="width: 180px; height: 180px; object-fit: cover; border-radius: 12px;">
                         </div>
-                        <div class="modal-instruction-step">
-                            <div class="step-num" style="background: #dcfce7;">2</div>
-                            <div class="step-text"><strong>Scan the QR Code</strong> above OR "Send Money" to <strong>{{ profile.maya_number if profile.maya_number else 'the Caterer\'s Number' }}</strong>.</div>
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 0.5rem;">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/8/87/Maya_logo.png" onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/9/9a/PayMaya_Logo.png';" style="height: 24px;" alt="Maya">
                         </div>
-                        <div class="modal-instruction-step">
-                            <div class="step-num" style="background: #dcfce7;">3</div>
-                            <div class="step-text">Take a screenshot of the <strong>"Transfer Successful"</strong> screen.</div>
+                        <h4 style="font-size: 1rem; font-weight: 800; color: #14532d; margin: 0 0 0.25rem 0; text-transform: uppercase;">{{ profile.business_name }}</h4>
+                        <div style="font-size: 1.75rem; font-weight: 900; color: #16a34a; letter-spacing: 2px; margin-bottom: 1rem;">{{ profile.maya_number }}</div>
+                        <div style="background: white; border-radius: 8px; padding: 0.75rem; font-size: 0.8rem; color: #166534; font-weight: 700; display: flex; flex-direction: column; gap: 0.25rem;">
+                            <span><i class="fas fa-wallet"></i> 1. Open Maya App</span>
+                            <span><i class="fas fa-qrcode"></i> 2. Scan QR or Send Money</span>
+                            <span><i class="fas fa-camera"></i> 3. Save Screenshot of Receipt</span>
                         </div>
                     </div>
                 </div>
                 
                 <div id="modalContentBank" style="display: none;">
-                    <div style="background: #fefce8; padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem; border: 1px solid #fef08a;">
-                        <div style="margin-bottom: 1rem;">
-                            <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Bank Name</div>
-                            <div style="font-size: 1.1rem; font-weight: 700; color: #713f12;">{{ profile.bank_name }}</div>
+                    <div style="background: #fefce8; border: 2px solid #fef08a; border-radius: 16px; padding: 1.5rem; text-align: center; margin-bottom: 1.5rem;">
+                        <div style="width: 64px; height: 64px; background: white; color: #ca8a04; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+                            <i class="fas fa-university"></i>
                         </div>
-                        <div style="margin-bottom: 1rem;">
-                            <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Account Name</div>
-                            <div style="font-size: 1.1rem; font-weight: 700; color: #713f12;">{{ profile.bank_account_name }}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Account Number</div>
-                            <div style="font-size: 1.25rem; font-weight: 800; color: #713f12; letter-spacing: 1px;">{{ profile.bank_account_number }}</div>
-                        </div>
-                    </div>
-                    
-                    <div style="background: #fefce8; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid #fef08a; text-align: left;">
-                        <h4 style="font-size: 0.9rem; font-weight: 800; color: #713f12; margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> Bank Transfer Steps</h4>
-                        <div class="modal-instruction-step">
-                            <div class="step-num" style="background: #fef08a; color: #854d0e;">1</div>
-                            <div class="step-text">Open your preferred Banking App (e.g. BPI, BDO, UnionBank).</div>
-                        </div>
-                        <div class="modal-instruction-step">
-                            <div class="step-num" style="background: #fef08a; color: #854d0e;">2</div>
-                            <div class="step-text">Select "Transfer via InstaPay / PESONet" and input the <strong>exact Account Details</strong> above.</div>
-                        </div>
-                        <div class="modal-instruction-step">
-                            <div class="step-num" style="background: #fef08a; color: #854d0e;">3</div>
-                            <div class="step-text">Screenshot the <strong>Transaction Successful</strong> page with the reference number visible.</div>
+                        <h4 style="font-size: 1rem; font-weight: 800; color: #713f12; margin: 0 0 0.25rem 0; text-transform: uppercase;">{{ profile.bank_name }}</h4>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #854d0e; margin-bottom: 0.5rem;">Acct Name: {{ profile.bank_account_name }}</div>
+                        <div style="font-size: 1.75rem; font-weight: 900; color: #ca8a04; letter-spacing: 2px; margin-bottom: 1rem;">{{ profile.bank_account_number }}</div>
+                        <div style="background: white; border-radius: 8px; padding: 0.75rem; font-size: 0.8rem; color: #854d0e; font-weight: 700; display: flex; flex-direction: column; gap: 0.25rem;">
+                            <span><i class="fas fa-university"></i> 1. Open your Bank App</span>
+                            <span><i class="fas fa-exchange-alt"></i> 2. Transfer via InstaPay / PESONet</span>
+                            <span><i class="fas fa-camera"></i> 3. Save Screenshot of Receipt</span>
                         </div>
                     </div>
                 </div>
                 
-                <hr id="uploadSeparator" style="border: none; border-top: 1px solid #e2e8f0; margin: 2rem 0;">
-                
-                <div id="uploadSection">
-                    <h4 style="font-size: 1rem; color: var(--up-slate-900); margin-bottom: 1rem; font-weight: 800;"><i class="fas fa-cloud-upload-alt" style="color: var(--up-emerald-500);"></i> Submit Proof of Payment</h4>
-                    
-                    
-                    
-                    <div style="margin-bottom: 1.25rem;">
-                        <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 6px; color: var(--up-slate-900);">Receipt Image</label>
-                        <input type="file" id="proofImageInput" name="payment_proof" form="wizard-payment-form" accept="image/png, image/jpeg, image/jpg" style="width: 100%; padding: 0.75rem; border: 2px dashed #cbd5e1; border-radius: 8px; background: #f8fafc; cursor: pointer;">
-                        <div style="font-size: 0.75rem; color: var(--up-slate-500); margin-top: 4px;">Max 5MB. PNG or JPG only.</div>
-
-                      <div id="uploadErrorMsg" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 1rem; border-radius: 12px; font-size: 0.85rem; margin-bottom: 1.25rem; font-weight: 500;"></div>
+                <div id="uploadSection" style="background: #f8fafc; border: 2px dashed #94a3b8; border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <div style="text-align: center; margin-bottom: 1.25rem;">
+                        <div style="width: 48px; height: 48px; background: var(--up-emerald-500); color: white; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 0.75rem; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <h4 style="font-size: 1.15rem; color: var(--up-slate-900); margin: 0 0 0.25rem 0; font-weight: 900;">Upload Payment Receipt</h4>
+                        <p style="font-size: 0.85rem; color: var(--up-slate-500); margin: 0; font-weight: 600;">Attach your screenshot here to verify your payment.</p>
                     </div>
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 6px; color: var(--up-slate-900);">Reference No. (Optional)</label>
-                        <input type="text" id="referenceNoInput" name="reference_no" form="wizard-payment-form" placeholder="e.g. 10023456789" pattern="[a-zA-Z0-9]+" maxlength="30" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
-                        <div style="font-size: 0.75rem; color: var(--up-slate-500); margin-top: 4px;">Letters and numbers only. Max 30 chars.</div>
+                    
+                    <div id="uploadErrorMsg" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 1rem; border-radius: 12px; font-size: 0.85rem; margin-bottom: 1rem; font-weight: 500;"></div>
+
+                    <div style="margin-bottom: 1rem;">
+                        <input type="file" id="proofImageInput" name="payment_proof" form="wizard-payment-form" accept="image/png, image/jpeg, image/jpg" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 8px; background: white; cursor: pointer; font-size: 0.9rem; font-weight: 600; color: var(--up-slate-700);">
+                        <div style="font-size: 0.75rem; color: var(--up-slate-500); margin-top: 6px; text-align: center;"><i class="fas fa-image"></i> Max 5MB (PNG or JPG only)</div>
+                    </div>
+                    
+                    <div style="margin-bottom: 0;">
+                        <input type="text" id="referenceNoInput" name="reference_no" form="wizard-payment-form" placeholder="Reference Number (Optional)" pattern="[a-zA-Z0-9]+" maxlength="30" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; font-size: 0.9rem; font-weight: 600; background: white; color: var(--up-slate-900);">
                     </div>
                 </div>
 
@@ -432,11 +471,11 @@
                 </div>
                 {% endif %}
 
-                <button type="submit" id="submit-payment-btn" form="wizard-payment-form" style="width: 100%; background: var(--up-emerald-500); color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">
+                <button type="submit" id="submit-payment-btn" form="wizard-payment-form" style="width: 100%; background: var(--up-emerald-500); color: white; border: none; padding: 1.15rem; border-radius: 12px; font-weight: 900; font-size: 1.1rem; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); display: flex; align-items: center; justify-content: center; gap: 8px;">
                     {% if booking.payment_status == 'reupload_requested' %}
-                    Submit New Proof <i class="fas fa-check"></i>
+                    Submit New Proof <i class="fas fa-check-circle"></i>
                     {% else %}
-                    Finish & Notify Caterer
+                    Finish & Notify Caterer <i class="fas fa-paper-plane"></i>
                     {% endif %}
                 </button>
             </div>

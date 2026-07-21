@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Form, Request, UploadFile, File, Body, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, Form, Request, UploadFile, File, Body, BackgroundTasks, Query
 from typing import Optional, List
 from datetime import datetime, date, timedelta
 from pydantic import BaseModel
@@ -2081,7 +2081,6 @@ async def submit_proposal_maker(
     booking_id: int,
     base_price: float = Form(...),
     total_amount: float = Form(...),
-    downpayment_percent: int = Form(30),
     addon_names: List[str] = Form([]),
     addon_prices: List[float] = Form([]),
     db: Session = Depends(database.get_db),
@@ -2129,22 +2128,23 @@ async def submit_proposal_maker(
     }
     
     # Dynamic downpayment percent from caterer profile
+    downpayment_percent = 30.0
     if user.caterer_profile.accepted_payment_terms:
-        downpayment_percent = min(user.caterer_profile.accepted_payment_terms)
+        downpayment_percent = float(min(float(x) for x in user.caterer_profile.accepted_payment_terms))
         
     quotation = models.Quotation(
         booking_id=booking.id,
         package_details=package_details,
         addons=addons,
         total_amount=total_amount,
-        downpayment_percent=downpayment_percent,
+        downpayment_percent=int(downpayment_percent),
         status="awaiting_customer" # The customer needs to accept it
     )
     db.add(quotation)
     
     booking.total_amount = total_amount
     booking.total_price = total_amount
-    booking.reservation_fee = total_amount * (downpayment_percent / 100.0)
+    booking.reservation_fee = total_amount * (float(downpayment_percent) / 100.0)
     booking.status = "awaiting_customer"
     
     db.commit()
@@ -2750,7 +2750,7 @@ async def manage_services(
     for s in service_items:
         items.append({
             "id": s.id,
-            "item_type": "Service",
+            "item_type": "Service_Staff" if getattr(s, "capacity_type", "unit_based") == "staff_based" else "Service_Unit",
             "name": s.name,
             "category": s.category,
             "description": s.description,
@@ -2763,7 +2763,13 @@ async def manage_services(
             "usage_type": getattr(s, "usage_type", "both"),
             "is_addon": getattr(s, "is_addon", False),
             "addon_price": getattr(s, "addon_price", 0.0),
-            "image_url": s.image_url
+            "image_url": s.image_url,
+            "capacity_type": getattr(s, "capacity_type", "unit_based"),
+            "staff_to_pax_ratio": getattr(s, "staff_to_pax_ratio", 0),
+            "min_staff_required": getattr(s, "min_staff_required", 1),
+            "allow_freelancers": getattr(s, "allow_freelancers", False),
+            "buffer_time_hours": getattr(s, "buffer_time_hours", 0),
+            "base_duration_hours": getattr(s, "base_duration_hours", 3)
         })
     for m in legacy_items:
         items.append({
@@ -2808,6 +2814,10 @@ async def add_service_item(
     is_addon: bool = Form(False),
     addon_price: float = Form(0.0),
     base_duration_hours: int = Form(3),
+    staff_to_pax_ratio: int = Form(0),
+    min_staff_required: int = Form(1),
+    allow_freelancers: bool = Form(False),
+    buffer_time_hours: int = Form(0),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -2822,10 +2832,19 @@ async def add_service_item(
         except Exception:
             pass
 
-    if type in ["Equipment", "Decoration"]:
+    actual_type = type
+    capacity_type = "unit_based"
+    if type == "Service_Unit":
+        actual_type = "Service"
+        capacity_type = "unit_based"
+    elif type == "Service_Staff":
+        actual_type = "Service"
+        capacity_type = "staff_based"
+
+    if actual_type in ["Equipment", "Decoration"]:
         new_item = models.Equipment(
             caterer_id=user.caterer_profile.id,
-            equipment_type=type,
+            equipment_type=actual_type,
             name=name,
             category=category,
             description=description,
@@ -2856,6 +2875,11 @@ async def add_service_item(
             is_addon=is_addon,
             addon_price=addon_price,
             base_duration_hours=base_duration_hours,
+            capacity_type=capacity_type,
+            staff_to_pax_ratio=staff_to_pax_ratio,
+            min_staff_required=min_staff_required,
+            allow_freelancers=allow_freelancers,
+            buffer_time_hours=buffer_time_hours,
             image_url=image_url
         )
         
@@ -2884,6 +2908,10 @@ async def update_service_item(
     is_addon: bool = Form(False),
     addon_price: float = Form(0.0),
     base_duration_hours: int = Form(3),
+    staff_to_pax_ratio: int = Form(0),
+    min_staff_required: int = Form(1),
+    allow_freelancers: bool = Form(False),
+    buffer_time_hours: int = Form(0),
     remove_image: str = Form("false"),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
@@ -2899,7 +2927,16 @@ async def update_service_item(
         except Exception:
             pass
 
-    if type in ["Equipment", "Decoration"]:
+    actual_type = type
+    capacity_type = "unit_based"
+    if type == "Service_Unit":
+        actual_type = "Service"
+        capacity_type = "unit_based"
+    elif type == "Service_Staff":
+        actual_type = "Service"
+        capacity_type = "staff_based"
+
+    if actual_type in ["Equipment", "Decoration"]:
         item = db.query(models.Equipment).get(item_id)
         if not item or item.caterer_id != user.caterer_profile.id:
             raise HTTPException(status_code=404, detail="Item not found")
@@ -2918,7 +2955,7 @@ async def update_service_item(
         if remove_image == "true":
             item.image_url = None
         elif image_url: item.image_url = image_url
-    elif type == "Legacy":
+    elif actual_type == "Legacy":
         item = db.query(models.MenuItem).get(item_id)
         if not item or item.caterer_id != user.caterer_profile.id:
             raise HTTPException(status_code=404, detail="Item not found")
@@ -2954,6 +2991,11 @@ async def update_service_item(
         item.is_addon = is_addon
         item.addon_price = addon_price
         item.base_duration_hours = base_duration_hours
+        item.capacity_type = capacity_type
+        item.staff_to_pax_ratio = staff_to_pax_ratio
+        item.min_staff_required = min_staff_required
+        item.allow_freelancers = allow_freelancers
+        item.buffer_time_hours = buffer_time_hours
         if remove_image == "true":
             item.image_url = None
         elif image_url: item.image_url = image_url
@@ -2985,9 +3027,28 @@ async def archive_service_item(
     item.is_archived = True
     db.commit()
     
-    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-        return JSONResponse({"status": "success", "message": "Item archived successfully"})
-    return RedirectResponse(url="/caterer/services", status_code=303)
+    return JSONResponse({"status": "success", "message": "Item archived successfully"})
+
+@router.post("/services/{item_id}/remove-image")
+async def remove_service_item_image_direct(
+    item_id: int,
+    type: str = Query("Service"),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    if type in ["Equipment", "Decoration"]:
+        item = db.query(models.Equipment).get(item_id)
+    elif type == "Legacy":
+        item = db.query(models.MenuItem).get(item_id)
+    else:
+        item = db.query(models.Service).get(item_id)
+        
+    if not item or item.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Item not found")
+        
+    item.image_url = None
+    db.commit()
+    return JSONResponse({"status": "success", "message": "Image removed from database"})
 
 
 @router.get("/profile", response_class=HTMLResponse)
@@ -3322,8 +3383,11 @@ async def add_menu_item(
         for i, name in enumerate(v_names):
             if name.strip():
                 try:
-                    v_price = float(v_prices[i].replace(",", ""))
-                except:
+                    import re
+                    price_str = v_prices[i] if i < len(v_prices) else "0"
+                    clean_price = re.sub(r'[^\d.]', '', price_str)
+                    v_price = float(clean_price) if clean_price else 0.0
+                except Exception as e:
                     v_price = 0.0
                 serving = v_servings[i].strip() if i < len(v_servings) else None
                 v_status = v_statuses[i] if i < len(v_statuses) else 'available'
@@ -4387,8 +4451,11 @@ async def update_menu_item(
         for i, name in enumerate(v_names):
             if name.strip():
                 try:
-                    v_price = float(v_prices[i].replace(",", ""))
-                except:
+                    import re
+                    price_str = v_prices[i] if i < len(v_prices) else "0"
+                    clean_price = re.sub(r'[^\d.]', '', price_str)
+                    v_price = float(clean_price) if clean_price else 0.0
+                except Exception as e:
                     v_price = 0.0
                 serving = v_servings[i].strip() if i < len(v_servings) else None
                 v_status = v_statuses[i] if i < len(v_statuses) else 'available'
@@ -4435,10 +4502,24 @@ async def archive_menu_item_caterer(
         "message": f"Dish '{item.name}' archived."
     })
     
-    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-        return JSONResponse({"status": "success", "message": "Menu item archived successfully", "item_id": item_id})
+    return JSONResponse({"status": "success", "message": "Menu item archived successfully", "item_id": item_id})
 
-    return RedirectResponse(url="/caterer/menu?success_msg=Menu+item+archived+successfully", status_code=303)
+@router.post("/menu/{item_id}/remove-image")
+async def remove_menu_item_image_direct(
+    item_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    item = db.query(models.MenuItem).filter(
+        models.MenuItem.id == item_id,
+        models.MenuItem.caterer_id == user.caterer_profile.id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    item.image_url = None
+    db.commit()
+    return JSONResponse({"status": "success", "message": "Image removed from database"})
 
 @router.post("/profile/change-password")
 async def change_password_caterer(

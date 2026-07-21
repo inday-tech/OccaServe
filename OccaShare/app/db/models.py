@@ -401,6 +401,10 @@ class MenuItem(Base):
     max_choices = Column(Integer, default=0)
     combo_options = Column(JSONB, nullable=True)
     
+    # Granular Ratings Caching
+    average_rating = Column(Float, default=0.0)
+    review_count = Column(Integer, default=0)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     caterer = relationship("CatererProfile", back_populates="menu_items")
@@ -470,6 +474,11 @@ class Equipment(Base):
     usage_type = Column(String, default="both") # 'package_only', 'order_only', 'both'
     is_addon = Column(Boolean, default=False)
     addon_price = Column(Float, default=0.0)
+    
+    # Granular Ratings Caching
+    average_rating = Column(Float, default=0.0)
+    review_count = Column(Integer, default=0)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     caterer = relationship("CatererProfile", back_populates="equipment_items")
@@ -498,10 +507,21 @@ class Service(Base):
     is_addon = Column(Boolean, default=False)
     addon_price = Column(Float, default=0.0)
     
+    # Smart Service Capacity Management Fields
+    capacity_type = Column(String, default="unit_based") # 'unit_based' or 'staff_based'
+    staff_to_pax_ratio = Column(Integer, default=0) # e.g. 1 staff per 25 pax (0 means N/A)
+    min_staff_required = Column(Integer, default=1) # Baseline staff requirement for small events
+    allow_freelancers = Column(Boolean, default=False) # If true, allows overbooking beyond max_available
+    buffer_time_hours = Column(Integer, default=0) # Extra hours needed before/after for setup/travel
+    
     # New Service Booking Specific Fields
     requires_agreement = Column(Boolean, default=False) # Contract-Track vs Fast-Track
     downpayment_percentage = Column(Integer, default=50) # Specific to services, overrides caterer default
     minimum_hours = Column(Integer, default=1) # Duration validation
+    
+    # Granular Ratings Caching
+    average_rating = Column(Float, default=0.0)
+    review_count = Column(Integer, default=0)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -564,6 +584,7 @@ class Booking(Base):
     paymongo_link_url = Column(String, nullable=True)
     payout_id = Column(Integer, ForeignKey("payouts.id"), nullable=True)
     ocr_verification = relationship("OCRVerification", back_populates="booking", uselist=False, cascade="all, delete-orphan")
+    contract = relationship("BookingContract", back_populates="booking", uselist=False, cascade="all, delete-orphan")
 
     payment_verification_data = Column(JSONB, nullable=True)
     proof_image_hash = Column(String, nullable=True)
@@ -656,6 +677,21 @@ class BookingHistory(Base):
 
     booking = relationship("Booking", back_populates="history")
 
+class BookingContract(Base):
+    __tablename__ = "booking_contracts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id"), unique=True)
+    contract_text = Column(Text) # Generated contract content (HTML or Markdown)
+    customer_signature = Column(String, nullable=True) # Data URL of signature or name
+    customer_signed_at = Column(DateTime(timezone=True), nullable=True)
+    caterer_signature = Column(String, nullable=True)
+    caterer_signed_at = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String, default="pending") # pending, customer_signed, fully_signed
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    booking = relationship("Booking", back_populates="contract")
+
 class OCRVerification(Base):
     __tablename__ = "ocr_verification"
 
@@ -685,7 +721,11 @@ class Review(Base):
     booking_id = Column(Integer, ForeignKey("bookings.id"), unique=True, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"))
-    rating = Column(Integer)
+    rating = Column(Integer) # Overall Rating
+    food_quality_rating = Column(Integer, nullable=True)
+    service_quality_rating = Column(Integer, nullable=True)
+    timeliness_rating = Column(Integer, nullable=True)
+    
     comment = Column(Text)
     recommend = Column(Boolean, default=False)
     was_punctual = Column(Boolean, default=False)
@@ -698,6 +738,18 @@ class Review(Base):
     booking = relationship("Booking", back_populates="review")
     user = relationship("User", back_populates="reviews")
     caterer = relationship("CatererProfile", back_populates="reviews")
+    item_ratings = relationship("ItemRating", back_populates="review", cascade="all, delete-orphan")
+
+class ItemRating(Base):
+    __tablename__ = "item_ratings"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    review_id = Column(Integer, ForeignKey("reviews.id", ondelete="CASCADE"))
+    item_type = Column(String) # 'menu', 'service', 'equipment'
+    item_id = Column(Integer) # The ID of the item
+    rating = Column(Integer)
+    
+    review = relationship("Review", back_populates="item_ratings")
 
 class PlatformFeedback(Base):
     __tablename__ = "platform_feedback"
