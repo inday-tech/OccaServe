@@ -856,6 +856,7 @@ function showBookingDetails(btn) {
         let pStatus = data.paymentStatus || 'pending';
         let pColor = '#d97706'; let pBg = '#fef3c7';
         if (pStatus === 'paid' || pStatus === 'fully_paid') { pColor = '#16a34a'; pBg = '#dcfce3'; }
+        else if (pStatus === 'expired') { pColor = '#991b1b'; pBg = '#fef2f2'; }
         vPaymentStatus.innerHTML = `<span class="badge" style="background: ${pBg}; color: ${pColor};">${pStatus.replace('_', ' ').toUpperCase()}</span>`;
     }
     // ---------------------------------
@@ -960,9 +961,18 @@ function showBookingDetails(btn) {
     // RISK ALERT HANDLING
     var riskAlert = document.getElementById('modalRiskAlert');
     if (riskAlert) {
-        if (['pending', 'pending_quotation', 'awaiting_payment', 'awaiting_caterer'].includes(data.status) && (data.isUrgent === 'true' || data.isUrgent === true)) {
+        if (data.paymentStatus === 'expired') {
+            riskAlert.style.display = 'block';
+            riskAlert.innerHTML = '<i class="fas fa-exclamation-circle"></i> <strong>Reservation Expired:</strong> The customer failed to submit their payment proof within the 48-hour reservation window. The slot is no longer secured.';
+            riskAlert.style.background = '#fef2f2';
+            riskAlert.style.color = '#991b1b';
+            riskAlert.style.border = '1px solid #fecaca';
+        } else if (['pending', 'pending_quotation', 'awaiting_payment', 'awaiting_caterer'].includes(data.status) && (data.isUrgent === 'true' || data.isUrgent === true)) {
             riskAlert.style.display = 'block';
             riskAlert.innerHTML = '<i class="fas fa-clock"></i> URGENT';
+            riskAlert.style.background = '#fff1f2';
+            riskAlert.style.color = '#e11d48';
+            riskAlert.style.border = 'none';
         } else {
             riskAlert.style.display = 'none';
         }
@@ -1000,7 +1010,13 @@ function showBookingDetails(btn) {
 
         const plan = (data.paymentPlan || 'downpayment').toUpperCase();
         
-        if (data.status === 'pending') {
+        if (data.paymentStatus === 'expired') {
+            actionsEl.innerHTML = `
+                <button type="button" class="btn-footer-action btn-status-reject" onclick="window.confirmRejectBooking(${data.id})" style="width: 100%;"><i class="fas fa-times-circle"></i> Cancel Expired Booking</button>
+                <div style="flex-basis: 100%; height: 0; margin: 0;"></div>
+                <button type="button" class="btn-footer-action" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;width:100%;margin-top:0.25rem;" onclick="window.confirmArchiveBooking(${data.id})"><i class="fas fa-archive"></i> Archive Record</button>
+            `;
+        } else if (data.status === 'pending') {
             const isCashOrCOD = data.paymentMethod === 'CASH' || data.paymentMethod === 'COD';
             const isPayment = data.paymentStatus === 'proof_submitted';
             let btnLabel = isPayment ? `Verify ${plan} & Accept` : 'Confirm & Accept Booking';
@@ -1209,7 +1225,8 @@ function showBookingDetails(btn) {
         'balance_proof_submitted': 'Balance Proof Sent', 
         'pending': 'Payment Pending',
         'reupload_requested': 'Re-upload Requested',
-        'balance_reupload_requested': 'Balance Re-upload Requested'
+        'balance_reupload_requested': 'Balance Re-upload Requested',
+        'expired': 'Overdue / Expired'
     };
     if (pStatusEl) {
         pStatusEl.innerText = pLabels[data.paymentStatus] || data.paymentStatus.replace(/_/g, ' ').toUpperCase();

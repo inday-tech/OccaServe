@@ -98,6 +98,40 @@ document.addEventListener('DOMContentLoaded', function() {
         if (distance < 0) {
             timerEl.innerHTML = "EXPIRED";
             timerEl.style.background = "#7f1d1d";
+            
+            // Disable payment methods
+            document.querySelectorAll('.method-card-modern').forEach(card => {
+                card.style.opacity = '0.5';
+                card.style.pointerEvents = 'none';
+                card.style.filter = 'grayscale(100%)';
+            });
+            
+            const actionBtn = document.querySelector('.btn-wizard-next');
+            if (actionBtn) {
+                actionBtn.innerHTML = '<i class="fas fa-lock"></i> Reservation Expired';
+                actionBtn.style.background = '#7f1d1d';
+                actionBtn.style.color = 'white';
+                actionBtn.style.border = 'none';
+            }
+
+            if (!document.getElementById('expired-warning-msg')) {
+                const methodGrid = document.querySelector('.method-grid-modern');
+                if (methodGrid) {
+                    const warn = document.createElement('div');
+                    warn.id = 'expired-warning-msg';
+                    warn.style.marginBottom = '1.5rem';
+                    warn.style.padding = '1rem';
+                    warn.style.background = '#fef2f2';
+                    warn.style.border = '2px dashed #ef4444';
+                    warn.style.borderRadius = '12px';
+                    warn.style.color = '#991b1b';
+                    warn.style.fontWeight = '700';
+                    warn.style.fontSize = '0.9rem';
+                    warn.style.textAlign = 'center';
+                    warn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Your 48-hour reservation window has expired. Payment submission is locked. Please contact the caterer directly to request an extension.';
+                    methodGrid.parentElement.insertBefore(warn, methodGrid);
+                }
+            }
             return;
         }
         

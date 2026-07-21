@@ -153,6 +153,38 @@
         }
     }
 </style>
+ <!-- End of Bookings JS -->
+<script>
+    // Check for Overdue Payments (48-hour rule)
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll('.timer-overdue-check').forEach(badge => {
+            const startStr = badge.getAttribute('data-start');
+            if(startStr) {
+                const signedAt = new Date(startStr).getTime();
+                const expiresAt = signedAt + (48 * 60 * 60 * 1000); // 48 hours
+                const now = new Date().getTime();
+                if(now > expiresAt) {
+                    badge.innerHTML = 'Overdue / Expired';
+                    badge.style.background = '#fef2f2';
+                    badge.style.color = '#991b1b';
+                    badge.style.borderColor = '#fecaca';
+                    badge.title = "Customer failed to pay within 48 hours.";
+
+                    // Update the View Details button in the same row so the modal reflects the expired status
+                    const row = badge.closest('tr');
+                    if (row) {
+                        const viewBtn = row.querySelector('.view-details');
+                        if (viewBtn) {
+                            viewBtn.setAttribute('data-display-status', 'Overdue / Expired');
+                            viewBtn.setAttribute('data-payment-status', 'expired');
+                            viewBtn.setAttribute('data-display-badge', 'badge-cancelled');
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
 {% endblock %}
 
 {% block content %}
@@ -503,6 +535,17 @@
 
                     <!-- STATUS -->
                     <td style="padding: 1.5rem;">
+                        {% set signed_dt = None %}
+                        {% if booking.contract and booking.contract.customer_signed_at %}
+                            {% set signed_dt = booking.contract.customer_signed_at %}
+                        {% elif booking.quotation and booking.quotation.customer_signed_at %}
+                            {% set signed_dt = booking.quotation.customer_signed_at %}
+                        {% elif booking.quotation and booking.quotation.updated_at %}
+                            {% set signed_dt = booking.quotation.updated_at %}
+                        {% else %}
+                            {% set signed_dt = booking.updated_at %}
+                        {% endif %}
+
                         {% set badge_class = 'badge-draft' %}
                         {% set status_label = booking.status.replace('_', ' ').title() if booking.status else 'Unknown' %}
                         
@@ -511,7 +554,7 @@
                                 {% set badge_class = 'badge-payment pulse-update' %}
                                 {% set status_label = 'Verify Payment' %}
                             {% else %}
-                                {% set badge_class = 'badge-pending' %}
+                                {% set badge_class = 'badge-pending timer-overdue-check' %}
                                 {% set status_label = 'Pending Pay' %}
                             {% endif %}
                         {% elif booking.status == 'confirmed' %}
@@ -535,7 +578,7 @@
                             {% set badge_class = 'badge-pending' %}
                             {% set status_label = 'To Sign' %}
                         {% elif booking.status in ['awaiting_payment', 'pending_payment'] %}
-                            {% set badge_class = 'badge-payment' %}
+                            {% set badge_class = 'badge-payment timer-overdue-check' %}
                         {% elif booking.status == 'preparing' %}
                             {% set badge_class = 'badge-preparing' %}
                         {% elif booking.status in ['on_the_way', 'ready_for_delivery', 'ready_for_pickup', 'arrived'] %}
@@ -553,7 +596,7 @@
                             {% set status_label = 'Re-upload' %}
                         {% endif %}
                         
-                        <span class="badge-status {{ badge_class }}">{{ status_label }}</span>
+                        <span class="badge-status {{ badge_class }}" data-start="{{ signed_dt.isoformat() if signed_dt else '' }}">{{ status_label }}</span>
                     </td>
                     <td class="action-dropdown-container" style="padding: 1.25rem 1.5rem; text-align: right; position: relative;">
                         <button class="btn-action-trigger" onclick="toggleActionMenuBookings('{{ booking.id }}', event)" style="background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1.1rem; padding: 0.4rem; transition: color 0.2s;">

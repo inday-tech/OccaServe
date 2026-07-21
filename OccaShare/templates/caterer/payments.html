@@ -231,6 +231,17 @@
                     <td><span class="pay-method">{{ b.payment_method or 'Direct' }}</span></td>
                     <td><span class="pay-date">{{ b.created_at.strftime('%b %d, %Y') }}</span></td>
                     <td>
+                        {% set signed_dt = None %}
+                        {% if b.contract and b.contract.customer_signed_at %}
+                            {% set signed_dt = b.contract.customer_signed_at %}
+                        {% elif b.quotation and b.quotation.customer_signed_at %}
+                            {% set signed_dt = b.quotation.customer_signed_at %}
+                        {% elif b.quotation and b.quotation.updated_at %}
+                            {% set signed_dt = b.quotation.updated_at %}
+                        {% else %}
+                            {% set signed_dt = b.updated_at %}
+                        {% endif %}
+
                         {% if b.payment_status == 'paid' %}
                             <span class="pay-status-badge pay-status-completed">Paid</span>
                         {% elif b.payment_status == 'proof_submitted' or b.payment_status == 'balance_proof_submitted' %}
@@ -238,7 +249,7 @@
                         {% elif b.payment_status == 'deposit_paid' %}
                             <span class="pay-status-badge pay-status-partial">Partial Pay</span>
                         {% else %}
-                            <span class="pay-status-badge pay-status-pending">Pending Pay</span>
+                            <span class="pay-status-badge pay-status-pending timer-overdue-check" data-start="{{ signed_dt.isoformat() if signed_dt else '' }}">Pending Pay</span>
                         {% endif %}
                     </td>
                     <td class="pay-th-right">
@@ -494,6 +505,25 @@
             hiddenInput.value = e.detail.value;
             window.filterPayments();
         }
+    });
+
+    // Check for Overdue Payments (48-hour rule)
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll('.timer-overdue-check').forEach(badge => {
+            const startStr = badge.getAttribute('data-start');
+            if(startStr) {
+                const signedAt = new Date(startStr).getTime();
+                const expiresAt = signedAt + (48 * 60 * 60 * 1000); // 48 hours
+                const now = new Date().getTime();
+                if(now > expiresAt) {
+                    badge.innerHTML = 'Overdue/Expired';
+                    badge.style.background = '#fef2f2';
+                    badge.style.color = '#991b1b';
+                    badge.style.borderColor = '#fecaca';
+                    badge.title = "Customer failed to pay within 48 hours.";
+                }
+            }
+        });
     });
 </script>
 {% endblock %}
