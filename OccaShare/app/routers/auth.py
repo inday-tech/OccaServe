@@ -608,37 +608,17 @@ async def register(
     # Only send verification email if it's a new email/password user
 
     if not is_upgrade:
+        db.commit() # Commit all changes so user record with OTP is saved
+        print(f"[OTP DEBUG] Generated OTP for {email}: {otp}")
         try:
             if EmailService.send_verification_email(email, otp):
                 print(f"[AUTH] Registration buffered for {email}. Verification email sent.")
-                db.commit() # Commit all changes only if email is sent
                 if role == "caterer":
                     background_tasks.add_task(utils.background_geocode, new_profile.id)
             else:
-                db.rollback()
-                if is_ajax:
-                    return JSONResponse(status_code=500, content={"success": False, "message": f"Failed to send verification email to {email}."})
-                template = "auth/register_caterer.html" if role == "caterer" else "auth/register.html"
-                return templates.TemplateResponse(template, {
-                    "request": request, 
-                    "error": f"Failed to send verification email to {email}. Please check your email address or try again later.",
-                    "next_url": next_url,
-                    "role": role,
-                    "submitted_data": locals()
-                })
+                print(f"[AUTH WARNING] Verification email delivery failed for {email}, but user account with OTP {otp} was saved.")
         except Exception as e:
-            db.rollback()
-            print(f"[AUTH ERROR] Failed to send verification email: {e}")
-            if is_ajax:
-                return JSONResponse(status_code=500, content={"success": False, "message": f"Email service error: {str(e)}"})
-            template = "auth/register_caterer.html" if role == "caterer" else "auth/register.html"
-            return templates.TemplateResponse(template, {
-                "request": request, 
-                "error": f"Email service error: {str(e)}",
-                "next_url": next_url,
-                "role": role,
-                "submitted_data": locals()
-            })
+            print(f"[AUTH ERROR] Failed to send verification email to {email}: {e}")
     else:
         db.commit() # Upgrade users don't need email OTP at this stage
             
@@ -690,7 +670,18 @@ def verify_email_submit(
     if user:
         if user.is_email_verified:
             redirect_url = next_url if next_url else utils.get_dashboard_url(user.role)
-            return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+            access_token_expires = timedelta(minutes=security_auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+            access_token = security_auth.create_access_token(
+                data={"sub": user.email, "role": user.role},
+                expires_delta=access_token_expires
+            )
+            if is_ajax:
+                response = JSONResponse(content={"success": True, "message": "Already verified", "redirect": redirect_url})
+                response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
+                return response
+            response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+            response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
+            return response
 
         if user.verification_code == code.strip():
             from datetime import datetime, timezone
@@ -748,21 +739,34 @@ def verify_email_submit(
             return JSONResponse(status_code=404, content={"success": False, "message": "User not found or registration expired"})
         return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "User not found or registration expired"})
         
-    # Check if this is a caterer that needs admin approval
-    if user.role == "caterer" and user.status == "pending_approval":
-        return RedirectResponse(url=f"/auth/pending?email={user.email}&uid={user.id}", status_code=status.HTTP_303_SEE_OTHER)
-
     access_token_expires = timedelta(minutes=security_auth.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security_auth.create_access_token(
         data={"sub": user.email, "role": user.role},
         expires_delta=access_token_expires
     )
+
+    # Check if this is a caterer that needs admin approval
+    if user.role == "caterer" and user.status == "pending_approval":
+        pending_url = f"/auth/pending?email={user.email}&uid={user.id}"
+        if is_ajax:
+            response = JSONResponse(content={"success": True, "message": "Identity verified! Account pending caterer approval.", "redirect": pending_url})
+            response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
+            return response
+        response = RedirectResponse(url=pending_url, status_code=status.HTTP_303_SEE_OTHER)
+        response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
+        return response
     
     redirect_url = next_url if next_url else utils.get_dashboard_url(user.role)
     if "?" in redirect_url:
         redirect_url += "&verified=success"
     else:
         redirect_url += "?verified=success"
+        
+    if is_ajax:
+        response = JSONResponse(content={"success": True, "message": "Email verified successfully!", "redirect": redirect_url})
+        response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
+        return response
+
     response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
     response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
     return response

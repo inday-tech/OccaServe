@@ -132,53 +132,157 @@ async function resendCode(e) {
     }
 }
 
-// Handle Form Submit for Floating Success
+// Auto-submit OTP form when 6 digits are typed or pasted
+function setupOtpInputListeners() {
+    const otpBoxes = document.querySelectorAll('.otp-box');
+    const hiddenCode = document.getElementById('code');
+    const verifyForm = document.getElementById('verifyForm');
+    if (!otpBoxes.length || !hiddenCode || !verifyForm) return;
+
+    function updateCodeAndCheckAutoSubmit() {
+        let code = '';
+        otpBoxes.forEach(b => code += b.value.trim());
+        hiddenCode.value = code;
+
+        if (code.length === 6 && /^\d{6}$/.test(code)) {
+            submitOtpForm();
+        }
+    }
+
+    otpBoxes[0]?.focus();
+
+    otpBoxes.forEach((box, index) => {
+        box.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (val.length === 1 && index < otpBoxes.length - 1) {
+                otpBoxes[index + 1].focus();
+            }
+            updateCodeAndCheckAutoSubmit();
+        });
+
+        box.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                otpBoxes[index - 1].focus();
+            }
+        });
+
+        box.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+            if (pastedData) {
+                pastedData.split('').forEach((char, i) => {
+                    if (otpBoxes[i]) {
+                        otpBoxes[i].value = char;
+                        if (i < otpBoxes.length - 1) otpBoxes[i + 1].focus();
+                    }
+                });
+                updateCodeAndCheckAutoSubmit();
+            }
+        });
+    });
+}
+
+async function submitOtpForm() {
+    const verifyForm = document.getElementById('verifyForm');
+    if (!verifyForm || verifyForm.dataset.submitting === 'true') return;
+
+    const hiddenCode = document.getElementById('code');
+    if (!hiddenCode || !hiddenCode.value || hiddenCode.value.length < 6) {
+        if (window.Swal) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Incomplete OTP',
+                text: 'Please enter all 6 digits of the verification code.',
+                confirmButtonColor: '#FF7B54'
+            });
+        }
+        return;
+    }
+
+    verifyForm.dataset.submitting = 'true';
+
+    // Real-time animated loading popup
+    if (window.Swal) {
+        Swal.fire({
+            title: 'Verifying Security Code...',
+            html: '<div style="margin-top: 10px; color: #64748b; font-size: 0.95rem;">Authenticating your session & logging you in...</div>',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+    }
+
+    const formData = new FormData(verifyForm);
+
+    try {
+        const response = await fetch('/auth/verify', {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            body: formData
+        });
+
+        const data = await response.json().catch(() => null);
+
+        if (response.ok && data && data.success) {
+            if (window.Swal) {
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Verification Successful!',
+                    text: data.message || 'Identity verified! Redirecting to your dashboard...',
+                    timer: 1200,
+                    showConfirmButton: false,
+                    confirmButtonColor: '#FF7B54'
+                });
+            }
+            window.location.href = data.redirect || '/customer/dashboard';
+        } else {
+            verifyForm.dataset.submitting = 'false';
+            const errMsg = (data && (data.message || data.detail)) || 'Invalid verification code. Please check and try again.';
+            if (window.Swal) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Verification Failed',
+                    text: errMsg,
+                    confirmButtonColor: '#FF7B54'
+                });
+            } else {
+                alert(errMsg);
+            }
+            // Clear boxes on error
+            const otpBoxes = document.querySelectorAll('.otp-box');
+            otpBoxes.forEach(b => b.value = '');
+            if (hiddenCode) hiddenCode.value = '';
+            otpBoxes[0]?.focus();
+        }
+    } catch (error) {
+        console.error('Error verifying OTP:', error);
+        verifyForm.dataset.submitting = 'false';
+        if (window.Swal) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Connection Error',
+                text: 'An unexpected connection error occurred. Please try again.',
+                confirmButtonColor: '#FF7B54'
+            });
+        }
+    }
+}
+
+// Handle Form Submit
 document.addEventListener('DOMContentLoaded', () => {
+    setupOtpInputListeners();
+
     const verifyForm = document.getElementById('verifyForm');
     if (verifyForm) {
-        verifyForm.addEventListener('submit', async function (e) {
+        verifyForm.addEventListener('submit', function (e) {
             e.preventDefault();
-            const form = this;
-            const formData = new FormData(form);
-
-            try {
-                const response = await fetch('/auth/verify', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (response.redirected) {
-                    if (response.url.includes('verified=true')) {
-                        if (window.Swal) {
-                            await Swal.fire({
-                                icon: 'success',
-                                title: 'Email successfully verified!',
-                                text: 'You will be redirected shortly.',
-                                timer: 2000,
-                                showConfirmButton: false,
-                                confirmButtonColor: '#FF7B54'
-                            });
-                        }
-                    }
-                    window.location.href = response.url;
-                } else {
-                    const text = await response.text();
-                    const textLower = text.toLowerCase();
-                    if (textLower.includes('expired')) {
-                        if (window.Swal) {
-                            Swal.fire({ icon: 'error', title: 'Code Expired', text: 'Please request a new one.', confirmButtonColor: '#FF7B54' });
-                        }
-                    } else if (textLower.includes('invalid')) {
-                        if (window.Swal) {
-                            Swal.fire({ icon: 'error', title: 'Invalid Code', text: 'Please check and try again.', confirmButtonColor: '#FF7B54' });
-                        }
-                    } else {
-                        form.submit();
-                    }
-                }
-            } catch (error) {
-                form.submit();
-            }
+            submitOtpForm();
         });
     }
 });
@@ -187,4 +291,5 @@ document.addEventListener('DOMContentLoaded', () => {
 window.startTimer = startTimer;
 window.resendCode = resendCode;
 window.initVerifyPolling = initVerifyPolling;
+window.submitOtpForm = submitOtpForm;
 
