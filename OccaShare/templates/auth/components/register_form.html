@@ -14,7 +14,7 @@
     </div>
     {% endif %}
 
-    <form action="/auth/register" method="post" id="regForm" onsubmit="return validateCustomerSignup()">
+    <form action="/auth/register" method="post" id="regForm">
         {% if next_url %}
         <input type="hidden" name="next_url" value="{{ next_url }}">
         {% endif %}
@@ -172,40 +172,6 @@
 </div>
 
 <script>
-    window.validateCustomerSignup = function() {
-        const form = document.getElementById('regForm');
-        if (form) {
-            const nameInputs = form.querySelectorAll('#first_name, #middle_name, #last_name');
-            nameInputs.forEach(input => {
-                input.classList.add('touched');
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-            });
-            
-            const errorWrappers = form.querySelectorAll('.input-wrapper.error');
-            if (errorWrappers.length > 0) {
-                // Focus the first invalid field for better usability
-                errorWrappers[0].querySelector('input, select')?.focus();
-                return false;
-            }
-
-            // --- DOUBLE SUBMISSION SECURITY LOCK & LOADER ---
-            const submitBtn = form.querySelector('.btn-luxury-submit');
-            if (submitBtn) {
-                if (submitBtn.disabled) return false;
-                submitBtn.disabled = true;
-                submitBtn.style.opacity = '0.7';
-                submitBtn.style.cursor = 'wait';
-                submitBtn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> <span>Creating Secure Account...</span>`;
-            }
-
-            setTimeout(() => {
-                form.submit();
-            }, 50);
-            return false;
-        }
-        return true;
-    };
-
     (function() {
         const form = document.getElementById('regForm');
         const provSelect = document.getElementById('province_cust');

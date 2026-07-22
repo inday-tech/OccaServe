@@ -277,7 +277,6 @@ async def register(
         db.commit()
         
         try:
-            from ..services.email import EmailService
             EmailService.send_verification_email(user.email, otp)
         except Exception as e:
             print(f"[AUTH ERROR] Failed to send verification email: {e}")
@@ -796,7 +795,6 @@ def resend_verification_code(
     db.commit()
     
     # Resend Email
-    from ..services.email import EmailService
     if EmailService.send_verification_email(email, otp):
         return {"success": True, "message": "Verification code resent"}
     else:
