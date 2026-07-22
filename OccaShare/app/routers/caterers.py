@@ -44,7 +44,8 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
         raise HTTPException(status_code=404, detail="Caterer not found")
         
     # Check if profile is public, otherwise restrict to owner
-    is_public = (caterer.status == 'Published' and caterer.is_verified == True and caterer.account_status == 'Active')
+    is_verified = (caterer.verification_status == 'Verified') or (caterer.is_verified == True)
+    is_public = (caterer.status == 'Published' and is_verified and caterer.account_status == 'Active')
     if not is_public:
         if not user or user.id != caterer.user_id:
             raise HTTPException(status_code=404, detail="Caterer not found")
@@ -66,9 +67,26 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
         db.commit()
     
     # Calculate active menu & inventory
-    active_menu = [m for m in caterer.menu_items if not m.is_archived and not m.is_hidden and m.status == 'available' and m.usage_type in ['order_only', 'both'] and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']]
-    active_services = [s for s in getattr(caterer, 'service_items', []) if not s.is_archived and not s.is_hidden and s.status == 'available' and s.usage_type in ['order_only', 'both']]
-    active_equipment = [e for e in getattr(caterer, 'equipment_items', []) if not e.is_archived and not e.is_hidden and e.status == 'available' and e.usage_type in ['order_only', 'both']]
+    # GAP 5 FIX: Include items that are public (not hidden), regardless of usage_type.
+    # 'package_only' items with public visibility should still be discoverable by customers
+    # (shown with an 'Included in Packages' badge). Only truly hidden items are excluded.
+    active_menu = [
+        m for m in caterer.menu_items
+        if not m.is_archived
+        and not m.is_hidden
+        and m.status == 'available'
+        and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
+        and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
+        and getattr(m, 'usage_type', '') != 'package_only'
+    ]
+    active_services = [
+        s for s in getattr(caterer, 'service_items', [])
+        if not s.is_archived and not s.is_hidden and s.status == 'available'
+    ]
+    active_equipment = [
+        e for e in getattr(caterer, 'equipment_items', [])
+        if not e.is_archived and not e.is_hidden and e.status == 'available'
+    ]
     active_inventory = active_services + active_equipment
     public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public']
 
@@ -123,13 +141,16 @@ def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(datab
         except: pass
 
     # Check if profile is public, otherwise restrict to owner
-    is_public = (caterer.status == 'Published' and caterer.is_verified == True and caterer.account_status == 'Active')
+    is_verified = (caterer.verification_status == 'Verified') or (caterer.is_verified == True)
+    is_public = (caterer.status == 'Published' and is_verified and caterer.account_status == 'Active')
     if not is_public:
         if not user or user.id != caterer.user_id:
             raise HTTPException(status_code=404, detail="Caterer not found")
 
     active_packages = [p for p in caterer.packages if p.is_active and p.status == 'active']
-    active_menu = [m for m in caterer.menu_items if not m.is_archived and not m.is_hidden and m.status == 'available' and m.usage_type in ['order_only', 'both'] and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']]
+    active_menu = [m for m in caterer.menu_items if not m.is_archived and not m.is_hidden and m.status == 'available' and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
+        and getattr(m, 'usage_type', '') != 'package_only'
+    ]
     active_services = [s for s in getattr(caterer, 'service_items', []) if not s.is_archived and not s.is_hidden and s.status == 'available' and s.usage_type in ['order_only', 'both']]
     active_equipment = [e for e in getattr(caterer, 'equipment_items', []) if not e.is_archived and not e.is_hidden and e.status == 'available' and e.usage_type in ['order_only', 'both']]
     active_inventory = active_services + active_equipment

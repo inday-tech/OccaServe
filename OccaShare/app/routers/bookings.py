@@ -50,30 +50,17 @@ def get_current_user_from_session(request: Request, db: Session):
         return None
 
 def save_upload_file(upload_file: UploadFile) -> str:
-    file_extension = os.path.splitext(upload_file.filename)[1]
-    unique_filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(upload_file.file, buffer)
-        
-    return f"/static/uploads/verification/{unique_filename}"
+    import base64
+    content_bytes = upload_file.file.read()
+    b64 = base64.b64encode(content_bytes).decode('utf-8')
+    mime = upload_file.content_type or 'image/jpeg'
+    return f"data:{mime};base64,{b64}"
 
 def save_base64_file(base64_str: str) -> str:
     if not base64_str or "," not in base64_str:
         return ""
-    
-    header, encoded = base64_str.split(",", 1)
-    file_extension = ".jpg" # Default to jpg
-    if "png" in header: file_extension = ".png"
-    
-    unique_filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
-    
-    with open(file_path, "wb") as buffer:
-        buffer.write(base64.b64decode(encoded))
-        
-    return f"/static/uploads/verification/{unique_filename}"
+    # Already a data URI, just return it
+    return base64_str
 
 @router.get("/my")
 async def my_bookings_redirect():
@@ -83,15 +70,16 @@ async def my_bookings_redirect():
 
 # --- Dedicated A La Carte Checkout ---
 @router.get("/alacarte/checkout/{caterer_id}", response_class=HTMLResponse)
-async def alacarte_checkout_page(request: Request, caterer_id: int, items: str, booking_id: Optional[int] = None, db: Session = Depends(database.get_db)):
-    caterer = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id).first()
+async def alacarte_checkout_page(request: Request, caterer_id: str, items: str, booking_id: Optional[int] = None, db: Session = Depends(database.get_db)):
+    if caterer_id == "None" or not caterer_id.isdigit():
+        return RedirectResponse(url="/customer/marketplace?error_msg=Invalid caterer selected.", status_code=303)
+    caterer_id_int = int(caterer_id)
+    caterer = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id_int).first()
     if not caterer or caterer.verification_status != 'Verified' or not caterer.user.is_verified:
         return RedirectResponse(url="/customer/marketplace?error_msg=This partner is not currently authorized to accept bookings.")
     user = get_current_user_from_session(request, db)
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/alacarte/checkout/{caterer_id}?items={items}")
-    
-    caterer = db.query(models.CatererProfile).get(caterer_id)
     
     # Parse multiple IDs with type prefixes (m_ for MenuItem, e_ for Equipment, s_ for Service)
     m_ids, e_ids, s_ids = [], [], []
@@ -125,6 +113,8 @@ async def alacarte_checkout_page(request: Request, caterer_id: int, items: str, 
     if not caterer or (not menu_items and not equipment_items and not service_items):
         return RedirectResponse(url="/marketplace", status_code=303)
         
+    requires_kyc = any(eq.requires_kyc for eq in equipment_items)
+        
     booking = db.query(models.Booking).get(booking_id) if booking_id else None
     
     return templates.TemplateResponse("customer/booking_wizard/alacarte_checkout.html", {
@@ -136,6 +126,7 @@ async def alacarte_checkout_page(request: Request, caterer_id: int, items: str, 
         "service_items": service_items,
         "items_raw": items,
         "booking": booking,
+        "requires_kyc": requires_kyc,
         "current_step": 1
     })
 
@@ -240,7 +231,16 @@ async def alacarte_checkout_draft(
                     if s_item:
                         price = item.get('price')
                         if price is None: price = s_item.selling_price
-                        db.add(models.BookingMenuItem(booking_id=new_booking.id, service_id=s_item.id, price=float(price or 0), quantity=qty))
+                        
+                        # --- Smart Capacity Phase 2 ---
+                        item_qty = qty
+                        if getattr(s_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(s_item, 'staff_to_pax_ratio', 0) > 0:
+                            import math
+                            required = max(getattr(s_item, 'min_staff_required', 1), math.ceil(quantity / s_item.staff_to_pax_ratio))
+                            if item_qty < required:
+                                item_qty = required
+                                
+                        db.add(models.BookingMenuItem(booking_id=new_booking.id, service_id=s_item.id, price=float(price or 0), quantity=item_qty))
                 else:
                     m_item = db.query(models.MenuItem).get(int(item['id']))
                     if m_item:
@@ -262,7 +262,12 @@ async def alacarte_checkout_draft(
                     if e_item: db.add(models.BookingMenuItem(booking_id=new_booking.id, equipment_id=e_item.id, price=e_item.rental_price))
                 elif id_str.startswith('s_'):
                     s_item = db.query(models.Service).get(int(id_str[2:]))
-                    if s_item: db.add(models.BookingMenuItem(booking_id=new_booking.id, service_id=s_item.id, price=s_item.selling_price))
+                    if s_item:
+                        qty = 1
+                        if getattr(s_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(s_item, 'staff_to_pax_ratio', 0) > 0:
+                            import math
+                            qty = max(getattr(s_item, 'min_staff_required', 1), math.ceil(quantity / s_item.staff_to_pax_ratio))
+                        db.add(models.BookingMenuItem(booking_id=new_booking.id, service_id=s_item.id, price=s_item.selling_price, quantity=qty))
                 else:
                     item_id = int(id_str[2:]) if id_str.startswith('m_') else int(id_str)
                     m_item = db.query(models.MenuItem).get(item_id)
@@ -299,6 +304,8 @@ async def alacarte_checkout_submit(
     municipality: Optional[str] = Form(None),
     security_deposit_amount: float = Form(0.0),
     payment_proof: Optional[UploadFile] = File(None),
+    id_document: Optional[UploadFile] = File(None),
+    selfie: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db)
 ):
     user = get_current_user_from_session(request, db)
@@ -309,14 +316,39 @@ async def alacarte_checkout_submit(
         # Save payment proof if uploaded
         proof_url = None
         if payment_proof and payment_proof.filename:
-            upload_dir = "app/static/uploads/payment_proofs"
-            os.makedirs(upload_dir, exist_ok=True)
-            ext = payment_proof.filename.split('.')[-1]
-            filename = f"proof_{uuid.uuid4().hex}.{ext}"
-            file_path = os.path.join(upload_dir, filename)
-            with open(file_path, "wb") as f:
-                shutil.copyfileobj(payment_proof.file, f)
-            proof_url = f"/static/uploads/payment_proofs/{filename}"
+            import base64
+            content_bytes = payment_proof.file.read()
+            b64 = base64.b64encode(content_bytes).decode('utf-8')
+            mime = payment_proof.content_type or 'image/jpeg'
+            proof_url = f"data:{mime};base64,{b64}"
+            
+        # Handle KYC Documents if provided
+        if id_document and id_document.filename and selfie and selfie.filename:
+            import base64
+            id_content = id_document.file.read()
+            id_b64 = base64.b64encode(id_content).decode('utf-8')
+            id_mime = id_document.content_type or 'image/jpeg'
+            id_url = f"data:{id_mime};base64,{id_b64}"
+            
+            selfie_content = selfie.file.read()
+            selfie_b64 = base64.b64encode(selfie_content).decode('utf-8')
+            selfie_mime = selfie.content_type or 'image/jpeg'
+            selfie_url = f"data:{selfie_mime};base64,{selfie_b64}"
+            
+            kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user.id).first()
+            if not kyc_record:
+                kyc_record = models.IdentityVerification(user_id=user.id)
+                db.add(kyc_record)
+            
+            kyc_record.document_url = id_url
+            kyc_record.selfie_url = selfie_url
+            kyc_record.verification_status = "pending_manual_review"
+            kyc_record.fraud_score = 0.0
+            
+            user.is_verified = False
+            user.is_kyc_complete = False
+            db.commit()
+
         # Spam Limit Validation (Flow B Rule 1)
         unpaid_spam_count = db.query(models.Booking).filter(
             models.Booking.user_id == user.id,
@@ -330,35 +362,70 @@ async def alacarte_checkout_submit(
         
         # --- AI Receipt Verification (Zero-Trust) ---
         if proof_url and payment_method not in ["CASH", "COD"]:
-            verify_booking = booking if booking else models.Booking(id=0, total_amount=total_amount)
+            verify_booking = booking if booking else models.Booking(id=0, total_amount=total_amount, caterer_id=caterer_id, payment_method=payment_method)
             
-            # We must temporarily set total_amount so check_for_fraud can use it
+            # We must temporarily set total_amount and method so check_for_fraud can use it
             original_amount = verify_booking.total_amount
+            original_method = verify_booking.payment_method
             verify_booking.total_amount = total_amount
+            verify_booking.payment_method = payment_method
             
-            verify_results = payment_verification_service.check_for_fraud(db, verify_booking, file_path)
+            verify_results = await payment_verification_service.check_for_fraud(db, verify_booking, proof_url)
             
             # Revert amount if validation fails
             verify_booking.total_amount = original_amount
             
             if verify_results["confidence"] < 40:
-                # Delete the invalid file
-                if os.path.exists(file_path): os.remove(file_path)
                 flags = verify_results.get("flags", [])
-                error_detail = flags[0] if flags else "The uploaded image does not appear to be a valid receipt for the required amount."
-                return {"success": False, "message": f"AI Detection Failed: {error_detail}"}
+                error_detail = flags[0] if flags else "The uploaded image is either not a valid receipt, or the details (amount, date, reference, caterer name) do not match the required booking information."
+                return {"success": False, "message": f"Payment Verification Failed: {error_detail}"}
             
             # Extract ref if missing
             extracted_ref = verify_results.get("extracted_data", {}).get("reference_no")
-            extracted_hash = payment_verification_service.get_image_hash(file_path)
+            extracted_hash = payment_verification_service.get_image_hash(proof_url)
             
             if booking:
                 if extracted_ref: booking.payment_reference = extracted_ref
                 booking.proof_image_hash = extracted_hash
 
-        # 1. Update or Create Booking
+        # --- Phase 2: Capacity Validation ---
         event_date_obj = date.fromisoformat(delivery_date)
         event_time_obj = datetime.strptime(delivery_time, "%H:%M").time()
+        event_end_time_obj = None
+        if event_duration:
+            event_end_time_obj = (datetime.combine(event_date_obj, event_time_obj) + timedelta(hours=event_duration)).time()
+
+        requested_services = []
+        if cart_data:
+            cart_items = json.loads(cart_data)
+            for item in cart_items:
+                if item.get('type', 'Menu') == 'Service':
+                    s_item = db.query(models.Service).get(int(item['id']))
+                    if s_item:
+                        item_qty = int(item.get('quantity', 1))
+                        if getattr(s_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(s_item, 'staff_to_pax_ratio', 0) > 0:
+                            import math
+                            required = max(getattr(s_item, 'min_staff_required', 1), math.ceil(quantity / s_item.staff_to_pax_ratio))
+                            if item_qty < required: item_qty = required
+                        requested_services.append((s_item.id, item_qty))
+        elif items:
+            for id_str in items.split(","):
+                id_str = id_str.strip()
+                if id_str.startswith('s_'):
+                    s_item = db.query(models.Service).get(int(id_str[2:]))
+                    if s_item:
+                        item_qty = 1
+                        if getattr(s_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(s_item, 'staff_to_pax_ratio', 0) > 0:
+                            import math
+                            item_qty = max(getattr(s_item, 'min_staff_required', 1), math.ceil(quantity / s_item.staff_to_pax_ratio))
+                        requested_services.append((s_item.id, item_qty))
+                        
+        from ..services.capacity_service import CapacityService
+        is_capacity_valid, capacity_msg = CapacityService.validate_booking_capacity(db, caterer_id, event_date_obj, event_time_obj, event_end_time_obj, requested_services, booking_id)
+        if not is_capacity_valid:
+            return {"success": False, "message": capacity_msg}
+
+        # 1. Update or Create Booking
         
         # New Payment Logic for Ala Carte:
         reservation_fee = total_amount
@@ -564,11 +631,20 @@ async def alacarte_checkout_submit(
                     if s_item:
                         price = item.get('price')
                         if price is None: price = s_item.selling_price
+                        
+                        # --- Smart Capacity Phase 2 ---
+                        item_qty = int(item.get('quantity', 1))
+                        if getattr(s_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(s_item, 'staff_to_pax_ratio', 0) > 0:
+                            import math
+                            required = max(getattr(s_item, 'min_staff_required', 1), math.ceil(quantity / s_item.staff_to_pax_ratio))
+                            if item_qty < required:
+                                item_qty = required
+
                         booking_item = models.BookingMenuItem(
                             booking_id=booking.id,
                             service_id=s_item.id,
                             price=float(price or 0),
-                            quantity=int(item.get('quantity', 1)),
+                            quantity=item_qty,
                             choices=item.get('choices')
                         )
                         db.add(booking_item)
@@ -586,17 +662,27 @@ async def alacarte_checkout_submit(
                         )
                         db.add(booking_item)
         elif items:
-            # Legacy Fallback
-            id_list = [int(id_str.strip()) for id_str in items.split(",") if id_str.strip()]
-            menu_items = db.query(models.MenuItem).filter(models.MenuItem.id.in_(id_list)).all()
-            for m_item in menu_items:
-                booking_item = models.BookingMenuItem(
-                    booking_id=booking.id,
-                    menu_item_id=m_item.id,
-                    price=m_item.price,
-                    quantity=1
-                )
-                db.add(booking_item)
+            # Legacy Fallback Parsing
+            for id_str in items.split(","):
+                id_str = id_str.strip()
+                if not id_str: continue
+                if id_str.startswith('e_'):
+                    e_item = db.query(models.Equipment).get(int(id_str[2:]))
+                    if e_item:
+                        db.add(models.BookingMenuItem(booking_id=booking.id, equipment_id=e_item.id, price=e_item.rental_price, quantity=1))
+                elif id_str.startswith('s_'):
+                    s_item = db.query(models.Service).get(int(id_str[2:]))
+                    if s_item:
+                        qty = 1
+                        if getattr(s_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(s_item, 'staff_to_pax_ratio', 0) > 0:
+                            import math
+                            qty = max(getattr(s_item, 'min_staff_required', 1), math.ceil(quantity / s_item.staff_to_pax_ratio))
+                        db.add(models.BookingMenuItem(booking_id=booking.id, service_id=s_item.id, price=s_item.selling_price, quantity=qty))
+                else:
+                    item_id = int(id_str[2:]) if id_str.startswith('m_') else int(id_str)
+                    m_item = db.query(models.MenuItem).get(item_id)
+                    if m_item:
+                        db.add(models.BookingMenuItem(booking_id=booking.id, menu_item_id=m_item.id, price=m_item.price, quantity=1))
 
         db.commit()
         
@@ -677,7 +763,7 @@ async def custom_booking_submit(
 ):
     user = get_current_user_from_session(request, db)
     if not user:
-        return RedirectResponse(url=f"/auth/login?next=/bookings/custom/request/{caterer_id}")
+        return RedirectResponse(url=f"/auth/login?next=/bookings/custom/request/{caterer_id}", status_code=303)
     
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer:
@@ -695,12 +781,11 @@ async def custom_booking_submit(
     if reference_images:
         for file in reference_images:
             if file.filename and file.filename != '':
-                ext = file.filename.split('.')[-1]
-                filename = f"{uuid.uuid4()}.{ext}"
-                file_path = os.path.join(upload_dir, filename)
-                with open(file_path, "wb") as buffer:
-                    shutil.copyfileobj(file.file, buffer)
-                image_urls.append(f"/static/uploads/custom_events/{filename}")
+                import base64
+                content_bytes = file.file.read()
+                b64 = base64.b64encode(content_bytes).decode('utf-8')
+                mime = file.content_type or 'image/jpeg'
+                image_urls.append(f"data:{mime};base64,{b64}")
 
     new_booking = models.Booking(
         caterer_id=caterer_id,
@@ -953,7 +1038,9 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
         "selected_addon_service_ids": selected_addon_service_ids,
         "user": user,
         "current_step": 1,
-        "active_page": "bookings"
+        "active_page": "bookings",
+        "is_locked": booking.status not in ["draft", "pending", "pending_quotation", "awaiting_caterer"] if booking else False,
+        "getattr": getattr
     })
 
 @router.post("/step/details")
@@ -962,12 +1049,12 @@ async def step_details_submit(
     caterer_id: int = Form(...),
     package_id_str: Optional[str] = Form(None, alias="package_id"),
     booking_id_str: Optional[str] = Form(None, alias="booking_id"),
-    event_name: str = Form(...),
-    event_type: str = Form(...),
-    event_date: date = Form(...),
-    event_time: time = Form(...),
+    event_name_str: Optional[str] = Form(None, alias="event_name"),
+    event_type_str: Optional[str] = Form(None, alias="event_type"),
+    event_date_str: Optional[str] = Form(None, alias="event_date"),
+    event_time_str: Optional[str] = Form(None, alias="event_time"),
     event_end_time_str: Optional[str] = Form(None, alias="event_end_time"),
-    guest_count: Optional[int] = Form(0),
+    guest_count_str: Optional[str] = Form("0", alias="guest_count"),
     venue_address: Optional[str] = Form(""),
     total_price: Optional[float] = Form(0.0),
     reservation_fee: Optional[float] = Form(0.0),
@@ -983,16 +1070,44 @@ async def step_details_submit(
     other_event_type: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
-    # Safely parse times and IDs
+    # Safely parse times and dates
     event_end_time = None
     if event_end_time_str and event_end_time_str.strip():
         try:
             event_end_time = time.fromisoformat(event_end_time_str)
         except:
             pass
+            
+    event_date = None
+    if event_date_str and event_date_str.strip():
+        try:
+            event_date = date.fromisoformat(event_date_str)
+        except:
+            pass
+            
+    event_time = None
+    if event_time_str and event_time_str.strip():
+        try:
+            # Handle HH:MM format
+            parts = event_time_str.split(':')
+            if len(parts) >= 2:
+                event_time = time(int(parts[0]), int(parts[1]))
+        except:
+            pass
+            
+    guest_count = 0
+    if guest_count_str and guest_count_str.strip():
+        try:
+            guest_count = int(guest_count_str)
+        except:
+            pass
+
     # Safely parse IDs from strings to handle empty form values
     package_id = int(package_id_str) if package_id_str and package_id_str.strip() else None
     booking_id = int(booking_id_str) if booking_id_str and booking_id_str.strip() else None
+
+    event_name = event_name_str.strip() if event_name_str else ""
+    event_type = event_type_str.strip() if event_type_str else ""
 
     # Handle custom event type
     final_event_type = event_type
@@ -1001,7 +1116,21 @@ async def step_details_submit(
 
     user = get_current_user_from_session(request, db)
     redirect_base = f"/bookings/step/details/{booking_id}" if booking_id else "/bookings/step/details"
-    if not user: return RedirectResponse(url=f"/auth/login?next={redirect_base}")
+    if not user: return RedirectResponse(url=f"/auth/login?next={redirect_base}", status_code=303)
+
+    if booking_id:
+        existing_booking = db.query(models.Booking).get(booking_id)
+        if existing_booking and existing_booking.status not in ["draft", "pending", "pending_quotation", "awaiting_caterer"]:
+            return RedirectResponse(url=f"{redirect_base}?booking_error=Booking+is+already+locked+and+cannot+be+modified.", status_code=303)
+
+    if not event_date:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=err-date:Valid+event+date+is+required", status_code=303)
+    if not event_time:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=err-time:Valid+event+time+is+required", status_code=303)
+    if not event_name:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=err-name:Event+name+is+required", status_code=303)
+    if not final_event_type:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=err-type:Event+type+is+required", status_code=303)
 
     # Construct venue address if missing from hidden field
     if not venue_address and province and city and barangay:
@@ -1018,12 +1147,16 @@ async def step_details_submit(
     lead_time = caterer.booking_lead_time or 3
     min_lead_date = today + timedelta(days=lead_time)
     if event_date < min_lead_date:
-        return RedirectResponse(url=f"{redirect_base}?booking_error=Event+date+must+be+at+least+{lead_time}+days+in+advance+for+proper+preparation.", status_code=303)
+        return RedirectResponse(url=f"{redirect_base}?booking_error=err-date:Event+date+must+be+at+least+{lead_time}+days+in+advance+for+proper+preparation.", status_code=303)
+
+    max_advance_date = today + timedelta(days=210)
+    if event_date > max_advance_date:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=err-date:Bookings+can+only+be+made+up+to+7+months+in+advance.", status_code=303)
 
     # 🚨 VALIDATION 1.5: Sensible Operating Hours Check
-    # Restrict events to standard operating hours (6:00 AM to 9:00 PM)
-    if event_time.hour < 6 or event_time.hour > 21:
-        return RedirectResponse(url=f"{redirect_base}?booking_error=Please+select+a+time+between+6:00+AM+and+9:00+PM.", status_code=303)
+    # Restrict events to standard operating hours (8:00 AM to 8:00 PM)
+    if event_time.hour < 8 or event_time.hour >= 21:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=err-time:Please+select+a+time+between+8:00+AM+and+8:00+PM.", status_code=303)
 
     # 🚨 VALIDATION 1.8: Unpaid Booking Spam Limit (Flow B Rule 1)
     unpaid_spam_count = db.query(models.Booking).filter(
@@ -1088,6 +1221,22 @@ async def step_details_submit(
     
     if availability:
         return RedirectResponse(url=f"{redirect_base}?booking_error=Date+unavailable", status_code=303)
+
+    # 1.5. Capacity Check for Addon Services
+    requested_services = []
+    for serv_id in selected_service_addons:
+        serv_item = db.query(models.Service).get(serv_id)
+        if serv_item:
+            qty = 1
+            if getattr(serv_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(serv_item, 'staff_to_pax_ratio', 0) > 0:
+                import math
+                qty = max(getattr(serv_item, 'min_staff_required', 1), math.ceil(guest_count / serv_item.staff_to_pax_ratio))
+            requested_services.append((serv_id, qty))
+            
+    from ..services.capacity_service import CapacityService
+    is_capacity_valid, capacity_msg = CapacityService.validate_booking_capacity(db, caterer_id, event_date, event_time, event_end_time, requested_services, booking_id)
+    if not is_capacity_valid:
+        return RedirectResponse(url=f"{redirect_base}?booking_error={capacity_msg}", status_code=303)
 
     # 2. Create or Update Booking
     booking = None
@@ -1213,11 +1362,18 @@ async def step_details_submit(
     for serv_id in selected_service_addons:
         serv_item = db.query(models.Service).get(serv_id)
         if serv_item:
+            # --- Smart Capacity Phase 2 ---
+            qty = 1
+            if getattr(serv_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(serv_item, 'staff_to_pax_ratio', 0) > 0:
+                import math
+                qty = max(getattr(serv_item, 'min_staff_required', 1), math.ceil(guest_count / serv_item.staff_to_pax_ratio))
+                
             booking_item = models.BookingMenuItem(
                 booking_id=booking.id,
                 service_id=serv_id,
                 is_add_on=True,
-                price=serv_item.addon_price or 0.0
+                price=serv_item.addon_price or 0.0,
+                quantity=qty
             )
             db.add(booking_item)
     
@@ -1269,7 +1425,8 @@ async def step_kyc_page(booking_id: int, request: Request, db: Session = Depends
         "booking": booking,
         "user": user,
         "current_step": 2,
-        "active_page": "bookings"
+        "active_page": "bookings",
+        "is_locked": booking.status not in ["draft", "pending", "pending_quotation", "awaiting_caterer"] if booking else False
     })
 
 # Phase 3: Quotation Review & Contract
@@ -1323,14 +1480,14 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
     })
 
 # Phase 4: Downpayment
-async def _validate_receipt_with_gemini(filepath: str, payment_method: str, expected_amount: float = 0.0) -> bool:
+async def _validate_receipt_with_gemini(b64_string: str, payment_method: str, expected_amount: float = 0.0) -> bool:
     is_valid = False
     gemini_key = os.getenv("GEMINI_API_KEY")
     if gemini_key:
         import httpx, base64, json, re
         try:
-            with open(filepath, "rb") as image_file:
-                encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+            # Check if b64_string is already prefixed with data:image
+            encoded_string = b64_string.split(",", 1)[1] if "," in b64_string else b64_string
             
             # Try gemini-2.0-flash first, and fallback to gemini-1.5-flash
             models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash"]
@@ -1517,12 +1674,11 @@ async def step_payment_submit(
         if file_size > 5 * 1024 * 1024:
             raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB.")
             
-        ext = os.path.splitext(payment_proof.filename)[1]
-        filename = f"{booking.id}_{payment_plan}_{uuid.uuid4().hex}{ext}"
-        filepath = os.path.join(PROOF_UPLOAD_DIR, filename)
-        
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(payment_proof.file, buffer)
+        import base64
+        content_bytes = payment_proof.file.read()
+        b64 = base64.b64encode(content_bytes).decode('utf-8')
+        mime = payment_proof.content_type or 'image/jpeg'
+        proof_url = f"data:{mime};base64,{b64}"
             
         # --- AI RECEIPT VALIDATION (GEMINI / OCR) ---
         if payment_plan == 'balance':
@@ -1538,16 +1694,12 @@ async def step_payment_submit(
         else:
             expected_fee = float(booking.reservation_fee or 0)
             
-        is_valid_receipt = await _validate_receipt_with_gemini(filepath, payment_method, expected_amount=expected_fee)
+        is_valid_receipt = await _validate_receipt_with_gemini(proof_url, payment_method, expected_amount=expected_fee)
 
         if not is_valid_receipt:
-            if os.path.exists(filepath):
-                os.remove(filepath)
             # Encode URL manually for redirect since we can't use complex URL building easily
             request.session["flash_error"] = "Invalid Receipt Detected: Our AI could not verify the Reference Number or Amount. Please ensure the screenshot is clear."
             return RedirectResponse(url=f"/bookings/step/payment/{booking.id}?error=invalid_receipt&method={payment_method}", status_code=303)
-            
-        proof_url = f"/static/uploads/payment_proofs/{filename}"
         
         if payment_plan == 'balance':
             booking.balance_proof_url = proof_url
@@ -1618,33 +1770,30 @@ async def alacarte_manage_payment_submit(
         return {"success": False, "message": "File too large. Maximum size is 5MB."}
     proof_image.file.seek(0)
     
-    import uuid
-    import shutil
-    ext = os.path.splitext(proof_image.filename)[1]
-    filename = f"{booking.id}_alacarte_{uuid.uuid4().hex}{ext}"
-    filepath = os.path.join(PROOF_UPLOAD_DIR, filename)
-    
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(proof_image.file, buffer)
+    import base64
+    content_bytes = await proof_image.read()
+    b64 = base64.b64encode(content_bytes).decode('utf-8')
+    mime = proof_image.content_type or 'image/jpeg'
+    proof_url = f"data:{mime};base64,{b64}"
         
     # AI Receipt Validation
     from ..services.payment_verification import payment_verification_service
-    verify_results = payment_verification_service.check_for_fraud(db, booking, filepath)
+    verify_results = payment_verification_service.check_for_fraud(db, booking, proof_url)
     
     if verify_results["confidence"] < 40:
-        if os.path.exists(filepath): os.remove(filepath)
         flags = verify_results.get("flags", [])
         error_detail = flags[0] if flags else "The uploaded image does not appear to be a valid receipt for the required amount."
         return {"success": False, "message": f"{error_detail}"}
         
     # Save extracted details
     extracted_ref = verify_results.get("extracted_data", {}).get("reference_no")
-    extracted_hash = payment_verification_service.get_image_hash(filepath)
+    extracted_hash = payment_verification_service.get_image_hash(proof_url)
+    
+    booking.payment_proof_url = proof_url
     
     if extracted_ref: booking.payment_reference = extracted_ref
     booking.proof_image_hash = extracted_hash
     
-    proof_url = f"/static/uploads/payment_proofs/{filename}"
     booking.payment_proof_url = proof_url
     booking.payment_method = payment_method
     booking.payment_status = "proof_submitted"
@@ -1693,25 +1842,34 @@ async def reupload_proof_submit(
     if payment_proof.content_type not in allowed_types:
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?validation_error=Invalid+file+type&open_reupload=1", status_code=303)
 
-    ext = os.path.splitext(payment_proof.filename)[1]
-    filename = f"{booking.id}_reupload_{uuid.uuid4().hex}{ext}"
-    filepath = os.path.join(PROOF_UPLOAD_DIR, filename)
-    
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(payment_proof.file, buffer)
+    import base64
+    content_bytes = await payment_proof.read()
+    b64 = base64.b64encode(content_bytes).decode('utf-8')
+    mime = payment_proof.content_type or 'image/jpeg'
+    proof_url = f"data:{mime};base64,{b64}"
         
     # --- AI RECEIPT VALIDATION (GEMINI / OCR) ---
     expected_fee = float(booking.reservation_fee or 0)
-    is_valid_receipt = await _validate_receipt_with_gemini(filepath, payment_method, expected_amount=expected_fee)
+    
+    # Temporarily modify booking for validation
+    original_amount = booking.total_amount
+    original_method = booking.payment_method
+    booking.total_amount = expected_fee
+    booking.payment_method = payment_method
+    
+    verify_results = await payment_verification_service.check_for_fraud(db, booking, proof_url)
+    
+    # Revert
+    booking.total_amount = original_amount
+    booking.payment_method = original_method
 
-    if not is_valid_receipt:
-        # Delete the invalid file
-        if os.path.exists(filepath):
-            os.remove(filepath)
-            
+    if verify_results["confidence"] < 40:
         import urllib.parse
         encoded_method = urllib.parse.quote(payment_method)
-        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?validation_error=Invalid+Receipt+Detected:+Our+AI+could+not+verify+the+Reference+Number+or+Amount.+Please+ensure+the+screenshot+is+clear.&method={encoded_method}&open_reupload=1", status_code=303)
+        flags = verify_results.get("flags", [])
+        error_detail = flags[0] if flags else "Amount did not match or receipt is illegible."
+        error_msg = urllib.parse.quote(f"Invalid Receipt Detected: {error_detail}")
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?validation_error={error_msg}&method={encoded_method}&open_reupload=1", status_code=303)
 
     booking.payment_proof_url = f"/static/uploads/payment_proofs/{filename}"
     booking.payment_method = payment_method
@@ -1760,21 +1918,31 @@ async def pay_balance_submit(
         if payment_proof.content_type not in allowed_types:
             raise HTTPException(status_code=400, detail="Invalid file type.")
             
-        ext = os.path.splitext(payment_proof.filename)[1]
-        filename = f"{booking.id}_balance_{uuid.uuid4().hex}{ext}"
-        filepath = os.path.join(PROOF_UPLOAD_DIR, filename)
-        
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(payment_proof.file, buffer)
+        import base64
+        content_bytes = await payment_proof.read()
+        b64 = base64.b64encode(content_bytes).decode('utf-8')
+        mime = payment_proof.content_type or 'image/jpeg'
+        proof_url = f"data:{mime};base64,{b64}"
             
         # --- AI RECEIPT VALIDATION ---
-        is_valid_receipt = await _validate_receipt_with_gemini(filepath, payment_method, expected_amount=outstanding_balance)
-        if not is_valid_receipt:
-            if os.path.exists(filepath):
-                os.remove(filepath)
-            return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error_msg=Invalid+Receipt+Detected.+Amount+did+not+match+or+receipt+is+illegible.", status_code=303)
+        original_amount = booking.total_amount
+        original_method = booking.payment_method
+        booking.total_amount = outstanding_balance
+        booking.payment_method = payment_method
+        
+        verify_results = await payment_verification_service.check_for_fraud(db, booking, proof_url)
+        
+        # Revert
+        booking.total_amount = original_amount
+        booking.payment_method = original_method
+        
+        if verify_results["confidence"] < 40:
+            import urllib.parse
+            flags = verify_results.get("flags", [])
+            error_detail = flags[0] if flags else "Amount did not match or receipt is illegible."
+            error_msg = urllib.parse.quote(f"Invalid Receipt Detected: {error_detail}")
+            return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error_msg={error_msg}", status_code=303)
             
-        proof_url = f"/static/uploads/payment_proofs/{filename}"
         booking.balance_proof_url = proof_url
         booking.payment_method = payment_method
         booking.payment_status = "balance_proof_submitted"
@@ -1900,14 +2068,11 @@ async def send_booking_message(
         
     attachment_url = None
     if attachment and attachment.filename:
-        upload_dir = "app/static/uploads/chat"
-        os.makedirs(upload_dir, exist_ok=True)
-        ext = attachment.filename.split('.')[-1]
-        filename = f"{uuid.uuid4()}.{ext}"
-        file_path = os.path.join(upload_dir, filename)
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(attachment.file, buffer)
-        attachment_url = f"/static/uploads/chat/{filename}"
+        import base64
+        content_bytes = await attachment.read()
+        b64 = base64.b64encode(content_bytes).decode('utf-8')
+        mime = attachment.content_type or 'image/jpeg'
+        attachment_url = f"data:{mime};base64,{b64}"
         
     new_msg = models.BookingMessage(
         booking_id=booking_id,

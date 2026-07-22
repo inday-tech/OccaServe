@@ -1,7 +1,7 @@
 {% set active_page = 'menu' %}
 {% extends "caterer/layout.html" %}
 
-{% block title %}Menu Library - OccaShare Caterer{% endblock %}
+{% block title %}Menu Library - OccaServe Caterer{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v={{ range(1, 10000) | random }}">
@@ -57,50 +57,65 @@
                     <span class="status-chip available">Available</span>
                 {% endif %}
             </div>
-            <div class="card-options-glass">
-                <button class="btn-dots-glass" onclick="toggleDropdown(this, event)">
-                    <i class="fas fa-ellipsis-h"></i>
+        </div>
+        <div class="card-options-glass">
+            <button class="btn-dots-glass" onclick="toggleDropdown(this, event)">
+                <i class="fas fa-ellipsis-h"></i>
+            </button>
+            <div class="dropdown-menu-glass">
+                <button class="dropdown-item-pro"
+                    data-id="{{ item.id }}"
+                    data-name="{{ item.name }}"
+                    data-category="{{ item.category }}"
+                    data-description="{{ item.description or '' }}"
+                    data-price="{{ item.price or '' }}"
+                    data-min-order-qty="{{ item.min_order_qty or 1 }}"
+                    data-serving-size="{{ item.serving_size or '' }}"
+                    data-serving-style="{{ item.serving_style or '' }}"
+                    data-is-combo="{{ 'true' if item.is_combo else 'false' }}"
+                    data-combo-options='{{ item.combo_options|tojson|safe if item.combo_options else "{}" }}'
+                    data-usage-type="{{ item.usage_type or 'both' }}"
+                    data-pricing-mode="{{ item.pricing_mode or item.pricing_type or 'single' }}"
+                    data-variants='[
+                        {%- for v in item.variants -%}
+                            {"variant_name": "{{ v.variant_name }}", "price": "{{ v.price }}", "serving_capacity": "{{ v.serving_capacity or '' }}", "status": "{{ v.status }}"}
+                            {%- if not loop.last -%},{%- endif -%}
+                        {%- endfor -%}
+                    ]'
+                    data-status="{{ item.status }}"
+                    data-is-hidden="{{ 'true' if item.is_hidden else 'false' }}"
+                    data-image-url="{{ item.image_url or '' }}"
+                    onclick="viewMenuItem(this)">
+                    <i class="fas fa-eye"></i> View
                 </button>
-                <div class="dropdown-menu-glass">
-                    <button class="dropdown-item-pro"
-                        data-id="{{ item.id }}"
-                        data-name="{{ item.name }}"
-                        data-category="{{ item.category }}"
-                        data-description="{{ item.description or '' }}"
-                        data-cost-price="{{ item.cost_price or 0 }}"
-                        data-price="{{ item.price or '' }}"
-                        data-serving-size="{{ item.serving_size or '' }}"
-                        data-usage-type="{{ item.usage_type or 'both' }}"
-                        data-pricing-type="{{ item.pricing_type or 'fixed' }}"
-                        data-status="{{ item.status }}"
-                        data-sizes='[
-                            {%- for sp in item.size_prices -%}
-                                {"size_name": "{{ sp.size_name }}", "capacity": "{{ sp.capacity or '' }}", "price": "{{ sp.price }}"}
-                                {%- if not loop.last -%},{%- endif -%}
-                            {%- endfor -%}
-                        ]'
-                        data-weights='[
-                            {%- for wp in item.weight_prices -%}
-                                {"weight_label": "{{ wp.weight_label }}", "price": "{{ wp.price }}"}
-                                {%- if not loop.last -%},{%- endif -%}
-                            {%- endfor -%}
-                        ]'
-                        data-dietary-tags='{{ item.dietary_tags|tojson if item.dietary_tags else "[]" }}'
-                        data-allergen-info='{{ item.allergen_info|tojson if item.allergen_info else "[]" }}'
-                        data-is-hidden="{{ 'true' if item.is_hidden else 'false' }}"
-                        data-image-url="{{ item.image_url or '' }}"
-                        data-is-addon="{{ 'true' if item.is_addon else 'false' }}"
-                        data-addon-price="{{ item.addon_price or 0 }}"
-                        data-is-combo="{{ 'true' if item.is_combo else 'false' }}"
-                        data-max-choices="{{ item.max_choices or 1 }}"
-                        data-combo-options='{{ item.combo_options|tojson if item.combo_options else "[]" }}'
-                        onclick="editMenuItem(this)">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                    <button class="dropdown-item-pro delete" onclick="confirmArchiveDish({{ item.id }})">
-                        <i class="fas fa-archive"></i> Archive
-                    </button>
-                </div>
+                <button class="dropdown-item-pro"
+                    data-id="{{ item.id }}"
+                    data-name="{{ item.name }}"
+                    data-category="{{ item.category }}"
+                    data-description="{{ item.description or '' }}"
+                    data-price="{{ item.price or '' }}"
+                    data-min-order-qty="{{ item.min_order_qty or 1 }}"
+                    data-serving-size="{{ item.serving_size or '' }}"
+                    data-serving-style="{{ item.serving_style or '' }}"
+                    data-is-combo="{{ 'true' if item.is_combo else 'false' }}"
+                    data-combo-options='{{ item.combo_options|tojson|safe if item.combo_options else "{}" }}'
+                    data-usage-type="{{ item.usage_type or 'both' }}"
+                    data-pricing-mode="{{ item.pricing_mode or item.pricing_type or 'single' }}"
+                    data-variants='[
+                        {%- for v in item.variants -%}
+                            {"variant_name": "{{ v.variant_name }}", "price": "{{ v.price }}", "serving_capacity": "{{ v.serving_capacity or '' }}", "status": "{{ v.status }}"}
+                            {%- if not loop.last -%},{%- endif -%}
+                        {%- endfor -%}
+                    ]'
+                    data-status="{{ item.status }}"
+                    data-is-hidden="{{ 'true' if item.is_hidden else 'false' }}"
+                    data-image-url="{{ item.image_url or '' }}"
+                    onclick="editMenuItem(this)">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button class="dropdown-item-pro delete" onclick="confirmArchiveDish({{ item.id }})">
+                    <i class="fas fa-archive"></i> Archive
+                </button>
             </div>
         </div>
 
@@ -123,15 +138,13 @@
                     <span class="price-label">Selling Price</span>
                     {% if item.usage_type == 'package_only' %}
                         <span class="price-value" style="color: #64748b; font-size: 0.9rem;">Included in Package</span>
-                    {% elif item.pricing_type == 'size_based' %}
-                        <span class="price-value">Various Sizes</span>
-                    {% elif item.pricing_type == 'weight_based' %}
-                        <span class="price-value">Per Kg/Weight</span>
-                    {% elif item.pricing_type == 'per_pax' %}
-                        <span class="price-value">₱{{ "{:,.0f}".format(item.price or 0) }}</span>
-                        <span style="font-size: 0.85rem; color: #64748b; font-weight: 500; margin-left: 2px;">/ Pax</span>
+                    {% elif item.pricing_type == 'variants' %}
+                        <span class="price-value">{{ item.variants|length }} Variants</span>
+                        {% if item.variants|length > 0 %}
+                            <span style="font-size: 0.75rem; color: #64748b; font-weight: normal; margin-left: 4px;">(From ₱{{ "{:,.0f}".format(item.variants|map(attribute='price')|min) }})</span>
+                        {% endif %}
                     {% else %}
-                        <span class="price-value">₱{{ "{:,.0f}".format(item.price or 0) }}</span>
+                        <span class="price-value" style="display:flex; align-items:center; gap:4px;">₱{{ "{:,.0f}".format(item.price or 0) }} <span style="font-size: 0.7rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">/ {{ item.serving_style or 'Order' }}</span></span>
                         {% if item.serving_size %}
                             <span style="font-size: 0.75rem; color: #64748b; font-weight: normal; margin-left: 4px;">({{ item.serving_size }})</span>
                         {% endif %}
@@ -187,12 +200,37 @@
         </div>
 
         <form id="menuForm" action="/caterer/menu/add" method="POST" enctype="multipart/form-data" novalidate>
+            <input type="hidden" name="remove_image" id="removeImageFlag" value="false">
             <div class="occ-modal-body compact-body" style="max-height: 70vh; overflow-y: auto;">
                 <div id="menuErrorDrawer" class="error-drawer"></div>
                 
                 <!-- SECTION: Basic Information -->
                 <h4 style="font-size: 1rem; font-weight: 800; margin-bottom: 1rem; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Basic Information</h4>
                 
+                <div class="form-group-pro" style="margin-bottom: 1.5rem;">
+                    <label>Item Composition <span style="font-size: 0.8rem; color: #64748b; font-weight: normal; margin-left: 5px;">(Ano ang laman?)</span> *</label>
+                    <div style="display: flex; gap: 1rem; margin-top: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="item_type" value="single" checked onchange="toggleComboFields()"> Single Dish
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="item_type" value="preset_combo" onchange="toggleComboFields()"> Preset Combo / Platter
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group-pro" id="comboDishesContainer" style="display: none; margin-bottom: 1.5rem;">
+                    <label>Included Dishes <span style="font-size: 0.8rem; color: #64748b; font-weight: normal; margin-left: 5px;">(Select all that apply)</span></label>
+                    <div style="max-height: 200px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                        {% for item in menu_items %}
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem; margin: 0;">
+                            <input type="checkbox" name="included_dishes[]" value="{{ item.id }}" class="included-dish-cb"> 
+                            {{ item.name }} <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">({{ item.category }})</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
                 <div class="form-group-pro">
                     <label>Menu Name *</label>
                     <input type="text" name="name" class="control-pro" placeholder="e.g. Pork Caldereta, Pancit Bilao" required minlength="2" maxlength="100">
@@ -202,29 +240,80 @@
                     <div class="form-group-pro">
                         <label>Category *</label>
                         <select name="category" id="modalCategory" class="control-pro" required onchange="toggleCustomCategory()">
+                            <option value="Mixed/Combo">Mixed / Combo</option>
                             <option value="Pork">Pork</option>
                             <option value="Chicken">Chicken</option>
                             <option value="Beef">Beef</option>
                             <option value="Fish">Fish</option>
                             <option value="Seafood">Seafood</option>
                             <option value="Vegetable">Vegetable</option>
+                            <option value="Noodles">Noodles</option>
+                            <option value="Rice">Rice</option>
+                            <option value="Rice Meal">Rice Meal</option>
                             <option value="Pasta">Pasta</option>
                             <option value="Dessert">Dessert</option>
+                            <option value="Appetizer">Appetizer</option>
                             <option value="Beverage">Beverage</option>
-                            <option value="Bilao">Bilao</option>
-                            <option value="Party Tray">Party Tray</option>
-                            <option value="Packed Meal">Packed Meal</option>
                             <option value="Lechon">Lechon</option>
+                            
+                            {% set standard_cats = ['Mixed/Combo', 'Pork', 'Chicken', 'Beef', 'Fish', 'Seafood', 'Vegetable', 'Noodles', 'Rice', 'Rice Meal', 'Pasta', 'Dessert', 'Appetizer', 'Beverage', 'Lechon', 'Other', 'Others'] %}
+                            {% set custom_cats = [] %}
+                            {% for item in menu_items %}
+                                {% if item.category not in standard_cats and item.category not in custom_cats %}
+                                    {% set _ = custom_cats.append(item.category) %}
+                                    <option value="{{ item.category }}">{{ item.category }}</option>
+                                {% endif %}
+                            {% endfor %}
+
                             <option value="Other">Others</option>
                         </select>
                         <input type="text" name="custom_category" id="customCategoryInput" class="control-pro" placeholder="Type specific category" style="display: none; margin-top: 10px;">
                     </div>
                     <div class="form-group-pro">
-                        <label>Physical Status *</label>
+                        <label>Availability Status *</label>
                         <select name="status" id="modalStatus" class="control-pro" required>
                             <option value="available">Available</option>
-                            <option value="unavailable">Unavailable (Out of Stock)</option>
+                            <option value="unavailable">Temporarily Unavailable</option>
+                            <option value="seasonal">Seasonal</option>
                         </select>
+                    </div>
+                </div>
+
+                <div class="form-group-pro" style="margin-bottom: 1.5rem;">
+                    <label>Packaging / Serving Format * <span style="font-size: 0.8rem; color: #64748b; font-weight: normal; margin-left: 5px;">(Paano ise-serve or ide-deliver?)</span></label>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 8px;">
+                        <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+                            <input type="radio" name="serving_style" value="Standard Buffet" required onchange="suggestVariants()" style="margin-top:4px;"> 
+                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Standard / Buffet</span><span style="font-size:0.75rem; color:#64748b;">For Package Setups</span></div>
+                        </label>
+                        <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+                            <input type="radio" name="serving_style" value="Party Tray" required onchange="suggestVariants()" style="margin-top:4px;"> 
+                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Party Tray</span><span style="font-size:0.75rem; color:#64748b;">Aluminum Food Trays</span></div>
+                        </label>
+                        <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+                            <input type="radio" name="serving_style" value="Bilao" required onchange="suggestVariants()" style="margin-top:4px;"> 
+                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Bilao</span><span style="font-size:0.75rem; color:#64748b;">Traditional Round</span></div>
+                        </label>
+                        <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+                            <input type="radio" name="serving_style" value="Packed Meal" required onchange="suggestVariants()" style="margin-top:4px;"> 
+                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Packed Meal</span><span style="font-size:0.75rem; color:#64748b;">Bento for Guests</span></div>
+                        </label>
+                        <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+                            <input type="radio" name="serving_style" value="Crew Meal" required onchange="suggestVariants()" style="margin-top:4px;"> 
+                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Crew Meal</span><span style="font-size:0.75rem; color:#64748b;">For Event Staff</span></div>
+                        </label>
+                        <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+                            <input type="radio" name="serving_style" value="Solo Order" required onchange="suggestVariants()" style="margin-top:4px;"> 
+                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Solo Order</span><span style="font-size:0.75rem; color:#64748b;">1 Pax Retail Size</span></div>
+                        </label>
+                        <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+                            <input type="radio" name="serving_style" value="Per Kilo" required onchange="suggestVariants()" style="margin-top:4px;"> 
+                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Per Kilo</span><span style="font-size:0.75rem; color:#64748b;">Weight Based</span></div>
+                        </label>
+                        <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+                            <input type="radio" name="serving_style" value="Whole Order" required onchange="suggestVariants()" style="margin-top:4px;"> 
+                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Whole Order</span><span style="font-size:0.75rem; color:#64748b;">Whole Lechon/Cake</span></div>
+                        </label>
                     </div>
                 </div>
 
@@ -233,137 +322,100 @@
                     <textarea name="description" class="control-pro" placeholder="Short description of the dish..." maxlength="500" style="height: 80px;"></textarea>
                 </div>
                 
-                <div class="form-group-pro">
-                    <label>Estimated Cost (₱) <i class="fas fa-info-circle text-muted" title="Your internal cost for this dish per serving/pax. Used for profit calculation."></i></label>
-                    <input type="text" name="cost_price" id="cost_price_input" class="control-pro js-format-comma" placeholder="0" inputmode="numeric" maxlength="10">
-                </div>
-
                 <!-- SECTION: Usage Type -->
-                <h4 style="font-size: 1rem; font-weight: 800; margin-top: 1.5rem; margin-bottom: 1rem; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Usage Type</h4>
+                <h4 style="font-size: 1rem; font-weight: 800; margin-top: 1.5rem; margin-bottom: 1rem; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Available For</h4>
                 
                 <div class="form-group-pro">
-                    <label>Where will this item be used? *</label>
                     <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
                         <label style="flex: 1; display: flex; align-items: flex-start; gap: 10px; background: #f8fafc; padding: 1rem; border: 1px solid #cbd5e1; border-radius: var(--border-radius, 8px); cursor: pointer;" onclick="document.getElementById('usage_package').click()">
                             <input type="radio" name="usage_type" id="usage_package" value="package_only" onchange="togglePricingSection()" style="margin-top: 4px;">
                             <div>
-                                <div style="font-weight: 700; color: #0f172a;">Package Only</div>
-                                <div style="font-size: 0.75rem; color: #64748b;">Choices for package bookings (e.g. Buffet options). No price required.</div>
+                                <div style="font-weight: 700; color: #0f172a;">Package Booking</div>
+                                <div style="font-size: 0.75rem; color: #64748b;">This menu will only be used inside packages.</div>
                             </div>
                         </label>
                         <label style="flex: 1; display: flex; align-items: flex-start; gap: 10px; background: #f8fafc; padding: 1rem; border: 1px solid #cbd5e1; border-radius: var(--border-radius, 8px); cursor: pointer;" onclick="document.getElementById('usage_order').click()">
                             <input type="radio" name="usage_type" id="usage_order" value="order_only" onchange="togglePricingSection()" style="margin-top: 4px;">
                             <div>
-                                <div style="font-weight: 700; color: #0f172a;">Individual Order</div>
-                                <div style="font-size: 0.75rem; color: #64748b;">Direct a la carte orders (e.g. Bilao, Lechon). Price is required.</div>
+                                <div style="font-weight: 700; color: #0f172a;">Individual Food Orders</div>
+                                <div style="font-size: 0.75rem; color: #64748b;">Customers can order this item separately.</div>
                             </div>
                         </label>
                         <label style="flex: 1; display: flex; align-items: flex-start; gap: 10px; background: #f8fafc; padding: 1rem; border: 1px solid #cbd5e1; border-radius: var(--border-radius, 8px); cursor: pointer;" onclick="document.getElementById('usage_both').click()">
                             <input type="radio" name="usage_type" id="usage_both" value="both" checked onchange="togglePricingSection()" style="margin-top: 4px;">
                             <div>
                                 <div style="font-weight: 700; color: #0f172a;">Both</div>
-                                <div style="font-size: 0.75rem; color: #64748b;">Available for packages AND direct orders.</div>
+                                <div style="font-size: 0.75rem; color: #64748b;">Available for both package bookings and direct food orders.</div>
                             </div>
                         </label>
                     </div>
                 </div>
 
-                <!-- SECTION: Add-on Configuration -->
-                <div class="form-group-pro" style="margin-top: 15px; border-top: 1px dashed #e2e8f0; padding-top: 15px;">
-                    <label style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" name="is_addon" id="isAddonCheckbox" value="true" onchange="document.getElementById('addonPriceGroup').style.display = this.checked ? 'block' : 'none';">
-                        <strong>Make available as Package Add-on</strong>
-                    </label>
-                    <p style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">Allow customers to add this to standard packages for an extra fee.</p>
-                </div>
 
-                <div class="form-group-pro" id="addonPriceGroup" style="display: none; background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
-                    <label>Add-on Price (₱) <i class="fas fa-info-circle text-muted" title="Price when added to a package"></i></label>
-                    <input type="text" name="addon_price" id="addonPriceInput" class="control-pro js-format-comma" placeholder="0" inputmode="numeric" maxlength="10">
-                </div>
 
                 <!-- SECTION: Pricing Configuration -->
                 <div id="pricingSectionContainer">
-                    <h4 style="font-size: 1rem; font-weight: 800; margin-top: 1.5rem; margin-bottom: 1rem; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Pricing Configuration</h4>
+                    <h4 style="font-size: 1rem; font-weight: 800; margin-top: 1.5rem; margin-bottom: 1rem; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Pricing & Sizes</h4>
                     
-                    <div class="form-group-pro">
-                        <label>Pricing Type *</label>
-                        <select name="pricing_type" id="modalPricingType" class="control-pro" onchange="togglePricingInputs()">
-                            <option value="fixed">Fixed Price (Per Tray/Order)</option>
-                            <option value="per_pax">Fixed Price (Per Pax/Head)</option>
-                            <option value="size_based">Size Based (e.g. Small Tray, Med Bilao)</option>
-                            <option value="weight_based">Weight Based (Per Kg)</option>
-                        </select>
+                    <div class="form-group-pro" style="margin-bottom: 1.5rem;">
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="radio" name="pricing_mode" id="pricing_mode_single" value="single" checked onchange="togglePricingMode()">
+                                <span style="font-weight: 600;">One Size / Fixed Price</span>
+                                <span style="font-size: 0.8rem; color: #64748b; margin-left: 5px;">(One selling price)</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="radio" name="pricing_mode" id="pricing_mode_variants" value="variants" onchange="togglePricingMode()">
+                                <span style="font-weight: 600;">Multiple Sizes / Variants</span>
+                                <span style="font-size: 0.8rem; color: #64748b; margin-left: 5px;">(Different sizes, weights, or servings)</span>
+                            </label>
+                        </div>
                     </div>
 
-                    <!-- Fixed Price Inputs -->
-                    <div id="fixedPricingInputs" class="pricing-sub-section">
+                    <div class="form-group-pro" style="margin-bottom: 1.5rem;">
+                        <label>Minimum Order Qty <span style="font-size: 0.8rem; color: #64748b; font-weight: normal; margin-left: 5px;">(Applies to all variants)</span></label>
+                        <input type="number" name="min_order_qty" id="min_order_qty_input" class="control-pro" min="1" value="1" style="max-width: 200px;">
+                    </div>
+
+                    <!-- Single Price Inputs -->
+                    <div id="singlePricingContainer" class="pricing-sub-section">
                         <div class="form-row-pro">
                             <div class="form-group-pro">
-                                <label>Price (₱) *</label>
+                                <label>Selling Price (₱) *</label>
                                 <input type="text" name="price" id="fixed_price_input" class="control-pro js-format-comma" placeholder="e.g. 2500" inputmode="numeric">
                             </div>
                             <div class="form-group-pro">
                                 <label>Serving Capacity (Optional)</label>
-                                <input type="text" name="serving_size" id="fixed_capacity_input" class="control-pro" placeholder="e.g. 20-25 Pax">
+                                <input type="text" name="serving_size" id="fixed_capacity_input" class="control-pro" placeholder="e.g. 20-25 Pax, 1 Box">
                             </div>
                         </div>
                     </div>
 
-                    <!-- Size Based Inputs -->
-                    <div id="sizePricingInputs" class="pricing-sub-section" style="display: none; background: #f8fafc; padding: 1rem; border-radius: var(--border-radius, 8px); border: 1px dashed #cbd5e1;">
-                        <div id="sizeRowsContainer">
-                            <!-- Rows injected by JS -->
+                    <!-- Variants Inputs -->
+                    <div id="variantsPricingContainer" class="pricing-sub-section" style="display: none;">
+                        <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 1rem; width: 100%; overflow-x: auto;">
+                            <table class="occ-table" style="margin-bottom: 0; min-width: 600px;">
+                                <thead style="background: #f8fafc;">
+                                    <tr>
+                                        <th style="padding: 10px; font-size: 0.85rem; font-weight: 600; color: #475569;">Variant Name *</th>
+                                        <th style="padding: 10px; font-size: 0.85rem; font-weight: 600; color: #475569;">Selling Price (₱) *</th>
+                                        <th style="padding: 10px; font-size: 0.85rem; font-weight: 600; color: #475569;">Serving (Opt.)</th>
+                                        <th style="padding: 10px; font-size: 0.85rem; font-weight: 600; color: #475569;">Status</th>
+                                        <th style="padding: 10px; width: 40px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="variantsTableBody">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
                         </div>
-                        <button type="button" class="btn-secondary-pro" onclick="addSizeRow()" style="margin-top: 0.5rem; width: 100%; border: 1px dashed #94a3b8;"><i class="fas fa-plus"></i> Add Size</button>
-                    </div>
-
-                    <!-- Weight Based Inputs -->
-                    <div id="weightPricingInputs" class="pricing-sub-section" style="display: none; background: #f8fafc; padding: 1rem; border-radius: var(--border-radius, 8px); border: 1px dashed #cbd5e1;">
-                        <div id="weightRowsContainer">
-                            <!-- Rows injected by JS -->
-                        </div>
-                        <button type="button" class="btn-secondary-pro" onclick="addWeightRow()" style="margin-top: 0.5rem; width: 100%; border: 1px dashed #94a3b8;"><i class="fas fa-plus"></i> Add Weight</button>
-                    </div>
-                </div>
-
-                <!-- SECTION: Combo / Bento Configuration -->
-                <h4 style="font-size: 1rem; font-weight: 800; margin-top: 1.5rem; margin-bottom: 1rem; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Combo / Bento Configuration</h4>
-                
-                <div class="form-group-pro">
-                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; background: #f0fdf4; padding: 1rem; border-radius: 8px; border: 1px solid #bbf7d0;">
-                        <input type="checkbox" name="is_combo" id="is_combo_checkbox" value="true" onchange="toggleComboSection()" style="width: 1.2rem; height: 1.2rem; accent-color: #16a34a;">
-                        <div>
-                            <span style="font-weight: 700; color: #166534; display: block;">Enable Customer Selection (Combo / Bento)</span>
-                            <span style="font-size: 0.75rem; color: #15803d; font-weight: 400;">Allow customers to choose specific dishes from your menu when they buy this item.</span>
-                        </div>
-                    </label>
-                </div>
-
-                <div id="comboConfigSection" style="display: none; background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px dashed #cbd5e1; margin-bottom: 1.5rem;">
-                    <div class="form-group-pro">
-                        <label>Maximum Choices per Order *</label>
-                        <input type="number" name="max_choices" id="combo_max_choices" class="control-pro" placeholder="e.g. 2" min="1" max="20">
-                        <small style="color: #64748b; font-size: 0.7rem; margin-top: 5px; display: block;">How many dishes can the customer select for this bento/platter?</small>
-                    </div>
-
-                    <div class="form-group-pro">
-                        <label>Select Available Options for this Combo</label>
-                        <div style="max-height: 200px; overflow-y: auto; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
-                            {% for mi in menu_items %}
-                                {% if not mi.is_combo and mi.category != 'Other' and mi.category != 'Additionals' and mi.category != 'Rentals' and mi.category != 'Packed Meal' %}
-                                <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer;">
-                                    <input type="checkbox" name="combo_options_list[]" value="{{ mi.name }}" style="margin-top: 4px;">
-                                    <div>
-                                        <span style="font-size: 0.85rem; font-weight: 600; color: #334155;">{{ mi.name }}</span>
-                                        <div style="font-size: 0.65rem; color: #94a3b8;">{{ mi.category }}</div>
-                                    </div>
-                                </label>
-                                {% endif %}
-                            {% endfor %}
-                        </div>
+                        <button type="button" class="btn-secondary-pro" onclick="addVariantRow()" style="font-size: 0.85rem; padding: 6px 12px;">
+                            <i class="fas fa-plus"></i> Add Variant
+                        </button>
                     </div>
                 </div>
+
+
 
                 <div class="form-group-pro" style="margin-top: 1.5rem;">
                     <label>Menu Image</label>
@@ -374,7 +426,7 @@
                     </div>
                     <div id="imagePreviewContainer" class="preview-box-pro" style="display: none;">
                         <img id="imagePreview" src="" class="img-preview-pro" alt="Preview">
-                        <button type="button" class="btn-remove-img-pro" onclick="removeImage()"><i class="fas fa-times"></i></button>
+                        <button type="button" class="btn-remove-img-pro" onclick="removeImage(true)"><i class="fas fa-times"></i></button>
                     </div>
                 </div>
             </div>
@@ -384,6 +436,41 @@
                 <button type="submit" class="btn-primary-pro" style="padding:0 var(--space-xl);">Save Menu Item</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- View Menu Item Modal -->
+<div id="viewMenuItemModal" class="occ-modal-overlay" style="display: none; z-index: 99999;">
+    <div class="occ-modal-box sz-md occ-content-pop" style="padding: 0; overflow: hidden; max-width: 550px;">
+        <div style="position: relative; height: 200px; background: #f1f5f9;">
+            <img id="viewMenuImage" src="" alt="Preview" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+            <div id="viewMenuNoImage" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 4rem; color: #cbd5e1;">
+                <i class="fas fa-utensils"></i>
+            </div>
+            <button onclick="window.closeModal('viewMenuItemModal')" style="position: absolute; top: 1rem; right: 1rem; background: rgba(0,0,0,0.5); color: white; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div style="padding: 2rem; max-height: 50vh; overflow-y: auto;">
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                <span id="viewMenuCat" class="item-cat-tag"></span>
+                <span id="viewMenuType" class="item-addon-tag" style="background: #e2e8f0; color: #475569;"></span>
+                <span id="viewMenuServing" class="item-addon-tag" style="background: #e2e8f0; color: #475569;"></span>
+                <span id="viewMenuStatus" class="status-chip" style="margin-left: auto;"></span>
+            </div>
+            <h3 id="viewMenuName" style="font-size: 1.5rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;"></h3>
+            <p id="viewMenuDesc" style="font-size: 0.95rem; color: #64748b; line-height: 1.6; margin-bottom: 1.5rem;"></p>
+            
+            <div style="display: grid; grid-template-columns: 1fr; gap: 1rem; background: #f8fafc; padding: 1rem; border-radius: var(--border-radius); border: 1px solid #e2e8f0;">
+                <div>
+                    <span style="display: block; font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Pricing & Sizes</span>
+                    <div id="viewMenuPricingContainer" style="margin-top: 0.5rem;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="occ-modal-footer" style="padding: 1rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end;">
+            <button type="button" class="btn-primary-pro" onclick="window.closeModal('viewMenuItemModal')">Close</button>
+        </div>
     </div>
 </div>
 
@@ -437,125 +524,175 @@
             if (priceInput) priceInput.required = false;
         } else {
             pricingSection.style.display = 'block';
-            togglePricingInputs(); // Re-evaluate which sub-section is active
+            togglePricingMode();
         }
     }
 
-    function togglePricingInputs() {
-        const isPackageOnly = document.getElementById('usage_package').checked;
-        if (isPackageOnly) return; // Managed by togglePricingSection
+    function togglePricingMode() {
+        const isSingle = document.getElementById('pricing_mode_single').checked;
+        const singleContainer = document.getElementById('singlePricingContainer');
+        const variantsContainer = document.getElementById('variantsPricingContainer');
+        const priceInput = document.getElementById('fixed_price_input');
 
-        const pricingType = document.getElementById('modalPricingType').value;
-        const fixedSection = document.getElementById('fixedPricingInputs');
-        const sizeSection = document.getElementById('sizePricingInputs');
-        const weightSection = document.getElementById('weightPricingInputs');
-        const fixedPriceInput = document.getElementById('fixed_price_input');
-
-        fixedSection.style.display = 'none';
-        sizeSection.style.display = 'none';
-        weightSection.style.display = 'none';
-        fixedPriceInput.required = false;
-
-        if (pricingType === 'fixed' || pricingType === 'per_pax') {
-            fixedSection.style.display = 'block';
-            fixedPriceInput.required = true;
-        } else if (pricingType === 'size_based') {
-            sizeSection.style.display = 'block';
-            if(document.getElementById('sizeRowsContainer').children.length === 0) addSizeRow();
-        } else if (pricingType === 'weight_based') {
-            weightSection.style.display = 'block';
-            if(document.getElementById('weightRowsContainer').children.length === 0) addWeightRow();
-        }
-    }
-
-    function toggleComboSection() {
-        const isCombo = document.getElementById('is_combo_checkbox').checked;
-        const configSection = document.getElementById('comboConfigSection');
-        const maxChoicesInput = document.getElementById('combo_max_choices');
-        
-        if (isCombo) {
-            configSection.style.display = 'block';
-            maxChoicesInput.required = true;
+        if (isSingle) {
+            singleContainer.style.display = 'block';
+            variantsContainer.style.display = 'none';
+            if (priceInput) priceInput.required = true;
         } else {
-            configSection.style.display = 'none';
-            maxChoicesInput.required = false;
+            singleContainer.style.display = 'none';
+            variantsContainer.style.display = 'block';
+            if (priceInput) priceInput.required = false;
         }
     }
 
-    function addSizeRow(name = '', capacity = '', price = '') {
-        const container = document.getElementById('sizeRowsContainer');
-        const index = container.children.length;
-        const row = document.createElement('div');
-        row.className = '';
-        row.style.display = 'flex';
-        row.style.gap = '10px';
-        row.style.alignItems = 'flex-start';
-        row.style.marginBottom = '10px';
-        row.innerHTML = `
-            <div class="form-group-pro" style="flex: 2; margin-bottom: 0;">
-                <input type="text" name="size_names[]" class="control-pro" placeholder="Size (e.g. Small Tray)" value="${name}" required>
-            </div>
-            <div class="form-group-pro" style="flex: 2; margin-bottom: 0;">
-                <input type="text" name="size_capacities[]" class="control-pro" placeholder="Capacity (e.g. 10 Pax)" value="${capacity}">
-            </div>
-            <div class="form-group-pro" style="flex: 2; margin-bottom: 0;">
-                <input type="text" inputmode="numeric" name="size_prices[]" class="control-pro js-format-comma" placeholder="Price (₱)" value="${price}" required min="0" step="0.01">
-            </div>
-            <button type="button" class="btn-remove-img-pro" style="position: static; width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0; background: #fee2e2; color: #ef4444; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>
+    function addVariantRow(name='', price='', serving='', status='available') {
+        const tbody = document.getElementById('variantsTableBody');
+        if (!tbody) return;
+        const tr = document.createElement('tr');
+        tr.className = 'variant-row';
+        tr.innerHTML = `
+            <td style="padding: 10px;">
+                <input type="text" name="variant_names[]" class="control-pro" placeholder="e.g. Small" value="${name}">
+            </td>
+            <td style="padding: 10px;">
+                <input type="text" name="variant_prices[]" class="control-pro js-format-comma" placeholder="0" value="${price}" inputmode="numeric">
+            </td>
+            <td style="padding: 10px;">
+                <input type="text" name="variant_servings[]" class="control-pro" placeholder="e.g. 40-50 pax" value="${serving}">
+            </td>
+            <td style="padding: 10px;">
+                <select name="variant_statuses[]" class="control-pro">
+                    <option value="available" ${status === 'available' ? 'selected' : ''}>Available</option>
+                    <option value="unavailable" ${status === 'unavailable' ? 'selected' : ''}>Unavailable</option>
+                    <option value="hidden" ${status === 'hidden' ? 'selected' : ''}>Hidden</option>
+                </select>
+            </td>
+            <td style="padding: 10px; text-align: center;">
+                <button type="button" class="btn-remove-row" onclick="this.closest('tr').remove()" style="color: #ef4444; background: none; border: none; cursor: pointer; padding: 5px;">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </td>
         `;
-        container.appendChild(row);
-        const newInput = row.querySelector('.js-format-comma');
-        if (newInput && window.applyCommaFormatting) {
-            newInput.addEventListener('input', function() { window.applyCommaFormatting(this); });
-            if (newInput.value) window.applyCommaFormatting(newInput);
+        tbody.appendChild(tr);
+        if (window.applyCommaFormatting) {
+            const priceInput = tr.querySelector('input[name="variant_prices[]"]');
+            priceInput.addEventListener('input', function() { window.applyCommaFormatting(this); });
+            window.applyCommaFormatting(priceInput);
         }
     }
 
-    function addWeightRow(label = '', price = '') {
-        const container = document.getElementById('weightRowsContainer');
-        const index = container.children.length;
-        const row = document.createElement('div');
-        row.className = '';
-        row.style.display = 'flex';
-        row.style.gap = '10px';
-        row.style.alignItems = 'flex-start';
-        row.style.marginBottom = '10px';
-        row.innerHTML = `
-            <div class="form-group-pro" style="flex: 3; margin-bottom: 0;">
-                <input type="text" name="weight_labels[]" class="control-pro" placeholder="Weight (e.g. 1kg, 25kg)" value="${label}" required>
-            </div>
-            <div class="form-group-pro" style="flex: 3; margin-bottom: 0;">
-                <input type="text" inputmode="numeric" name="weight_prices[]" class="control-pro js-format-comma" placeholder="Price (₱)" value="${price}" required min="0" step="0.01">
-            </div>
-            <button type="button" class="btn-remove-img-pro" style="position: static; width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0; background: #fee2e2; color: #ef4444; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>
-        `;
-        container.appendChild(row);
-        const newInput = row.querySelector('.js-format-comma');
-        if (newInput && window.applyCommaFormatting) {
-            newInput.addEventListener('input', function() { window.applyCommaFormatting(this); });
-            if (newInput.value) window.applyCommaFormatting(newInput);
+    function toggleComboFields() {
+        const itemType = document.querySelector('input[name="item_type"]:checked').value;
+        const comboContainer = document.getElementById('comboDishesContainer');
+        const catSelect = document.getElementById('modalCategory');
+        if (itemType === 'preset_combo') {
+            comboContainer.style.display = 'block';
+            catSelect.value = 'Mixed/Combo';
+        } else {
+            comboContainer.style.display = 'none';
         }
+    }
+
+    function suggestVariants() {
+        const style = document.querySelector('input[name="serving_style"]:checked');
+        if (!style) return;
+        
+        // Auto-select Multiple Variants
+        document.getElementById('pricing_mode_variants').click();
+        
+        const suggestions = {
+            "Party Tray": ["Small Tray", "Medium Tray", "Large Tray"],
+            "Bilao": ["Small Bilao", "Medium Bilao", "Large Bilao"],
+            "Packed Meal": ["Regular Meal", "Premium Meal"],
+            "Crew Meal": ["Standard Meal", "Premium Meal"],
+            "Whole Order": ["Small", "Medium", "Large"],
+            "Solo Order": ["Regular"],
+            "Per Kilo": ["1 Kilogram"]
+        };
+        
+        const vals = suggestions[style.value];
+        if (vals) {
+            document.getElementById('variantsTableBody').innerHTML = '';
+            vals.forEach(val => addVariantRow(val, '', '', 'available'));
+        }
+    }
+
+    function viewMenuItem(el) {
+        document.getElementById('viewMenuName').innerText = el.dataset.name;
+        document.getElementById('viewMenuCat').innerText = el.dataset.category;
+        document.getElementById('viewMenuType').innerText = el.dataset.isCombo === 'true' ? 'Combo / Platter' : 'Single Dish';
+        document.getElementById('viewMenuServing').innerText = el.dataset.servingStyle || 'Standard';
+        document.getElementById('viewMenuDesc').innerText = el.dataset.description || 'No description provided.';
+        
+        const statusSpan = document.getElementById('viewMenuStatus');
+        if (el.dataset.isHidden === 'true') {
+            statusSpan.className = 'status-chip unavailable';
+            statusSpan.innerText = 'Hidden';
+        } else {
+            statusSpan.className = el.dataset.status === 'unavailable' ? 'status-chip unavailable' : 'status-chip available';
+            statusSpan.innerText = el.dataset.status === 'unavailable' ? 'Unavailable' : 'Available';
+        }
+        
+        const pricingContainer = document.getElementById('viewMenuPricingContainer');
+        pricingContainer.innerHTML = '';
+        
+        if (el.dataset.pricingMode === 'variants') {
+            try {
+                const variants = JSON.parse(el.dataset.variants);
+                if (variants && variants.length > 0) {
+                    let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+                    variants.forEach(v => {
+                        html += `<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
+                                    <span style="font-size: 0.85rem; font-weight: 600;">${v.variant_name}</span>
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #1e293b;">₱${parseFloat(v.price).toLocaleString()}</span>
+                                 </div>`;
+                    });
+                    html += '</div>';
+                    pricingContainer.innerHTML = html;
+                } else {
+                    pricingContainer.innerHTML = '<span style="font-size: 0.9rem; font-weight: 800; color: #1e293b;">No variants found</span>';
+                }
+            } catch(e) {
+                pricingContainer.innerHTML = '<span style="font-size: 0.9rem; font-weight: 800; color: #1e293b;">Error loading variants</span>';
+            }
+        } else {
+            pricingContainer.innerHTML = `<span style="font-size: 1.1rem; font-weight: 800; color: #1e293b;">₱${parseFloat(el.dataset.price || 0).toLocaleString()}</span>`;
+        }
+
+        if (el.dataset.imageUrl) {
+            document.getElementById('viewMenuImage').src = el.dataset.imageUrl;
+            document.getElementById('viewMenuImage').style.display = 'block';
+            document.getElementById('viewMenuNoImage').style.display = 'none';
+        } else {
+            document.getElementById('viewMenuImage').style.display = 'none';
+            document.getElementById('viewMenuNoImage').style.display = 'flex';
+        }
+
+        if (window.openModal) window.openModal('viewMenuItemModal');
+        else document.getElementById('viewMenuItemModal').style.display = 'flex';
     }
 
     function openAddMenuModal() {
         modalTitle.innerHTML = '<i class="fas fa-utensils-alt"></i> Add New Menu Item';
         form.action = '/caterer/menu/add';
         form.reset();
+        document.getElementById('removeImageFlag').value = 'false';
         removeImage();
         
-        if (form.is_addon) form.is_addon.checked = false;
-        document.getElementById('addonPriceGroup').style.display = 'none';
-
-        document.getElementById('sizeRowsContainer').innerHTML = '';
-        document.getElementById('weightRowsContainer').innerHTML = '';
-        document.getElementById('usage_both').checked = true;
-        document.getElementById('modalPricingType').value = 'fixed';
-        togglePricingSection();
+        // Reset Serving Styles and Item Type
+        document.querySelectorAll('input[name="item_type"]').forEach(cb => cb.checked = false);
+        document.querySelector('input[name="item_type"][value="single"]').checked = true;
+        toggleComboFields();
+        document.querySelectorAll('input[name="serving_style"]').forEach(cb => cb.checked = false);
         
-        document.getElementById('is_combo_checkbox').checked = false;
-        document.getElementById('combo_max_choices').value = '';
-        document.querySelectorAll('input[name="combo_options_list[]"]').forEach(cb => cb.checked = false);
-        toggleComboSection();
+        // Reset Included Dishes
+        document.querySelectorAll('.included-dish-cb').forEach(cb => cb.checked = false);
+        
+        document.getElementById('usage_both').checked = true;
+        document.getElementById('pricing_mode_single').checked = true;
+        document.getElementById('variantsTableBody').innerHTML = '';
+        addVariantRow(); // Add one empty variant row by default
+        togglePricingSection();
         
         if (document.getElementById('menuErrorDrawer')) document.getElementById('menuErrorDrawer').style.display = 'none';
         
@@ -576,19 +713,22 @@
                 name: el.dataset.name,
                 category: el.dataset.category,
                 description: el.dataset.description,
-                cost_price: el.dataset.costPrice || 0,
                 price: el.dataset.price,
                 serving_size: el.dataset.servingSize,
+                serving_style: el.dataset.servingStyle,
+                is_combo: el.dataset.isCombo === 'true',
+                combo_options: el.dataset.comboOptions ? JSON.parse(el.dataset.comboOptions) : {},
                 status: el.dataset.status,
+                min_order_qty: el.dataset.minOrderQty,
                 image_url: el.dataset.imageUrl,
                 usage_type: el.dataset.usageType || 'both',
-                is_addon: el.dataset.isAddon === 'true',
-                addon_price: el.dataset.addonPrice || 0,
-                pricing_type: el.dataset.pricingType || 'fixed'
+                pricing_mode: el.dataset.pricingMode || 'single',
+                variants: el.dataset.variants ? JSON.parse(el.dataset.variants) : []
             };
 
             modalTitle.innerHTML = '<i class="fas fa-edit"></i> Edit Menu Item';
             form.action = `/caterer/menu/${item.id}/update`;
+            document.getElementById('removeImageFlag').value = 'false';
             form.name.value = item.name;
             
             const catSelect = form.category;
@@ -604,58 +744,54 @@
                 document.getElementById('customCategoryInput').required = true;
             }
 
+            // Set Item Type
+            if (item.is_combo) {
+                document.querySelector('input[name="item_type"][value="preset_combo"]').checked = true;
+                toggleComboFields();
+                if (item.combo_options && item.combo_options.included_menu_ids) {
+                    document.querySelectorAll('.included-dish-cb').forEach(cb => {
+                        cb.checked = item.combo_options.included_menu_ids.includes(parseInt(cb.value));
+                    });
+                }
+            } else {
+                document.querySelector('input[name="item_type"][value="single"]').checked = true;
+                toggleComboFields();
+            }
+
+            // Set Serving Style
+            document.querySelectorAll('input[name="serving_style"]').forEach(cb => cb.checked = false);
+            if (item.serving_style) {
+                const rb = document.querySelector(`input[name="serving_style"][value="${item.serving_style}"]`);
+                if (rb) rb.checked = true;
+            }
+
             form.description.value = item.description || '';
             form.status.value = item.status || 'available';
             
             // Set usage_type
             document.querySelector(`input[name="usage_type"][value="${item.usage_type}"]`).checked = true;
-            
-            if (form.is_addon) {
-                form.is_addon.checked = item.is_addon;
-                document.getElementById('addonPriceGroup').style.display = item.is_addon ? 'block' : 'none';
-            }
-            if (form.addon_price) {
-                form.addon_price.value = item.addon_price;
-            }
 
-            // Set pricing_type
-            document.getElementById('modalPricingType').value = item.pricing_type;
+            // Set pricing_mode
+            if (item.pricing_mode === 'variants') {
+                document.getElementById('pricing_mode_variants').checked = true;
+            } else {
+                document.getElementById('pricing_mode_single').checked = true;
+            }
             
-            // Clear rows
-            document.getElementById('sizeRowsContainer').innerHTML = '';
-            document.getElementById('weightRowsContainer').innerHTML = '';
-
             // Set Price Fields
-            if(item.pricing_type === 'fixed' || item.pricing_type === 'per_pax') {
-                document.getElementById('fixed_price_input').value = item.price || '';
-                document.getElementById('fixed_capacity_input').value = item.serving_size || '';
-            } else if (item.pricing_type === 'size_based') {
-                const sizes = JSON.parse(el.dataset.sizes || '[]');
-                if(sizes.length) sizes.forEach(s => addSizeRow(s.size_name, s.capacity, s.price));
-                else addSizeRow();
-            } else if (item.pricing_type === 'weight_based') {
-                const weights = JSON.parse(el.dataset.weights || '[]');
-                if(weights.length) weights.forEach(w => addWeightRow(w.weight_label, w.price));
-                else addWeightRow();
+            document.getElementById('fixed_price_input').value = item.price || '';
+            document.getElementById('fixed_capacity_input').value = item.serving_size || '';
+            document.getElementById('min_order_qty_input').value = item.min_order_qty || 1;
+
+            // Load Variants
+            document.getElementById('variantsTableBody').innerHTML = '';
+            if (item.variants && item.variants.length > 0) {
+                item.variants.forEach(v => addVariantRow(v.variant_name, v.price, v.serving_capacity, v.status));
+            } else {
+                addVariantRow();
             }
 
             togglePricingSection();
-
-            // Combo Data
-            const isComboStr = el.dataset.isCombo;
-            if (isComboStr === 'true') {
-                document.getElementById('is_combo_checkbox').checked = true;
-                document.getElementById('combo_max_choices').value = el.dataset.maxChoices || '';
-                const opts = JSON.parse(el.dataset.comboOptions || '[]');
-                document.querySelectorAll('input[name="combo_options_list[]"]').forEach(cb => {
-                    cb.checked = opts.includes(cb.value);
-                });
-            } else {
-                document.getElementById('is_combo_checkbox').checked = false;
-                document.getElementById('combo_max_choices').value = '';
-                document.querySelectorAll('input[name="combo_options_list[]"]').forEach(cb => cb.checked = false);
-            }
-            toggleComboSection();
 
             if (window.applyCommaFormatting) {
                 window.applyCommaFormatting(document.getElementById('fixed_price_input'));
@@ -686,14 +822,26 @@
                 photoDropzone.style.display = 'none';
             };
             reader.readAsDataURL(file);
+            document.getElementById('removeImageFlag').value = 'false';
         }
     }
 
-    function removeImage() {
+    async function removeImage(userTriggered = false) {
+        if (userTriggered && form.action.includes('/update')) {
+            const idMatch = form.action.match(/\/menu\/(\d+)\/update/);
+            if (idMatch && document.getElementById('removeImageFlag').value === 'false') {
+                const id = idMatch[1];
+                try {
+                    const res = await fetch(`/caterer/menu/${id}/remove-image`, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    if (res.ok && window.showToast) window.showToast("Image removed from database", "success");
+                } catch(e) {}
+            }
+        }
         imagePreview.src = '';
         imagePreviewContainer.style.display = 'none';
         if (photoDropzone) photoDropzone.style.display = 'flex';
         document.getElementById('menuImageInput').value = '';
+        document.getElementById('removeImageFlag').value = 'true';
     }
 
     function toggleCustomCategory() {
@@ -749,11 +897,12 @@
         const archiveModal = document.getElementById('archiveDishModal');
         const btn = document.querySelector(`.dropdown-item-pro[data-id="${id}"]`);
         document.getElementById('archiveItemName').innerText = btn ? btn.dataset.name : 'this item';
-        document.getElementById('confirmArchiveBtn').onclick = async () => {
-            const res = await window.apiAction(`/caterer/menu/${id}/archive`, { method: 'POST' });
+        document.getElementById('confirmArchiveBtn').onclick = async function() {
+            const btnEl = this;
+            const res = await window.apiAction(`/caterer/menu/${id}/archive`, { method: 'POST' }, btnEl);
             if (res) {
                 if (window.closeModal) window.closeModal('archiveDishModal');
-                setTimeout(() => window.location.reload(), 500);
+                setTimeout(() => window.location.reload(), 1000);
             }
         };
         if (window.openModal) window.openModal('archiveDishModal');
@@ -782,22 +931,34 @@
         // Validation for pricing types
         const isPackageOnly = document.getElementById('usage_package').checked;
         if (!isPackageOnly) {
-            const pricingType = document.getElementById('modalPricingType').value;
-            if (pricingType === 'fixed' || pricingType === 'per_pax') {
+            const isSingle = document.getElementById('pricing_mode_single').checked;
+            if (isSingle) {
                 const sellPrice = parseFloat(document.getElementById('fixed_price_input').value) || 0;
                 if (sellPrice <= 0) {
-                    alert("Selling Price must be greater than zero.");
+                    alert("Selling Price must be greater than zero for Single Price mode.");
                     if (btn) btn.disabled = false;
                     return;
                 }
-            } else if (pricingType === 'size_based') {
-                if (document.getElementById('sizeRowsContainer').children.length === 0) {
-                    alert("Please add at least one size.");
+            } else {
+                const variants = document.querySelectorAll('#variantsTableBody .variant-row');
+                if (variants.length === 0) {
+                    alert("Please add at least one variant.");
+                    if (btn) btn.disabled = false;
                     return;
                 }
-            } else if (pricingType === 'weight_based') {
-                if (document.getElementById('weightRowsContainer').children.length === 0) {
-                    alert("Please add at least one weight.");
+                
+                let hasInvalidVariant = false;
+                variants.forEach(row => {
+                    const nameInput = row.querySelector('input[name="variant_names[]"]');
+                    const priceInput = row.querySelector('input[name="variant_prices[]"]');
+                    if (!nameInput || !nameInput.value.trim() || (parseFloat(priceInput.value) || 0) <= 0) {
+                        hasInvalidVariant = true;
+                    }
+                });
+                
+                if (hasInvalidVariant) {
+                    alert("Please provide a name and valid selling price (greater than zero) for all variants.");
+                    if (btn) btn.disabled = false;
                     return;
                 }
             }

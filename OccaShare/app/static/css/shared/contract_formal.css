@@ -318,18 +318,18 @@
     
     /* Keep desktop layout but shrink */
     .contract-parties-layout {
-        grid-template-columns: 1fr auto 1fr;
-        gap: 0.5rem;
+        grid-template-columns: 1fr 20px 1fr;
+        gap: 0.25rem;
         margin-bottom: 1rem;
         align-items: start;
     }
-    .party-card-pro { padding: 0.4rem; border-radius: 0.25rem; }
-    .party-label-tag { font-size: 0.4rem; margin-bottom: 0.2rem; }
-    .party-name { font-size: 0.6rem; margin-bottom: 0.2rem; }
-    .party-detail-text { font-size: 0.45rem; line-height: 1.2; }
-    .parties-divider-icon { font-size: 0.8rem; }
+    .party-card-pro { padding: 0.35rem; border-radius: 0.25rem; }
+    .party-label-tag { font-size: 0.35rem; margin-bottom: 0.15rem; }
+    .party-name { font-size: 0.45rem; margin-bottom: 0.15rem; word-break: normal; word-wrap: break-word; hyphens: none; }
+    .party-detail-text { font-size: 0.4rem; line-height: 1.1; word-break: normal; }
+    .parties-divider-icon { font-size: 0.6rem; padding-top: 0.25rem; }
     
-    .contract-section-title { font-size: 0.6rem; margin: 0.75rem 0 0.3rem 0; }
+    .contract-section-title { font-size: 0.5rem; margin: 0.75rem 0 0.25rem 0; }
     
     .contract-spec-table { margin-bottom: 0.75rem; }
     .contract-spec-table td, 
@@ -357,9 +357,9 @@
     .formal-sig-img { max-height: 35px; }
     .sig-awaiting { font-size: 0.4rem; }
     
-    .sig-name-formal { font-size: 0.55rem; min-height: unset; padding-top: 0.1rem; }
-    .sig-label-formal { font-size: 0.45rem; }
-    .sig-date-formal { font-size: 0.4rem; }
+    .sig-name-formal { font-size: 0.45rem; min-height: unset; padding-top: 0.1rem; word-break: normal; word-wrap: break-word; hyphens: none; }
+    .sig-label-formal { font-size: 0.4rem; }
+    .sig-date-formal { font-size: 0.35rem; }
     
     .formal-footer-note { margin-top: 1rem; font-size: 0.45rem; }
     

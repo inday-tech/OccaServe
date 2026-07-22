@@ -31,3 +31,44 @@
     </div>
 </div>
 {% endblock %}
+
+{% block extra_js %}
+<script>
+    function haversineDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Earth's radius in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    function detectUserLocationAndUpdateDistances() {
+        if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const custLat = position.coords.latitude;
+                    const custLng = position.coords.longitude;
+                    
+                    document.querySelectorAll('.dist-display').forEach(badge => {
+                        const lat = parseFloat(badge.dataset.lat);
+                        const lng = parseFloat(badge.dataset.lon);
+                        if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+                            const dist = haversineDistance(custLat, custLng, lat, lng);
+                            badge.style.display = 'flex';
+                            const span = badge.querySelector('.dist-text');
+                            if (span) span.innerText = dist.toFixed(1) + ' km away';
+                        }
+                    });
+                },
+                (error) => console.log('Location access denied.'),
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', detectUserLocationAndUpdateDistances);
+</script>
+{% endblock %}

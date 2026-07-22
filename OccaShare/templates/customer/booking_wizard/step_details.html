@@ -74,7 +74,7 @@
                     <div class="form-group">
                         <label class="form-label">Event Type</label>
                         <select name="event_type" id="event_type_select" class="filter-select-pro form-input" required>
-                            <option value="">-- Select Type --</option>
+                            <option value="" disabled selected hidden>-- Select Type --</option>
                             <option value="Wedding" {% if booking and booking.event_type=='Wedding' %}selected{% endif %}>Wedding</option>
                             <option value="Birthday" {% if booking and booking.event_type=='Birthday' %}selected{% endif %}>Birthday</option>
                             <option value="Corporate Event" {% if booking and booking.event_type=='Corporate Event' %}selected{% endif %}>Corporate Event</option>
@@ -119,7 +119,7 @@
                             value="{{ booking.event_date.isoformat() if booking and booking.event_date else '' }}"
                             required onchange="checkAvailability()">
                         <div id="availability-chip" class="availability-chip"></div>
-                        <span class="field-error" id="err-date">Please select a date at least {{ caterer.booking_lead_time or 3 }} days in advance.</span>
+                        <span class="field-error" id="err-date">Please select a valid date (up to 6 months in advance).</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Start Time</label>
@@ -267,13 +267,17 @@
                                 <input type="checkbox" name="selected_service_addons" value="{{ item.id }}" 
                                     {% if item.id in selected_addon_service_ids %}checked{% endif %} 
                                     data-price="{{ item.addon_price or 0 }}"
+                                    data-capacity-type="{{ getattr(item, 'capacity_type', 'unit_based') }}"
+                                    data-staff-ratio="{{ getattr(item, 'staff_to_pax_ratio', 0) }}"
+                                    data-min-staff="{{ getattr(item, 'min_staff_required', 1) }}"
                                     style="display: none;">
                                 <div class="indicator-circle"></div>
                                 <div class="mic-info">
                                     <span class="mic-name">{{ item.name }} <i class="fas fa-user-tie" style="color: var(--wiz-slate-400); font-size: 0.7rem; margin-left: 4px;"></i></span>
                                     <span class="mic-cat">{{ item.category or 'Service' }}</span>
+                                    <span class="staff-req-label" style="font-size: 0.7rem; color: var(--wiz-primary); display: none;">Requires: <span class="qty-val">1</span> staff</span>
                                 </div>
-                                <span class="mic-price">+₱{{ "{:,.2f}".format(item.addon_price or 0) }}</span>
+                                <span class="mic-price" data-base-price="{{ item.addon_price or 0 }}">+₱{{ "{:,.2f}".format(item.addon_price or 0) }}</span>
                             </div>
                             {% endfor %}
                         </div>
@@ -293,18 +297,15 @@
                     <div class="form-group">
                         <label class="form-label">Province</label>
                         <select name="province" id="province_select" class="filter-select-pro form-input" required>
-                            <option value="">-- Province --</option>
-                            <option value="NATIONAL CAPITAL REGION (NCR)">NATIONAL CAPITAL REGION (NCR)</option>
+                            <option value="" disabled selected hidden>-- Select Province --</option>
                             <option value="Laguna">Laguna</option>
-                            <option value="Batangas">Batangas</option>
-                            <option value="Quezon">Quezon</option>
                         </select>
-                        <span class="field-error" id="err-province">Province required.</span>
+                        <span class="field-error" id="err-province">Province is required.</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label">City / Municipality</label>
                         <select name="city" id="city_select" class="filter-select-pro" required>
-                            <option value="">-- City --</option>
+                            <option value="" disabled selected hidden>-- Select City --</option>
                         </select>
                         <span class="field-error" id="err-city">City required.</span>
                     </div>
@@ -313,7 +314,7 @@
                 <div class="form-group">
                     <label class="form-label">Barangay</label>
                     <select name="barangay" id="barangay_select" class="filter-select-pro" required>
-                        <option value="">-- Barangay --</option>
+                        <option value="" disabled selected hidden>-- Select Barangay --</option>
                     </select>
                     <span class="field-error" id="err-barangay">Barangay required.</span>
                 </div>
@@ -321,8 +322,8 @@
                 <input type="hidden" name="venue_address" id="venue_address_hidden" value="{{ booking.venue_address if booking else '' }}">
 
                 <div class="form-group">
-                    <label class="form-label">Special Requests & Modifications <small>(e.g. Dietary limits, ingredient swaps - subject to caterer pricing)</small></label>
-                    <textarea name="special_requests" class="form-input" rows="3" placeholder="Tell us if you want to replace beef with chicken, or if you have vegan guests...">{{ booking.special_requests if booking else '' }}</textarea>
+                    <label class="form-label">Special Requests & Modifications <small>(e.g. Dietary limits, dish upgrades - extra charges may be applied by the caterer)</small></label>
+                    <textarea name="special_requests" class="form-input" rows="3" placeholder="Tell us if you want to upgrade your pork dish to beef, or if you have vegan guests. The caterer will adjust the final price during their review.">{{ booking.special_requests if booking else '' }}</textarea>
                 </div>
             </div>
         </div>
@@ -365,15 +366,58 @@
     </div>
 
     <div class="wizard-actions">
+        {% if is_locked %}
+        <a href="/customer/bookings" class="btn-wizard-back">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+        {% else %}
         <a href="/customer/marketplace/{{ caterer.id }}" class="btn-wizard-back">
             <i class="fas fa-arrow-left"></i> Cancel Booking
         </a>
-        <button type="submit" id="submitBtn" class="btn-wizard-next">
+        {% endif %}
+        <button type="submit" id="submitBtn" class="btn-wizard-next no-submit">
             Next: Verify Identity <i class="fas fa-id-card"></i>
         </button>
     </div>
     </div>
 </form>
+
+{% if is_locked %}
+<div class="locked-banner" style="background: #fee2e2; color: #b91c1c; padding: 0.75rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; font-weight: 700; border: 1px solid #f87171;">
+    <i class="fas fa-lock"></i> This booking is already in progress. Details cannot be modified.
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const form = document.getElementById("detailsForm");
+        if(form) {
+            const inputs = form.querySelectorAll("input, select, textarea");
+            inputs.forEach(i => {
+                i.disabled = true;
+                i.style.backgroundColor = "#f3f4f6";
+                i.style.cursor = "not-allowed";
+            });
+            const submitBtn = document.getElementById("submitBtn");
+            if(submitBtn) {
+                submitBtn.type = "button";
+                submitBtn.onclick = () => window.location.href = "/bookings/step/kyc/{{ booking.id }}";
+                submitBtn.innerHTML = 'Next Step <i class="fas fa-arrow-right"></i>';
+                submitBtn.className = "btn-wizard-next"; // removes no-submit logic
+            }
+            
+            // Hide buttons that add/remove items
+            document.querySelectorAll(".btn-addon, .btn-remove-addon, .btn-swap-item, .btn-swap-pro, .add-item-btn").forEach(btn => {
+                btn.style.display = 'none';
+            });
+            
+            // Disable clicks on selectable cards
+            document.querySelectorAll(".menu-item-card.selectable, .menu-item-card.addon").forEach(card => {
+                card.onclick = null;
+                card.style.cursor = 'default';
+            });
+        }
+    });
+</script>
+{% endif %}
 {% endblock %}
 
 {% block wizard_modals %}
@@ -406,6 +450,19 @@
         {% endfor %}
     ];
 </script>
+<script>
+    // Prevent accidental form submission when pressing Enter on any input field
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('detailsForm');
+        if (form) {
+            form.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+                    e.preventDefault();
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}
 
 {% block step_js %}
@@ -418,6 +475,7 @@
     window.minGuests = parseInt("{{ package.min_guests or caterer.min_pax or 1 }}") || 1;
     window.maxGuests = parseInt("{{ package.max_guests or 0 }}") || 0;
     window.bookingLeadTime = parseInt("{{ caterer.booking_lead_time or 3 }}") || 3;
+    window.catererRules = {{ (caterer.scheduling_rules or {}) | tojson | safe }};
 </script>
 <script
     src="{{ url_for('static', path='/js/customer/booking_wizard/step_details.js') }}?v={{ range(1, 9999) | random }}"></script>

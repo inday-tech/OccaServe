@@ -31,11 +31,17 @@ document.addEventListener('DOMContentLoaded', function () {
     let selfieFrames = [];
     let isMobile = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    // --- SETUP DATE MIN ---
+    // --- SETUP DATE MIN & MAX ---
     const dateInput = document.getElementById('delivery_date');
     if (dateInput) {
-        const today = new Date().toISOString().split('T')[0];
+        const todayObj = new Date();
+        const today = todayObj.toISOString().split('T')[0];
         dateInput.setAttribute('min', today);
+        
+        // 3 months max limit
+        const maxObj = new Date(todayObj.setMonth(todayObj.getMonth() + 3));
+        const maxDate = maxObj.toISOString().split('T')[0];
+        dateInput.setAttribute('max', maxDate);
     }
 
     // --- COMBO BUILDER LOGIC ---
@@ -132,6 +138,11 @@ document.addEventListener('DOMContentLoaded', function () {
             btnSubmit.innerHTML = window.isServiceOnly ? 'CONFIRM BOOKING <i class="fas fa-check" style="margin-left: 0.75rem;"></i>' : 
                                   (window.isRentalOnly ? 'CONFIRM RENTAL <i class="fas fa-check" style="margin-left: 0.75rem;"></i>' : 'PLACE ORDER NOW <i class="fas fa-check" style="margin-left: 0.75rem;"></i>');
         }
+        
+        const reviewTitle = document.getElementById('review-title');
+        if (reviewTitle) {
+            reviewTitle.innerHTML = window.isRentalOnly ? '<i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: var(--checkout-primary);"></i> Rent Review' : '<i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: var(--checkout-primary);"></i> Order Review';
+        }
     }
 
     // Call it immediately so variables are ready
@@ -195,8 +206,13 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     window.updateItemQty = function(index, delta) {
-        let newQty = (parseInt(window.cartItems[index].qty) || 1) + delta;
-        if (newQty < 1) newQty = 1;
+        const cItem = window.cartItems[index];
+        const backendList = window.backendMenuItems || [];
+        const bItem = backendList.find(i => String(i.id) === String(cItem.id) && (cItem.type ? i.type === cItem.type : true));
+        const minQty = (bItem && bItem.min_quantity) ? parseInt(bItem.min_quantity) : 1;
+        
+        let newQty = (parseInt(cItem.qty) || minQty) + delta;
+        if (newQty < minQty) newQty = minQty;
         if (newQty > 99) {
             Swal.fire({icon: 'info', title: 'Limit Reached', text: 'Maximum quantity limit reached.', confirmButtonColor: '#10b981'});
             return;
@@ -343,14 +359,14 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- NAVIGATION LOGIC ---
     window.nextScreen = async function (n, force = false) {
         if (!force && n > window.currentScreen) {
-            if (window.currentScreen === 2 && n === 3) {
+            if (window.currentScreen === window.paymentStep && n === window.paymentStep + 1) {
                 if (typeof window.submitAtaCarteOrder === 'function') {
                     window.submitAtaCarteOrder();
                 }
                 return;
             }
             if (!validateScreen(window.currentScreen)) return;
-            if (window.currentScreen === 2 && window.inventoryConflict) {
+            if (window.currentScreen === window.paymentStep && window.inventoryConflict) {
                 if (typeof Swal !== 'undefined') {
                     Swal.fire('Inventory Conflict', 'Some items requested are out of stock for this date. Please adjust quantities or choose another date.', 'error');
                 } else {
@@ -364,6 +380,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 const ok = await createDraftBooking();
                 if (!ok) return;
             }
+            
+            // Validate KYC if moving from Step 2 to Step 3 and KYC is required
+            if (window.requiresKycStep && window.currentScreen === 2 && n === 3) {
+                const idFront = document.getElementById('kyc_id_front');
+                const selfie = document.getElementById('kyc_selfie');
+                if (!idFront.files.length || !selfie.files.length) {
+                    Swal.fire({icon: 'error', title: 'Missing Documents', text: 'Please upload both your ID and a selfie to proceed.', confirmButtonColor: '#ef4444'});
+                    return;
+                }
+            }
         }
 
         // Hide all screens, show target
@@ -375,14 +401,17 @@ document.addEventListener('DOMContentLoaded', function () {
         updateStepper(n);
         window.currentScreen = n;
 
-        if (n === 2) populateReview();
+        if (n === window.paymentStep) populateReview();
         
         const sidebarBtn = document.getElementById('sidebar-next-btn');
         if (sidebarBtn) {
             if (n === 1) {
+                sidebarBtn.innerHTML = window.requiresKycStep ? 'PROCEED TO VERIFICATION <i class="fas fa-id-card" style="margin-left: 0.5rem;"></i>' : 'PROCEED TO PAYMENT <i class="fas fa-arrow-right" style="margin-left: 0.5rem;"></i>';
+                sidebarBtn.style.display = 'block';
+            } else if (n === 2 && window.requiresKycStep) {
                 sidebarBtn.innerHTML = 'PROCEED TO PAYMENT <i class="fas fa-arrow-right" style="margin-left: 0.5rem;"></i>';
                 sidebarBtn.style.display = 'block';
-            } else if (n === 2) {
+            } else if (n === window.paymentStep) {
                 sidebarBtn.innerHTML = 'CONFIRM & CHECKOUT <i class="fas fa-check" style="margin-left: 0.5rem;"></i>';
                 sidebarBtn.style.display = 'block';
             } else {
@@ -394,7 +423,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     function updateStepper(n) {
-        document.querySelectorAll('.mini-step').forEach((step, idx) => {
+        document.querySelectorAll('.step-item').forEach((step, idx) => {
             const stepNum = idx + 1;
             if (stepNum < n) {
                 step.classList.add('completed');
@@ -435,18 +464,38 @@ document.addEventListener('DOMContentLoaded', function () {
                     isValid = false;
                 }
             });
-            
-            // Time Window Validation (6:00 AM to 9:00 PM)
+            const rules = window.isRentalOnly ? (window.catererRules.equipment_rules || {}) : (window.isServiceOnly ? (window.catererRules.service_rules || {}) : {});
+            let earliestStart = rules.earliest_delivery || rules.earliest_start || '06:00';
+            let latestEnd = rules.latest_pullout || rules.latest_end || '21:00';
+
             const dTime = document.getElementById('delivery_time');
             if (dTime && dTime.value) {
-                const parts = dTime.value.split(':');
-                if (parts.length === 2) {
-                    const hour = parseInt(parts[0]);
-                    if (hour < 6 || hour > 21) {
-                        Swal.fire({icon: 'error', title: 'Invalid Time', text: 'Please select a time between 6:00 AM and 9:00 PM.'});
-                        showError('delivery_time', 'err-delivery_time');
-                        isValid = false;
+                if (dTime.value < earliestStart || dTime.value > latestEnd) {
+                    const errEl = document.getElementById('err-delivery_time');
+                    if (errEl) {
+                        errEl.innerText = `Please select a time between ${earliestStart} and ${latestEnd}.`;
                     }
+                    showError('delivery_time', 'err-delivery_time');
+                    isValid = false;
+                }
+            }
+            
+            const pTime = document.getElementById('pullout_time');
+            if (pTime && pTime.value) {
+                if (pTime.value < earliestStart || pTime.value > latestEnd) {
+                    const errEl = document.getElementById('err-pullout_time');
+                    if (errEl) {
+                        errEl.innerText = `Please select a time between ${earliestStart} and ${latestEnd}.`;
+                    }
+                    showError('pullout_time', 'err-pullout_time');
+                    isValid = false;
+                } else if (dTime && dTime.value && pTime.value <= dTime.value) {
+                    const errEl = document.getElementById('err-pullout_time');
+                    if (errEl) {
+                        errEl.innerText = `Return time must be after delivery time.`;
+                    }
+                    showError('pullout_time', 'err-pullout_time');
+                    isValid = false;
                 }
             }
             
@@ -526,25 +575,33 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!dateInput) return;
         
         const leadTime = window.bookingLeadTime || 7;
+        const rules = window.isRentalOnly ? (window.catererRules.equipment_rules || {}) : (window.isServiceOnly ? (window.catererRules.service_rules || {}) : {});
+        const maxAdvance = parseInt(rules.max_advance_days) || 90;
+        
         const today = new Date();
         today.setDate(today.getDate() + leadTime);
-        
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
         const dd = String(today.getDate()).padStart(2, '0');
-        
         const minDate = `${yyyy}-${mm}-${dd}`;
         dateInput.setAttribute('min', minDate);
         
+        const maxObj = new Date();
+        maxObj.setDate(maxObj.getDate() + maxAdvance);
+        const maxY = maxObj.getFullYear();
+        const maxM = String(maxObj.getMonth() + 1).padStart(2, '0');
+        const maxD = String(maxObj.getDate()).padStart(2, '0');
+        const maxDate = `${maxY}-${maxM}-${maxD}`;
+        dateInput.setAttribute('max', maxDate);
+        
         dateInput.addEventListener('change', function() {
             if (this.value && this.value < minDate) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Invalid Date',
-                    text: `Based on the caterer's policy, bookings must be made at least ${leadTime} days in advance (earliest is ${minDate}).`,
-                    confirmButtonColor: '#10b981'
-                });
-                this.value = ''; // Reset invalid selection
+                const errEl = document.getElementById('err-delivery_date');
+                if (errEl) errEl.innerText = `Bookings must be at least ${leadTime} days in advance (earliest is ${minDate}).`;
+                showError('delivery_date', 'err-delivery_date');
+            } else if (this.value && this.value > maxDate) {
+                const errEl = document.getElementById('err-delivery_date');
+                if (errEl) errEl.innerText = `Bookings can only be made up to ${maxAdvance} days in advance (latest is ${maxDate}).`;
                 showError('delivery_date', 'err-delivery_date');
             } else if (this.value) {
                 // Check if caterer operates on this day
@@ -554,13 +611,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     const selectedDate = new Date(this.value);
                     const selectedDayName = dayNames[selectedDate.getDay()];
                     if (!opDays.includes(selectedDayName)) {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Caterer Unavailable',
-                            text: `This caterer does not operate on ${selectedDayName}s. Please select a different date.`,
-                            confirmButtonColor: '#10b981'
-                        });
-                        this.value = '';
+                        const errEl = document.getElementById('err-delivery_date');
+                        if (errEl) errEl.innerText = `This caterer does not operate on ${selectedDayName}s. Please select a different date.`;
                         showError('delivery_date', 'err-delivery_date');
                         return;
                     }
@@ -715,6 +767,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (addressSection) addressSection.style.display = 'none';
             if (lblDelDate) lblDelDate.innerText = 'Pickup Date';
             if (lblDelTime) lblDelTime.innerText = 'Pickup Time';
+            
+            const pickupInfo = document.getElementById('pickup-address-info');
+            if (pickupInfo) pickupInfo.style.display = 'block';
+            
             updateCheckoutSummary();
         } else {
             if (window.isServiceOnly) {
@@ -724,6 +780,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (addressSection) addressSection.style.display = 'block';
             if (lblDelDate) lblDelDate.innerText = window.isServiceOnly ? 'Event Date' : (window.isRentalOnly ? 'Delivery & Setup Date' : 'Delivery Date');
             if (lblDelTime) lblDelTime.innerText = window.isServiceOnly ? 'Call Time' : (window.isRentalOnly ? 'Setup Time' : 'Delivery Time');
+            
+            const pickupInfo = document.getElementById('pickup-address-info');
+            if (pickupInfo) pickupInfo.style.display = 'none';
+            
             if (typeof window.syncAddress === 'function') window.syncAddress(); 
         }
     };
@@ -757,7 +817,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('rev-datetime').innerText = `${dateStr} @ ${timeStr}`;
         
         const mode = form.fulfillment.value;
-        document.getElementById('rev-location').innerText = mode === 'pickup' ? 'STORE PICKUP' : document.getElementById('address').value;
+        document.getElementById('rev-location').innerText = mode === 'pickup' ? (window.catererAddress || 'STORE PICKUP') : document.getElementById('address').value;
     }
 
     // --- ADDRESS SYNC & DYNAMIC FEE ---
@@ -767,13 +827,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const provSelect = document.getElementById('prov_select');
         if (!provSelect) return;
         
-        provSelect.innerHTML = '<option value="">-- Select Province --</option>';
+        provSelect.innerHTML = '<option value="" disabled selected hidden>-- Select Province --</option>';
         
         const allowedProvinces = [
-            { code: "130000000", name: "NATIONAL CAPITAL REGION (NCR)" },
-            { code: "043400000", name: "Laguna" },
-            { code: "041000000", name: "Batangas" },
-            { code: "045600000", name: "Quezon" }
+            { code: "043400000", name: "Laguna" }
         ];
         
         allowedProvinces.forEach(p => {
@@ -782,20 +839,53 @@ document.addEventListener('DOMContentLoaded', function () {
             opt.textContent = p.name;
             provSelect.appendChild(opt);
         });
+
+        // Autofill logic
+        if (window.userSavedAddress) {
+            if (window.userSavedAddress.street) {
+                const st = document.getElementById('street_input');
+                if (st && !st.value) st.value = window.userSavedAddress.street;
+            }
+            if (window.userSavedAddress.province) {
+                let found = false;
+                Array.from(provSelect.options).forEach(opt => {
+                    if (opt.text.toLowerCase() === window.userSavedAddress.province.toLowerCase() || 
+                        opt.value === window.userSavedAddress.province) {
+                        opt.selected = true;
+                        found = true;
+                    }
+                });
+                if (found) {
+                    await window.handleProvinceChange();
+                }
+            }
+        }
     }
     
-    function fallbackToTextInputs() {
-        // Change selects to text inputs to allow manual entry if API fails
-        const provGroup = document.getElementById('prov_select').parentElement;
-        provGroup.innerHTML = '<label>Province</label><input type="text" id="prov_select" class="form-input" placeholder="e.g. Laguna" required oninput="handleProvinceChange()">';
+    window.showEditAddress = function() {
+        document.getElementById('address-display-section').style.display = 'none';
+        document.getElementById('address-edit-section').style.display = 'block';
+        window.addressEditing = true;
+        if (!window.psgcInitialized) {
+            initPSGC();
+            window.psgcInitialized = true;
+        }
+        // Blank out the hidden fields so syncAddress handles them
+        document.getElementById('address').value = '';
+        if (typeof window.syncAddress === 'function') window.syncAddress();
+    };
+
+    window.cancelEditAddress = function() {
+        document.getElementById('address-display-section').style.display = 'flex';
+        document.getElementById('address-edit-section').style.display = 'none';
+        window.addressEditing = false;
         
-        const cityGroup = document.getElementById('city_select').parentElement;
-        cityGroup.innerHTML = '<label>Municipality / City</label><input type="text" id="city_select" class="form-input" placeholder="e.g. Santa Cruz" required oninput="handleCityChange()">';
-        
-        const brgyGroup = document.getElementById('brgy_select').parentElement;
-        brgyGroup.innerHTML = '<label>Barangay</label><input type="text" id="brgy_select" class="form-input" placeholder="e.g. Patimbao" required oninput="syncAddress()">';
-    }
-    initPSGC();
+        // Restore hidden address from Jinja saved vars
+        document.getElementById('address').value = window.originalSavedAddressString || '';
+        document.getElementById('hidden_province').value = window.userSavedAddress.province || '';
+        document.getElementById('hidden_municipality').value = window.userSavedAddress.city || '';
+        document.getElementById('hidden_barangay').value = window.userSavedAddress.brgy || '';
+    };
 
     window.handleProvinceChange = async function() {
         const provSelect = document.getElementById('prov_select');
@@ -822,10 +912,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (code === "130000000") endpoint = `https://psgc.gitlab.io/api/regions/${code}/cities-municipalities/`;
             
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 2500);
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
 
             const res = await fetch(endpoint, { signal: controller.signal });
             clearTimeout(timeoutId);
+            
+            if (!res.ok) throw new Error("API Error");
             const cities = await res.json();
             
             citySelect.innerHTML = '<option value="">-- Select Municipality --</option>';
@@ -836,9 +928,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 citySelect.appendChild(opt);
             });
             citySelect.disabled = false;
+            
+            // Autofill city
+            if (window.userSavedAddress && window.userSavedAddress.city) {
+                let found = false;
+                Array.from(citySelect.options).forEach(opt => {
+                    if (opt.text.toLowerCase() === window.userSavedAddress.city.toLowerCase() || 
+                        opt.value === window.userSavedAddress.city) {
+                        opt.selected = true;
+                        found = true;
+                    }
+                });
+                if (found) {
+                    window.userSavedAddress.city = null; // consume
+                    await window.handleCityChange();
+                }
+            }
         } catch (e) { 
-            console.warn('Failed to load cities, falling back:', e);
-            fallbackToTextInputs();
+            console.warn('Failed to load cities:', e);
+            citySelect.innerHTML = '<option value="">-- Failed to load. Please refresh --</option>';
+            citySelect.disabled = true;
         }
         if (typeof window.syncAddress === 'function') window.syncAddress();
     };
@@ -860,7 +969,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             brgySelect.innerHTML = '<option value="">Loading...</option>';
-            const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${code}/barangays/`);
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
+            
+            const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${code}/barangays/`, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            
+            if (!res.ok) throw new Error("API Error");
             const brgys = await res.json();
             
             brgySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
@@ -871,11 +987,35 @@ document.addEventListener('DOMContentLoaded', function () {
                 brgySelect.appendChild(opt);
             });
             brgySelect.disabled = false;
-        } catch (e) { console.error('Failed to load barangays:', e); }
+            
+            // Autofill brgy
+            if (window.userSavedAddress && window.userSavedAddress.brgy) {
+                let found = false;
+                Array.from(brgySelect.options).forEach(opt => {
+                    if (opt.text.toLowerCase() === window.userSavedAddress.brgy.toLowerCase() || 
+                        opt.value === window.userSavedAddress.brgy) {
+                        opt.selected = true;
+                        found = true;
+                    }
+                });
+                if (found) {
+                    window.userSavedAddress.brgy = null; // consume
+                    if (typeof window.syncAddress === 'function') window.syncAddress();
+                }
+            }
+        } catch (e) { 
+            console.error('Failed to load barangays:', e);
+            brgySelect.innerHTML = '<option value="">-- Failed to load. Please refresh --</option>';
+            brgySelect.disabled = true;
+        }
         if (typeof window.syncAddress === 'function') window.syncAddress();
     };
 
     window.syncAddress = async function() {
+        if (!window.addressEditing && window.originalSavedAddressString) {
+            return;
+        }
+        
         const provEl = document.getElementById('prov_select');
         const cityEl = document.getElementById('city_select');
         const brgyEl = document.getElementById('brgy_select');
@@ -1038,30 +1178,12 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // KYC Verification Check
-        let requiresKyc = false;
-        window.cartItems.forEach(cItem => {
-            const backendList = window.backendMenuItems || [];
-            const bItem = backendList.find(i => String(i.id) === String(cItem.id) && (cItem.type ? i.type === cItem.type : true));
-            if (cItem.type === 'Equipment' || (bItem && bItem.requires_kyc)) {
-                requiresKyc = true;
-            }
-        });
-
-        if (requiresKyc && !window.isVerified) {
-            Swal.fire({
-                title: 'ID Verification Required',
-                text: 'You are renting high-value equipment. Please verify your ID in your Customer Profile before proceeding.',
-                icon: 'warning',
-                confirmButtonText: 'Go to Profile',
-                showCancelButton: true,
-                confirmButtonColor: 'var(--hub-emerald-500)'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = '/customer/settings#verification';
-                }
-            });
-            return;
+        // Attach KYC Documents if present
+        if (window.requiresKycStep) {
+            const idFront = document.getElementById('kyc_id_front');
+            const selfie = document.getElementById('kyc_selfie');
+            if (idFront && idFront.files.length > 0) formData.append('id_document', idFront.files[0]);
+            if (selfie && selfie.files.length > 0) formData.append('selfie', selfie.files[0]);
         }
 
         const btn = document.getElementById('final-submit-btn');
@@ -1099,7 +1221,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (data.success) {
                 sessionStorage.removeItem(sessionKey); 
                 window.closePaymentModal();
-                nextScreen(3, true); // Go to success screen! No redirect!
+                nextScreen(window.paymentStep + 1, true); // Go to success screen! No redirect!
             } else {
                 if (paymentMethod !== 'CASH') {
                     const err = document.getElementById('uploadErrorMsg');
@@ -1211,6 +1333,15 @@ function validateSchedulingRules() {
                     resetError('delivery_date');
                     showError('delivery_date', `Requires ${rules.food_rules.lead_time_hours} hours lead time.`);
                 }
+            }
+            
+            // 3-Month Max Validation
+            const selectedDateObj = new Date(deliveryDateInput.value);
+            const maxDateObj = new Date();
+            maxDateObj.setMonth(maxDateObj.getMonth() + 3);
+            if (selectedDateObj > maxDateObj) {
+                resetError('delivery_date');
+                showError('delivery_date', `Date cannot exceed 3 months from today.`);
             }
         }
     }

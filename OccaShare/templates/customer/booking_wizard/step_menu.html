@@ -202,7 +202,7 @@
 {% block wizard_content %}
 <div class="wizard-header-content">
     <h2 class="wizard-title">Select Your Catering Package</h2>
-    <p class="wizard-subtitle">Choose the perfect curated experience from <strong>{{ caterer.business_name }}</strong> to begin your culinary journey.</p>
+    <p class="wizard-subtitle">Choose a catering package from <strong>{{ caterer.business_name }}</strong> for your event.</p>
 </div>
 
 <div class="packages-grid">
@@ -222,7 +222,7 @@
             <form action="/bookings/step/menu" method="POST" style="margin-top: auto;">
                 <input type="hidden" name="package_id" value="{{ pkg.id }}">
                 <button type="submit" class="btn-experience">
-                    Select Experience <i class="fas fa-arrow-right"></i>
+                    Select Package <i class="fas fa-arrow-right"></i>
                 </button>
             </form>
         </div>
@@ -230,10 +230,10 @@
     {% endfor %}
 </div>
 
-<div class="wizard-actions custom-journey-footer">
-    <div class="custom-journey-card">
-        <p class="custom-journey-text">
-            Seeking a customized culinary journey?
+<div class="wizard-actions custom-journey-footer" style="display: flex; justify-content: center; margin-top: 40px;">
+    <div class="custom-journey-card" style="text-align: center;">
+        <p class="custom-journey-text" style="text-align: center; margin-bottom: 15px;">
+            Want to create your own menu?
         </p>
         <a href="/customer/marketplace/{{ caterer.id }}" class="contact-chef-link">
             Return to Profile <i class="fas fa-arrow-left-long"></i>

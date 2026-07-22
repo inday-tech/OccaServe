@@ -171,19 +171,18 @@
                 </section>
             </div>
 
-            {% if quotation.customer_approved_at %}
             <!-- SECTION 2: DIGITAL SERVICE AGREEMENT -->
-            <div id="contract-section" class="section-divider">
+            <div id="contract-section" class="section-divider" style="margin-top: 2rem;">
                 <span class="divider-text">Digital Service Agreement</span>
             </div>
 
-            <p class="step-guide-text animate-up">
+            <p class="step-guide-text animate-up" style="margin-bottom: 1rem;">
                 <i class="fas fa-info-circle"></i> After selecting your deposit, please read the terms below and sign to
                 authorize this agreement.
             </p>
 
-            <section class="up-card contract-portrait animate-up" style="animation-delay: 0.4s; padding: 1rem;">
-                <div class="contract-doc-content">
+            <section class="up-card contract-portrait animate-up" style="animation-delay: 0.4s; padding: 0; overflow: hidden; border: none; box-shadow: none; background: transparent;">
+                <div class="contract-doc-content" style="margin-bottom: 2rem;">
                     {% include "shared/contract_content_partial.html" %}
                 </div>
 
@@ -253,53 +252,30 @@
             </section>
 
             <!-- SECTION 3: FINAL ACTIONS -->
-            <div class="q-page-footer-actions animate-up" style="animation-delay: 0.5s;">
-                <div class="footer-nav-links">
-                    <a href="/bookings/step/kyc/{{ quotation.booking_id }}" class="btn-back-soft">
-                        <i class="fas fa-chevron-left"></i> Modify Booking Details
-                    </a>
-                </div>
+            <div class="wizard-actions animate-up" style="animation-delay: 0.5s; border-top: none;">
+                <a href="/bookings/step/kyc/{{ quotation.booking_id }}" class="btn-wizard-back">
+                    <i class="fas fa-chevron-left"></i> Modify Booking
+                </a>
 
-                <div class="q-footer-main-cta">
-                    {% if not quotation.customer_signature %}
-                    <button type="button" id="btn-sign" class="btn-confirm-up-main js-loading" style="display: none;"
-                        onclick="submitSignature()">
-                        <i class="fas fa-file-signature"></i> Finalize &amp; Confirm Contract
-                    </button>
-                    <div id="apply-prompt" class="status-waiting-pill">
-                        <i class="fas fa-info-circle"></i> Please apply your signature above to finalize
-                    </div>
-                    {% elif not quotation.caterer_signature %}
-                    <div class="status-waiting-pill">
-                        <i class="fas fa-clock fa-spin"></i> Pending Caterer Counter-Signature
-                    </div>
-                    {% else %}
-                    <a href="/bookings/step/payment/{{ quotation.booking_id }}" class="btn-confirm-up-main">
-                        Proceed to Secure Payment <i class="fas fa-arrow-right"></i>
-                    </a>
-                    {% endif %}
-                </div>
-            </div>
-            {% else %}
-            <!-- SECTION 2: QUOTATION APPROVAL -->
-            <div class="approval-action-box animate-up" style="text-align: center; padding: 3rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0; margin-top: 2rem;">
-                <h3 style="font-family: 'Poppins', sans-serif; font-size: 1.25rem; font-weight: 800; color: var(--up-slate-900); margin-bottom: 0.5rem;">Review Your Quotation</h3>
-                <p style="color: var(--up-slate-500); font-size: 0.85rem; margin-bottom: 2rem; max-width: 400px; margin-left: auto; margin-right: auto;">
-                    Please review the inclusions and pricing above. Once you approve this quotation, the formal Booking Agreement will be generated for your signature.
-                </p>
-                <button type="button" onclick="approveQuotation(event)" style="background: var(--up-emerald-500, #10b981); color: white; border: none; padding: 1rem 2.5rem; border-radius: 99px; font-weight: 800; font-family: 'Poppins', sans-serif; font-size: 0.95rem; cursor: pointer; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.25); transition: all 0.3s ease;">
-                    <i class="fas fa-thumbs-up" style="margin-right: 0.5rem;"></i> APPROVE QUOTATION
+                {% if not quotation.customer_signature %}
+                <button type="button" id="btn-sign" class="btn-wizard-next js-loading" style="display: none;"
+                    onclick="submitSignature()">
+                    <i class="fas fa-file-signature"></i> Finalize Contract
                 </button>
+                <div id="apply-prompt" class="status-waiting-pill" style="flex: 1; text-align: center; display: flex; align-items: center; justify-content: center; background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; border-radius: 999px; font-weight: 700;">
+                    <i class="fas fa-info-circle mr-1"></i> Apply signature above
+                </div>
+                {% elif not quotation.caterer_signature %}
+                <div class="status-waiting-pill" style="flex: 1; text-align: center; display: flex; align-items: center; justify-content: center; background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; border-radius: 999px; font-weight: 700;">
+                    <i class="fas fa-clock fa-spin mr-1"></i> Pending Caterer Signature
+                </div>
+                {% else %}
+                <a href="/bookings/step/payment/{{ booking.id }}" class="btn-wizard-next">
+                    Secure Payment <i class="fas fa-arrow-right"></i>
+                </a>
+                {% endif %}
             </div>
 
-            <div class="q-page-footer-actions animate-up" style="animation-delay: 0.5s;">
-                <div class="footer-nav-links">
-                    <a href="/bookings/step/kyc/{{ quotation.booking_id }}" class="btn-back-soft">
-                        <i class="fas fa-chevron-left"></i> Modify Booking Details
-                    </a>
-                </div>
-            </div>
-            {% endif %}
         </div>
     </div>
 </div>

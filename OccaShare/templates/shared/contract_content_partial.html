@@ -145,12 +145,8 @@
                         ₱{{ "{:,.2f}".format((quotation.total_amount|float)) }}
                     </td>
                 </tr>
-                {% set min_term = (booking.caterer.accepted_payment_terms|sort)[0] if booking.caterer and booking.caterer.accepted_payment_terms else (quotation.downpayment_percent or 30) %}
-<<<<<<< HEAD
+                {% set min_term = quotation.downpayment_percent if quotation and quotation.downpayment_percent else ((booking.caterer.accepted_payment_terms|sort)[0] if booking.caterer and booking.caterer.accepted_payment_terms else 30) %}
                 {% set dp_amount = (quotation.total_amount|float) * ((min_term|float) / 100.0) %}
-=======
-                {% set dp_amount = (quotation.total_amount|float) * (min_term|float / 100.0) %}
->>>>>>> f1d6c67e46b12026fd92233427a76f07187ea5dd
                 <tr>
                     <td class="deposit-info-label-cell">Required Security Deposit (<span id="contract-dp-pct">{{ min_term }}</span>%):</td>
                     <td class="deposit-info-amount-cell">
@@ -184,7 +180,7 @@
         <p class="agreement-status-para">
             By signing this document, both the Customer and the Caterer agree that this is the final and complete agreement for the event. This contract replaces any previous chats, messages, or verbal promises made outside of this document.
             <br><br>
-            Signing this contract digitally through the OccaShare Platform is just as valid and legally binding as a handwritten signature on a physical paper, as supported by the Electronic Commerce Act.
+            Signing this contract digitally through the OccaServe Platform is just as valid and legally binding as a handwritten signature on a physical paper, as supported by the Electronic Commerce Act.
         </p>
 
         <!-- Signatures Section -->
@@ -209,7 +205,13 @@
                 </div>
 
                 <!-- Client Signature -->
-                <div class="signature-column">
+                <div class="signature-column" style="position: relative;">
+                    {% if quotation.customer_signature and quotation.caterer_signature %}
+                    <div class="verified-seal-watermark">
+                        <i class="fas fa-certificate"></i>
+                        <span>Certified Agreement</span>
+                    </div>
+                    {% endif %}
                     <div class="sig-placeholder-area" id="customer-sig-placeholder">
                         {% if quotation.customer_signature %}
                             <img src="{{ quotation.customer_signature }}" alt="Customer Signature" class="formal-sig-img">
@@ -227,15 +229,9 @@
                 </div>
             </div>
             
-            {% if quotation.customer_signature and quotation.caterer_signature %}
-            <div class="verified-seal-watermark">
-                <i class="fas fa-certificate"></i>
-                <span>Certified Agreement</span>
-            </div>
-            {% endif %}
             
             <div class="formal-footer-note">
-                * This document is electronically executed and stored securely on the OccaShare Platform.
+                * This document is electronically executed and stored securely on the OccaServe Platform.
             </div>
         </div>
     </div>
@@ -295,102 +291,184 @@
     .sig-label-formal { font-size: 0.65rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; display: block; }
     .sig-date-formal { font-size: 0.65rem; color: #cbd5e1; margin-top: 0.5rem; display: block; }
 
-    .verified-seal-watermark { position: absolute; bottom: 80px; right: 60px; width: 140px; height: 140px; border: 4px double #10b981; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #10b981; transform: rotate(-15deg); opacity: 0.3; pointer-events: none; text-align: center; padding: 10px; }
-    .verified-seal-watermark i { font-size: 2rem; margin-bottom: 0.5rem; }
-    .verified-seal-watermark span { font-family: 'Poppins', sans-serif; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; line-height: 1.1; }
+    
+    .verified-seal-watermark {
+        position: absolute;
+        top: -30px;
+        right: -30px;
+        width: 110px;
+        height: 110px;
+        border: 4px solid rgba(22, 163, 74, 0.2);
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: rgba(22, 163, 74, 0.25);
+        transform: rotate(-15deg);
+        pointer-events: none;
+        z-index: 10;
+        padding: 10px;
+        text-align: center;
+    }
+    .verified-seal-watermark i {
+        font-size: 2.5rem;
+        margin-bottom: 0.25rem;
+    }
+    .verified-seal-watermark span {
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        line-height: 1.1;
+    }
+    
+    /* Prevent elements from being cut in half during PDF export */
+    .formal-doc-header, .contract-section-formal, .signatures-wrapper-formal {
+        page-break-inside: avoid;
+    }
+
 
     .formal-footer-note { text-align: center; margin-top: 4rem; font-size: 0.7rem; color: #cbd5e1; font-style: italic; }
 
     @media print {
-        .contract-paper-container { padding: 0; background: #fff; }
-        .contract-paper { box-shadow: none; padding: 0; }
+        @page { margin: 1.5cm; }
+        body, html { background: #fff; margin: 0; padding: 0; }
+        .contract-paper-container { display: block !important; padding: 0 !important; background: #fff !important; min-height: auto !important; }
+        .contract-paper { box-shadow: none !important; border: none !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; margin: 0 !important; }
+        
+        /* Prevent awkward page breaks */
+        .contract-section-title { page-break-after: avoid; }
+        .contract-parties-layout { page-break-inside: avoid; }
+        .financial-summary-table { page-break-inside: avoid; }
+        .signatures-wrapper-formal { page-break-inside: avoid; margin-top: 2rem; }
+        
+        /* Fallbacks for grids that break in print */
+        .signatures-side-by-side { display: flex !important; justify-content: space-between !important; gap: 2rem !important; margin-top: 2rem !important; }
+        .signature-column { flex: 1; min-width: 45%; }
+        
+        
+    .verified-seal-watermark {
+        position: absolute;
+        top: -30px;
+        right: -30px;
+        width: 110px;
+        height: 110px;
+        border: 4px solid rgba(22, 163, 74, 0.2);
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: rgba(22, 163, 74, 0.25);
+        transform: rotate(-15deg);
+        pointer-events: none;
+        z-index: 10;
+        padding: 10px;
+        text-align: center;
+    }
+    .verified-seal-watermark i {
+        font-size: 2.5rem;
+        margin-bottom: 0.25rem;
+    }
+    .verified-seal-watermark span {
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        line-height: 1.1;
+    }
+    
+    /* Prevent elements from being cut in half during PDF export */
+    .formal-doc-header, .contract-section-formal, .signatures-wrapper-formal {
+        page-break-inside: avoid;
     }
 
-    @media (max-width: 640px) {
-        .contract-paper-container { padding: 10px 5px; }
-        .contract-paper { padding: 15px 10px; }
-        
-        .formal-doc-main-title { font-size: 0.95rem; }
-        .formal-doc-meta { gap: 0.5rem; font-size: 0.55rem; flex-direction: column; align-items: center; }
-        
-        .contract-preamble { font-size: 0.65rem; margin-bottom: 1.25rem; line-height: 1.4; }
-        
-        .contract-parties-layout { gap: 0.25rem; margin-bottom: 1.5rem; align-items: stretch; }
-        .party-card-pro { padding: 0.35rem; display: flex; flex-direction: column; justify-content: flex-start; height: 100%; box-sizing: border-box; }
-        .party-label-tag { font-size: 0.4rem; margin-bottom: 0.15rem; }
-        .party-name { font-size: 0.5rem; margin-bottom: 0.15rem; word-break: break-word; line-height: 1.1; }
-        .party-detail-text { font-size: 0.45rem; line-height: 1.2; word-break: break-word; }
-        .parties-divider-icon { padding-top: 0.5rem; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; }
-        
-        .contract-section-title { font-size: 0.55rem; margin: 1rem 0 0.5rem 0; padding-bottom: 0.2rem; }
-        
-        .financial-terms-para { font-size: 0.65rem; line-height: 1.4; margin-bottom: 0.5rem; }
-        
-        .contract-spec-table td { font-size: 0.65rem; padding: 0.35rem 0; vertical-align: top; }
-        .spec-label-col { font-size: 0.65rem; width: 45%; padding-right: 0.5rem; }
-        
-        .financial-summary-table { margin: 0.75rem 0; }
-        .summary-header-row th { padding: 0.4rem; font-size: 0.55rem; }
-        .summary-row-item td, .addon-row-item td { padding: 0.4rem; font-size: 0.6rem; }
-        .summary-desc-subtext { font-size: 0.55rem; }
-        .summary-tfoot td { padding: 0.5rem 0.4rem; font-size: 0.6rem; }
-        .total-value-amount-cell { font-size: 0.8rem; }
-        
-        .clause-item { margin-bottom: 0.4rem; }
-        .clause-num { font-size: 0.65rem; display: block; margin-bottom: 0.15rem; }
-        .clause-text { font-size: 0.6rem; line-height: 1.3; }
-        
-        .agreement-status-para { font-size: 0.6rem; line-height: 1.3; }
-        
-        .signatures-side-by-side { gap: 0.75rem; margin-top: 1.5rem; }
-        .sig-placeholder-area { height: 45px; margin-bottom: 0.3rem; }
-        .formal-sig-img { max-height: 40px; }
-        .sig-name-formal { font-size: 0.6rem; word-break: break-word; line-height: 1.1; }
-        .sig-label-formal { font-size: 0.45rem; line-height: 1.1; }
-        .sig-date-formal { font-size: 0.45rem; }
-        
-        .verified-seal-watermark {
-            width: 60px; height: 60px;
-            bottom: 40px; right: 10px;
-            border-width: 2px;
-            padding: 4px;
-        }
-        .verified-seal-watermark i { font-size: 1rem; margin-bottom: 0.15rem; }
-        .verified-seal-watermark span { font-size: 0.35rem; }
         
         .formal-footer-note { margin-top: 1.5rem; font-size: 0.5rem; }
     }
 </style>
 
+
+
+
+
+
+
+
+
+
+
+
+
 <script>
     function downloadContractPDF() {
-        const element = document.getElementById('printable-contract');
+        const originalElement = document.querySelector('.contract-paper');
         const refNo = "{% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ booking.id }}";
         
-        // Show loading state
         const btn = document.querySelector('.pdf-action-bar button');
+        if (!btn) return;
         const originalText = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
         btn.disabled = true;
 
-        const opt = {
-            margin:       [0, 0, 0, 0],
-            filename:     `OccaShare_${refNo}_Document.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, logging: false },
-            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-        };
+        // Save current scroll positions to restore later
+        const originalScrollY = window.scrollY;
+        const modalBody = document.getElementById('contractModalBody');
+        const originalModalScroll = modalBody ? modalBody.scrollTop : 0;
 
-        // New Promise-based usage:
-        html2pdf().set(opt).from(element).save().then(() => {
-            // Restore button
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }).catch(err => {
-            console.error("PDF Generation Error:", err);
-            btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
-            setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 3000);
-        });
+        // Force scroll to top to prevent html2canvas blank page rendering bugs
+        window.scrollTo(0, 0);
+        if (modalBody) {
+            modalBody.scrollTop = 0;
+        }
+
+        // Allow 300ms for images (signatures) to fully render and scroll to settle
+        setTimeout(() => {
+            const opt = {
+                margin:       0.3, 
+                filename:     `OccaServe_${refNo}_Document.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                pagebreak:    { mode: ['css', 'legacy'] },
+                html2canvas:  { 
+                    scale: 2, 
+                    useCORS: true,
+                    scrollY: 0,
+                    scrollX: 0
+                },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(originalElement).save().then(() => {
+                // Restore scroll positions
+                window.scrollTo(0, originalScrollY);
+                if (modalBody) {
+                    modalBody.scrollTop = originalModalScroll;
+                }
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }).catch(err => {
+                console.error("PDF Generation Error:", err);
+                window.scrollTo(0, originalScrollY);
+                if (modalBody) {
+                    modalBody.scrollTop = originalModalScroll;
+                }
+                btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+                btn.disabled = false;
+            });
+        }, 300);
     }
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
 </div>

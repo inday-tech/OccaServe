@@ -132,7 +132,12 @@ async def customer_dashboard(
     # Elite Tier Data Additions
     reviews_count = db.query(models.Review).filter(models.Review.user_id == user.id).count()
     
-    total_spent = sum(float(b.total_amount or 0) for b in bookings if b.status not in ['cancelled', 'pending', 'draft'])
+    def get_actual_paid(b):
+        if b.payment_status == 'paid': return float(b.total_amount or 0.0)
+        elif b.payment_status == 'deposit_paid': return float(b.reservation_fee or 0.0)
+        return 0.0
+        
+    total_spent = sum(get_actual_paid(b) for b in bookings if b.status != 'cancelled')
     
     # Get the single most recent active booking for the Journey Tracker
     latest_booking = db.query(models.Booking).filter(
@@ -239,6 +244,7 @@ async def feedback_page(
 async def submit_platform_feedback(
     rating: int = Form(...),
     comment: str = Form(...),
+    attachment_base64: str = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
@@ -257,6 +263,7 @@ async def submit_platform_feedback(
         user_id=user.id,
         rating=rating,
         comment=comment.strip(),
+        attachment_base64=attachment_base64,
         role="customer"
     )
     db.add(fb)
@@ -286,16 +293,37 @@ async def customer_bookings(
 ):
     # Calculate Intelligence Stats
     # Filter out Food Orders (invoice) from the Event Bookings timeline
-    active_bookings = [b for b in user.bookings if not b.customer_archived and b.document_type != 'invoice']
+    active_bookings = []
+    for b in user.bookings:
+        if b.customer_archived:
+            continue
+        if b.document_type == 'invoice':
+            continue
+            
+        # Catch older or mislabeled food orders: fast track with ONLY food items
+        if b.transaction_type == 'fast_track' and b.selected_items:
+            has_food = any(i.menu_item_id for i in b.selected_items)
+            has_equip = any(i.equipment_id for i in b.selected_items)
+            has_service = any(i.service_id for i in b.selected_items)
+            
+            if has_food and not has_equip and not has_service:
+                continue
+                
+        active_bookings.append(b)
     total_reservations = len(active_bookings)
-    total_spent = sum([b.total_amount for b in active_bookings if b.status in ['confirmed', 'completed'] and b.total_amount])
+    
+    def get_actual_paid(b):
+        if b.payment_status == 'paid': return float(b.total_amount or 0.0)
+        elif b.payment_status == 'deposit_paid': return float(b.reservation_fee or 0.0)
+        return 0.0
+        
+    total_spent = sum([get_actual_paid(b) for b in active_bookings if b.status != 'cancelled'])
     
     # Calculate Pending Obligations (remaining balance of active bookings)
     pending_obligations = 0
     for b in active_bookings:
-        if b.status in ['pending', 'pending_payment', 'awaiting_payment']:
-            # Total minus whatever was already paid (reservation fee)
-            balance = float(b.total_amount or 0) - float(b.reservation_fee or 0)
+        if b.status != 'cancelled' and b.payment_status in ['pending', 'pending_payment', 'awaiting_payment', 'deposit_paid']:
+            balance = float(b.total_amount or 0) - get_actual_paid(b)
             pending_obligations += max(0, balance)
 
     return templates.TemplateResponse("customer/bookings.html", {
@@ -319,12 +347,18 @@ async def customer_orders(
     # Calculate Intelligence Stats
     food_orders = [b for b in user.bookings if not b.customer_archived and b.document_type == 'invoice']
     total_orders = len(food_orders)
-    total_spent = sum([b.total_amount for b in food_orders if b.status in ['confirmed', 'completed'] and b.total_amount])
+    
+    def get_actual_paid(b):
+        if b.payment_status == 'paid': return float(b.total_amount or 0.0)
+        elif b.payment_status == 'deposit_paid': return float(b.reservation_fee or 0.0)
+        return 0.0
+        
+    total_spent = sum([get_actual_paid(b) for b in food_orders if b.status != 'cancelled'])
     
     pending_obligations = 0
     for b in food_orders:
-        if b.status in ['pending', 'pending_payment', 'awaiting_payment']:
-            balance = float(b.total_amount or 0) - float(b.reservation_fee or 0)
+        if b.status != 'cancelled' and b.payment_status in ['pending', 'pending_payment', 'awaiting_payment', 'deposit_paid']:
+            balance = float(b.total_amount or 0) - get_actual_paid(b)
             pending_obligations += max(0, balance)
     
     return templates.TemplateResponse("customer/orders.html", {
@@ -505,11 +539,14 @@ async def view_public_invoice(
             "terms": "Standard terms apply."
         }
         
+    wconfig = db.query(models.WebsiteConfig).first()
+        
     return templates.TemplateResponse("customer/public_invoice.html", {
         "request": request,
         "user": user,
         "booking": booking,
-        "quotation": quotation
+        "quotation": quotation,
+        "wconfig": wconfig
     })
 
 @router.post("/booking/{booking_id}/upload-proof")
@@ -553,22 +590,31 @@ async def upload_public_proof_of_payment(
         if re.search(r"(.)\1{5,}", reference_no):
             raise HTTPException(status_code=400, detail="Reference number looks invalid (excessive repeating characters).")
     
-    # Save the uploaded proof image
-    UPLOAD_DIR = "app/static/uploads/payment_proofs"
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    import base64
+    content_bytes = await proof_image.read()
+    b64 = base64.b64encode(content_bytes).decode('utf-8')
+    mime = proof_image.content_type or 'image/jpeg'
+    base64_str = f"data:{mime};base64,{b64}"
     
-    file_extension = os.path.splitext(proof_image.filename)[1]
-    filename = f"proof_{booking_id}_{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(proof_image.file, buffer)
-        
-    booking.payment_proof_url = f"/static/uploads/payment_proofs/{filename}"
-    if reference_no:
-        booking.special_requests = (booking.special_requests or "") + f"\n[Payment Ref: {reference_no}]"
+    # Optional payment method sync for the verification
     if payment_method:
         booking.payment_method = payment_method
+
+    # Gemini OCR Verification
+    from ..services.payment_verification import payment_verification_service
+    fraud_results = await payment_verification_service.check_for_fraud(db, booking, base64_str)
+    
+    if not fraud_results.get("is_valid_receipt", False) or (fraud_results.get("flags") and fraud_results.get("confidence", 0) < 50):
+        # Format a clean error message
+        flags = fraud_results.get("flags", [])
+        error_text = flags[0] if flags else "Invalid receipt image."
+        import urllib.parse
+        encoded_err = urllib.parse.quote(error_text)
+        return RedirectResponse(url=f"/customer/booking/{booking_id}/invoice?error={encoded_err}", status_code=303)
+
+    booking.payment_proof_url = base64_str
+    if reference_no:
+        booking.special_requests = (booking.special_requests or "") + f"\n[Payment Ref: {reference_no}]"
         
     booking.payment_status = 'proof_submitted'
     if booking.status in ['pending', 'draft', 'pending_payment']:
@@ -682,7 +728,7 @@ async def customer_profile(
     total_points = 5
     if user.first_name and user.last_name: completion_points += 1
     if user.phone_number: completion_points += 1
-    if user.address: completion_points += 1
+    if user.province and user.city_municipality: completion_points += 1
     if user.emergency_contact_name and user.emergency_contact_phone: completion_points += 1
     if user.profile_image_url or user.is_verified: completion_points += 1
     profile_completion = int((completion_points / total_points) * 100)
@@ -726,13 +772,25 @@ async def customer_update_personal(
 @router.post("/profile/update-address")
 async def customer_update_address(
     request: Request,
-    address: str = Form(...),
+    province: Optional[str] = Form(None),
+    city_municipality: Optional[str] = Form(None),
+    barangay: Optional[str] = Form(None),
+    street_address: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
-    user.address = address
+    user.province = province or None
+    user.city_municipality = city_municipality or None
+    user.barangay = barangay or None
+    user.street_address = street_address or None
+
+    # Also build the legacy single-line address for backward compatibility
+    parts = [p for p in [street_address, barangay, city_municipality, province] if p]
+    user.address = ", ".join(parts) if parts else None
+
     db.commit()
     return {"success": True, "message": "Address updated successfully."}
+
 
 @router.post("/profile/update-emergency")
 async def customer_update_emergency(
@@ -780,26 +838,15 @@ async def customer_upload_image(
     if profile_image.content_type not in allowed_types:
         raise HTTPException(status_code=400, detail="Invalid file type. Only JPG, PNG, and WEBP allowed.")
         
-    UPLOAD_DIR = "app/static/uploads/profiles"
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    import base64
+    content_bytes = await profile_image.read()
+    b64 = base64.b64encode(content_bytes).decode('utf-8')
+    mime = profile_image.content_type or 'image/jpeg'
+    new_profile_image_url = f"data:{mime};base64,{b64}"
     
-    file_extension = os.path.splitext(profile_image.filename)[1]
-    filename = f"user_{user.id}_{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(profile_image.file, buffer)
-        
-    # Delete old image if exists
-    if user.profile_image_url and user.profile_image_url.startswith("/static/uploads/profiles/"):
-        old_path = os.path.join("app", user.profile_image_url.lstrip("/"))
-        if os.path.exists(old_path):
-            try:
-                os.remove(old_path)
-            except:
-                pass
+    # Old file deletion logic removed as files are not physical anymore
                 
-    user.profile_image_url = f"/static/uploads/profiles/{filename}"
+    user.profile_image_url = new_profile_image_url
     db.commit()
     return {"success": True, "image_url": user.profile_image_url, "message": "Profile picture updated."}
 
@@ -1037,11 +1084,23 @@ async def customer_marketplace(
     # Execute
     results = query.all()
     
+    import math
+    def get_dist(lat1, lon1, lat2, lon2):
+        if lat1 is None or lon1 is None or lat2 is None or lon2 is None: return None
+        try:
+            r = 6371
+            dlat = math.radians(float(lat2)-float(lat1))
+            dlon = math.radians(float(lon2)-float(lon1))
+            a = math.sin(dlat/2)**2 + math.cos(math.radians(float(lat1)))*math.cos(math.radians(float(lat2)))*math.sin(dlon/2)**2
+            return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        except: return None
+
     # Map results to objects with computed attributes for the template
     caterers = []
     for profile, min_p, max_c in results:
         profile.min_package_price = min_p or profile.starting_price or 0
         profile.max_capacity = max_c or 0
+        profile.distance_km = get_dist(lat, lon, profile.latitude, profile.longitude)
         caterers.append(profile)
 
     # Dynamic filter options
@@ -1106,12 +1165,25 @@ async def caterer_detail(
     # Filter active data only
     active_packages = [p for p in caterer.packages if p.is_active]
     # Filter menu items (exclude rentals/services)
-    active_menu = [m for m in caterer.menu_items if not m.is_archived and not m.is_hidden and m.status == 'available' and m.usage_type in ['order_only', 'both'] and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']]
+    active_menu = [m for m in caterer.menu_items if not m.is_archived and not m.is_hidden and m.status == 'available' and m.usage_type in ['order_only', 'both'] and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
+        and getattr(m, 'usage_type', '') != 'package_only'
+    ]
     
     # Filter Services & Equipment that are standalone/both
     active_services = [s for s in caterer.service_items if not s.is_archived and not s.is_hidden and s.status == 'available' and s.usage_type in ['order_only', 'both']]
     active_equipment = [e for e in caterer.equipment_items if not e.is_archived and not e.is_hidden and e.status == 'available' and e.usage_type in ['order_only', 'both']]
     active_inventory = active_services + active_equipment
+
+    for item in active_inventory:
+        item.display_price = getattr(item, 'rental_price', getattr(item, 'selling_price', 0))
+        item.display_type = 'Equipment' if hasattr(item, 'equipment_type') else 'Service'
+        item.display_qty = getattr(item, 'available_qty', getattr(item, 'max_available', 1))
+        item.deposit_pct = getattr(item, 'security_deposit_pct', 0)
+        item.needs_kyc = getattr(item, 'requires_kyc', False)
+        item.min_hours = getattr(item, 'minimum_hours', getattr(item, 'base_duration_hours', None))
+
+    # Force DB Refresh to prevent stale data
+    db.refresh(caterer)
 
     # Check for previous relationship
     has_previous_bookings = db.query(models.Booking).filter(
@@ -1137,7 +1209,7 @@ async def caterer_detail(
     # Extract public portfolios
     public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public']
 
-    return templates.TemplateResponse("customer/caterer_profile_view.html", {
+    response = templates.TemplateResponse("customer/caterer_profile_view.html", {
         "request": request, 
         "caterer": caterer,
         "packages": active_packages,
@@ -1153,6 +1225,10 @@ async def caterer_detail(
         "active_page": "marketplace",
         "nav_page": "caterers"
     })
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
 
 @router.post("/profile/update")
 async def update_profile(
@@ -1229,17 +1305,11 @@ async def update_profile_photo(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
-    UPLOAD_DIR = "app/static/uploads/profiles"
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    
-    file_extension = os.path.splitext(file.filename)[1]
-    filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    
-    user.profile_image_url = f"/static/uploads/profiles/{filename}"
+    import base64
+    content_bytes = await file.read()
+    b64 = base64.b64encode(content_bytes).decode('utf-8')
+    mime = file.content_type or 'image/jpeg'
+    user.profile_image_url = f"data:{mime};base64,{b64}"
     db.commit()
     
     return RedirectResponse(url="/customer/profile?success_msg=Profile+photo+updated", status_code=303)
@@ -1264,23 +1334,19 @@ async def process_verification(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
-    # Setup upload directory
-    UPLOAD_DIR = "app/static/uploads/verification"
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    import base64
     
     # Save ID Document
-    id_ext = os.path.splitext(id_document.filename)[1]
-    id_filename = f"user_{user.id}_id_{uuid.uuid4()}{id_ext}"
-    id_path = os.path.join(UPLOAD_DIR, id_filename)
-    with open(id_path, "wb") as buffer:
-        shutil.copyfileobj(id_document.file, buffer)
-        
+    id_content = await id_document.read()
+    id_b64 = base64.b64encode(id_content).decode('utf-8')
+    id_mime = id_document.content_type or 'image/jpeg'
+    id_filename = f"data:{id_mime};base64,{id_b64}"
+    
     # Save Selfie
-    selfie_ext = os.path.splitext(selfie.filename)[1]
-    selfie_filename = f"user_{user.id}_selfie_{uuid.uuid4()}{selfie_ext}"
-    selfie_path = os.path.join(UPLOAD_DIR, selfie_filename)
-    with open(selfie_path, "wb") as buffer:
-        shutil.copyfileobj(selfie.file, buffer)
+    selfie_content = await selfie.read()
+    selfie_b64 = base64.b64encode(selfie_content).decode('utf-8')
+    selfie_mime = selfie.content_type or 'image/jpeg'
+    selfie_filename = f"data:{selfie_mime};base64,{selfie_b64}"
         
     # Create Verification Record
     kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user.id).first()
@@ -1451,33 +1517,67 @@ async def customer_omni_search(
 
     search_filter = f"%{q}%"
     results = []
+    
+    # 0. Search Modules (Hardcoded)
+    modules = [
+        {"name": "Marketplace", "link": "/customer/marketplace", "icon": "fas fa-store"},
+        {"name": "My Bookings (Events)", "link": "/customer/bookings", "icon": "fas fa-calendar-check"},
+        {"name": "Food Orders", "link": "/customer/orders", "icon": "fas fa-utensils"},
+        {"name": "Payments & Billing", "link": "/customer/payments", "icon": "fas fa-file-invoice-dollar"},
+        {"name": "Messages", "link": "/customer/messages", "icon": "fas fa-envelope"},
+        {"name": "Profile Settings", "link": "/customer/profile", "icon": "fas fa-user-cog"}
+    ]
+    for mod in modules:
+        if q.lower() in mod["name"].lower():
+            results.append({
+                "title": mod["name"],
+                "subtitle": "Customer Module",
+                "icon": mod["icon"],
+                "link": mod["link"],
+                "type": "module"
+            })
+            if len(results) >= 3: break # Limit modules in results
 
-    # 1. Search Caterers
+    # 1. Search Caterers (Name and Location)
     caterers = db.query(models.CatererProfile).filter(
         models.CatererProfile.status == "Published",
-        models.CatererProfile.business_name.ilike(search_filter)
+        or_(
+            models.CatererProfile.business_name.ilike(search_filter),
+            models.CatererProfile.city.ilike(search_filter),
+            models.CatererProfile.contact_address.ilike(search_filter),
+            models.CatererProfile.address_details.ilike(search_filter)
+        )
     ).limit(5).all()
 
     for c in caterers:
+        rating_str = f"{float(c.rating):.1f} ⭐" if getattr(c, 'rating', 0) else "New Partner"
         results.append({
             "title": c.business_name,
-            "subtitle": f"{c.city or 'Various Locations'} • {c.rating or 5.0} ⭐",
-            "icon": "fas fa-utensils",
+            "subtitle": f"{c.city or 'Various Locations'} • {rating_str}",
+            "icon": "fas fa-store-alt",
             "link": f"/customer/marketplace/{c.id}",
             "type": "caterer"
         })
 
-    # 2. Search My Bookings
+    # 2. Search My Bookings (ID, Event Name, Event Type)
+    q_is_id = q.replace("BK-", "").replace("ORD-", "").replace("#", "").isdigit()
+    booking_id_filter = int(q.replace("BK-", "").replace("ORD-", "").replace("#", "")) if q_is_id else 0
+    
     bookings = db.query(models.Booking).filter(
         models.Booking.user_id == user.id,
-        models.Booking.event_name.ilike(search_filter)
+        or_(
+            models.Booking.event_name.ilike(search_filter),
+            models.Booking.event_type.ilike(search_filter),
+            models.Booking.id == booking_id_filter
+        )
     ).limit(5).all()
 
     for b in bookings:
+        prefix = "ORD-" if b.document_type == 'invoice' else "BK-"
         results.append({
-            "title": b.event_name or "Event Booking",
-            "subtitle": f"ID: {b.id} • {b.status.replace('_', ' ').title()}",
-            "icon": "fas fa-calendar-check",
+            "title": b.event_name or b.event_type or "Booking",
+            "subtitle": f"ID: {prefix}{b.id} • {b.status.replace('_', ' ').title()}",
+            "icon": "fas fa-calendar-check" if b.document_type != 'invoice' else "fas fa-shopping-bag",
             "link": f"/customer/bookings/manage/{b.id}",
             "type": "booking"
         })

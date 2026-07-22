@@ -1,0 +1,215 @@
+
+
+
+
+                <!-- PACKAGES -->
+                {% if packages %}
+                <div class="intel-card" style="padding: 1.75rem;">
+                    <h2 class="section-title">Ready-to-Book Packages</h2>
+                    <div class="pkg-grid">
+                        {% for pkg in packages %}
+                        <div class="elite-item-card pkg-item">
+                            <div class="ei-img-box">
+                                <img src="{{ pkg.image_url if pkg.image_url else 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400' }}"
+                                    onerror="this.src='https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400'"
+                                    class="ei-img">
+                            </div>
+                            <div class="ei-body">
+                                <span class="ei-cat">{{ pkg.service_type or 'General' }}</span>
+                                <span class="ei-name">{{ pkg.name }}</span>
+                                {% if pkg.pricing_mode == 'fixed' or pkg.price_unit == 'total' %}
+                                <span class="ei-price">₱{{ "{:,.2f}".format(pkg.price if pkg.price else (pkg.price_per_head if pkg.price_per_head else 0)) }}<span style="font-size:0.65rem;font-weight:600;color:var(--hub-slate-400)"> total</span></span>
+                                {% else %}
+                                <span class="ei-price">₱{{ "{:,.2f}".format(pkg.price_per_head if pkg.price_per_head else (pkg.price if pkg.price else 0)) }}<span style="font-size:0.65rem;font-weight:600;color:var(--hub-slate-400)">/pax</span></span>
+                                {% endif %}
+                                {% if pkg.min_guests %}
+                                <span style="font-size:0.7rem;color:var(--hub-slate-400);font-weight:700;">Min. {{ pkg.min_guests }} pax{% if pkg.max_guests %} · Max. {{ pkg.max_guests }} pax{% endif %}</span>
+                                {% endif %}
+                                <!-- PACKAGE HIGHLIGHTS (Phase 1.3) -->
+                                {% if pkg.dishes and pkg.dishes|length > 0 %}
+                                <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:0.5rem; max-height:45px; overflow:hidden;">
+                                    {% for dish in pkg.dishes[:3] %}
+                                    <span style="font-size:0.65rem; background:var(--hub-slate-50); color:var(--hub-slate-600); padding:2px 8px; border-radius:100px; border:1px solid var(--hub-slate-100); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;">{{ dish }}</span>
+                                    {% endfor %}
+                                    {% if pkg.dishes|length > 3 %}
+                                    <span style="font-size:0.65rem; background:var(--hub-slate-100); color:var(--hub-slate-600); padding:2px 8px; border-radius:100px; font-weight:700;">+{{ pkg.dishes|length - 3 }}</span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                <div style="display:flex;gap:0.5rem;margin-top:1rem;flex-direction:column;">
+                                    <button type="button" onclick='window.openPkgDetails("{{ pkg.id }}")' class="btn-elite-sm">
+                                        <i class="fas fa-list-check"></i> View Inclusions
+                                    </button>
+                                    {% if caterer_unavailable %}
+                                    <span class="btn-hub-main" style="font-size:0.78rem;padding:0.7rem;text-align:center;opacity:0.5;cursor:not-allowed;justify-content:center;">
+                                        <i class="fas fa-ban"></i> Unavailable
+                                    </span>
+                                    {% else %}
+                                    <a href="/bookings/start/{{ caterer.id }}?package_id={{ pkg.id }}" class="btn-hub-main" style="font-size:0.78rem;padding:0.7rem;text-decoration:none;text-align:center;">
+                                        <i class="fas fa-calendar-plus"></i> Select Package
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- A LA CARTE MENU — CATEGORY CARDS -->
+                <div class="intel-card" style="padding: 1.75rem;">
+                    <h2 class="section-title" style="margin-bottom: 1.25rem;">Food Menu</h2>
+
+                    {% if active_menu %}
+                    {% set categories = [] %}
+                    {% for item in active_menu %}
+                        {% if item.category and item.category not in categories %}
+                            {% set _ = categories.append(item.category) %}
+                        {% endif %}
+                    {% endfor %}
+
+                    <div class="cat-card-grid">
+                        {% for cat in categories %}
+                        {% set cat_items = active_menu | selectattr('category', 'equalto', cat) | list %}
+                        
+                        {% set display_img = namespace(url='') %}
+                        {% for item in cat_items %}
+                            {% if item.image_url and not display_img.url %}
+                                {% set display_img.url = item.image_url %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if not display_img.url %}
+                            {% set final_img = 'https://ui-avatars.com/api/?name=' ~ (cat|urlencode) ~ '&background=f1f5f9&color=FF7B54&size=400&font-size=0.33&bold=true' %}
+                        {% else %}
+                            {% set final_img = display_img.url %}
+                        {% endif %}
+                        
+                        {% set item_names = [] %}
+                        {% for item in cat_items[:3] %}
+                            {% set _ = item_names.append(item.name) %}
+                        {% endfor %}
+                        
+                        {% if cat_items|length == 1 %}
+                            {% set dynamic_desc = 'Featuring ' ~ item_names[0] ~ '.' %}
+                        {% else %}
+                            {% set dynamic_desc = cat_items|length ~ ' options available, including ' ~ item_names|join(', ') ~ '.' %}
+                        {% endif %}
+                        
+                        <div class="cat-card" onclick="window.openCategoryModal('{{ cat|e }}')">
+                            <img src="{{ final_img }}" onerror="this.src='https://ui-avatars.com/api/?name={{ cat|urlencode }}&background=f1f5f9&color=FF7B54&size=400&font-size=0.33&bold=true'" class="cat-card-img" alt="{{ cat }}" loading="lazy" style="object-fit: cover;">
+                            <div class="cat-card-body">
+                                <span class="cat-card-name">{{ cat }}</span>
+                                <!-- GAP 1: Dish preview chips -->
+                                <div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:4px;">
+                                    {% for item in cat_items[:2] %}
+                                    <span style="font-size:0.6rem; background:#fff7f5; color:var(--hub-primary); padding:1px 6px; border-radius:100px; border:1px solid #ffe0d6; font-weight:700; white-space:nowrap; max-width:90px; overflow:hidden; text-overflow:ellipsis;">{{ item.name }}</span>
+                                    {% endfor %}
+                                    {% if cat_items|length > 2 %}
+                                    <span style="font-size:0.6rem; background:var(--hub-slate-100); color:var(--hub-slate-500); padding:1px 6px; border-radius:100px; font-weight:700;">+{{ cat_items|length - 2 }}</span>
+                                    {% endif %}
+                                </div>
+                                <span class="cat-card-count" style="margin-top:5px; display:inline-block;">{{ cat_items|length }} item{{ 's' if cat_items|length != 1 else '' }}</span>
+                            </div>
+                            <div class="cat-card-footer">
+                                <span>Browse {{ 'Items' if cat in ['Rentals', 'Services'] else 'Dishes' }}</span>
+                                <i class="fas fa-chevron-right" style="font-size: 0.65rem;"></i>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p style="color: var(--hub-slate-400); font-size: 0.9rem;">No dishes available yet.</p>
+                    {% endif %}
+                </div>
+                
+                <!-- RENTALS & SERVICES -->
+                <div class="intel-card" style="padding: 1.75rem; margin-top: 2rem;">
+                    <h2 class="section-title" style="margin-bottom: 1.25rem;">Event Rentals & Services</h2>
+
+                    {% if active_inventory %}
+                    {% set inv_categories = [] %}
+                    {% for item in active_inventory %}
+                        {% set cat_name = item.category if item.category else ('Equipment' if item.equipment_type else 'Service') %}
+                        {% if cat_name not in inv_categories %}
+                            {% set _ = inv_categories.append(cat_name) %}
+                        {% endif %}
+                    {% endfor %}
+
+                    <div class="cat-card-grid">
+                        {% for cat in inv_categories %}
+                        {% set cat_items = [] %}
+                        {% for item in active_inventory %}
+                            {% set item_cat = item.category if item.category else ('Equipment' if item.equipment_type else 'Service') %}
+                            {% if item_cat == cat %}
+                                {% set _ = cat_items.append(item) %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% set display_img = namespace(url='') %}
+                        {% set min_price = namespace(val=0) %}
+                        {% set max_price = namespace(val=0) %}
+                        {% set price_unit = namespace(val='') %}
+                        {% for item in cat_items %}
+                            {% if item.image_url and not display_img.url %}
+                                {% set display_img.url = item.image_url %}
+                            {% endif %}
+                            {% set item_price = (item.rental_price if item.rental_price is defined else item.selling_price) or 0 %}
+                            {% if item_price > 0 %}
+                                {% if min_price.val == 0 or item_price < min_price.val %}
+                                    {% set min_price.val = item_price %}
+                                {% endif %}
+                                {% if item_price > max_price.val %}
+                                    {% set max_price.val = item_price %}
+                                {% endif %}
+                            {% endif %}
+                            {% if not price_unit.val and item.unit_type %}
+                                {% set price_unit.val = item.unit_type %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if not display_img.url %}
+                            {% set final_img = 'https://ui-avatars.com/api/?name=' ~ (cat|urlencode) ~ '&background=f1f5f9&color=FF7B54&size=400&font-size=0.33&bold=true' %}
+                        {% else %}
+                            {% set final_img = display_img.url %}
+                        {% endif %}
+                        
+                        <div class="cat-card" onclick="window.openInventoryModal('{{ cat|e }}')">
+                            <img src="{{ final_img }}" onerror="this.src='https://ui-avatars.com/api/?name={{ cat|urlencode }}&background=f1f5f9&color=FF7B54&size=400&font-size=0.33&bold=true'" class="cat-card-img" alt="{{ cat }}" loading="lazy" style="object-fit: cover;">
+                            <div class="cat-card-body">
+                                <span class="cat-card-name">{{ cat }}</span>
+                                <!-- GAP 2: Price range + item name chips for equipment -->
+                                <div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:4px;">
+                                    {% for item in cat_items[:2] %}
+                                    <span style="font-size:0.6rem; background:#fff7f5; color:var(--hub-primary); padding:1px 6px; border-radius:100px; border:1px solid #ffe0d6; font-weight:700; white-space:nowrap; max-width:90px; overflow:hidden; text-overflow:ellipsis;">{{ item.name }}</span>
+                                    {% endfor %}
+                                    {% if cat_items|length > 2 %}
+                                    <span style="font-size:0.6rem; background:var(--hub-slate-100); color:var(--hub-slate-500); padding:1px 6px; border-radius:100px; font-weight:700;">+{{ cat_items|length - 2 }}</span>
+                                    {% endif %}
+                                </div>
+                                <div style="display:flex; align-items:center; justify-content:space-between; margin-top:5px;">
+                                    <span class="cat-card-count">{{ cat_items|length }} item{{ 's' if cat_items|length != 1 else '' }}</span>
+                                    {% if min_price.val > 0 %}
+                                    <span style="font-size:0.65rem; font-weight:800; color:var(--hub-primary);">
+                                        {% if min_price.val == max_price.val %}
+                                            ₱{{ "{:,.0f}".format(min_price.val) }}
+                                        {% else %}
+                                            ₱{{ "{:,.0f}".format(min_price.val) }}–{{ "{:,.0f}".format(max_price.val) }}
+                                        {% endif %}
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="cat-card-footer">
+                                <span>Browse Items</span>
+                                <i class="fas fa-chevron-right" style="font-size: 0.65rem;"></i>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p style="color: var(--hub-slate-400); font-size: 0.9rem;">No rentals or services available yet.</p>
+                    {% endif %}
+                </div>
+            

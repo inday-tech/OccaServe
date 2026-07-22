@@ -1,0 +1,872 @@
+{% set active_page = 'marketplace' %}
+{% extends "customer/layout.html" %}
+
+{% block title %}{{ item.name }} - {{ caterer.business_name }} - OccaServe{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hub-container {
+        max-width: 1300px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem;
+        background: #fafafa;
+    }
+    
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        color: var(--hub-slate-500);
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+    
+    .breadcrumb a {
+        color: var(--hub-slate-600);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+    
+    .breadcrumb a:hover {
+        color: var(--hub-brand);
+    }
+    
+    .breadcrumb .current {
+        color: var(--hub-brand);
+        font-weight: 600;
+    }
+
+    /* Top Layout: 3 Columns */
+    .top-layout {
+        display: grid;
+        grid-template-columns: 300px 1fr 340px;
+        gap: 2.5rem;
+        align-items: flex-start;
+    }
+
+    @media (max-width: 1024px) {
+        .top-layout {
+            grid-template-columns: 1fr 340px;
+        }
+        .left-col {
+            display: none !important; /* On tablet, move image to middle column */
+        }
+    }
+
+    @media (max-width: 768px) {
+        .top-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* --- LEFT COLUMN: IMAGE --- */
+    .left-col {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .main-image-container {
+        width: 100%;
+        border-radius: 16px;
+        overflow: hidden;
+        position: relative;
+        background: white;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        border: 1px solid var(--hub-slate-200);
+    }
+
+    .main-image {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1/1;
+        object-fit: cover;
+        display: block;
+    }
+
+    /* --- MIDDLE COLUMN: DETAILS --- */
+    .middle-col {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .mobile-img-container {
+        display: none;
+        width: 100%;
+        border-radius: 16px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+        border: 1px solid var(--hub-slate-200);
+    }
+    .mobile-img-container img {
+        width: 100%;
+        aspect-ratio: 4/3;
+        object-fit: cover;
+    }
+
+    @media (max-width: 1024px) {
+        .mobile-img-container { display: block; }
+    }
+
+    .item-title {
+        font-size: 2.25rem;
+        font-weight: 800;
+        color: var(--hub-text-dark);
+        line-height: 1.2;
+        margin-bottom: 0.5rem;
+    }
+
+    .badges-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .badge-outline {
+        font-size: 0.75rem;
+        padding: 4px 10px;
+        border-radius: 4px;
+        border: 1px solid #22c55e;
+        color: #16a34a;
+        background: #f0fdf4;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .badge-dot {
+        font-size: 0.8rem;
+        color: #16a34a;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .badge-dot::before {
+        content: '';
+        width: 8px;
+        height: 8px;
+        background: #22c55e;
+        border-radius: 50%;
+    }
+
+    .ratings {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+        color: var(--hub-slate-600);
+    }
+
+    .stars {
+        color: var(--hub-brand);
+    }
+
+    .short-desc {
+        font-size: 1rem;
+        color: var(--hub-slate-600);
+        line-height: 1.6;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--hub-slate-200);
+    }
+
+    /* --- RIGHT COLUMN: STICKY SIDEBAR --- */
+    .right-col {
+        position: sticky;
+        top: 2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .sidebar-card {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid var(--hub-slate-200);
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+    }
+
+    .sidebar-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--hub-text-dark);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--hub-slate-100);
+    }
+
+    .price-value {
+        font-size: 2rem;
+        font-weight: 900;
+        color: var(--hub-brand);
+        line-height: 1;
+        margin-bottom: 0.5rem;
+    }
+    
+    .price-label {
+        font-size: 0.85rem;
+        color: var(--hub-slate-500);
+        margin-bottom: 4px;
+        font-weight: 600;
+    }
+
+    /* Options inside Sidebar */
+    .variant-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .variant-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--hub-slate-200);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .variant-input {
+        display: none;
+    }
+
+    .variant-input:checked + .variant-label {
+        border-color: var(--hub-brand);
+        background: #fff7ed;
+    }
+
+    .variant-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .variant-radio {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 2px solid var(--hub-slate-300);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .variant-input:checked + .variant-label .variant-radio {
+        border-color: var(--hub-brand);
+    }
+
+    .variant-input:checked + .variant-label .variant-radio::after {
+        content: '';
+        width: 8px;
+        height: 8px;
+        background: var(--hub-brand);
+        border-radius: 50%;
+    }
+    
+    .variant-name {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--hub-text-dark);
+    }
+
+    .variant-price-tag {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--hub-text-dark);
+    }
+
+    /* Qty Row */
+    .qty-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 0.5rem;
+    }
+
+    .qty-label {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--hub-text-dark);
+    }
+
+    .qty-selector {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid var(--hub-slate-200);
+        border-radius: 6px;
+        background: white;
+    }
+
+    .qty-btn {
+        background: transparent;
+        border: none;
+        padding: 0.4rem 0.8rem;
+        font-size: 1.2rem;
+        color: var(--hub-text-dark);
+        cursor: pointer;
+        font-weight: 800;
+    }
+    .qty-btn:hover { background: var(--hub-slate-100); }
+
+    .qty-display {
+        width: 40px;
+        text-align: center;
+        font-size: 1rem;
+        font-weight: 700;
+        border: none;
+        border-left: 1px solid var(--hub-slate-200);
+        border-right: 1px solid var(--hub-slate-200);
+        background: white;
+        pointer-events: none;
+    }
+
+    /* Total Row */
+    .total-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px dashed var(--hub-slate-200);
+        padding-top: 1rem;
+    }
+
+    .total-label {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--hub-text-dark);
+    }
+    .total-val {
+        font-size: 1.5rem;
+        font-weight: 900;
+        color: var(--hub-brand);
+    }
+
+    /* Buttons */
+    .btn-primary {
+        background: var(--hub-brand);
+        color: white;
+        border: none;
+        padding: 1rem;
+        border-radius: 8px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        transition: background 0.2s;
+        opacity: 1; /* solid */
+    }
+    .btn-primary:hover { background: #ea580c; }
+
+    .btn-secondary {
+        background: white;
+        color: var(--hub-brand);
+        border: 1px solid var(--hub-brand);
+        padding: 1rem;
+        border-radius: 8px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        cursor: pointer;
+        width: 100%;
+        transition: background 0.2s;
+        opacity: 1; /* solid */
+    }
+    .btn-secondary:hover { background: #fff7ed; }
+
+    .secure-text {
+        font-size: 0.8rem;
+        color: var(--hub-slate-500);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        justify-content: center;
+        margin-top: 0.5rem;
+    }
+
+    .perks-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .perk-item {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+    }
+    .perk-icon {
+        color: #16a34a;
+        font-size: 1.2rem;
+        margin-top: 2px;
+    }
+    .perk-text {
+        font-size: 0.85rem;
+        color: var(--hub-text-dark);
+        line-height: 1.4;
+        font-weight: 500;
+    }
+
+    .help-box {
+        background: #fff7ed;
+        border-radius: 8px;
+        padding: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border: 1px solid #fed7aa;
+    }
+    .help-icon {
+        color: var(--hub-brand);
+        font-size: 1.2rem;
+    }
+    .help-text {
+        font-size: 0.85rem;
+        color: var(--hub-brand);
+        font-weight: 700;
+    }
+    .help-sub {
+        font-size: 0.75rem;
+        color: var(--hub-brand);
+        opacity: 0.8;
+    }
+
+    /* --- INFO SECTION (REAL DATA) --- */
+    .info-section {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid var(--hub-slate-200);
+        margin-top: 3rem;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    
+    .info-section-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--hub-text-dark);
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--hub-slate-200);
+    }
+
+    .info-content-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 2rem;
+    }
+
+    .info-col {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .info-col-title {
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: var(--hub-text-dark);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .info-col-text {
+        font-size: 0.9rem;
+        color: var(--hub-slate-600);
+        line-height: 1.6;
+    }
+    
+    .info-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .info-list li {
+        font-size: 0.9rem;
+        color: var(--hub-slate-600);
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    .info-list li i {
+        color: var(--hub-brand);
+        margin-top: 3px;
+        font-size: 0.8rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hub-container">
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+        <a href="/customer/marketplace">Find Caterers</a> 
+        <i class="fas fa-chevron-right" style="font-size: 0.6em; color: var(--hub-slate-400);"></i>
+        <a href="/caterers/{{ caterer.slug or caterer.id }}">{{ caterer.business_name }}</a>
+        <i class="fas fa-chevron-right" style="font-size: 0.6em; color: var(--hub-slate-400);"></i>
+        <a href="/caterers/{{ caterer.slug or caterer.id }}#hub-tab-menu">{{ catalog_type|capitalize }}</a>
+        <i class="fas fa-chevron-right" style="font-size: 0.6em; color: var(--hub-slate-400);"></i>
+        <a href="/caterers/{{ caterer.slug or caterer.id }}/catalog/{{ catalog_type }}/{{ item.category|urlencode }}">{{ item.category }}</a>
+        <i class="fas fa-chevron-right" style="font-size: 0.6em; color: var(--hub-slate-400);"></i>
+        <span class="current">{{ item.name }}</span>
+    </div>
+
+    <!-- Top Layout -->
+    <div class="top-layout">
+        
+        <!-- Left: Image (Desktop) -->
+        <div class="left-col">
+            <div class="main-image-container">
+                {% set img = item.image_url if item.image_url else 'https://ui-avatars.com/api/?name=' ~ (item.name|urlencode) ~ '&background=f1f5f9&color=f97316&size=800' %}
+                <img src="{{ img }}" alt="{{ item.name }}" class="main-image">
+            </div>
+        </div>
+
+        <!-- Middle: Info & Options -->
+        <div class="middle-col">
+            <!-- Mobile Image -->
+            <div class="mobile-img-container">
+                <img src="{{ img }}" alt="{{ item.name }}">
+            </div>
+
+            <div>
+                <h1 class="item-title">{{ item.name }}</h1>
+                <div class="badges-row">
+                    <div class="badge-outline">
+                        <i class="fas fa-leaf"></i> {{ item.category }}
+                    </div>
+                    {% if catalog_type == 'menu' %}
+                        <div class="badge-dot">Available Today</div>
+                    {% else %}
+                        {% if item.display_qty > 0 %}
+                            <div class="badge-dot">In Stock</div>
+                        {% else %}
+                            <div class="badge-dot" style="color: #dc2626;"><span style="background: #dc2626;"></span>Unavailable</div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+
+            </div>
+
+            <p class="short-desc">{{ item.description or 'No description provided for this item.' }}</p>
+<!-- Info Section (Real Data Only) -->
+    <div class="info-section">
+        <div class="info-section-title">Product Details</div>
+        
+        <div class="info-content-grid" style="gap: 1.5rem;">
+            
+            {% if item.description %}
+            <div class="info-col">
+                <div class="info-col-title">Description</div>
+                <div class="info-col-text">{{ item.description }}</div>
+            </div>
+            {% endif %}
+
+            {% if catalog_type == 'menu' and (item.dietary_tags or item.allergen_info) %}
+            <div class="info-col">
+                <div class="info-col-title">Dietary & Allergens</div>
+                <ul class="info-list">
+                    {% if item.dietary_tags %}
+                        {% for tag in item.dietary_tags %}
+                        <li><i class="fas fa-leaf"></i> {{ tag }}</li>
+                        {% endfor %}
+                    {% endif %}
+                    {% if item.allergen_info %}
+                        <li style="color: #c2410c;"><i class="fas fa-exclamation-triangle" style="color: #c2410c;"></i> Contains: {{ item.allergen_info|join(', ') }}</li>
+                    {% endif %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if catalog_type == 'menu' and item.serving_size %}
+            <div class="info-col">
+                <div class="info-col-title">Serving Information</div>
+                <ul class="info-list">
+                    <li><i class="fas fa-users"></i> Good for {{ item.serving_size }}</li>
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if catalog_type != 'menu' and (item.min_hours or item.deposit_pct or item.needs_kyc) %}
+            <div class="info-col">
+                <div class="info-col-title">Rental Terms</div>
+                <ul class="info-list">
+                    {% if item.min_hours %}
+                    <li><i class="far fa-clock"></i> Minimum {{ item.min_hours }} hours</li>
+                    {% endif %}
+                    {% if item.deposit_pct %}
+                    <li><i class="fas fa-shield-alt"></i> {{ item.deposit_pct }}% Security Deposit required</li>
+                    {% endif %}
+                    {% if item.needs_kyc %}
+                    <li><i class="fas fa-id-card"></i> Valid ID Required</li>
+                    {% endif %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <div class="info-col">
+                <div class="info-col-title">Fulfillment</div>
+                <ul class="info-list">
+                    <li><i class="fas fa-check" style="color: #16a34a;"></i> Pickup Available</li>
+                    <li><i class="fas fa-check" style="color: #16a34a;"></i> Delivery Available</li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+        </div>
+
+        <!-- Right: Sticky Sidebar (UNIFIED ORDER SUMMARY) -->
+        <div class="right-col">
+            <div class="sidebar-card">
+                
+                <div class="sidebar-title">
+                    Order Details
+                </div>
+
+                <div>
+                    {% if catalog_type == 'menu' %}
+                        {% if item.pricing_type == 'weight_based' or item.pricing_type == 'size_based' %}
+                            {% set min_price = 999999 %}
+                            {% if item.pricing_type == 'weight_based' and item.weight_prices %}
+                                {% for wp in item.weight_prices %}
+                                    {% if wp.price < min_price %}{% set min_price = wp.price %}{% endif %}
+                                {% endfor %}
+                            {% elif item.pricing_type == 'size_based' and item.size_prices %}
+                                {% for sp in item.size_prices %}
+                                    {% if sp.price < min_price %}{% set min_price = sp.price %}{% endif %}
+                                {% endfor %}
+                            {% endif %}
+                            <div class="price-label">Starting at</div>
+                            <div class="price-value">₱{{ "{:,.0f}".format(min_price if min_price != 999999 else 0) }}</div>
+                        {% else %}
+                            <div class="price-label">Price</div>
+                            <div class="price-value">₱{{ "{:,.0f}".format(item.price) }}</div>
+                        {% endif %}
+                    {% else %}
+                        <div class="price-label">Rental Price</div>
+                        <div class="price-value">₱{{ "{:,.0f}".format(item.display_price) }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Unified Choose Size -->
+                {% if catalog_type == 'menu' and (item.pricing_type == 'weight_based' or item.pricing_type == 'size_based') %}
+                <div style="margin-top: 0.5rem;">
+                    <div style="font-size: 0.95rem; font-weight: 700; color: var(--hub-text-dark); margin-bottom: 0.75rem;">Choose Option</div>
+                    <select name="variant" id="variant-select" class="control-pro" onchange="updateCalculations()" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem; font-weight: 600; color: #0f172a; cursor: pointer; appearance: auto; background: white;">
+                        {% if item.pricing_type == 'weight_based' and item.weight_prices %}
+                            {% for wp in item.weight_prices %}
+                                <option value="{{ wp.weight_label }}|{{ wp.price }}">{{ wp.weight_label }} - ₱{{ "{:,.0f}".format(wp.price) }}</option>
+                            {% endfor %}
+                        {% elif item.pricing_type == 'size_based' and item.size_prices %}
+                            {% for sp in item.size_prices %}
+                                <option value="{{ sp.size_name }}|{{ sp.price }}">{{ sp.size_name }} - ₱{{ "{:,.0f}".format(sp.price) }}</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+                {% endif %}
+
+                <div class="qty-row">
+                    <span class="qty-label" style="display:flex; flex-direction:column;">Quantity <span style="font-size: 0.75rem; color: #f97316;">Min. Order: {{ item.min_order_qty|default(1) if catalog_type == "menu" else 1 }}</span></span>
+                    <div class="qty-selector">
+                        <button type="button" class="qty-btn" onclick="changeQty(-1)" id="qty-minus">-</button>
+                        {% set max_qty = item.display_qty if catalog_type != 'menu' else 99 %}
+                        <input type="text" class="qty-display" id="item-qty" value="{{ item.min_order_qty|default(1) if catalog_type == 'menu' else 1 }}" readonly data-max="{{ max_qty }}">
+                        <button type="button" class="qty-btn" onclick="changeQty(1)" id="qty-plus">+</button>
+                    </div>
+                </div>
+
+                <div class="total-row">
+                    <span class="total-label">Subtotal</span>
+                    <span class="total-val" id="side-total">₱0</span>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
+                    <button id="side-add-btn" class="btn-primary" onclick="toggleCartItem()">
+                        <i class="fas fa-shopping-cart"></i> Add to Order
+                    </button>
+                    <button class="btn-secondary" onclick="buyNow()">Buy Now</button>
+                    <div class="secure-text"><i class="fas fa-shield-alt"></i> Secure checkout and safe payments.</div>
+                </div>
+            </div>
+
+            <div class="sidebar-card" style="padding: 1.25rem;">
+                <div class="perks-list">
+                    <div class="perk-item">
+                        <i class="fas fa-check-circle perk-icon"></i>
+                        <span class="perk-text">Fresh & High Quality<br>Ingredients</span>
+                    </div>
+                    <div class="perk-item">
+                        <i class="fas fa-truck perk-icon"></i>
+                        <span class="perk-text">On-time Delivery<br>Guaranteed</span>
+                    </div>
+                </div>
+            </div>
+
+            <a href="mailto:{{ caterer.user.email if caterer.user else '' }}" class="help-box" style="text-decoration: none; display: flex;">
+                <i class="fas fa-envelope help-icon"></i>
+                <div>
+                    <div class="help-text">Need help?</div>
+                    <div class="help-sub">Message caterer directly</div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    
+</div>
+
+<script>
+    {% set item_id_str = item.id|string %}
+    {% set type_str = 'Menu' %}
+    {% if catalog_type == 'equipment' %}{% set type_str = 'Equipment' %}{% endif %}
+    {% if catalog_type == 'services' %}{% set type_str = 'Service' %}{% endif %}
+    
+    const TYPE = "{{ type_str }}";
+    const ITEM_ID = "{{ item_id_str }}";
+    const BASE_NAME = {{ item.name|tojson }};
+    const BASE_PRICE = {{ (item.price if catalog_type == 'menu' else item.display_price)|default(0, true)|tojson }};
+    const PRICING_UNIT = {{ (item.pricing_unit if catalog_type == 'menu' else item.unit_type)|default('', true)|tojson }};
+    const CATERER_ID = "{{ caterer.id }}";
+    const MIN_QTY = parseInt('{{ item.min_order_qty|default(1) if catalog_type == "menu" else 1 }}') || 1;
+    const HAS_VARIANTS = {{ 'true' if (catalog_type == 'menu' and (item.pricing_type == 'weight_based' or item.pricing_type == 'size_based')) else 'false' }};
+
+    function changeQty(delta) {
+        const input = document.getElementById('item-qty');
+        const max = parseInt(input.dataset.max) || 99;
+        
+        let val = parseInt(input.value) || MIN_QTY;
+        val += delta;
+        
+        if (val < MIN_QTY) val = MIN_QTY;
+        if (val > max) val = max;
+        
+        input.value = val;
+        
+        document.getElementById('qty-minus').disabled = (val <= MIN_QTY);
+        document.getElementById('qty-plus').disabled = (val >= max);
+        
+        updateCalculations();
+    }
+
+    function updateCalculations() {
+        let price = parseFloat(BASE_PRICE) || 0;
+        
+        if (HAS_VARIANTS) {
+            const selected = document.querySelector('input[name="variant"]:checked');
+            if (selected) {
+                const [n, p] = selected.value.split('|');
+                price = parseFloat(p);
+            } else {
+                price = 0; 
+            }
+        }
+        
+        const qty = parseInt(document.getElementById('item-qty').value) || 1;
+        const subtotal = price * qty;
+        
+        const totalStr = `₱${subtotal.toLocaleString('en-PH', {maximumFractionDigits:0})}`;
+        if(document.getElementById('side-total')) document.getElementById('side-total').innerText = totalStr;
+    }
+
+    function checkCartStatus() {
+        let cart = [];
+        try {
+            const stored = sessionStorage.getItem('alacarte_cart_' + CATERER_ID);
+            if (stored) cart = JSON.parse(stored);
+        } catch(e) {}
+        
+        const inCart = cart.some(i => i.id === ITEM_ID && (i.type ? i.type === TYPE : true));
+        
+        const btn = document.getElementById('side-add-btn');
+        if(btn) {
+            if (inCart) {
+                btn.style.background = '#10b981';
+                btn.innerHTML = '<i class="fas fa-check"></i> Added to Order';
+            } else {
+                btn.style.background = 'var(--hub-brand)';
+                btn.innerHTML = '<i class="fas fa-shopping-cart"></i> Add to Order';
+            }
+        }
+    }
+
+    function toggleCartItem() {
+        let cart = [];
+        try {
+            const stored = sessionStorage.getItem('alacarte_cart_' + CATERER_ID);
+            if (stored) cart = JSON.parse(stored);
+        } catch(e) {}
+
+        const idx = cart.findIndex(i => i.id === ITEM_ID && (i.type ? i.type === TYPE : true));
+        
+        if (idx === -1) {
+            const qty = parseInt(document.getElementById('item-qty').value) || 1;
+            let finalPrice = parseFloat(BASE_PRICE) || 0;
+            let finalName = BASE_NAME;
+            
+            if (HAS_VARIANTS) {
+                const selected = document.querySelector('input[name="variant"]:checked');
+                if (!selected) return alert("Please select an option first.");
+                const [optName, optPrice] = selected.value.split('|');
+                finalPrice = parseFloat(optPrice);
+                finalName = BASE_NAME + ' (' + optName + ')';
+            }
+            
+            cart.push({
+                id: ITEM_ID,
+                type: TYPE,
+                name: finalName,
+                price: finalPrice,
+                qty: qty,
+                pricing_unit: PRICING_UNIT
+            });
+        } else {
+            cart.splice(idx, 1);
+        }
+        
+        sessionStorage.setItem('alacarte_cart_' + CATERER_ID, JSON.stringify(cart));
+        checkCartStatus();
+        window.dispatchEvent(new Event('cartUpdated'));
+    }
+
+    function buyNow() {
+        let cart = [];
+        try {
+            const stored = sessionStorage.getItem('alacarte_cart_' + CATERER_ID);
+            if (stored) cart = JSON.parse(stored);
+        } catch(e) {}
+        
+        const inCart = cart.some(i => i.id === ITEM_ID && (i.type ? i.type === TYPE : true));
+        if (!inCart) toggleCartItem();
+        alert("Added to order! Please proceed to checkout in your cart.");
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        changeQty(0); 
+        updateCalculations();
+        checkCartStatus();
+    });
+</script>
+{% endblock %}

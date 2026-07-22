@@ -118,10 +118,22 @@ document.addEventListener('DOMContentLoaded', function () {
                     const year = d.getFullYear();
                     const month = String(d.getMonth() + 1).padStart(2, '0');
                     const currentMonth = `${year}-${month}`;
+                    let maxMonthStr = "";
+                    if (window.MAX_BOOKING_DATE) {
+                        maxMonthStr = window.MAX_BOOKING_DATE.substring(0, 7);
+                    }
+                    let minMonthStr = "";
+                    if (window.MIN_BOOKING_DATE) {
+                        const today = new Date();
+                        const minDate = new Date(window.MIN_BOOKING_DATE);
+                        const actualMin = today < minDate ? today : minDate;
+                        minMonthStr = actualMin.toISOString().substring(0, 7);
+                    }
                     
                     titleEl.innerHTML = `
                         <input type="month" id="calMonthPicker" value="${currentMonth}" 
-                            style="border: none; background: transparent; font-size: inherit; font-weight: inherit; color: inherit; cursor: pointer; outline: none; font-family: inherit; width: 100%;"
+                            max="${maxMonthStr}" min="${minMonthStr}"
+                            style="border: none; background: transparent; font-size: inherit; font-weight: inherit; color: inherit; cursor: pointer; outline: none; font-family: inherit; width: 100%; text-align: center;"
                             onchange="if(window.fullCalendarInstance) window.fullCalendarInstance.gotoDate(this.value + '-01')">
                     `;
                 }
@@ -466,14 +478,31 @@ function validateEventDate() {
         return false;
     }
     const eventDate = new Date(val);
+    eventDate.setHours(0, 0, 0, 0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (eventDate < today) {
-        error.textContent = 'Date must be in the future';
+    const leadTimeDays = window.CATERER_LEAD_TIME || 0;
+    const minDate = new Date(today);
+    minDate.setDate(minDate.getDate() + leadTimeDays);
+    minDate.setHours(0, 0, 0, 0);
+
+    if (eventDate < minDate) {
+        error.textContent = `Date must be at least ${leadTimeDays} days from today based on your profile settings.`;
         field.classList.add('is-invalid');
         return false;
     }
+
+    if (window.MAX_BOOKING_DATE) {
+        const maxDate = new Date(window.MAX_BOOKING_DATE);
+        maxDate.setHours(0, 0, 0, 0);
+        if (eventDate > maxDate) {
+            error.textContent = `Date exceeds your maximum advance booking limit.`;
+            field.classList.add('is-invalid');
+            return false;
+        }
+    }
+
     field.classList.remove('is-invalid');
     error.textContent = '';
     return true;
@@ -489,6 +518,24 @@ function validateEventTime() {
         field.classList.add('is-invalid');
         return false;
     }
+    
+    if (window.BUSINESS_OPEN && window.BUSINESS_CLOSE) {
+        if (val < window.BUSINESS_OPEN || val > window.BUSINESS_CLOSE) {
+            const formatTime = (timeStr) => {
+                const [h, m] = timeStr.split(':');
+                let hr = parseInt(h);
+                const ampm = hr >= 12 ? 'PM' : 'AM';
+                hr = hr % 12 || 12;
+                return `${hr}:${m} ${ampm}`;
+            };
+            const open12 = formatTime(window.BUSINESS_OPEN);
+            const close12 = formatTime(window.BUSINESS_CLOSE);
+            error.textContent = `Time must be within your business hours (${open12} - ${close12})`;
+            field.classList.add('is-invalid');
+            return false;
+        }
+    }
+
     field.classList.remove('is-invalid');
     error.textContent = '';
     return true;
@@ -499,16 +546,17 @@ function validateGuestCount() {
     const error = document.getElementById('error-manGuests');
     const packageSelect = document.getElementById('manPackage');
     const val = parseInt(field.value) || 0;
+    const profileMinPax = window.CATERER_MIN_PAX || 1;
 
-    if (!field.value || val < 1) {
-        error.textContent = 'Guest count must be at least 1';
+    if (!field.value || val < profileMinPax) {
+        error.textContent = `Guest count must be at least ${profileMinPax} (based on your settings)`;
         field.classList.add('is-invalid');
         return false;
     }
 
     if (packageSelect && packageSelect.value) {
         const selectedOption = packageSelect.options[packageSelect.selectedIndex];
-        const minPax = parseInt(selectedOption.getAttribute('data-min')) || 1;
+        const minPax = parseInt(selectedOption.getAttribute('data-min')) || profileMinPax;
         if (val < minPax) {
             error.textContent = `Selected package requires minimum ${minPax} guests`;
             field.classList.add('is-invalid');
@@ -602,16 +650,18 @@ function attachInputRestrictions() {
     const validateGuests = () => {
         if (!guestsInput || !packageSelect) return;
         const val = parseInt(guestsInput.value) || 0;
+        const profileMinPax = window.CATERER_MIN_PAX || 1;
+
         if (packageSelect.value) {
             const selectedOption = packageSelect.options[packageSelect.selectedIndex];
-            const minPax = parseInt(selectedOption.getAttribute('data-min')) || 1;
+            const minPax = parseInt(selectedOption.getAttribute('data-min')) || profileMinPax;
             if (val < minPax) {
                 window.setFieldError('manGuests', `Selected package requires min ${minPax} guests.`);
             } else {
                 window.clearFieldError('manGuests');
             }
-        } else if (val < 1) {
-            window.setFieldError('manGuests', 'Minimum 1 guest required.');
+        } else if (val < profileMinPax) {
+            window.setFieldError('manGuests', `Guest count must be at least ${profileMinPax} (based on your settings).`);
         } else {
             window.clearFieldError('manGuests');
         }
@@ -1168,45 +1218,7 @@ function recalculateTotal() {
         window.clearFieldError('manGuests');
     }
 
-    updateRoiPreview(pkgSelect.value, guests);
-}
-
-async function updateRoiPreview(pkgId, pax) {
-    const roiPill = document.getElementById('roiPreviewLabel');
-    const quoteBtn = document.getElementById('btnQuickQuote');
-    const profitAmount = document.getElementById('profitAmount');
-
-    if (!pkgId || pax <= 0) {
-        if (roiPill) roiPill.style.display = 'none';
-        if (quoteBtn) quoteBtn.style.display = 'none';
-        return;
-    }
-
-    if (roiPill) {
-        roiPill.style.display = 'inline-flex';
-        roiPill.innerHTML = '<i class="fas fa-sync fa-spin"></i> Calculating...';
-    }
-
-    clearTimeout(window.roiTimer);
-    window.roiTimer = setTimeout(async () => {
-        try {
-            const resp = await fetch(`/caterer/api/quick-quotation/${pkgId}?pax=${pax}`);
-            if (resp.ok) {
-                const data = await resp.json();
-                const roiText = `₱${data.roi.toLocaleString('en-US', { minimumFractionDigits: 0 })}`;
-                if (roiPill) {
-                    roiPill.innerHTML = `<i class="fas fa-chart-line"></i> Profit: <strong>${roiText}</strong>`;
-                    roiPill.style.display = 'inline-flex';
-                }
-                if (profitAmount) {
-                    profitAmount.textContent = roiText;
-                }
-                if (quoteBtn) quoteBtn.style.display = 'inline-block';
-            }
-        } catch (e) {
-            if (roiPill) roiPill.style.display = 'none';
-        }
-    }, 600);
+    // Removed updateRoiPreview since ROI is no longer used
 }
 
 
@@ -1299,36 +1311,26 @@ const PSGC_BASE = 'https://psgc.gitlab.io/api';
 
 async function initPSGC() {
     try {
-        const res = await fetch(`${PSGC_BASE}/provinces/`);
-        const provinces = await res.json();
         const sel = document.getElementById('manProvince');
         if (!sel) return;
 
-        provinces.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+        // Lock to Laguna only
+        sel.innerHTML = '<option value="043400000" selected>Laguna</option>';
+        document.getElementById('manProvinceText').value = "Laguna";
+
+        const citySel = document.getElementById('manMunicipality');
+        citySel.innerHTML = '<option value="" disabled selected>Loading...</option>';
+        document.getElementById('manBarangay').innerHTML = '<option value="" disabled selected>Barangay</option>';
+
+        // Fetch Laguna Cities automatically
+        const res = await fetch(`${PSGC_BASE}/provinces/043400000/cities-municipalities/`);
+        const cities = await res.json();
+        citySel.innerHTML = '<option value="" disabled selected>Municipality / City</option>';
+        cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
             const opt = document.createElement('option');
-            opt.value = p.code;
-            opt.textContent = p.name;
-            sel.appendChild(opt);
-        });
-
-        sel.addEventListener('change', async function () {
-            // Get text, not code, to store in input if needed, but for now value is code.
-            // Actually, we should store text in a hidden input if backend expects text.
-            document.getElementById('manProvinceText').value = this.options[this.selectedIndex].text;
-
-            const citySel = document.getElementById('manMunicipality');
-            citySel.innerHTML = '<option value="" disabled selected>Municipality / City</option>';
-            document.getElementById('manBarangay').innerHTML = '<option value="" disabled selected>Barangay</option>';
-
-            if (!this.value) return;
-            const res = await fetch(`${PSGC_BASE}/provinces/${this.value}/cities-municipalities/`);
-            const cities = await res.json();
-            cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.code;
-                opt.textContent = c.name;
-                citySel.appendChild(opt);
-            });
+            opt.value = c.code;
+            opt.textContent = c.name;
+            citySel.appendChild(opt);
         });
 
         document.getElementById('manMunicipality').addEventListener('change', async function () {
@@ -1363,8 +1365,6 @@ window.checkAvailabilityStatus = checkAvailabilityStatus;
 window.openManualBookingModal = openManualBookingModal;
 window.submitManualEvent = submitManualEvent;
 window.unblockSelectedDate = unblockSelectedDate;
-window.getQuickQuotation = getQuickQuotation;
-window.closeRoiBreakdown = closeRoiBreakdown;
 window.toggleOtherEventType = toggleOtherEventType;
 window.updateCapacitySettings = updateCapacitySettings;
 window.setReminder = setReminder;
@@ -1404,41 +1404,7 @@ async function setReminder() {
 }
 
 
-async function getQuickQuotation() {
-    const pkgId = document.getElementById('manPackage').value;
-    const pax = parseInt(document.getElementById('manGuests').value) || 0;
-    if (!pkgId || pax <= 0) return;
-
-    try {
-        const resp = await fetch(`/caterer/api/quick-quotation/${pkgId}?pax=${pax}`);
-        const data = await resp.json();
-
-        document.getElementById('roiBreakdownSubtitle').innerText = `Package: ${data.package_name} (${pax} Pax)`;
-        document.getElementById('breakdownTotalCost').innerText = `₱${data.total_cost.toLocaleString()}`;
-        document.getElementById('breakdownRoi').innerText = `₱${data.roi.toLocaleString()}`;
-        document.getElementById('breakdownTotalPrice').innerText = `₱${data.total_price.toLocaleString()}`;
-
-        const list = document.getElementById('breakdownList');
-        list.innerHTML = data.breakdown.map(item => `
-            <div style="background: white; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <div>
-                    <div style="font-weight: 800; color: #1e293b; font-size: 0.85rem;">${item.name}</div>
-                    <div style="font-size: 0.65rem; color: #94a3b8;">Dish Cost x ${pax} pax</div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-weight: 900; color: #1e293b;">₱${(item.cost_per_pax * pax).toLocaleString()}</div>
-                    <div style="font-size: 0.65rem; color: #10b981; font-weight: 700;">₱${item.cost_per_pax.toFixed(2)} / pax</div>
-                </div>
-            </div>
-        `).join('');
-
-        if (window.openModal) window.openModal('roiBreakdownModal');
-    } catch (e) { console.error(e); }
-}
-
-function closeRoiBreakdown() {
-    closeModal('roiBreakdownModal');
-}
+// ROI Functions Removed
 
 /**
  * Availability Management Helpers

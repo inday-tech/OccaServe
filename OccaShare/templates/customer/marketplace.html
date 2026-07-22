@@ -663,6 +663,10 @@
                 const fullAddress = [address, city, 'Philippines'].filter(Boolean).join(', ');
                 geocodeAddress(fullAddress, (pos) => {
                     if (pos) {
+                        // Update card dataset so proximity sorting and distance display works
+                        card.dataset.lat = pos.lat;
+                        card.dataset.lon = pos.lng;
+                        
                         placeMarker(pos, businessName, fullAddressToDisplay, ratingText, cardLink, imgUrl, bounds);
                         // Re-fit bounds after geocoding
                         if (mapMarkers.length > 0) {
@@ -673,6 +677,9 @@
                             }
                             marketplaceMap.fitBounds(newBounds, { padding: { top: 60, bottom: 60, left: 60, right: 60 } });
                         }
+                        
+                        // Re-calculate distances now that we have coordinates
+                        sortCaterersByProximity();
                     }
                 });
             }
@@ -771,19 +778,14 @@
             if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
                 dist = haversineDistance(custLat, custLng, lat, lng);
 
-                // Add distance badge to card visually
+                // Update existing distance badge dynamically
                 let distBadge = card.querySelector('.distance-badge-pro');
-                if (!distBadge) {
-                    const specsContainer = card.querySelector('.package-specs-minimal');
-                    if (specsContainer) {
-                        distBadge = document.createElement('div');
-                        distBadge.className = 'spec-item-min distance-badge-pro';
-                        distBadge.innerHTML = `<i class="fas fa-route" style="color: #10b981;"></i> <span>${dist.toFixed(1)} km away</span>`;
-                        // Insert after the location item
-                        specsContainer.insertBefore(distBadge, specsContainer.children[1] || null);
+                if (distBadge) {
+                    distBadge.style.display = 'flex';
+                    let span = distBadge.querySelector('.dist-text') || distBadge.querySelector('span');
+                    if(span) {
+                        span.innerText = `${dist.toFixed(1)} km away`;
                     }
-                } else {
-                    distBadge.querySelector('span').innerText = `${dist.toFixed(1)} km away`;
                 }
             }
             card.dataset.distance = dist;

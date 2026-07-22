@@ -46,75 +46,92 @@
 
     .checkout-card {
         background: white;
-        border-radius: 1.5rem;
+        border-radius: 16px;
+        padding: 2rem;
         border: 1px solid var(--border-light);
-        padding: 2.5rem;
-        box-shadow: var(--card-shadow);
-        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        margin-bottom: 1.5rem;
         position: relative;
     }
 
-    /* 3-Step Mini Stepper */
-    .mini-stepper {
+    /* Wizard Steps from Service Checkout */
+    .wizard-steps {
         display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 2.5rem;
-        margin-bottom: 3.5rem;
-        padding: 0 1rem;
-    }
-
-    .mini-step {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        gap: 0.75rem !important;
-        opacity: 0.4;
-        transition: all 0.4s ease;
-        flex: 1;
-        max-width: 120px;
-    }
-
-    .mini-step.active, .mini-step.completed { opacity: 1; }
-
-    .ms-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
+        justify-content: space-between;
+        margin-bottom: 2rem;
         background: white;
-        border: 2px solid var(--kyc-slate-200);
-        color: var(--kyc-slate-400);
+        padding: 1.5rem 2rem;
+        border-radius: 16px;
+        border: 1px solid var(--border-light);
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    }
+
+    .step-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-muted);
+        flex: 1;
+        position: relative;
+    }
+
+    .step-item:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        width: 100%;
+        height: 2px;
+        background: var(--border-light);
+        z-index: 1;
+    }
+
+    .step-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--checkout-bg);
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
+        border: 2px solid var(--border-light);
+        z-index: 2;
         transition: all 0.3s ease;
     }
 
-    .mini-step.active .ms-icon {
+    .step-item.active {
+        color: var(--checkout-primary);
+    }
+
+    .step-item.active .step-icon {
         background: var(--checkout-primary);
         border-color: var(--checkout-primary);
         color: white;
-        box-shadow: 0 8px 20px rgba(255, 107, 0, 0.2);
-        transform: scale(1.1);
+        box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.1);
     }
 
-    .mini-step.completed .ms-icon {
-        background: #ecfdf5;
-        border-color: #10b981;
-        color: #10b981;
+    .step-item.completed {
+        color: var(--text-slate);
     }
 
-    .ms-label {
-        font-size: 0.7rem;
-        font-weight: 800;
-        color: var(--kyc-slate-400);
+    .step-item.completed .step-icon {
+        background: white;
+        border-color: var(--checkout-primary);
+        color: var(--checkout-primary);
+    }
+
+    .step-item.completed:not(:last-child)::after {
+        background: var(--checkout-primary);
+    }
+
+    .step-label {
+        font-size: 0.85rem;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.1em;
-        text-align: center;
+        letter-spacing: 0.05em;
     }
-
-    .mini-step.active .ms-label { color: var(--checkout-primary); }
 
     /* Modern Fulfillment Selector */
     .fulfillment-selector {
@@ -163,31 +180,61 @@
 
     /* Form & Sections */
     .section-title {
-        font-size: 1.4rem; font-weight: 850; color: var(--text-slate); margin-bottom: 0.5rem;
-        display: flex; align-items: center; gap: 0.75rem;
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--text-slate);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 
-    .section-subtitle { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 2.5rem; }
+    .section-subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
 
     .form-group label {
-        font-weight: 800; font-size: 0.8rem; color: var(--text-muted);
-        text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; display: block;
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        text-transform: none;
+        letter-spacing: normal;
+        color: var(--text-slate);
     }
 
     .form-input {
-        width: 100%; height: 3.5rem; border-radius: 1rem; padding: 0 1.25rem;
-        background: #f8fafc; border: 1.5px solid #e2e8f0; font-weight: 600; transition: all 0.2s;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-family: inherit;
+        background: white;
+        font-weight: normal;
     }
 
     .form-input:focus { border-color: var(--checkout-primary); background: #fff; outline: none; }
 
     /* Bill Summary Sidebar */
     .bill-card-premium {
-        background: #ffffff; border: 1px solid #e2e8f0; border-radius: 1.5rem;
-        padding: 2rem; box-shadow: var(--card-shadow); position: sticky; top: 2rem;
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--border-light);
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        position: sticky;
+        top: 2rem;
+        overflow: hidden;
     }
 
-    .bill-title { font-size: 1.1rem; font-weight: 800; color: var(--text-slate); margin-bottom: 1.75rem; }
+    .bill-title { 
+        background: #0f172a;
+        color: white;
+        padding: 1.5rem;
+        font-size: 1.1rem; 
+        font-weight: 800; 
+        margin: 0; 
+    }
+    .bill-body {
+        padding: 1.5rem;
+    }
     .bill-item-wrap {
         display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1.5rem;
         padding-bottom: 1.5rem; border-bottom: 1px dashed var(--border-light);
@@ -221,37 +268,37 @@
 
     .checkout-nav-box {
         display: flex; justify-content: space-between; align-items: center;
-        margin-top: 2rem; padding: 1.5rem 2rem; border-radius: 1.5rem; 
-        border: 1px solid var(--border-light); background: white; box-shadow: var(--card-shadow);
+        margin-top: 1.5rem; padding: 0; border-radius: 0; 
+        border: none; background: transparent; box-shadow: none;
     }
     
     .btn-wizard-next, .btn-wizard-back {
-        padding: 1rem 2rem;
-        border-radius: 1rem;
+        padding: 1rem;
+        border-radius: 12px;
         font-weight: 800;
-        font-size: 0.95rem;
+        font-size: 1rem;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
         border: none;
         cursor: pointer;
     }
     .btn-wizard-next {
-        background: var(--text-slate);
+        background: var(--checkout-primary);
         color: white;
     }
     .btn-wizard-next:hover {
-        background: black;
+        background: var(--checkout-primary-hover);
         transform: translateY(-2px);
     }
     .btn-wizard-back {
-        background: #f1f5f9;
-        color: var(--text-muted);
+        background: white;
+        border: 1px solid var(--border-light);
+        color: var(--text-slate);
     }
     .btn-wizard-back:hover {
-        background: #e2e8f0;
-        color: var(--text-slate);
+        background: #f8fafc;
     }
 
     .checkout-screen { display: none; }
@@ -367,16 +414,27 @@
 
 {% block wizard_content %}
 <div class="checkout-container">
-    <!-- Stepper (3 Clear Operations) -->
-    <div class="mini-stepper">
-        <div class="mini-step active" id="m-step-1">
-            <div class="ms-icon">1</div>
-            <span class="ms-label">{{ 'Checkout Details' if is_mixed else ('Rental Details' if is_rental else 'Delivery') }}</span>
+    <!-- Stepper -->
+    <div class="wizard-steps">
+        <div class="step-item active" id="m-step-1">
+            <div class="step-icon">1</div>
+            <div class="step-label">{{ 'Checkout Details' if is_mixed else ('Rental Details' if is_rental else 'Delivery') }}</div>
         </div>
-        <div class="mini-step" id="m-step-2">
-            <div class="ms-icon">2</div>
-            <span class="ms-label">Payment</span>
+        {% if requires_kyc and not user.is_verified and not user.is_kyc_complete %}
+        <div class="step-item" id="m-step-2">
+            <div class="step-icon">2</div>
+            <div class="step-label">Verification</div>
         </div>
+        <div class="step-item" id="m-step-3">
+            <div class="step-icon">3</div>
+            <div class="step-label">Payment</div>
+        </div>
+        {% else %}
+        <div class="step-item" id="m-step-2">
+            <div class="step-icon">2</div>
+            <div class="step-label">Payment</div>
+        </div>
+        {% endif %}
     </div>
 
     <div class="checkout-grid">
@@ -432,6 +490,14 @@
                                     <div class="fulfillment-check"><i class="fas fa-check"></i></div>
                                 </label>
                                 {% endif %}
+                            </div>
+                            
+                            <!-- Pickup Location Hint -->
+                            <div id="pickup-address-info" style="display: none; margin-top: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1.5rem;">
+                                <h4 style="font-size: 0.85rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;"><i class="fas fa-map-marker-alt" style="color: var(--checkout-primary); margin-right: 0.5rem;"></i> Pickup Location</h4>
+                                <p style="font-size: 0.95rem; color: #475569; font-weight: 600; line-height: 1.5; margin: 0;">
+                                    {{ caterer.contact_address|replace('\n', '<br>')|safe if caterer.contact_address else 'The caterer will provide the exact pickup location upon confirmation.' }}
+                                </p>
                             </div>
                         </div>
 
@@ -529,48 +595,72 @@
                         {% endif %}
 
                         <div id="address-section">
-                            <div style="display: grid; grid-template-columns: 1fr; gap: 1rem; padding-top: 1rem; border-top: 1px dashed #e2e8f0; margin-top: 0.5rem;">
-                                
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label>Province</label>
-                                    <select id="prov_select" class="form-input" required onchange="handleProvinceChange()">
-                                        <option value="">-- Select Province --</option>
-                                    </select>
-                                    <span class="field-error" id="err-prov_select">Please select a province.</span>
+                            {% set addr_parts = [] %}
+                            {% if user.street_address or user.address %} {% set _ = addr_parts.append(user.street_address or user.address) %} {% endif %}
+                            {% if user.barangay %} {% set _ = addr_parts.append("Brgy. " ~ user.barangay) %} {% endif %}
+                            {% if user.city_municipality %} {% set _ = addr_parts.append(user.city_municipality) %} {% endif %}
+                            {% if user.province %} {% set _ = addr_parts.append(user.province) %} {% endif %}
+                            {% set default_address_text = addr_parts | join(', ') %}
+                            
+                            <!-- Address Display (if exists) -->
+                            <div id="address-display-section" style="{% if not default_address_text %}display: none;{% endif %} padding: 1.25rem; background: var(--dm-slate-50); border: 1px solid var(--dm-slate-200); border-radius: 0.75rem; display: flex; justify-content: space-between; align-items: flex-start; margin-top: 1rem;">
+                                <div>
+                                    <h4 style="margin: 0 0 4px; font-size: 0.85rem; font-weight: 800; color: var(--up-slate-900); text-transform: uppercase; letter-spacing: 0.05em;"><i class="fas fa-map-marker-alt" style="color: var(--checkout-primary); margin-right: 6px;"></i> Delivery Address</h4>
+                                    <p id="saved-address-text" style="margin: 0; font-size: 0.95rem; color: var(--dm-slate-400); font-weight: 500;">
+                                        {{ default_address_text if default_address_text else '' }}
+                                    </p>
                                 </div>
-                                
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label>Municipality / City</label>
-                                    <select id="city_select" class="form-input" required onchange="handleCityChange()" disabled>
-                                        <option value="">-- Select Municipality --</option>
-                                    </select>
-                                    <span class="field-error" id="err-city_select">Please select a municipality.</span>
-                                </div>
+                                <button type="button" onclick="showEditAddress()" style="background: white; border: 1px solid var(--dm-slate-200); padding: 0.4rem 0.8rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 700; color: var(--up-slate-900); cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fas fa-edit"></i> Edit</button>
+                            </div>
 
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label>Barangay</label>
-                                    <select id="brgy_select" class="form-input" required onchange="syncAddress()" disabled>
-                                        <option value="">-- Select Barangay --</option>
-                                    </select>
-                                    <span class="field-error" id="err-brgy_select">Please select a barangay.</span>
-                                </div>
+                            <!-- Address Edit (Dropdowns) -->
+                            <div id="address-edit-section" style="{% if default_address_text %}display: none;{% endif %}">
+                                <div style="display: grid; grid-template-columns: 1fr; gap: 1rem; padding-top: 1rem; border-top: 1px dashed #e2e8f0; margin-top: 0.5rem;">
+                                    
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label>Province</label>
+                                        <select id="prov_select" class="form-input" required onchange="handleProvinceChange()">
+                                            <option value="" disabled selected hidden>-- Select Province --</option>
+                                        </select>
+                                        <span class="field-error" id="err-prov_select">Please select a province.</span>
+                                    </div>
+                                    
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label>Municipality / City</label>
+                                        <select id="city_select" class="form-input" required onchange="handleCityChange()" disabled>
+                                            <option value="" disabled selected hidden>-- Select Municipality --</option>
+                                        </select>
+                                        <span class="field-error" id="err-city_select">Please select a municipality.</span>
+                                    </div>
 
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label>Street / House No.</label>
-                                    <input type="text" id="street_input" class="form-input" placeholder="e.g. 123 Diamond St." oninput="syncAddress()" required>
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label>Barangay</label>
+                                        <select id="brgy_select" class="form-input" required onchange="syncAddress()" disabled>
+                                            <option value="" disabled selected hidden>-- Select Barangay --</option>
+                                        </select>
+                                        <span class="field-error" id="err-brgy_select">Please select a barangay.</span>
+                                    </div>
+
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label>House No., Street & Landmark <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
+                                        <input type="text" id="street_input" class="form-input" placeholder="e.g. 123 Diamond St., Near White Gate" oninput="syncAddress()">
+                                        <small style="color:var(--dm-slate-400); margin-top:4px;">Add details to make it easier to locate the delivery address.</small>
+                                    </div>
+                                    
+                                    {% if default_address_text %}
+                                    <div style="text-align: right; margin-top: 0.5rem;">
+                                        <button type="button" onclick="cancelEditAddress()" style="background: none; border: none; font-size: 0.85rem; font-weight: 700; color: #ef4444; cursor: pointer; text-decoration: underline;">Cancel Edit</button>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
+                            
                             <!-- Hidden field for combined address -->
-                            <input type="hidden" name="address" id="address">
-                            <input type="hidden" name="province" id="hidden_province">
-                            <input type="hidden" name="municipality" id="hidden_municipality">
-                            <input type="hidden" name="barangay" id="hidden_barangay">
+                            <input type="hidden" name="address" id="address" value="{{ (default_address_text ~ ', Philippines') if default_address_text else '' }}">
+                            <input type="hidden" name="province" id="hidden_province" value="{{ user.province or '' }}">
+                            <input type="hidden" name="municipality" id="hidden_municipality" value="{{ user.city_municipality or '' }}">
+                            <input type="hidden" name="barangay" id="hidden_barangay" value="{{ user.barangay or '' }}">
                             <span class="field-error" id="err-address" style="margin-top: 0.5rem; margin-bottom: 1rem;">Full address is required.</span>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Landmark / Special Instructions (Optional)</label>
-                            <input type="text" name="landmark" class="form-input" placeholder="e.g. Near Blue Mall / White Gate">
                         </div>
                     </div>
 
@@ -585,8 +675,40 @@
 
 
 
-                <!-- STEP 3: PAYMENT & CONFIRMATION -->
+                </div>
+
+                {% if requires_kyc and not user.is_verified and not user.is_kyc_complete %}
+                <!-- STEP 2: KYC VERIFICATION -->
                 <div class="checkout-screen" id="screen-2">
+                    <div class="checkout-card">
+                        <h3 class="section-title">
+                            <i class="fas fa-id-card" style="color: var(--checkout-primary);"></i> Identity Verification
+                        </h3>
+                        <p class="section-subtitle">
+                            You are renting high-value equipment. Please upload your ID to proceed. Your data is secure and encrypted.
+                        </p>
+                        
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;">
+                            <div class="input-group" style="margin-bottom: 1rem;">
+                                <label style="font-weight: 800; color: var(--up-slate-900); display: block; margin-bottom: 0.5rem;">Government ID (Front) <span style="color: #ef4444;">*</span></label>
+                                <input type="file" name="kyc_id_front" id="kyc_id_front" accept="image/*" class="input-premium" style="padding: 0.75rem; background: white;">
+                            </div>
+                            <div class="input-group">
+                                <label style="font-weight: 800; color: var(--up-slate-900); display: block; margin-bottom: 0.5rem;">Selfie with ID <span style="color: #ef4444;">*</span></label>
+                                <input type="file" name="kyc_selfie" id="kyc_selfie" accept="image/*" class="input-premium" style="padding: 0.75rem; background: white;">
+                                <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;"><i class="fas fa-info-circle"></i> Make sure your face and the ID details are clearly visible.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="checkout-actions">
+                        <button type="button" class="btn-wizard-back" onclick="nextScreen(1)">Back</button>
+                        <button type="button" class="btn-wizard-next" onclick="nextScreen(3)">Proceed to Payment <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- STEP FINAL: PAYMENT & CONFIRMATION -->
+                <div class="checkout-screen" id="screen-{{ 3 if (requires_kyc and not user.is_verified and not user.is_kyc_complete) else 2 }}">
                     <div class="checkout-card">
                         <h2 class="section-title">
                             <i class="fas fa-wallet" style="color: var(--checkout-primary);"></i>
@@ -642,7 +764,7 @@
 
                         <div class="booking-summary-panel" style="background: white; border: 1px solid #e2e8f0; border-radius: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); overflow: hidden;">
                             <div style="background: var(--up-slate-900); padding: 1.25rem 1.5rem;">
-                                <h3 style="font-weight: 800; font-size: 1.1rem; margin: 0; color: white;"><i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: var(--checkout-primary);"></i> Order Review</h3>
+                                <h3 id="review-title" style="font-weight: 800; font-size: 1.1rem; margin: 0; color: white;"><i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: var(--checkout-primary);"></i> Order Review</h3>
                             </div>
                             <div style="padding: 1.5rem;">
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
@@ -677,13 +799,44 @@
                             {% set active_terms = caterer.terms_and_conditions %}
                         {% endif %}
 
-                        {% if active_terms %}
+                        {% if active_terms or (caterer.scheduling_rules and caterer.scheduling_rules.get('policies')) %}
                         <div style="margin-top: 1.5rem; background: #f8fafc; padding: 1.5rem; border-radius: 1rem; border: 1px solid #cbd5e1;">
                             <h4 style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;">
                                 <i class="fas fa-file-signature" style="color: var(--checkout-primary); margin-right: 0.5rem;"></i> {{ doc_name }} Terms
                             </h4>
-                            <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; max-height: 150px; overflow-y: auto; font-size: 0.85rem; color: #475569; margin-bottom: 1rem; line-height: 1.6;">
-                                {{ active_terms | replace('\n', '<br>') | safe }}
+                            <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; max-height: 200px; overflow-y: auto; font-size: 0.85rem; color: #475569; margin-bottom: 1rem; line-height: 1.6;">
+                                {% if active_terms %}
+                                <div style="margin-bottom: 1rem;">
+                                    <strong><i class="fas fa-ban"></i> Cancellation Policy:</strong><br>
+                                    {{ active_terms | replace('\n', '<br>') | safe }}
+                                </div>
+                                {% endif %}
+                                
+                                {% set pols = caterer.scheduling_rules.get('policies', {}) if caterer.scheduling_rules else {} %}
+                                {% if pols.get('refund_policy') %}
+                                <div style="margin-bottom: 1rem;">
+                                    <strong><i class="fas fa-undo"></i> Refund Policy:</strong><br>
+                                    {{ pols.get('refund_policy') | replace('\n', '<br>') | safe }}
+                                </div>
+                                {% endif %}
+                                {% if pols.get('reschedule_policy') %}
+                                <div style="margin-bottom: 1rem;">
+                                    <strong><i class="fas fa-calendar-alt"></i> Reschedule Policy:</strong><br>
+                                    {{ pols.get('reschedule_policy') | replace('\n', '<br>') | safe }}
+                                </div>
+                                {% endif %}
+                                {% if pols.get('late_payment_policy') %}
+                                <div style="margin-bottom: 1rem;">
+                                    <strong><i class="fas fa-money-bill-wave"></i> Late Payment Policy:</strong><br>
+                                    {{ pols.get('late_payment_policy') | replace('\n', '<br>') | safe }}
+                                </div>
+                                {% endif %}
+                                {% if pols.get('no_show_policy') %}
+                                <div style="margin-bottom: 1rem;">
+                                    <strong><i class="fas fa-user-slash"></i> No-Show Policy:</strong><br>
+                                    {{ pols.get('no_show_policy') | replace('\n', '<br>') | safe }}
+                                </div>
+                                {% endif %}
                             </div>
                             
                             <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
@@ -713,7 +866,7 @@
                     <div class="checkout-nav-box">
                         <button type="button" class="btn-wizard-back" onclick="nextScreen(1)"><i class="fas fa-chevron-left"></i> Back</button>
                         <div class="nav-right">
-                            <button type="button" class="btn-wizard-next" id="final-submit-btn" onclick="submitAtaCarteOrder()" style="background: var(--checkout-primary); padding: 1rem 3.5rem;">
+                            <button type="button" class="btn-wizard-next" id="final-submit-btn" onclick="submitAtaCarteOrder()" style="background: var(--checkout-primary); padding: 1rem 1.5rem;">
                                 ACCEPT & CHECKOUT <i class="fas fa-check" style="margin-left: 0.75rem;"></i>
                             </button>
                         </div>
@@ -721,7 +874,7 @@
                 </div>
 
                 <!-- SUCCESS SCREEN -->
-                <div class="checkout-screen" id="screen-3">
+                <div class="checkout-screen" id="screen-{{ 4 if (requires_kyc and not user.is_verified and not user.is_kyc_complete) else 3 }}">
                     <div class="checkout-card" style="text-align: center; padding: 4rem 2rem;">
                         <div style="width: 80px; height: 80px; background: #10b981; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 2rem; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.25);">
                             <i class="fas fa-check"></i>
@@ -746,32 +899,37 @@
         <!-- Sidebar Summary Box -->
         <aside class="calculator-sidebar">
             <div class="bill-card-premium">
-                <h3 class="bill-title">Bill Summary</h3>
+                <div class="bill-title">
+                    <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 0.5rem;">Booking Summary</div>
+                    <div>{{ 'Mixed Order' if is_mixed else ('Equipment Rental' if is_rental else 'Food Order') }}</div>
+                    <div style="font-size: 0.9rem; color: #cbd5e1; margin-top: 4px; font-weight: 400;">with {{ caterer.business_name }}</div>
+                </div>
                 
-                <div id="dynamic-bill-items">
-                    <!-- Populated by JS -->
-                </div>
+                <div class="bill-body">
+                    <div id="dynamic-bill-items">
+                        <!-- Populated by JS -->
+                    </div>
 
-                <div class="bill-row">
-                    <span>Base Total</span>
-                    <span id="sum-base-total">₱0.00</span>
-                </div>
-                <div class="bill-row" id="delivery-row">
-                    <span>Delivery Fee</span>
-                    <span id="sum-delivery-fee">₱{{ "%.2f"|format(caterer.base_delivery_fee or 150.0) }}</span>
-                </div>
-                <div class="bill-row" id="deposit-row" style="display: none;">
-                    <span>Security Deposit (Refundable)</span>
-                    <span id="sum-deposit-fee">₱0.00</span>
-                </div>
+                    <div class="bill-row">
+                        <span>Base Total</span>
+                        <span id="sum-base-total">₱0.00</span>
+                    </div>
+                    <div class="bill-row" id="delivery-row">
+                        <span>Delivery Fee</span>
+                        <span id="sum-delivery-fee">₱{{ "%.2f"|format(caterer.base_delivery_fee or 150.0) }}</span>
+                    </div>
+                    <div class="bill-row" id="deposit-row" style="display: none;">
+                        <span>Security Deposit (Refundable)</span>
+                        <span id="sum-deposit-fee">₱0.00</span>
+                    </div>
 
-                <div class="bill-divider"></div>
+                    <div class="bill-divider"></div>
 
-                <div class="bill-total-impact">
-                    <span class="bill-total-label">Grand Total</span>
-                    <span class="bill-total-value" id="sum-grand-total">₱0.00</span>
+                    <div class="bill-total-impact">
+                        <span class="bill-total-label">Grand Total</span>
+                        <span class="bill-total-value" id="sum-grand-total">₱0.00</span>
+                    </div>
                 </div>
-
                 <button type="button" class="btn-secure-checkout" id="sidebar-next-btn" onclick="nextScreen(window.currentScreen + 1)">
                     PROCEED TO PAYMENT <i class="fas fa-arrow-right" style="margin-left: 0.5rem;"></i>
                 </button>
@@ -779,6 +937,18 @@
         </aside>
     </div>
 </div>
+
+<!-- Inject variables for JS -->
+<script>
+    window.catererAddress = {{ (caterer.contact_address or 'STORE PICKUP') | tojson | safe }};
+    window.originalSavedAddressString = {{ ((default_address_text ~ ', Philippines') if default_address_text else '') | tojson | safe }};
+    window.userSavedAddress = {
+        province: {{ (user.province or '') | tojson | safe }},
+        city: {{ (user.city_municipality or '') | tojson | safe }},
+        brgy: {{ (user.barangay or '') | tojson | safe }},
+        street: {{ (user.street_address or user.address or '') | tojson | safe }}
+    };
+</script>
 {% endblock %}
 
 
@@ -801,7 +971,7 @@
                 </div>
                 
                 <div id="modalContentGCASH" style="display: none; text-align: center;">
-                    <img src="{{ caterer.gcash_qr_url }}" alt="GCash QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bfdbfe; margin-bottom: 1rem;">
+                    <img src="{{ caterer.gcash_qr_url }}" alt="GCash QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bfdbfe; margin: 0 auto 1rem auto; display: block;">
                     
                     <div style="background: #eff6ff; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left;">
                         <h4 style="font-size: 0.9rem; font-weight: 800; color: #1e3a8a; margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> GCash Payment Steps</h4>
@@ -812,7 +982,7 @@
                 </div>
                 
                 <div id="modalContentMAYA" style="display: none; text-align: center;">
-                    <img src="{{ caterer.maya_qr_url }}" alt="Maya QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bbf7d0; margin-bottom: 1rem;">
+                    <img src="{{ caterer.maya_qr_url }}" alt="Maya QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bbf7d0; margin: 0 auto 1rem auto; display: block;">
                     
                     <div style="background: #f0fdf4; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left;">
                         <h4 style="font-size: 0.9rem; font-weight: 800; color: #14532d; margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> Maya Payment Steps</h4>
@@ -893,6 +1063,7 @@
             cost_value: {{ item.cost_value or 0 }},
             security_deposit_pct: {{ item.security_deposit_pct or 20.0 }},
             requires_kyc: {{ 'true' if item.requires_kyc else 'false' }},
+            min_quantity: {{ item.min_quantity or 1 }},
             pricing_unit: "{{ item.unit_type or 'per_unit' }}",
             image_url: "{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}",
             is_combo: false,
@@ -913,6 +1084,10 @@
         }{% if not loop.last %},{% endif %}
         {% endfor %}
     ];
+    
+    // Add dynamic payment step detection
+    window.paymentStep = {{ 3 if (requires_kyc and not user.is_verified and not user.is_kyc_complete) else 2 }};
+    window.requiresKycStep = {{ 'true' if (requires_kyc and not user.is_verified and not user.is_kyc_complete) else 'false' }};
 </script>
 <script src="{{ url_for('static', path='/js/customer/alacarte_checkout.js') }}?v={{ range(1, 9999) | random }}"></script>
 {% endblock %}

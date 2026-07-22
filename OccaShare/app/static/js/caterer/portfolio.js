@@ -2,6 +2,8 @@
 
 let coverPhotoFile = null;
 let galleryFiles = [];
+let existingGalleryUrls = [];
+let deletedGalleryIds = [];
 let highlightsTagify = null;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -21,6 +23,10 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function openPortfolioModal() {
+    const form = document.getElementById('portfolioForm');
+    form.action = '/caterer/portfolio/create';
+    document.getElementById('portfolioIdInput').value = '';
+    document.querySelector('#portfolioModal .occ-modal-title').innerText = 'Add Portfolio Entry';
     document.getElementById('portfolioModal').classList.add('active');
     document.body.style.overflow = 'hidden';
 }
@@ -40,6 +46,8 @@ function closePortfolioModal() {
     document.getElementById('coverPlaceholder').style.display = 'flex';
     
     galleryFiles = [];
+    existingGalleryUrls = [];
+    deletedGalleryIds = [];
     renderGalleryPreviews();
 }
 
@@ -84,6 +92,18 @@ function renderGalleryPreviews() {
     grid.innerHTML = '';
     grid.appendChild(uploadBox);
     
+    // Render existing photos
+    existingGalleryUrls.forEach((item, index) => {
+        const previewBox = document.createElement('div');
+        previewBox.className = 'preview-box';
+        previewBox.innerHTML = `
+            <img src="${item.url}">
+            <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5); color: white; font-size: 10px; text-align: center; padding: 2px;">Existing</div>
+            <button type="button" class="preview-remove" onclick="removeExistingGalleryPhoto(${index})"><i class="fas fa-times"></i></button>
+        `;
+        grid.appendChild(previewBox);
+    });
+
     galleryFiles.forEach((file, index) => {
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -99,15 +119,23 @@ function renderGalleryPreviews() {
     });
 }
 
+function removeExistingGalleryPhoto(index) {
+    const removedItem = existingGalleryUrls.splice(index, 1)[0];
+    deletedGalleryIds.push(removedItem.id);
+    renderGalleryPreviews();
+}
+
 async function submitPortfolio(e) {
     e.preventDefault();
     
-    if (!coverPhotoFile) {
+    const form = document.getElementById('portfolioForm');
+    const isEdit = form.action.includes('/update');
+    
+    if (!isEdit && !coverPhotoFile) {
         alert("A cover photo is required.");
         return;
     }
     
-    const form = document.getElementById('portfolioForm');
     const submitBtn = document.getElementById('submitPortfolioBtn');
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
@@ -131,14 +159,18 @@ async function submitPortfolio(e) {
         formData.append('highlights', highlightsStr);
     }
     
-    formData.append('cover_photo', coverPhotoFile);
+    if (coverPhotoFile) formData.append('cover_photo', coverPhotoFile);
     
     galleryFiles.forEach(file => {
         formData.append('additional_photos', file);
     });
     
+    if (deletedGalleryIds.length > 0) {
+        formData.append('deleted_photos', deletedGalleryIds.join(','));
+    }
+    
     try {
-        const response = await fetch('/caterer/portfolio/create', {
+        const response = await fetch(form.action, {
             method: 'POST',
             body: formData
         });
@@ -160,8 +192,8 @@ async function submitPortfolio(e) {
     }
 }
 
-async function deletePortfolio(id) {
-    if (!confirm("Are you sure you want to delete this portfolio entry? This cannot be undone.")) return;
+async function archivePortfolio(id) {
+    if (!confirm("Are you sure you want to archive this portfolio entry? It will be moved to the archives page.")) return;
     
     try {
         const response = await fetch(`/caterer/portfolio/${id}`, { method: 'DELETE' });
@@ -169,11 +201,73 @@ async function deletePortfolio(id) {
         if (response.ok) {
             document.getElementById(`portfolio-${id}`).remove();
         } else {
-            alert(result.detail || "Error deleting portfolio.");
+            alert(result.detail || "Error archiving portfolio.");
         }
     } catch(e) {
         alert("Network error.");
     }
+}
+
+function editPortfolio(btn) {
+    const id = btn.dataset.id;
+    const title = btn.dataset.title;
+    const eventType = btn.dataset.eventType;
+    const description = btn.dataset.description;
+    const location = btn.dataset.location;
+    const eventDate = btn.dataset.eventDate;
+    const highlights = btn.dataset.highlights;
+    const bookingId = btn.dataset.bookingId;
+    const isFeatured = btn.dataset.isFeatured === 'true';
+    const coverUrl = btn.dataset.coverUrl;
+    
+    existingGalleryUrls = [];
+    deletedGalleryIds = [];
+    const card = btn.closest('.portfolio-card');
+    if (card) {
+        const hiddenGallery = card.querySelector('.hidden-gallery-data');
+        if (hiddenGallery) {
+            const imgs = hiddenGallery.querySelectorAll('img');
+            imgs.forEach(img => {
+                if (img.src) existingGalleryUrls.push({ id: img.dataset.id, url: img.src });
+            });
+        }
+    }
+
+    const form = document.getElementById('portfolioForm');
+    form.action = `/caterer/portfolio/${id}/update`;
+    document.getElementById('portfolioIdInput').value = id;
+    
+    form.title.value = title;
+    form.event_type.value = eventType;
+    form.description.value = description;
+    form.location.value = location;
+    form.event_date.value = eventDate;
+    form.booking_id.value = bookingId;
+    form.querySelector('input[name="is_featured"]').checked = isFeatured;
+
+    if (highlightsTagify) {
+        highlightsTagify.removeAllTags();
+        if (highlights) {
+            highlightsTagify.addTags(highlights.split(','));
+        }
+    }
+
+    // Display cover photo if it exists
+    if (coverUrl) {
+        document.getElementById('coverImg').src = coverUrl;
+        document.getElementById('coverImg').style.display = 'block';
+        document.getElementById('coverPlaceholder').style.display = 'none';
+    } else {
+        document.getElementById('coverImg').style.display = 'none';
+        document.getElementById('coverPlaceholder').style.display = 'flex';
+    }
+
+    // Display gallery photos
+    renderGalleryPreviews();
+
+    document.querySelector('#portfolioModal .occ-modal-title').innerText = 'Edit Portfolio Entry';
+    document.getElementById('portfolioModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
 }
 
 async function togglePortfolioVisibility(id) {

@@ -199,11 +199,21 @@
                             <div class="logo-upload-box">
                                 <input type="file" name="logo" accept="image/*" class="form-file-input">
                             </div>
+                            {% if profile.logo_url %}
+                            <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; color: #16a34a; font-size: 0.85rem; font-weight: 600;">
+                                <i class="fas fa-check-circle"></i> Logo uploaded
+                            </div>
+                            {% endif %}
                             <span class="field-hint">Used in your public profile and digital contracts.</span>
                         </div>
                         <div class="form-group">
                             <label><i class="fas fa-panorama"></i> Cover Image</label>
                             <input type="file" name="cover_image" accept="image/*" class="form-file-input">
+                            {% if profile.cover_image_url %}
+                            <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; color: #16a34a; font-size: 0.85rem; font-weight: 600;">
+                                <i class="fas fa-check-circle"></i> Cover image uploaded
+                            </div>
+                            {% endif %}
                             <span class="field-hint">Shows at the top of your public catering page.</span>
                         </div>
                     </div>
@@ -213,6 +223,25 @@
                         <textarea name="description" rows="5"
                             placeholder="Describe your catering services, specialties, and experience..."
                             required>{{ profile.description }}</textarea>
+                    </div>
+                    
+                    {% set rules = profile.scheduling_rules or {} %}
+                    {% set pub = rules.get('public_profile', {}) %}
+                    {% set soc = rules.get('social_links', {}) %}
+                    <div class="section-header-compact" style="margin-top: 2rem;">
+                        <h3><i class="fas fa-globe"></i> Public Profile Settings</h3>
+                        <p>Extra details shown to customers to build trust and brand identity.</p>
+                    </div>
+                    
+                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div class="form-group">
+                            <label><i class="fab fa-facebook"></i> Facebook Page</label>
+                            <input type="text" name="social_facebook" value="{{ soc.get('facebook', '') }}" placeholder="fb.com/yourbusiness">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fab fa-instagram"></i> Instagram</label>
+                            <input type="text" name="social_instagram" value="{{ soc.get('instagram', '') }}" placeholder="@yourbusiness">
+                        </div>
                     </div>
 
             </div>
@@ -255,7 +284,7 @@
                         <div class="form-group">
                             <label><i class="fas fa-flag"></i> Province</label>
                             <select id="locationProvince" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: var(--border-radius, 8px);">
-                                <option value="">Select Province</option>
+                                <option value="" disabled selected>Select Province</option>
                             </select>
                             <input type="hidden" name="province_code" id="provinceCodeHidden" value="{{ profile.province_code or '' }}">
                             <input type="hidden" name="province" id="provinceNameHidden" value="">
@@ -264,7 +293,7 @@
                         <div class="form-group">
                             <label><i class="fas fa-city"></i> Municipality / City</label>
                             <select id="locationMunicipality" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: var(--border-radius, 8px);" disabled>
-                                <option value="">Select Municipality</option>
+                                <option value="" disabled selected>Select Municipality</option>
                             </select>
                             <input type="hidden" name="city_code" id="cityCodeHidden" value="{{ profile.city_code or '' }}">
                             <input type="hidden" name="municipality" id="cityNameHidden" value="{{ profile.city or '' }}">
@@ -275,7 +304,7 @@
                         <div class="form-group">
                             <label><i class="fas fa-map-pin"></i> Barangay</label>
                             <select id="locationBarangay" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: var(--border-radius, 8px);" disabled>
-                                <option value="">Select Barangay</option>
+                                <option value="" disabled selected>Select Barangay</option>
                             </select>
                             <input type="hidden" name="brgy_code" id="brgyCodeHidden" value="{{ profile.brgy_code or '' }}">
                             <input type="hidden" name="barangay" id="brgyNameHidden" value="">
@@ -701,47 +730,7 @@
                         </div>
                     </div>
                     
-                    <!-- New Global Cost Settings -->
-                    <div class="section-header-compact" style="margin-top: 2rem;">
-                        <h3><i class="fas fa-calculator"></i> Global Operational Costs</h3>
-                        <p>These will be used automatically when computing ROI for all your catering packages.</p>
-                    </div>
-                    <div class="form-row-three-col" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
-                        <div class="form-group">
-                            <label><i class="fas fa-user-tie"></i> Labor Cost (₱)</label>
-                            <input type="text" inputmode="numeric" name="default_labor_cost" class="js-format-comma" min="0" value="{{ profile.default_labor_cost or 0 }}">
-                            <span class="field-hint">Average labor fee per event.</span>
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-bolt"></i> Utilities (₱)</label>
-                            <input type="text" inputmode="numeric" name="default_utility_cost" class="js-format-comma" min="0" value="{{ profile.default_utility_cost or 0 }}">
-                            <span class="field-hint">Average gas/electricity cost.</span>
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-truck"></i> Transport (₱)</label>
-                            <input type="text" inputmode="numeric" name="default_transport_cost" class="js-format-comma" min="0" value="{{ profile.default_transport_cost or 0 }}">
-                            <span class="field-hint">Average logistics/delivery cost.</span>
-                        </div>
-                    </div>
 
-                    <div class="section-header-compact" style="margin-top: 2rem;">
-                        <h3><i class="fas fa-hand-holding-dollar"></i> Global Reservation Policy</h3>
-                        <p>Default reservation fee for your packages.</p>
-                    </div>
-                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div class="form-group">
-                            <label><i class="fas fa-percent"></i> Fee Type</label>
-                            <select name="default_reservation_type" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
-                                <option value="fixed" {% if profile.default_reservation_type == 'fixed' %}selected{% endif %}>Fixed Amount (₱)</option>
-                                <option value="percentage" {% if profile.default_reservation_type == 'percentage' %}selected{% endif %}>Percentage (%)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-money-bill"></i> Fee Value</label>
-                            <input type="text" inputmode="numeric" name="default_reservation_value" class="js-format-comma" min="0" value="{{ profile.default_reservation_value or 0 }}">
-                            <span class="field-hint">Amount or percentage required to secure date.</span>
-                        </div>
-                    </div>
 
                     <div class="form-group" style="margin-top: 1.5rem;">
                         <label><i class="fas fa-hand-holding-dollar"></i> Accepted Payment Terms</label>
@@ -770,20 +759,45 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <div class="form-group full-width">
-                            <label><i class="fas fa-file-signature"></i> Event Contract Terms (For Large Bookings)</label>
-                            <textarea name="terms_and_conditions" rows="5"
-                                placeholder="These terms will appear on the formal Digital Service Agreement for Packages and Custom Events. e.g. A non-refundable deposit is required...">{{ profile.terms_and_conditions or '' }}</textarea>
-                        </div>
-                        
-                        <div class="form-group full-width" style="margin-top: 1rem;">
-                            <label><i class="fas fa-clipboard-check"></i> General Terms (For Fast-Track Orders)</label>
-                            <textarea name="general_terms" rows="3"
-                                placeholder="These terms will appear as a simple checkbox during quick checkout for food trays and rentals. e.g. No cancellations allowed 48 hrs before delivery.">{{ profile.general_terms or '' }}</textarea>
-                        </div>
-                        <span class="field-hint">This will be attached to your digital booking contract that customers must agree to before checkout.</span>
+                    {% set policies = rules.get('policies', {}) %}
+                    <div class="section-header-compact" style="margin-top: 2rem;">
+                        <h3><i class="fas fa-file-contract"></i> Detailed Business Policies</h3>
+                        <p>Configure specific policies for your catering services.</p>
                     </div>
+                    
+                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-ban"></i> Cancellation Policy</label>
+                            <textarea name="terms_and_conditions" rows="3" placeholder="Explain your cancellation rules. e.g. Cancellations made 7 days prior will receive a 50% refund.">{{ profile.terms_and_conditions or '' }}</textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-undo"></i> Refund Policy</label>
+                            <textarea name="refund_policy" rows="3" placeholder="Detail when and how refunds are processed.">{{ policies.get('refund_policy', '') }}</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-calendar-alt"></i> Reschedule Policy</label>
+                            <textarea name="reschedule_policy" rows="3" placeholder="Rules for moving event dates.">{{ policies.get('reschedule_policy', '') }}</textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-money-bill-wave"></i> Late Payment Policy</label>
+                            <textarea name="late_payment_policy" rows="3" placeholder="Penalties or actions for late balances.">{{ policies.get('late_payment_policy', '') }}</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-user-slash"></i> No-show Policy</label>
+                            <textarea name="no_show_policy" rows="3" placeholder="Policy if client is uncontactable.">{{ policies.get('no_show_policy', '') }}</textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-clipboard-check"></i> General Terms (For Fast-Track Orders)</label>
+                            <textarea name="general_terms" rows="3" placeholder="Quick terms for simple food trays and rentals.">{{ profile.general_terms or '' }}</textarea>
+                        </div>
+                    </div>
+                    <span class="field-hint" style="display:block; margin-top:0.5rem;">These policies will automatically generate your digital contracts and checkout terms, ensuring a Single Source of Truth.</span>
             </div>
             <!-- End Section: Booking Policies -->
 
@@ -796,6 +810,7 @@
 
                 {% set rules = profile.scheduling_rules or {} %}
                 {% set bh = rules.get('business_hours', {'open_time': '08:00', 'close_time': '20:00'}) %}
+                {% set bk = rules.get('booking_rules', {}) %}
                 {% set fr = rules.get('food_rules', {'delivery_available': true, 'pickup_available': true, 'delivery_start': '09:00', 'delivery_end': '19:00', 'lead_time_hours': 24, 'allow_same_day': false}) %}
                 {% set er = rules.get('equipment_rules', {'pickup_start': '08:00', 'pickup_end': '18:00', 'return_start': '08:00', 'return_end': '18:00', 'min_rental_hours': 24, 'max_rental_hours': 72}) %}
                 {% set sr = rules.get('service_rules', {'min_duration_hours': 3, 'max_duration_hours': 8, 'earliest_start': '08:00', 'latest_end': '22:00'}) %}
@@ -828,32 +843,50 @@
                             {% endfor %}
                         </div>
                     </div>
+                    
+                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 1.5rem 0;">
+                    <div class="form-row-two-col">
+                        <div class="form-group">
+                            <label><i class="fas fa-calendar-plus"></i> Max Advance Booking (Days)</label>
+                            <input type="number" name="max_advance_booking_days" value="{{ bk.get('max_advance_booking_days', 365) }}" min="1">
+                            <span class="field-hint">How far in the future can clients book?</span>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-umbrella-beach"></i> Holiday Schedule / Blocked Days</label>
+                            <input type="text" name="holiday_schedule" value="{{ bk.get('holiday_schedule', '') }}" placeholder="e.g. Dec 24, Dec 25, Jan 1">
+                            <span class="field-hint">Comma-separated list of recurring holidays.</span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 2. Food Order Scheduling -->
                 <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
                     <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-utensils"></i> Food Order Scheduling</h4>
-                    <div class="form-row-two-col" style="margin-top: 1rem;">
+                    <p class="field-hint" style="margin-bottom: 1.25rem;">Define when customers can expect their food trays and packed meals to be delivered. This helps manage customer expectations and your kitchen prep time.</p>
+                    <div class="form-row-two-col">
                         <div class="form-group">
-                            <label>Delivery Start Time</label>
+                            <label>Delivery Operating Hours - Start</label>
                             <input type="time" name="food_delivery_start" value="{{ fr.delivery_start }}">
+                            <span class="field-hint">Earliest time you can deliver food.</span>
                         </div>
                         <div class="form-group">
-                            <label>Delivery End Time</label>
+                            <label>Delivery Operating Hours - End</label>
                             <input type="time" name="food_delivery_end" value="{{ fr.delivery_end }}">
+                            <span class="field-hint">Latest time you can deliver food.</span>
                         </div>
                     </div>
                     <div class="form-row-two-col">
                         <div class="form-group">
                             <label>Preparation Lead Time (Hours)</label>
                             <input type="number" name="food_lead_time_hours" value="{{ fr.lead_time_hours }}" min="0">
+                            <span class="field-hint">How many hours of notice do you need to prepare a food order?</span>
                         </div>
-                        <div class="form-group" style="display:flex; align-items:flex-end;">
-                            <label class="toggle-switch" style="margin-bottom: 10px;">
+                        <div class="form-group" style="display:flex; align-items:center; gap: 12px; margin-top: 1.5rem;">
+                            <label class="toggle-switch" style="margin: 0;">
                                 <input type="checkbox" name="food_allow_same_day" {% if fr.allow_same_day %}checked{% endif %}>
                                 <span class="toggle-slider"></span>
-                                <span style="margin-left: 50px; font-weight: 600;">Allow Same-Day Orders</span>
                             </label>
+                            <span style="font-weight: 700; color: #1e293b; font-size: 0.85rem;">Allow Same-Day Orders</span>
                         </div>
                     </div>
                 </div>
@@ -861,74 +894,89 @@
                 <!-- 3. Equipment Rental Scheduling -->
                 <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
                     <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-box-open"></i> Equipment Rental Scheduling</h4>
-                    <div class="form-row-two-col" style="margin-top: 1rem;">
+                    <p class="field-hint" style="margin-bottom: 1.25rem;">Set the rules for customers renting your catering equipment (e.g. chafing dishes, tables, chairs). Clear rules prevent scheduling conflicts.</p>
+                    <div class="form-row-two-col">
                         <div class="form-group">
-                            <label>Allowed Pickup Start</label>
+                            <label>Allowed Pickup Time - Start</label>
                             <input type="time" name="equipment_pickup_start" value="{{ er.pickup_start }}">
+                            <span class="field-hint">Earliest time customers can pick up rented items.</span>
                         </div>
                         <div class="form-group">
-                            <label>Allowed Pickup End</label>
+                            <label>Allowed Pickup Time - End</label>
                             <input type="time" name="equipment_pickup_end" value="{{ er.pickup_end }}">
+                            <span class="field-hint">Latest time customers can pick up or return items.</span>
                         </div>
                     </div>
                     <div class="form-row-two-col">
                         <div class="form-group">
                             <label>Min Rental Duration (Hours)</label>
                             <input type="number" name="equipment_min_rental" value="{{ er.min_rental_hours }}" min="1">
+                            <span class="field-hint">Shortest allowed rental period.</span>
                         </div>
                         <div class="form-group">
                             <label>Max Rental Duration (Hours)</label>
                             <input type="number" name="equipment_max_rental" value="{{ er.max_rental_hours }}" min="1">
+                            <span class="field-hint">Longest allowed rental period before incurring extra fees.</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- 4. Service Booking Scheduling -->
+                <!-- 4. Service Staff Scheduling -->
                 <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
                     <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-user-tie"></i> Service Staff Scheduling</h4>
-                    <div class="form-row-two-col" style="margin-top: 1rem;">
+                    <p class="field-hint" style="margin-bottom: 1.25rem;">Establish working hours for your waitstaff, bartenders, and on-site crew to ensure they are booked fairly and predictably.</p>
+                    <div class="form-row-two-col">
                         <div class="form-group">
-                            <label>Earliest Service Start</label>
+                            <label>Earliest Staff Arrival Time</label>
                             <input type="time" name="service_earliest_start" value="{{ sr.earliest_start }}">
+                            <span class="field-hint">When can your staff start their shift?</span>
                         </div>
                         <div class="form-group">
-                            <label>Latest Service End</label>
+                            <label>Latest Staff Departure Time</label>
                             <input type="time" name="service_latest_end" value="{{ sr.latest_end }}">
+                            <span class="field-hint">When must your staff end their shift?</span>
                         </div>
                     </div>
                     <div class="form-row-two-col">
                         <div class="form-group">
-                            <label>Min Duration (Hours)</label>
+                            <label>Min Hire Duration (Hours)</label>
                             <input type="number" name="service_min_duration" value="{{ sr.min_duration_hours }}" min="1">
+                            <span class="field-hint">Minimum hours a customer must hire your staff.</span>
                         </div>
                         <div class="form-group">
-                            <label>Max Duration (Hours)</label>
+                            <label>Max Hire Duration (Hours)</label>
                             <input type="number" name="service_max_duration" value="{{ sr.max_duration_hours }}" min="1">
+                            <span class="field-hint">Maximum hours staff can work per booking.</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- 5. Package Booking Scheduling -->
+                <!-- 5. Package Event Scheduling -->
                 <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
                     <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-gift"></i> Package Event Scheduling</h4>
-                    <div class="form-row-two-col" style="margin-top: 1rem;">
+                    <p class="field-hint" style="margin-bottom: 1.25rem;">Configure the logistics required for full catering packages. This ensures you have enough time to set up and clean up the venue.</p>
+                    <div class="form-row-two-col">
                         <div class="form-group">
-                            <label>Min Event Duration (Hours)</label>
+                            <label>Standard Event Duration - Minimum (Hours)</label>
                             <input type="number" name="package_min_duration" value="{{ pr.min_event_duration }}" min="1">
+                            <span class="field-hint">Minimum hours covered by standard packages.</span>
                         </div>
                         <div class="form-group">
-                            <label>Max Event Duration (Hours)</label>
+                            <label>Standard Event Duration - Maximum (Hours)</label>
                             <input type="number" name="package_max_duration" value="{{ pr.max_event_duration }}" min="1">
+                            <span class="field-hint">Maximum hours covered before overtime fees.</span>
                         </div>
                     </div>
                     <div class="form-row-two-col">
                         <div class="form-group">
-                            <label>Setup Time Needed (Hours Before)</label>
+                            <label>Required Setup Time (Hours Before Event)</label>
                             <input type="number" name="package_setup_time" value="{{ pr.setup_time_hours }}" min="0">
+                            <span class="field-hint">Hours needed at the venue BEFORE the event starts.</span>
                         </div>
                         <div class="form-group">
-                            <label>Cleanup Time Needed (Hours After)</label>
+                            <label>Required Cleanup Time (Hours After Event)</label>
                             <input type="number" name="package_cleanup_time" value="{{ pr.cleanup_time_hours }}" min="0">
+                            <span class="field-hint">Hours needed at the venue AFTER the event ends.</span>
                         </div>
                     </div>
                 </div>
@@ -1984,8 +2032,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         provCodeHidden.value = code;
         provNameHidden.value = name;
         
-        citySelect.innerHTML = '<option value="">Select Municipality</option>';
-        brgySelect.innerHTML = '<option value="">Select Barangay</option>';
+        citySelect.innerHTML = '<option value="" disabled selected>Select Municipality</option>';
+        brgySelect.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
         citySelect.disabled = true;
         brgySelect.disabled = true;
         cityCodeHidden.value = '';
@@ -2005,7 +2053,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         cityCodeHidden.value = code;
         cityNameHidden.value = name;
         
-        brgySelect.innerHTML = '<option value="">Select Barangay</option>';
+        brgySelect.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
         brgySelect.disabled = true;
         brgyCodeHidden.value = '';
         brgyNameHidden.value = '';
@@ -2038,7 +2086,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetch(endpoint);
             const cities = await res.json();
             
-            citySelect.innerHTML = '<option value="">Select Municipality</option>';
+            citySelect.innerHTML = '<option value="" disabled selected>Select Municipality</option>';
             cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c.code;
@@ -2076,7 +2124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetch(`${PSGC_BASE}/cities-municipalities/${cityCode}/barangays/`);
             const brgys = await res.json();
             
-            brgySelect.innerHTML = '<option value="">Select Barangay</option>';
+            brgySelect.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
             brgys.sort((a, b) => a.name.localeCompare(b.name)).forEach(b => {
                 const opt = document.createElement('option');
                 opt.value = b.code;
@@ -2131,13 +2179,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="form-group">
                     <label>Province</label>
                     <select id="zoneProvince" name="province" class="form-control" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
-                        <option value="">Select Province</option>
+                        <option value="" disabled selected>Select Province</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Municipality / City</label>
                     <select id="zoneCity" name="city_municipality" class="form-control" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;" disabled>
-                        <option value="">Select Municipality</option>
+                        <option value="" disabled selected>Select Municipality</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -2212,7 +2260,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('addZoneModal').classList.remove('active');
         document.getElementById('addZoneForm').reset();
         document.getElementById('zoneCity').disabled = true;
-        document.getElementById('zoneCity').innerHTML = '<option value="">Select Municipality</option>';
+        document.getElementById('zoneCity').innerHTML = '<option value="" disabled selected>Select Municipality</option>';
         document.getElementById('zoneFeeGroup').style.display = 'block';
     }
 
@@ -2246,20 +2294,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (provSelect.options.length > 1) return; // Already loaded
 
         try {
-            const res = await fetch('https://psgc.gitlab.io/api/provinces/');
-            const provinces = await res.json();
-            
-            provinces.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.code;
-                opt.textContent = p.name;
-                provSelect.appendChild(opt);
-            });
-
-            const optNCR = document.createElement('option');
-            optNCR.value = "130000000";
-            optNCR.textContent = "NATIONAL CAPITAL REGION (NCR)";
-            provSelect.appendChild(optNCR);
+            // Lock to Laguna only
+            provSelect.innerHTML = '<option value="043400000" selected>Laguna</option>';
+            provSelect.dispatchEvent(new Event('change'));
         } catch (e) {
             console.error('Failed to load provinces:', e);
         }
@@ -2268,7 +2305,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('zoneProvince')?.addEventListener('change', async (e) => {
         const code = e.target.value;
         const citySelect = document.getElementById('zoneCity');
-        citySelect.innerHTML = '<option value="">Select Municipality</option>';
+        citySelect.innerHTML = '<option value="" disabled selected>Select Municipality</option>';
         citySelect.disabled = true;
 
         if (!code) return;
@@ -2283,7 +2320,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const res = await fetch(endpoint);
             const cities = await res.json();
             
-            citySelect.innerHTML = '<option value="">Select Municipality</option>';
+            citySelect.innerHTML = '<option value="" disabled selected>Select Municipality</option>';
             cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c.code;

@@ -16,7 +16,12 @@ class User(Base):
     last_name = Column(String, nullable=True)
     dob = Column(Date, nullable=True)
     phone_number = Column(String, nullable=True)
-    address = Column(Text, nullable=True)
+    address = Column(Text, nullable=True)  # Legacy single-field address (kept for backward compat)
+    # Structured Address Fields (PSGC-based)
+    province = Column(String, nullable=True)
+    city_municipality = Column(String, nullable=True)
+    barangay = Column(String, nullable=True)
+    street_address = Column(Text, nullable=True)  # House/Unit No., Street, Landmark
     profile_image_url = Column(String, nullable=True)
     status = Column(String, default="active")
     status_reason = Column(Text, nullable=True)
@@ -259,6 +264,38 @@ class PackageService(Base):
     quantity = Column(Integer, default=1)
     service = relationship("Service", backref="package_links")
 
+class PackageMenuAddon(Base):
+    __tablename__ = "package_menu_addons"
+    id = Column(Integer, primary_key=True, index=True)
+    package_id = Column(Integer, ForeignKey("catering_packages.id", ondelete="CASCADE"))
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"))
+    price = Column(Float, default=0.0)
+    selection_type = Column(String, default="single") # 'single' or 'multiple'
+    min_quantity = Column(Integer, default=1)
+    max_quantity = Column(Integer, nullable=True)
+    is_enabled = Column(Boolean, default=True)
+
+class PackageServiceAddon(Base):
+    __tablename__ = "package_service_addons"
+    id = Column(Integer, primary_key=True, index=True)
+    package_id = Column(Integer, ForeignKey("catering_packages.id", ondelete="CASCADE"))
+    service_id = Column(Integer, ForeignKey("services.id", ondelete="CASCADE"))
+    price = Column(Float, default=0.0)
+    selection_type = Column(String, default="single") # 'single' or 'manpower'
+    min_quantity = Column(Integer, default=1)
+    max_quantity = Column(Integer, nullable=True)
+    is_enabled = Column(Boolean, default=True)
+
+class PackageEquipmentAddon(Base):
+    __tablename__ = "package_equipment_addons"
+    id = Column(Integer, primary_key=True, index=True)
+    package_id = Column(Integer, ForeignKey("catering_packages.id", ondelete="CASCADE"))
+    equipment_id = Column(Integer, ForeignKey("equipment.id", ondelete="CASCADE"))
+    price = Column(Float, default=0.0)
+    min_quantity = Column(Integer, default=1)
+    max_quantity = Column(Integer, nullable=True)
+    is_enabled = Column(Boolean, default=True)
+
 class CateringPackage(Base):
     __tablename__ = "catering_packages"
 
@@ -273,6 +310,7 @@ class CateringPackage(Base):
     min_guests = Column(Integer, default=10)
     max_guests = Column(Integer, nullable=True)
     image_url = Column(String)
+    gallery_images = Column(JSONB, nullable=True) # up to 4 additional images
     service_type = Column(String, default="General") # Wedding, Birthday, Corporate, etc.
     
     # NEW: Rich Pricing & Details
@@ -318,6 +356,10 @@ class CateringPackage(Base):
     
     equipment_links = relationship("PackageEquipment", cascade="all, delete-orphan", backref="package")
     service_links = relationship("PackageService", cascade="all, delete-orphan", backref="package")
+    
+    menu_addons = relationship("PackageMenuAddon", cascade="all, delete-orphan", backref="package")
+    service_addons = relationship("PackageServiceAddon", cascade="all, delete-orphan", backref="package")
+    equipment_addons = relationship("PackageEquipmentAddon", cascade="all, delete-orphan", backref="package")
 
     bookings = relationship("Booking", back_populates="package")
 
@@ -349,6 +391,7 @@ class MenuItem(Base):
     dietary_tags = Column(ARRAY(String), nullable=True)
     allergen_info = Column(ARRAY(String), nullable=True)
     serving_size = Column(String, nullable=True) 
+    serving_style = Column(String, nullable=True) # V3 Single Serving Style
     is_addon = Column(Boolean, default=False)
     addon_price = Column(Float, default=0.0)
     max_stock_quantity = Column(Integer, nullable=True) 
@@ -358,6 +401,10 @@ class MenuItem(Base):
     max_choices = Column(Integer, default=0)
     combo_options = Column(JSONB, nullable=True)
     
+    # Granular Ratings Caching
+    average_rating = Column(Float, default=0.0)
+    review_count = Column(Integer, default=0)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     caterer = relationship("CatererProfile", back_populates="menu_items")
@@ -365,6 +412,20 @@ class MenuItem(Base):
     
     size_prices = relationship("MenuSizePricing", back_populates="menu_item", cascade="all, delete-orphan")
     weight_prices = relationship("MenuWeightPricing", back_populates="menu_item", cascade="all, delete-orphan")
+    variants = relationship("MenuVariant", back_populates="menu_item", cascade="all, delete-orphan", order_by="MenuVariant.display_order")
+
+class MenuVariant(Base):
+    __tablename__ = "menu_variants"
+    id = Column(Integer, primary_key=True, index=True)
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"))
+    variant_name = Column(String)
+    measurement = Column(String, nullable=True)
+    price = Column(Float, default=0.0)
+    serving_capacity = Column(String, nullable=True)
+    status = Column(String, default="available") # available, unavailable, hidden
+    display_order = Column(Integer, default=0)
+    
+    menu_item = relationship("MenuItem", back_populates="variants")
 
 
 class MenuSizePricing(Base):
@@ -413,6 +474,11 @@ class Equipment(Base):
     usage_type = Column(String, default="both") # 'package_only', 'order_only', 'both'
     is_addon = Column(Boolean, default=False)
     addon_price = Column(Float, default=0.0)
+    
+    # Granular Ratings Caching
+    average_rating = Column(Float, default=0.0)
+    review_count = Column(Integer, default=0)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     caterer = relationship("CatererProfile", back_populates="equipment_items")
@@ -441,10 +507,21 @@ class Service(Base):
     is_addon = Column(Boolean, default=False)
     addon_price = Column(Float, default=0.0)
     
+    # Smart Service Capacity Management Fields
+    capacity_type = Column(String, default="unit_based") # 'unit_based' or 'staff_based'
+    staff_to_pax_ratio = Column(Integer, default=0) # e.g. 1 staff per 25 pax (0 means N/A)
+    min_staff_required = Column(Integer, default=1) # Baseline staff requirement for small events
+    allow_freelancers = Column(Boolean, default=False) # If true, allows overbooking beyond max_available
+    buffer_time_hours = Column(Integer, default=0) # Extra hours needed before/after for setup/travel
+    
     # New Service Booking Specific Fields
     requires_agreement = Column(Boolean, default=False) # Contract-Track vs Fast-Track
     downpayment_percentage = Column(Integer, default=50) # Specific to services, overrides caterer default
     minimum_hours = Column(Integer, default=1) # Duration validation
+    
+    # Granular Ratings Caching
+    average_rating = Column(Float, default=0.0)
+    review_count = Column(Integer, default=0)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -507,6 +584,7 @@ class Booking(Base):
     paymongo_link_url = Column(String, nullable=True)
     payout_id = Column(Integer, ForeignKey("payouts.id"), nullable=True)
     ocr_verification = relationship("OCRVerification", back_populates="booking", uselist=False, cascade="all, delete-orphan")
+    contract = relationship("BookingContract", back_populates="booking", uselist=False, cascade="all, delete-orphan")
 
     payment_verification_data = Column(JSONB, nullable=True)
     proof_image_hash = Column(String, nullable=True)
@@ -599,6 +677,21 @@ class BookingHistory(Base):
 
     booking = relationship("Booking", back_populates="history")
 
+class BookingContract(Base):
+    __tablename__ = "booking_contracts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id"), unique=True)
+    contract_text = Column(Text) # Generated contract content (HTML or Markdown)
+    customer_signature = Column(String, nullable=True) # Data URL of signature or name
+    customer_signed_at = Column(DateTime(timezone=True), nullable=True)
+    caterer_signature = Column(String, nullable=True)
+    caterer_signed_at = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String, default="pending") # pending, customer_signed, fully_signed
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    booking = relationship("Booking", back_populates="contract")
+
 class OCRVerification(Base):
     __tablename__ = "ocr_verification"
 
@@ -628,7 +721,11 @@ class Review(Base):
     booking_id = Column(Integer, ForeignKey("bookings.id"), unique=True, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"))
-    rating = Column(Integer)
+    rating = Column(Integer) # Overall Rating
+    food_quality_rating = Column(Integer, nullable=True)
+    service_quality_rating = Column(Integer, nullable=True)
+    timeliness_rating = Column(Integer, nullable=True)
+    
     comment = Column(Text)
     recommend = Column(Boolean, default=False)
     was_punctual = Column(Boolean, default=False)
@@ -641,6 +738,18 @@ class Review(Base):
     booking = relationship("Booking", back_populates="review")
     user = relationship("User", back_populates="reviews")
     caterer = relationship("CatererProfile", back_populates="reviews")
+    item_ratings = relationship("ItemRating", back_populates="review", cascade="all, delete-orphan")
+
+class ItemRating(Base):
+    __tablename__ = "item_ratings"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    review_id = Column(Integer, ForeignKey("reviews.id", ondelete="CASCADE"))
+    item_type = Column(String) # 'menu', 'service', 'equipment'
+    item_id = Column(Integer) # The ID of the item
+    rating = Column(Integer)
+    
+    review = relationship("Review", back_populates="item_ratings")
 
 class PlatformFeedback(Base):
     __tablename__ = "platform_feedback"
@@ -649,6 +758,7 @@ class PlatformFeedback(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     rating = Column(Integer)  # 1–5 stars
     comment = Column(Text)
+    attachment_base64 = Column(Text, nullable=True) # Compressed image string
     role = Column(String, nullable=True)  # 'customer' or 'caterer' for context label
     is_highlighted = Column(Boolean, default=False)  # Featured on landing page
     is_archived = Column(Boolean, default=False)
@@ -873,8 +983,8 @@ class WebsiteConfig(Base):
     __tablename__ = "website_config"
 
     id = Column(Integer, primary_key=True, index=True)
-    site_name = Column(String, default="OccaShare")
-    support_email = Column(String, default="support@occashare.com")
+    site_name = Column(String, default="OccaServe")
+    support_email = Column(String, default="support@occaserve.com")
     seo_description = Column(Text, default="The premium marketplace for catering services in the Philippines.")
     
     # Branding
@@ -905,7 +1015,7 @@ class WebsiteConfig(Base):
     
     # Maintenance
     maintenance_mode = Column(Boolean, default=False)
-    maintenance_message = Column(Text, default="OccaShare is currently undergoing scheduled maintenance. We'll be back online shortly!")
+    maintenance_message = Column(Text, default="OccaServe is currently undergoing scheduled maintenance. We'll be back online shortly!")
     
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -1042,6 +1152,7 @@ class Portfolio(Base):
     event_date = Column(Date, nullable=True)
     visibility = Column(String, default="Public") # Public or Hidden
     is_featured = Column(Boolean, default=False)
+    is_archived = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
 

@@ -296,16 +296,17 @@
                 <div class="form-group">
                     <label>Birthday <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
                     <input type="date" name="dob" class="form-input" value="{{ user.dob.strftime('%Y-%m-%d') if user.dob else '' }}">
-                    <span class="error-msg">Please enter a valid date.</span>
+                    <span class="error-msg">You must be at least 18 years old (and no more than 50 years old).</span>
                 </div>
                 <div class="form-group">
                     <label>Gender <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
                     <select name="gender" class="form-input">
-                        <option value="">Select Gender</option>
+                        <option value="" disabled selected hidden>Select Gender</option>
                         <option value="Male" {% if user.gender == 'Male' %}selected{% endif %}>Male</option>
                         <option value="Female" {% if user.gender == 'Female' %}selected{% endif %}>Female</option>
-                        <option value="Other" {% if user.gender == 'Other' %}selected{% endif %}>Other</option>
+                        <option value="Prefer not to say" {% if user.gender == 'Prefer not to say' %}selected{% endif %}>Prefer not to say</option>
                     </select>
+                    <span class="error-msg">Please select a valid gender.</span>
                 </div>
             </div>
 
@@ -318,13 +319,52 @@
     <!-- 2. ADDRESS & EMERGENCY TAB -->
     <div id="tab-address" class="tab-pane">
         <form id="form-address" onsubmit="submitForm(event, '/customer/profile/update-address')" novalidate>
-            <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--up-slate-900);">Default Address</h2>
+            <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--up-slate-900);">Default Address</h2>
+            <p style="font-size: 0.82rem; color: var(--dm-slate-400); margin-bottom: 1.5rem;">This will be used as the default address for your bookings. You can change this per booking.</p>
+
+            <!-- Province -->
             <div class="form-group">
-                <label>Complete Address</label>
-                <textarea name="address" class="form-input" placeholder="House/Unit No., Street, Subdivision, Barangay, City, Province" required minlength="10" maxlength="255">{{ user.address or '' }}</textarea>
-                <span class="error-msg">Please enter a complete address (minimum 10 characters).</span>
-                <small style="color:var(--dm-slate-400); margin-top:4px;">This will be your default delivery/event address. You can change it per booking.</small>
+                <label>Province <span style="text-transform:none; font-weight:500; color: #ef4444;">*</span></label>
+                <select name="province" id="addr-province" class="form-input" required>
+                    <option value="" disabled selected hidden>-- Province --</option>
+                </select>
+                <span class="error-msg">Please select a province.</span>
             </div>
+
+            <!-- City / Municipality -->
+            <div class="form-group">
+                <label>City / Municipality <span style="text-transform:none; font-weight:500; color: #ef4444;">*</span></label>
+                <select name="city_municipality" id="addr-city" class="form-input" required disabled>
+                    <option value="" disabled selected hidden>-- City/Municipality --</option>
+                </select>
+                <span class="error-msg">Please select a city or municipality.</span>
+            </div>
+
+            <!-- Barangay -->
+            <div class="form-group">
+                <label>Barangay <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
+                <select name="barangay" id="addr-barangay" class="form-input" disabled>
+                    <option value="" disabled selected hidden>-- Barangay --</option>
+                </select>
+                <span class="error-msg">Please select a valid barangay.</span>
+            </div>
+
+            <!-- Street / Landmark -->
+            <div class="form-group">
+                <label>House No. / Street / Landmark <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
+                <input type="text" name="street_address" id="addr-street" class="form-input"
+                    value="{{ user.street_address or '' }}"
+                    placeholder="e.g. 123 Rizal St., near SM City" maxlength="255">
+                <small style="color:var(--dm-slate-400); margin-top:4px;">Add details to make it easier for the caterer to locate.</small>
+                <span class="error-msg">Please enter a valid address.</span>
+            </div>
+
+            <!-- Summary Preview -->
+            <div id="addr-summary-box" style="display:none; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 0.75rem; padding: 1rem; margin-bottom: 1.5rem;">
+                <div style="font-size: 0.7rem; font-weight: 800; color: #0369a1; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;"><i class="fas fa-map-pin"></i> Address Confirmation</div>
+                <div id="addr-summary-text" style="font-size: 0.9rem; color: #0c4a6e; font-weight: 600;"></div>
+            </div>
+
             <div style="margin-bottom: 2.5rem;">
                 <button type="submit" class="btn-save"><i class="fas fa-save"></i> Save Address</button>
             </div>
@@ -411,6 +451,7 @@
                         <div id="req-upper" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> At least 1 uppercase letter</div>
                         <div id="req-special" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> At least 1 special character</div>
                     </div>
+                    <span class="error-msg">Please ensure your new password meets the requirements above.</span>
                 </div>
                 <div class="form-group">
                     <label>Confirm Password</label>
@@ -431,6 +472,135 @@
 </div>
 
 <script>
+    // ══════════════════════════════════════════════════
+    // PSGC CASCADING ADDRESS DROPDOWNS
+    // ══════════════════════════════════════════════════
+    const PSGC_BASE = 'https://psgc.gitlab.io/api';
+
+    // Saved values from backend (Jinja2 injects)
+    const SAVED_PROVINCE = "{{ user.province or '' }}";
+    const SAVED_CITY     = "{{ user.city_municipality or '' }}";
+    const SAVED_BARANGAY = "{{ user.barangay or '' }}";
+
+    const selProvince = document.getElementById('addr-province');
+    const selCity     = document.getElementById('addr-city');
+    const selBrgy     = document.getElementById('addr-barangay');
+    const summaryBox  = document.getElementById('addr-summary-box');
+    const summaryText = document.getElementById('addr-summary-text');
+
+    function updateAddressSummary() {
+        const p = selProvince.options[selProvince.selectedIndex]?.text || '';
+        const c = selCity.options[selCity.selectedIndex]?.text || '';
+        const b = selBrgy.options[selBrgy.selectedIndex]?.text || '';
+        const s = document.getElementById('addr-street').value.trim();
+        const parts = [s, b, c, p].filter(v => v && !v.startsWith('--'));
+        if (parts.length > 0) {
+            summaryBox.style.display = 'block';
+            summaryText.textContent = parts.join(', ');
+        } else {
+            summaryBox.style.display = 'none';
+        }
+    }
+
+    async function loadProvinces() {
+        selProvince.innerHTML = '<option value="" disabled selected hidden>-- Province --</option>';
+        const p = { code: "043400000", name: "Laguna" };
+        const opt = new Option(p.name, p.name);
+        if (p.name === SAVED_PROVINCE) opt.selected = true;
+        selProvince.appendChild(opt);
+
+        selProvince._codeMap = {};
+        selProvince._codeMap[p.name] = p.code;
+
+        if (SAVED_PROVINCE) {
+            await loadCities(p.code, true);
+        } else {
+            opt.selected = true; // Auto-select Laguna
+            await loadCities(p.code, false);
+        }
+    }
+
+    async function loadCities(provinceCode, isInit = false) {
+        selCity.innerHTML = '<option value="" disabled selected hidden>-- Loading... --</option>';
+        selCity.disabled = false;
+        selBrgy.innerHTML = '<option value="" disabled selected hidden>-- Barangay --</option>';
+        selBrgy.disabled = true;
+
+        try {
+            const res = await fetch(`${PSGC_BASE}/provinces/${provinceCode}/cities-municipalities/`);
+            const data = await res.json();
+            data.sort((a, b) => a.name.localeCompare(b.name));
+            selCity.innerHTML = '<option value="" disabled selected hidden>-- City/Municipality --</option>';
+            data.forEach(c => {
+                const opt = new Option(c.name, c.name);
+                if (c.name === SAVED_CITY) opt.selected = true;
+                selCity.appendChild(opt);
+            });
+
+            selCity._codeMap = {};
+            data.forEach(c => { selCity._codeMap[c.name] = c.code; });
+
+            if (isInit && SAVED_CITY) {
+                const code = selCity._codeMap[SAVED_CITY];
+                if (code) await loadBarangays(code, true);
+            }
+            updateAddressSummary();
+        } catch(e) {
+            selCity.innerHTML = '<option value="" disabled selected hidden>-- Error loading --</option>';
+        }
+    }
+
+    async function loadBarangays(cityCode, isInit = false) {
+        selBrgy.innerHTML = '<option value="" disabled selected hidden>-- Loading... --</option>';
+        selBrgy.disabled = false;
+        try {
+            const res = await fetch(`${PSGC_BASE}/cities-municipalities/${cityCode}/barangays/`);
+            const data = await res.json();
+            data.sort((a, b) => a.name.localeCompare(b.name));
+            selBrgy.innerHTML = '<option value="" disabled selected hidden>-- Barangay --</option>';
+            data.forEach(b => {
+                const opt = new Option(b.name, b.name);
+                if (b.name === SAVED_BARANGAY) opt.selected = true;
+                selBrgy.appendChild(opt);
+            });
+            updateAddressSummary();
+        } catch(e) {
+            selBrgy.innerHTML = '<option value="" disabled selected hidden>-- Error loading --</option>';
+        }
+    }
+
+    selProvince.addEventListener('change', async function() {
+        const code = this._codeMap?.[this.value];
+        if (code) {
+            await loadCities(code);
+        } else {
+            selCity.innerHTML = '<option value="" disabled selected hidden>-- City/Municipality --</option>';
+            selCity.disabled = true;
+            selBrgy.innerHTML = '<option value="" disabled selected hidden>-- Barangay --</option>';
+            selBrgy.disabled = true;
+        }
+        updateAddressSummary();
+    });
+
+    selCity.addEventListener('change', async function() {
+        const code = this._codeMap?.[this.value];
+        if (code) {
+            await loadBarangays(code);
+        } else {
+            selBrgy.innerHTML = '<option value="" disabled selected hidden>-- Barangay --</option>';
+            selBrgy.disabled = true;
+        }
+        updateAddressSummary();
+    });
+
+    selBrgy.addEventListener('change', updateAddressSummary);
+    document.getElementById('addr-street').addEventListener('input', updateAddressSummary);
+
+    // Initialize on DOM ready
+    document.addEventListener('DOMContentLoaded', function() {
+        loadProvinces();
+    });
+
     function switchTab(tabId, el) {
         document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
@@ -444,7 +614,9 @@
         if (dobInput) {
             const today = new Date();
             const maxDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+            const minDate = new Date(today.getFullYear() - 50, today.getMonth(), today.getDate());
             dobInput.max = maxDate.toISOString().split("T")[0];
+            dobInput.min = minDate.toISOString().split("T")[0]; // Limit to max 50 years old
         }
 
         const newPwd = document.getElementById('new_password');

@@ -51,34 +51,60 @@ class NotificationService:
 
         if not user: return
 
-        # 1. In-App Notification
+        is_food_order = (booking.document_type == 'invoice')
+        prefix = "ORD" if is_food_order else "BK"
+        ref_id = f"{prefix}-{booking.id:03d}"
+        subject_prefix = "Order" if is_food_order else "Booking"
+        event_date_str = booking.event_date.strftime('%B %d, %Y') if booking.event_date else 'TBD'
+
+        # 1. In-App Notification to Caterer
         notif = models.Notification(
             user_id=user.id,
-            title="New Booking Received!",
-            message=f"New booking for '{booking.event_name}' on {booking.event_date}.",
+            title=f"New {subject_prefix} Received!",
+            message=f"New {subject_prefix.lower()} {ref_id} for '{booking.event_name}' on {event_date_str} from {customer.first_name} {customer.last_name or ''}.",
             type="Booking",
             link=f"/caterer/bookings"
         )
         db.add(notif)
         db.commit()
 
-        # 2. Email Notification
-        EmailService.send_booking_confirmation(customer.email, booking.id, booking.document_type) # To Customer
+        # 2. Email Notification to Customer — with full details
+        venue = booking.event_address or booking.venue_address or None
+        EmailService.send_booking_confirmation(
+            customer.email, 
+            booking.id, 
+            booking.document_type,
+            event_name=booking.event_name,
+            caterer_name=caterer.business_name,
+            event_date=event_date_str,
+            total_amount=float(booking.total_amount) if booking.total_amount else None,
+            guest_count=booking.guest_count,
+            venue=venue
+        )
         
         # Email to Caterer
-        prefix = "ORD" if booking.document_type == "invoice" else "BK"
-        subject_prefix = "Order" if booking.document_type == "invoice" else "Booking"
-        
+        customer_name = f"{customer.first_name or ''} {customer.last_name or ''}".strip() or customer.email
+        caterer_email_body = (
+            f"Hello {caterer.business_name},\n\n"
+            f"You have received a new {subject_prefix.lower()} request on OccaServe.\n\n"
+            f"Reference: {ref_id}\n"
+            f"Customer: {customer_name}\n"
+            f"Event: {booking.event_name}\n"
+            f"Date: {event_date_str}\n"
+            f"Guests: {booking.guest_count or 'TBD'}\n\n"
+            f"Please log in to your dashboard to review and respond to this request.\n\n"
+            f"Best regards,\nThe OccaServe Team"
+        )
         EmailService._send_email(
             user.email,
-            f"New {subject_prefix} Request - OccaShare",
-            f"Hello {caterer.business_name},\n\nYou have received a new {subject_prefix.lower()} for '{booking.event_name}'.\nLog in to your dashboard to review."
+            f"New {subject_prefix} Request ({ref_id}) - OccaServe",
+            caterer_email_body
         )
 
         # 3. SMS Notification to Caterer
         phone = caterer.contact_phone or user.phone_number
         if phone:
-            sms_msg = f"OccaShare: New {subject_prefix.lower()} for '{booking.event_name}' on {booking.event_date}. Log in to review!"
+            sms_msg = f"OccaServe: New {subject_prefix.lower()} {ref_id} for '{booking.event_name}' on {event_date_str}. Log in to review!"
             await NotificationService._send_sms(phone, sms_msg)
 
         # 4. Real-time WebSocket
@@ -101,7 +127,7 @@ class NotificationService:
         # 2. Email to Customer
         EmailService._send_email(
             booking.user.email,
-            "Quotation Ready - OccaShare",
+            "Quotation Ready - OccaServe",
             f"Hello,\n\nA new quotation is ready for '{booking.event_name}'. Log in to review and sign the contract."
         )
 
@@ -138,8 +164,49 @@ class NotificationService:
         db.add(notif)
         db.commit()
 
-        # 2. Email (Always send)
-        EmailService._send_email(user.email, f"OccaShare Update: {title}", message)
+        # 2. Email (Always send) — Rich HTML version
+        user_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "Valued Customer"
+        site_url = settings.SITE_URL if hasattr(settings, 'SITE_URL') else "https://occaserve.com"
+        full_link = f"{site_url}{link}" if link and link.startswith('/') else (link or site_url)
+        html_body = f"""<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; }}
+        .header {{ background: linear-gradient(135deg, #FF7B54, #ff5722); padding: 28px 30px; text-align: center; border-radius: 12px 12px 0 0; }}
+        .header h1 {{ color: white; margin: 0; font-size: 22px; letter-spacing: -0.5px; }}
+        .header p {{ color: rgba(255,255,255,0.85); margin: 6px 0 0 0; font-size: 13px; }}
+        .content {{ background: #f9f9f9; padding: 32px 30px; border: 1px solid #e8e8e8; border-top: none; }}
+        .notif-card {{ background: #fff; border-radius: 10px; padding: 20px 24px; border-left: 4px solid #FF7B54; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }}
+        .notif-title {{ font-size: 17px; font-weight: 700; color: #1e293b; margin-bottom: 10px; }}
+        .notif-message {{ font-size: 15px; color: #475569; line-height: 1.7; }}
+        .btn {{ display: inline-block; background: #FF7B54; color: white !important; padding: 14px 28px; text-decoration: none; border-radius: 8px; margin-top: 24px; font-weight: 700; font-size: 15px; }}
+        .footer {{ text-align: center; margin-top: 28px; font-size: 12px; color: #94a3b8; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>OccaServe</h1>
+            <p>Your Premium Event Catering Platform</p>
+        </div>
+        <div class="content">
+            <p style="color:#475569;margin-bottom:0;">Hello, <strong>{user_name}</strong></p>
+            <div class="notif-card">
+                <div class="notif-title">📢 {title}</div>
+                <div class="notif-message">{message}</div>
+            </div>
+            <a href="{full_link}" class="btn">View Details →</a>
+            <p style="margin-top:24px;font-size:13px;color:#94a3b8;">This notification was sent because you have an active account on OccaServe. If you believe this was sent by mistake, please ignore this email.</p>
+        </div>
+        <div class="footer">
+            © 2026 OccaServe Philippines. All rights reserved.<br>
+            <a href="{site_url}" style="color:#FF7B54;text-decoration:none;">occaserve.com</a>
+        </div>
+    </div>
+</body>
+</html>"""
+        EmailService._send_email(user.email, f"OccaServe Update: {title}", message, html_body)
 
         # 3. Real-time (Always try to broadcast)
         await manager.broadcast_to_user(user_id, {
@@ -154,7 +221,7 @@ class NotificationService:
         if not is_online:
             phone = user.phone_number
             if phone:
-                sms_msg = f"OccaShare: {title}. {message}"
+                sms_msg = f"OccaServe: {title}. {message}"
                 # Limit length for SMS to avoid multiple segments if possible
                 if len(sms_msg) > 160:
                     sms_msg = sms_msg[:157] + "..."
@@ -196,7 +263,7 @@ class NotificationService:
         # 3. SMS to Caterer
         phone = caterer.contact_phone or user.phone_number
         if phone:
-            sms_msg = f"OccaShare: {payment_type} of PhP{amount:,.2f} received for '{booking.event_name}'. Please verify proof in your dashboard."
+            sms_msg = f"OccaServe: {payment_type} of PhP{amount:,.2f} received for '{booking.event_name}'. Please verify proof in your dashboard."
             await NotificationService._send_sms(phone, sms_msg)
 
         # 4. Real-time

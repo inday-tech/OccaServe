@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Form, Request, UploadFile, File, Body, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, Form, Request, UploadFile, File, Body, BackgroundTasks, Query
 from typing import Optional, List
 from datetime import datetime, date, timedelta
 from pydantic import BaseModel
@@ -24,6 +24,26 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # Standard dependency for caterer access
 caterer_only = auth.RoleChecker(["caterer"])
 
+
+def process_base64_image(content_bytes: bytes, max_size=(600, 600), quality=75) -> str:
+    """Compresses image and returns a base64 Data URI."""
+    import io
+    import base64
+    try:
+        from PIL import Image
+        img = Image.open(io.BytesIO(content_bytes))
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="WEBP", quality=quality)
+        b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+        return f"data:image/webp;base64,{b64}"
+    except Exception:
+        # Fallback to direct base64 if not an image
+        b64 = base64.b64encode(content_bytes).decode('utf-8')
+        return f"data:image/jpeg;base64,{b64}"
+
 def create_default_booking_tasks(db: Session, booking_id: int):
     # Idempotency check: Don't add if tasks already exist
     existing_count = db.query(models.BookingTask).filter(models.BookingTask.booking_id == booking_id).count()
@@ -46,6 +66,7 @@ def create_default_booking_tasks(db: Session, booking_id: int):
 async def submit_platform_feedback_caterer(
     rating: int = Form(...),
     comment: str = Form(...),
+    attachment_base64: str = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -64,6 +85,7 @@ async def submit_platform_feedback_caterer(
         user_id=user.id,
         rating=rating,
         comment=comment.strip(),
+        attachment_base64=attachment_base64,
         role="caterer"
     )
     db.add(fb)
@@ -509,15 +531,11 @@ async def upload_dispatch_proof(
     if not proof_image.filename:
         raise HTTPException(status_code=400, detail="No file selected")
 
-    os.makedirs("app/static/uploads/dispatch_proofs", exist_ok=True)
-    ext = proof_image.filename.split(".")[-1]
-    new_filename = f"dispatch_{booking.id}_{uuid.uuid4().hex[:8]}.{ext}"
-    file_path = f"app/static/uploads/dispatch_proofs/{new_filename}"
-
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(proof_image.file, buffer)
-
-    booking.dispatch_proof_url = f"/static/uploads/dispatch_proofs/{new_filename}"
+    import base64
+    content_bytes = await proof_image.read()
+    b64 = base64.b64encode(content_bytes).decode('utf-8')
+    mime = proof_image.content_type or 'image/jpeg'
+    booking.dispatch_proof_url = f"data:{mime};base64,{b64}"
     
     # Update status simultaneously
     allowed_statuses = ["ready_for_delivery", "ready_for_pickup", "on_the_way"]
@@ -543,6 +561,66 @@ async def upload_dispatch_proof(
 
 class StatusUpdateSchema(BaseModel):
     status: str
+
+def snapshot_booking_actual_cost(booking):
+    # Only snapshot if not already manually set
+    if booking.actual_cost and booking.actual_cost > 0:
+        return
+
+    total_cost = 0.0
+    breakdown = []
+
+    if booking.package:
+        pkg = booking.package
+        pkg_cost = float(pkg.cost_price or 0.0)
+        if pkg.price_unit == 'per_guest':
+            pkg_cost = pkg_cost * (booking.guest_count or 1)
+        
+        if pkg_cost > 0:
+            total_cost += pkg_cost
+            breakdown.append({
+                "category": "Package Base Cost",
+                "name": pkg.name,
+                "amount": pkg_cost
+            })
+
+    for item in booking.selected_items:
+        item_cost = 0.0
+        name = ""
+        category = ""
+
+        if item.menu_item:
+            item_cost = float(item.menu_item.cost_price or 0.0) * (item.quantity or 1)
+            name = item.menu_item.name
+            category = "Menu Item"
+        elif item.equipment:
+            item_cost = float(item.equipment.cost_value or 0.0) * (item.quantity or 1)
+            name = item.equipment.name
+            category = "Equipment"
+        elif item.service:
+            item_cost = float(item.service.cost or 0.0) * (item.quantity or 1)
+            name = item.service.name
+            category = "Service"
+
+        if item_cost > 0:
+            total_cost += item_cost
+            breakdown.append({
+                "category": category,
+                "name": name,
+                "amount": item_cost
+            })
+            
+    for exp in booking.expenses:
+        if exp.amount and exp.amount > 0:
+            total_cost += float(exp.amount)
+            breakdown.append({
+                "category": f"Expense ({exp.category})",
+                "name": exp.description,
+                "amount": float(exp.amount)
+            })
+
+    booking.actual_cost = total_cost
+    booking.actual_cost_breakdown = breakdown
 
 @router.post("/bookings/{booking_id}/update-status")
 async def update_booking_status(
@@ -598,6 +676,9 @@ async def update_booking_status(
     old_status = booking.status
     booking.status = new_status
     
+    if new_status == "completed":
+        snapshot_booking_actual_cost(booking)
+    
     # Log History
     history = models.BookingHistory(
         booking_id=booking.id,
@@ -635,25 +716,30 @@ async def update_booking_status(
     is_food_order = (booking.document_type == 'invoice')
     ref_id = f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}"
     item_type = "food order" if is_food_order else "booking"
+    caterer_name = user.caterer_profile.business_name
+    event_date_str = booking.event_date.strftime('%B %d, %Y') if booking.event_date else 'TBD'
     
     if new_status == "preparing":
         title = "Preparation Started!" if not is_food_order else "Order is Preparing!"
-        message = f"The caterer {user.caterer_profile.business_name} has started preparing for your {item_type} '{booking.event_name}' ({ref_id})."
+        message = f"{caterer_name} has started preparing your {item_type} '{booking.event_name}' ({ref_id}) scheduled on {event_date_str}."
     elif new_status == "ready_for_delivery":
         title = "Ready for Delivery!" if not is_food_order else "Order Ready for Dispatch!"
-        message = f"Preparation is complete! Your {item_type} is packed and ready for dispatch."
+        message = f"Your {item_type} '{booking.event_name}' ({ref_id}) from {caterer_name} is now packed and ready for dispatch to your location."
     elif new_status == "on_the_way":
         title = "In Transit!" if not is_food_order else "Your Order is Dispatched!"
-        message = f"Our delivery team is on the way to your location for '{booking.event_name}' ({ref_id})."
+        message = f"{caterer_name}'s delivery team is now on the way to your location for '{booking.event_name}' ({ref_id})."
     elif new_status == "arrived":
         title = "Caterer has Arrived!" if not is_food_order else "Order Delivered!"
-        message = f"Our team has arrived at your location for '{booking.event_name}' ({ref_id})."
+        message = f"{caterer_name} has arrived at your location for '{booking.event_name}' ({ref_id}). Please be ready to receive your {item_type}."
     elif new_status == "setup_ongoing":
         title = "Dining Setup Ongoing"
-        message = f"Your food service is currently being set up. We are almost ready to serve!"
+        message = f"{caterer_name} is currently setting up your food service for '{booking.event_name}' ({ref_id}). We are almost ready to serve!"
     elif new_status == "completed":
         title = "Transaction Completed!" if not is_food_order else "Order Completed!"
-        message = f"Successfully finalized for your {item_type} '{booking.event_name}' ({ref_id}). Thank you for choosing us!"
+        message = f"Your {item_type} '{booking.event_name}' ({ref_id}) from {caterer_name} has been successfully completed. Thank you for choosing OccaServe!"
+
+    # Route to the correct page based on booking type
+    notif_link = f"/customer/bookings/manage/{booking.id}" if not is_food_order else f"/customer/orders/manage/{booking.id}"
 
     if title and message:
         await NotificationService.notify_status_update(
@@ -661,7 +747,7 @@ async def update_booking_status(
             booking.user_id, 
             title, 
             message, 
-            f"/customer/bookings/manage/{booking.id}"
+            notif_link
         )
 
     # 4. WebSocket Update to Caterer
@@ -902,6 +988,33 @@ def _get_caterer_stats(profile, bookings, timeframe='month', start_date=None, en
     top_spenders = sorted([v for k,v in customer_stats.items()], key=lambda x: x['spent'], reverse=True)[:5]
     revenue_by_event_list = sorted([{"event_type": k, "revenue": v} for k,v in revenue_by_event.items()], key=lambda x: x['revenue'], reverse=True)
 
+    
+    # Calculate Pending Actions
+    pending_approvals = sum(1 for b in bookings if b.status in ['pending_quotation', 'pending_review'])
+    pending_payments = sum(1 for b in bookings if b.payment_status == 'pending_verification')
+    identity_requests = sum(1 for b in bookings if not getattr(b.user, 'is_verified', True))
+    pending_contracts = sum(1 for b in bookings if getattr(b, 'contract_status', '') == 'awaiting_signature')
+    
+    # Count unread messages (assuming message relation exists, or we just mock/query it, here we mock it to 0 as we don't have direct access in bookings list)
+    customer_messages = 0
+    for b in bookings:
+        for m in getattr(b, 'messages', []):
+            if not getattr(m, 'is_read', True) and getattr(m, 'sender_id') != profile.user_id:
+                customer_messages += 1
+
+    pending_actions = {
+        "approvals": pending_approvals,
+        "payments": pending_payments,
+        "identity": identity_requests,
+        "contracts": pending_contracts,
+        "messages": customer_messages,
+        "total": pending_approvals + pending_payments + identity_requests + pending_contracts + customer_messages
+    }
+
+    # Today's Schedule
+    today_schedule = [b for b in bookings if b.event_date == today and b.status not in ['cancelled', 'draft']]
+    today_schedule.sort(key=lambda x: x.event_time.hour if x.event_time else 0)
+    
     return {
         "total_revenue": total_realized_revenue, 
         "projected_revenue": total_projected_revenue,
@@ -920,7 +1033,11 @@ def _get_caterer_stats(profile, bookings, timeframe='month', start_date=None, en
         "recent_orders": sorted([b for b in bookings if b.event_date and b.event_date >= stats_start and b.event_date <= stats_end], key=lambda x: x.id, reverse=True)[:5],
         "top_spenders": top_spenders,
         "revenue_by_event": revenue_by_event_list,
-        "timeframe": timeframe
+        "timeframe": timeframe,
+        "active_bookings": active_bookings,
+        "upcoming_events_count": len([b for b in bookings if b.event_date and today < b.event_date <= today + timedelta(days=7)]),
+        "pending_actions": pending_actions,
+        "today_schedule": today_schedule
     }
 
 @router.get("/api/bookings/urgent-check")
@@ -1195,6 +1312,11 @@ async def dashboard_overview_api(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    try:
+        from app.services.reminders import generate_caterer_reminders
+        generate_caterer_reminders(user.id, db)
+    except Exception as e:
+        print(f'Reminder generation error: {e}')
     from fastapi.responses import JSONResponse
     profile = user.caterer_profile
     bookings = [b for b in profile.bookings if b.status not in ['draft', 'pending_quotation', 'pending_review'] and not b.is_archived]
@@ -1203,6 +1325,13 @@ async def dashboard_overview_api(
     start_date = request.query_params.get('start_date')
     end_date = request.query_params.get('end_date')
     stats = _get_caterer_stats(profile, bookings, timeframe=timeframe, start_date=start_date, end_date=end_date)
+    
+    # Generate intelligent calendar reminders proactively
+    try:
+        from app.services.reminders import generate_caterer_reminders
+        generate_caterer_reminders(user.id, db)
+    except Exception as e:
+        print(f"Error generating reminders: {e}")
     
     # Process complex objects for JSON
     serializable_upcoming = []
@@ -1263,7 +1392,12 @@ async def dashboard_overview_api(
         "revenue_by_event": stats['revenue_by_event']
     })
 
+@router.get("/bookings/{booking_id}")
+async def redirect_booking_details(booking_id: int):
+    return RedirectResponse(url=f"/caterer/bookings?focus={booking_id}", status_code=303)
+
 @router.get("/bookings", response_class=HTMLResponse)
+
 async def manage_bookings(
     request: Request, 
     db: Session = Depends(database.get_db),
@@ -1389,6 +1523,9 @@ async def caterer_archives(
     archived_packages = [pkg for pkg in profile.packages if pkg.status == 'archived']
     archived_gallery_items = [item for item in profile.gallery_items if item.is_archived]
     archived_bookings = [b for b in profile.bookings if b.is_archived]
+    archived_services = [s for s in profile.service_items if getattr(s, 'is_archived', False)]
+    archived_equipment = [e for e in profile.equipment_items if getattr(e, 'is_archived', False)]
+    archived_portfolios = [p for p in profile.portfolios if getattr(p, 'is_archived', False)]
 
     return templates.TemplateResponse("caterer/archives.html", {
         "request": request,
@@ -1397,6 +1534,9 @@ async def caterer_archives(
         "archived_packages": archived_packages,
         "archived_gallery_items": archived_gallery_items,
         "archived_bookings": archived_bookings,
+        "archived_services": archived_services,
+        "archived_equipment": archived_equipment,
+        "archived_portfolios": archived_portfolios,
         "active_page": "archives"
     })
 
@@ -1941,7 +2081,6 @@ async def submit_proposal_maker(
     booking_id: int,
     base_price: float = Form(...),
     total_amount: float = Form(...),
-    downpayment_percent: int = Form(30),
     addon_names: List[str] = Form([]),
     addon_prices: List[float] = Form([]),
     db: Session = Depends(database.get_db),
@@ -1989,22 +2128,23 @@ async def submit_proposal_maker(
     }
     
     # Dynamic downpayment percent from caterer profile
+    downpayment_percent = 30.0
     if user.caterer_profile.accepted_payment_terms:
-        downpayment_percent = min(user.caterer_profile.accepted_payment_terms)
+        downpayment_percent = float(min(float(x) for x in user.caterer_profile.accepted_payment_terms))
         
     quotation = models.Quotation(
         booking_id=booking.id,
         package_details=package_details,
         addons=addons,
         total_amount=total_amount,
-        downpayment_percent=downpayment_percent,
+        downpayment_percent=int(downpayment_percent),
         status="awaiting_customer" # The customer needs to accept it
     )
     db.add(quotation)
     
     booking.total_amount = total_amount
     booking.total_price = total_amount
-    booking.reservation_fee = total_amount * (downpayment_percent / 100.0)
+    booking.reservation_fee = total_amount * (float(downpayment_percent) / 100.0)
     booking.status = "awaiting_customer"
     
     db.commit()
@@ -2053,6 +2193,7 @@ async def complete_booking(
 
     booking.status = 'completed'
     booking.payment_status = 'paid'  # Mark as fully settled when event is completed
+    snapshot_booking_actual_cost(booking)
 
     history = models.BookingHistory(
         booking_id=booking.id,
@@ -2113,6 +2254,83 @@ async def update_actual_cost(
     db.commit()
 
     return {"status": "success", "message": "Actual cost updated"}
+
+@router.get("/business-summary", response_class=HTMLResponse)
+async def business_summary(
+    request: Request,
+    timeframe: str = 'month',
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    
+    # We only care about completed bookings for Business Summary
+    completed_bookings = [b for b in profile.bookings if b.status == 'completed' and not getattr(b, 'is_archived', False)]
+    
+    from datetime import date, datetime, timedelta
+    from dateutil.relativedelta import relativedelta
+    today = date.today()
+    
+    stats_start = today.replace(day=1)
+    stats_end = (stats_start + relativedelta(months=1)) - timedelta(days=1)
+    
+    if timeframe == 'today':
+        stats_start = today
+        stats_end = today
+    elif timeframe == 'week':
+        stats_start = today - timedelta(days=today.weekday())
+        stats_end = stats_start + timedelta(days=6)
+    elif timeframe == 'year':
+        stats_start = today.replace(month=1, day=1)
+        stats_end = today.replace(month=12, day=31)
+    
+    total_completed = 0
+    total_revenue = 0.0
+    total_estimated_cost = 0.0
+    
+    analytics_data = []
+    
+    for b in completed_bookings:
+        if b.event_date and stats_start <= b.event_date <= stats_end:
+            total_completed += 1
+            rev = float(b.total_amount or b.total_price or 0.0)
+            cost = float(b.actual_cost or 0.0)
+            
+            total_revenue += rev
+            total_estimated_cost += cost
+            
+            profit = rev - cost
+            margin = (profit / rev * 100) if rev > 0 else 0
+            
+            analytics_data.append({
+                "booking_id": b.id,
+                "document_type": b.document_type,
+                "transaction_type": getattr(b, 'transaction_type', 'contract_track'),
+                "customer_name": f"{b.user.first_name} {b.user.last_name}" if b.user else "Walk-in",
+                "event_date": b.event_date,
+                "completion_date": b.updated_at or b.event_date,
+                "revenue": rev,
+                "cost": cost,
+                "profit": profit,
+                "margin": margin
+            })
+            
+    total_profit = total_revenue - total_estimated_cost
+    avg_margin = (total_profit / total_revenue * 100) if total_revenue > 0 else 0
+    
+    return templates.TemplateResponse("caterer/business_summary.html", {
+        "request": request,
+        "user": user,
+        "active_page": "business-summary",
+        "timeframe": timeframe,
+        "total_completed": total_completed,
+        "total_revenue": total_revenue,
+        "total_estimated_cost": total_estimated_cost,
+        "total_profit": total_profit,
+        "avg_margin": avg_margin,
+        "analytics_data": sorted(analytics_data, key=lambda x: x["event_date"], reverse=True)
+    })
+
 @router.get("/reviews", response_class=HTMLResponse)
 async def caterer_reviews(
     request: Request, 
@@ -2374,10 +2592,13 @@ async def caterer_calendar(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    from datetime import date
+    from datetime import date, timedelta
     current_date = date.today()
+    lead_time_days = user.caterer_profile.booking_lead_time or 7
+    min_booking_date = current_date + timedelta(days=lead_time_days)
+    max_advance_days = user.caterer_profile.scheduling_rules.get("max_advance_booking_days", 730) if user.caterer_profile.scheduling_rules else 730
+    max_booking_date = current_date + timedelta(days=max_advance_days)
     
-    # For the list view on the side
     # For the list view on the side (Status Tracker) - Show active non-completed bookings first
     tracker_bookings = db.query(models.Booking).filter(
         models.Booking.caterer_id == user.caterer_profile.id,
@@ -2406,6 +2627,12 @@ async def caterer_calendar(
         "max_bookings_per_day": user.caterer_profile.max_bookings_per_day or 1,
         "auto_block_enabled": user.caterer_profile.auto_block_enabled if user.caterer_profile.auto_block_enabled is not None else True,
         "primary_color": user.caterer_profile.primary_color or "#3b82f6",
+        "booking_lead_time": lead_time_days,
+        "min_booking_date": min_booking_date,
+        "max_booking_date": max_booking_date,
+        "business_open": user.caterer_profile.scheduling_rules.get("business_hours", {}).get("open_time", "08:00") if user.caterer_profile.scheduling_rules else "08:00",
+        "business_close": user.caterer_profile.scheduling_rules.get("business_hours", {}).get("close_time", "20:00") if user.caterer_profile.scheduling_rules else "20:00",
+        "min_pax": user.caterer_profile.min_pax or 20,
         "active_page": "calendar"
     })
 
@@ -2523,7 +2750,7 @@ async def manage_services(
     for s in service_items:
         items.append({
             "id": s.id,
-            "item_type": "Service",
+            "item_type": "Service_Staff" if getattr(s, "capacity_type", "unit_based") == "staff_based" else "Service_Unit",
             "name": s.name,
             "category": s.category,
             "description": s.description,
@@ -2536,7 +2763,13 @@ async def manage_services(
             "usage_type": getattr(s, "usage_type", "both"),
             "is_addon": getattr(s, "is_addon", False),
             "addon_price": getattr(s, "addon_price", 0.0),
-            "image_url": s.image_url
+            "image_url": s.image_url,
+            "capacity_type": getattr(s, "capacity_type", "unit_based"),
+            "staff_to_pax_ratio": getattr(s, "staff_to_pax_ratio", 0),
+            "min_staff_required": getattr(s, "min_staff_required", 1),
+            "allow_freelancers": getattr(s, "allow_freelancers", False),
+            "buffer_time_hours": getattr(s, "buffer_time_hours", 0),
+            "base_duration_hours": getattr(s, "base_duration_hours", 3)
         })
     for m in legacy_items:
         items.append({
@@ -2581,6 +2814,10 @@ async def add_service_item(
     is_addon: bool = Form(False),
     addon_price: float = Form(0.0),
     base_duration_hours: int = Form(3),
+    staff_to_pax_ratio: int = Form(0),
+    min_staff_required: int = Form(1),
+    allow_freelancers: bool = Form(False),
+    buffer_time_hours: int = Form(0),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -2591,16 +2828,23 @@ async def add_service_item(
         try:
             content_bytes = await image.read()
             if content_bytes:
-                encoded = base64.b64encode(content_bytes).decode("utf-8")
-                mime = image.content_type or "image/jpeg"
-                image_url = f"data:{mime};base64,{encoded}"
+                image_url = process_base64_image(content_bytes)
         except Exception:
             pass
 
-    if type in ["Equipment", "Decoration"]:
+    actual_type = type
+    capacity_type = "unit_based"
+    if type == "Service_Unit":
+        actual_type = "Service"
+        capacity_type = "unit_based"
+    elif type == "Service_Staff":
+        actual_type = "Service"
+        capacity_type = "staff_based"
+
+    if actual_type in ["Equipment", "Decoration"]:
         new_item = models.Equipment(
             caterer_id=user.caterer_profile.id,
-            equipment_type=type,
+            equipment_type=actual_type,
             name=name,
             category=category,
             description=description,
@@ -2631,6 +2875,11 @@ async def add_service_item(
             is_addon=is_addon,
             addon_price=addon_price,
             base_duration_hours=base_duration_hours,
+            capacity_type=capacity_type,
+            staff_to_pax_ratio=staff_to_pax_ratio,
+            min_staff_required=min_staff_required,
+            allow_freelancers=allow_freelancers,
+            buffer_time_hours=buffer_time_hours,
             image_url=image_url
         )
         
@@ -2659,6 +2908,11 @@ async def update_service_item(
     is_addon: bool = Form(False),
     addon_price: float = Form(0.0),
     base_duration_hours: int = Form(3),
+    staff_to_pax_ratio: int = Form(0),
+    min_staff_required: int = Form(1),
+    allow_freelancers: bool = Form(False),
+    buffer_time_hours: int = Form(0),
+    remove_image: str = Form("false"),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -2669,13 +2923,20 @@ async def update_service_item(
         try:
             content_bytes = await image.read()
             if content_bytes:
-                encoded = base64.b64encode(content_bytes).decode("utf-8")
-                mime = image.content_type or "image/jpeg"
-                image_url = f"data:{mime};base64,{encoded}"
+                image_url = process_base64_image(content_bytes)
         except Exception:
             pass
 
-    if type in ["Equipment", "Decoration"]:
+    actual_type = type
+    capacity_type = "unit_based"
+    if type == "Service_Unit":
+        actual_type = "Service"
+        capacity_type = "unit_based"
+    elif type == "Service_Staff":
+        actual_type = "Service"
+        capacity_type = "staff_based"
+
+    if actual_type in ["Equipment", "Decoration"]:
         item = db.query(models.Equipment).get(item_id)
         if not item or item.caterer_id != user.caterer_profile.id:
             raise HTTPException(status_code=404, detail="Item not found")
@@ -2691,8 +2952,10 @@ async def update_service_item(
         item.usage_type = usage_type
         item.is_addon = is_addon
         item.addon_price = addon_price
-        if image_url: item.image_url = image_url
-    elif type == "Legacy":
+        if remove_image == "true":
+            item.image_url = None
+        elif image_url: item.image_url = image_url
+    elif actual_type == "Legacy":
         item = db.query(models.MenuItem).get(item_id)
         if not item or item.caterer_id != user.caterer_profile.id:
             raise HTTPException(status_code=404, detail="Item not found")
@@ -2708,7 +2971,9 @@ async def update_service_item(
         item.usage_type = usage_type
         item.is_addon = is_addon
         item.addon_price = addon_price
-        if image_url: item.image_url = image_url
+        if remove_image == "true":
+            item.image_url = None
+        elif image_url: item.image_url = image_url
     else:
         item = db.query(models.Service).get(item_id)
         if not item or item.caterer_id != user.caterer_profile.id:
@@ -2726,7 +2991,14 @@ async def update_service_item(
         item.is_addon = is_addon
         item.addon_price = addon_price
         item.base_duration_hours = base_duration_hours
-        if image_url: item.image_url = image_url
+        item.capacity_type = capacity_type
+        item.staff_to_pax_ratio = staff_to_pax_ratio
+        item.min_staff_required = min_staff_required
+        item.allow_freelancers = allow_freelancers
+        item.buffer_time_hours = buffer_time_hours
+        if remove_image == "true":
+            item.image_url = None
+        elif image_url: item.image_url = image_url
 
     db.commit()
 
@@ -2755,9 +3027,28 @@ async def archive_service_item(
     item.is_archived = True
     db.commit()
     
-    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-        return JSONResponse({"status": "success", "message": "Item archived successfully"})
-    return RedirectResponse(url="/caterer/services", status_code=303)
+    return JSONResponse({"status": "success", "message": "Item archived successfully"})
+
+@router.post("/services/{item_id}/remove-image")
+async def remove_service_item_image_direct(
+    item_id: int,
+    type: str = Query("Service"),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    if type in ["Equipment", "Decoration"]:
+        item = db.query(models.Equipment).get(item_id)
+    elif type == "Legacy":
+        item = db.query(models.MenuItem).get(item_id)
+    else:
+        item = db.query(models.Service).get(item_id)
+        
+    if not item or item.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Item not found")
+        
+    item.image_url = None
+    db.commit()
+    return JSONResponse({"status": "success", "message": "Image removed from database"})
 
 
 @router.get("/profile", response_class=HTMLResponse)
@@ -2791,7 +3082,7 @@ async def add_package(
     markup_value: float = Form(0.0),
     min_contract_amount: float = Form(0.0),
     min_guests: int = Form(1),
-    max_guests: Optional[int] = Form(None),
+    max_guests: Optional[str] = Form(None),
     inclusions: Optional[List[str]] = Form(None),
     linked_menu_ids: Optional[List[str]] = Form(None),
     additional_guest_price: float = Form(0.0),
@@ -2807,6 +3098,12 @@ async def add_package(
     reservation_fee_value: float = Form(0.0),
     booking_lead_time: int = Form(7),
     selection_rules: Optional[str] = Form(None),
+    status: str = Form("active"),
+    policies_cancellation: Optional[str] = Form(None),
+    policies_internal: Optional[str] = Form(None),
+    menu_addons: Optional[str] = Form(None),
+    service_addons: Optional[str] = Form(None),
+    equipment_addons: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -2837,8 +3134,7 @@ async def add_package(
         max_allowed_fee = (price_per_head * min_guests) * 0.5
         if reservation_fee_value > max_allowed_fee:
             errors.append(f"Reservation fee cannot exceed 50% of the total base package cost.")
-    if price_per_head < internal_cost_per_pax:
-        errors.append(f"Selling Price cannot be lower than the Est. Cost / Pax.")
+
 
     # Smart Validation: Detect existing package with the same name
     existing_pkg = db.query(models.CateringPackage).filter(
@@ -2861,9 +3157,7 @@ async def add_package(
         try:
             content_bytes = await image.read()
             if content_bytes:
-                encoded = base64.b64encode(content_bytes).decode("utf-8")
-                mime = image.content_type or "image/jpeg"
-                image_url = f"data:{mime};base64,{encoded}"
+                image_url = process_base64_image(content_bytes)
         except Exception:
             pass
 
@@ -2882,7 +3176,7 @@ async def add_package(
         markup_value=markup_value,
         min_contract_amount=min_contract_amount,
         min_guests=min_guests,
-        max_guests=max_guests,
+        max_guests=int(max_guests) if max_guests and str(max_guests).strip() else None,
         image_url=image_url,
         inclusions={inc: True for inc in inclusions} if inclusions else {},
         base_pax=base_pax,
@@ -2897,8 +3191,9 @@ async def add_package(
         reservation_fee_value=reservation_fee_value,
         booking_lead_time=booking_lead_time,
         selection_rules=json.loads(selection_rules) if selection_rules else None,
-        is_active=True,
-        status='active'
+        policies={"cancellation": policies_cancellation, "internal": policies_internal},
+        is_active=status == 'active',
+        status=status
     )
     
     # Handle linked items
@@ -2937,6 +3232,23 @@ async def add_package(
                 db.add(models.PackageService(package_id=new_pkg.id, service_id=sid, quantity=qty))
     else:
         db.add(new_pkg)
+        db.flush()
+        
+    # Save addons
+    try:
+        import json
+        if menu_addons:
+            for ma in json.loads(menu_addons):
+                db.add(models.PackageMenuAddon(package_id=new_pkg.id, menu_item_id=int(str(ma['id']).replace('leg_', '')), price=float(ma['price']), selection_type=ma.get('selection_type', 'single'), min_quantity=ma.get('min_quantity', 1), max_quantity=ma.get('max_quantity')))
+        if service_addons:
+            for sa in json.loads(service_addons):
+                db.add(models.PackageServiceAddon(package_id=new_pkg.id, service_id=int(str(sa['id']).replace('svc_', '')), price=float(sa['price']), selection_type=ma.get('selection_type', 'single'), min_quantity=sa.get('min_quantity', 1), max_quantity=sa.get('max_quantity')))
+        if equipment_addons:
+            for ea in json.loads(equipment_addons):
+                db.add(models.PackageEquipmentAddon(package_id=new_pkg.id, equipment_id=int(str(ea['id']).replace('eq_', '')), price=float(ea['price']), min_quantity=ea.get('min_quantity', 1), max_quantity=ea.get('max_quantity')))
+    except Exception as e:
+        pass
+
     db.commit()
     
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -2987,47 +3299,37 @@ async def add_menu_item(
     available_for_package = usage_type in ["package_only", "both"]
     available_for_order = usage_type in ["order_only", "both"]
     
-    pricing_type = form_data.get("pricing_type", "fixed")
-    
-    # Base Price and Serving Size for Fixed Price
-    price = None
+    pricing_mode = form_data.get("pricing_mode", "single")
+    pricing_type = pricing_mode # Save as pricing_type for backwards compatibility
+
+    price = 0.0
     serving_size = None
+    if not (usage_type == "package_only") and pricing_mode == "single":
+        try:
+            price = float(form_data.get("price", "0").replace(",", ""))
+        except ValueError:
+            price = 0.0
+        serving_size = form_data.get("serving_size")
+
     if not (usage_type == "package_only"):
-        if pricing_type in ["fixed", "per_pax"]:
-            try:
-                price = float(form_data.get("price", "0").replace(",", ""))
-            except ValueError:
-                price = 0.0
-            serving_size = form_data.get("serving_size")
+        min_order_qty = int(form_data.get("min_order_qty", "1") or "1")
+    else:
+        min_order_qty = 1
     
     is_hidden = form_data.get("visibility") == "hidden"
     
-    is_addon = form_data.get("is_addon") == "true"
+    is_addon = False
     addon_price = 0.0
-    if is_addon:
-        try:
-            addon_price = float(form_data.get("addon_price", "0").replace(",", ""))
-        except ValueError:
-            addon_price = 0.0
-
-    try:
-        cost_price = float(str(form_data.get("cost_price", "0")).replace(",", ""))
-    except ValueError:
-        cost_price = 0.0
-    
-    # Combo / Bento Logic
-    is_combo = form_data.get("is_combo") == "true"
+    cost_price = 0.0
+    item_type = form_data.get("item_type", "single")
+    is_combo = (item_type == "preset_combo")
+    included_dishes = form_data.getlist("included_dishes[]")
+    combo_options = {"included_menu_ids": [int(x) for x in included_dishes if x.isdigit()]} if is_combo else {}
     max_choices = 0
-    combo_options = []
-    if is_combo:
-        try:
-            max_choices = int(form_data.get("max_choices", "1"))
-        except:
-            max_choices = 1
-        combo_options = form_data.getlist("combo_options_list[]")
     
     dietary_tags = form_data.getlist("dietary_tags")
     allergen_info = form_data.getlist("allergen_info")
+    serving_style = form_data.get("serving_style")
     
     image = form_data.get("image")
     import base64
@@ -3036,20 +3338,11 @@ async def add_menu_item(
         try:
             content_bytes = await image.read()
             if content_bytes:
-                encoded = base64.b64encode(content_bytes).decode("utf-8")
-                mime = image.content_type or "image/jpeg"
-                image_url = f"data:{mime};base64,{encoded}"
+                image_url = process_base64_image(content_bytes)
         except Exception:
             pass
 
-    # Map pricing_type to pricing_unit to maintain legacy compatibility
-    pricing_unit = "per_tray"
-    if pricing_type == "per_pax":
-        pricing_unit = "per_pax"
-    elif pricing_type == "weight_based":
-        pricing_unit = "per_kg"
-    elif pricing_type == "size_based":
-        pricing_unit = "per_size"
+    pricing_unit = pricing_type
 
     new_item = models.MenuItem(
         caterer_id=user.caterer_profile.id,
@@ -3060,6 +3353,7 @@ async def add_menu_item(
         price=price,
         pricing_unit=pricing_unit,
         serving_size=serving_size,
+        min_order_qty=min_order_qty,
         status=status,
         usage_type=usage_type,
         available_for_package=available_for_package,
@@ -3074,49 +3368,40 @@ async def add_menu_item(
         is_combo=is_combo,
         max_choices=max_choices,
         combo_options=combo_options,
+        serving_style=serving_style,
         is_archived=False
     )
     db.add(new_item)
     db.flush() # To get new_item.id
 
-    # Handle dynamic pricing tables
-    if not (usage_type == "package_only"):
-        if pricing_type == "size_based":
-            size_names = form_data.getlist("size_names[]")
-            size_caps = form_data.getlist("size_capacities[]")
-            size_prices = form_data.getlist("size_prices[]")
-            for i in range(len(size_names)):
-                s_name = size_names[i].strip()
-                s_cap = size_caps[i] if i < len(size_caps) else None
+    if not (usage_type == "package_only") and pricing_mode == "variants":
+        v_names = form_data.getlist("variant_names[]")
+        v_prices = form_data.getlist("variant_prices[]")
+        v_servings = form_data.getlist("variant_servings[]")
+        v_statuses = form_data.getlist("variant_statuses[]")
+
+        for i, name in enumerate(v_names):
+            if name.strip():
                 try:
-                    s_price = float(size_prices[i].replace(",", ""))
-                except:
-                    s_price = 0.0
-                if s_name:
-                    sz_pricing = models.MenuSizePricing(
-                        menu_item_id=new_item.id,
-                        size_name=s_name,
-                        capacity=s_cap,
-                        price=s_price
-                    )
-                    db.add(sz_pricing)
-        
-        elif pricing_type == "weight_based":
-            weight_labels = form_data.getlist("weight_labels[]")
-            weight_prices = form_data.getlist("weight_prices[]")
-            for i in range(len(weight_labels)):
-                w_label = weight_labels[i].strip()
-                try:
-                    w_price = float(weight_prices[i].replace(",", ""))
-                except:
-                    w_price = 0.0
-                if w_label:
-                    wt_pricing = models.MenuWeightPricing(
-                        menu_item_id=new_item.id,
-                        weight_label=w_label,
-                        price=w_price
-                    )
-                    db.add(wt_pricing)
+                    import re
+                    price_str = v_prices[i] if i < len(v_prices) else "0"
+                    clean_price = re.sub(r'[^\d.]', '', price_str)
+                    v_price = float(clean_price) if clean_price else 0.0
+                except Exception as e:
+                    v_price = 0.0
+                serving = v_servings[i].strip() if i < len(v_servings) else None
+                v_status = v_statuses[i] if i < len(v_statuses) else 'available'
+                
+                variant = models.MenuVariant(
+                    menu_item_id=new_item.id,
+                    variant_name=name.strip(),
+                    measurement=None,
+                    price=v_price,
+                    serving_capacity=serving,
+                    status=v_status,
+                    display_order=i
+                )
+                db.add(variant)
 
     db.commit()
 
@@ -3244,6 +3529,18 @@ async def update_profile(
     package_max_duration: Optional[int] = Form(6),
     package_setup_time: Optional[int] = Form(2),
     package_cleanup_time: Optional[int] = Form(1),
+    refund_policy: Optional[str] = Form(None),
+    reschedule_policy: Optional[str] = Form(None),
+    late_payment_policy: Optional[str] = Form(None),
+    no_show_policy: Optional[str] = Form(None),
+    social_facebook: Optional[str] = Form(None),
+    social_instagram: Optional[str] = Form(None),
+    social_website: Optional[str] = Form(None),
+    holiday_schedule: Optional[str] = Form(None),
+    max_advance_booking_days: Optional[int] = Form(365),
+    business_tags: Optional[str] = Form(None),
+    specialties: Optional[str] = Form(None),
+    languages: Optional[str] = Form(None),
     background_tasks: BackgroundTasks = None,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -3270,6 +3567,26 @@ async def update_profile(
         "package_rules": {
             "min_event_duration": package_min_duration, "max_event_duration": package_max_duration, 
             "setup_time_hours": package_setup_time, "cleanup_time_hours": package_cleanup_time
+        },
+        "booking_rules": {
+            "max_advance_booking_days": max_advance_booking_days,
+            "holiday_schedule": holiday_schedule
+        },
+        "policies": {
+            "refund_policy": refund_policy,
+            "reschedule_policy": reschedule_policy,
+            "late_payment_policy": late_payment_policy,
+            "no_show_policy": no_show_policy
+        },
+        "social_links": {
+            "facebook": social_facebook,
+            "instagram": social_instagram,
+            "website": social_website
+        },
+        "public_profile": {
+            "tags": business_tags,
+            "specialties": specialties,
+            "languages": languages
         }
     }
 
@@ -3385,6 +3702,8 @@ async def update_profile(
     import base64
     # Handle Single File Uploads
     logo_file = logo if (logo and logo.filename) else logo_brand
+    # Size limits: logo/cover 400px, QR codes 300px, permit stored raw (PDF support)
+    size_map = {"logo": (400, 400), "cover_image": (1200, 600), "gcash_qr": (300, 300), "maya_qr": (300, 300), "bank_qr": (300, 300)}
     for field_name, file_obj in [("logo", logo_file), ("cover_image", cover_image), ("gcash_qr", gcash_qr), ("maya_qr", maya_qr), ("bank_qr", bank_qr), ("permit", permit_file)]:
         if file_obj and file_obj.filename:
             try:
@@ -3393,25 +3712,34 @@ async def update_profile(
                     if field_name == 'permit':
                         return RedirectResponse(url="/caterer/profile?error_msg=The+uploaded+business+permit+file+is+empty.+Please+upload+a+valid+document.", status_code=303)
                     continue
-                    
-                encoded = base64.b64encode(content_bytes).decode("utf-8")
-                mime = file_obj.content_type or "image/jpeg"
-                data_url = f"data:{mime};base64,{encoded}"
-                setattr(profile, f"{field_name}_url" if field_name != 'logo' else 'logo_url', data_url)
-                if field_name == 'logo':
-                    # Sync Caterer's User profile image with their Business Logo
-                    db_user = db.query(models.User).filter(models.User.id == user.id).first()
-                    if db_user:
-                        db_user.profile_image_url = data_url
+
                 if field_name == 'permit':
+                    import base64
+                    # Permit may be PDF — store raw base64
+                    mime = file_obj.content_type or "image/jpeg"
                     if mime.lower() not in ["image/png", "image/jpeg", "image/jpg", "application/pdf"]:
                         return RedirectResponse(url="/caterer/profile?error_msg=Invalid+business+permit+file+type.+Only+PNG,+JPEG,+and+PDF+are+allowed.", status_code=303)
+                    
+                    # Convert document directly to base64
+                    b64 = base64.b64encode(content_bytes).decode('utf-8')
+                    # Standardize mime if necessary
+                    actual_mime = "application/pdf" if "pdf" in mime.lower() else "image/jpeg"
+                    data_url = f"data:{actual_mime};base64,{b64}"
+                    profile.permit_url = data_url
                     profile.permit_status = 'Pending Review'
-                    # Reset verification status if they uploaded a new permit to require re-review
                     profile.verification_status = 'Pending Review'
                     profile.is_verified = False
                     if profile.user:
                         profile.user.is_verified = False
+                else:
+                    max_size = size_map.get(field_name, (600, 600))
+                    data_url = process_base64_image(content_bytes, max_size=max_size)
+                    attr_name = 'logo_url' if field_name == 'logo' else f"{field_name}_url"
+                    setattr(profile, attr_name, data_url)
+                    if field_name == 'logo':
+                        db_user = db.query(models.User).filter(models.User.id == user.id).first()
+                        if db_user:
+                            db_user.profile_image_url = data_url
             except Exception as e:
                 import traceback
                 print(f"[IMAGE UPLOAD ERROR] Failed on {field_name}: {str(e)}")
@@ -3424,10 +3752,8 @@ async def update_profile(
                 try:
                     content_bytes = await file_obj.read()
                     if content_bytes:
-                        encoded = base64.b64encode(content_bytes).decode("utf-8")
-                        mime = file_obj.content_type or "image/jpeg"
-                        data_url = f"data:{mime};base64,{encoded}"
-                        
+                        # Compress gallery images to 800x600 WebP
+                        data_url = process_base64_image(content_bytes, max_size=(800, 600), quality=80)
                         new_gallery_item = models.CatererGallery(
                             caterer_id=profile.id,
                             media_url=data_url,
@@ -3506,7 +3832,7 @@ async def update_package(
     markup_value: float = Form(0.0),
     min_contract_amount: float = Form(0.0),
     min_guests: int = Form(1),
-    max_guests: Optional[int] = Form(None),
+    max_guests: Optional[str] = Form(None),
     inclusions: Optional[List[str]] = Form(None),
     linked_menu_ids: Optional[List[str]] = Form(None),
     additional_guest_price: float = Form(0.0),
@@ -3522,6 +3848,12 @@ async def update_package(
     reservation_fee_value: float = Form(0.0),
     booking_lead_time: int = Form(7),
     selection_rules: Optional[str] = Form(None),
+    status: str = Form("active"),
+    policies_cancellation: Optional[str] = Form(None),
+    policies_internal: Optional[str] = Form(None),
+    menu_addons: Optional[str] = Form(None),
+    service_addons: Optional[str] = Form(None),
+    equipment_addons: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -3559,8 +3891,7 @@ async def update_package(
         max_allowed_fee = (price_per_head * min_guests) * 0.5
         if reservation_fee_value > max_allowed_fee:
             errors.append(f"Reservation fee cannot exceed 50% of the total base package cost.")
-    if price_per_head < internal_cost_per_pax:
-        errors.append(f"Selling Price cannot be lower than the Est. Cost / Pax.")
+
 
     # Smart Validation: Detect existing package with the same name, excluding this package
     existing_pkg = db.query(models.CateringPackage).filter(
@@ -3590,7 +3921,7 @@ async def update_package(
         package.cost_breakdown = json.loads(cost_breakdown) if cost_breakdown else None
     package.min_contract_amount = min_contract_amount
     package.min_guests = min_guests
-    package.max_guests = max_guests
+    package.max_guests = int(max_guests) if max_guests and str(max_guests).strip() else None
     package.base_pax = base_pax
     package.additional_guest_price = additional_guest_price
     package.labor_cost = labor_cost
@@ -3654,9 +3985,7 @@ async def update_package(
         try:
             content_bytes = await image.read()
             if content_bytes:
-                encoded = base64.b64encode(content_bytes).decode("utf-8")
-                mime = image.content_type or "image/jpeg"
-                package.image_url = f"data:{mime};base64,{encoded}"
+                package.image_url = process_base64_image(content_bytes, max_size=(600, 400))
         except Exception:
             pass
 
@@ -3719,6 +4048,61 @@ async def toggle_package_status(
         "is_active": package.is_active,
         "message": f"Package '{package.name}' is now {'active' if package.is_active else 'hidden'}."
     })
+
+@router.get("/packages/{package_id}/addons")
+async def get_package_addons(
+    package_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    package = db.query(models.CateringPackage).filter(
+        models.CateringPackage.id == package_id,
+        models.CateringPackage.caterer_id == user.caterer_profile.id
+    ).first()
+    if not package:
+        raise HTTPException(status_code=404, detail="Package not found")
+
+    res = {"menu": [], "service": [], "equipment": []}
+    
+    for a in package.menu_addons:
+        m = db.query(models.MenuItem).filter(models.MenuItem.id == a.menu_item_id).first()
+        if m:
+            res["menu"].append({
+                "id": m.id,
+                "name": m.name,
+                "price": a.price,
+                "selection_type": a.selection_type,
+                "min_quantity": a.min_quantity,
+                "max_quantity": a.max_quantity,
+                "is_enabled": a.is_enabled
+            })
+            
+    for a in package.service_addons:
+        s = db.query(models.Service).filter(models.Service.id == a.service_id).first()
+        if s:
+            res["service"].append({
+                "id": f"svc_{s.id}",
+                "name": s.name,
+                "price": a.price,
+                "selection_type": a.selection_type,
+                "min_quantity": a.min_quantity,
+                "max_quantity": a.max_quantity,
+                "is_enabled": a.is_enabled
+            })
+            
+    for a in package.equipment_addons:
+        e = db.query(models.Equipment).filter(models.Equipment.id == a.equipment_id).first()
+        if e:
+            res["equipment"].append({
+                "id": f"eq_{e.id}",
+                "name": e.name,
+                "price": a.price,
+                "min_quantity": a.min_quantity,
+                "max_quantity": a.max_quantity,
+                "is_enabled": a.is_enabled
+            })
+            
+    return res
 
 @router.get("/packages/{package_id}/menu")
 async def get_package_menu(
@@ -3785,9 +4169,7 @@ async def add_menu_to_package(
         try:
             content_bytes = await image.read()
             if content_bytes:
-                encoded = base64.b64encode(content_bytes).decode("utf-8")
-                mime = image.content_type or "image/jpeg"
-                image_url = f"data:{mime};base64,{encoded}"
+                image_url = process_base64_image(content_bytes)
         except Exception:
             pass
 
@@ -3843,21 +4225,74 @@ async def get_all_menu_items_api(
 ):
     items = db.query(models.MenuItem).filter(
         models.MenuItem.caterer_id == user.caterer_profile.id,
-        models.MenuItem.is_archived == False,
-        models.MenuItem.available_for_package == True
+        models.MenuItem.is_archived == False
     ).all()
-    return [
-        {
+    
+    result = []
+    for i in items:
+        # Get variants if pricing_type is variants
+        variants_data = []
+        base_price = getattr(i, 'price', 0.0)
+        
+        if getattr(i, 'pricing_type', '') == 'variants':
+            variants = db.query(models.MenuVariant).filter(models.MenuVariant.menu_item_id == i.id).all()
+            for v in variants:
+                variants_data.append({
+                    "id": v.id,
+                    "name": v.variant_name,
+                    "price": v.price
+                })
+            
+            # Update base_price to the lowest variant price if it exists
+            if variants_data:
+                base_price = min([v['price'] for v in variants_data])
+
+        result.append({
             "id": i.id,
             "name": i.name,
             "category": i.category,
             "image_url": i.image_url,
             "cost_price": i.cost_price,
-            "price": i.price,
-            "is_addon": i.is_addon
-        }
-        for i in items
-    ]
+            "price": base_price,
+            "is_addon": i.is_addon,
+            "usage_type": i.usage_type,
+            "pricing_type": getattr(i, 'pricing_type', 'fixed'),
+            "variants": variants_data
+        })
+    
+    eqs = db.query(models.Equipment).filter(
+        models.Equipment.caterer_id == user.caterer_profile.id,
+        models.Equipment.is_archived == False
+    ).all()
+    for e in eqs:
+        result.append({
+            "id": f"eq_{e.id}",
+            "name": e.name,
+            "category": e.category or 'Equipment',
+            "image_url": e.image_url,
+            "cost_price": e.cost_value,
+            "price": e.rental_price,
+            "is_addon": getattr(e, 'is_addon', False),
+            "usage_type": getattr(e, 'usage_type', 'both')
+        })
+        
+    svcs = db.query(models.Service).filter(
+        models.Service.caterer_id == user.caterer_profile.id,
+        models.Service.is_archived == False
+    ).all()
+    for s in svcs:
+        result.append({
+            "id": f"svc_{s.id}",
+            "name": s.name,
+            "category": s.category or 'Service',
+            "image_url": s.image_url,
+            "cost_price": s.cost,
+            "price": s.selling_price,
+            "is_addon": getattr(s, 'is_addon', False),
+            "usage_type": getattr(s, 'usage_type', 'both')
+        })
+        
+    return result
 
 @router.post("/packages/{package_id}/menu/link")
 async def link_menu_to_package(
@@ -3935,71 +4370,55 @@ async def update_menu_item(
     available_for_package = usage_type in ["package_only", "both"]
     available_for_order = usage_type in ["order_only", "both"]
     
-    pricing_type = form_data.get("pricing_type", "fixed")
-    
-    # Base Price and Serving Size for Fixed Price
-    price = None
+    pricing_mode = form_data.get("pricing_mode", "single")
+    pricing_type = pricing_mode
+
+    price = 0.0
     serving_size = None
+    if not (usage_type == "package_only") and pricing_mode == "single":
+        try:
+            price = float(form_data.get("price", "0").replace(",", ""))
+        except ValueError:
+            price = 0.0
+        serving_size = form_data.get("serving_size")
+
     if not (usage_type == "package_only"):
-        if pricing_type in ["fixed", "per_pax"]:
-            try:
-                price = float(form_data.get("price", "0").replace(",", ""))
-            except ValueError:
-                price = 0.0
-            serving_size = form_data.get("serving_size")
+        min_order_qty = int(form_data.get("min_order_qty", "1") or "1")
+    else:
+        min_order_qty = 1
     
     is_hidden = form_data.get("visibility") == "hidden"
     
-    is_addon = form_data.get("is_addon") == "true"
+    is_addon = False
     addon_price = 0.0
-    if is_addon:
-        try:
-            addon_price = float(form_data.get("addon_price", "0").replace(",", ""))
-        except ValueError:
-            addon_price = 0.0
-
-    try:
-        cost_price = float(str(form_data.get("cost_price", "0")).replace(",", ""))
-    except ValueError:
-        cost_price = 0.0
-    
-    # Combo / Bento Logic
-    is_combo = form_data.get("is_combo") == "true"
+    cost_price = 0.0
+    item_type = form_data.get("item_type", "single")
+    is_combo = (item_type == "preset_combo")
+    included_dishes = form_data.getlist("included_dishes[]")
+    combo_options = {"included_menu_ids": [int(x) for x in included_dishes if x.isdigit()]} if is_combo else {}
     max_choices = 0
-    combo_options = []
-    if is_combo:
-        try:
-            max_choices = int(form_data.get("max_choices", "1"))
-        except:
-            max_choices = 1
-        combo_options = form_data.getlist("combo_options_list[]")
     
     dietary_tags = form_data.getlist("dietary_tags")
     allergen_info = form_data.getlist("allergen_info")
+    serving_style = form_data.get("serving_style")
     
+    remove_image = form_data.get("remove_image", "false")
     image = form_data.get("image")
 
     item.name = name
     item.category = category
     item.description = description
+    item.serving_style = serving_style
     item.cost_price = cost_price
     item.price = price
     item.serving_size = serving_size
+    item.min_order_qty = min_order_qty
     item.status = status
     item.usage_type = usage_type
     item.available_for_package = available_for_package
     item.available_for_order = available_for_order
     item.pricing_type = pricing_type
-    
-    # Map pricing_type to pricing_unit to maintain legacy compatibility
-    if pricing_type == "fixed":
-        item.pricing_unit = "per_tray"
-    elif pricing_type == "per_pax":
-        item.pricing_unit = "per_pax"
-    elif pricing_type == "weight_based":
-        item.pricing_unit = "per_kg"
-    elif pricing_type == "size_based":
-        item.pricing_unit = "per_size"
+    item.pricing_unit = pricing_type
         
     item.is_hidden = is_hidden
     item.is_addon = is_addon
@@ -4010,58 +4429,47 @@ async def update_menu_item(
     item.max_choices = max_choices
     item.combo_options = combo_options
 
-    if image and hasattr(image, "filename") and image.filename:
+    if remove_image == "true":
+        item.image_url = None
+    elif image and hasattr(image, "filename") and image.filename:
         try:
             content_bytes = await image.read()
             if content_bytes:
-                encoded = base64.b64encode(content_bytes).decode("utf-8")
-                mime = image.content_type or "image/jpeg"
-                item.image_url = f"data:{mime};base64,{encoded}"
+                item.image_url = process_base64_image(content_bytes, max_size=(600, 400))
         except Exception:
             pass
 
     # Clear existing pricing
-    db.query(models.MenuSizePricing).filter(models.MenuSizePricing.menu_item_id == item.id).delete()
-    db.query(models.MenuWeightPricing).filter(models.MenuWeightPricing.menu_item_id == item.id).delete()
+    db.query(models.MenuVariant).filter(models.MenuVariant.menu_item_id == item.id).delete()
 
-    # Handle dynamic pricing tables
-    if not (usage_type == "package_only"):
-        if pricing_type == "size_based":
-            size_names = form_data.getlist("size_names[]")
-            size_caps = form_data.getlist("size_capacities[]")
-            size_prices = form_data.getlist("size_prices[]")
-            for i in range(len(size_names)):
-                s_name = size_names[i].strip()
-                s_cap = size_caps[i] if i < len(size_caps) else None
+    if not (usage_type == "package_only") and pricing_mode == "variants":
+        v_names = form_data.getlist("variant_names[]")
+        v_prices = form_data.getlist("variant_prices[]")
+        v_servings = form_data.getlist("variant_servings[]")
+        v_statuses = form_data.getlist("variant_statuses[]")
+
+        for i, name in enumerate(v_names):
+            if name.strip():
                 try:
-                    s_price = float(size_prices[i].replace(",", ""))
-                except:
-                    s_price = 0.0
-                if s_name:
-                    sz_pricing = models.MenuSizePricing(
-                        menu_item_id=item.id,
-                        size_name=s_name,
-                        capacity=s_cap,
-                        price=s_price
-                    )
-                    db.add(sz_pricing)
-        
-        elif pricing_type == "weight_based":
-            weight_labels = form_data.getlist("weight_labels[]")
-            weight_prices = form_data.getlist("weight_prices[]")
-            for i in range(len(weight_labels)):
-                w_label = weight_labels[i].strip()
-                try:
-                    w_price = float(weight_prices[i].replace(",", ""))
-                except:
-                    w_price = 0.0
-                if w_label:
-                    wt_pricing = models.MenuWeightPricing(
-                        menu_item_id=item.id,
-                        weight_label=w_label,
-                        price=w_price
-                    )
-                    db.add(wt_pricing)
+                    import re
+                    price_str = v_prices[i] if i < len(v_prices) else "0"
+                    clean_price = re.sub(r'[^\d.]', '', price_str)
+                    v_price = float(clean_price) if clean_price else 0.0
+                except Exception as e:
+                    v_price = 0.0
+                serving = v_servings[i].strip() if i < len(v_servings) else None
+                v_status = v_statuses[i] if i < len(v_statuses) else 'available'
+                
+                variant = models.MenuVariant(
+                    menu_item_id=item.id,
+                    variant_name=name.strip(),
+                    measurement=None,
+                    price=v_price,
+                    serving_capacity=serving,
+                    status=v_status,
+                    display_order=i
+                )
+                db.add(variant)
 
     db.commit()
 
@@ -4094,10 +4502,24 @@ async def archive_menu_item_caterer(
         "message": f"Dish '{item.name}' archived."
     })
     
-    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-        return JSONResponse({"status": "success", "message": "Menu item archived successfully", "item_id": item_id})
+    return JSONResponse({"status": "success", "message": "Menu item archived successfully", "item_id": item_id})
 
-    return RedirectResponse(url="/caterer/menu?success_msg=Menu+item+archived+successfully", status_code=303)
+@router.post("/menu/{item_id}/remove-image")
+async def remove_menu_item_image_direct(
+    item_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    item = db.query(models.MenuItem).filter(
+        models.MenuItem.id == item_id,
+        models.MenuItem.caterer_id == user.caterer_profile.id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    item.image_url = None
+    db.commit()
+    return JSONResponse({"status": "success", "message": "Image removed from database"})
 
 @router.post("/profile/change-password")
 async def change_password_caterer(
@@ -4513,12 +4935,15 @@ async def cancel_booking(
     # Notify Customer
     from ..services.notification import NotificationService
     import asyncio
+    is_food_order = (booking.document_type == 'invoice')
+    ref_id = f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}"
+    notif_link = f"/customer/orders" if is_food_order else f"/customer/bookings"
     asyncio.create_task(NotificationService.notify_status_update(
         db, 
         booking.user_id, 
-        "Booking Cancelled", 
-        f"Ang iyong booking para sa '{booking.event_name}' ay kinansela ni {user.caterer_profile.business_name}. Reason: {reason}", 
-        f"/customer/bookings"
+        "Booking Cancelled" if not is_food_order else "Order Cancelled", 
+        f"Your {'order' if is_food_order else 'booking'} '{booking.event_name}' ({ref_id}) with {user.caterer_profile.business_name} has been cancelled. Reason: {reason}", 
+        notif_link
     ))
     
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -4577,12 +5002,15 @@ async def reject_booking(
     # Notify Customer
     from ..services.notification import NotificationService
     import asyncio
+    is_food_order = (booking.document_type == 'invoice')
+    ref_id = f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}"
+    notif_link = f"/customer/orders" if is_food_order else f"/customer/bookings"
     asyncio.create_task(NotificationService.notify_status_update(
         db, 
         booking.user_id, 
-        "Booking Rejected", 
-        f"Pasensya na, hindi tinanggap ni {user.caterer_profile.business_name} ang iyong booking request para sa '{booking.event_name}'.", 
-        f"/customer/bookings"
+        "Booking Rejected" if not is_food_order else "Order Rejected", 
+        f"We regret to inform you that your {'order' if is_food_order else 'booking'} '{booking.event_name}' ({ref_id}) with {user.caterer_profile.business_name} was not accepted. Reason: {reason}", 
+        notif_link
     ))
     
     return JSONResponse({"status": "success", "message": "Booking rejected", "new_status": "cancelled"})
@@ -4647,12 +5075,16 @@ async def complete_booking(
     # Notify Customer
     from ..services.notification import NotificationService
     import asyncio
+    is_food_order = (booking.document_type == 'invoice')
+    ref_id = f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}"
+    caterer_name = user.caterer_profile.business_name
+    notif_link = f"/customer/orders/manage/{booking.id}" if is_food_order else f"/customer/bookings/manage/{booking.id}"
     asyncio.create_task(NotificationService.notify_status_update(
         db, 
         booking.user_id, 
-        "Event Service Completed", 
-        f"Salamat! Ang iyong event '{booking.event_name}' ay itinalaga bilang COMPLETED ni {user.caterer_profile.business_name}. Huwag kalimutang i-rate ang kanilang serbisyo!", 
-        f"/customer/reviews"
+        "Event Service Completed" if not is_food_order else "Order Completed!", 
+        f"Your {'booking' if not is_food_order else 'order'} '{booking.event_name}' ({ref_id}) with {caterer_name} has been marked as COMPLETED. Thank you for choosing OccaServe! Don't forget to leave a review.", 
+        notif_link
     ))
     
     return JSONResponse({"status": "success", "message": "Booking completed", "new_status": "completed"})
@@ -4827,37 +5259,101 @@ async def delete_gallery_item_permanent(
     db.commit()
     return RedirectResponse(url="/caterer/archives?success_msg=Gallery+photo+permanently+deleted", status_code=303)
 
-@router.post("/ingredients/{item_id}/restore")
-async def restore_ingredient(
+@router.post("/services/{item_id}/restore")
+async def restore_service(
     item_id: int,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    item = db.query(None).filter(
-        None.id == item_id,
-        None.caterer_id == user.caterer_profile.id
+    item = db.query(models.Service).filter(
+        models.Service.id == item_id,
+        models.Service.caterer_id == user.caterer_profile.id
     ).first()
     if not item:
-        raise HTTPException(status_code=404, detail="Ingredient not found")
+        raise HTTPException(status_code=404, detail="Service not found")
     item.is_archived = False
     db.commit()
-    return RedirectResponse(url="/caterer/archives?success_msg=Ingredient+restored+successfully", status_code=303)
+    return RedirectResponse(url="/caterer/archives?success_msg=Service+restored+successfully", status_code=303)
 
-@router.post("/ingredients/{item_id}/delete")
-async def delete_ingredient_permanent(
+@router.post("/services/{item_id}/delete")
+async def delete_service_permanent(
     item_id: int,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    item = db.query(None).filter(
-        None.id == item_id,
-        None.caterer_id == user.caterer_profile.id
+    item = db.query(models.Service).filter(
+        models.Service.id == item_id,
+        models.Service.caterer_id == user.caterer_profile.id
     ).first()
     if not item:
-        raise HTTPException(status_code=404, detail="Ingredient not found")
+        raise HTTPException(status_code=404, detail="Service not found")
     db.delete(item)
     db.commit()
-    return RedirectResponse(url="/caterer/archives?success_msg=Ingredient+permanently+deleted", status_code=303)
+    return RedirectResponse(url="/caterer/archives?success_msg=Service+permanently+deleted", status_code=303)
+
+@router.post("/equipment/{item_id}/restore")
+async def restore_equipment(
+    item_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    item = db.query(models.Equipment).filter(
+        models.Equipment.id == item_id,
+        models.Equipment.caterer_id == user.caterer_profile.id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Equipment not found")
+    item.is_archived = False
+    db.commit()
+    return RedirectResponse(url="/caterer/archives?success_msg=Equipment+restored+successfully", status_code=303)
+
+@router.post("/equipment/{item_id}/delete")
+async def delete_equipment_permanent(
+    item_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    item = db.query(models.Equipment).filter(
+        models.Equipment.id == item_id,
+        models.Equipment.caterer_id == user.caterer_profile.id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Equipment not found")
+    db.delete(item)
+    db.commit()
+    return RedirectResponse(url="/caterer/archives?success_msg=Equipment+permanently+deleted", status_code=303)
+
+@router.post("/portfolio/{item_id}/restore")
+async def restore_portfolio(
+    item_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    item = db.query(models.Portfolio).filter(
+        models.Portfolio.id == item_id,
+        models.Portfolio.caterer_id == user.caterer_profile.id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    item.is_archived = False
+    db.commit()
+    return RedirectResponse(url="/caterer/archives?success_msg=Portfolio+restored+successfully", status_code=303)
+
+@router.post("/portfolio/{item_id}/delete")
+async def delete_portfolio_permanent(
+    item_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    item = db.query(models.Portfolio).filter(
+        models.Portfolio.id == item_id,
+        models.Portfolio.caterer_id == user.caterer_profile.id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    db.delete(item)
+    db.commit()
+    return RedirectResponse(url="/caterer/archives?success_msg=Portfolio+permanently+deleted", status_code=303)
 
 @router.get("/messages", response_class=HTMLResponse)
 async def caterer_messages(
@@ -5722,15 +6218,13 @@ async def financials_page(
     ).all()
     
     total_rev = 0
-    total_event_costs = 0
     total_comm = 0
     for b in all_completed_bookings:
         amt = float(b.total_amount or b.total_price or 0)
         total_rev += amt
         total_comm += (amt * (comm_rate / 100.0)) + comm_fixed
-        total_event_costs += float(b.actual_cost or 0)
         
-    net_profit = (total_rev - total_comm) - (total_event_costs + total_expenses)
+    net_earnings = total_rev - total_comm
     
     return templates.TemplateResponse("caterer/financials.html", {
         "request": request,
@@ -5739,7 +6233,9 @@ async def financials_page(
         "expenses": expenses,
         "monthly_overhead": monthly_expenses,
         "total_overhead": total_expenses,
-        "net_profit": net_profit
+        "total_rev": total_rev,
+        "total_comm": total_comm,
+        "net_earnings": net_earnings
     })
 
 @router.post("/api/financials/expense")
@@ -5802,18 +6298,11 @@ async def settle_dues_api(
     if profile.outstanding_balance <= 0:
         raise HTTPException(status_code=400, detail="You do not have any outstanding balance to settle.")
         
-    upload_dir = f"app/static/uploads/receipts/{profile.id}"
-    os.makedirs(upload_dir, exist_ok=True)
-    
-    timestamp = int(time.time())
-    file_ext = proof_file.filename.split('.')[-1] if '.' in proof_file.filename else 'png'
-    filename = f"settlement_{timestamp}.{file_ext}"
-    file_path = f"{upload_dir}/{filename}"
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(proof_file.file, buffer)
-        
-    proof_url = f"/static/uploads/receipts/{profile.id}/{filename}"
+    import base64
+    content_bytes = await proof_file.read()
+    b64 = base64.b64encode(content_bytes).decode('utf-8')
+    mime = proof_file.content_type or 'image/jpeg'
+    proof_url = f"data:{mime};base64,{b64}"
     
     invoice = models.BillingInvoice(
         caterer_id=profile.id,
@@ -5936,13 +6425,13 @@ async def submit_verification(
         if error:
             raise ValueError(error)
             
-        ext = file_obj.filename.split('.')[-1].lower()
-        filename = f"user_{user.id}_{prefix}_{int(time.time())}.{ext}"
-        filepath = os.path.join(upload_dir, filename)
-        
-        with open(filepath, "wb") as buffer:
-            buffer.write(encrypt_data(content))
-        return f"/api/bookings/kyc/view/{filename}"
+        # Instead of saving locally, convert directly to Base64
+        import base64
+        b64 = base64.b64encode(content).decode('utf-8')
+        mime = file_obj.content_type or "image/jpeg"
+        actual_mime = "application/pdf" if "pdf" in mime.lower() else "image/jpeg"
+        if "png" in mime.lower(): actual_mime = "image/png"
+        return f"data:{actual_mime};base64,{b64}"
     
     try:
         if permit:
@@ -6099,15 +6588,11 @@ async def release_rental_equipment(
 
     try:
         # Save Release Photo
-        upload_dir = "app/static/uploads/rentals"
-        os.makedirs(upload_dir, exist_ok=True)
-        ext = release_photo.filename.split('.')[-1]
-        filename = f"release_{booking.id}_{uuid.uuid4().hex}.{ext}"
-        file_path = os.path.join(upload_dir, filename)
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(release_photo.file, buffer)
-
-        booking.release_photo_url = f"/static/uploads/rentals/{filename}"
+        import base64
+        content_bytes = await release_photo.read()
+        b64 = base64.b64encode(content_bytes).decode('utf-8')
+        mime = release_photo.content_type or 'image/jpeg'
+        booking.release_photo_url = f"data:{mime};base64,{b64}"
         booking.status = "released"
         
         # Log History
@@ -6146,14 +6631,11 @@ async def inspect_rental_equipment(
 
     try:
         if damage_photo and damage_photo.filename:
-            upload_dir = "app/static/uploads/rentals"
-            os.makedirs(upload_dir, exist_ok=True)
-            ext = damage_photo.filename.split('.')[-1]
-            filename = f"damage_{booking.id}_{uuid.uuid4().hex}.{ext}"
-            file_path = os.path.join(upload_dir, filename)
-            with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(damage_photo.file, buffer)
-            booking.damage_proof_url = f"/static/uploads/rentals/{filename}"
+            import base64
+            content_bytes = await damage_photo.read()
+            b64 = base64.b64encode(content_bytes).decode('utf-8')
+            mime = damage_photo.content_type or 'image/jpeg'
+            booking.damage_proof_url = f"data:{mime};base64,{b64}"
 
         booking.missing_items_count = missing_items
         booking.damage_deduction_amount = deduction_amount

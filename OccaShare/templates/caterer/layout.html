@@ -1763,15 +1763,9 @@
                         </a>
                     </li>
                     <li>
-                        <a href="/caterer/financials" class="nav-item {{ 'active' if active_page == 'financials' }}">
+                        <a href="/caterer/business-summary" class="nav-item {{ 'active' if active_page == 'business-summary' }}">
                             <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
-                            <span class="nav-label">Financial Reports</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/caterer/compliance" class="nav-item {{ 'active' if active_page == 'compliance' }}">
-                            <div class="nav-icon"><i class="fas fa-shield-halved"></i></div>
-                            <span class="nav-label">Identity Verification</span>
+                            <span class="nav-label">Business Summary</span>
                         </a>
                     </li>
                     <li>
@@ -2423,23 +2417,26 @@
         window.addEventListener('load', function () {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('verified') === 'success') {
-                const Toast = Swal.mixin({
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 4000,
-                    timerProgressBar: true,
-                    didOpen: (toast) => {
-                        toast.addEventListener('mouseenter', Swal.stopTimer)
-                        toast.addEventListener('mouseleave', Swal.resumeTimer)
-                    }
-                });
+                if (window.showToast) {
+                    window.showToast('Account Verified Successfully!', 'success');
+                } else {
+                    const Toast = Swal.mixin({
+                        toast: true,
+                        position: 'bottom-end',
+                        showConfirmButton: false,
+                        timer: 4000,
+                        timerProgressBar: true,
+                        didOpen: (toast) => {
+                            toast.addEventListener('mouseenter', Swal.stopTimer)
+                            toast.addEventListener('mouseleave', Swal.resumeTimer)
+                        }
+                    });
 
-                Toast.fire({
-                    icon: 'success',
-                    title: 'Account Verified Successfully!',
-                    text: 'Your business profile is now active.'
-                });
+                    Toast.fire({
+                        icon: 'success',
+                        title: 'Account Verified Successfully!'
+                    });
+                }
 
                 // Clean up URL
                 const newUrl = window.location.pathname + (urlParams.toString().replace(/verified=success&?/, '').length > 0 ? '?' + urlParams.toString().replace(/verified=success&?/, '') : '');
@@ -2617,6 +2614,13 @@
 
     <!-- Custom Universal Logout Modal -->
     <style>
+        #univLogoutModal,
+        #inactivityModal,
+        #globalConfirmModal {
+            align-items: flex-end !important;
+            padding-bottom: 2rem !important;
+        }
+
         #univLogoutModal *:not(i),
         #inactivityModal *:not(i) {
             font-family: 'Poppins', sans-serif !important;

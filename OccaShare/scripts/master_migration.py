@@ -83,7 +83,11 @@ def master_migration():
             ("emergency_contact_name", "VARCHAR"),
             ("emergency_contact_relation", "VARCHAR"),
             ("emergency_contact_phone", "VARCHAR"),
-            ("notification_preferences", "JSONB")
+            ("notification_preferences", "JSONB"),
+            ("province", "VARCHAR"),
+            ("city_municipality", "VARCHAR"),
+            ("barangay", "VARCHAR"),
+            ("street_address", "TEXT")
         ]
 
         

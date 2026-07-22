@@ -1,0 +1,281 @@
+{% set active_page = 'marketplace' %}
+{% extends "customer/layout.html" %}
+
+{% block title %}{{ category }} - {{ caterer.business_name }} - OccaServe{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hub-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem;
+    }
+    
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        color: var(--hub-slate-500);
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+    
+    .breadcrumb a {
+        color: var(--hub-primary);
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.2s;
+    }
+    
+    .breadcrumb a:hover {
+        color: var(--hub-brand);
+    }
+    
+    .category-header {
+        background: white;
+        padding: 2.5rem;
+        border-radius: 20px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        margin-bottom: 2rem;
+        border: 1px solid var(--hub-slate-100);
+    }
+    
+    .category-title {
+        font-size: 2.5rem;
+        font-weight: 900;
+        color: var(--hub-text-dark);
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.02em;
+    }
+    
+    .category-subtitle {
+        color: var(--hub-slate-500);
+        font-size: 1.1rem;
+        font-weight: 500;
+    }
+    
+    .item-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+        gap: 1.25rem;
+    }
+    
+    .item-card {
+        background: white;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid var(--hub-slate-200);
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: row;
+        cursor: pointer;
+        padding: 1rem;
+        gap: 1.25rem;
+        align-items: center;
+    }
+    
+    .item-card:hover {
+        border-color: var(--hub-brand);
+        box-shadow: 0 4px 15px -3px rgba(0,0,0,0.05);
+    }
+    
+    .item-img-wrapper {
+        height: 120px;
+        width: 120px;
+        min-width: 120px;
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--hub-slate-100);
+        flex-shrink: 0;
+    }
+    
+    .item-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .item-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+    
+    .item-title {
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--hub-text-dark);
+        margin-bottom: 0.25rem;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .item-desc {
+        font-size: 0.85rem;
+        color: var(--hub-slate-500);
+        line-height: 1.4;
+        margin-bottom: 0.5rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .item-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: auto;
+        gap: 0.5rem;
+    }
+    
+    .item-price {
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--hub-brand);
+    }
+    
+    .btn-outline {
+        background: var(--hub-primary);
+        color: white;
+        border: none;
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+    
+    .btn-outline:hover {
+        background: var(--hub-brand);
+    }
+    
+    @media (max-width: 640px) {
+        .item-card {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
+        }
+        .item-img-wrapper {
+            width: 100%;
+            height: 160px;
+        }
+    }
+
+    .badge-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 12px;
+    }
+
+    .badge {
+        font-size: 0.65rem;
+        padding: 3px 8px;
+        border-radius: 100px;
+        font-weight: 700;
+    }
+
+    .badge-stock { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .badge-stock-low { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .badge-tag { background: var(--hub-slate-100); color: var(--hub-slate-600); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hub-container mt-[20px]">
+    <div class="breadcrumb">
+        <a href="/customer/marketplace">Find Caterers</a> 
+        <i class="fas fa-chevron-right" style="font-size: 0.7em;"></i>
+        <a href="/caterers/{{ caterer.slug or caterer.id }}">{{ caterer.business_name }}</a>
+        <i class="fas fa-chevron-right" style="font-size: 0.7em;"></i>
+        <span style="color: var(--hub-slate-400);">{{ catalog_type|capitalize }}</span>
+        <i class="fas fa-chevron-right" style="font-size: 0.7em;"></i>
+        <span style="font-weight: 800; color: var(--hub-text-dark);">{{ category }}</span>
+    </div>
+
+    <div class="category-header">
+        <h1 class="category-title">{{ category }}</h1>
+        <p class="category-subtitle">
+            Browse all {{ items|length }} {{ category|lower }} options currently offered by {{ caterer.business_name }}.
+        </p>
+    </div>
+
+    <div class="item-grid">
+        {% for item in items %}
+        {% set img = item.image_url if item.image_url else 'https://ui-avatars.com/api/?name=' ~ (item.name|urlencode) ~ '&background=f1f5f9&color=FF7B54&size=400' %}
+        <a href="/caterers/{{ caterer.slug or caterer.id }}/item/{{ catalog_type }}/{{ item.id }}" class="item-card" style="text-decoration: none; color: inherit;">
+            <div class="item-img-wrapper">
+                <img src="{{ img }}" alt="{{ item.name }}" class="item-img" loading="lazy" onerror="this.src='https://ui-avatars.com/api/?name={{ item.name|urlencode }}&background=f1f5f9&color=FF7B54&size=400'">
+            </div>
+            <div class="item-content">
+                <h3 class="item-title">{{ item.name }}</h3>
+                
+                <div class="badge-container">
+                    {% if catalog_type == 'menu' %}
+                        {% if item.serving_size %}
+                        <span class="badge badge-tag"><i class="fas fa-utensils"></i> {{ item.serving_size }}</span>
+                        {% endif %}
+                    {% else %}
+                        {% if item.display_qty > 0 %}
+                        <span class="badge badge-stock">📦 {{ item.display_qty }} in stock</span>
+                        {% endif %}
+                    {% endif %}
+                </div>
+
+                <p class="item-desc">{{ item.description or 'No description provided.' }}</p>
+                
+                <div class="item-footer">
+                    <div class="item-price">
+                        {% if catalog_type == 'menu' %}
+                            {% if item.pricing_type == 'weight_based' or item.pricing_type == 'size_based' %}
+                                {% set min_price = 999999 %}
+                                {% if item.pricing_type == 'weight_based' and item.weight_prices %}
+                                    {% for wp in item.weight_prices %}
+                                        {% if wp.price < min_price %}{% set min_price = wp.price %}{% endif %}
+                                    {% endfor %}
+                                {% elif item.pricing_type == 'size_based' and item.size_prices %}
+                                    {% for sp in item.size_prices %}
+                                        {% if sp.price < min_price %}{% set min_price = sp.price %}{% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                                {% if min_price != 999999 %}
+                                    <span style="font-size: 0.75rem; color: var(--hub-slate-500);">From</span> 
+                                    ₱{{ "{:,.2f}".format(min_price) }}
+                                {% else %}
+                                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--hub-slate-500);">See Options</span>
+                                {% endif %}
+                            {% else %}
+                                {% if item.price and item.price > 0 %}
+                                    ₱{{ "{:,.2f}".format(item.price) }}<span style="font-size: 0.75rem; font-weight: 600; color: var(--hub-slate-400);">/{{ item.pricing_unit or 'serving' }}</span>
+                                {% else %}
+                                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--hub-slate-400);">Included in Package</span>
+                                {% endif %}
+                            {% endif %}
+                        {% else %}
+                            {% if item.display_price and item.display_price > 0 %}
+                                ₱{{ "{:,.2f}".format(item.display_price) }}<span style="font-size: 0.75rem; font-weight: 600; color: var(--hub-slate-400);">/{{ item.unit_type or 'unit' }}</span>
+                            {% else %}
+                                <span style="font-size: 0.85rem;">Contact for Price</span>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    <span class="btn-outline"><i class="fas fa-plus"></i> Select</span>
+                </div> <!-- close item-footer -->
+            </div> <!-- close item-content -->
+        </a> <!-- close item-card -->
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

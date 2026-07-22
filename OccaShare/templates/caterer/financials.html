@@ -21,26 +21,33 @@
     </div>
 
     <!-- Financial Stats -->
-    <div class="kpi-grid-clean" style="margin-bottom: var(--space-lg);">
+    <div class="kpi-grid-clean" style="margin-bottom: var(--space-lg); display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
         <div class="kpi-card-clean">
             <div class="kpi-info">
-                <h4>Total Overhead</h4>
-                <span class="kpi-value" style="color: #0f172a;">₱{{ "{:,.2f}".format(total_overhead) }}</span>
-                <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">All time</span>
+                <h4>Gross Sales</h4>
+                <span class="kpi-value" style="color: #0f172a;">₱{{ "{:,.2f}".format(total_rev if total_rev is defined else 0) }}</span>
+                <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Total Booking Revenue</span>
             </div>
         </div>
         <div class="kpi-card-clean">
             <div class="kpi-info">
-                <h4>This Month's Overhead</h4>
-                <span class="kpi-value" style="color: var(--accent-color);">₱{{ "{:,.2f}".format(monthly_overhead) }}</span>
-                <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Current month</span>
+                <h4>Platform Fees</h4>
+                <span class="kpi-value" style="color: #ef4444;">₱{{ "{:,.2f}".format(total_comm if total_comm is defined else 0) }}</span>
+                <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Commissions Deducted</span>
+            </div>
+        </div>
+        <div class="kpi-card-clean">
+            <div class="kpi-info">
+                <h4>Total Overhead</h4>
+                <span class="kpi-value" style="color: #f59e0b;">₱{{ "{:,.2f}".format(total_overhead) }}</span>
+                <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Business Expenses</span>
             </div>
         </div>
         <div class="kpi-card-clean" style="background: linear-gradient(135deg, var(--accent-color) 0%, #059669 100%);">
             <div class="kpi-info">
-                <h4 style="color: rgba(255,255,255,0.8);">Net Profit (Estimate)</h4>
-                <span class="kpi-value" style="color: white; font-size: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">₱{{ "{:,.2f}".format(net_profit if net_profit is defined else 0) }}</span>
-                <span class="trend-badge" style="color: rgba(255,255,255,0.9); background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Net Rev (after fee) - Total Costs</span>
+                <h4 style="color: rgba(255,255,255,0.8);">Net Earnings</h4>
+                <span class="kpi-value" style="color: white; font-size: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">₱{{ "{:,.2f}".format(net_earnings if net_earnings is defined else 0) }}</span>
+                <span class="trend-badge" style="color: rgba(255,255,255,0.9); background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Gross Sales - Platform Fees</span>
             </div>
         </div>
     </div>
