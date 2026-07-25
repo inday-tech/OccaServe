@@ -70,10 +70,11 @@ async def scan_document(
             if file_error:
                 return {"status": "rejected", "failure_reason": f"File Security: {file_error}"}
 
-            import base64
-            b64 = base64.b64encode(content).decode('utf-8')
-            mime = doc.content_type or 'image/jpeg'
-            doc_urls.append(f"data:{mime};base64,{b64}")
+            from app.services.storage import upload_file_to_cloudinary
+            c_url = upload_file_to_cloudinary(content, folder="verification")
+            if c_url:
+                doc_urls.append(c_url)
+
         
         doc_url = doc_urls[0]
         
@@ -453,64 +454,40 @@ async def register(
                     "request": request, "error": "Please provide a valid legal name."
                 })
 
-            # Process Selfie Upload (saved as plain file for reliable viewing)
-            selfie_url = None
-            if selfie:
-                content = await selfie.read()
-                import base64
-                b64 = base64.b64encode(content).decode('utf-8')
-                mime = selfie.content_type or 'image/jpeg'
-                selfie_url = f"data:{mime};base64,{b64}"
+            from app.services.storage import upload_file_to_cloudinary
 
-            temp_id = str(uuid.uuid4())
-            
-            # Ensure upload directory for profiles
-            PROFILE_DIR = "app/static/uploads/profiles"
-            os.makedirs(PROFILE_DIR, exist_ok=True)
+            # Process Selfie Upload
+            selfie_url = None
+            if selfie and selfie.filename:
+                content = await selfie.read()
+                selfie_url = upload_file_to_cloudinary(content, folder="verification")
 
             if logo and logo.filename:
                 content = await logo.read()
-                import base64
-                b64 = base64.b64encode(content).decode('utf-8')
-                mime = logo.content_type or 'image/jpeg'
-                logo_url = f"data:{mime};base64,{b64}"
+                logo_url = upload_file_to_cloudinary(content, folder="profile_images")
 
             if gov_id and gov_id.filename:
                 content = await gov_id.read()
-                import base64
-                b64 = base64.b64encode(content).decode('utf-8')
-                mime = gov_id.content_type or 'image/jpeg'
-                gov_id_url = f"data:{mime};base64,{b64}"
+                gov_id_url = upload_file_to_cloudinary(content, folder="valid_ids")
                 
             if permit and permit.filename:
                 content = await permit.read()
-                
-                # --- SECURITY: File Validation ---
                 file_error = validate_file_type_and_size(content, permit.filename)
                 if file_error:
                     return templates.TemplateResponse("auth/register_caterer.html", {
                         "request": request, "error": f"Permit File: {file_error}", "role": role
                     })
-
-                import base64
-                b64 = base64.b64encode(content).decode('utf-8')
-                mime = permit.content_type or 'image/jpeg'
-                permit_url = f"data:{mime};base64,{b64}"
+                permit_url = upload_file_to_cloudinary(content, folder="verification")
 
             if sample_menu and sample_menu.filename:
                 content = await sample_menu.read()
-                
-                # --- SECURITY: File Validation ---
-                file_error = validate_file_type_and_size(content, sample_menu.filename, max_size_mb=10) # Menus can be larger
+                file_error = validate_file_type_and_size(content, sample_menu.filename, max_size_mb=10)
                 if file_error:
                     return templates.TemplateResponse("auth/register_caterer.html", {
                         "request": request, "error": f"Menu File: {file_error}", "role": role
                     })
+                sample_menu_url = upload_file_to_cloudinary(content, folder="menu_images")
 
-                import base64
-                b64 = base64.b64encode(content).decode('utf-8')
-                mime = sample_menu.content_type or 'image/jpeg'
-                sample_menu_url = f"data:{mime};base64,{b64}"
 
         event_list = []
         if event_types:

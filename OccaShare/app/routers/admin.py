@@ -908,15 +908,17 @@ async def update_website_settings(
 
     import base64
 
+    from app.services.storage import upload_file_to_cloudinary
+
     # Handle Logo Upload
     if logo and logo.filename:
         try:
             logo_content = await logo.read()
             if logo_content:
-                encoded_string = base64.b64encode(logo_content).decode("utf-8")
-                mime_type = logo.content_type or "image/png"
-                config.logo_url = f"data:{mime_type};base64,{encoded_string}"
-                changes.append("Updated Platform Logo")
+                c_url = upload_file_to_cloudinary(logo_content, folder="gallery")
+                if c_url:
+                    config.logo_url = c_url
+                    changes.append("Updated Platform Logo")
         except Exception as e:
             pass
 
@@ -925,10 +927,10 @@ async def update_website_settings(
         try:
             fav_content = await favicon.read()
             if fav_content:
-                encoded_string = base64.b64encode(fav_content).decode("utf-8")
-                mime_type = favicon.content_type or "image/x-icon"
-                config.favicon_url = f"data:{mime_type};base64,{encoded_string}"
-                changes.append("Updated Browser Favicon")
+                c_url = upload_file_to_cloudinary(fav_content, folder="gallery")
+                if c_url:
+                    config.favicon_url = c_url
+                    changes.append("Updated Browser Favicon")
         except Exception as e:
             pass
             
@@ -944,13 +946,13 @@ async def update_website_settings(
             try:
                 bg_content = await bg_file.read()
                 if bg_content:
-                    encoded_string = base64.b64encode(bg_content).decode("utf-8")
-                    mime_type = bg_file.content_type or "image/jpeg"
-                    bg_url = f"data:{mime_type};base64,{encoded_string}"
-                    setattr(config, f"hero_bg_{i}", bg_url)
-                    changes.append(f"Updated Hero Background {i}")
+                    c_url = upload_file_to_cloudinary(bg_content, folder="gallery")
+                    if c_url:
+                        setattr(config, f"hero_bg_{i}", c_url)
+                        changes.append(f"Updated Hero Background {i}")
             except Exception as e:
                 pass
+
 
     # 🕵️ LOG AUDIT
     if changes:

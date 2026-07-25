@@ -25,24 +25,12 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 caterer_only = auth.RoleChecker(["caterer"])
 
 
-def process_base64_image(content_bytes: bytes, max_size=(600, 600), quality=75) -> str:
-    """Compresses image and returns a base64 Data URI."""
-    import io
-    import base64
-    try:
-        from PIL import Image
-        img = Image.open(io.BytesIO(content_bytes))
-        if img.mode in ("RGBA", "P"):
-            img = img.convert("RGB")
-        img.thumbnail(max_size, Image.Resampling.LANCZOS)
-        buf = io.BytesIO()
-        img.save(buf, format="WEBP", quality=quality)
-        b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
-        return f"data:image/webp;base64,{b64}"
-    except Exception:
-        # Fallback to direct base64 if not an image
-        b64 = base64.b64encode(content_bytes).decode('utf-8')
-        return f"data:image/jpeg;base64,{b64}"
+def process_base64_image(content_bytes: bytes, max_size=(600, 600), quality=75, folder: str = "menu_images") -> str:
+    """Uploads image bytes to Cloudinary and returns CDN URL."""
+    from app.services.storage import upload_file_to_cloudinary
+    url = upload_file_to_cloudinary(content_bytes, folder=folder)
+    return url or ""
+
 
 def create_default_booking_tasks(db: Session, booking_id: int):
     # Idempotency check: Don't add if tasks already exist
@@ -531,11 +519,13 @@ async def upload_dispatch_proof(
     if not proof_image.filename:
         raise HTTPException(status_code=400, detail="No file selected")
 
-    import base64
+    from app.services.storage import upload_file_to_cloudinary
     content_bytes = await proof_image.read()
-    b64 = base64.b64encode(content_bytes).decode('utf-8')
-    mime = proof_image.content_type or 'image/jpeg'
-    booking.dispatch_proof_url = f"data:{mime};base64,{b64}"
+    c_url = upload_file_to_cloudinary(content_bytes, folder="verification")
+    if not c_url:
+        raise HTTPException(status_code=500, detail="Failed to upload dispatch proof to Cloudinary.")
+    booking.dispatch_proof_url = c_url
+
     
     # Update status simultaneously
     allowed_statuses = ["ready_for_delivery", "ready_for_pickup", "on_the_way"]
@@ -3720,12 +3710,12 @@ async def update_profile(
                     if mime.lower() not in ["image/png", "image/jpeg", "image/jpg", "application/pdf"]:
                         return RedirectResponse(url="/caterer/profile?error_msg=Invalid+business+permit+file+type.+Only+PNG,+JPEG,+and+PDF+are+allowed.", status_code=303)
                     
-                    # Convert document directly to base64
-                    b64 = base64.b64encode(content_bytes).decode('utf-8')
-                    # Standardize mime if necessary
-                    actual_mime = "application/pdf" if "pdf" in mime.lower() else "image/jpeg"
-                    data_url = f"data:{actual_mime};base64,{b64}"
+                    from app.services.storage import upload_file_to_cloudinary
+                    data_url = upload_file_to_cloudinary(content_bytes, folder="verification")
+                    if not data_url:
+                        return RedirectResponse(url="/caterer/profile?error_msg=Failed+to+upload+permit+to+Cloudinary.", status_code=303)
                     profile.permit_url = data_url
+
                     profile.permit_status = 'Pending Review'
                     profile.verification_status = 'Pending Review'
                     profile.is_verified = False
@@ -6298,11 +6288,12 @@ async def settle_dues_api(
     if profile.outstanding_balance <= 0:
         raise HTTPException(status_code=400, detail="You do not have any outstanding balance to settle.")
         
-    import base64
+    from app.services.storage import upload_file_to_cloudinary
     content_bytes = await proof_file.read()
-    b64 = base64.b64encode(content_bytes).decode('utf-8')
-    mime = proof_file.content_type or 'image/jpeg'
-    proof_url = f"data:{mime};base64,{b64}"
+    proof_url = upload_file_to_cloudinary(content_bytes, folder="payment_receipts")
+    if not proof_url:
+        raise HTTPException(status_code=500, detail="Failed to upload payment proof to Cloudinary.")
+
     
     invoice = models.BillingInvoice(
         caterer_id=profile.id,
@@ -6425,13 +6416,9 @@ async def submit_verification(
         if error:
             raise ValueError(error)
             
-        # Instead of saving locally, convert directly to Base64
-        import base64
-        b64 = base64.b64encode(content).decode('utf-8')
-        mime = file_obj.content_type or "image/jpeg"
-        actual_mime = "application/pdf" if "pdf" in mime.lower() else "image/jpeg"
-        if "png" in mime.lower(): actual_mime = "image/png"
-        return f"data:{actual_mime};base64,{b64}"
+        from app.services.storage import upload_file_to_cloudinary
+        return upload_file_to_cloudinary(content, folder="verification")
+
     
     try:
         if permit:
@@ -6586,13 +6573,12 @@ async def release_rental_equipment(
     if booking.security_deposit_status == "unpaid":
         return JSONResponse(status_code=400, content={"success": False, "message": "Cannot release equipment. Security deposit is unpaid."})
 
-    try:
-        # Save Release Photo
-        import base64
+        from app.services.storage import upload_file_to_cloudinary
         content_bytes = await release_photo.read()
-        b64 = base64.b64encode(content_bytes).decode('utf-8')
-        mime = release_photo.content_type or 'image/jpeg'
-        booking.release_photo_url = f"data:{mime};base64,{b64}"
+        c_url = upload_file_to_cloudinary(content_bytes, folder="verification")
+        if not c_url:
+            return JSONResponse(status_code=500, content={"success": False, "message": "Failed to upload release photo to Cloudinary."})
+        booking.release_photo_url = c_url
         booking.status = "released"
         
         # Log History
@@ -6631,11 +6617,13 @@ async def inspect_rental_equipment(
 
     try:
         if damage_photo and damage_photo.filename:
-            import base64
+            from app.services.storage import upload_file_to_cloudinary
             content_bytes = await damage_photo.read()
-            b64 = base64.b64encode(content_bytes).decode('utf-8')
-            mime = damage_photo.content_type or 'image/jpeg'
-            booking.damage_proof_url = f"data:{mime};base64,{b64}"
+            c_url = upload_file_to_cloudinary(content_bytes, folder="verification")
+            if not c_url:
+                return JSONResponse(status_code=500, content={"success": False, "message": "Failed to upload damage photo to Cloudinary."})
+            booking.damage_proof_url = c_url
+
 
         booking.missing_items_count = missing_items
         booking.damage_deduction_amount = deduction_amount

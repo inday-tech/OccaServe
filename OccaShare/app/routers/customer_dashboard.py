@@ -11,11 +11,10 @@ import uuid
 import time
 from ..db import database, models
 from ..core import security as auth
-from ..services.verification import verification_service
-from ..services.realtime import manager
-import asyncio
+from ..services.storage import upload_file_to_cloudinary, delete_file_from_cloudinary
 
 router = APIRouter(prefix="/customer", tags=["customer"])
+
 
 # Standard dependency for customer access
 customer_only = auth.RoleChecker(["customer"])
@@ -590,19 +589,18 @@ async def upload_public_proof_of_payment(
         if re.search(r"(.)\1{5,}", reference_no):
             raise HTTPException(status_code=400, detail="Reference number looks invalid (excessive repeating characters).")
     
-    import base64
     content_bytes = await proof_image.read()
-    b64 = base64.b64encode(content_bytes).decode('utf-8')
-    mime = proof_image.content_type or 'image/jpeg'
-    base64_str = f"data:{mime};base64,{b64}"
+    c_url = upload_file_to_cloudinary(content_bytes, folder="payment_receipts")
+    if not c_url:
+        raise HTTPException(status_code=500, detail="Failed to upload payment receipt image to Cloudinary.")
     
     # Optional payment method sync for the verification
     if payment_method:
         booking.payment_method = payment_method
 
-    # Gemini OCR Verification
+    # Gemini OCR Verification (Pass Cloudinary URL or bytes)
     from ..services.payment_verification import payment_verification_service
-    fraud_results = await payment_verification_service.check_for_fraud(db, booking, base64_str)
+    fraud_results = await payment_verification_service.check_for_fraud(db, booking, c_url)
     
     if not fraud_results.get("is_valid_receipt", False) or (fraud_results.get("flags") and fraud_results.get("confidence", 0) < 50):
         # Format a clean error message
@@ -612,7 +610,8 @@ async def upload_public_proof_of_payment(
         encoded_err = urllib.parse.quote(error_text)
         return RedirectResponse(url=f"/customer/booking/{booking_id}/invoice?error={encoded_err}", status_code=303)
 
-    booking.payment_proof_url = base64_str
+    booking.payment_proof_url = c_url
+
     if reference_no:
         booking.special_requests = (booking.special_requests or "") + f"\n[Payment Ref: {reference_no}]"
         
@@ -838,15 +837,15 @@ async def customer_upload_image(
     if profile_image.content_type not in allowed_types:
         raise HTTPException(status_code=400, detail="Invalid file type. Only JPG, PNG, and WEBP allowed.")
         
-    import base64
     content_bytes = await profile_image.read()
-    b64 = base64.b64encode(content_bytes).decode('utf-8')
-    mime = profile_image.content_type or 'image/jpeg'
-    new_profile_image_url = f"data:{mime};base64,{b64}"
-    
-    # Old file deletion logic removed as files are not physical anymore
-                
-    user.profile_image_url = new_profile_image_url
+    if user.profile_image_url:
+        delete_file_from_cloudinary(user.profile_image_url)
+
+    c_url = upload_file_to_cloudinary(content_bytes, folder="profile_images")
+    if not c_url:
+        raise HTTPException(status_code=500, detail="Failed to upload profile picture to Cloudinary.")
+
+    user.profile_image_url = c_url
     db.commit()
     return {"success": True, "image_url": user.profile_image_url, "message": "Profile picture updated."}
 
@@ -855,17 +854,13 @@ async def customer_remove_image(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
-    if user.profile_image_url and user.profile_image_url.startswith("/static/uploads/profiles/"):
-        old_path = os.path.join("app", user.profile_image_url.lstrip("/"))
-        if os.path.exists(old_path):
-            try:
-                os.remove(old_path)
-            except:
-                pass
-                
+    if user.profile_image_url:
+        delete_file_from_cloudinary(user.profile_image_url)
+        
     user.profile_image_url = None
     db.commit()
     return {"success": True, "message": "Profile picture removed."}
+
 
 @router.post("/profile/verify-current-password")
 async def customer_verify_current_password(
@@ -1305,12 +1300,14 @@ async def update_profile_photo(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
-    import base64
     content_bytes = await file.read()
-    b64 = base64.b64encode(content_bytes).decode('utf-8')
-    mime = file.content_type or 'image/jpeg'
-    user.profile_image_url = f"data:{mime};base64,{b64}"
-    db.commit()
+    if user.profile_image_url:
+        delete_file_from_cloudinary(user.profile_image_url)
+
+    c_url = upload_file_to_cloudinary(content_bytes, folder="profile_images")
+    if c_url:
+        user.profile_image_url = c_url
+        db.commit()
     
     return RedirectResponse(url="/customer/profile?success_msg=Profile+photo+updated", status_code=303)
 
@@ -1334,19 +1331,13 @@ async def process_verification(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
-    import base64
-    
-    # Save ID Document
+    # Save ID Document to Cloudinary
     id_content = await id_document.read()
-    id_b64 = base64.b64encode(id_content).decode('utf-8')
-    id_mime = id_document.content_type or 'image/jpeg'
-    id_filename = f"data:{id_mime};base64,{id_b64}"
+    id_url = upload_file_to_cloudinary(id_content, folder="valid_ids")
     
-    # Save Selfie
+    # Save Selfie to Cloudinary
     selfie_content = await selfie.read()
-    selfie_b64 = base64.b64encode(selfie_content).decode('utf-8')
-    selfie_mime = selfie.content_type or 'image/jpeg'
-    selfie_filename = f"data:{selfie_mime};base64,{selfie_b64}"
+    selfie_url = upload_file_to_cloudinary(selfie_content, folder="verification")
         
     # Create Verification Record
     kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user.id).first()
@@ -1354,10 +1345,11 @@ async def process_verification(
         kyc_record = models.IdentityVerification(user_id=user.id)
         db.add(kyc_record)
     
-    kyc_record.document_url = f"/static/uploads/verification/{id_filename}"
-    kyc_record.selfie_url = f"/static/uploads/verification/{selfie_filename}"
+    kyc_record.document_url = id_url
+    kyc_record.selfie_url = selfie_url
     kyc_record.verification_status = "processing"
     db.commit()
+
     
     # Run verification in background
     background_tasks.add_task(

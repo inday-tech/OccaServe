@@ -3,17 +3,12 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from ..db import database, models, schemas
 from ..core import security as auth
-import os
-import shutil
-import uuid
+from ..services.storage import upload_file_to_cloudinary, delete_file_from_cloudinary
 
 router = APIRouter(prefix="/caterer/api", tags=["caterer_feed"])
 
-UPLOAD_DIR = "app/static/uploads/caterer/posts"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-# Dependency to ensure only caterers can manage their feed
 caterer_only = auth.RoleChecker(["caterer"])
+
 
 @router.get("/posts/{caterer_id}", response_model=List[schemas.SocialPostResponse])
 async def get_caterer_posts(
@@ -24,6 +19,7 @@ async def get_caterer_posts(
         models.SocialPost.caterer_id == caterer_id
     ).order_by(models.SocialPost.created_at.desc()).all()
     return posts
+
 
 @router.post("/posts", response_model=schemas.SocialPostResponse)
 async def create_social_post(
@@ -37,12 +33,11 @@ async def create_social_post(
         raise HTTPException(status_code=400, detail="User has no caterer profile")
     
     image_url = None
-    if image:
-        import base64
+    if image and image.filename:
         content_bytes = await image.read()
-        b64 = base64.b64encode(content_bytes).decode('utf-8')
-        mime = image.content_type or 'image/jpeg'
-        image_url = f"data:{mime};base64,{b64}"
+        image_url = upload_file_to_cloudinary(content_bytes, folder="gallery")
+        if not image_url:
+            raise HTTPException(status_code=500, detail="Failed to upload feed image to Cloudinary")
 
     new_post = models.SocialPost(
         caterer_id=user.caterer_profile.id,
@@ -55,6 +50,7 @@ async def create_social_post(
     db.commit()
     db.refresh(new_post)
     return new_post
+
 
 @router.delete("/posts/{post_id}")
 async def delete_social_post(
@@ -70,7 +66,8 @@ async def delete_social_post(
     if not post:
         raise HTTPException(status_code=404, detail="Post not found or unauthorized")
     
-    # No local file deletion needed for base64
+    if post.image_url:
+        delete_file_from_cloudinary(post.image_url)
             
     db.delete(post)
     db.commit()

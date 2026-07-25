@@ -327,3 +327,21 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         pass
     finally:
         await manager.disconnect(client_id)
+
+
+# TEST CLOUDINARY UPLOAD ENDPOINT
+from fastapi import UploadFile, File
+from .services.storage import upload_image_with_metadata
+
+@app.post("/upload-test")
+async def test_cloudinary_upload(file: UploadFile = File(...), folder: str = "gallery"):
+    """Test endpoint for Cloudinary integration validation."""
+    content = await file.read()
+    res = upload_image_with_metadata(content, folder=folder)
+    if not res:
+        raise HTTPException(status_code=500, detail="Cloudinary upload failed. Please verify CLOUDINARY credentials.")
+    return {
+        "public_id": res.get("public_id"),
+        "secure_url": res.get("url")
+    }
+

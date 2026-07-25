@@ -9,7 +9,9 @@ from ..core.utils import validate_file_type_and_size
 from fastapi.responses import Response
 from ..services.notification import NotificationService
 from ..services.realtime import manager
+from ..services.storage import upload_file_to_cloudinary, delete_file_from_cloudinary
 import os
+
 import uuid
 import shutil
 import io
@@ -64,15 +66,12 @@ async def extract_id(
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File is too large. Maximum size is 10MB.")
     
-    # Store file directly as Base64 Data URI instead of saving locally
-    import base64
-    b64 = base64.b64encode(content).decode('utf-8')
-    mime = id_document.content_type or "image/jpeg"
-    actual_mime = "application/pdf" if "pdf" in mime.lower() else "image/jpeg"
-    if "png" in mime.lower(): actual_mime = "image/png"
-    id_url = f"data:{actual_mime};base64,{b64}"
+    id_url = upload_file_to_cloudinary(content, folder="valid_ids")
+    if not id_url:
+        raise HTTPException(status_code=500, detail="Failed to upload ID document to Cloudinary.")
     
     result = await verification_service.extract_id_data(id_url, id_type)
+
     
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result.get("error"))
@@ -217,13 +216,10 @@ async def upload_id(
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File is too large. Maximum size is 10MB.")
     
-    # Store directly as Base64 Data URI instead of saving locally
-    import base64
-    b64 = base64.b64encode(content).decode('utf-8')
-    mime = id_document.content_type or "image/jpeg"
-    actual_mime = "application/pdf" if "pdf" in mime.lower() else "image/jpeg"
-    if "png" in mime.lower(): actual_mime = "image/png"
-    id_url = f"data:{actual_mime};base64,{b64}"
+    id_url = upload_file_to_cloudinary(content, folder="valid_ids")
+    if not id_url:
+        raise HTTPException(status_code=500, detail="Failed to upload ID document to Cloudinary.")
+
 
     # Create/Update Verification Record
     kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).first()
@@ -432,19 +428,19 @@ async def verify_full(
     if not session:
         raise HTTPException(status_code=400, detail="Liveness session not initialized. Please call init first.")
 
-    # Save selfie frames (as Base64 Data URIs directly)
-    import base64
     selfie_urls = []
     for i, file in enumerate(selfies[:3]):
         content = await file.read()
         file_error = validate_file_type_and_size(content, file.filename)
         if file_error:
-             continue # Skip invalid ones
+             continue
+        c_url = upload_file_to_cloudinary(content, folder="verification")
+        if c_url:
+            selfie_urls.append(c_url)
+    
+    if not selfie_urls:
+        raise HTTPException(status_code=400, detail="No valid selfie images uploaded.")
 
-        b64 = base64.b64encode(content).decode('utf-8')
-        mime = file.content_type or "image/jpeg"
-        actual_mime = "image/png" if "png" in mime.lower() else "image/jpeg"
-        selfie_urls.append(f"data:{actual_mime};base64,{b64}")
     
     kyc_record.selfie_url = selfie_urls[0]
     if len(selfie_urls) > 1: kyc_record.selfie_2_url = selfie_urls[1]

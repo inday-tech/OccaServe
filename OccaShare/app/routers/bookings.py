@@ -49,12 +49,12 @@ def get_current_user_from_session(request: Request, db: Session):
     except:
         return None
 
-def save_upload_file(upload_file: UploadFile) -> str:
-    import base64
+def save_upload_file(upload_file: UploadFile, folder: str = "general") -> str:
+    from app.services.storage import upload_file_to_cloudinary
     content_bytes = upload_file.file.read()
-    b64 = base64.b64encode(content_bytes).decode('utf-8')
-    mime = upload_file.content_type or 'image/jpeg'
-    return f"data:{mime};base64,{b64}"
+    url = upload_file_to_cloudinary(content_bytes, folder=folder)
+    return url or ""
+
 
 def save_base64_file(base64_str: str) -> str:
     if not base64_str or "," not in base64_str:
@@ -316,24 +316,20 @@ async def alacarte_checkout_submit(
         # Save payment proof if uploaded
         proof_url = None
         if payment_proof and payment_proof.filename:
-            import base64
+
+            from app.services.storage import upload_file_to_cloudinary
             content_bytes = payment_proof.file.read()
-            b64 = base64.b64encode(content_bytes).decode('utf-8')
-            mime = payment_proof.content_type or 'image/jpeg'
-            proof_url = f"data:{mime};base64,{b64}"
+            proof_url = upload_file_to_cloudinary(content_bytes, folder="payment_receipts")
             
         # Handle KYC Documents if provided
         if id_document and id_document.filename and selfie and selfie.filename:
-            import base64
+            from app.services.storage import upload_file_to_cloudinary
             id_content = id_document.file.read()
-            id_b64 = base64.b64encode(id_content).decode('utf-8')
-            id_mime = id_document.content_type or 'image/jpeg'
-            id_url = f"data:{id_mime};base64,{id_b64}"
+            id_url = upload_file_to_cloudinary(id_content, folder="valid_ids")
             
             selfie_content = selfie.file.read()
-            selfie_b64 = base64.b64encode(selfie_content).decode('utf-8')
-            selfie_mime = selfie.content_type or 'image/jpeg'
-            selfie_url = f"data:{selfie_mime};base64,{selfie_b64}"
+            selfie_url = upload_file_to_cloudinary(selfie_content, folder="verification")
+
             
             kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user.id).first()
             if not kyc_record:
@@ -779,13 +775,14 @@ async def custom_booking_submit(
     os.makedirs(upload_dir, exist_ok=True)
     
     if reference_images:
+        from app.services.storage import upload_file_to_cloudinary
         for file in reference_images:
             if file.filename and file.filename != '':
-                import base64
                 content_bytes = file.file.read()
-                b64 = base64.b64encode(content_bytes).decode('utf-8')
-                mime = file.content_type or 'image/jpeg'
-                image_urls.append(f"data:{mime};base64,{b64}")
+                c_url = upload_file_to_cloudinary(content_bytes, folder="gallery")
+                if c_url:
+                    image_urls.append(c_url)
+
 
     new_booking = models.Booking(
         caterer_id=caterer_id,
@@ -1674,11 +1671,12 @@ async def step_payment_submit(
         if file_size > 5 * 1024 * 1024:
             raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB.")
             
-        import base64
+        from app.services.storage import upload_file_to_cloudinary
         content_bytes = payment_proof.file.read()
-        b64 = base64.b64encode(content_bytes).decode('utf-8')
-        mime = payment_proof.content_type or 'image/jpeg'
-        proof_url = f"data:{mime};base64,{b64}"
+        proof_url = upload_file_to_cloudinary(content_bytes, folder="payment_receipts")
+        if not proof_url:
+            raise HTTPException(status_code=500, detail="Failed to upload payment proof to Cloudinary.")
+
             
         # --- AI RECEIPT VALIDATION (GEMINI / OCR) ---
         if payment_plan == 'balance':
@@ -1770,11 +1768,12 @@ async def alacarte_manage_payment_submit(
         return {"success": False, "message": "File too large. Maximum size is 5MB."}
     proof_image.file.seek(0)
     
-    import base64
+    from app.services.storage import upload_file_to_cloudinary
     content_bytes = await proof_image.read()
-    b64 = base64.b64encode(content_bytes).decode('utf-8')
-    mime = proof_image.content_type or 'image/jpeg'
-    proof_url = f"data:{mime};base64,{b64}"
+    proof_url = upload_file_to_cloudinary(content_bytes, folder="payment_receipts")
+    if not proof_url:
+        return {"success": False, "message": "Failed to upload payment proof to Cloudinary."}
+
         
     # AI Receipt Validation
     from ..services.payment_verification import payment_verification_service
@@ -1842,11 +1841,13 @@ async def reupload_proof_submit(
     if payment_proof.content_type not in allowed_types:
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?validation_error=Invalid+file+type&open_reupload=1", status_code=303)
 
-    import base64
+    from app.services.storage import upload_file_to_cloudinary
     content_bytes = await payment_proof.read()
-    b64 = base64.b64encode(content_bytes).decode('utf-8')
-    mime = payment_proof.content_type or 'image/jpeg'
-    proof_url = f"data:{mime};base64,{b64}"
+    proof_url = upload_file_to_cloudinary(content_bytes, folder="payment_receipts")
+    if not proof_url:
+        import urllib.parse
+        error_msg = urllib.parse.quote("Failed to upload proof to Cloudinary.")
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?validation_error={error_msg}&open_reupload=1", status_code=303)
         
     # --- AI RECEIPT VALIDATION (GEMINI / OCR) ---
     expected_fee = float(booking.reservation_fee or 0)
@@ -1871,9 +1872,10 @@ async def reupload_proof_submit(
         error_msg = urllib.parse.quote(f"Invalid Receipt Detected: {error_detail}")
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?validation_error={error_msg}&method={encoded_method}&open_reupload=1", status_code=303)
 
-    booking.payment_proof_url = f"/static/uploads/payment_proofs/{filename}"
+    booking.payment_proof_url = proof_url
     booking.payment_method = payment_method
     booking.payment_status = "proof_submitted"
+
 
     history = models.BookingHistory(
         booking_id=booking.id,
@@ -1918,11 +1920,12 @@ async def pay_balance_submit(
         if payment_proof.content_type not in allowed_types:
             raise HTTPException(status_code=400, detail="Invalid file type.")
             
-        import base64
+        from app.services.storage import upload_file_to_cloudinary
         content_bytes = await payment_proof.read()
-        b64 = base64.b64encode(content_bytes).decode('utf-8')
-        mime = payment_proof.content_type or 'image/jpeg'
-        proof_url = f"data:{mime};base64,{b64}"
+        proof_url = upload_file_to_cloudinary(content_bytes, folder="payment_receipts")
+        if not proof_url:
+            raise HTTPException(status_code=500, detail="Failed to upload payment proof to Cloudinary.")
+
             
         # --- AI RECEIPT VALIDATION ---
         original_amount = booking.total_amount
@@ -2068,11 +2071,10 @@ async def send_booking_message(
         
     attachment_url = None
     if attachment and attachment.filename:
-        import base64
+        from app.services.storage import upload_file_to_cloudinary
         content_bytes = await attachment.read()
-        b64 = base64.b64encode(content_bytes).decode('utf-8')
-        mime = attachment.content_type or 'image/jpeg'
-        attachment_url = f"data:{mime};base64,{b64}"
+        attachment_url = upload_file_to_cloudinary(content_bytes, folder="chat_attachments")
+
         
     new_msg = models.BookingMessage(
         booking_id=booking_id,

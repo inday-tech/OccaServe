@@ -276,17 +276,18 @@ async def upload_chat_file(
     if ext not in allowed_exts:
         raise HTTPException(status_code=400, detail="File type not allowed")
     
-    import base64
+    from ..services.storage import upload_file_to_cloudinary
     content_bytes = await file.read()
-    b64 = base64.b64encode(content_bytes).decode('utf-8')
-    mime = file.content_type or 'application/octet-stream'
-    data_url = f"data:{mime};base64,{b64}"
+    data_url = upload_file_to_cloudinary(content_bytes, folder="chat_attachments")
+    if not data_url:
+        raise HTTPException(status_code=500, detail="Failed to upload file to Cloudinary")
     
     return {
         "file_url": data_url,
         "file_name": file.filename,
         "message_type": "image" if ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp'] else "file"
     }
+
 
 @router.get("/context/{peer_id}")
 async def get_chat_context(
