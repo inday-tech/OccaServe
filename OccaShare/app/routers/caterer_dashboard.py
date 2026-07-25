@@ -6573,6 +6573,7 @@ async def release_rental_equipment(
     if booking.security_deposit_status == "unpaid":
         return JSONResponse(status_code=400, content={"success": False, "message": "Cannot release equipment. Security deposit is unpaid."})
 
+    try:
         from app.services.storage import upload_file_to_cloudinary
         content_bytes = await release_photo.read()
         c_url = upload_file_to_cloudinary(content_bytes, folder="verification")
@@ -6588,6 +6589,7 @@ async def release_rental_equipment(
     except Exception as e:
         db.rollback()
         return JSONResponse(status_code=500, content={"success": False, "message": str(e)})
+
 
 
 @router.post("/rentals/{booking_id}/inspect")

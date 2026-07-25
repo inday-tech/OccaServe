@@ -345,3 +345,14 @@ async def test_cloudinary_upload(file: UploadFile = File(...), folder: str = "ga
         "secure_url": res.get("url")
     }
 
+
+@app.post("/api/admin/migrate-base64-to-cloudinary")
+async def trigger_base64_migration():
+    """Trigger script to convert all legacy base64 images in PostgreSQL into Cloudinary URLs."""
+    from migrate_base64_to_cloudinary import run_migration
+    import threading
+    thread = threading.Thread(target=run_migration)
+    thread.start()
+    return {"status": "started", "message": "Base64 to Cloudinary migration started in background thread."}
+
+
