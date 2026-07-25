@@ -1,119 +1,142 @@
 """
-Supabase Storage Service — ZERO new dependencies.
-Uses httpx (already in requirements.txt) to call Supabase Storage REST API directly.
-No 'supabase' package needed = no pip conflicts on Railway.
+Cloudinary Storage Service
+Handles uploading and deleting images/assets via Cloudinary.
+Organized folder structure:
+  - profile_images/
+  - valid_ids/
+  - gallery/
+  - menu_images/
+  - payment_receipts/
+  - verification/
 """
 
-import uuid
-import mimetypes
-from typing import Optional
-import httpx
-
+import os
+from typing import Optional, Dict, Any
 from app.core.config import settings
 
-DEFAULT_BUCKET = "occaserve-uploads"
+# --- CLOUDINARY CONFIGURATION ---
+_CLOUDINARY_CLOUD_NAME = getattr(settings, "CLOUDINARY_CLOUD_NAME", "") or os.getenv("CLOUDINARY_CLOUD_NAME", "")
+_CLOUDINARY_API_KEY = getattr(settings, "CLOUDINARY_API_KEY", "") or os.getenv("CLOUDINARY_API_KEY", "")
+_CLOUDINARY_API_SECRET = getattr(settings, "CLOUDINARY_API_SECRET", "") or os.getenv("CLOUDINARY_API_SECRET", "")
 
-# Pre-build the base URL and auth header once at startup
-_SUPABASE_URL = getattr(settings, "SUPABASE_URL", "") or ""
-_SUPABASE_KEY = getattr(settings, "SUPABASE_KEY", "") or ""
-_STORAGE_BASE = f"{_SUPABASE_URL}/storage/v1" if _SUPABASE_URL else ""
-
-if _STORAGE_BASE and _SUPABASE_KEY:
-    print(f"Supabase Storage: Configured via REST API → {_SUPABASE_URL}")
+_CLOUDINARY_CONFIGURED = False
+if _CLOUDINARY_CLOUD_NAME and _CLOUDINARY_API_KEY and _CLOUDINARY_API_SECRET:
+    try:
+        import cloudinary
+        import cloudinary.uploader
+        cloudinary.config(
+            cloud_name=_CLOUDINARY_CLOUD_NAME,
+            api_key=_CLOUDINARY_API_KEY,
+            api_secret=_CLOUDINARY_API_SECRET,
+            secure=True
+        )
+        _CLOUDINARY_CONFIGURED = True
+        print(f"Cloudinary Storage: Configured for cloud '{_CLOUDINARY_CLOUD_NAME}'")
+    except Exception as e:
+        print(f"Warning: Cloudinary configuration failed: {e}")
 else:
-    print("Warning: SUPABASE_URL or SUPABASE_KEY not set. Cloud storage disabled; uploads will use local fallback.")
+    print("Cloudinary Storage: Not configured (missing CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, or CLOUDINARY_API_SECRET).")
 
 
-async def upload_file_to_supabase(
+def extract_public_id(public_id_or_url: str) -> str:
+    """
+    Extracts Cloudinary public_id from a full URL if needed.
+    Example:
+      'https://res.cloudinary.com/vtottsao/image/upload/v123456/gallery/abc123.jpg'
+      -> 'gallery/abc123'
+    """
+    if not public_id_or_url:
+        return ""
+    if "cloudinary.com" in public_id_or_url:
+        parts = public_id_or_url.split("/upload/")
+        if len(parts) > 1:
+            rel = parts[1]
+            if rel.startswith("v") and "/" in rel:
+                rel = rel.split("/", 1)[1]
+            if "." in rel:
+                rel = rel.rsplit(".", 1)[0]
+            return rel
+    return public_id_or_url
+
+
+def upload_file_to_cloudinary(
     file_bytes: bytes,
-    filename: str,
     folder: str = "general",
-    bucket: str = DEFAULT_BUCKET,
-    content_type: str = None
+    public_id: Optional[str] = None
 ) -> Optional[str]:
     """
-    Uploads a file to Supabase Storage via REST API and returns the public CDN URL.
-    Uses httpx — no supabase package required.
-    Returns None if upload fails or Supabase is not configured.
+    Uploads a file byte stream to Cloudinary and returns the secure CDN URL.
+    Folders: profile_images, valid_ids, gallery, menu_images, payment_receipts, verification
     """
-    if not _STORAGE_BASE or not _SUPABASE_KEY:
-        print("Warning: Supabase not configured. File not uploaded to CDN.")
+    res = upload_image_with_metadata(file_bytes, folder=folder, public_id=public_id)
+    return res.get("url") if res else None
+
+
+def upload_image_with_metadata(
+    file_bytes: bytes,
+    folder: str = "general",
+    public_id: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
+    """
+    Uploads file to Cloudinary and returns metadata dict:
+    {
+       "url": "https://res.cloudinary.com/.../image/upload/v123/folder/filename.jpg",
+       "public_id": "folder/filename",
+       "format": "jpg",
+       "width": 800,
+       "height": 600
+    }
+    """
+    if not _CLOUDINARY_CONFIGURED:
+        print("Warning: Cloudinary is not configured. Set environment variables on Railway.")
         return None
 
     try:
-        # Generate a unique filename to prevent collisions
-        ext = filename.rsplit('.', 1)[-1] if '.' in filename else ''
-        unique_filename = f"{uuid.uuid4().hex}.{ext}" if ext else uuid.uuid4().hex
+        import cloudinary.uploader
+        options = {
+            "folder": folder,
+            "resource_type": "auto"
+        }
+        if public_id:
+            options["public_id"] = public_id
 
-        # Build path inside bucket
-        path = f"{folder}/{unique_filename}"
-
-        # Determine content type if not provided
-        if not content_type:
-            content_type, _ = mimetypes.guess_type(filename)
-            if not content_type:
-                content_type = "application/octet-stream"
-
-        # Upload via Supabase Storage REST API
-        upload_url = f"{_STORAGE_BASE}/object/{bucket}/{path}"
-
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                upload_url,
-                headers={
-                    "Authorization": f"Bearer {_SUPABASE_KEY}",
-                    "apikey": _SUPABASE_KEY,
-                    "Content-Type": content_type,
-                },
-                content=file_bytes,
-            )
-
-        if response.status_code in (200, 201):
-            # Build the permanent public CDN URL
-            public_url = f"{_SUPABASE_URL}/storage/v1/object/public/{bucket}/{path}"
-            return public_url
-        else:
-            print(f"Supabase upload failed ({response.status_code}): {response.text}")
-            return None
-
+        res = cloudinary.uploader.upload(file_bytes, **options)
+        return {
+            "url": res.get("secure_url") or res.get("url"),
+            "public_id": res.get("public_id"),
+            "format": res.get("format"),
+            "width": res.get("width"),
+            "height": res.get("height")
+        }
     except Exception as e:
-        print(f"Error uploading file to Supabase: {e}")
+        print(f"Error uploading file to Cloudinary: {e}")
         return None
 
 
-async def delete_file_from_supabase(url: str, bucket: str = DEFAULT_BUCKET) -> bool:
+def delete_file_from_cloudinary(public_id_or_url: str) -> bool:
     """
-    Deletes a file from Supabase Storage via REST API given its public URL.
+    Deletes an asset from Cloudinary given its public_id or full Cloudinary URL.
+    Handles extraction of public_id automatically from full URL.
     """
-    if not _STORAGE_BASE or not _SUPABASE_KEY or not url:
+    if not _CLOUDINARY_CONFIGURED or not public_id_or_url:
         return False
 
     try:
-        # Extract path from public URL
-        # URL format: https://[project].supabase.co/storage/v1/object/public/[bucket]/[folder]/[filename]
-        bucket_public_path = f"/object/public/{bucket}/"
-        if bucket_public_path not in url:
-            return False
-
-        path_in_bucket = url.split(bucket_public_path)[-1]
-
-        # Delete via Supabase Storage REST API
-        delete_url = f"{_STORAGE_BASE}/object/{bucket}"
-
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.request(
-                "DELETE",
-                delete_url,
-                headers={
-                    "Authorization": f"Bearer {_SUPABASE_KEY}",
-                    "apikey": _SUPABASE_KEY,
-                    "Content-Type": "application/json",
-                },
-                json={"prefixes": [path_in_bucket]},
-            )
-
-        return response.status_code in (200, 201, 204)
-
+        import cloudinary.uploader
+        public_id = extract_public_id(public_id_or_url)
+        res = cloudinary.uploader.destroy(public_id)
+        return res.get("result") in ("ok", "not_found")
     except Exception as e:
-        print(f"Error deleting file from Supabase: {e}")
+        print(f"Error deleting file from Cloudinary: {e}")
         return False
+
+
+# Aliases for clean usage across the application
+async def upload_file(file_bytes: bytes, filename: str = "", folder: str = "general") -> Optional[str]:
+    """Alias for upload_file_to_cloudinary."""
+    return upload_file_to_cloudinary(file_bytes, folder=folder)
+
+
+async def delete_file(url: str) -> bool:
+    """Alias for delete_file_from_cloudinary."""
+    return delete_file_from_cloudinary(url)
