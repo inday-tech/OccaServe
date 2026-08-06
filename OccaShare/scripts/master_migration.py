@@ -325,6 +325,16 @@ def master_migration():
             ("price", "FLOAT")
         ]
 
+        # Business Expenses
+        business_expenses_cols = [
+            ("expense_category", "VARCHAR"),
+            ("description", "TEXT"),
+            ("amount", "FLOAT DEFAULT 0.0"),
+            ("date_incurred", "DATE"),
+            ("created_at", "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP"),
+            ("updated_at", "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP")
+        ]
+
         # Apply helper
         def add_cols(table_name, columns):
             print(f"  Migrating {table_name}...")
@@ -349,6 +359,7 @@ def master_migration():
         add_cols("caterer_gallery", gallery_cols)
         add_cols("platform_feedback", feedback_cols)
         add_cols("booking_menu_items", booking_menu_items_cols)
+        add_cols("business_expenses", business_expenses_cols)
 
         # Fix foreign key in package_services table if it points to menu_items instead of services
         print("  Checking package_services foreign key...")
