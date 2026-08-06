@@ -268,6 +268,7 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                 <option value="on_the_way">On the Way</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
+                <option value="expired">Overdue / Expired</option>
                 <option value="draft">Draft</option>
             </select>
         </div>
@@ -336,8 +337,8 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                         <span class="bk-badge badge-completed">Completed</span>
                     {% elif bs == 'pending' %}
                         <span class="bk-badge badge-pending">Under Review</span>
-                    {% elif bs == 'cancelled' %}
-                        <span class="bk-badge badge-cancelled">Cancelled</span>
+                    {% elif bs in ['cancelled', 'expired'] %}
+                        <span class="bk-badge badge-cancelled">{{ 'Overdue / Expired' if bs == 'expired' else 'Cancelled' }}</span>
                     {% elif bs == 'draft' %}
                         <span class="bk-badge badge-draft">Draft</span>
                     {% elif bs == 'preparing' %}

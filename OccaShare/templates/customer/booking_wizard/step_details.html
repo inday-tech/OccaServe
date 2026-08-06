@@ -5,6 +5,7 @@
 {% block step_css %}
 <link rel="stylesheet"
     href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}?v={{ range(1, 9999) | random }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v=19.0">
 <style>
     /* --- Dynamic Caterer Branding --- */
     :root {
@@ -43,8 +44,8 @@
 
 {% block wizard_content %}
 <div class="wizard-header-content">
-    <h2 class="wizard-title">SECTION A: Event Details</h2>
-    <p class="wizard-subtitle">Configure your event requirements and check availability.</p>
+    <h2 class="wizard-title">Step 1: Event Details</h2>
+    <p class="wizard-subtitle">Enter your event details and check caterer availability.</p>
 </div>
 
 <form action="/bookings/step/details" method="POST" id="detailsForm" novalidate>
@@ -60,14 +61,14 @@
             <div class="c-card-premium">
                 <div class="section-header-wrap">
                     <div class="section-icon-wrap"><i class="fas fa-info-circle"></i></div>
-                    <h3 class="form-section-title">Essential Information</h3>
+                    <h3 class="form-section-title">Basic Event Info</h3>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Event Name</label>
                     <input type="text" name="event_name" id="event_name" class="form-input"
-                        value="{{ booking.event_name if booking else '' }}" required>
-                    <span class="field-error" id="err-name">Please enter a descriptive event name.</span>
+                        value="{{ booking.event_name if booking else '' }}" placeholder="e.g., Ana & Mark's Wedding, Gabriel's 7th Birthday" required>
+                    <span class="field-error" id="err-name">Please enter a memorable name for your event (e.g., Ana's 18th Birthday).</span>
                 </div>
 
                 <div class="grid-2-col">
@@ -83,7 +84,7 @@
                             <option value="Private Party" {% if booking and booking.event_type=='Private Party' %}selected{% endif %}>Private Party</option>
                             <option value="Other" {% if booking and (booking.event_type not in ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family Event','Private Party','Fiesta / Large Event','Holiday Celebration']) and booking.event_type %}selected{% endif %}>Other (specify below)</option>
                         </select>
-                        <span class="field-error" id="err-type">Selection required.</span>
+                        <span class="field-error" id="err-type">Please select the type of event you are celebrating.</span>
                     </div>
 
                     <div class="form-group">
@@ -93,7 +94,7 @@
                             required>
                         <input type="hidden" name="guest_count" id="guest_count"
                             value="{{ booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50) }}">
-                        <span class="field-error" id="err-guests">Min: {{ caterer.min_pax or package.min_guests or 1 }} pax.</span>
+                        <span class="field-error" id="err-guests">Please enter at least {{ caterer.min_pax or package.min_guests or 1 }} guests for this package.</span>
                     </div>
                 </div>
 
@@ -102,8 +103,8 @@
                         <label class="form-label">Specify Event Type</label>
                         <input type="text" name="other_event_type" id="other_event_type" class="form-input"
                             value="{{ booking.event_type if booking and (booking.event_type not in ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family Event','Private Party','Fiesta / Large Event','Holiday Celebration']) else '' }}"
-                            placeholder="e.g., Family Reunion" maxlength="80">
-                        <span class="field-error" id="err-other-type">Please describe.</span>
+                            placeholder="e.g., Family Reunion, Anniversary Party" maxlength="80">
+                        <span class="field-error" id="err-other-type">Please describe your event type so we can prepare accordingly.</span>
                     </div>
                 </div>
                 
@@ -119,14 +120,12 @@
                             value="{{ booking.event_date.isoformat() if booking and booking.event_date else '' }}"
                             required onchange="checkAvailability()">
                         <div id="availability-chip" class="availability-chip"></div>
-                        <span class="field-error" id="err-date">Please select a valid date (up to 6 months in advance).</span>
+                        <span class="field-error" id="err-date">Please select an event date at least {{ caterer.booking_lead_time or 3 }} days from today.</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Start Time</label>
-                        <input type="time" name="event_time" id="event_time" class="form-input"
-                            value="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}"
-                            required>
-                        <span class="field-error" id="err-time">Please select a valid time.</span>
+                        <input type="text" name="event_time" id="event_time" class="form-input" data-initial="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}" required>
+                        <span class="field-error" id="err-time">Please choose an event start time between 8:00 AM and 8:00 PM.</span>
                     </div>
                 </div>
             </div>
@@ -145,20 +144,20 @@
                     {% if package.inclusions is iterable and package.inclusions is not string %}
                         {% for inc in package.inclusions %}
                         <div class="inclusion-pill">
-                            <i class="fas fa-check-circle"></i>
+                            <span style="color: var(--wiz-primary); font-weight: 700;">•</span>
                             <span>{{ inc }}</span>
                         </div>
                         {% endfor %}
                     {% elif package.inclusions is string and package.inclusions %}
                         <div class="inclusion-pill">
-                            <i class="fas fa-check-circle"></i>
+                            <span style="color: var(--wiz-primary); font-weight: 700;">•</span>
                             <span>{{ package.inclusions }}</span>
                         </div>
                     {% endif %}
                     
                     {% for item in package_inventory %}
                         <div class="inclusion-pill">
-                            <i class="fas fa-check-circle"></i>
+                            <span style="color: var(--wiz-primary); font-weight: 700;">•</span>
                             <span>{{ item.name }}</span>
                         </div>
                     {% endfor %}
@@ -185,7 +184,7 @@
                             <div class="menu-sub-section" style="margin-bottom: 1.5rem;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                                     <label class="form-label" style="margin: 0;">{{ cat.grouper }}</label>
-                                    <span class="selection-counter" id="counter-{{ cat.grouper|replace(' ', '') }}" style="font-size: 0.75rem; font-weight: 800; color: #0f766e; background: #ccfbf1; padding: 2px 8px; border-radius: 99px;">0 / {{ rule_limit }} Selected</span>
+                                    <span class="selection-counter" id="counter-{{ cat.grouper|replace(' ', '') }}" style="font-size: 0.72rem; font-weight: 600; color: #0f766e; background: #ccfbf1; padding: 2px 8px; border-radius: 99px;">0 / {{ rule_limit }} Selected</span>
                                 </div>
                                 <div class="menu-item-cards selection-group" data-limit="{{ rule_limit }}" data-category="{{ cat.grouper|replace(' ', '') }}">
                                     {% for item in cat.list %}
@@ -209,16 +208,15 @@
                                 {% for item in food_items %}
                                 <div class="menu-item-card included" id="slot-{{ loop.index }}">
                                     <input type="hidden" name="selected_items" value="{{ item.id }}" class="slot-input">
-                                    <div class="indicator-circle active"><i class="fas fa-check"></i></div>
                                     <div class="mic-info">
                                         <span class="mic-name" id="name-{{ loop.index }}">{{ item.name }}</span>
                                         <span class="mic-cat">{{ item.category }}</span>
                                     </div>
                                     <div class="mic-actions">
-                                        <span class="mic-status">Included</span>
+                                        <span class="mic-status" style="font-weight: 500;">Included</span>
                                         <button type="button" class="btn-swap-pro" 
                                             onclick="openSwapModal('{{ item.category }}', '{{ loop.index }}')">
-                                            <i class="fas fa-rotate"></i> Swap
+                                            Swap
                                         </button>
                                     </div>
                                 </div>
@@ -255,7 +253,7 @@
                                     style="display: none;">
                                 <div class="indicator-circle"></div>
                                 <div class="mic-info">
-                                    <span class="mic-name">{{ item.name }} <i class="fas fa-chair" style="color: var(--wiz-slate-400); font-size: 0.7rem; margin-left: 4px;"></i></span>
+                                    <span class="mic-name">{{ item.name }}</span>
                                     <span class="mic-cat">{{ item.category or 'Equipment' }}</span>
                                 </div>
                                 <span class="mic-price">+₱{{ "{:,.2f}".format(item.addon_price or 0) }}</span>
@@ -273,7 +271,7 @@
                                     style="display: none;">
                                 <div class="indicator-circle"></div>
                                 <div class="mic-info">
-                                    <span class="mic-name">{{ item.name }} <i class="fas fa-user-tie" style="color: var(--wiz-slate-400); font-size: 0.7rem; margin-left: 4px;"></i></span>
+                                    <span class="mic-name">{{ item.name }}</span>
                                     <span class="mic-cat">{{ item.category or 'Service' }}</span>
                                     <span class="staff-req-label" style="font-size: 0.7rem; color: var(--wiz-primary); display: none;">Requires: <span class="qty-val">1</span> staff</span>
                                 </div>
@@ -300,14 +298,14 @@
                             <option value="" disabled selected hidden>-- Select Province --</option>
                             <option value="Laguna">Laguna</option>
                         </select>
-                        <span class="field-error" id="err-province">Province is required.</span>
+                        <span class="field-error" id="err-province">Please select the province of your event venue.</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label">City / Municipality</label>
                         <select name="city" id="city_select" class="filter-select-pro" required>
                             <option value="" disabled selected hidden>-- Select City --</option>
                         </select>
-                        <span class="field-error" id="err-city">City required.</span>
+                        <span class="field-error" id="err-city">Please select the city or municipality of your event venue.</span>
                     </div>
                 </div>
 
@@ -316,14 +314,14 @@
                     <select name="barangay" id="barangay_select" class="filter-select-pro" required>
                         <option value="" disabled selected hidden>-- Select Barangay --</option>
                     </select>
-                    <span class="field-error" id="err-barangay">Barangay required.</span>
+                    <span class="field-error" id="err-barangay">Please select the barangay of your event venue.</span>
                 </div>
 
                 <input type="hidden" name="venue_address" id="venue_address_hidden" value="{{ booking.venue_address if booking else '' }}">
 
                 <div class="form-group">
-                    <label class="form-label">Special Requests & Modifications <small>(e.g. Dietary limits, dish upgrades - extra charges may be applied by the caterer)</small></label>
-                    <textarea name="special_requests" class="form-input" rows="3" placeholder="Tell us if you want to upgrade your pork dish to beef, or if you have vegan guests. The caterer will adjust the final price during their review.">{{ booking.special_requests if booking else '' }}</textarea>
+                    <label class="form-label">Special Requests &amp; Notes <small>(e.g. Dietary needs, dish upgrades)</small></label>
+                    <textarea name="special_requests" class="form-input" rows="3" placeholder="Tell us if you have any special requests or dietary needs (e.g., no pork, vegetarian guests, table arrangement preferences).">{{ booking.special_requests if booking else '' }}</textarea>
                 </div>
             </div>
         </div>
@@ -331,7 +329,7 @@
         <!-- Sidebar: Cost Projection -->
         <aside class="calculator-sidebar">
             <div class="calc-card">
-                <h3 class="calc-title"><i class="fas fa-calculator" style="color: var(--wiz-primary); font-size: 1rem;"></i> Cost Projection</h3>
+                <h3 class="calc-title">Price Estimate</h3>
 
                 <div class="calc-row">
                     <span class="calc-label">Package Price</span>
@@ -346,20 +344,20 @@
                     <span class="calc-val" id="calc-addons-total">+₱0.00</span>
                 </div>
                 <div class="calc-row">
-                    <span class="calc-label">Delivery & Travel</span>
+                    <span class="calc-label">Delivery &amp; Travel</span>
                     <span class="calc-val" id="calc-delivery-fee">₱0.00</span>
                 </div>
 
                 <div class="calc-divider"></div>
 
                 <div class="calc-total">
-                    <span class="total-label">Total Estimate</span>
+                    <span class="total-label">Estimated Total Price</span>
                     <span class="total-price" id="calc-grand-total">₱0.00</span>
                 </div>
 
                 <div class="calc-info-box">
                     <i class="fas fa-circle-info"></i>
-                    <span>This is an initial estimate. Final pricing may be adjusted based on menu selections and add-ons in the next steps.</span>
+                    <span>This is an estimated price. The final price may change based on your chosen dishes and add-ons.</span>
                 </div>
             </div>
         </aside>
@@ -376,44 +374,37 @@
         </a>
         {% endif %}
         <button type="submit" id="submitBtn" class="btn-wizard-next no-submit">
-            Next: Verify Identity <i class="fas fa-id-card"></i>
+            Next Step: Identity <i class="fas fa-arrow-right"></i>
         </button>
     </div>
     </div>
 </form>
 
 {% if is_locked %}
-<div class="locked-banner" style="background: #fee2e2; color: #b91c1c; padding: 0.75rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; font-weight: 700; border: 1px solid #f87171;">
-    <i class="fas fa-lock"></i> This booking is already in progress. Details cannot be modified.
+<div class="locked-banner" style="background: #fef3cd; color: #92400e; padding: 0.65rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; font-weight: 500; font-size: 0.85rem; border: 1px solid #fde68a;">
+    <i class="fas fa-lock" style="margin-right: 6px;"></i> This booking is in progress. You can proceed to the next step, but details can no longer be changed.
 </div>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         const form = document.getElementById("detailsForm");
-        if(form) {
-            const inputs = form.querySelectorAll("input, select, textarea");
-            inputs.forEach(i => {
-                i.disabled = true;
-                i.style.backgroundColor = "#f3f4f6";
-                i.style.cursor = "not-allowed";
-            });
+        if (form) {
+            // CSS-level lock: disable all interactions
+            form.style.pointerEvents = 'none';
+            form.style.userSelect = 'none';
+
+            // Fix the submit button so it bypasses the locked form
             const submitBtn = document.getElementById("submitBtn");
-            if(submitBtn) {
+            if (submitBtn) {
+                submitBtn.style.pointerEvents = 'auto';
                 submitBtn.type = "button";
                 submitBtn.onclick = () => window.location.href = "/bookings/step/kyc/{{ booking.id }}";
                 submitBtn.innerHTML = 'Next Step <i class="fas fa-arrow-right"></i>';
-                submitBtn.className = "btn-wizard-next"; // removes no-submit logic
+                submitBtn.className = "btn-wizard-next";
             }
-            
-            // Hide buttons that add/remove items
-            document.querySelectorAll(".btn-addon, .btn-remove-addon, .btn-swap-item, .btn-swap-pro, .add-item-btn").forEach(btn => {
-                btn.style.display = 'none';
-            });
-            
-            // Disable clicks on selectable cards
-            document.querySelectorAll(".menu-item-card.selectable, .menu-item-card.addon").forEach(card => {
-                card.onclick = null;
-                card.style.cursor = 'default';
-            });
+
+            // Re-enable Back button
+            const backBtn = form.querySelector('.btn-wizard-back');
+            if (backBtn) backBtn.style.pointerEvents = 'auto';
         }
     });
 </script>
@@ -443,8 +434,8 @@
         {% for item in all_menu_items %}
         {
             id: {{ item.id }},
-            name: "{{ item.name }}",
-            category: "{{ item.category }}",
+            name: {{ item.name | tojson | safe }},
+            category: {{ item.category | tojson | safe }},
             is_addon: {{ 'true' if item.is_addon else 'false' }}
         }{% if not loop.last %},{% endif %}
         {% endfor %}
@@ -467,13 +458,22 @@
 
 {% block step_js %}
 <script>
-    window.pricingMode = "{{ package.pricing_mode if package.pricing_mode else ('per_pax' if package.price_unit == 'per_guest' else 'fixed') }}";
+    {% if package %}
+    window.pricingMode = "{{ package.pricing_mode or ('per_pax' if package.price_unit == 'per_guest' else 'fixed') }}";
     window.pricePerHead = parseFloat("{{ package.price_per_head or package.price or 0 }}") || 0;
-    window.basePrice = parseFloat("{{ package.price or 0 }}") || 0;
+    window.basePrice = parseFloat("{{ package.price or package.price_per_head or 0 }}") || 0;
     window.additionalGuestPrice = parseFloat("{{ package.additional_guest_price or 0 }}") || 0;
-    window.catererId = "{{ caterer.id }}";
     window.minGuests = parseInt("{{ package.min_guests or caterer.min_pax or 1 }}") || 1;
     window.maxGuests = parseInt("{{ package.max_guests or 0 }}") || 0;
+    {% else %}
+    window.pricingMode = "per_pax";
+    window.pricePerHead = 0;
+    window.basePrice = 0;
+    window.additionalGuestPrice = 0;
+    window.minGuests = parseInt("{{ caterer.min_pax or 1 }}") || 1;
+    window.maxGuests = 0;
+    {% endif %}
+    window.catererId = "{{ caterer.id }}";
     window.bookingLeadTime = parseInt("{{ caterer.booking_lead_time or 3 }}") || 3;
     window.catererRules = {{ (caterer.scheduling_rules or {}) | tojson | safe }};
 </script>

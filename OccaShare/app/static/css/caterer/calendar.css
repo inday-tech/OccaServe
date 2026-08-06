@@ -760,3 +760,70 @@
         padding: 0.75rem;
     }
 }
+
+/* --- MOBILE COMPACT CALENDAR (DATE PICKER STYLE) --- */
+@media (max-width: 768px) {
+    .fc-event-title, .fc-event-time { 
+        display: none !important; 
+    }
+    .fc-daygrid-event { 
+        width: 8px !important; 
+        height: 8px !important; 
+        border-radius: 50% !important; 
+        display: inline-block !important; 
+        margin: 2px !important; 
+        padding: 0 !important;
+        border: none !important;
+    }
+    .fc-daygrid-event-harness { 
+        display: inline-block !important; 
+    }
+    .fc-daygrid-day-events { 
+        text-align: center !important; 
+        min-height: auto !important;
+        margin-bottom: 2px !important;
+    }
+    .fc-daygrid-day-frame { 
+        min-height: 45px !important; 
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .fc-daygrid-day-number {
+        font-size: 0.85rem !important;
+        padding: 2px !important;
+        margin: 0 auto !important;
+    }
+    .fc .fc-toolbar { 
+        flex-direction: column; 
+        gap: 12px; 
+    }
+    .fc-toolbar-chunk { 
+        width: 100%; 
+        display: flex; 
+        justify-content: center; 
+        gap: 8px;
+    }
+    .fc-header-toolbar > .fc-toolbar-chunk:first-child {
+        display: flex;
+        flex-wrap: nowrap;
+    }
+    .fc-header-toolbar .fc-button-group { 
+        display: flex;
+        flex: 1;
+    }
+    .fc-header-toolbar .fc-button {
+        padding: 0.5rem !important;
+        white-space: nowrap;
+    }
+    .fc-header-toolbar > .fc-toolbar-chunk:last-child .fc-button {
+        flex: 1;
+    }
+    .cal-grid { 
+        display: flex !important; 
+        flex-direction: column; 
+    }
+    .cal-card-calendar, .cal-sidebar { 
+        width: 100% !important; 
+    }
+}

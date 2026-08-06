@@ -11,38 +11,7 @@
         --adm-success: #10b981;
     }
 
-    /* Diamond Standard Layout Alignment */
-    .table-card-clean {
-        background: #fff;
-        border-radius: 24px;
-        border: 1px solid rgba(226, 232, 240, 0.8);
-        overflow: visible;
-        transition: all 0.3s ease;
-        margin: 0 0 2rem 0;
-        /* Align with KPI grid margins */
-    }
 
-    .clean-table thead th {
-        font-size: 0.65rem;
-        font-weight: 800;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid #f1f5f9;
-        background: #f8fafc;
-    }
-
-    .cust-row {
-        border-bottom: 1px solid #f8fafc;
-        transition: all 0.2s ease;
-    }
-
-    .cust-row:hover {
-        background: #f8fafc;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-    }
 
     .status-badge-dm {
         padding: 5px 12px;
@@ -294,7 +263,7 @@
         </div>
     </div>
 
-    <div style="overflow: visible; padding: 0 0 5rem 0; position: relative; z-index: 10;">
+    <div class="table-responsive-wrapper" style="padding: 0 0 5rem 0; position: relative; z-index: 10;">
         <table class="clean-table" id="registryTable" style="width: 100%; border-collapse: collapse;">
             <thead>
                 <tr>

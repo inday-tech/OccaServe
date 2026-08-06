@@ -1159,6 +1159,31 @@ async def caterer_detail(
 
     # Filter active data only
     active_packages = [p for p in caterer.packages if p.is_active]
+    import json
+    for p in active_packages:
+        p.parsed_inclusions = []
+        if p.inclusions:
+            if isinstance(p.inclusions, str):
+                try:
+                    parsed = json.loads(p.inclusions)
+                    if isinstance(parsed, list):
+                        p.parsed_inclusions = [i for i in parsed if i]
+                    elif isinstance(parsed, dict):
+                        p.parsed_inclusions = [k for k, v in parsed.items() if v]
+                    else:
+                        p.parsed_inclusions = [str(parsed)]
+                except:
+                    p.parsed_inclusions = [i.strip() for i in p.inclusions.split(',') if i.strip()]
+            elif isinstance(p.inclusions, list):
+                p.parsed_inclusions = [i for i in p.inclusions if i]
+            elif isinstance(p.inclusions, dict):
+                p.parsed_inclusions = [k for k, v in p.inclusions.items() if v]
+        
+        if getattr(p, 'linked_inventory', None) and isinstance(p.linked_inventory, list):
+            for i in p.linked_inventory:
+                if i and i not in p.parsed_inclusions:
+                    p.parsed_inclusions.append(i)
+
     # Filter menu items (exclude rentals/services)
     active_menu = [m for m in caterer.menu_items if not m.is_archived and not m.is_hidden and m.status == 'available' and m.usage_type in ['order_only', 'both'] and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
         and getattr(m, 'usage_type', '') != 'package_only'
@@ -1204,6 +1229,12 @@ async def caterer_detail(
     # Extract public portfolios
     public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public']
 
+    # Get real completed events count
+    completed_events_count = db.query(models.Booking).filter(
+        models.Booking.caterer_id == caterer.id, 
+        models.Booking.status == 'completed'
+    ).count()
+
     response = templates.TemplateResponse("customer/caterer_profile_view.html", {
         "request": request, 
         "caterer": caterer,
@@ -1212,6 +1243,7 @@ async def caterer_detail(
         "active_inventory": active_inventory,
         "gallery_items": caterer.gallery_items,
         "public_portfolios": public_portfolios,
+        "completed_events_count": completed_events_count,
         "reviews": caterer.reviews,
         "user": user,
         "has_previous_bookings": has_previous_bookings,
@@ -1314,11 +1346,14 @@ async def update_profile_photo(
 @router.get("/verification", response_class=HTMLResponse)
 async def customer_verification(
     request: Request,
+    db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
+    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user.id).first()
     return templates.TemplateResponse("customer/verification.html", {
         "request": request,
         "user": user,
+        "kyc": kyc_record,
         "client_id": f"verify_{user.id}"
     })
 
@@ -1356,8 +1391,8 @@ async def process_verification(
         run_customer_verification_bg,
         user.id,
         client_id,
-        id_path,
-        [selfie_path]
+        id_url,
+        [selfie_url]
     )
     
     return RedirectResponse(url="/customer/dashboard?success_msg=Verification+started.+Please+wait.", status_code=303)

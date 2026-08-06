@@ -1,324 +1,844 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {
-    --up-slate-900: #2D4059;
-    --up-slate-800: #3f5572;
-    --up-slate-600: #6b82a1;
-    --up-slate-500: #889ebf;
-    --up-slate-400: #cbd5e1;
-    --up-emerald-500: #10b981;
-    --up-orange: #FF7B54;
-    --up-orange-light: #fcece6;
-    --up-bg-soft: #f8fafc;
-    --up-border: #f1f5f9;
+    --pay-slate-900: #0f172a;
+    --pay-slate-800: #1e293b;
+    --pay-slate-700: #334155;
+    --pay-slate-600: #475569;
+    --pay-slate-500: #64748b;
+    --pay-slate-400: #94a3b8;
+    --pay-slate-300: #cbd5e1;
+    --pay-slate-200: #e2e8f0;
+    --pay-slate-100: #f1f5f9;
+    --pay-slate-50:  #f8fafc;
+    --pay-emerald-600: #059669;
+    --pay-emerald-500: #10b981;
+    --pay-emerald-50:  #ecfdf5;
+    --pay-blue-600:    #2563eb;
+    --pay-blue-50:     #eff6ff;
+    --pay-shadow-sm:   0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --pay-shadow-md:   0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    --pay-shadow-lg:   0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
 }
 
-.payment-form {
-    max-width: 1000px;
+.payment-step-container {
+    max-width: 1100px;
     margin: 0 auto;
+    padding: 0.5rem 1rem 3.5rem;
+    font-family: 'Inter', 'Poppins', sans-serif;
+    color: var(--pay-slate-800);
 }
 
 /* ── HEADER ── */
 .wizard-header-content {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 2.25rem;
 }
 
 .wizard-title {
     font-family: 'Poppins', sans-serif;
-    font-size: 2rem;
-    font-weight: 900;
-    color: var(--up-slate-900);
-    letter-spacing: -0.04em;
-    margin-bottom: 0.5rem;
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: var(--pay-slate-900);
+    letter-spacing: -0.03em;
+    margin: 0 0 0.4rem 0;
 }
 
 .wizard-subtitle {
-    font-family: 'Poppins', sans-serif;
     font-size: 0.95rem;
-    color: var(--up-slate-500);
+    color: var(--pay-slate-500);
     font-weight: 500;
+    margin: 0;
 }
 
-/* ── PAYMENT PLAN GRID ── */
-.payment-plan-grid {
+/* ── COUNTDOWN BANNER (Refined) ── */
+.countdown-banner-clean {
+    max-width: 1000px;
+    margin: 0 auto 2rem auto;
+    background: #fff1f2;
+    border: 1px solid #fecdd3;
+    color: #881337;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.25rem;
+    box-shadow: var(--pay-shadow-sm);
+}
+
+.countdown-banner-clean h4 {
+    margin: 0 0 0.2rem 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #9f1239;
+}
+
+.countdown-banner-clean p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #be123c;
+    line-height: 1.4;
+}
+
+.timer-badge-clean {
+    background: #e11d48;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 1.15rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.05em;
+    box-shadow: 0 2px 4px rgba(225, 29, 72, 0.25);
+    white-space: nowrap;
+}
+
+/* ── 2-COLUMN CHECKOUT LAYOUT ── */
+.pay-grid-layout {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
+    grid-template-columns: 1.2fr 0.95fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+@media (max-width: 960px) {
+    .pay-grid-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── SECTION BOXES ── */
+.pay-section-box {
+    background: white;
+    border: 1px solid var(--pay-slate-300);
+    border-radius: 14px;
+    padding: 1.75rem;
+    box-shadow: var(--pay-shadow-sm);
     margin-bottom: 1.5rem;
 }
 
-.plan-card {
-    background: white;
-    border: 1.5px solid var(--up-border);
-    padding: 1.25rem;
-    border-radius: 16px;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
-    position: relative;
-    overflow: hidden;
+.pay-section-header {
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid var(--pay-slate-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
 }
 
-.plan-card:hover {
-    transform: translateY(-4px);
-    border-color: var(--up-orange);
-    box-shadow: 0 10px 25px rgba(255, 123, 84, 0.1);
-}
-
-.plan-card.active {
-    border-color: var(--up-orange);
-    background: var(--up-orange-light);
-    box-shadow: 0 15px 35px rgba(255, 123, 84, 0.15);
-}
-
-.plan-tag {
-    font-size: 0.65rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--up-slate-400);
-    margin-bottom: 0.5rem;
-    display: block;
-}
-
-.plan-card.active .plan-tag {
-    color: var(--up-orange);
-}
-
-.plan-title {
+.pay-section-title {
     font-family: 'Poppins', sans-serif;
-    font-size: 1.1rem;
-    font-weight: 850;
-    color: var(--up-slate-900);
-    margin: 0 0 0.25rem 0;
-}
-
-.plan-desc {
-    font-size: 0.8rem;
-    color: var(--up-slate-500);
-    margin: 0;
-}
-
-.plan-amount {
-    margin-top: 1rem;
-    font-size: 1.25rem;
-    font-weight: 900;
-    color: var(--up-slate-900);
-}
-
-.plan-check {
-    position: absolute;
-    top: 1.25rem;
-    right: 1.25rem;
-    color: var(--up-slate-400);
-    font-size: 1.2rem;
-}
-
-.plan-card.active .plan-check {
-    color: var(--up-orange);
-}
-
-/* ── FINANCIAL SUMMARY BOX ── */
-.payment-summary-premium {
-    background: #0f172a;
-    border-radius: 20px;
-    padding: 2rem;
-    color: white;
-    margin-bottom: 2.5rem;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
-}
-
-.summary-merchant-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 2rem;
-}
-
-.paying-to-box {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.merchant-logo-sm {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    object-fit: cover;
-    background: white;
-    padding: 2px;
-}
-
-.merchant-meta h5 {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--up-slate-400);
-    margin: 0;
-}
-
-.merchant-meta p {
-    font-size: 1rem;
-    font-weight: 800;
-    margin: 0;
-}
-
-.summary-rows {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-.s-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.85rem;
-    opacity: 0.8;
-}
-
-.s-row.grand-total {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    opacity: 1;
-    font-size: 1rem;
-    font-weight: 800;
-}
-
-.s-row.to-pay-now {
-    background: rgba(16, 185, 129, 0.15);
-    padding: 1rem;
-    border-radius: 12px;
-    opacity: 1;
-    margin-top: 0.5rem;
-}
-
-.s-row.to-pay-now .val {
-    font-size: 1.5rem;
-    font-weight: 950;
-    color: var(--up-emerald-500);
-}
-
-.s-row.balance-row {
+    font-size: 1.05rem;
     font-weight: 700;
-    color: var(--up-orange);
-    opacity: 1;
-}
-
-/* ── METHOD SELECTION ── */
-.method-grid-modern {
-    display: flex;
-    gap: 1.5rem;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-bottom: 2rem;
-}
-
-.method-card-modern {
-    background: white;
-    border: 2px solid var(--up-border);
-    border-radius: 16px;
-    padding: 1.5rem;
-    width: 140px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
-}
-
-.method-card-modern:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.08);
-}
-
-.method-icon-wrap {
-    width: 64px;
-    height: 64px;
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2.2rem;
-    color: white;
-    flex-shrink: 0;
-    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.1);
-}
-
-.method-label {
-    font-size: 0.95rem;
-    font-weight: 800;
-    color: var(--up-slate-800);
-}
-
-/* Color Variants */
-.method-card-modern.gcash { border-color: #bfdbfe; background: #eff6ff; }
-.method-card-modern.gcash:hover { border-color: #60a5fa; background: #dbeafe; }
-.method-card-modern.gcash .method-icon-wrap { background: #005ce6; }
-.method-card-modern.gcash .method-label { color: #1e3a8a; }
-
-.method-card-modern.maya { border-color: #bbf7d0; background: #f0fdf4; }
-.method-card-modern.maya:hover { border-color: #4ade80; background: #dcfce7; }
-.method-card-modern.maya .method-icon-wrap { background: #16a34a; }
-.method-card-modern.maya .method-label { color: #14532d; }
-
-.method-card-modern.bank { border-color: #fef08a; background: #fefce8; }
-.method-card-modern.bank:hover { border-color: #facc15; background: #fef9c3; }
-.method-card-modern.bank .method-icon-wrap { background: #ca8a04; }
-.method-card-modern.bank .method-label { color: #713f12; }
-
-/* Gateway Badge */
-.gateway-badge {
-    background: #e0f2fe;
-    color: #0369a1;
-    font-size: 0.6rem;
-    font-weight: 800;
-    padding: 0.2rem 0.5rem;
-    border-radius: 4px;
-    margin-top: -0.25rem;
-}
-
-/* ── SECURITY BADGES ── */
-.security-trust-bar {
-    display: flex;
-    justify-content: center;
-    gap: 2rem;
-    margin-top: 2rem;
-    padding: 1rem;
-    border-top: 1px solid var(--up-border);
-}
-
-.trust-item {
+    color: var(--pay-slate-900);
+    margin: 0;
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.75rem;
+}
+
+.pay-section-subtitle {
+    font-size: 0.8rem;
+    color: var(--pay-slate-500);
+    font-weight: 500;
+}
+
+/* ── PLAN CHOICE CARDS (Horizontal & Clean) ── */
+.plan-list-clean {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.plan-card-clean {
+    background: white;
+    border: 1.5px solid var(--pay-slate-300);
+    border-radius: 10px;
+    padding: 1.15rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.plan-card-clean:hover {
+    border-color: var(--pay-slate-400);
+    background: var(--pay-slate-50);
+}
+
+.plan-card-clean.active {
+    border: 2px solid var(--pay-slate-900);
+    background: var(--pay-slate-50);
+    padding: calc(1.15rem - 0.5px) calc(1.25rem - 0.5px);
+}
+
+.plan-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+}
+
+.plan-radio {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--pay-slate-400);
+    margin-top: 2px;
+    position: relative;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.plan-card-clean.active .plan-radio {
+    border-color: var(--pay-slate-900);
+    background: var(--pay-slate-900);
+}
+
+.plan-card-clean.active .plan-radio::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 50%;
+}
+
+.plan-info h4 {
+    margin: 0 0 0.15rem 0;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.95rem;
     font-weight: 700;
-    color: var(--up-slate-400);
+    color: var(--pay-slate-900);
 }
 
-.trust-item i {
-    color: var(--up-emerald-500);
+.plan-info p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--pay-slate-500);
 }
 
-/* ── ANIMATIONS ── */
-@keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+.plan-tag-pill {
+    font-size: 0.68rem;
+    font-weight: 600;
+    background: var(--pay-slate-200);
+    color: var(--pay-slate-700);
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 0.25rem;
 }
 
-.animate-up {
-    animation: fadeInUp 0.6s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+.plan-card-clean.active .plan-tag-pill {
+    background: var(--pay-slate-900);
+    color: white;
 }
 
-@media (max-width: 768px) {
-    .payment-plan-grid, .method-grid-premium {
-        grid-template-columns: 1fr;
-    }
+.plan-price {
+    text-align: right;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--pay-slate-900);
+    white-space: nowrap;
+}
+
+/* ── METHOD CARDS (Pleasing & Professional Grid) ── */
+.method-grid-clean {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 1rem;
+}
+
+.method-card-clean {
+    background: white;
+    border: 1.5px solid var(--pay-slate-300);
+    border-radius: 12px;
+    padding: 1.25rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.method-card-clean:hover {
+    border-color: var(--pay-slate-500);
+    transform: translateY(-2px);
+    box-shadow: var(--pay-shadow-md);
+}
+
+.method-logo-box {
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.brand-badge-gcash {
+    background: #005ce6;
+    color: white;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 800;
+    font-size: 1.15rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 8px;
+    letter-spacing: -0.02em;
+    box-shadow: 0 2px 4px rgba(0, 92, 230, 0.25);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.brand-badge-maya {
+    background: #16a34a;
+    color: white;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 800;
+    font-size: 1.15rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 8px;
+    letter-spacing: -0.02em;
+    box-shadow: 0 2px 4px rgba(22, 163, 74, 0.25);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.brand-badge-bank {
+    background: #b45309;
+    color: white;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 8px;
+    letter-spacing: -0.02em;
+    box-shadow: 0 2px 4px rgba(180, 83, 9, 0.25);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.method-label-clean {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--pay-slate-800);
+    margin: 0;
+}
+
+.method-sub-clean {
+    font-size: 0.72rem;
+    color: var(--pay-slate-500);
+    font-weight: 500;
+}
+
+/* ── EXECUTIVE SUMMARY SIDEBAR ── */
+.pay-summary-sidebar {
+    position: sticky;
+    top: 2rem;
+}
+
+.pay-summary-card {
+    background: white;
+    border: 1px solid var(--pay-slate-300);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: var(--pay-shadow-md);
+}
+
+.summary-merchant-header {
+    background: var(--pay-slate-50);
+    border-bottom: 1px solid var(--pay-slate-200);
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.merchant-id-box {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.merchant-logo-clean {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid var(--pay-slate-200);
+    background: white;
+}
+
+.merchant-logo-fallback {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: var(--pay-slate-900);
+    color: white;
+    font-weight: 800;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.merchant-text h5 {
+    margin: 0;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--pay-slate-500);
+    font-weight: 600;
+}
+
+.merchant-text p {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--pay-slate-900);
+}
+
+.ref-pill {
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: var(--pay-slate-200);
+    color: var(--pay-slate-700);
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+.summary-body {
+    padding: 1.5rem;
+}
+
+.fin-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.fin-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.9rem;
+    color: var(--pay-slate-600);
+}
+
+.fin-item .label {
+    font-weight: 500;
+}
+
+.fin-item .value {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    color: var(--pay-slate-900);
+}
+
+.fin-item.highlight-pay {
+    background: var(--pay-emerald-50);
+    border: 1px solid #d1fae5;
+    padding: 1rem 1.15rem;
+    border-radius: 10px;
+    margin: 0.35rem 0;
+    align-items: center;
+}
+
+.fin-item.highlight-pay .label {
+    font-weight: 700;
+    color: #065f46;
+    font-size: 0.95rem;
+}
+
+.fin-item.highlight-pay .value {
+    font-size: 1.35rem;
+    font-weight: 900;
+    color: #059669;
+}
+
+.fin-item.balance-item {
+    padding-top: 0.75rem;
+    border-top: 1px dashed var(--pay-slate-200);
+    font-size: 0.85rem;
+    color: var(--pay-slate-500);
+}
+
+/* ── SECURITY TRUST BADGES ── */
+.trust-badges-clean {
+    margin-top: 1.25rem;
+    background: var(--pay-slate-50);
+    border: 1px solid var(--pay-slate-200);
+    border-radius: 10px;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.trust-badge-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--pay-slate-600);
+}
+
+.trust-badge-item i {
+    color: var(--pay-emerald-600);
+    font-size: 0.9rem;
+}
+
+/* ── WIZARD ACTIONS ── */
+.wizard-actions-clean {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.btn-back-clean {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1.25rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--pay-slate-600);
+    background: white;
+    border: 1px solid var(--pay-slate-300);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.btn-back-clean:hover {
+    background: var(--pay-slate-50);
+    color: var(--pay-slate-900);
+    border-color: var(--pay-slate-400);
+}
+
+.btn-proceed-placeholder {
+    flex: 1;
+    padding: 0.85rem 1.25rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--pay-slate-400);
+    background: var(--pay-slate-100);
+    border: 1px dashed var(--pay-slate-300);
+    text-align: center;
+    cursor: not-allowed;
+}
+
+/* ── MODAL (Clean Digital Cashier Sheet) ── */
+.modal-overlay-clean {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.65);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
+    padding: 1rem;
+}
+
+.modal-card-clean {
+    background: white;
+    width: 100%;
+    max-width: 480px;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+}
+
+.modal-header-clean {
+    background: var(--pay-slate-50);
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--pay-slate-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header-clean h3 {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--pay-slate-900);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-close-modal {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--pay-slate-400);
+    cursor: pointer;
+    padding: 0.25rem;
+    transition: color 0.15s ease;
+}
+
+.btn-close-modal:hover {
+    color: var(--pay-slate-700);
+}
+
+.modal-body-clean {
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.payment-channel-box {
+    background: var(--pay-slate-50);
+    border: 1px solid var(--pay-slate-200);
+    border-radius: 14px;
+    padding: 1.25rem;
+    text-align: center;
+    margin-bottom: 1.25rem;
+}
+
+.qr-frame {
+    display: inline-block;
+    background: white;
+    padding: 0.6rem;
+    border-radius: 12px;
+    border: 1px solid var(--pay-slate-200);
+    margin-bottom: 1rem;
+    box-shadow: var(--pay-shadow-sm);
+}
+
+.qr-frame img {
+    width: 170px;
+    height: 170px;
+    object-fit: cover;
+    border-radius: 8px;
+    display: block;
+}
+
+.channel-name {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--pay-slate-900);
+    margin: 0 0 0.2rem 0;
+}
+
+.channel-number {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.45rem;
+    font-weight: 850;
+    color: var(--pay-blue-600);
+    letter-spacing: 1px;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.channel-number.emerald {
+    color: var(--pay-emerald-600);
+}
+
+.channel-number.amber {
+    color: #b45309;
+}
+
+.btn-copy-num {
+    background: white;
+    border: 1px solid var(--pay-slate-300);
+    border-radius: 6px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--pay-slate-600);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-copy-num:hover {
+    background: var(--pay-slate-100);
+    color: var(--pay-slate-900);
+}
+
+.instruction-steps-clean {
+    background: white;
+    border: 1px solid var(--pay-slate-200);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.inst-step {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.82rem;
+    color: var(--pay-slate-700);
+    font-weight: 500;
+}
+
+.inst-step i {
+    width: 20px;
+    text-align: center;
+    color: var(--pay-slate-400);
+}
+
+/* Upload Box */
+.upload-box-clean {
+    border: 2px dashed var(--pay-slate-300);
+    border-radius: 12px;
+    padding: 1.25rem;
+    text-align: center;
+    margin-bottom: 1.25rem;
+    background: white;
+    transition: border-color 0.2s ease;
+}
+
+.upload-box-clean:hover {
+    border-color: var(--pay-slate-400);
+}
+
+.upload-icon-circle {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--pay-slate-100);
+    color: var(--pay-slate-700);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+}
+
+.upload-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--pay-slate-900);
+    margin: 0 0 0.2rem 0;
+}
+
+.upload-sub {
+    font-size: 0.78rem;
+    color: var(--pay-slate-500);
+    margin: 0 0 1rem 0;
+}
+
+.file-input-clean {
+    width: 100%;
+    padding: 0.65rem;
+    border: 1px solid var(--pay-slate-300);
+    border-radius: 8px;
+    background: var(--pay-slate-50);
+    font-size: 0.85rem;
+    color: var(--pay-slate-700);
+    cursor: pointer;
+    margin-bottom: 0.75rem;
+}
+
+.ref-input-clean {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--pay-slate-300);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--pay-slate-900);
+    outline: none;
+    transition: border-color 0.15s ease;
+    box-sizing: border-box;
+}
+
+.ref-input-clean:focus {
+    border-color: var(--pay-slate-900);
+}
+
+/* Terms Box */
+.terms-box-clean {
+    background: var(--pay-slate-50);
+    border: 1px solid var(--pay-slate-200);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.terms-label-clean {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: var(--pay-slate-700);
+    line-height: 1.4;
+}
+
+.terms-checkbox {
+    margin-top: 2px;
+    width: 1.1rem;
+    height: 1.1rem;
+    accent-color: var(--pay-emerald-600);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.btn-submit-modal {
+    width: 100%;
+    background: var(--pay-emerald-600);
+    color: white;
+    border: none;
+    padding: 1rem;
+    border-radius: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 10px rgba(5, 150, 105, 0.2);
+}
+
+.btn-submit-modal:hover {
+    background: #047857;
+    box-shadow: 0 6px 15px rgba(5, 150, 105, 0.3);
+}
+
+.btn-submit-modal:disabled {
+    background: var(--pay-slate-300);
+    color: var(--pay-slate-500);
+    cursor: not-allowed;
+    box-shadow: none;
 }

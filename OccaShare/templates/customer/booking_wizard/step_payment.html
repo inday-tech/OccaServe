@@ -4,432 +4,432 @@
 
 {% block step_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v=11.0">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_payment.css') }}?v=13.0">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v=12.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_payment.css') }}?v=19.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v=19.0">
 <style>
-    body { background-color: #f1f5f9 !important; }
+    body { background-color: #f8fafc !important; }
     
     @keyframes modalFadeIn {
-        from { opacity: 0; transform: scale(0.95); }
+        from { opacity: 0; transform: scale(0.96); }
         to { opacity: 1; transform: scale(1); }
-    }
-    
-    .modal-instruction-step {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        margin-bottom: 12px;
-        text-align: left;
-    }
-    .modal-instruction-step .step-num {
-        background: var(--up-emerald-100);
-        color: var(--up-emerald-700);
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.75rem;
-        font-weight: 800;
-        flex-shrink: 0;
-    }
-    .modal-instruction-step .step-text {
-        font-size: 0.85rem;
-        color: var(--up-slate-700);
-        line-height: 1.4;
-    }
-    .modal-instruction-step .step-text strong {
-        color: var(--up-slate-900);
     }
 </style>
 {% endblock %}
 
 {% block wizard_content %}
-<div class="wizard-header-content animate-up">
-    {% if is_balance %}
-    <h2 class="wizard-title">Pay Remaining Balance</h2>
-    <p class="wizard-subtitle">Complete your payment to finalize the event.</p>
-    {% elif booking.document_type == 'invoice' %}
-    <h2 class="wizard-title">Pay for Food Order</h2>
-    <p class="wizard-subtitle">Secure your order by settling the total amount.</p>
-    {% elif booking.document_type == 'rental_agreement' %}
-    <h2 class="wizard-title">Pay Equipment Rental</h2>
-    <p class="wizard-subtitle">Finalize your rental by settling the required fee.</p>
-    {% elif booking.document_type == 'service_agreement' %}
-    <h2 class="wizard-title">Pay Service Booking</h2>
-    <p class="wizard-subtitle">Finalize your booking by settling the required amount.</p>
-    {% else %}
-    <h2 class="wizard-title">Secure Payment Selection</h2>
-    <p class="wizard-subtitle">Finalize your booking by settling the contractual deposit or full amount.</p>
-    {% endif %}
-</div>
+<div class="payment-step-container animate-up">
+    <!-- Header Section -->
+    <div class="wizard-header-content">
+        {% if is_balance %}
+        <h2 class="wizard-title">Pay Remaining Balance</h2>
+        <p class="wizard-subtitle">Pay your remaining balance to finalize your event booking.</p>
+        {% elif booking.document_type == 'invoice' %}
+        <h2 class="wizard-title">Pay for Food Order</h2>
+        <p class="wizard-subtitle">Pay the required amount to confirm your food order.</p>
+        {% elif booking.document_type == 'rental_agreement' %}
+        <h2 class="wizard-title">Pay Equipment Rental</h2>
+        <p class="wizard-subtitle">Pay the rental fee to finalize your equipment booking.</p>
+        {% elif booking.document_type == 'service_agreement' %}
+        <h2 class="wizard-title">Pay Service Booking</h2>
+        <p class="wizard-subtitle">Pay the required fee to finalize your service booking.</p>
+        {% else %}
+        <h2 class="wizard-title">Choose How to Pay</h2>
+        <p class="wizard-subtitle">Select your payment option and preferred method below to complete your booking.</p>
+        {% endif %}
+    </div>
 
-{% if not is_balance and quotation and quotation.status == 'signed' %}
-{% set signed_at = quotation.customer_signed_at if quotation.customer_signed_at else quotation.updated_at %}
-<div class="countdown-banner animate-up" style="background: #fef2f2; border: 1px solid #ef4444; color: #7f1d1d; padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
-    <div style="display: flex; align-items: center; gap: 1rem;">
-        <i class="fas fa-clock fa-spin" style="color: #ef4444; font-size: 1.5rem;"></i>
-        <div>
-            <h4 style="margin: 0; font-size: 1rem; font-weight: 800; color: #991b1b;">Action Required: 48-Hour Reservation Lock</h4>
-            <p style="margin: 0; font-size: 0.85rem; font-weight: 500; margin-top: 4px;">Upload your payment proof before the timer expires to secure your slot. If the timer expires, the caterer may cancel the booking.</p>
+    <!-- Expired Banner Container (Moved to Top for Clean UI) -->
+    <div id="expired-banner-container"></div>
+
+    {% if not is_balance and quotation and quotation.status == 'signed' %}
+    {% set signed_at = quotation.customer_signed_at if quotation.customer_signed_at else quotation.updated_at %}
+    <div class="countdown-banner-clean animate-up" id="active-timer-banner">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <i class="fas fa-clock fa-spin" style="color: #e11d48; font-size: 1.4rem;"></i>
+            <div>
+                <h4>Time Left to Pay: 48 Hours</h4>
+                <p>Please upload your payment screenshot before the timer runs out to save your event date.</p>
+            </div>
+        </div>
+        <div class="timer-badge-clean" id="paymentTimer" data-start="{{ signed_at.isoformat() if signed_at else '' }}">
+            48:00:00
         </div>
     </div>
-    <div class="timer-display" style="background: #ef4444; color: white; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 800; font-size: 1.25rem; font-variant-numeric: tabular-nums;" id="paymentTimer" data-start="{{ signed_at.isoformat() if signed_at else '' }}">
-        48:00:00
-    </div>
-</div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const timerEl = document.getElementById('paymentTimer');
-    if (!timerEl) return;
-    
-    const startStr = timerEl.getAttribute('data-start');
-    if (!startStr) return;
-    
-    const signedAt = new Date(startStr).getTime();
-    const expiresAt = signedAt + (48 * 60 * 60 * 1000); // 48 hours later
-    
-    function updateTimer() {
-        const now = new Date().getTime();
-        const distance = expiresAt - now;
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const timerEl = document.getElementById('paymentTimer');
+        if (!timerEl) return;
         
-        if (distance < 0) {
-            timerEl.innerHTML = "EXPIRED";
-            timerEl.style.background = "#7f1d1d";
+        const startStr = timerEl.getAttribute('data-start');
+        if (!startStr) return;
+        
+        const signedAt = new Date(startStr).getTime();
+        const expiresAt = signedAt + (48 * 60 * 60 * 1000); // 48 hours later
+        
+        function updateTimer() {
+            const now = new Date().getTime();
+            const distance = expiresAt - now;
             
-            // Disable payment methods
-            document.querySelectorAll('.method-card-modern').forEach(card => {
-                card.style.opacity = '0.5';
-                card.style.pointerEvents = 'none';
-                card.style.filter = 'grayscale(100%)';
-            });
-            
-            const actionBtn = document.querySelector('.btn-wizard-next');
-            if (actionBtn) {
-                actionBtn.innerHTML = '<i class="fas fa-lock"></i> Reservation Expired';
-                actionBtn.style.background = '#7f1d1d';
-                actionBtn.style.color = 'white';
-                actionBtn.style.border = 'none';
-            }
-
-            if (!document.getElementById('expired-warning-msg')) {
-                const methodGrid = document.querySelector('.method-grid-modern');
-                if (methodGrid) {
-                    const warn = document.createElement('div');
-                    warn.id = 'expired-warning-msg';
-                    warn.style.marginBottom = '1.5rem';
-                    warn.style.padding = '1rem';
-                    warn.style.background = '#fef2f2';
-                    warn.style.border = '2px dashed #ef4444';
-                    warn.style.borderRadius = '12px';
-                    warn.style.color = '#991b1b';
-                    warn.style.fontWeight = '700';
-                    warn.style.fontSize = '0.9rem';
-                    warn.style.textAlign = 'center';
-                    warn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Your 48-hour reservation window has expired. Payment submission is locked. Please contact the caterer directly to request an extension.';
-                    methodGrid.parentElement.insertBefore(warn, methodGrid);
+            if (distance < 0) {
+                timerEl.innerHTML = "EXPIRED";
+                timerEl.style.background = "#881337";
+                
+                const activeBanner = document.getElementById('active-timer-banner');
+                if (activeBanner) activeBanner.style.display = 'none';
+                
+                // Disable payment methods cleanly
+                document.querySelectorAll('.method-card-clean').forEach(card => {
+                    card.style.opacity = '0.5';
+                    card.style.pointerEvents = 'none';
+                    card.style.filter = 'grayscale(100%)';
+                });
+                
+                const actionBtn = document.querySelector('.btn-proceed-placeholder');
+                if (actionBtn) {
+                    actionBtn.innerHTML = '<i class="fas fa-lock"></i> Time Expired — Payment Locked';
+                    actionBtn.style.background = '#ffe4e6';
+                    actionBtn.style.color = '#9f1239';
+                    actionBtn.style.border = '1px solid #fecdd3';
                 }
+
+                if (!document.getElementById('expired-warning-msg')) {
+                    const topContainer = document.getElementById('expired-banner-container');
+                    if (topContainer) {
+                        const warn = document.createElement('div');
+                        warn.id = 'expired-warning-msg';
+                        warn.style.marginBottom = '2rem';
+                        warn.style.padding = '1.25rem 1.5rem';
+                        warn.style.background = '#fff1f2';
+                        warn.style.border = '1px solid #fecdd3';
+                        warn.style.borderRadius = '12px';
+                        warn.style.color = '#881337';
+                        warn.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.05)';
+                        warn.style.display = 'flex';
+                        warn.style.alignItems = 'center';
+                        warn.style.gap = '1rem';
+                        warn.innerHTML = '<i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; color: #e11d48;"></i><div><h4 style="margin: 0 0 0.2rem 0; font-size: 1rem; font-weight: 700; color: #9f1239;">Time Expired: 48-Hour Limit Ended</h4><p style="margin: 0; font-size: 0.88rem; color: #be123c; line-height: 1.4;">Your reservation time limit has ended and online payment is locked. Please contact the caterer directly if you need more time.</p></div>';
+                        topContainer.appendChild(warn);
+                    }
+                }
+                return;
             }
-            return;
+            
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)) + Math.floor(distance / (1000 * 60 * 60 * 24)) * 24;
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            
+            timerEl.innerHTML = 
+                (hours < 10 ? "0" + hours : hours) + ":" + 
+                (minutes < 10 ? "0" + minutes : minutes) + ":" + 
+                (seconds < 10 ? "0" + seconds : seconds);
         }
         
-        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)) + Math.floor(distance / (1000 * 60 * 60 * 24)) * 24;
-        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-        
-        timerEl.innerHTML = 
-            (hours < 10 ? "0" + hours : hours) + ":" + 
-            (minutes < 10 ? "0" + minutes : minutes) + ":" + 
-            (seconds < 10 ? "0" + seconds : seconds);
-    }
-    
-    updateTimer();
-    setInterval(updateTimer, 1000);
-});
-</script>
-{% endif %}
-
-
-
-<form action="/bookings/step/payment/{{ booking.id }}" method="POST" enctype="multipart/form-data" class="payment-form" id="wizard-payment-form">
-    <input type="hidden" name="booking_id" value="{{ booking.id }}">
-    <input type="hidden" name="payment_method" id="selected-method" value="">
-    <input type="hidden" name="payment_plan" id="selected-plan" value="{% if is_balance %}balance{% else %}downpayment{% endif %}">
-
-    <!-- ── FINANCIAL SUMMARY (DIAMOND STANDARD) ── -->
-    <div class="payment-summary-premium animate-up" style="animation-delay: 0.1s;">
-        <div class="summary-merchant-info">
-            <div class="paying-to-box">
-                {% if profile.logo_url %}
-                <img src="{{ profile.logo_url }}" alt="Logo" class="merchant-logo-sm">
-                {% else %}
-                <div class="merchant-logo-sm" style="display: flex; align-items: center; justify-content: center; background: var(--up-slate-800); color: white; font-weight: 900;">{{ profile.business_name[0] }}</div>
-                {% endif %}
-                <div class="merchant-meta">
-                    <h5>Securing Booking for</h5>
-                    <p>{{ profile.business_name }}</p>
-                </div>
-            </div>
-            <div class="contract-ref-badge" style="background: rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.75rem; font-weight: 700;">
-                <i class="fas fa-file-contract"></i> Agreement #BK-{{ booking.id }}
-            </div>
-        </div>
-
-        <div class="summary-rows">
-            <div class="s-row">
-                <span class="lbl">Total Contract Amount</span>
-                <span class="val">₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</span>
-            </div>
-            
-            {% if is_balance %}
-            <div class="s-row">
-                <span class="lbl">Amount Already Paid</span>
-                <span class="val" style="color: var(--up-emerald-600);">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</span>
-            </div>
-            <div class="s-row to-pay-now">
-                <span class="lbl">Balance Payable Today</span>
-                <span class="val" id="to-pay-val">₱{{ "{:,.2f}".format((booking.total_amount|float or 0.0) - (booking.reservation_fee|float or 0.0)) }}</span>
-            </div>
-            {% else %}
-            <div class="s-row" id="plan-breakdown-row">
-                <span class="lbl">Contractual Deposit (Selected Tier)</span>
-                <span class="val" id="summary-tier-val">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</span>
-            </div>
-            
-            <div class="s-row to-pay-now">
-                <span class="lbl">Amount Payable Today</span>
-                <span class="val" id="to-pay-val">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</span>
-            </div>
-
-            <div class="s-row balance-row" id="balance-row">
-                <span class="lbl">Remaining Balance After Payment</span>
-                <span class="val" id="balance-val">₱{{ "{:,.2f}".format((booking.total_amount|float or 0.0) - (booking.reservation_fee|float or 0.0)) }}</span>
-            </div>
-            {% endif %}
-        </div>
-
-        {% if booking.transaction_type != 'fast_track' %}
-        <div style="margin-top: 1.5rem; text-align: center;">
-            <a href="/bookings/step/quotation/{{ booking.id }}" style="font-size: 0.75rem; color: var(--up-slate-400); text-decoration: underline;">
-                <i class="fas fa-eye"></i> View Signed Service Agreement
-            </a>
-        </div>
-        {% endif %}
-    </div>
-
-    <!-- ── PAYMENT PLAN SELECTION (STRICT ENFORCEMENT) ── -->
-    {% if not is_balance %}
-        {% if quotation and quotation.downpayment_percent == 100 %}
-        <div class="checkout-section-header animate-up" style="animation-delay: 0.2s; margin-bottom: 1rem;">
-            <h3 style="font-size: 0.85rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--up-emerald-500);">
-                <i class="fas fa-file-signature"></i> Binding Full Payment
-            </h3>
-            <p>Based on your signed agreement, full settlement is required to finalize.</p>
-        </div>
-        <input type="hidden" name="payment_plan" id="selected-plan" value="full">
-        <div class="plan-card active animate-up" style="animation-delay: 0.25s; border-color: var(--up-emerald-500); background: #f0fdf4; cursor: default;">
-            <span class="plan-tag" style="color: var(--up-emerald-500);">Contractual Commitment</span>
-            <h4 class="plan-title">Full Contract Payment</h4>
-            <div class="plan-amount">₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</div>
-            <div class="plan-check" style="color: var(--up-emerald-500);"><i class="fas fa-check-double"></i></div>
-        </div>
-        {% else %}
-        <div class="checkout-section-header animate-up" style="animation-delay: 0.2s; margin-bottom: 1rem;">
-            <h3 style="font-size: 0.85rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--up-slate-900);">1. Confirm Payment Plan</h3>
-            <p style="font-size: 0.75rem; color: var(--up-orange); font-weight: 700;">
-                <i class="fas fa-info-circle"></i> Selection must meet or exceed your signed commitment.
-            </p>
-        </div>
-
-        {% set signed_dp = quotation.downpayment_percent if quotation else 100 %}
-        {% set accepted_terms = [signed_dp] %}
-        {% if signed_dp < 100 %}
-            {% set _ = accepted_terms.append(100) %}
-        {% endif %}
-        
-        <div class="payment-plan-grid animate-up" style="animation-delay: 0.25s;">
-            {% for term in accepted_terms|sort %}
-                {% set term_amount = (booking.total_amount|float * (term|float / 100.0)) %}
-                <div class="plan-card {% if loop.first %}active{% endif %}" id="plan-{{ term }}" onclick="updatePaymentPlan('{{ term }}', {{ term_amount }}, {{ booking.total_amount or 0 }})">
-                    {% if term == 100 %}
-                        <span class="plan-tag" style="{% if loop.first %}color: var(--up-emerald-500);{% endif %}">Voluntary Settlement</span>
-                        <h4 class="plan-title">Full Payment</h4>
-                        <p class="plan-desc">Settle balance now {% if loop.first %}(Required){% else %}(Recommended){% endif %}</p>
-                    {% else %}
-                        <span class="plan-tag">Binding Minimum</span>
-                        <h4 class="plan-title">Downpayment ({{ term }}%)</h4>
-                        <p class="plan-desc">As agreed in Section 2 of Contract</p>
-                    {% endif %}
-                    <div class="plan-amount">₱{{ "{:,.2f}".format(term_amount) }}</div>
-                    <div class="plan-check" style="width: 24px; text-align: center; {% if loop.first and term == 100 %}color: var(--up-emerald-500);{% endif %}">
-                        <i class="{% if loop.first %}fas fa-check-circle{% else %}far fa-circle{% endif %}"></i>
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
-        
-        <!-- Pre-select the first option -->
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                var firstTerm = '{{ (accepted_terms|sort)[0] }}';
-                document.getElementById('selected-plan').value = firstTerm;
-            });
-        </script>
-        {% endif %}
+        updateTimer();
+        setInterval(updateTimer, 1000);
+    });
+    </script>
     {% endif %}
 
-    <!-- ── PAYMENT METHOD SELECTION ── -->
-    <div class="checkout-section-header animate-up" style="animation-delay: 0.3s; margin-bottom: 1rem; margin-top: 2rem;">
-        <h3 style="font-size: 0.85rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--up-slate-900);">2. Select Secure Method</h3>
-        <p style="font-size: 0.75rem; color: var(--up-slate-500);">Choose your preferred method to settle your booking securely.</p>
-    </div>
+    <form action="/bookings/step/payment/{{ booking.id }}" method="POST" enctype="multipart/form-data" class="payment-form" id="wizard-payment-form">
+        <input type="hidden" name="booking_id" value="{{ booking.id }}">
+        <input type="hidden" name="payment_method" id="selected-method" value="">
+        <input type="hidden" name="payment_plan" id="selected-plan" value="{% if is_balance %}balance{% else %}downpayment{% endif %}">
 
-    <div class="method-grid-modern animate-up" style="animation-delay: 0.35s;">
-        {% if profile.gcash_qr_url %}
-        <div class="method-card-modern gcash" onclick="openPaymentModal('GCash')">
-            <div class="method-icon-wrap" style="background: linear-gradient(135deg, #005ce6, #1e3a8a);"><img src="https://upload.wikimedia.org/wikipedia/commons/f/f6/GCash_logo.png" style="width:40px; filter: brightness(0) invert(1);" alt="GCash"></div>
-            <span class="method-label">GCash</span>
-        </div>
-        {% endif %}
-        
-        {% if profile.maya_qr_url %}
-        <div class="method-card-modern maya" onclick="openPaymentModal('Maya')">
-            <div class="method-icon-wrap" style="background: linear-gradient(135deg, #16a34a, #14532d);"><img src="https://upload.wikimedia.org/wikipedia/commons/8/87/Maya_logo.png" style="width:40px; filter: brightness(0) invert(1);" onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/9/9a/PayMaya_Logo.png';" alt="Maya"></div>
-            <span class="method-label">Maya</span>
-        </div>
-        {% endif %}
-        
-        {% if profile.bank_name %}
-        <div class="method-card-modern bank" onclick="openPaymentModal('Bank')">
-            <div class="method-icon-wrap" style="background: linear-gradient(135deg, #ca8a04, #713f12);"><i class="fas fa-university" style="font-size: 1.8rem;"></i></div>
-            <span class="method-label">Bank Transfer</span>
-        </div>
-        {% endif %}
-    </div>
+        <!-- ── AUTHENTIC 2-COLUMN CHECKOUT DASHBOARD ── -->
+        <div class="pay-grid-layout">
+            
+            <!-- LEFT COLUMN: PLAN & METHOD SELECTION -->
+            <div class="pay-config-col">
+                
+                <!-- 1. PAYMENT PLAN SELECTION -->
+                {% if not is_balance %}
+                    {% if quotation and quotation.downpayment_percent == 100 %}
+                    <div class="pay-section-box animate-up" style="animation-delay: 0.1s;">
+                        <div class="pay-section-header">
+                            <h3 class="pay-section-title"><i class="fas fa-file-contract text-emerald-600"></i> Contract Payment Terms</h3>
+                            <span class="pay-section-subtitle">Agreed in your contract</span>
+                        </div>
+                        <input type="hidden" name="payment_plan" id="selected-plan" value="full">
+                        <div class="plan-card-clean active" style="cursor: default;">
+                            <div class="plan-left">
+                                <div class="plan-radio" style="background: var(--pay-emerald-600); border-color: var(--pay-emerald-600);"></div>
+                                <div class="plan-info">
+                                    <span class="plan-tag-pill" style="background: var(--pay-emerald-600); color: white;">Full Payment Required</span>
+                                    <h4>Full Booking Payment (100%)</h4>
+                                    <p>Pay the full amount now to confirm your booking</p>
+                                </div>
+                            </div>
+                            <div class="plan-price">₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="pay-section-box animate-up" style="animation-delay: 0.1s;">
+                        <div class="pay-section-header">
+                            <h3 class="pay-section-title"><i class="fas fa-tasks text-slate-500"></i> 1. Choose How Much to Pay</h3>
+                            <span class="pay-section-subtitle">Select your deposit or full payment</span>
+                        </div>
 
-    <!-- ── SECURITY TRUST BAR ── -->
-    <div class="security-trust-bar animate-up" style="animation-delay: 0.4s;">
-        <div class="trust-item">
-            <i class="fas fa-lock"></i>
-            <span>Secure File Upload</span>
-        </div>
-        <div class="trust-item">
-            <i class="fas fa-check-shield"></i>
-            <span>Verified Caterer</span>
-        </div>
-        <div class="trust-item">
-            <i class="fas fa-bolt"></i>
-            <span>Instant Notification</span>
-        </div>
-    </div>
+                        {% set signed_dp = quotation.downpayment_percent if quotation else 100 %}
+                        {% set accepted_terms = [signed_dp] %}
+                        {% if signed_dp < 100 %}
+                            {% set _ = accepted_terms.append(100) %}
+                        {% endif %}
+                        
+                        <div class="plan-list-clean">
+                            {% for term in accepted_terms|sort %}
+                                {% set term_amount = (booking.total_amount|float * (term|float / 100.0)) %}
+                                <div class="plan-card-clean {% if loop.first %}active{% endif %}" id="plan-{{ term }}" onclick="updatePaymentPlan('{{ term }}', {{ term_amount }}, {{ booking.total_amount or 0 }})">
+                                    <div class="plan-left">
+                                        <div class="plan-radio"></div>
+                                        <div class="plan-info">
+                                            {% if term == 100 %}
+                                                <span class="plan-tag-pill">Pay All Now</span>
+                                                <h4>100% Full Payment</h4>
+                                                <p>Pay the full booking amount today {% if loop.first %}(Required){% else %}(Recommended){% endif %}</p>
+                                            {% else %}
+                                                <span class="plan-tag-pill">Minimum Deposit</span>
+                                                <h4>{{ term }}% Deposit</h4>
+                                                <p>Pay half now to save your date</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="plan-price">₱{{ "{:,.2f}".format(term_amount) }}</div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <script>
+                        document.addEventListener("DOMContentLoaded", function() {
+                            var firstTerm = '{{ (accepted_terms|sort)[0] }}';
+                            document.getElementById('selected-plan').value = firstTerm;
+                        });
+                    </script>
+                    {% endif %}
+                {% endif %}
 
-    <!-- Actions -->
-    <div class="wizard-actions animate-up" style="animation-delay: 0.5s; margin-top: 3rem; border-top: none;">
-        {% if is_balance %}
-        <a href="/customer/bookings/manage/{{ booking.id }}" class="btn-wizard-back">
-            <i class="fas fa-arrow-left"></i> Back to Dashboard
-        </a>
-        {% else %}
-        <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-wizard-back">
-            <i class="fas fa-chevron-left"></i> Back to Agreement
-        </a>
-        {% endif %}
-        
-        <button type="button" class="btn-wizard-next" disabled style="flex: 1; background: #e2e8f0; color: #64748b; border: 2px dashed #cbd5e1; cursor: not-allowed; box-shadow: none;">
-            Select Method Above <i class="fas fa-arrow-up"></i>
-        </button>
-    </div>
+                <!-- 2. PAYMENT CHANNEL SELECTION -->
+                <div class="pay-section-box animate-up" style="animation-delay: 0.2s;">
+                    <div class="pay-section-header">
+                        <h3 class="pay-section-title"><i class="fas fa-shield-alt text-slate-500"></i> {% if is_balance %}1.{% else %}2.{% endif %} Choose Payment Method</h3>
+                        <span class="pay-section-subtitle">Fast and secure payment</span>
+                    </div>
 
-</form>
+                    <div class="method-grid-clean">
+                        {% if profile.gcash_qr_url %}
+                        <div class="method-card-clean" onclick="openPaymentModal('GCash')">
+                            <div class="method-logo-box">
+                                <div class="brand-badge-gcash"><i class="fas fa-wallet"></i> GCash</div>
+                            </div>
+                            <span class="method-label-clean">GCash</span>
+                            <span class="method-sub-clean">Pay via QR or Mobile Number</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if profile.maya_qr_url %}
+                        <div class="method-card-clean" onclick="openPaymentModal('Maya')">
+                            <div class="method-logo-box">
+                                <div class="brand-badge-maya"><i class="fas fa-credit-card"></i> Maya</div>
+                            </div>
+                            <span class="method-label-clean">Maya</span>
+                            <span class="method-sub-clean">Pay via QR or Mobile Number</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if profile.bank_name %}
+                        <div class="method-card-clean" onclick="openPaymentModal('Bank')">
+                            <div class="method-logo-box">
+                                <div class="brand-badge-bank"><i class="fas fa-university"></i> Bank</div>
+                            </div>
+                            <span class="method-label-clean">Bank Transfer</span>
+                            <span class="method-sub-clean">Send online via InstaPay or PESONet</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- WIZARD FOOTER ACTIONS -->
+                <div class="wizard-actions-clean animate-up" style="animation-delay: 0.3s;">
+                    {% if is_balance %}
+                    <a href="/customer/bookings/manage/{{ booking.id }}" class="btn-back-clean">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                    {% else %}
+                    <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-back-clean">
+                        <i class="fas fa-chevron-left"></i> Back to Contract
+                    </a>
+                    {% endif %}
+                    
+                    <div class="btn-proceed-placeholder">
+                        <i class="fas fa-hand-pointer"></i> Please Select a Payment Method Above
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: EXECUTIVE ORDER & FINANCIAL SUMMARY -->
+            <div class="pay-summary-sidebar animate-up" style="animation-delay: 0.15s;">
+                <div class="pay-summary-card">
+                    <div class="summary-merchant-header">
+                        <div class="merchant-id-box">
+                            {% if profile.logo_url %}
+                            <img src="{{ profile.logo_url }}" alt="Logo" class="merchant-logo-clean">
+                            {% else %}
+                            <div class="merchant-logo-fallback">{{ profile.business_name[0] }}</div>
+                            {% endif %}
+                            <div class="merchant-text">
+                                <h5>Booking With</h5>
+                                <p>{{ profile.business_name }}</p>
+                            </div>
+                        </div>
+                        <span class="ref-pill"><i class="fas fa-hashtag"></i> BK-{{ booking.id }}</span>
+                    </div>
+
+                    <div class="summary-body">
+                        <div class="fin-list">
+                            <div class="fin-item">
+                                <span class="label">Total Booking Price</span>
+                                <span class="value">₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</span>
+                            </div>
+                            
+                            {% if is_balance %}
+                            <div class="fin-item">
+                                <span class="label">Amount Already Paid</span>
+                                <span class="value" style="color: var(--pay-emerald-600);">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</span>
+                            </div>
+                            <div class="fin-item highlight-pay">
+                                <span class="label">Amount to Pay Today</span>
+                                <span class="value" id="to-pay-val">₱{{ "{:,.2f}".format((booking.total_amount|float or 0.0) - (booking.reservation_fee|float or 0.0)) }}</span>
+                            </div>
+                            {% else %}
+                            <div class="fin-item" id="plan-breakdown-row">
+                                <span class="label">Required Deposit (50%)</span>
+                                <span class="value" id="summary-tier-val">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</span>
+                            </div>
+                            
+                            <div class="fin-item highlight-pay">
+                                <span class="label">Amount to Pay Today</span>
+                                <span class="value" id="to-pay-val">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</span>
+                            </div>
+
+                            <div class="fin-item balance-item" id="balance-row">
+                                <span class="label">Balance to Pay Later</span>
+                                <span class="value" id="balance-val">₱{{ "{:,.2f}".format((booking.total_amount|float or 0.0) - (booking.reservation_fee|float or 0.0)) }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        {% if booking.transaction_type != 'fast_track' %}
+                        <div style="margin-top: 1.5rem; text-align: center; border-top: 1px solid var(--pay-slate-200); padding-top: 1rem;">
+                            <a href="/bookings/step/quotation/{{ booking.id }}" style="font-size: 0.78rem; color: var(--pay-slate-500); text-decoration: none; font-weight: 600;">
+                                <i class="fas fa-file-signature"></i> View Signed Contract
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- SECURITY TRUST BADGES -->
+                <div class="trust-badges-clean">
+                    <div class="trust-badge-item">
+                        <i class="fas fa-lock"></i>
+                        <span>100% Secure</span>
+                    </div>
+                    <div class="trust-badge-item">
+                        <i class="fas fa-user-check"></i>
+                        <span>Verified Caterer</span>
+                    </div>
+                    <div class="trust-badge-item">
+                        <i class="fas fa-bolt"></i>
+                        <span>Instant Update</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </form>
+</div>
 {% endblock %}
 
 {% block wizard_modals %}
-    <!-- Dynamic Payment Modal (Outside Stacking Context) -->
-    <div id="paymentModalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-        <div id="paymentModalCard" style="background: white; width: 95%; max-width: 450px; border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); display: flex; flex-direction: column; max-height: 90vh;">
+    <!-- Dynamic Payment Modal (Clean Digital Cashier Sheet) -->
+    <div id="paymentModalOverlay" class="modal-overlay-clean" style="display: none;">
+        <div id="paymentModalCard" class="modal-card-clean">
             
-            <div style="background: #f8fafc; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0;">
-                <h3 id="modalTitle" style="margin: 0; font-size: 1.25rem; color: var(--up-slate-900); display: flex; align-items: center; gap: 8px; font-weight: 800;">
-                    <i class="fas fa-wallet"></i> Payment Details
+            <div class="modal-header-clean">
+                <h3 id="modalTitle">
+                    <i class="fas fa-wallet text-slate-700"></i> Upload Payment Screenshot
                 </h3>
-                <button type="button" onclick="closePaymentModal()" style="background: none; border: none; font-size: 1.25rem; color: var(--up-slate-400); cursor: pointer;"><i class="fas fa-times"></i></button>
+                <button type="button" class="btn-close-modal" onclick="closePaymentModal()"><i class="fas fa-times"></i></button>
             </div>
             
-            <div style="padding: 2rem; overflow-y: auto;">
-                <!-- Dynamic Content Area -->
+            <div class="modal-body-clean">
+                <!-- GCash Channel Sheet -->
                 <div id="modalContentGCash" style="display: none;">
-                    <div style="background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 16px; padding: 1.5rem; text-align: center; margin-bottom: 1.5rem;">
-                        <div style="display: inline-block; background: white; padding: 0.5rem; border-radius: 16px; margin-bottom: 1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
-                            <img src="{{ profile.gcash_qr_url }}" alt="GCash QR" style="width: 180px; height: 180px; object-fit: cover; border-radius: 12px;">
+                    <div class="payment-channel-box">
+                        <div class="qr-frame">
+                            <img src="{{ profile.gcash_qr_url }}" alt="GCash QR">
                         </div>
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 0.5rem;">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/f/f6/GCash_logo.png" style="height: 24px;" alt="GCash">
-                        </div>
-                        <h4 style="font-size: 1rem; font-weight: 800; color: #1e3a8a; margin: 0 0 0.25rem 0; text-transform: uppercase;">{{ profile.business_name }}</h4>
-                        <div style="font-size: 1.75rem; font-weight: 900; color: #005ce6; letter-spacing: 2px; margin-bottom: 1rem;">{{ profile.gcash_number }}</div>
-                        <div style="background: white; border-radius: 8px; padding: 0.75rem; font-size: 0.8rem; color: #1e40af; font-weight: 700; display: flex; flex-direction: column; gap: 0.25rem;">
-                            <span><i class="fas fa-mobile-alt"></i> 1. Open GCash App</span>
-                            <span><i class="fas fa-qrcode"></i> 2. Scan QR or Send Money</span>
-                            <span><i class="fas fa-camera"></i> 3. Save Screenshot of Receipt</span>
-                        </div>
+                        <h4 class="channel-name">{{ profile.business_name }}</h4>
+                        <div class="channel-number">{{ profile.gcash_number }}</div>
+                        <button type="button" class="btn-copy-num" onclick="navigator.clipboard.writeText('{{ profile.gcash_number }}'); Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'GCash Number Copied!', showConfirmButton: false, timer: 1500});"><i class="far fa-copy"></i> Copy Number</button>
+                    </div>
+                    <div class="instruction-steps-clean mb-3">
+                        <div class="inst-step"><i class="fas fa-mobile-alt"></i> 1. Open your GCash App and select Scan QR or Send Money</div>
+                        <div class="inst-step"><i class="fas fa-qrcode"></i> 2. Send the exact amount shown in the summary</div>
+                        <div class="inst-step"><i class="fas fa-camera"></i> 3. Take a clear screenshot of your receipt</div>
                     </div>
                 </div>
                 
+                <!-- Maya Channel Sheet -->
                 <div id="modalContentMaya" style="display: none;">
-                    <div style="background: #f0fdf4; border: 2px solid #bbf7d0; border-radius: 16px; padding: 1.5rem; text-align: center; margin-bottom: 1.5rem;">
-                        <div style="display: inline-block; background: white; padding: 0.5rem; border-radius: 16px; margin-bottom: 1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
-                            <img src="{{ profile.maya_qr_url }}" alt="Maya QR" style="width: 180px; height: 180px; object-fit: cover; border-radius: 12px;">
+                    <div class="payment-channel-box">
+                        <div class="qr-frame">
+                            <img src="{{ profile.maya_qr_url }}" alt="Maya QR">
                         </div>
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 0.5rem;">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/8/87/Maya_logo.png" onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/9/9a/PayMaya_Logo.png';" style="height: 24px;" alt="Maya">
-                        </div>
-                        <h4 style="font-size: 1rem; font-weight: 800; color: #14532d; margin: 0 0 0.25rem 0; text-transform: uppercase;">{{ profile.business_name }}</h4>
-                        <div style="font-size: 1.75rem; font-weight: 900; color: #16a34a; letter-spacing: 2px; margin-bottom: 1rem;">{{ profile.maya_number }}</div>
-                        <div style="background: white; border-radius: 8px; padding: 0.75rem; font-size: 0.8rem; color: #166534; font-weight: 700; display: flex; flex-direction: column; gap: 0.25rem;">
-                            <span><i class="fas fa-wallet"></i> 1. Open Maya App</span>
-                            <span><i class="fas fa-qrcode"></i> 2. Scan QR or Send Money</span>
-                            <span><i class="fas fa-camera"></i> 3. Save Screenshot of Receipt</span>
-                        </div>
+                        <h4 class="channel-name">{{ profile.business_name }}</h4>
+                        <div class="channel-number emerald">{{ profile.maya_number }}</div>
+                        <button type="button" class="btn-copy-num" onclick="navigator.clipboard.writeText('{{ profile.maya_number }}'); Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'Maya Number Copied!', showConfirmButton: false, timer: 1500});"><i class="far fa-copy"></i> Copy Number</button>
+                    </div>
+                    <div class="instruction-steps-clean mb-3">
+                        <div class="inst-step"><i class="fas fa-wallet"></i> 1. Open your Maya App and select Scan QR or Send Money</div>
+                        <div class="inst-step"><i class="fas fa-qrcode"></i> 2. Send the exact amount shown in the summary</div>
+                        <div class="inst-step"><i class="fas fa-camera"></i> 3. Take a clear screenshot of your receipt</div>
                     </div>
                 </div>
                 
+                <!-- Bank Transfer Channel Sheet -->
                 <div id="modalContentBank" style="display: none;">
-                    <div style="background: #fefce8; border: 2px solid #fef08a; border-radius: 16px; padding: 1.5rem; text-align: center; margin-bottom: 1.5rem;">
-                        <div style="width: 64px; height: 64px; background: white; color: #ca8a04; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+                    <div class="payment-channel-box">
+                        <div style="width: 54px; height: 54px; background: white; color: #b45309; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 1.6rem; margin-bottom: 0.75rem; border: 1px solid var(--pay-slate-200); box-shadow: var(--pay-shadow-sm);">
                             <i class="fas fa-university"></i>
                         </div>
-                        <h4 style="font-size: 1rem; font-weight: 800; color: #713f12; margin: 0 0 0.25rem 0; text-transform: uppercase;">{{ profile.bank_name }}</h4>
-                        <div style="font-size: 1.1rem; font-weight: 700; color: #854d0e; margin-bottom: 0.5rem;">Acct Name: {{ profile.bank_account_name }}</div>
-                        <div style="font-size: 1.75rem; font-weight: 900; color: #ca8a04; letter-spacing: 2px; margin-bottom: 1rem;">{{ profile.bank_account_number }}</div>
-                        <div style="background: white; border-radius: 8px; padding: 0.75rem; font-size: 0.8rem; color: #854d0e; font-weight: 700; display: flex; flex-direction: column; gap: 0.25rem;">
-                            <span><i class="fas fa-university"></i> 1. Open your Bank App</span>
-                            <span><i class="fas fa-exchange-alt"></i> 2. Transfer via InstaPay / PESONet</span>
-                            <span><i class="fas fa-camera"></i> 3. Save Screenshot of Receipt</span>
-                        </div>
+                        <h4 class="channel-name">{{ profile.bank_name }}</h4>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: var(--pay-slate-600); margin-bottom: 0.25rem;">Account Name: {{ profile.bank_account_name }}</div>
+                        <div class="channel-number amber">{{ profile.bank_account_number }}</div>
+                        <button type="button" class="btn-copy-num" onclick="navigator.clipboard.writeText('{{ profile.bank_account_number }}'); Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'Account Number Copied!', showConfirmButton: false, timer: 1500});"><i class="far fa-copy"></i> Copy Account Number</button>
+                    </div>
+                    <div class="instruction-steps-clean mb-3">
+                        <div class="inst-step"><i class="fas fa-university"></i> 1. Open your Bank App and select InstaPay or PESONet</div>
+                        <div class="inst-step"><i class="fas fa-exchange-alt"></i> 2. Send the exact amount to the bank account above</div>
+                        <div class="inst-step"><i class="fas fa-camera"></i> 3. Take a clear screenshot of your transfer receipt</div>
                     </div>
                 </div>
                 
-                <div id="uploadSection" style="background: #f8fafc; border: 2px dashed #94a3b8; border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem;">
-                    <div style="text-align: center; margin-bottom: 1.25rem;">
-                        <div style="width: 48px; height: 48px; background: var(--up-emerald-500); color: white; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 0.75rem; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                        </div>
-                        <h4 style="font-size: 1.15rem; color: var(--up-slate-900); margin: 0 0 0.25rem 0; font-weight: 900;">Upload Payment Receipt</h4>
-                        <p style="font-size: 0.85rem; color: var(--up-slate-500); margin: 0; font-weight: 600;">Attach your screenshot here to verify your payment.</p>
+                <!-- Receipt Upload Box -->
+                <div id="uploadSection" class="upload-box-clean">
+                    <div class="upload-icon-circle">
+                        <i class="fas fa-cloud-upload-alt"></i>
                     </div>
+                    <h4 class="upload-title">Upload Your Screenshot</h4>
+                    <p class="upload-sub">Please attach a clear photo of your receipt (PNG or JPG)</p>
                     
-                    <div id="uploadErrorMsg" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 1rem; border-radius: 12px; font-size: 0.85rem; margin-bottom: 1rem; font-weight: 500;"></div>
+                    <div id="uploadErrorMsg" style="display: none; background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; padding: 0.85rem; border-radius: 8px; font-size: 0.82rem; margin-bottom: 1rem; font-weight: 500; text-align: left;"></div>
 
-                    <div style="margin-bottom: 1rem;">
-                        <input type="file" id="proofImageInput" name="payment_proof" form="wizard-payment-form" accept="image/png, image/jpeg, image/jpg" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 8px; background: white; cursor: pointer; font-size: 0.9rem; font-weight: 600; color: var(--up-slate-700);">
-                        <div style="font-size: 0.75rem; color: var(--up-slate-500); margin-top: 6px; text-align: center;"><i class="fas fa-image"></i> Max 5MB (PNG or JPG only)</div>
-                    </div>
+                    <input type="file" id="proofImageInput" name="payment_proof" form="wizard-payment-form" accept="image/png, image/jpeg, image/jpg" class="file-input-clean">
                     
-                    <div style="margin-bottom: 0;">
-                        <input type="text" id="referenceNoInput" name="reference_no" form="wizard-payment-form" placeholder="Reference Number (Optional)" pattern="[a-zA-Z0-9]+" maxlength="30" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; font-size: 0.9rem; font-weight: 600; background: white; color: var(--up-slate-900);">
-                    </div>
+                    <input type="text" id="referenceNoInput" name="reference_no" form="wizard-payment-form" placeholder="Reference Number (Optional)" pattern="[a-zA-Z0-9]+" maxlength="30" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" class="ref-input-clean">
                 </div>
 
                 {% set doc_type_display = "Booking Agreement" %}
@@ -441,75 +441,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     {% set doc_type_display = "Order Invoice" %}
                 {% endif %}
 
-                {% if profile.terms_and_conditions or (profile.scheduling_rules and profile.scheduling_rules.get('policies')) %}
-                <div style="margin-bottom: 1.5rem; background: #f8fafc; padding: 1.5rem; border-radius: 1rem; border: 1px solid #cbd5e1;">
-                    <h4 style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;">
-                        <i class="fas fa-file-signature" style="color: var(--up-emerald-600); margin-right: 0.5rem;"></i> {{ doc_type_display }} Terms
-                    </h4>
-                    <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; max-height: 200px; overflow-y: auto; font-size: 0.85rem; color: #475569; margin-bottom: 1rem; line-height: 1.6;">
-                        {% if profile.terms_and_conditions %}
-                        <div style="margin-bottom: 1rem;">
-                            <strong><i class="fas fa-ban"></i> Cancellation Policy:</strong><br>
-                            {{ profile.terms_and_conditions | replace('\n', '<br>') | safe }}
-                        </div>
-                        {% endif %}
-                        
-                        {% set pols = profile.scheduling_rules.get('policies', {}) if profile.scheduling_rules else {} %}
-                        {% if pols.get('refund_policy') %}
-                        <div style="margin-bottom: 1rem;">
-                            <strong><i class="fas fa-undo"></i> Refund Policy:</strong><br>
-                            {{ pols.get('refund_policy') | replace('\n', '<br>') | safe }}
-                        </div>
-                        {% endif %}
-                        {% if pols.get('reschedule_policy') %}
-                        <div style="margin-bottom: 1rem;">
-                            <strong><i class="fas fa-calendar-alt"></i> Reschedule Policy:</strong><br>
-                            {{ pols.get('reschedule_policy') | replace('\n', '<br>') | safe }}
-                        </div>
-                        {% endif %}
-                        {% if pols.get('late_payment_policy') %}
-                        <div style="margin-bottom: 1rem;">
-                            <strong><i class="fas fa-money-bill-wave"></i> Late Payment Policy:</strong><br>
-                            {{ pols.get('late_payment_policy') | replace('\n', '<br>') | safe }}
-                        </div>
-                        {% endif %}
-                        {% if pols.get('no_show_policy') %}
-                        <div style="margin-bottom: 1rem;">
-                            <strong><i class="fas fa-user-slash"></i> No-Show Policy:</strong><br>
-                            {{ pols.get('no_show_policy') | replace('\n', '<br>') | safe }}
-                        </div>
-                        {% endif %}
-                        {% if profile.general_terms %}
-                        <div>
-                            <strong><i class="fas fa-clipboard-check"></i> General Order Terms:</strong><br>
-                            {{ profile.general_terms | replace('\n', '<br>') | safe }}
-                        </div>
-                        {% endif %}
-                    </div>
-                    
-                    <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
-                        <input type="checkbox" id="termsAgreementCheckbox" name="terms_agreement" form="wizard-payment-form" required style="margin-top: 4px; width: 1.2rem; height: 1.2rem; accent-color: var(--up-emerald-600);">
-                        <span style="font-size: 0.9rem; color: #1e293b; font-weight: 600;">
-                            I have read and agree to the <strong>{{ doc_type_display }}</strong> of {{ profile.business_name }}.
+                <!-- Terms & Agreement Confirmation -->
+                <div class="terms-box-clean">
+                    <label class="terms-label-clean">
+                        <input type="checkbox" id="termsAgreementCheckbox" name="terms_agreement" form="wizard-payment-form" required class="terms-checkbox">
+                        <span>
+                            I confirm that this screenshot is real and correct, and I agree to the payment terms of <strong>{{ profile.business_name }}</strong>.
                         </span>
                     </label>
                 </div>
-                {% else %}
-                <div style="margin-bottom: 1.5rem; background: #f8fafc; padding: 1.5rem; border-radius: 1rem; border: 1px solid #cbd5e1;">
-                    <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
-                        <input type="checkbox" id="termsAgreementCheckbox" name="terms_agreement" form="wizard-payment-form" required style="margin-top: 4px; width: 1.2rem; height: 1.2rem; accent-color: var(--up-emerald-600);">
-                        <span style="font-size: 0.9rem; color: #1e293b; font-weight: 600;">
-                            I confirm this <strong>{{ doc_type_display }}</strong> and agree to proceed.
-                        </span>
-                    </label>
-                </div>
-                {% endif %}
 
-                <button type="submit" id="submit-payment-btn" form="wizard-payment-form" style="width: 100%; background: var(--up-emerald-500); color: white; border: none; padding: 1.15rem; border-radius: 12px; font-weight: 900; font-size: 1.1rem; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <button type="submit" id="submit-payment-btn" form="wizard-payment-form" class="btn-submit-modal">
                     {% if booking.payment_status == 'reupload_requested' %}
-                    Submit New Proof <i class="fas fa-check-circle"></i>
+                    Submit New Screenshot <i class="fas fa-check-circle"></i>
                     {% else %}
-                    Finish & Notify Caterer <i class="fas fa-paper-plane"></i>
+                    Submit Screenshot & Complete Booking <i class="fas fa-paper-plane"></i>
                     {% endif %}
                 </button>
             </div>
@@ -521,25 +467,17 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
     // Handle the visual payment plan toggle logic (Downpayment vs Full)
     function updatePaymentPlan(plan, amount, total) {
-        // Update UI Classes
-        // Reset all checks
-        document.querySelectorAll('.plan-card').forEach(el => {
+        document.querySelectorAll('.plan-card-clean').forEach(el => {
             el.classList.remove('active');
-            const icon = el.querySelector('.plan-check i');
-            if (icon) icon.className = 'far fa-circle';
         });
 
         const selectedEl = document.getElementById('plan-' + plan);
         if (selectedEl) {
             selectedEl.classList.add('active');
-            const icon = selectedEl.querySelector('.plan-check i');
-            if (icon) icon.className = 'fas fa-check-circle';
         }
 
-        // Update Hidden Input
         document.getElementById('selected-plan').value = plan;
 
-        // Update Summary Card
         const toPayEl = document.getElementById('to-pay-val');
         const balanceEl = document.getElementById('balance-val');
         const balanceRow = document.getElementById('balance-row');
@@ -551,9 +489,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const formattedBalance = '₱' + balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
         if(balanceEl) balanceEl.textContent = formattedBalance;
 
-        // Visibility of balance row
         if(balanceRow) {
-            balanceRow.style.opacity = (balance > 0) ? '1' : '0.3';
+            balanceRow.style.opacity = (balance > 0) ? '1' : '0.4';
         }
         
         console.log('[Payment] Plan switched to:', plan, 'Paying:', amount);
@@ -562,28 +499,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Modal Logic
     function openPaymentModal(method) {
         document.getElementById('selected-method').value = method;
-        document.getElementById('paymentModalOverlay').style.display = 'flex';
+        const overlay = document.getElementById('paymentModalOverlay');
+        const card = document.getElementById('paymentModalCard');
         
-        // Hide all contents first
+        overlay.style.display = 'flex';
+        card.style.animation = 'modalFadeIn 0.25s ease forwards';
+        
         document.getElementById('modalContentGCash').style.display = 'none';
         document.getElementById('modalContentMaya').style.display = 'none';
         document.getElementById('modalContentBank').style.display = 'none';
         
-        // Show specific content
-        document.getElementById('modalContent' + method).style.display = 'block';
+        const targetContent = document.getElementById('modalContent' + method);
+        if(targetContent) targetContent.style.display = 'block';
         
-        const uploadSection = document.getElementById('uploadSection');
-        const uploadSeparator = document.getElementById('uploadSeparator');
         const fileInput = document.getElementById('proofImageInput');
-        const submitBtn = document.getElementById('submit-payment-btn');
-        document.getElementById('paymentModalCard').style.animation = 'modalFadeIn 0.3s ease forwards';
-        
-        uploadSection.style.display = 'block';
-        uploadSeparator.style.display = 'block';
-        fileInput.setAttribute('required', 'required');
-        submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Upload Proof & Finish Booking';
-        submitBtn.style.background = 'var(--up-emerald-500)';
-        submitBtn.style.boxShadow = '0 4px 6px -1px rgba(16, 185, 129, 0.2)';
+        if(fileInput) fileInput.setAttribute('required', 'required');
     }
 
     function closePaymentModal() {
@@ -592,37 +522,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Form Validation & URL Error Handling
     document.addEventListener('DOMContentLoaded', () => {
-        // Check URL parameters for AI Validation Errors
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('error')) {
             const errorType = urlParams.get('error');
             const errorMethod = urlParams.get('method');
             
             if (errorType === 'invalid_receipt') {
-                // Auto-select method and open modal
                 if (errorMethod && errorMethod !== 'Cash') {
                     const methodSelect = document.getElementById('selected-method');
                     if(methodSelect) methodSelect.value = errorMethod;
                     
-                    // Show error inside the modal
                     const errorMsgBox = document.getElementById('uploadErrorMsg');
                     if (errorMsgBox) {
-                        errorMsgBox.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <strong>AI Verification Failed:</strong> Our AI could not verify the Reference Number, Date, or Amount. Please ensure the screenshot is clear and legitimate.';
+                        errorMsgBox.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <strong>AI Check Failed:</strong> We could not read the Reference Number, Date, or Amount from your screenshot. Please make sure your screenshot is clear and complete.';
                         errorMsgBox.style.display = 'block';
                     }
                     
-                    // Open the modal automatically
                     openPaymentModal(errorMethod);
                 }
             } else if (errorType === 'missing_proof') {
                 Swal.fire({
-                    title: 'Missing Proof',
-                    text: 'A payment proof screenshot is required to complete the booking.',
+                    title: 'Screenshot Needed',
+                    text: 'Please upload a photo of your payment receipt to complete your booking.',
                     icon: 'warning',
-                    confirmButtonColor: 'var(--up-emerald-500)'
+                    confirmButtonColor: 'var(--pay-emerald-600)'
                 });
             }
-            // Clean URL
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
@@ -636,50 +561,49 @@ document.addEventListener('DOMContentLoaded', function() {
                     const refInput = document.getElementById('referenceNoInput');
                     const submitBtn = document.getElementById('submit-payment-btn');
                     
-                    // File Validation
-                    if (fileInput.files.length > 0) {
+                    if (fileInput && fileInput.files.length > 0) {
                         const file = fileInput.files[0];
                         const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
                         
                         if (!validTypes.includes(file.type)) {
                             e.preventDefault();
-                            Swal.fire('Invalid File', 'Please upload a PNG or JPG image only.', 'error');
+                            Swal.fire('Invalid File', 'Please upload a PNG or JPG photo only.', 'error');
                             return;
                         }
                         
                         if (file.size > 5 * 1024 * 1024) { // 5MB limit
                             e.preventDefault();
-                            Swal.fire('File Too Large', 'Maximum size allowed is 5MB.', 'error');
+                            Swal.fire('File Too Large', 'Maximum file size allowed is 5MB.', 'error');
                             return;
                         }
                     }
                     
-                    // Reference Number Validation
                     if (refInput && refInput.value.trim() !== '') {
                         const refRegex = /^[a-zA-Z0-9]+$/;
                         if (!refRegex.test(refInput.value)) {
                             e.preventDefault();
-                            Swal.fire('Invalid Reference', 'Reference Number must contain letters and numbers only.', 'error');
+                            Swal.fire('Invalid Reference Number', 'Reference Number must contain letters and numbers only.', 'error');
                             return;
                         }
                         if (refInput.value.length < 6 || refInput.value.length > 30) {
                             e.preventDefault();
-                            Swal.fire('Invalid Reference', 'Reference Number must be between 6 and 30 characters.', 'error');
+                            Swal.fire('Invalid Reference Number', 'Reference Number must be between 6 and 30 characters.', 'error');
                             return;
                         }
                         
                         const repeatingRegex = /(.)\1{5,}/;
                         if (repeatingRegex.test(refInput.value)) {
                             e.preventDefault();
-                            Swal.fire('Suspicious Reference', 'Reference number looks invalid. Please provide a real reference number.', 'warning');
+                            Swal.fire('Invalid Reference Number', 'Reference number looks incorrect. Please enter your real reference number.', 'warning');
                             return;
                         }
                     }
 
-                    // Disable button and show loading state
-                    submitBtn.disabled = true;
-                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating Receipt with AI...';
-                    submitBtn.style.opacity = '0.7';
+                    if(submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking screenshot...';
+                        submitBtn.style.opacity = '0.7';
+                    }
                 }
             });
         }

@@ -1,464 +1,762 @@
 <!-- HTML2PDF Library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
+    integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
 <div id="printable-contract-container" style="position: relative;">
     <!-- PDF Download Action Bar -->
-    <div class="pdf-action-bar no-print" style="display: flex; justify-content: flex-end; padding: 10px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-        <button onclick="downloadContractPDF()" style="background: var(--up-emerald-600, #059669); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.2); transition: all 0.2s;">
-            <i class="fas fa-file-pdf"></i> Download PDF
+    {% if quotation.customer_signature and quotation.caterer_signature %}
+    <div class="pdf-action-bar no-print"
+        style="display: flex; justify-content: flex-end; padding: 10px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+        <button onclick="downloadContractPDF()"
+            style="background: var(--up-emerald-600, #059669); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.2); transition: all 0.2s;">
+            <i class="fas fa-file-pdf"></i> Download Official PDF
         </button>
     </div>
+    {% endif %}
 
     <div id="printable-contract" class="contract-paper-container">
         <div class="contract-paper">
-        {% set doc_title = "BOOKING AGREEMENT & QUOTATION SUMMARY" %}
-        {% if booking.document_type == "service_agreement" %}
-            {% set doc_title = "EVENT SERVICE AGREEMENT" %}
-        {% elif booking.document_type == "rental_agreement" %}
-            {% set doc_title = "RENTAL AGREEMENT" %}
-        {% elif booking.document_type == "invoice" %}
-            {% set doc_title = "ORDER CONFIRMATION & INVOICE" %}
-        {% endif %}
-        
-        <!-- Formal Document Header -->
-        <div class="formal-doc-header">
-            <h2 class="formal-doc-main-title">{{ doc_title }}</h2>
-            <div class="formal-doc-meta">
-                <span>Reference No: <strong>#{% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ booking.id }}</strong></span>
-                <span>Date generated: <strong>{{ (quotation.updated_at or quotation.created_at).strftime('%B %d, %Y') }}</strong></span>
-            </div>
-        </div>
+            {% set doc_title = "MASTER CATERING SERVICE AGREEMENT" %}
+            {% if booking.document_type == "service_agreement" or booking.event_type == "Service Only" %}
+            {% set doc_title = "EVENT SERVICE AGREEMENT & STAFFING TERMS" %}
+            {% elif booking.document_type == "rental_agreement" or booking.event_type == "Equipment Rental" %}
+            {% set doc_title = "EQUIPMENT RENTAL AGREEMENT & LIABILITY TERMS" %}
+            {% elif booking.document_type in ["invoice", "fast_track"] or booking.event_type in ["Ala Carte Order",
+            "Food Order"] %}
+            {% set doc_title = "ORDER CONFIRMATION & DELIVERY INVOICE" %}
+            {% endif %}
 
-        <!-- Preamble -->
-        <div class="contract-preamble-wrapper">
-            <p class="contract-preamble">
-                This {{ doc_title|title }} (hereinafter referred to as the "{% if booking.document_type == 'invoice' %}Invoice{% else %}Agreement{% endif %}") is entered into on this <strong>{{
-                    (quotation.updated_at or quotation.created_at).strftime('%d day of %B, %Y') }}</strong>, by and between:
+            <!-- Formal Document Header -->
+            <div class="formal-doc-header">
+                <h2 class="formal-doc-main-title">{{ doc_title }}</h2>
+                <div class="formal-doc-meta">
+                    <span>Reference No: <strong>#{% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif
+                            %}{{ booking.id }}</strong></span>
+                    <span>Date generated: <strong>{{ (quotation.updated_at or quotation.created_at).strftime('%B %d,
+                            %Y') }}</strong></span>
+                </div>
+            </div>
+
+            <!-- Preamble -->
+            <div class="contract-preamble-wrapper">
+                <p class="contract-preamble">
+                    This {{ doc_title|title }} (hereinafter referred to as the "{% if booking.document_type == 'invoice'
+                    %}Invoice{% else %}Agreement{% endif %}") is entered into on this <strong>{{
+                        (quotation.updated_at or quotation.created_at).strftime('%d day of %B, %Y') }}</strong>, by and
+                    between:
+                </p>
+            </div>
+
+            <div class="contract-parties-layout">
+                <div class="party-card-pro">
+                    <div class="party-label-tag">SERVICE PROVIDER</div>
+                    <div class="party-content-main">
+                        <h3 class="party-name">{{ booking.caterer.user.first_name }} {{ booking.caterer.user.last_name
+                            }}</h3>
+                        <p class="party-detail-text">
+                            {{ booking.caterer.business_name }}<br>
+                            {{ booking.caterer.contact_address or booking.caterer.user.address or booking.caterer.city
+                            }}<br>
+                            {{ booking.caterer.contact_phone or booking.caterer.user.phone_number }}<br>
+                            {{ booking.caterer.user.email }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="parties-divider-icon"><i class="fas fa-handshake"></i></div>
+
+                <div class="party-card-pro">
+                    <div class="party-label-tag">THE CLIENT</div>
+                    <div class="party-content-main">
+                        <h3 class="party-name">{{ booking.user.first_name }} {{ booking.user.last_name }}</h3>
+                        <p class="party-detail-text">
+                            {{ booking.user.address or 'Address on File' }}<br>
+                            {{ booking.user.phone_number or 'Contact Number on File' }}<br>
+                            {{ booking.user.email }}<br>
+                            Event Representative
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 1 -->
+            <h2 class="contract-section-title">1. Event Specifications</h2>
+            <div class="contract-details-table-wrapper">
+                <table class="contract-spec-table">
+                    <tr>
+                        <td class="spec-label-col">Date of Event:</td>
+                        <td>{{ booking.event_date.strftime('%B %d, %Y') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="spec-label-col">Type of Event:</td>
+                        <td>{{ booking.event_type }}</td>
+                    </tr>
+                    <tr>
+                        <td class="spec-label-col">Time:</td>
+                        <td>{{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBA' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="spec-label-col">Venue:</td>
+                        <td>{{ booking.venue_address }}</td>
+                    </tr>
+                    <tr>
+                        <td class="spec-label-col">Expected Guests:</td>
+                        <td>{{ quotation.package_details.guest_count }} persons</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Section 2 -->
+            <h2 class="contract-section-title">2. Financial Terms & Compensation</h2>
+            <p class="financial-terms-para">
+                In consideration of the catering services provided, the Client agrees to pay the Service Provider the
+                Total
+                Contract Value as detailed below. This total includes the base package and any agreed-upon add-ons.
             </p>
-        </div>
 
-        <div class="contract-parties-layout">
-            <div class="party-card-pro">
-                <div class="party-label-tag">SERVICE PROVIDER</div>
-                <div class="party-content-main">
-                    <h3 class="party-name">{{ booking.caterer.user.first_name }} {{ booking.caterer.user.last_name }}</h3>
-                    <p class="party-detail-text">
-                        {{ booking.caterer.business_name }}<br>
-                        {{ booking.caterer.contact_address or booking.caterer.user.address or booking.caterer.city }}<br>
-                        {{ booking.caterer.contact_phone or booking.caterer.user.phone_number }}<br>
-                        {{ booking.caterer.user.email }}
-                    </p>
-                </div>
-            </div>
+            <table class="financial-summary-table">
+                <thead>
+                    <tr class="summary-header-row">
+                        <th class="summary-th-desc">Description</th>
+                        <th class="summary-th-amount">Amount (PHP)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if quotation and quotation.package_details and quotation.package_details.base_amount|float > 0 %}
+                    <tr class="summary-row-item">
+                        <td class="summary-td-desc">
+                            <strong>Base Package: {{ quotation.package_details.name }}</strong><br>
+                            <span class="summary-desc-subtext">Includes {{ quotation.package_details.guest_count or 1 }}
+                                guests at
+                                ₱{{ "{:,.2f}".format(quotation.package_details.unit_price|float) }}/head</span>
+                        </td>
+                        <td class="summary-td-amount">
+                            ₱{{ "{:,.2f}".format(quotation.package_details.base_amount|float) }}
+                        </td>
+                    </tr>
+                    {% endif %}
 
-            <div class="parties-divider-icon"><i class="fas fa-handshake"></i></div>
-
-            <div class="party-card-pro">
-                <div class="party-label-tag">THE CLIENT</div>
-                <div class="party-content-main">
-                    <h3 class="party-name">{{ booking.user.first_name }} {{ booking.user.last_name }}</h3>
-                    <p class="party-detail-text">
-                        {{ booking.user.address or 'Address on File' }}<br>
-                        {{ booking.user.phone_number or 'Contact Number on File' }}<br>
-                        {{ booking.user.email }}<br>
-                        Event Representative
-                    </p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Section 1 -->
-        <h2 class="contract-section-title">1. Event Specifications</h2>
-        <div class="contract-details-table-wrapper">
-            <table class="contract-spec-table">
-                <tr>
-                    <td class="spec-label-col">Date of Event:</td>
-                    <td>{{ booking.event_date.strftime('%B %d, %Y') }}</td>
-                </tr>
-                <tr>
-                    <td class="spec-label-col">Type of Event:</td>
-                    <td>{{ booking.event_type }}</td>
-                </tr>
-                <tr>
-                    <td class="spec-label-col">Time:</td>
-                    <td>{{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBA' }}</td>
-                </tr>
-                <tr>
-                    <td class="spec-label-col">Venue:</td>
-                    <td>{{ booking.venue_address }}</td>
-                </tr>
-                <tr>
-                    <td class="spec-label-col">Expected Guests:</td>
-                    <td>{{ quotation.package_details.guest_count }} persons</td>
-                </tr>
+                    {% if quotation.addons %}
+                    {% for addon in quotation.addons %}
+                    <tr class="addon-row-item">
+                        <td class="addon-td-desc">
+                            <strong>{{ addon.name }}</strong><br>
+                            <span class="summary-desc-subtext">
+                                Qty: {{ addon.quantity if addon.quantity else 1 }} &times; ₱{{
+                                "{:,.2f}".format(addon.unit_price|float if addon.unit_price else addon.price|float) }}
+                            </span>
+                        </td>
+                        <td class="summary-td-amount">
+                            ₱{{ "{:,.2f}".format(addon.price|float) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% endif %}
+                </tbody>
+                <tfoot class="summary-tfoot">
+                    <tr>
+                        <td class="total-value-label-cell">Total Contract Value:</td>
+                        <td class="total-value-amount-cell">
+                            ₱{{ "{:,.2f}".format((quotation.total_amount|float)) }}
+                        </td>
+                    </tr>
+                    {% set min_term = quotation.downpayment_percent if quotation and quotation.downpayment_percent else
+                    ((booking.caterer.accepted_payment_terms|sort)[0] if booking.caterer and
+                    booking.caterer.accepted_payment_terms else 30) %}
+                    {% set dp_amount = (quotation.total_amount|float) * ((min_term|float) / 100.0) %}
+                    <tr>
+                        <td class="deposit-info-label-cell">Required Security Deposit (<span id="contract-dp-pct">{{
+                                min_term }}</span>%):</td>
+                        <td class="deposit-info-amount-cell">
+                            ₱<span id="contract-dp-val">{{ "{:,.2f}".format(dp_amount) }}</span>
+                        </td>
+                    </tr>
+                </tfoot>
             </table>
-        </div>
 
-        <!-- Section 2 -->
-        <h2 class="contract-section-title">2. Financial Terms & Compensation</h2>
-        <p class="financial-terms-para">
-            In consideration of the catering services provided, the Client agrees to pay the Service Provider the Total
-            Contract Value as detailed below. This total includes the base package and any agreed-upon add-ons.
-        </p>
-
-        <table class="financial-summary-table">
-            <thead>
-                <tr class="summary-header-row">
-                    <th class="summary-th-desc">Description</th>
-                    <th class="summary-th-amount">Amount (PHP)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if quotation and quotation.package_details and quotation.package_details.base_amount|float > 0 %}
-                <tr class="summary-row-item">
-                    <td class="summary-td-desc">
-                        <strong>Base Package: {{ quotation.package_details.name }}</strong><br>
-                        <span class="summary-desc-subtext">Includes {{ quotation.package_details.guest_count or 1 }} guests at
-                            ₱{{ "{:,.2f}".format(quotation.package_details.unit_price|float) }}/head</span>
-                    </td>
-                    <td class="summary-td-amount">
-                        ₱{{ "{:,.2f}".format(quotation.package_details.base_amount|float) }}
-                    </td>
-                </tr>
-                {% endif %}
-
-                {% if quotation.addons %}
-                {% for addon in quotation.addons %}
-                <tr class="addon-row-item">
-                    <td class="addon-td-desc">
-                        <strong>{{ addon.name }}</strong><br>
-                        <span class="summary-desc-subtext">
-                            Qty: {{ addon.quantity if addon.quantity else 1 }} &times; ₱{{ "{:,.2f}".format(addon.unit_price|float if addon.unit_price else addon.price|float) }}
-                        </span>
-                    </td>
-                    <td class="summary-td-amount">
-                        ₱{{ "{:,.2f}".format(addon.price|float) }}
-                    </td>
-                </tr>
-                {% endfor %}
-                {% endif %}
-            </tbody>
-            <tfoot class="summary-tfoot">
-                <tr>
-                    <td class="total-value-label-cell">Total Contract Value:</td>
-                    <td class="total-value-amount-cell">
-                        ₱{{ "{:,.2f}".format((quotation.total_amount|float)) }}
-                    </td>
-                </tr>
-                {% set min_term = quotation.downpayment_percent if quotation and quotation.downpayment_percent else ((booking.caterer.accepted_payment_terms|sort)[0] if booking.caterer and booking.caterer.accepted_payment_terms else 30) %}
-                {% set dp_amount = (quotation.total_amount|float) * ((min_term|float) / 100.0) %}
-                <tr>
-                    <td class="deposit-info-label-cell">Required Security Deposit (<span id="contract-dp-pct">{{ min_term }}</span>%):</td>
-                    <td class="deposit-info-amount-cell">
-                        ₱<span id="contract-dp-val">{{ "{:,.2f}".format(dp_amount) }}</span>
-                    </td>
-                </tr>
-            </tfoot>
-        </table>
-
-        <!-- Section 3: Standard Clauses -->
-        <h2 class="contract-section-title">3. Standard Terms & Conditions</h2>
-        <div class="contract-clauses-list">
-            <div class="clause-item">
-                <span class="clause-num">3.1 {{ doc_title|title }} Terms:</span>
-                <span class="clause-text" style="white-space: pre-wrap;">
-                    {% if booking.document_type == "rental_agreement" and booking.caterer.rental_policies %}
-                        {{ booking.caterer.rental_policies }}
-                    {% elif booking.document_type in ["invoice", "fast_track"] and booking.caterer.general_terms %}
-                        {{ booking.caterer.general_terms }}
-                    {% elif booking.caterer.terms_and_conditions %}
-                        {{ booking.caterer.terms_and_conditions }}
-                    {% else %}
-                        The Service Provider is not liable for indirect or consequential damages. The Client assumes responsibility for venue compliance and obtaining necessary permits. Full payment is required prior to the event date. Cancellations are subject to forfeiture of the security deposit.
-                    {% endif %}
-                </span>
+            <!-- Section 3: Standard Clauses -->
+            <h2 class="contract-section-title">3. Standard Terms & Conditions</h2>
+            <div class="contract-clauses-list">
+                <p class="clause-text" style="white-space: pre-line; margin-top: 0;">{% if booking.document_type == "rental_agreement" and booking.caterer.rental_policies %}
+{{ booking.caterer.rental_policies }}
+{% elif booking.document_type in ["invoice", "fast_track"] and booking.caterer.general_terms %}
+{{ booking.caterer.general_terms }}
+{% elif booking.caterer.terms_and_conditions %}
+{{ booking.caterer.terms_and_conditions }}
+{% else %}
+The Service Provider is not liable for indirect or consequential damages. The Client assumes responsibility for venue compliance and obtaining necessary permits. Full payment is required prior to the event date. Cancellations are subject to forfeiture of the security deposit.
+{% endif %}</p>
             </div>
-        </div>
 
-        <!-- Section 4 -->
-        <h2 class="contract-section-title">4. Agreement Terms & Legal Validity</h2>
-        <p class="agreement-status-para">
-            By signing this document, both the Customer and the Caterer agree that this is the final and complete agreement for the event. This contract replaces any previous chats, messages, or verbal promises made outside of this document.
-            <br><br>
-            Signing this contract digitally through the OccaServe Platform is just as valid and legally binding as a handwritten signature on a physical paper, as supported by the Electronic Commerce Act.
-        </p>
+            <!-- Section 4 -->
+            <h2 class="contract-section-title">4. Agreement Terms & Legal Validity</h2>
+            <p class="agreement-status-para">
+                By signing this document, both the Customer and the Caterer agree that this is the final and complete
+                agreement for the event. This contract replaces any previous chats, messages, or verbal promises made
+                outside of this document.
+                <br><br>
+                Signing this contract digitally through the OccaServe Platform is just as valid and legally binding as a
+                handwritten signature on a physical paper, as supported by the Electronic Commerce Act.
+            </p>
 
-        <!-- Signatures Section -->
-        <div class="signatures-wrapper-formal">
-            <div class="signatures-side-by-side">
-                <!-- Service Provider Signature -->
-                <div class="signature-column">
-                    <div class="sig-placeholder-area" id="caterer-sig-placeholder">
-                        {% if quotation.caterer_signature %}
+            <!-- Signatures Section -->
+            <div class="signatures-wrapper-formal">
+                <div class="signatures-side-by-side">
+                    <!-- Service Provider Signature -->
+                    <div class="signature-column">
+                        <div class="sig-placeholder-area" id="caterer-sig-placeholder">
+                            {% if quotation.caterer_signature %}
                             <img src="{{ quotation.caterer_signature }}" alt="Caterer Signature" class="formal-sig-img">
-                        {% else %}
+                            {% else %}
                             <div class="sig-awaiting">AWAITING CATERER SIGNATURE</div>
-                        {% endif %}
+                            {% endif %}
+                        </div>
+                        <div class="sig-details-formal">
+                            <span class="sig-name-formal">{{ (booking.caterer.user.first_name + ' ' +
+                                booking.caterer.user.last_name)|upper }}</span>
+                            <span class="sig-label-formal">SERVICE PROVIDER / AUTHORIZED SIGNATORY</span>
+                            <span class="sig-date-formal">
+                                {{ quotation.caterer_signed_at.strftime('%Y-%m-%d %H:%M') if quotation.caterer_signed_at
+                                else '' }}
+                            </span>
+                        </div>
                     </div>
-                    <div class="sig-details-formal">
-                        <span class="sig-name-formal">{{ (booking.caterer.user.first_name + ' ' + booking.caterer.user.last_name)|upper }}</span>
-                        <span class="sig-label-formal">SERVICE PROVIDER / AUTHORIZED SIGNATORY</span>
-                        <span class="sig-date-formal">
-                            {{ quotation.caterer_signed_at.strftime('%Y-%m-%d %H:%M') if quotation.caterer_signed_at else '' }}
-                        </span>
+
+                    <!-- Client Signature -->
+                    <div class="signature-column" style="position: relative;">
+                        {% if quotation.customer_signature and quotation.caterer_signature %}
+                        <div class="verified-seal-watermark">
+                            <i class="fas fa-certificate"></i>
+                            <span>Certified Agreement</span>
+                        </div>
+                        {% endif %}
+                        <div class="sig-placeholder-area" id="customer-sig-placeholder">
+                            {% if quotation.customer_signature %}
+                            <img src="{{ quotation.customer_signature }}" alt="Customer Signature"
+                                class="formal-sig-img">
+                            {% else %}
+                            <div class="sig-awaiting">AWAITING CLIENT SIGNATURE</div>
+                            {% endif %}
+                        </div>
+                        <div class="sig-details-formal">
+                            <span class="sig-name-formal">{{ (booking.user.first_name + ' ' +
+                                booking.user.last_name)|upper }}</span>
+                            <span class="sig-label-formal">CLIENT / EVENT REPRESENTATIVE</span>
+                            <span class="sig-date-formal">
+                                {{ quotation.customer_signed_at.strftime('%Y-%m-%d %H:%M') if
+                                quotation.customer_signed_at else '' }}
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Client Signature -->
-                <div class="signature-column" style="position: relative;">
-                    {% if quotation.customer_signature and quotation.caterer_signature %}
-                    <div class="verified-seal-watermark">
-                        <i class="fas fa-certificate"></i>
-                        <span>Certified Agreement</span>
-                    </div>
-                    {% endif %}
-                    <div class="sig-placeholder-area" id="customer-sig-placeholder">
-                        {% if quotation.customer_signature %}
-                            <img src="{{ quotation.customer_signature }}" alt="Customer Signature" class="formal-sig-img">
-                        {% else %}
-                            <div class="sig-awaiting">AWAITING CLIENT SIGNATURE</div>
-                        {% endif %}
-                    </div>
-                    <div class="sig-details-formal">
-                        <span class="sig-name-formal">{{ (booking.user.first_name + ' ' + booking.user.last_name)|upper }}</span>
-                        <span class="sig-label-formal">CLIENT / EVENT REPRESENTATIVE</span>
-                        <span class="sig-date-formal">
-                            {{ quotation.customer_signed_at.strftime('%Y-%m-%d %H:%M') if quotation.customer_signed_at else '' }}
-                        </span>
-                    </div>
+
+                <div class="formal-footer-note">
+                    * This document is electronically executed and stored securely on the OccaServe Platform.
                 </div>
-            </div>
-            
-            
-            <div class="formal-footer-note">
-                * This document is electronically executed and stored securely on the OccaServe Platform.
             </div>
         </div>
     </div>
-</div>
 
-<style>
-    .contract-paper-container {
-        display: flex;
-        justify-content: center;
-        padding: 40px 20px;
-        background: #f1f5f9; /* Contrast background */
-        min-height: 100%;
-    }
-    .contract-paper {
-        background: #fff;
-        width: 100%;
-        max-width: 800px;
-        padding: 60px 80px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        border-radius: 4px;
-        font-family: 'Crimson Pro', serif;
-        position: relative;
-    }
-    .formal-doc-header { text-align: center; border-bottom: 2px solid #1a1a1a; padding-bottom: 2rem; margin-bottom: 3rem; }
-    .formal-doc-main-title { font-family: 'Poppins', sans-serif; font-weight: 900; font-size: 1.8rem; margin: 0; color: #0f172a; letter-spacing: 0.05em; }
-    .formal-doc-meta { display: flex; justify-content: center; gap: 2rem; margin-top: 0.75rem; font-size: 0.75rem; color: #64748b; font-family: 'Poppins', sans-serif; font-weight: 600; text-transform: uppercase; }
-    
-    .contract-preamble { text-align: justify; line-height: 1.7; font-size: 1rem; color: #334155; margin-bottom: 2rem; }
-    
-    .contract-parties-layout { display: grid; grid-template-columns: 1fr 40px 1fr; gap: 1.5rem; align-items: start; margin-bottom: 3rem; }
-    .party-card-pro { background: #f8fafc; padding: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0; }
-    .party-label-tag { font-family: 'Poppins', sans-serif; font-size: 0.65rem; font-weight: 800; color: #94a3b8; margin-bottom: 0.75rem; letter-spacing: 0.1em; }
-    .party-name { font-size: 1.2rem; font-weight: 700; margin: 0 0 0.5rem 0; color: #0f172a; }
-    .party-detail-text { font-size: 0.85rem; color: #64748b; line-height: 1.5; margin: 0; }
-    .parties-divider-icon { display: flex; align-items: center; justify-content: center; color: #cbd5e1; font-size: 1.2rem; padding-top: 2rem; }
-
-    .contract-section-title { font-family: 'Poppins', sans-serif; font-size: 0.95rem; font-weight: 900; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; margin: 2.5rem 0 1.25rem 0; color: #0f172a; }
-    
-    .contract-spec-table { width: 100%; border-collapse: collapse; }
-    .contract-spec-table td { padding: 0.75rem 0; border-bottom: 1px solid #f1f5f9; font-size: 0.95rem; }
-    .spec-label-col { font-weight: 700; color: #64748b; width: 180px; font-family: 'Poppins', sans-serif; font-size: 0.8rem; text-transform: uppercase; }
-
-    .financial-summary-table { width: 100%; border-collapse: collapse; border: 2px solid #0f172a; margin: 1.5rem 0; }
-    .summary-header-row th { background: #f8fafc; padding: 1rem; text-align: left; font-family: 'Poppins', sans-serif; font-size: 0.75rem; font-weight: 800; border-bottom: 2px solid #0f172a; }
-    .summary-row-item td, .addon-row-item td { padding: 1rem; border-bottom: 1px solid #e2e8f0; font-size: 1rem; }
-    .summary-td-amount { text-align: right; font-weight: 700; }
-    
-    .summary-tfoot td { padding: 1rem; font-weight: 800; background: #fcfcfd; }
-    .total-value-label-cell { text-align: right; border-top: 2px solid #0f172a; }
-    .total-value-amount-cell { text-align: right; border-top: 2px solid #0f172a; font-size: 1.25rem; color: #0f172a; }
-
-    .signatures-side-by-side { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; margin-top: 4rem; }
-    .sig-placeholder-area { height: 100px; border-bottom: 2px solid #0f172a; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; margin-bottom: 1rem; }
-    .formal-sig-img { max-height: 80px; filter: grayscale(1) contrast(1.2); }
-    .sig-details-formal { text-align: center; }
-    .sig-name-formal { font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 0.9rem; color: #0f172a; display: block; margin-bottom: 0.25rem; }
-    .sig-label-formal { font-size: 0.65rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; display: block; }
-    .sig-date-formal { font-size: 0.65rem; color: #cbd5e1; margin-top: 0.5rem; display: block; }
-
-    
-    .verified-seal-watermark {
-        position: absolute;
-        top: -30px;
-        right: -30px;
-        width: 110px;
-        height: 110px;
-        border: 4px solid rgba(22, 163, 74, 0.2);
-        border-radius: 50%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        color: rgba(22, 163, 74, 0.25);
-        transform: rotate(-15deg);
-        pointer-events: none;
-        z-index: 10;
-        padding: 10px;
-        text-align: center;
-    }
-    .verified-seal-watermark i {
-        font-size: 2.5rem;
-        margin-bottom: 0.25rem;
-    }
-    .verified-seal-watermark span {
-        font-size: 0.75rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        line-height: 1.1;
-    }
-    
-    /* Prevent elements from being cut in half during PDF export */
-    .formal-doc-header, .contract-section-formal, .signatures-wrapper-formal {
-        page-break-inside: avoid;
-    }
-
-
-    .formal-footer-note { text-align: center; margin-top: 4rem; font-size: 0.7rem; color: #cbd5e1; font-style: italic; }
-
-    @media print {
-        @page { margin: 1.5cm; }
-        body, html { background: #fff; margin: 0; padding: 0; }
-        .contract-paper-container { display: block !important; padding: 0 !important; background: #fff !important; min-height: auto !important; }
-        .contract-paper { box-shadow: none !important; border: none !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; margin: 0 !important; }
-        
-        /* Prevent awkward page breaks */
-        .contract-section-title { page-break-after: avoid; }
-        .contract-parties-layout { page-break-inside: avoid; }
-        .financial-summary-table { page-break-inside: avoid; }
-        .signatures-wrapper-formal { page-break-inside: avoid; margin-top: 2rem; }
-        
-        /* Fallbacks for grids that break in print */
-        .signatures-side-by-side { display: flex !important; justify-content: space-between !important; gap: 2rem !important; margin-top: 2rem !important; }
-        .signature-column { flex: 1; min-width: 45%; }
-        
-        
-    .verified-seal-watermark {
-        position: absolute;
-        top: -30px;
-        right: -30px;
-        width: 110px;
-        height: 110px;
-        border: 4px solid rgba(22, 163, 74, 0.2);
-        border-radius: 50%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        color: rgba(22, 163, 74, 0.25);
-        transform: rotate(-15deg);
-        pointer-events: none;
-        z-index: 10;
-        padding: 10px;
-        text-align: center;
-    }
-    .verified-seal-watermark i {
-        font-size: 2.5rem;
-        margin-bottom: 0.25rem;
-    }
-    .verified-seal-watermark span {
-        font-size: 0.75rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        line-height: 1.1;
-    }
-    
-    /* Prevent elements from being cut in half during PDF export */
-    .formal-doc-header, .contract-section-formal, .signatures-wrapper-formal {
-        page-break-inside: avoid;
-    }
-
-        
-        .formal-footer-note { margin-top: 1.5rem; font-size: 0.5rem; }
-    }
-</style>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<script>
-    function downloadContractPDF() {
-        const originalElement = document.querySelector('.contract-paper');
-        const refNo = "{% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ booking.id }}";
-        
-        const btn = document.querySelector('.pdf-action-bar button');
-        if (!btn) return;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
-        btn.disabled = true;
-
-        // Save current scroll positions to restore later
-        const originalScrollY = window.scrollY;
-        const modalBody = document.getElementById('contractModalBody');
-        const originalModalScroll = modalBody ? modalBody.scrollTop : 0;
-
-        // Force scroll to top to prevent html2canvas blank page rendering bugs
-        window.scrollTo(0, 0);
-        if (modalBody) {
-            modalBody.scrollTop = 0;
+    <style>
+        .contract-paper-container {
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            background: #f1f5f9;
+            /* Contrast background */
+            min-height: 100%;
         }
 
-        // Allow 300ms for images (signatures) to fully render and scroll to settle
-        setTimeout(() => {
-            const opt = {
-                margin:       0.3, 
-                filename:     `OccaServe_${refNo}_Document.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                pagebreak:    { mode: ['css', 'legacy'] },
-                html2canvas:  { 
-                    scale: 2, 
-                    useCORS: true,
-                    scrollY: 0,
-                    scrollX: 0
-                },
-                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-            };
+        .contract-paper {
+            background: #fff;
+            width: 100%;
+            max-width: 800px;
+            padding: 60px 80px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+            font-family: 'Crimson Pro', serif;
+            position: relative;
+        }
 
-            html2pdf().set(opt).from(originalElement).save().then(() => {
-                // Restore scroll positions
-                window.scrollTo(0, originalScrollY);
-                if (modalBody) {
-                    modalBody.scrollTop = originalModalScroll;
-                }
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }).catch(err => {
-                console.error("PDF Generation Error:", err);
-                window.scrollTo(0, originalScrollY);
-                if (modalBody) {
-                    modalBody.scrollTop = originalModalScroll;
-                }
-                btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
-                btn.disabled = false;
-            });
-        }, 300);
-    }
-</script>
+        .formal-doc-header {
+            text-align: center;
+            border-bottom: 2px solid #1a1a1a;
+            padding-bottom: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .formal-doc-main-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 900;
+            font-size: 1.8rem;
+            margin: 0;
+            color: #0f172a;
+            letter-spacing: 0.05em;
+        }
+
+        .formal-doc-meta {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 0.75rem;
+            font-size: 0.75rem;
+            color: #64748b;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .contract-preamble,
+        .financial-terms-para,
+        .clause-text,
+        .agreement-status-para {
+            text-align: justify;
+            line-height: 1.7;
+            font-size: 1rem;
+            color: #334155;
+            margin-bottom: 1.5rem;
+            display: block; /* Ensures spans act like paragraphs */
+            font-family: 'Crimson Pro', serif;
+        }
+
+        .contract-parties-layout {
+            display: grid;
+            grid-template-columns: 1fr 40px 1fr;
+            gap: 1.5rem;
+            align-items: start;
+            margin-bottom: 3rem;
+        }
+
+        .party-card-pro {
+            background: #f8fafc;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .party-label-tag {
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: #94a3b8;
+            margin-bottom: 0.75rem;
+            letter-spacing: 0.1em;
+        }
+
+        .party-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
+            color: #0f172a;
+        }
+
+        .party-detail-text {
+            font-size: 0.85rem;
+            color: #64748b;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .parties-divider-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #cbd5e1;
+            font-size: 1.2rem;
+            padding-top: 2rem;
+        }
+
+        .contract-section-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+            margin: 2.5rem 0 1.25rem 0;
+            color: #0f172a;
+        }
+
+        .contract-spec-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .contract-spec-table td {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.95rem;
+        }
+
+        .spec-label-col {
+            font-weight: 700;
+            color: #64748b;
+            width: 180px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        .financial-summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #0f172a;
+            margin: 1.5rem 0;
+        }
+
+        .summary-header-row th {
+            background: #f8fafc;
+            padding: 1rem;
+            text-align: left;
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 800;
+            border-bottom: 2px solid #0f172a;
+        }
+
+        .summary-row-item td,
+        .addon-row-item td {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 1rem;
+        }
+
+        .summary-td-amount {
+            text-align: right;
+            font-weight: 700;
+        }
+
+        .summary-tfoot td {
+            padding: 1rem;
+            font-weight: 800;
+            background: #fcfcfd;
+        }
+
+        .total-value-label-cell {
+            text-align: right;
+            border-top: 2px solid #0f172a;
+        }
+
+        .total-value-amount-cell {
+            text-align: right;
+            border-top: 2px solid #0f172a;
+            font-size: 1.25rem;
+            color: #0f172a;
+        }
+
+        .signatures-side-by-side {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            margin-top: 4rem;
+        }
+
+        .sig-placeholder-area {
+            height: 100px;
+            border-bottom: 2px solid #0f172a;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .formal-sig-img {
+            max-height: 80px;
+            filter: grayscale(1) contrast(1.2);
+        }
+
+        .sig-details-formal {
+            text-align: center;
+        }
+
+        .sig-name-formal {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 800;
+            font-size: 0.9rem;
+            color: #0f172a;
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .sig-label-formal {
+            font-size: 0.65rem;
+            color: #94a3b8;
+            font-weight: 700;
+            text-transform: uppercase;
+            display: block;
+        }
+
+        .sig-date-formal {
+            font-size: 0.65rem;
+            color: #cbd5e1;
+            margin-top: 0.5rem;
+            display: block;
+        }
+
+
+        .verified-seal-watermark {
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            width: 110px;
+            height: 110px;
+            border: 4px solid rgba(22, 163, 74, 0.2);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: rgba(22, 163, 74, 0.25);
+            transform: rotate(-15deg);
+            pointer-events: none;
+            z-index: 10;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .verified-seal-watermark i {
+            font-size: 2.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .verified-seal-watermark span {
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            line-height: 1.1;
+        }
+
+        /* Prevent elements from being cut in half during PDF export */
+        .formal-doc-header,
+        .contract-section-formal,
+        .signatures-wrapper-formal {
+            page-break-inside: avoid;
+        }
+
+
+        .formal-footer-note {
+            text-align: center;
+            margin-top: 4rem;
+            font-size: 0.7rem;
+            color: #cbd5e1;
+            font-style: italic;
+        }
+
+        @media print {
+            @page {
+                margin: 1.5cm;
+            }
+
+            body,
+            html {
+                background: #fff;
+                margin: 0;
+                padding: 0;
+            }
+
+            .contract-paper-container {
+                display: block !important;
+                padding: 0 !important;
+                background: #fff !important;
+                min-height: auto !important;
+            }
+
+            .contract-paper {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+            }
+
+            /* Prevent awkward page breaks */
+            .contract-section-title {
+                page-break-after: avoid;
+            }
+
+            .contract-parties-layout {
+                page-break-inside: avoid;
+            }
+
+            .financial-summary-table {
+                page-break-inside: avoid;
+            }
+
+            .signatures-wrapper-formal {
+                page-break-inside: avoid;
+                margin-top: 2rem;
+            }
+
+            /* Fallbacks for grids that break in print */
+            .signatures-side-by-side {
+                display: flex !important;
+                justify-content: space-between !important;
+                gap: 2rem !important;
+                margin-top: 2rem !important;
+            }
+
+            .signature-column {
+                flex: 1;
+                min-width: 45%;
+            }
+
+
+            .verified-seal-watermark {
+                position: absolute;
+                top: -30px;
+                right: -30px;
+                width: 110px;
+                height: 110px;
+                border: 4px solid rgba(22, 163, 74, 0.2);
+                border-radius: 50%;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                color: rgba(22, 163, 74, 0.25);
+                transform: rotate(-15deg);
+                pointer-events: none;
+                z-index: 10;
+                padding: 10px;
+                text-align: center;
+            }
+
+            .verified-seal-watermark i {
+                font-size: 2.5rem;
+                margin-bottom: 0.25rem;
+            }
+
+            .verified-seal-watermark span {
+                font-size: 0.75rem;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                line-height: 1.1;
+            }
+
+            /* Prevent elements from being cut in half during PDF export */
+            .formal-doc-header,
+            .contract-section-formal,
+            .signatures-wrapper-formal {
+                page-break-inside: avoid;
+            }
+
+
+            .formal-footer-note {
+                margin-top: 1.5rem;
+                font-size: 0.5rem;
+            }
+        }
+
+        /* Mobile Responsiveness for Contract Document */
+        @media (max-width: 768px) {
+            .contract-paper-container {
+                padding: 10px 5px;
+            }
+            .contract-paper {
+                padding: 25px 15px;
+            }
+            .contract-parties-layout {
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+            }
+            .parties-divider-icon {
+                padding-top: 0;
+                transform: rotate(90deg);
+                margin: 0.25rem 0;
+            }
+            .signatures-side-by-side {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            .formal-doc-main-title {
+                font-size: 1.3rem;
+            }
+            .spec-label-col {
+                width: 120px;
+                font-size: 0.75rem;
+            }
+            .contract-spec-table td {
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <script>
+        function downloadContractPDF() {
+            const originalElement = document.querySelector('.contract-paper');
+            const refNo = "{% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ booking.id }}";
+
+            const btn = document.querySelector('.pdf-action-bar button');
+            if (!btn) return;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
+            btn.disabled = true;
+
+            // Save current scroll positions to restore later
+            const originalScrollY = window.scrollY;
+            const modalBody = document.getElementById('contractModalBody');
+            const originalModalScroll = modalBody ? modalBody.scrollTop : 0;
+
+            // Force scroll to top to prevent html2canvas blank page rendering bugs
+            window.scrollTo(0, 0);
+            if (modalBody) {
+                modalBody.scrollTop = 0;
+            }
+
+            // Allow 300ms for images (signatures) to fully render and scroll to settle
+            setTimeout(() => {
+                const opt = {
+                    margin: 0.3,
+                    filename: `OccaServe_${refNo}_Document.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    pagebreak: { mode: ['css', 'legacy'] },
+                    html2canvas: {
+                        scale: 2,
+                        useCORS: true,
+                        scrollY: 0,
+                        scrollX: 0
+                    },
+                    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+                };
+
+                html2pdf().set(opt).from(originalElement).save().then(() => {
+                    // Restore scroll positions
+                    window.scrollTo(0, originalScrollY);
+                    if (modalBody) {
+                        modalBody.scrollTop = originalModalScroll;
+                    }
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }).catch(err => {
+                    console.error("PDF Generation Error:", err);
+                    window.scrollTo(0, originalScrollY);
+                    if (modalBody) {
+                        modalBody.scrollTop = originalModalScroll;
+                    }
+                    btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+                    btn.disabled = false;
+                });
+            }, 300);
+        }
+    </script>
 
 
 

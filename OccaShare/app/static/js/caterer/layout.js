@@ -300,14 +300,21 @@
                 }
                 // Dispatch event for payments.js to handle
                 window.dispatchEvent(new CustomEvent('payoutUpdate', { detail: data }));
-            } else if (data.type === 'chat_message') {
+            } else if (data.type === 'chat_message' || data.type === 'new_booking_message') {
                 updateChatBadge();
+                // Also bump notification bell for the persistent DB notification record
+                if (window.fetchGlobalNotifications) window.fetchGlobalNotifications(true);
                 const msgDropdown = document.getElementById('messagesDropdown');
                 if (msgDropdown && msgDropdown.classList.contains('active')) {
                     loadHeaderMessages();
                 }
+                const activeChatBookingId = document.getElementById('chatBookingId')?.value;
+                if (activeChatBookingId == data.booking_id && typeof window.loadBookingMessages === 'function') {
+                    window.loadBookingMessages(data.booking_id);
+                }
                 if (window.location.pathname !== '/caterer/messages' && window.showToast) {
-                    window.showToast(`New message from ${data.sender_name}`, "info");
+                    const senderLabel = data.sender_name ? `from ${data.sender_name}` : (data.booking_id ? `in Booking #${data.booking_id}` : '');
+                    window.showToast(`💬 New message ${senderLabel}`, "info");
                 }
             }
         }

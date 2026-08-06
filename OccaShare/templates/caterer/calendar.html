@@ -41,15 +41,15 @@
 
     /* Override color-primary with caterer's color */
     :root {
-        --color-primary: var(--caterer-primary);
+        --color-primary: var(--primary-color);
     }
 
     /* Dynamic button colors */
     .btn-primary-pro, .btn-walkin-header {
-        background: var(--caterer-primary) !important;
+        background: var(--primary-color) !important;
         color: white !important;
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1) !important;
-        border-color: var(--caterer-primary) !important;
+        border-color: var(--primary-color) !important;
     }
 
     .btn-primary-pro:hover, .btn-walkin-header:hover, .fc-button-primary:hover {
@@ -58,8 +58,8 @@
     }
     
     .fc-button-primary {
-        background-color: var(--caterer-primary) !important;
-        border-color: var(--caterer-primary) !important;
+        background-color: var(--primary-color) !important;
+        border-color: var(--primary-color) !important;
     }
     .fc-button-primary:not(:disabled):active, .fc-button-primary:not(:disabled).fc-button-active {
         background-color: var(--caterer-primary-dark) !important;
@@ -71,16 +71,16 @@
     }
 
     .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
-        color: var(--caterer-primary) !important;
+        color: var(--primary-color) !important;
     }
 
     .weekly-event-date span:last-child {
-        color: var(--caterer-primary) !important;
+        color: var(--primary-color) !important;
     }
 
     .status-ongoing {
         background: var(--caterer-primary-light) !important;
-        color: var(--caterer-primary) !important;
+        color: var(--primary-color) !important;
     }
 
 
@@ -97,8 +97,8 @@
     /* Responsive Financial Summary */
     .financial-summary-box {
         background: rgba(255, 255, 255, 0.9);
-        border: 1px solid var(--caterer-primary);
-        border-left: 4px solid var(--caterer-primary);
+        border: 1px solid var(--primary-color);
+        border-left: 4px solid var(--primary-color);
         border-radius: var(--border-radius, 8px);
         padding: 1rem 1.25rem;
         margin-top: 1.25rem;
@@ -122,7 +122,7 @@
     .fs-amount-text {
         font-size: 1.5rem;
         font-weight: 900;
-        color: var(--caterer-primary);
+        color: var(--primary-color);
         line-height: 1.2;
     }
 
@@ -131,7 +131,7 @@
         align-items: center;
         gap: 6px;
         background: rgba(var(--primary-color-rgb), 0.08);
-        color: var(--caterer-primary);
+        color: var(--primary-color);
         padding: 6px 12px;
         border-radius: var(--border-radius, 6px);
         font-weight: 700;
@@ -212,7 +212,7 @@
     .roi-footer-amount {
         font-size: 1.75rem;
         font-weight: 900;
-        color: var(--caterer-primary);
+        color: var(--primary-color);
         line-height: 1.2;
     }
     .roi-footer-btn {
@@ -253,7 +253,7 @@
     }
 
     .calendar-detail-item i {
-        color: var(--caterer-primary);
+        color: var(--primary-color);
         font-size: 1.25rem;
         width: 24px;
         text-align: center;
@@ -565,136 +565,138 @@
 
 <!-- WALK-IN BOOKING MODAL -->
 <div id="manualBookingModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-lg occ-content-pop">
-        <div class="occ-modal-header glass-header">
+    <div class="occ-modal-box sz-lg occ-content-pop" style="display: flex; flex-direction: column; max-height: 90vh; overflow: hidden;">
+        <div class="occ-modal-header glass-header" style="flex-shrink: 0; z-index: 10;">
             <div>
-                <h3 class="occ-modal-title"><i class="fas fa-user-plus"></i> Create Walk-in Booking</h3>
-                <div class="occ-modal-subtitle">Register a new offline booking with complete service details</div>
+                <h3 class="occ-modal-title"><i class="fas fa-calendar-check"></i> Walk-in Booking</h3>
+                <div class="occ-modal-subtitle">Follow the steps below to register a new offline booking</div>
             </div>
-            <button onclick="closeModal('manualBookingModal')" class="occ-modal-close"><i
-                    class="fas fa-times"></i></button>
+            <button type="button" onclick="closeModal('manualBookingModal')" class="occ-modal-close"><i class="fas fa-times"></i></button>
         </div>
 
-        <form id="manualBookingForm" onsubmit="submitManualEvent(event)">
-            <div class="compact-body" style="padding: 1.5rem;">
+        <!-- Custom Stepper Styles -->
+        <style>
+            .booking-stepper-pro { position: relative; padding: 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; z-index: 5; }
+            .stepper-track-pro { position: absolute; top: 38px; left: 3rem; right: 3rem; height: 3px; background: #e2e8f0; z-index: 1; }
+            .progress-fill-pro { height: 100%; background: var(--primary-color); transition: width 0.3s ease; }
+            .stepper-steps-pro { position: relative; display: flex; justify-content: space-between; z-index: 2; }
+            .step-pro { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; width: 80px; }
+            .step-dot { width: 32px; height: 32px; background: white; border: 3px solid #e2e8f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 800; color: #94a3b8; transition: all 0.3s; }
+            .step-label { font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; text-align: center; }
+            .step-pro.active .step-dot { border-color: var(--primary-color); color: var(--primary-color); transform: scale(1.1); }
+            .step-pro.active .step-label { color: var(--primary-color); }
+            .step-pro.completed .step-dot { background: var(--primary-color); border-color: var(--primary-color); color: white; }
+            .step-pro.completed .step-label { color: #334155; }
+            
+            .step-content { display: none; animation: slideInRight 0.3s ease-out; }
+            .step-content.active { display: block; }
+            
+            /* Modern Package Card */
+            .pkg-card-select {
+                border: 2px solid #e2e8f0;
+                border-radius: 12px;
+                padding: 1.5rem;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+                background: white;
+            }
+            .pkg-card-select:hover { border-color: #cbd5e1; transform: translateY(-2px); }
+            .pkg-card-select.selected { border-color: var(--primary-color); background: #f0f9ff; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15); }
+            .pkg-name { font-weight: 800; color: #0f172a; font-size: 1.1rem; }
+            .pkg-price { font-weight: 700; color: var(--primary-color); font-size: 1.25rem; }
+            .pkg-meta { font-size: 0.8rem; color: #64748b; font-weight: 600; display: flex; gap: 10px; }
+            
+            /* Summary Box */
+            .summary-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; }
+            .summary-row { display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px dashed #cbd5e1; }
+            .summary-row:last-child { border-bottom: none; }
+            .summary-label { color: #64748b; font-weight: 600; font-size: 0.85rem; }
+            .summary-value { color: #0f172a; font-weight: 700; font-size: 0.9rem; text-align: right; }
 
-                <!-- Customer Detection Badge -->
-                <div id="userDetectionBadge" class="detection-badge-container" style="margin-bottom: 1.5rem;">
-                    <!-- Injected via JS -->
+            /* Icon Buttons */
+            .btn-icon-round {
+                width: 50px;
+                height: 50px;
+                border-radius: 50%;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.25rem;
+                padding: 0;
+            }
+        </style>
+
+        <form id="manualBookingForm" onsubmit="submitManualEvent(event)" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+            
+            <div class="booking-stepper-pro">
+                <div class="stepper-track-pro">
+                    <div class="progress-fill-pro" id="stepProgress" style="width: 0%;"></div>
                 </div>
-
-                <!-- Inline Error Banner for Backend Errors -->
-                <div id="manualBookingFormError" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #ef4444; padding: 12px 16px; border-radius: var(--border-radius, 8px); margin-bottom: 1.5rem; font-weight: 600; font-size: 0.9rem; align-items: center; gap: 8px;">
+                <div class="stepper-steps-pro">
+                    <div class="step-pro active" id="step-nav-1"><div class="step-dot">1</div><div class="step-label">Event Details</div></div>
+                    <div class="step-pro" id="step-nav-2"><div class="step-dot">2</div><div class="step-label">Package</div></div>
+                    <div class="step-pro" id="step-nav-3"><div class="step-dot">3</div><div class="step-label">Customer Info</div></div>
+                    <div class="step-pro" id="step-nav-4"><div class="step-dot">4</div><div class="step-label">Confirmation</div></div>
                 </div>
+            </div>
 
-                <!-- CLIENT INFORMATION SECTION -->
-                <div style="margin-bottom: 2rem;">
-                    <h4
-                        style="font-size: 1.1rem; font-weight: 800; color: var(--secondary-color); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-user" style="color: var(--primary-color);"></i> Client Information
-                    </h4>
-                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem;">
-                        <div class="form-group-pro">
-                            <label>First Name <span style="color: #ef4444;">*</span></label>
-                            <input type="text" id="manFirstName" name="first_name" class="control-pro" required
-                                oninput="validateFirstName()">
-                            <div class="field-error-msg" id="error-manFirstName"></div>
-                        </div>
-                        <div class="form-group-pro">
-                            <label>Middle Name</label>
-                            <input type="text" id="manMiddleName" name="middle_name" class="control-pro">
-                        </div>
-                        <div class="form-group-pro">
-                            <label>Last Name <span style="color: #ef4444;">*</span></label>
-                            <input type="text" id="manLastName" name="last_name" class="control-pro" required
-                                oninput="validateLastName()">
-                            <div class="field-error-msg" id="error-manLastName"></div>
-                        </div>
-                        <div class="form-group-pro" style="grid-column: span 2;">
-                            <label>Email Address <span style="color: #ef4444;">*</span></label>
-                            <input type="email" id="manCustEmail" name="customer_email" class="control-pro" required
-                                oninput="validateEmail()">
-                            <div class="field-error-msg" id="error-manCustEmail"></div>
-                        </div>
-                        <div class="form-group-pro">
-                            <label>Contact Number (PH) <span style="color: #ef4444;">*</span></label>
-                            <input type="text" id="manCustContact" name="customer_contact" class="control-pro" required
-                                oninput="validateContact()">
-                            <div class="field-error-msg" id="error-manCustContact"></div>
-                        </div>
-                        <div class="form-group-pro">
-                            <label>Booking Source <span style="color: #ef4444;">*</span></label>
-                            <select id="manBookingSource" name="booking_source" class="control-pro" required>
-                                <option value="Walk-in">Walk-in</option>
-                                <option value="Facebook" selected>Facebook</option>
-                                <option value="Phone Call">Phone Call</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
+            <div class="compact-body" style="padding: 1.5rem; flex: 1; overflow-y: auto;">
+                <!-- Inline Error Banner -->
+                <div id="manualBookingFormError" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #ef4444; padding: 12px 16px; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 600; font-size: 0.9rem; align-items: center; gap: 8px;"></div>
 
-                <!-- EVENT INFORMATION SECTION -->
-                <div style="margin-bottom: 2rem;">
-                    <h4
-                        style="font-size: 1.1rem; font-weight: 800; color: var(--secondary-color); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-calendar" style="color: var(--primary-color);"></i> Event Details
-                    </h4>
-                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem;">
-                        <div class="form-group-pro" style="grid-column: span 2;">
-                            <label>Event Name <span style="color: #ef4444;">*</span></label>
-                            <input type="text" id="manEventName" name="event_name" class="control-pro" required
-                                oninput="validateEventName()">
-                            <div class="field-error-msg" id="error-manEventName"></div>
-                        </div>
+                <!-- STEP 1: EVENT DETAILS -->
+                <div class="step-content active" id="step-1">
+                    <h4 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 1.5rem;">Step 1: Event Information</h4>
+                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
                         <div class="form-group-pro">
                             <label>Event Type <span style="color: #ef4444;">*</span></label>
-                            <select id="manEventType" class="control-pro" required
-                                onchange="toggleOtherEventType(); validateEventType()">
+                            <select id="manEventType" name="event_type" class="control-pro" required onchange="toggleOtherEventType(); validateEventType()">
                                 <option value="" disabled selected>Select Type</option>
                                 <option value="Wedding">Wedding</option>
                                 <option value="Birthday">Birthday</option>
-                                <option value="Corporate">Corporate</option>
-                                <option value="Private Party">Private Party</option>
+                                <option value="Debut">Debut</option>
+                                <option value="Christening">Christening</option>
+                                <option value="Corporate">Corporate Event</option>
+                                <option value="Reunion">Reunion</option>
+                                <option value="Fiesta">Fiesta</option>
                                 <option value="Other">Other</option>
                             </select>
                             <div class="field-error-msg" id="error-manEventType"></div>
                         </div>
-                        <div id="otherEventTypeDiv" class="form-group-pro" style="display: none; grid-column: span 3;">
+                        <div class="form-group-pro">
+                            <label>Event Name <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="manEventName" name="event_name" class="control-pro" placeholder="e.g. Maria's 18th Birthday" required oninput="validateEventName()">
+                            <div class="field-error-msg" id="error-manEventName"></div>
+                        </div>
+                        <div id="otherEventTypeDiv" class="form-group-pro" style="display: none; grid-column: span 2;">
                             <label>Specify Event Type <span style="color: #ef4444;">*</span></label>
                             <input type="text" id="manOtherType" class="control-pro" oninput="validateOtherType()">
                             <div class="field-error-msg" id="error-manOtherType"></div>
                         </div>
+                        
                         <div class="form-group-pro">
                             <label>Event Date <span style="color: #ef4444;">*</span></label>
-                            <input type="date" id="manDate" name="event_date" class="control-pro" required
-                                min="{{ min_booking_date.strftime('%Y-%m-%d') }}" max="{{ max_booking_date.strftime('%Y-%m-%d') }}"
-                                onchange="validateEventDate(); checkDateConflict(this.value)">
+                            <input type="date" id="manDate" name="event_date" class="control-pro" required min="{{ min_booking_date.strftime('%Y-%m-%d') }}" max="{{ max_booking_date.strftime('%Y-%m-%d') }}" onchange="validateEventDate(); checkDateConflict(this.value)">
                             <div class="field-error-msg" id="error-manDate"></div>
                         </div>
                         <div class="form-group-pro">
-                            <label>Call Time <span style="color: #ef4444;">*</span></label>
-                            <input type="time" id="manTime" name="event_time" class="control-pro" required 
-                                min="{{ business_open }}" max="{{ business_close }}"
-                                onchange="validateEventTime()">
+                            <label>Event Time <span style="color: #ef4444;">*</span></label>
+                            <input type="time" id="manTime" name="event_time" class="control-pro" required min="{{ business_open }}" max="{{ business_close }}" onchange="validateEventTime()">
                             <div class="field-error-msg" id="error-manTime"></div>
                         </div>
-                        <div class="form-group-pro">
-                            <label>Guest Count <span style="color: #ef4444;">*</span></label>
-                            <input type="number" id="manGuests" name="guest_count" class="control-pro" required min="{{ min_pax }}"
-                                placeholder="Min {{ min_pax }} Pax" oninput="validateGuestCount()">
+                        
+                        <div class="form-group-pro" style="grid-column: span 2;">
+                            <label>Number of Guests (Pax) <span style="color: #ef4444;">*</span></label>
+                            <input type="number" id="manGuests" name="guest_count" class="control-pro" required min="{{ min_pax }}" placeholder="Enter estimated number of guests (Min {{ min_pax }})" oninput="validateGuestCount()">
                             <div class="field-error-msg" id="error-manGuests"></div>
                         </div>
                     </div>
-                </div>
-
-                <!-- VENUE INFORMATION SECTION -->
-                <div style="margin-bottom: 2rem;">
-                    <h4
-                        style="font-size: 1.1rem; font-weight: 800; color: var(--secondary-color); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-map-marker-alt" style="color: var(--primary-color);"></i> Venue & Logistics
-                    </h4>
-                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem;">
+                    
+                    <h5 style="font-size: 1rem; font-weight: 700; color: #334155; margin: 1.5rem 0 1rem 0; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">Venue Details</h5>
+                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
                         <div class="form-group-pro">
                             <label>Province <span style="color: #ef4444;">*</span></label>
                             <select id="manProvince" class="control-pro" required onchange="validateProvince()">
@@ -719,50 +721,159 @@
                             <input type="hidden" id="manBarangayText" name="barangay">
                             <div class="field-error-msg" id="error-manBarangay"></div>
                         </div>
-                        <div class="form-group-pro" style="grid-column: span 3;">
-                            <label>Street / Building / Landmark</label>
-                            <input type="text" id="manLandmark" name="landmark" class="control-pro"
-                                placeholder="e.g., 123 Main St, ABC Building">
+                        <div class="form-group-pro">
+                            <label>Landmark / Venue Name</label>
+                            <input type="text" id="manLandmark" name="landmark" class="control-pro" placeholder="e.g. ABC Resort, 123 Main St">
                         </div>
                     </div>
                 </div>
 
-                <!-- SERVICE PACKAGE SECTION -->
-                <div style="margin-bottom: 2rem;">
-                    <h4
-                        style="font-size: 1.1rem; font-weight: 800; color: var(--secondary-color); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-utensils" style="color: var(--primary-color);"></i> Catering Package
-                    </h4>
-                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr; gap: 1.25rem;">
-                        <div class="form-group-pro">
-                            <label>Select Package <span style="color: #ef4444;">*</span></label>
-                            <select id="manPackage" class="control-pro" required
-                                onchange="recalculateTotal(); validatePackage()">
-                                <option value="" data-price="0">Custom Selection (No Base Package)</option>
-                                {% for pkg in packages %}
-                                <option value="{{ pkg.id }}" data-price="{{ pkg.price or 0 }}"
-                                    data-min="{{ pkg.min_pax or 1 }}" data-unit="{{ pkg.price_unit or 'fixed' }}">
-                                    {{ pkg.name }} — ₱{{ '{:,.0f}'.format(pkg.price or 0) }} / {{ pkg.price_unit or
-                                    'fixed' }}
-                                </option>
+                <!-- STEP 2: PACKAGE SELECTION -->
+                <div class="step-content" id="step-2">
+                    <h4 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem;">Step 2: Package Selection</h4>
+                    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">Select a catering package for this event.</p>
+                    
+                    <!-- Fallback standard select for backend submission -->
+                    <select id="manPackage" class="control-pro" style="display:none;" onchange="recalculateTotal(); validatePackage()">
+                        <option value="" data-price="0">Custom Selection (No Base Package)</option>
+                        {% for pkg in packages %}
+                        <option value="{{ pkg.id }}" data-price="{{ pkg.price or 0 }}" data-min="{{ pkg.min_pax or 1 }}" data-unit="{{ pkg.price_unit or 'fixed' }}" data-name="{{ pkg.name }}">
+                            {{ pkg.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                        <!-- Custom Package Option -->
+                        <div class="pkg-card-select selected" onclick="selectVisualPackage('', 0, 'fixed', 'Custom Selection (No Base Package)', this)">
+                            <div class="pkg-name">Custom Booking</div>
+                            <div class="pkg-price">Flexible</div>
+                            <div class="pkg-meta" style="margin-bottom: 0.5rem;">No base package required</div>
+                            <div style="font-size: 0.8rem; color: #475569; border-top: 1px dashed #e2e8f0; padding-top: 0.5rem;">
+                                Enter a custom agreed price for this booking.
+                            </div>
+                        </div>
+                        <!-- Database Packages -->
+                        {% for pkg in packages %}
+                        <div class="pkg-card-select" onclick="selectVisualPackage('{{ pkg.id }}', {{ pkg.price or 0 }}, '{{ pkg.price_unit or 'fixed' }}', '{{ pkg.name | escape }}', this)">
+                            <div class="pkg-name">{{ pkg.name }}</div>
+                            <div class="pkg-price">₱{{ '{:,.0f}'.format(pkg.price or 0) }} <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">{{ 'per head' if pkg.price_unit == 'per_head' else 'fixed rate' }}</span></div>
+                            <div class="pkg-meta" style="margin-bottom: 0.5rem;">
+                                <span><i class="fas fa-users"></i> Min {{ pkg.min_pax or 1 }} Pax</span>
+                                <span><i class="fas fa-concierge-bell"></i> {{ pkg.service_type or 'General' }}</span>
+                            </div>
+                            
+                            {% if pkg.description %}
+                            <div style="font-size: 0.85rem; color: #475569; margin-bottom: 0.5rem; border-top: 1px dashed #e2e8f0; padding-top: 0.5rem;">
+                                {{ pkg.description }}
+                            </div>
+                            {% endif %}
+                            
+                            {% if pkg.inclusions %}
+                            <div style="font-size: 0.8rem; color: #334155; margin-top: 0.5rem; background: #f8fafc; padding: 0.75rem; border-radius: 6px;">
+                                <strong style="display: block; margin-bottom: 0.25rem;">Inclusions:</strong>
+                                <ul style="padding-left: 1.25rem; margin-bottom: 0;">
+                                {% for item in pkg.inclusions %}
+                                    <li>{{ item }}</li>
                                 {% endfor %}
-                            </select>
-                            <div class="field-error-msg" id="error-manPackage"></div>
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div id="customPriceDiv" style="margin-bottom: 1.5rem; background: #f8fafc; padding: 1.25rem; border: 1px solid #e2e8f0; border-radius: 12px;">
+                        <label style="font-weight: 700; color: #334155; margin-bottom: 0.5rem; display: block;">Agreed Custom Price (₱)</label>
+                        <input type="number" id="manCustomPrice" class="control-pro" placeholder="e.g. 50000" oninput="recalculateTotal()" min="0" value="0">
+                    </div>
+
+                    <div class="field-error-msg" id="error-manPackage"></div>
+
+                    <h5 style="font-size: 1rem; font-weight: 700; color: #334155; margin: 1.5rem 0 1rem 0; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;"><i class="fas fa-clipboard-list"></i> Additional Requests</h5>
+                    <div class="form-group-pro">
+                        <textarea id="manSpecialNotes" name="special_notes" class="control-pro" rows="4" placeholder="Share important event details, dietary requests, venue restrictions, or setup instructions..."></textarea>
+                    </div>
+                </div>
+
+                <!-- STEP 3: CUSTOMER INFO -->
+                <div class="step-content" id="step-3">
+                    <h4 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem;">Step 3: Customer Information</h4>
+                    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">Enter the contact details of the client.</p>
+                    
+                    <div id="userDetectionBadge" class="detection-badge-container" style="margin-bottom: 1.5rem;"></div>
+
+                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+                        <div class="form-group-pro">
+                            <label>First Name <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="manFirstName" name="first_name" class="control-pro" required oninput="validateFirstName()">
+                            <div class="field-error-msg" id="error-manFirstName"></div>
                         </div>
                         <div class="form-group-pro">
-                            <label>Special Notes & Instructions</label>
-                            <textarea id="manSpecialNotes" name="special_notes" class="control-pro" rows="3"
-                                placeholder="E.g., require chafing dishes, setup instructions, special dietary needs..."></textarea>
+                            <label>Last Name <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="manLastName" name="last_name" class="control-pro" required oninput="validateLastName()">
+                            <div class="field-error-msg" id="error-manLastName"></div>
+                        </div>
+                        <div class="form-group-pro" style="grid-column: span 2; display: none;">
+                            <label>Middle Name</label>
+                            <input type="text" id="manMiddleName" name="middle_name" class="control-pro">
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Email Address <span style="color: #ef4444;">*</span></label>
+                            <input type="email" id="manCustEmail" name="customer_email" class="control-pro" required oninput="validateEmail()">
+                            <div class="field-error-msg" id="error-manCustEmail"></div>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Contact Number <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="manCustContact" name="customer_contact" class="control-pro" required oninput="validateContact()">
+                            <div class="field-error-msg" id="error-manCustContact"></div>
+                        </div>
+                        <div class="form-group-pro" style="grid-column: span 2;">
+                            <label>Booking Source <span style="color: #ef4444;">*</span></label>
+                            <select id="manBookingSource" name="booking_source" class="control-pro" required>
+                                <option value="Walk-in">Walk-in / In-Person</option>
+                                <option value="Facebook" selected>Facebook / Messenger</option>
+                                <option value="Phone Call">Phone Call / SMS</option>
+                                <option value="Other">Other</option>
+                            </select>
                         </div>
                     </div>
                 </div>
 
-                <!-- PAYMENT SECTION -->
-                <div style="margin-bottom: 2rem;">
-                    <h4
-                        style="font-size: 1.1rem; font-weight: 800; color: var(--secondary-color); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-money-bill-wave" style="color: var(--primary-color);"></i> Payment Information
-                    </h4>
+                <!-- STEP 4: SUMMARY & CONFIRMATION -->
+                <div class="step-content" id="step-4">
+                    <h4 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 1.5rem;">Step 4: Review & Confirmation</h4>
+                    
+                    <div class="summary-box" style="margin-bottom: 1.5rem;">
+                        <h5 style="margin: 0 0 1rem 0; font-size: 1rem; color: #334155;"><i class="fas fa-file-invoice"></i> Booking Summary</h5>
+                        <div class="summary-row">
+                            <span class="summary-label">Client Name</span>
+                            <span class="summary-value" id="sumClientName">-</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">Event Details</span>
+                            <span class="summary-value" id="sumEventDetails">-</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">Venue</span>
+                            <span class="summary-value" id="sumVenue">-</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">Package Selected</span>
+                            <span class="summary-value" id="sumPackage">-</span>
+                        </div>
+                        <div class="summary-row" style="border-top: 2px solid #cbd5e1; border-bottom: none; padding-top: 1rem; margin-top: 0.5rem;">
+                            <span class="summary-label" style="font-size: 1.1rem; color: #0f172a;">Grand Total</span>
+                            <span class="summary-value" id="displayTotal" style="font-size: 1.5rem; color: var(--primary-color);">₱0.00</span>
+                        </div>
+                        <div class="summary-row" id="amountToPayRow" style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin-top: 1rem; border-bottom: none; display: flex; justify-content: space-between; align-items: center;">
+                            <span class="summary-label" style="font-size: 1.1rem; color: #1d4ed8; font-weight: 800;">Amount Received / To Pay</span>
+                            <span class="summary-value" id="displayAmountToPay" style="font-size: 1.5rem; color: #1d4ed8; font-weight: 900;">₱0.00</span>
+                        </div>
+                        <input type="hidden" id="manAmount" name="total_amount">
+                    </div>
+
+                    <h5 style="font-size: 1rem; font-weight: 700; color: #334155; margin: 1.5rem 0 1rem 0;"><i class="fas fa-money-check"></i> Payment Information</h5>
                     <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
                         <div class="form-group-pro">
                             <label>Payment Method <span style="color: #ef4444;">*</span></label>
@@ -774,38 +885,197 @@
                         </div>
                         <div class="form-group-pro">
                             <label>Payment Status <span style="color: #ef4444;">*</span></label>
-                            <select id="manPaymentStatus" class="control-pro" required>
+                            <select id="manPaymentStatus" class="control-pro" required onchange="updatePaymentAmount()">
                                 <option value="pending">Unpaid (Pending)</option>
                                 <option value="deposit_paid">Deposit Paid (50%)</option>
                                 <option value="paid" selected>Fully Paid</option>
                             </select>
                         </div>
                     </div>
-
-                    <!-- Financial Summary -->
-                    <div class="financial-summary-box" style="justify-content: center; text-align: center;">
-                        <div class="fs-right" style="text-align: center;">
-                            <small style="color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem;">Contract Amount</small>
-                            <div class="fs-amount-text">
-                                <span id="displayTotal">₱0.00</span>
-                            </div>
-                            <input type="hidden" id="manAmount" name="total_amount">
-                        </div>
-                    </div>
                 </div>
             </div>
 
-            <div class="occ-modal-footer">
-                <button type="button" onclick="closeModal('manualBookingModal')" class="btn-secondary-pro">
-                    Cancel
+            <div class="occ-modal-footer" style="flex-shrink: 0; padding: 1.25rem 2rem; background: #fff; border-top: 1px solid #e2e8f0; display: flex; justify-content: center; gap: 1.5rem; box-shadow: 0 -4px 10px rgba(0,0,0,0.02);">
+                <button type="button" id="btnPrevStep" class="btn-secondary-pro btn-icon-round" style="visibility: hidden;" onclick="changeStep(-1)" title="Go Back">
+                    <i class="fas fa-arrow-left"></i>
                 </button>
-                <button type="submit" id="btnSubmitManual" class="btn-primary-pro">
-                    Create Booking
+                <button type="button" id="btnNextStep" class="btn-primary-pro btn-icon-round" onclick="changeStep(1)" title="Next Step">
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+                <button type="submit" id="btnSubmitManual" class="btn-primary-pro btn-icon-round" style="display:none; background: var(--success-bg, #10b981); border-color: var(--success-bg, #10b981);" title="Submit Booking">
+                    <i class="fas fa-check"></i>
                 </button>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+    // Multi-step Wizard Logic
+    let currentStep = 1;
+    const totalSteps = 4;
+
+    function selectVisualPackage(pkgId, price, unit, name, element) {
+        // Update hidden select
+        const select = document.getElementById('manPackage');
+        select.value = pkgId;
+        
+        // Update visual selection
+        document.querySelectorAll('.pkg-card-select').forEach(el => el.classList.remove('selected'));
+        element.classList.add('selected');
+        
+        // Toggle Custom Price field
+        if (!pkgId) {
+            document.getElementById('customPriceDiv').style.display = 'block';
+        } else {
+            document.getElementById('customPriceDiv').style.display = 'none';
+        }
+
+        // Recalculate
+        recalculateTotal();
+        if (typeof validatePackage === 'function') validatePackage();
+    }
+
+    function recalculateTotal() {
+        const pkgSelect = document.getElementById('manPackage');
+        const pkgOpt = pkgSelect.options[pkgSelect.selectedIndex];
+        const guests = parseInt(document.getElementById('manGuests').value) || 0;
+        
+        let total = 0;
+        if (!pkgOpt || !pkgOpt.value) {
+            total = parseFloat(document.getElementById('manCustomPrice').value) || 0;
+        } else {
+            const price = parseFloat(pkgOpt.getAttribute('data-price')) || 0;
+            const unit = pkgOpt.getAttribute('data-unit') || 'fixed';
+            if (unit === 'per_head') {
+                total = price * guests;
+            } else {
+                total = price;
+            }
+        }
+        
+        document.getElementById('manAmount').value = total;
+        document.getElementById('displayTotal').textContent = '₱' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        
+        updatePaymentAmount();
+    }
+
+    function updatePaymentAmount() {
+        const total = parseFloat(document.getElementById('manAmount').value) || 0;
+        const status = document.getElementById('manPaymentStatus').value;
+        let amountToPay = 0;
+        
+        if (status === 'paid') {
+            amountToPay = total;
+        } else if (status === 'deposit_paid') {
+            amountToPay = total * 0.5;
+        } else {
+            amountToPay = 0;
+        }
+        
+        document.getElementById('displayAmountToPay').textContent = '₱' + amountToPay.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    // Attach listener to guest count to recalculate when pax changes
+    document.getElementById('manGuests').addEventListener('input', recalculateTotal);
+
+    function updateSummary() {
+        const fName = document.getElementById('manFirstName').value;
+        const lName = document.getElementById('manLastName').value;
+        document.getElementById('sumClientName').textContent = (fName || lName) ? `${fName} ${lName}` : '-';
+
+        const evName = document.getElementById('manEventName').value;
+        const evDate = document.getElementById('manDate').value;
+        const evTime = document.getElementById('manTime').value;
+        const pax = document.getElementById('manGuests').value;
+        
+        let dateStr = '-';
+        if (evDate) {
+            const d = new Date(evDate);
+            dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+        
+        document.getElementById('sumEventDetails').innerHTML = `
+            ${evName || '-'}<br>
+            <small style="color:#64748b;">${dateStr} @ ${evTime || '-'} • ${pax || 0} Pax</small>
+        `;
+
+        const prov = document.getElementById('manProvinceText').value;
+        const city = document.getElementById('manMunicipalityText').value;
+        document.getElementById('sumVenue').textContent = (city && prov) ? `${city}, ${prov}` : '-';
+
+        const pkgSelect = document.getElementById('manPackage');
+        const pkgOpt = pkgSelect.options[pkgSelect.selectedIndex];
+        document.getElementById('sumPackage').textContent = pkgOpt ? pkgOpt.text : '-';
+    }
+
+    function validateCurrentStep() {
+        if (currentStep === 1) {
+            validateEventName();
+            validateEventType();
+            validateEventDate();
+            validateEventTime();
+            validateGuestCount();
+            validateProvince();
+            validateMunicipality();
+            validateBarangay();
+            const errs = document.querySelectorAll('#step-1 .field-error-msg');
+            let hasErr = false;
+            errs.forEach(e => { if (e.textContent !== '') hasErr = true; });
+            return !hasErr;
+        } else if (currentStep === 2) {
+            // Package is always valid if selected
+            return true;
+        } else if (currentStep === 3) {
+            validateFirstName();
+            validateLastName();
+            validateEmail();
+            validateContact();
+            const errs = document.querySelectorAll('#step-3 .field-error-msg');
+            let hasErr = false;
+            errs.forEach(e => { if (e.textContent !== '') hasErr = true; });
+            return !hasErr;
+        }
+        return true;
+    }
+
+    function changeStep(dir) {
+        if (dir === 1 && !validateCurrentStep()) {
+            return;
+        }
+        
+        if (dir === 1 && currentStep === 3) {
+            updateSummary();
+        }
+
+        document.getElementById(`step-${currentStep}`).classList.remove('active');
+        document.getElementById(`step-nav-${currentStep}`).classList.remove('active');
+        if (dir === 1) {
+            document.getElementById(`step-nav-${currentStep}`).classList.add('completed');
+        }
+
+        currentStep += dir;
+
+        document.getElementById(`step-${currentStep}`).classList.add('active');
+        document.getElementById(`step-nav-${currentStep}`).classList.add('active');
+        document.getElementById(`step-nav-${currentStep}`).classList.remove('completed');
+
+        // Progress bar
+        const progress = ((currentStep - 1) / (totalSteps - 1)) * 100;
+        document.getElementById('stepProgress').style.width = `${progress}%`;
+
+        // Buttons
+        document.getElementById('btnPrevStep').style.visibility = currentStep > 1 ? 'visible' : 'hidden';
+        
+        if (currentStep === totalSteps) {
+            document.getElementById('btnNextStep').style.display = 'none';
+            document.getElementById('btnSubmitManual').style.display = 'inline-flex';
+        } else {
+            document.getElementById('btnNextStep').style.display = 'inline-flex';
+            document.getElementById('btnSubmitManual').style.display = 'none';
+        }
+    }
+</script>
 
 
 

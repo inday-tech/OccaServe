@@ -3,21 +3,23 @@
 {% block title %}{% if booking.status in ['draft', 'pending_review'] %}Inquiry Details{% else %}Manage Booking{% endif %} #{{ booking.id }} - OccaServe Elite{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_manage.css') }}?v=11.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_manage.css') }}?v=13.0">
 <style>
     :root {
         --up-slate-900: #0f172a;
         --up-orange: #f97316;
         --up-emerald: #10b981;
         --up-amber: #f59e0b;
+        --up-blue: #2563eb;
         --dm-slate-50: #f8fafc;
         --dm-slate-100: #f1f5f9;
+        --dm-slate-200: #e2e8f0;
         --dm-slate-300: #cbd5e1;
         --dm-slate-400: #94a3b8;
         --dm-slate-500: #64748b;
     }
     
-    body, .btn-action-elite {
+    body, .btn-action-elite, .tab-btn, .btn-back-registry {
         font-family: 'Poppins', sans-serif !important;
         -webkit-font-smoothing: antialiased;
     }
@@ -39,85 +41,296 @@
         overflow: hidden !important;
     }
 
+    /* ── BACK BUTTON ── */
+    .btn-back-registry {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        padding: 7px 14px; background: white; border-radius: 8px;
+        border: 1px solid #e2e8f0; color: #475569;
+        font-size: 0.78rem; font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    .btn-back-registry:hover {
+        background: #f8fafc; color: #0f172a; border-color: #cbd5e1;
+    }
+
     /* ── PAGE HEADER ── */
-    .dash-header { margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end; }
+    .dash-header { margin-top: 1.1rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap; }
     .dash-header h1 {
-        font-size: 1.8rem; font-weight: 800;
-        color: var(--up-slate-900); letter-spacing: -0.04em; margin: 0;
+        font-size: 1.5rem; font-weight: 800; color: #0f172a;
+        letter-spacing: -0.025em; margin: 0; line-height: 1.15;
     }
     .dash-header p {
-        font-size: 0.85rem; color: var(--dm-slate-500);
-        font-weight: 500; margin: 6px 0 0;
+        font-size: 0.8rem; color: #64748b;
+        font-weight: 500; margin: 6px 0 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
     }
 
-    /* ── REFINED STEPPER ── */
+    /* ── STATUS BADGE ── */
+    .status-badge-elite {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 14px; border-radius: 8px; font-size: 0.75rem;
+        font-weight: 600; border: 1px solid transparent;
+        transition: all 0.2s; white-space: nowrap;
+    }
+    @keyframes pulse-glow-red {
+        0% { opacity:1; } 50% { opacity:0.55; } 100% { opacity:1; }
+    }
+    @keyframes pulse-glow-amber {
+        0% { opacity:1; } 50% { opacity:0.55; } 100% { opacity:1; }
+    }
+    .badge-pulse-red { animation: pulse-glow-red 2s infinite; }
+    .badge-pulse-amber { animation: pulse-glow-amber 2s infinite; }
+
+    /* ── TAB NAVIGATION BAR ── */
+    .tabs-nav-bar {
+        display: flex; gap: 0; border-bottom: 1px solid #e2e8f0; margin-bottom: 1.5rem; overflow-x: auto;
+    }
+    .tab-btn {
+        background: transparent; border: none; padding: 0.7rem 1.25rem; font-size: 0.83rem; font-weight: 600; color: #64748b; cursor: pointer; display: flex; align-items: center; gap: 7px; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; white-space: nowrap;
+    }
+    .tab-btn:hover { color: #0f172a; }
+    .tab-btn.active { color: var(--up-orange); border-bottom-color: var(--up-orange); font-weight: 700; }
+    .tab-badge {
+        padding: 1px 7px; border-radius: 10px; font-size: 0.68rem; font-weight: 700;
+    }
+    .tab-pane { display: none; animation: fadeIn 0.25s ease; }
+    .tab-pane.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── STEPPER ── */
     .stepper-panel {
-        background: white; border-radius: 1.5rem; border: 1px solid rgba(0,0,0,0.03);
-        padding: 2rem 1.5rem; margin-bottom: 2rem; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.03);
+        background: white; border-radius: 12px; border: 1px solid #e9eef4;
+        padding: 1.5rem 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
-    .steps-row { display: flex; justify-content: space-between; position: relative; padding: 0 1rem; }
+    .steps-row { display: flex; justify-content: space-between; position: relative; padding: 0 0.5rem; }
     .steps-row::before {
-        content: ''; position: absolute; top: 22px; left: 40px; right: 40px;
-        height: 3px; background: var(--dm-slate-100); z-index: 0; border-radius: 10px;
+        content: ''; position: absolute; top: 18px; left: 30px; right: 30px;
+        height: 2px; background: #f1f5f9; z-index: 0; border-radius: 10px;
     }
-    .step { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 1; min-width: 80px; }
+    .step { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; min-width: 70px; }
     .step-dot {
-        width: 48px; height: 48px; border-radius: 14px;
-        background: #fff; border: 2px solid var(--dm-slate-100);
+        width: 38px; height: 38px; border-radius: 10px;
+        background: #fff; border: 1.5px solid #e2e8f0;
         display: flex; align-items: center; justify-content: center;
-        font-size: 1.2rem; color: var(--dm-slate-300); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        font-size: 1rem; color: #cbd5e1; transition: all 0.25s;
     }
-    .step.done .step-dot { background: var(--up-emerald); border-color: var(--up-emerald); color: #fff; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
-    .step.active .step-dot { border-color: var(--up-orange); color: var(--up-orange); box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.15), 0 4px 12px rgba(249, 115, 22, 0.2); transform: scale(1.05); }
-    .step-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; line-height: 1.3; color: var(--dm-slate-400); text-align: center; }
-    .step.done .step-label, .step.active .step-label { color: var(--up-slate-900); font-weight: 800; }
+    .step.done .step-dot { background: #10b981; border-color: #10b981; color: #fff; }
+    .step.active .step-dot { border-color: var(--up-orange); color: var(--up-orange); box-shadow: 0 0 0 3px rgba(249,115,22,0.12); }
+    .step-label { font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1.3; color: #94a3b8; text-align: center; }
+    .step.done .step-label, .step.active .step-label { color: #0f172a; font-weight: 700; }
 
-    /* ── INTELLIGENCE PANELS ── */
-    .panel { background: #ffffff; border-radius: 1.5rem; border: 1px solid rgba(0,0,0,0.04); overflow: hidden; box-shadow: 0 10px 40px -10px rgba(0,0,0,0.03); margin-bottom: 2rem; transition: transform 0.2s ease, box-shadow 0.2s ease; }
-    .panel-header { padding: 1.5rem 1.75rem 1rem; border-bottom: none; display: flex; justify-content: space-between; align-items: center; }
+    /* ── INTELLIGENCE PANELS & GRIDS ── */
+    .exec-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem; align-items: stretch; margin-bottom: 2rem; }
+    .panel { background: #ffffff; border-radius: 1.5rem; border: 1px solid rgba(0,0,0,0.04); overflow: visible; box-shadow: 0 10px 40px -10px rgba(0,0,0,0.03); margin-bottom: 1.5rem; transition: transform 0.2s ease, box-shadow 0.2s ease; height: 100%; display: flex; flex-direction: column; }
+    .panel-header { padding: 1.5rem 1.75rem 1rem; border-bottom: none; display: flex; justify-content: space-between; align-items: center; border-radius: 1.5rem 1.5rem 0 0; }
     .panel-header h3 { font-size: 1rem; font-weight: 800; color: var(--up-slate-900); margin: 0; text-transform: uppercase; letter-spacing: 0.05em; }
-    .panel-body { padding: 0 1.75rem 1.5rem; }
+    .panel-body { padding: 0 1.75rem 1.5rem; flex: 1; display: flex; flex-direction: column; }
+
+    /* ── PANELS ── */
+    .exec-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; align-items: stretch; margin-bottom: 1.5rem; }
+    .panel { background: #fff; border-radius: 12px; border: 1px solid #e9eef4; overflow: visible; box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-bottom: 1.25rem; display: flex; flex-direction: column; height: 100%; }
+    .panel-header { padding: 1rem 1.25rem 0.75rem; border-bottom: 1px solid #f4f6f9; display: flex; justify-content: space-between; align-items: center; border-radius: 12px 12px 0 0; }
+    .panel-header h3 { font-size: 0.78rem; font-weight: 700; color: #64748b; margin: 0; text-transform: uppercase; letter-spacing: 0.07em; }
+    .panel-body { padding: 0 1.25rem 1.25rem; flex: 1; display: flex; flex-direction: column; }
 
     /* ── DETAIL ROWS ── */
-    .detail-item { display: flex; justify-content: space-between; padding: 1rem 0; border-bottom: 1px dashed var(--dm-slate-100); align-items: center; }
+    .detail-item { display: flex; justify-content: space-between; padding: 0.8rem 0; border-bottom: 1px solid #f4f6f9; align-items: flex-start; gap: 1rem; }
     .detail-item:last-child { border-bottom: none; padding-bottom: 0; }
-    .detail-item:first-child { padding-top: 0; }
-    .detail-label { font-size: 0.75rem; font-weight: 600; color: var(--dm-slate-500); text-transform: uppercase; letter-spacing: 0.05em; }
-    .detail-value { font-size: 0.95rem; font-weight: 700; color: var(--up-slate-900); text-align: right; }
-    
+    .detail-item:first-child { padding-top: 0.65rem; }
+    .detail-label { font-size: 0.7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; flex-shrink: 0; }
+    .detail-value { font-size: 0.88rem; font-weight: 600; color: #0f172a; text-align: right; }
+
     @media (max-width: 768px) {
-        .dash-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-        .detail-item { flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+        .dash-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+        .detail-item { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
         .detail-value { text-align: left; }
+        .exec-grid-2 { grid-template-columns: 1fr; }
+        
+        .chat-send-btn { 
+            width: 44px !important;
+            padding: 0 !important;
+            justify-content: center;
+        }
+        .chat-send-btn span {
+            display: none;
+        }
     }
 
-    /* ── FINANCIAL TERMINAL ── */
-    .financial-card { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; border-radius: 1.5rem; padding: 2rem; margin-bottom: 2rem; position: relative; overflow: hidden; box-shadow: 0 15px 35px -10px rgba(15, 23, 42, 0.4); }
-    .financial-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at top right, rgba(255,255,255,0.1), transparent 50%); }
-    .fin-label { font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem; display: block; position: relative; z-index: 1; }
-    .fin-value { font-size: 2.2rem; font-weight: 900; letter-spacing: -0.03em; position: relative; z-index: 1; }
-    .fin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.08); position: relative; z-index: 1; }
+    /* ── FINANCIAL CARD ── */
+    .financial-card { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; border-radius: 12px; padding: 1.5rem; position: relative; overflow: hidden; box-shadow: 0 8px 20px -5px rgba(15,23,42,0.3); height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
+    .financial-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at top right, rgba(255,255,255,0.06), transparent 55%); pointer-events: none; }
+    .fin-label { font-size: 0.68rem; font-weight: 600; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.3rem; display: block; position: relative; z-index: 1; }
+    .fin-value { font-size: 1.85rem; font-weight: 800; letter-spacing: -0.02em; position: relative; z-index: 1; }
+    .fin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.07); position: relative; z-index: 1; }
 
     /* ── ACTION BUTTONS ── */
-    .btn-action-elite { width: 100%; padding: 1.1rem; border-radius: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.85rem; border: none; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center; gap: 0.75rem; text-decoration: none; }
-    .btn-primary-orange { background: var(--up-orange); color: white; box-shadow: 0 8px 20px rgba(249, 115, 22, 0.25); }
-    .btn-primary-orange:hover { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(249, 115, 22, 0.35); }
-    .btn-outline-slate { background: transparent; border: 2px solid var(--dm-slate-100); color: var(--up-slate-900); }
-    .btn-outline-slate:hover { background: var(--dm-slate-50); border-color: var(--dm-slate-300); transform: translateY(-2px); }
+    .btn-action-elite { width: 100%; padding: 0.85rem; border-radius: 10px; font-weight: 700; font-size: 0.85rem; border: none; cursor: pointer; transition: all 0.18s; display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem; text-decoration: none; box-sizing: border-box; }
+    .btn-primary-orange { background: #f97316; color: white; }
+    .btn-primary-orange:hover { background: #ea580c; color: white; }
+    .btn-outline-slate { background: transparent; border: 1px solid #e2e8f0; color: #475569; }
+    .btn-outline-slate:hover { background: #f8fafc; border-color: #cbd5e1; color: #0f172a; }
+
+    .action-dropdown { position: relative; width: 100%; }
+    .action-dropdown-menu { display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); z-index: 50; margin-top: 6px; overflow: hidden; }
+    .action-dropdown-menu.show { display: block; animation: fadeIn 0.2s ease; }
+    .action-dropdown-item { display: flex; align-items: center; gap: 10px; padding: 0.75rem 1rem; color: #0f172a; font-size: 0.82rem; font-weight: 500; text-decoration: none; transition: background 0.15s; border-bottom: 1px solid #f8fafc; }
+    .action-dropdown-item:last-child { border-bottom: none; }
+    .action-dropdown-item:hover { background: #f8fafc; color: var(--up-orange); }
 
     /* ── AUDIT LOGS ── */
-    .audit-log-item { display: flex; align-items: flex-start; gap: 14px; padding: 1rem; background: var(--dm-slate-50); border-radius: 14px; margin-bottom: 0.75rem; border: 1px solid transparent; transition: all 0.2s; }
-    .audit-log-item:hover { background: white; border-color: var(--dm-slate-100); box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
-    .audit-info b { font-size: 0.8rem; color: var(--up-slate-900); display: block; margin-bottom: 2px; }
-    .audit-info span { font-size: 0.7rem; color: var(--dm-slate-500); font-weight: 500; }
+    .audit-log-item { display: flex; align-items: flex-start; gap: 12px; padding: 0.85rem; background: #f8fafc; border-radius: 10px; margin-bottom: 0.5rem; border: 1px solid transparent; transition: all 0.15s; }
+    .audit-log-item:hover { background: white; border-color: #e9eef4; }
+    .audit-info b { font-size: 0.78rem; color: #0f172a; display: block; margin-bottom: 1px; }
+    .audit-info span { font-size: 0.68rem; color: #94a3b8; font-weight: 500; }
 
-    @keyframes pulse-glow {
-        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-        70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    /* ── CHAT STYLING ── */
+    .chat-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid var(--dm-slate-200);
+        padding-bottom: 1.25rem;
+        flex-wrap: wrap;
     }
-    .badge-pulse { animation: pulse-glow 2s infinite cubic-bezier(0.66, 0, 0, 1); }
+    .chat-header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        flex: 1;
+    }
+    .chat-caterer-avatar {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        border-radius: 12px;
+        background: var(--up-slate-900);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 900;
+        font-size: 1.2rem;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .chat-caterer-info h3 {
+        text-transform: none;
+        font-size: 0.9rem;
+        margin: 0 0 2px 0;
+        white-space: normal;
+        line-height: 1.25;
+    }
+    .chat-caterer-status {
+        font-size: 0.7rem;
+        color: var(--up-emerald);
+        font-weight: 750;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .chat-inbox-btn {
+        width: auto;
+        padding: 8px 14px;
+        font-size: 0.73rem;
+        border-radius: 50px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .chat-messages-window {
+        flex: 1;
+        min-height: 300px;
+        max-height: 460px;
+        overflow-y: auto;
+        padding: 1.25rem;
+        background: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        border-bottom: 1px solid var(--dm-slate-200);
+    }
+    .chat-input-form {
+        padding: 1rem 1.25rem;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+    .chat-input-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-end;
+    }
+    .chat-attach-btn, .chat-send-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.18s;
+        font-weight: 700;
+        box-sizing: border-box;
+    }
+    .chat-attach-btn {
+        width: 44px !important;
+        height: 44px !important;
+        flex: 0 0 44px !important;
+        padding: 0;
+        border-radius: 12px;
+    }
+    .chat-textarea {
+        flex: 1 1 auto !important;
+        min-width: 50px !important;
+        width: 100%;
+        padding: 0.75rem 0.9rem;
+        border: 1px solid var(--dm-slate-300);
+        border-radius: 14px;
+        font-family: 'Poppins', sans-serif;
+        font-size: 0.85rem;
+        color: var(--up-slate-900);
+        outline: none;
+        resize: none;
+        max-height: 100px;
+        transition: border-color 0.2s;
+    }
+    .chat-textarea:focus { border-color: var(--up-orange); }
+    .chat-send-btn {
+        height: 44px !important;
+        width: max-content !important;
+        flex: 0 0 auto !important;
+        padding: 0 1.1rem;
+        border-radius: 12px;
+        font-size: 0.82rem;
+        gap: 6px;
+        border: none;
+    }
+    .chat-attachment-preview {
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--dm-slate-50);
+        padding: 6px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--dm-slate-200);
+        font-size: 0.78rem;
+        color: var(--up-slate-900);
+    }
+    .chat-msg-bubble { max-width: 78%; padding: 0.75rem 1rem; border-radius: 14px; font-size: 0.85rem; line-height: 1.5; margin-bottom: 0.6rem; word-break: break-word; }
+    .chat-msg-me { align-self: flex-end; background: #f97316; color: white; border-bottom-right-radius: 3px; }
+    .chat-msg-them { align-self: flex-start; background: white; color: #0f172a; border: 1px solid #e9eef4; border-bottom-left-radius: 3px; }
+    .chat-meta { font-size: 0.62rem; margin-top: 3px; opacity: 0.7; display: block; }
+
+    @media (max-width: 480px) {
+        .chat-caterer-info h3 { font-size: 0.88rem; }
+        .chat-caterer-status { font-size: 0.65rem; }
+        .chat-inbox-btn { padding: 6px 10px; font-size: 0.68rem; }
+        .chat-messages-window { min-height: 260px; max-height: 380px; padding: 1rem 0.85rem; }
+        .chat-input-form { padding: 0.75rem; }
+        .chat-send-btn { 
+            padding: 0 0.8rem; 
+            font-size: 0.78rem; 
+        }
+        .chat-msg-bubble { max-width: 88%; font-size: 0.82rem; padding: 0.65rem 0.85rem; }
+    }
 </style>
 {% endblock %}
 
@@ -140,481 +353,293 @@
 {% endif %}
 
 <!-- ── BACK BUTTON ── -->
-<div style="margin-bottom: 1.5rem;">
-    <a href="/customer/bookings" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 6px 14px; background: white; border-radius: 50px; border: 1px solid var(--dm-slate-200); color: var(--up-slate-900); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s;"><i class="fas fa-arrow-left"></i> Back to Registry</a>
+<div>
+    <a href="/customer/bookings" class="btn-back-registry"><i class="fas fa-arrow-left"></i> Back to Registry</a>
 </div>
 
 <div class="dash-header">
-    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+    <div>
         <h1>{{ display_title or 'Logistic Management' }}</h1>
-        <p>Reference: <span style="background: var(--dm-slate-100); padding: 2px 8px; border-radius: 6px; color: var(--up-slate-900); font-weight: 800;">{% if is_food_order %}ORD-{% else %}BK-{% endif %}{{ "%03d" | format(booking.id) }}</span> &bull; Verified Transaction</p>
+        <p>
+            <span style="background: var(--dm-slate-100); padding: 3px 10px; border-radius: 6px; color: var(--up-slate-900); font-weight: 850;">{% if is_food_order %}ORD-{% else %}BK-{% endif %}{{ "%03d" | format(booking.id) }}</span>
+            &bull; <span style="color: var(--up-emerald); font-weight: 750;"><i class="fas fa-shield-check"></i> Verified Transaction</span>
+            &bull; <span>{{ booking.caterer.business_name }}</span>
+        </p>
     </div>
-    <div style="display: flex; align-items: center; gap: 1rem;">
+    <div>
+        {% set status_cfg_map = {
+            'draft': ('Draft Inquiry', '#f8fafc', '#64748b', 'fa-pen-ruler'),
+            'pending': ('Reviewing Inquiry', '#fff7ed', '#ea580c', 'fa-clock'),
+            'pending_review': ('Inquiry Submitted', '#eff6ff', '#2563eb', 'fa-user-clock'),
+            'pending_quotation': ('Quotation Issued', '#f0fdf4', '#16a34a', 'fa-file-invoice-dollar'),
+            'awaiting_customer': ('Awaiting Signature', '#fffbeb', '#d97706', 'fa-file-signature'),
+            'pending_payment': ('Awaiting Settlement', '#fffbeb', '#b45309', 'fa-credit-card'),
+            'awaiting_payment': ('Awaiting Settlement', '#fffbeb', '#b45309', 'fa-credit-card'),
+            'payment_verifying': ('Verifying Payment', '#eff6ff', '#2563eb', 'fa-shield-halved'),
+            'proof_submitted': ('Verifying Receipt', '#eff6ff', '#2563eb', 'fa-receipt'),
+            'balance_proof_submitted': ('Verifying Balance Receipt', '#eff6ff', '#2563eb', 'fa-receipt'),
+            'reupload_requested': ('Action Required: Receipt Rejected', '#fef2f2', '#dc2626', 'fa-triangle-exclamation'),
+            'balance_reupload_requested': ('Action Required: Balance Rejected', '#fef2f2', '#dc2626', 'fa-triangle-exclamation'),
+            'confirmed': ('Confirmed Booking', '#ecfdf5', '#059669', 'fa-check-double'),
+            'preparing': ('Kitchen Preparation', '#fff7ed', '#ea580c', 'fa-fire-burner'),
+            'ready': ('Ready for Dispatch', '#ecfdf5', '#059669', 'fa-box-check'),
+            'out_for_delivery': ('In Transit / Dispatched', '#eff6ff', '#2563eb', 'fa-truck-fast'),
+            'arrived': ('Arrived at Venue', '#f0fdf4', '#16a34a', 'fa-location-dot'),
+            'setup_in_progress': ('Event Setup in Progress', '#fff7ed', '#ea580c', 'fa-tools'),
+            'in_progress': ('Event in Progress', '#fff7ed', '#ea580c', 'fa-flag-checkered'),
+            'completed': ('Successfully Completed', '#f8fafc', '#475569', 'fa-circle-check'),
+            'cancelled': ('Booking Cancelled', '#fef2f2', '#dc2626', 'fa-ban'),
+            'rejected': ('Declined by Caterer', '#fef2f2', '#dc2626', 'fa-circle-xmark'),
+            'expired': ('Quotation Expired', '#fef2f2', '#dc2626', 'fa-calendar-xmark'),
+            'overdue': ('Payment Overdue', '#fef2f2', '#dc2626', 'fa-triangle-exclamation')
+        } %}
+        {% set default_status_label = (booking.status or 'Pending')|replace('_', ' ')|title %}
+        {% set status_cfg = status_cfg_map.get(booking.status, (default_status_label, '#f1f5f9', '#475569', 'fa-circle-info')) %}
         {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
-            {% set status_cfg = ('Action Required', '#fef2f2', '#ef4444') %}
-        {% else %}
-            {% set status_cfg = {
-                'confirmed': ('Confirmed', '#ecfdf5', '#10b981'),
-                'completed': ('Completed', '#f8fafc', '#64748b'),
-                'pending': ('Reviewing', '#fff7ed', '#f59e0b'),
-                'pending_review': ('Inquiry Submitted', '#eff6ff', '#3b82f6'),
-                'pending_payment': ('Awaiting Settlement', '#fffbeb', '#b45309'),
-                'cancelled': ('Cancelled', '#fef2f2', '#dc2626')
-            }.get(booking.status, (booking.status|capitalize, '#f1f5f9', '#475569')) %}
+            {% set status_cfg = ('Action Required: Receipt Rejected', '#fef2f2', '#dc2626', 'fa-triangle-exclamation') %}
         {% endif %}
-        <span class="{{ 'badge-pulse' if 'Action' in status_cfg[0] else '' }}" style="background: {{ status_cfg[1] }}; color: {{ status_cfg[2] }}; padding: 8px 20px; border-radius: 30px; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; border: 1px solid {{ status_cfg[2] }}40; box-shadow: 0 4px 10px {{ status_cfg[2] }}15;">
-            {{ status_cfg[0] }}
+        
+        <span class="status-badge-elite {% if 'Action' in status_cfg[0] or booking.status in ['overdue', 'expired', 'cancelled'] %}badge-pulse-red{% elif booking.status in ['pending', 'awaiting_customer', 'awaiting_payment', 'pending_payment'] %}badge-pulse-amber{% endif %}" 
+              style="background: {{ status_cfg[1] }}; color: {{ status_cfg[2] }}; border-color: {{ status_cfg[2] }}40; box-shadow: 0 4px 12px {{ status_cfg[2] }}20;">
+            <i class="fas {{ status_cfg[3] }}"></i> {{ status_cfg[0] }}
         </span>
     </div>
 </div>
 
-<!-- ── OUTSTANDING BALANCE BANNER ── -->
-{% if booking.status == 'confirmed' and booking.payment_plan != 'full' and booking.balance_due_date and booking.payment_status not in ['paid', 'proof_submitted', 'balance_reupload_requested'] %}
-    {% set total_val = booking.total_amount|float %}
-    {% set res_fee = booking.reservation_fee|float if booking.reservation_fee else 0.0 %}
-    {% set balance_val = total_val - res_fee %}
-    
-    {% if balance_val > 0 %}
-    <div style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-left: 4px solid #f97316; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(249, 115, 22, 0.08);">
-        <div style="display: flex; gap: 1rem; align-items: center;">
-            <div style="width: 45px; height: 45px; background: #ffedd5; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ea580c; font-size: 1.25rem;">
-                <i class="fas fa-exclamation-triangle"></i>
-            </div>
-            <div>
-                <h3 style="margin: 0 0 4px 0; color: #9a3412; font-size: 1rem; font-weight: 800;">Action Required: Outstanding Balance</h3>
-                <p style="margin: 0; color: #c2410c; font-size: 0.85rem; font-weight: 500;">
-                    You have a remaining balance of <strong style="font-weight: 800;">₱{{ "{:,.2f}".format(balance_val) }}</strong>. 
-                    Please settle this amount on or before <strong style="font-weight: 800;">{{ booking.balance_due_date.strftime('%B %d, %Y') }}</strong>.
-                </p>
-                <div id="deadlineCountdownPkg" style="margin-top: 6px; font-size: 0.75rem; font-weight: 800; color: #ea580c; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: rgba(234, 88, 12, 0.1); border-radius: 20px;">
-                    <i class="fas fa-clock"></i> Calculating time remaining...
-                </div>
-            </div>
-        </div>
-        <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange" style="white-space: nowrap; padding: 0.75rem 1.5rem; font-size: 0.85rem; background: #ea580c !important; border: none; box-shadow: 0 4px 14px rgba(234, 88, 12, 0.3);">
-            Settle Balance Now <i class="fas fa-wallet"></i>
-        </a>
-    </div>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const dueStr = "{{ booking.balance_due_date.strftime('%Y-%m-%d') }}T23:59:59";
-            const dueDate = new Date(dueStr);
-            const today = new Date();
-            
-            const diffTime = dueDate - today;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            const countdownEl = document.getElementById('deadlineCountdownPkg');
-            if (diffDays < 0) {
-                countdownEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> PAYMENT OVERDUE';
-                countdownEl.style.color = '#dc2626';
-                countdownEl.style.background = '#fef2f2';
-            } else if (diffDays === 0) {
-                countdownEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> DUE TODAY';
-                countdownEl.style.color = '#dc2626';
-                countdownEl.style.background = '#fef2f2';
-            } else if (diffDays <= 3) {
-                countdownEl.innerHTML = '<i class="fas fa-clock"></i> DUE IN ' + diffDays + ' DAY' + (diffDays > 1 ? 'S' : '');
-                countdownEl.style.color = '#ea580c';
-            } else {
-                countdownEl.innerHTML = '<i class="fas fa-calendar-check"></i> Due in ' + diffDays + ' days';
-                countdownEl.style.color = '#64748b';
-                countdownEl.style.background = '#f1f5f9';
-            }
-        });
-    </script>
-    {% endif %}
-{% endif %}
-
-<div class="stepper-panel">
-    <div class="steps-row" style="padding: 0 1rem; overflow-x: auto; padding-bottom: 10px;">
-    {% if is_food_order %}
-        <!-- FOOD ORDER TRACK: 4-Step Timeline -->
-        <div class="step {{ 'done' if booking.status in ['preparing', 'out_for_delivery', 'completed'] else 'active' }}">
-            <div class="step-dot"><i class="fas fa-receipt"></i></div>
-            <span class="step-label">Order<br>Submitted</span>
-        </div>
-        <div class="step {{ 'done' if booking.status in ['out_for_delivery', 'completed'] else ('active' if booking.status == 'preparing' else '') }}">
-            <div class="step-dot"><i class="fas fa-fire-burner"></i></div>
-            <span class="step-label">Preparing</span>
-        </div>
-        <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status == 'out_for_delivery' else '') }}">
-            <div class="step-dot"><i class="fas fa-truck"></i></div>
-            <span class="step-label">Dispatched</span>
-        </div>
-        <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status == 'completed' else '') }}">
-            <div class="step-dot"><i class="fas fa-check-circle"></i></div>
-            <span class="step-label">Completed</span>
-        </div>
-    {% elif is_rental_only %}
-        <!-- EQUIPMENT RENTAL TRACK: 4-Step Timeline -->
-        <div class="step {{ 'done' if booking.status in ['confirmed', 'preparing', 'ready', 'out_for_delivery', 'arrived', 'completed'] else 'active' }}">
-            <div class="step-dot"><i class="fas fa-clock"></i></div>
-            <span class="step-label">Reserved</span>
-        </div>
-        <div class="step {{ 'done' if booking.status in ['preparing', 'ready', 'out_for_delivery', 'arrived', 'completed'] else ('active' if booking.status == 'confirmed' else '') }}">
-            <div class="step-dot"><i class="fas fa-credit-card"></i></div>
-            <span class="step-label">Confirmed &<br>Paid</span>
-        </div>
-        <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status in ['out_for_delivery', 'arrived'] else '') }}">
-            <div class="step-dot"><i class="fas fa-truck"></i></div>
-            <span class="step-label">Dispatched</span>
-        </div>
-        <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status == 'completed' else '') }}">
-            <div class="step-dot"><i class="fas fa-undo"></i></div>
-            <span class="step-label">Returned &<br>Completed</span>
-        </div>
-    {% elif is_service_only %}
-        <!-- SERVICE BOOKING TRACK: 4-Step Timeline -->
-        <div class="step {{ 'done' if booking.status in ['confirmed', 'preparing', 'ready', 'out_for_delivery', 'arrived', 'setup_in_progress', 'completed'] else 'active' }}">
-            <div class="step-dot"><i class="fas fa-clock"></i></div>
-            <span class="step-label">Reserved</span>
-        </div>
-        <div class="step {{ 'done' if booking.status in ['preparing', 'ready', 'out_for_delivery', 'arrived', 'setup_in_progress', 'completed'] else ('active' if booking.status == 'confirmed' else '') }}">
-            <div class="step-dot"><i class="fas fa-credit-card"></i></div>
-            <span class="step-label">Confirmed &<br>Paid</span>
-        </div>
-        <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status in ['arrived', 'setup_in_progress'] else '') }}">
-            <div class="step-dot"><i class="fas fa-tools"></i></div>
-            <span class="step-label">Setup &<br>Service</span>
-        </div>
-        <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status == 'completed' else '') }}">
-            <div class="step-dot"><i class="fas fa-flag-checkered"></i></div>
-            <span class="step-label">Completed</span>
-        </div>
-    {% elif is_fast_track %}
-        <!-- GENERIC FAST TRACK: 4-Step Timeline -->
-        <div class="step {{ 'done' if booking.status in ['confirmed', 'preparing', 'ready', 'out_for_delivery', 'arrived', 'setup_in_progress', 'completed'] else 'active' }}">
-            <div class="step-dot"><i class="fas fa-clock"></i></div>
-            <span class="step-label">Reserved</span>
-        </div>
-        <div class="step {{ 'done' if booking.status in ['preparing', 'ready', 'out_for_delivery', 'arrived', 'setup_in_progress', 'completed'] else ('active' if booking.status == 'confirmed' else '') }}">
-            <div class="step-dot"><i class="fas fa-credit-card"></i></div>
-            <span class="step-label">Confirmed &<br>Paid</span>
-        </div>
-        <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status in ['out_for_delivery', 'arrived', 'setup_in_progress'] else '') }}">
-            <div class="step-dot"><i class="fas fa-truck"></i></div>
-            <span class="step-label">Dispatched &<br>Prep</span>
-        </div>
-        <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status == 'completed' else '') }}">
-            <div class="step-dot"><i class="fas fa-flag-checkered"></i></div>
-            <span class="step-label">Completed</span>
-        </div>
-    {% elif booking.status in ['draft', 'pending_review'] %}
-        <!-- INQUIRY TRACK: 4-Step Timeline -->
-        <div class="step {{ 'done' if current_step_idx > 1 else 'active' }}">
-            <div class="step-dot"><i class="fas fa-paper-plane"></i></div>
-            <span class="step-label">Inquiry<br>Submitted</span>
-        </div>
-        <div class="step {{ 'done' if current_step_idx > 2 else ('active' if current_step_idx == 2 else '') }}">
-            <div class="step-dot"><i class="fas fa-search"></i></div>
-            <span class="step-label">Under<br>Review</span>
-        </div>
-        <div class="step {{ 'done' if current_step_idx > 3 else ('active' if current_step_idx == 3 else '') }}">
-            <div class="step-dot"><i class="fas fa-file-invoice"></i></div>
-            <span class="step-label">Quotation<br>Sent</span>
-        </div>
-        <div class="step {{ 'done' if current_step_idx > 4 else ('active' if current_step_idx == 4 else '') }}">
-            <div class="step-dot"><i class="fas fa-handshake"></i></div>
-            <span class="step-label">Customer<br>Decision</span>
-        </div>
-    {% else %}
-        <!-- PACKAGE / CONTRACT TRACK: 5-Step Timeline -->
-        <div class="step {{ 'done' if current_step_idx > 2 else 'active' }}">
-            <div class="step-dot"><i class="fas fa-file-invoice-dollar"></i></div>
-            <span class="step-label">Quotation</span>
-        </div>
-        <div class="step {{ 'done' if current_step_idx > 3 else ('active' if current_step_idx == 3 else '') }}">
-            <div class="step-dot"><i class="fas fa-file-signature"></i></div>
-            <span class="step-label">Contract<br>Signed</span>
-        </div>
-        <div class="step {{ 'done' if current_step_idx > 4 else ('active' if current_step_idx == 4 else '') }}">
-            <div class="step-dot"><i class="fas fa-credit-card"></i></div>
-            <span class="step-label">Payment<br>Settled</span>
-        </div>
-        <div class="step {{ 'done' if current_step_idx > 5 else ('active' if current_step_idx == 5 else '') }}">
-            <div class="step-dot"><i class="fas fa-fire-burner"></i></div>
-            <span class="step-label">Prep &<br>Service</span>
-        </div>
-        <div class="step {{ 'done' if current_step_idx == 6 else ('active' if current_step_idx == 6 else '') }}">
-            <div class="step-dot"><i class="fas fa-flag-checkered"></i></div>
-            <span class="step-label">Event<br>Success</span>
-        </div>
-    {% endif %}
-    </div>
+<!-- ── TAB NAVIGATION BAR ── -->
+<div class="tabs-nav-bar">
+    <button class="tab-btn active" onclick="switchTab('overview', this)"><i class="fas fa-clipboard-list"></i> Overview & Logistics</button>
+    <button class="tab-btn" onclick="switchTab('menu', this)"><i class="fas fa-utensils"></i> Inclusions & Items <span class="tab-badge" style="background:var(--dm-slate-100);color:var(--up-slate-900);">{{ booking.selected_items|length if booking.selected_items else (booking.quotation.addons|length if booking.quotation and booking.quotation.addons else 0) }}</span></button>
+    <button class="tab-btn" onclick="switchTab('financials', this)"><i class="fas fa-file-invoice-dollar"></i> Financials & Legal</button>
+    <button class="tab-btn" onclick="switchTab('chat', this)"><i class="fas fa-comments"></i> Consultation Chat <span id="chatTabBadge" class="tab-badge" style="background:var(--up-orange);color:white;display:none;">0</span></button>
 </div>
 
-<div class="manage-grid">
-    <!-- LEFT COLUMN: LOGISTICS -->
-    <div class="left-col">
+<!-- ── TAB 1: OVERVIEW & LOGISTICS ── -->
+<div id="tab-overview" class="tab-pane active">
+    <!-- ── OUTSTANDING BALANCE BANNER ── -->
+    {% if booking.status == 'confirmed' and booking.payment_plan != 'full' and booking.balance_due_date and booking.payment_status not in ['paid', 'proof_submitted', 'balance_reupload_requested'] %}
+        {% set total_val = booking.total_amount|float %}
+        {% set res_fee = booking.reservation_fee|float if booking.reservation_fee else 0.0 %}
+        {% set balance_val = total_val - res_fee %}
+        
+        {% if balance_val > 0 %}
+        <div style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-left: 4px solid #f97316; border-radius: 14px; padding: 1.25rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 6px 20px rgba(249, 115, 22, 0.1); flex-wrap: wrap; gap: 1rem;">
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <div style="width: 48px; height: 48px; background: #ffedd5; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ea580c; font-size: 1.35rem; flex-shrink: 0;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div>
+                    <h3 style="margin: 0 0 4px 0; color: #9a3412; font-size: 1.05rem; font-weight: 850;">Action Required: Outstanding Balance</h3>
+                    <p style="margin: 0; color: #c2410c; font-size: 0.85rem; font-weight: 500;">
+                        You have a remaining balance of <strong style="font-weight: 850;">₱{{ "{:,.2f}".format(balance_val) }}</strong>. 
+                        Please settle this amount on or before <strong style="font-weight: 850;">{{ booking.balance_due_date.strftime('%B %d, %Y') }}</strong>.
+                    </p>
+                    <div id="deadlineCountdownPkg" style="margin-top: 6px; font-size: 0.75rem; font-weight: 800; color: #ea580c; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(234, 88, 12, 0.12); border-radius: 20px;">
+                        <i class="fas fa-clock"></i> Calculating time remaining...
+                    </div>
+                </div>
+            </div>
+            <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange" style="width: auto; padding: 0.75rem 1.75rem; font-size: 0.85rem; background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%) !important; border: none; box-shadow: 0 4px 15px rgba(234, 88, 12, 0.35);">
+                Settle Balance Now <i class="fas fa-wallet"></i>
+            </a>
+        </div>
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                const dueStr = "{{ booking.balance_due_date.strftime('%Y-%m-%d') }}T23:59:59";
+                const dueDate = new Date(dueStr);
+                const today = new Date();
+                
+                const diffTime = dueDate - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                const countdownEl = document.getElementById('deadlineCountdownPkg');
+                if (diffDays < 0) {
+                    countdownEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> PAYMENT OVERDUE';
+                    countdownEl.style.color = '#dc2626';
+                    countdownEl.style.background = '#fef2f2';
+                } else if (diffDays === 0) {
+                    countdownEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> DUE TODAY';
+                    countdownEl.style.color = '#dc2626';
+                    countdownEl.style.background = '#fef2f2';
+                } else if (diffDays <= 3) {
+                    countdownEl.innerHTML = '<i class="fas fa-clock"></i> DUE IN ' + diffDays + ' DAY' + (diffDays > 1 ? 'S' : '');
+                    countdownEl.style.color = '#ea580c';
+                } else {
+                    countdownEl.innerHTML = '<i class="fas fa-calendar-check"></i> Due in ' + diffDays + ' days';
+                    countdownEl.style.color = '#64748b';
+                    countdownEl.style.background = '#f1f5f9';
+                }
+            });
+        </script>
+        {% endif %}
+    {% endif %}
+
+    <!-- ── PROGRESS STEPPER ── -->
+    <div class="stepper-panel">
+        <div class="steps-row" style="padding: 0 1rem; overflow-x: auto; padding-bottom: 10px;">
+        {% if is_food_order %}
+            <div class="step {{ 'done' if booking.status in ['preparing', 'out_for_delivery', 'completed'] else 'active' }}">
+                <div class="step-dot"><i class="fas fa-receipt"></i></div>
+                <span class="step-label">Order<br>Submitted</span>
+            </div>
+            <div class="step {{ 'done' if booking.status in ['out_for_delivery', 'completed'] else ('active' if booking.status == 'preparing' else '') }}">
+                <div class="step-dot"><i class="fas fa-fire-burner"></i></div>
+                <span class="step-label">Preparing</span>
+            </div>
+            <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status == 'out_for_delivery' else '') }}">
+                <div class="step-dot"><i class="fas fa-truck"></i></div>
+                <span class="step-label">Dispatched</span>
+            </div>
+            <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status == 'completed' else '') }}">
+                <div class="step-dot"><i class="fas fa-check-circle"></i></div>
+                <span class="step-label">Completed</span>
+            </div>
+        {% elif is_rental_only %}
+            <div class="step {{ 'done' if booking.status in ['confirmed', 'preparing', 'ready', 'out_for_delivery', 'arrived', 'completed'] else 'active' }}">
+                <div class="step-dot"><i class="fas fa-clock"></i></div>
+                <span class="step-label">Reserved</span>
+            </div>
+            <div class="step {{ 'done' if booking.status in ['preparing', 'ready', 'out_for_delivery', 'arrived', 'completed'] else ('active' if booking.status == 'confirmed' else '') }}">
+                <div class="step-dot"><i class="fas fa-credit-card"></i></div>
+                <span class="step-label">Confirmed &<br>Paid</span>
+            </div>
+            <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status in ['out_for_delivery', 'arrived'] else '') }}">
+                <div class="step-dot"><i class="fas fa-truck"></i></div>
+                <span class="step-label">Dispatched</span>
+            </div>
+            <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status == 'completed' else '') }}">
+                <div class="step-dot"><i class="fas fa-undo"></i></div>
+                <span class="step-label">Returned &<br>Completed</span>
+            </div>
+        {% elif is_service_only %}
+            <div class="step {{ 'done' if booking.status in ['confirmed', 'preparing', 'ready', 'out_for_delivery', 'arrived', 'setup_in_progress', 'completed'] else 'active' }}">
+                <div class="step-dot"><i class="fas fa-clock"></i></div>
+                <span class="step-label">Reserved</span>
+            </div>
+            <div class="step {{ 'done' if booking.status in ['preparing', 'ready', 'out_for_delivery', 'arrived', 'setup_in_progress', 'completed'] else ('active' if booking.status == 'confirmed' else '') }}">
+                <div class="step-dot"><i class="fas fa-credit-card"></i></div>
+                <span class="step-label">Confirmed &<br>Paid</span>
+            </div>
+            <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status in ['arrived', 'setup_in_progress'] else '') }}">
+                <div class="step-dot"><i class="fas fa-tools"></i></div>
+                <span class="step-label">Setup &<br>Service</span>
+            </div>
+            <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status == 'completed' else '') }}">
+                <div class="step-dot"><i class="fas fa-flag-checkered"></i></div>
+                <span class="step-label">Completed</span>
+            </div>
+        {% elif is_fast_track %}
+            <div class="step {{ 'done' if booking.status in ['confirmed', 'preparing', 'ready', 'out_for_delivery', 'arrived', 'setup_in_progress', 'completed'] else 'active' }}">
+                <div class="step-dot"><i class="fas fa-clock"></i></div>
+                <span class="step-label">Reserved</span>
+            </div>
+            <div class="step {{ 'done' if booking.status in ['preparing', 'ready', 'out_for_delivery', 'arrived', 'setup_in_progress', 'completed'] else ('active' if booking.status == 'confirmed' else '') }}">
+                <div class="step-dot"><i class="fas fa-credit-card"></i></div>
+                <span class="step-label">Confirmed &<br>Paid</span>
+            </div>
+            <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status in ['out_for_delivery', 'arrived', 'setup_in_progress'] else '') }}">
+                <div class="step-dot"><i class="fas fa-truck"></i></div>
+                <span class="step-label">Dispatched &<br>Prep</span>
+            </div>
+            <div class="step {{ 'done' if booking.status == 'completed' else ('active' if booking.status == 'completed' else '') }}">
+                <div class="step-dot"><i class="fas fa-flag-checkered"></i></div>
+                <span class="step-label">Completed</span>
+            </div>
+        {% elif booking.status in ['draft', 'pending_review'] %}
+            <div class="step {{ 'done' if current_step_idx > 1 else 'active' }}">
+                <div class="step-dot"><i class="fas fa-paper-plane"></i></div>
+                <span class="step-label">Inquiry<br>Submitted</span>
+            </div>
+            <div class="step {{ 'done' if current_step_idx > 2 else ('active' if current_step_idx == 2 else '') }}">
+                <div class="step-dot"><i class="fas fa-search"></i></div>
+                <span class="step-label">Under<br>Review</span>
+            </div>
+            <div class="step {{ 'done' if current_step_idx > 3 else ('active' if current_step_idx == 3 else '') }}">
+                <div class="step-dot"><i class="fas fa-file-invoice"></i></div>
+                <span class="step-label">Quotation<br>Sent</span>
+            </div>
+            <div class="step {{ 'done' if current_step_idx > 4 else ('active' if current_step_idx == 4 else '') }}">
+                <div class="step-dot"><i class="fas fa-handshake"></i></div>
+                <span class="step-label">Customer<br>Decision</span>
+            </div>
+        {% else %}
+            <div class="step {{ 'done' if current_step_idx > 2 else 'active' }}">
+                <div class="step-dot"><i class="fas fa-file-invoice-dollar"></i></div>
+                <span class="step-label">Quotation</span>
+            </div>
+            <div class="step {{ 'done' if current_step_idx > 3 else ('active' if current_step_idx == 3 else '') }}">
+                <div class="step-dot"><i class="fas fa-file-signature"></i></div>
+                <span class="step-label">Contract<br>Signed</span>
+            </div>
+            <div class="step {{ 'done' if current_step_idx > 4 else ('active' if current_step_idx == 4 else '') }}">
+                <div class="step-dot"><i class="fas fa-credit-card"></i></div>
+                <span class="step-label">Payment<br>Settled</span>
+            </div>
+            <div class="step {{ 'done' if current_step_idx > 5 else ('active' if current_step_idx == 5 else '') }}">
+                <div class="step-dot"><i class="fas fa-fire-burner"></i></div>
+                <span class="step-label">Prep &<br>Service</span>
+            </div>
+            <div class="step {{ 'done' if current_step_idx == 6 else ('active' if current_step_idx == 6 else '') }}">
+                <div class="step-dot"><i class="fas fa-flag-checkered"></i></div>
+                <span class="step-label">Event<br>Success</span>
+            </div>
+        {% endif %}
+        </div>
+    </div>
+
+    <!-- ── 2-COLUMN GRID: EVENT DETAILS vs ACTIONS ── -->
+    <div class="exec-grid-2">
+        <!-- LEFT: EVENT DETAILS -->
         <div class="panel">
             <div class="panel-header">
-                <h3>Event Details</h3>
+                <h3>Event Details & Logistics</h3>
             </div>
             <div class="panel-body">
                 <div class="detail-item">
                     <span class="detail-label">Event Schedule</span>
-                    <span class="detail-value">{{ booking.event_date.strftime('%B %d, %Y') }} at {{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBD' }}</span>
+                    <span class="detail-value">{{ booking.event_date.strftime('%B %d, %Y') if booking.event_date else 'Schedule TBD' }} {% if booking.event_time %}at {{ booking.event_time.strftime('%I:%M %p') }}{% endif %}</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Service Venue</span>
-                    <span class="detail-value">{{ booking.venue_address or booking.event_address or booking.event_location or 'Venue TBD' }}</span>
+                    <span class="detail-label">Service Venue Address</span>
+                    <span class="detail-value">{{ booking.venue_address or booking.event_address or booking.event_location or 'Venue TBD / To Be Confirmed' }}</span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Number of Guests</span>
-                    <span class="detail-value">{{ booking.guest_count }} Guests</span>
+                    <span class="detail-value">{{ booking.guest_count or 'N/A' }} Guests</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Service Type</span>
-                    <span class="detail-value">{{ display_title }}</span>
+                    <span class="detail-label">Service Category</span>
+                    <span class="detail-value">{{ display_title or 'General Catering Service' }}</span>
                 </div>
-                
-                {% if booking.package and booking.package.inclusions %}
-                <div class="detail-item" style="grid-column: 1 / -1; margin-top: 0.5rem;">
-                    <span class="detail-label">Package Inclusions</span>
-                    <div style="background: var(--dm-slate-50); border: 1px solid var(--dm-slate-100); border-radius: 12px; padding: 1rem; margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 8px;">
-                        {% if booking.package.inclusions is mapping %}
-                            {% for key, val in booking.package.inclusions.items() %}
-                                {% if val %}
-                                <span style="background: white; border: 1px solid var(--dm-slate-200); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; color: var(--up-slate-900); display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                                    <i class="fas fa-check" style="color: var(--up-emerald); font-size: 0.65rem;"></i> {{ key }}
-                                </span>
-                                {% endif %}
-                            {% endfor %}
-                        {% else %}
-                            <span style="font-size: 0.85rem; color: var(--up-slate-900);">{{ booking.package.inclusions }}</span>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-
-        {% if booking.is_custom_event %}
-        <div class="panel">
-            <div class="panel-header">
-                <h3>Custom Requirements</h3>
-            </div>
-            <div class="panel-body">
-                <div style="background: var(--dm-slate-50); padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <b style="font-size: 0.9rem; color: var(--up-slate-900);">Custom Inquiry</b>
-                        <p style="font-size: 0.75rem; color: var(--dm-slate-400); margin: 2px 0 0; font-weight: 600;">Details submitted for quotation</p>
-                    </div>
-                </div>
-                
-                <div class="detail-item">
-                    <span class="detail-label">Estimated Budget</span>
-                    <span class="detail-value">₱{{ "{:,.2f}".format(booking.custom_requirements.get('budget', 0)) }}</span>
-                </div>
+                {% if booking.special_requests %}
                 <div class="detail-item" style="flex-direction: column; align-items: flex-start; gap: 0.5rem; border-bottom: none; margin-top: 0.5rem;">
-                    <span class="detail-label">Theme / Description</span>
-                    <div style="font-size: 0.85rem; color: var(--up-slate-900); background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; width: 100%; white-space: pre-wrap;">{{ booking.custom_requirements.get('theme_description', 'No description provided.') }}</div>
-                </div>
-                
-                {% if booking.custom_requirements.get('reference_images') %}
-                <div class="detail-item" style="flex-direction: column; align-items: flex-start; gap: 0.5rem; border-bottom: none; margin-top: 1rem;">
-                    <span class="detail-label">Reference Images</span>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        {% for img in booking.custom_requirements.get('reference_images') %}
-                        <a href="{{ img }}" target="_blank" style="display: block; width: 80px; height: 80px; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
-                            <img src="{{ img }}" style="width: 100%; height: 100%; object-fit: cover;">
-                        </a>
-                        {% endfor %}
-                    </div>
+                    <span class="detail-label">Special Notes / Landmarks</span>
+                    <div style="font-size: 0.85rem; color: var(--up-slate-900); background: #f8fafc; padding: 0.85rem; border-radius: 8px; border: 1px solid #e2e8f0; width: 100%;">{{ booking.special_requests }}</div>
                 </div>
                 {% endif %}
             </div>
         </div>
-        {% endif %}
-        
-        {% if food_items or equipment_items or service_items %}
+
+        <!-- RIGHT: ACTION CENTER WITH DROPDOWN -->
         <div class="panel">
             <div class="panel-header">
-                <h3>Selected Items</h3>
+                <h3>Operational Controls</h3>
             </div>
-            <div class="panel-body">
-                <div style="background: var(--dm-slate-50); padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <b style="font-size: 0.9rem; color: var(--up-slate-900);">{{ booking.package.name if booking.package else display_title }}</b>
-                        <p style="font-size: 0.75rem; color: var(--dm-slate-400); margin: 2px 0 0; font-weight: 600;">{{ 'Package Details & Additions' if booking.package else 'Your Selected Items' }}</p>
-                    </div>
-                    <span style="background: white; border: 1px solid var(--dm-slate-100); padding: 4px 12px; border-radius: 20px; font-size: 0.65rem; font-weight: 800; color: var(--up-slate-900);">VERIFIED</span>
-                </div>
-                
-                {% if food_items %}
-                <div style="margin-bottom: 1.5rem;">
-                    <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-utensils" style="margin-right: 5px;"></i> Food & Beverages</h4>
-                    <div class="menu-items-grid">
-                        {% for b_item in food_items %}
-                        <div style="background: #fff; border: 1px solid var(--dm-slate-100); padding: 0.75rem; border-radius: 12px; display: flex; flex-direction: column; gap: 0.5rem;">
-                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <i class="fas fa-check-circle" style="color: var(--up-emerald); font-size: 0.8rem;"></i>
-                                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--up-slate-900);">{{ b_item.menu_item.name }}</span>
-                                </div>
-                                <span style="font-size: 0.75rem; font-weight: 850; color: var(--dm-slate-400);">x{{ b_item.quantity if b_item.quantity else (1 if not b_item.is_add_on else booking.guest_count) }}</span>
-                            </div>
-                            {% if b_item.choices %}
-                            <div style="margin-left: 1.5rem; font-size: 0.7rem; color: #64748b; background: #f8fafc; padding: 0.4rem 0.6rem; border-radius: 0.5rem; border: 1px dashed #cbd5e1;">
-                                <span style="font-weight: 800; color: #0f766e;"><i class="fas fa-list-ul"></i> Platter Choices:</span>
-                                <div style="display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.3rem;">
-                                    {% for choice in b_item.choices %}
-                                        <span style="background: white; border: 1px solid #e2e8f0; padding: 2px 4px; border-radius: 4px; font-weight: 600;">{{ choice }}</span>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
+            <div class="panel-body" style="display: flex; flex-direction: column; gap: 1rem; justify-content: flex-start;">
+                {% set total_val = booking.total_amount|float %}
+                {% set res_fee = booking.reservation_fee|float if booking.reservation_fee else 0.0 %}
+                {% set paid_amt = 0.0 %}
+                {% if booking.payment_plan == 'full' %}
+                    {% if booking.payment_status in ['paid', 'proof_submitted', 'reupload_requested'] %} {% set paid_amt = total_val %} {% endif %}
+                    {% set balance_val = total_val - paid_amt %}
+                {% else %}
+                    {% if booking.payment_status == 'paid' %} {% set paid_amt = total_val %}
+                    {% elif booking.payment_status in ['deposit_paid', 'balance_proof_submitted', 'balance_reupload_requested', 'proof_submitted', 'reupload_requested'] %} {% set paid_amt = res_fee %} {% endif %}
+                    {% set balance_val = total_val - paid_amt %}
                 {% endif %}
 
-                {% if equipment_items %}
-                <div style="margin-bottom: 1.5rem;">
-                    <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-chair" style="margin-right: 5px;"></i> Equipment Rentals</h4>
-                    <div class="menu-items-grid">
-                        {% for b_item in equipment_items %}
-                        <div style="background: #fff; border: 1px solid var(--dm-slate-100); padding: 0.75rem; border-radius: 12px; display: flex; flex-direction: column; gap: 0.5rem;">
-                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <i class="fas fa-check-circle" style="color: var(--up-emerald); font-size: 0.8rem;"></i>
-                                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--up-slate-900);">{{ b_item.equipment.name }}</span>
-                                </div>
-                                <span style="font-size: 0.75rem; font-weight: 850; color: var(--dm-slate-400);">x{{ b_item.quantity }}</span>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-
-                {% if service_items %}
-                <div style="margin-bottom: 1.5rem;">
-                    <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-concierge-bell" style="margin-right: 5px;"></i> Extra Services</h4>
-                    <div class="menu-items-grid">
-                        {% for b_item in service_items %}
-                        <div style="background: #fff; border: 1px solid var(--dm-slate-100); padding: 0.75rem; border-radius: 12px; display: flex; flex-direction: column; gap: 0.5rem;">
-                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <i class="fas fa-check-circle" style="color: var(--up-emerald); font-size: 0.8rem;"></i>
-                                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--up-slate-900);">{{ b_item.service.name }}</span>
-                                </div>
-                                <span style="font-size: 0.75rem; font-weight: 850; color: var(--dm-slate-400);">x{{ b_item.quantity }}</span>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
-        
-
-    </div>
-
-    <!-- RIGHT COLUMN: FINANCIALS & ACTIONS -->
-    <div class="right-col">
-        <!-- FINANCIAL TERMINAL -->
-        <div class="financial-card">
-            <span class="fin-label">Outstanding Balance</span>
-            {% set total_val = booking.total_amount|float %}
-            {% set res_fee = booking.reservation_fee|float if booking.reservation_fee else 0.0 %}
-            {% set paid_amt = 0.0 %}
-            
-            {% if booking.payment_plan == 'full' %}
-                {% if booking.payment_status in ['paid', 'proof_submitted', 'reupload_requested'] %}
-                    {% set paid_amt = total_val %}
-                {% endif %}
-                {% set balance_val = total_val - paid_amt %}
-            {% else %}
-                {% if booking.payment_status == 'paid' %}
-                    {% set paid_amt = total_val %}
-                {% elif booking.payment_status in ['deposit_paid', 'balance_proof_submitted', 'balance_reupload_requested'] %}
-                    {% set paid_amt = res_fee %}
-                {% elif booking.payment_status in ['proof_submitted', 'reupload_requested'] %}
-                    {% set paid_amt = res_fee %}
-                {% endif %}
-                {% set balance_val = total_val - paid_amt %}
-            {% endif %}
-            
-            <div class="fin-value">₱{{ "{:,.2f}".format(balance_val if booking.status != 'completed' else 0) }}</div>
-            
-            <div class="fin-grid">
-                <div>
-                    <span class="fin-label">Total Amount</span>
-                    <b style="font-size: 0.95rem;">₱{{ "{:,.2f}".format(total_val) }}</b>
-                </div>
-                <div style="text-align: right;">
-                    <span class="fin-label">Amount Paid 
-                        {% if booking.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
-                        <span style="color:#f59e0b; font-size: 0.6rem;">(Pending Ver.)</span>
-                        {% elif booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
-                        <span style="color:#ef4444; font-size: 0.6rem;">(Unverified)</span>
-                        {% endif %}
-                    </span>
-                    <b style="font-size: 0.95rem; color: var(--up-emerald);">₱{{ "{:,.2f}".format(paid_amt) }}</b>
-                </div>
-            </div>
-
-            {% if booking.quotation and booking.quotation.package_details %}
-            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
-                <span class="fin-label" style="margin-bottom: 0.75rem;">Quotation Breakdown</span>
-                <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.8rem; color: rgba(255,255,255,0.8);">
-                    {% if booking.quotation.package_details and booking.quotation.package_details.base_amount|float > 0 %}
-                    <div style="display: flex; justify-content: space-between;">
-                        <span>Base Package: {{ booking.quotation.package_details.name }}</span>
-                        <b>₱{{ "{:,.2f}".format(booking.quotation.package_details.base_amount|float) }}</b>
-                    </div>
-                    {% endif %}
-                    
-                    {% if booking.quotation.addons %}
-                        {% for addon in booking.quotation.addons %}
-                        <div style="display: flex; justify-content: space-between;">
-                            <span>{{ addon.name }} <span style="font-size: 0.7rem; opacity: 0.7;">(x{{ addon.quantity if addon.quantity else 1 }})</span></span>
-                            <b>₱{{ "{:,.2f}".format(addon.price|float) }}</b>
-                        </div>
-                        {% endfor %}
-                    {% endif %}
-                </div>
-            </div>
-            {% endif %}
-
-            {% set is_rental = booking.event_type == 'Equipment Rental' %}
-            {% if is_rental and booking.security_deposit_amount %}
-            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
-                <span class="fin-label" style="margin-bottom: 0.75rem;">Security Deposit</span>
-                <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.85rem; color: rgba(255,255,255,0.8);">
-                    <div style="display: flex; justify-content: space-between;">
-                        <span>Original Deposit</span>
-                        <b>₱{{ "{:,.2f}".format(booking.security_deposit_amount|float) }}</b>
-                    </div>
-                    {% if booking.security_deposit_status == 'forfeited' or booking.damage_deduction_amount %}
-                    <div style="display: flex; justify-content: space-between; color: #ef4444;">
-                        <span>Damage Deduction</span>
-                        <b>-₱{{ "{:,.2f}".format(booking.damage_deduction_amount|float if booking.damage_deduction_amount else booking.security_deposit_amount|float) }}</b>
-                    </div>
-                    {% endif %}
-                    <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed rgba(255,255,255,0.2);">
-                        <span style="font-weight: 800;">Deposit Status</span>
-                        <b style="text-transform: uppercase; color: {% if booking.security_deposit_status == 'fully_refunded' %}var(--up-emerald){% elif booking.security_deposit_status == 'forfeited' %}#ef4444{% else %}#f59e0b{% endif %};">
-                            {{ (booking.security_deposit_status or 'Held').replace('_', ' ') }}
-                        </b>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- ACTION CENTER -->
-        <div class="panel">
-            <div class="panel-header">
-                <h3>Actions</h3>
-            </div>
-            <div class="panel-body" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <!-- Primary Action Trigger -->
                 {% if booking.status == 'draft' %}
                     {% set next_step = '/bookings/continue/' ~ booking.id %}
                     {% if current_step_idx == 2 %} {% set next_step = '/bookings/step/quotation/' ~ booking.id %} {% endif %}
@@ -623,178 +648,604 @@
                         Resume Booking <i class="fas fa-play"></i>
                     </a>
                 {% elif booking.payment_status == 'reupload_requested' %}
-                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 1rem; margin-bottom: 0.5rem;">
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 0.85rem; margin-bottom: 0.25rem;">
                         <div style="color: #b91c1c; font-size: 0.8rem; font-weight: 800; display: flex; align-items: center; gap: 8px;">
                             <i class="fas fa-exclamation-circle"></i> Proof Rejected
                         </div>
-                        <p style="color: #991b1b; font-size: 0.75rem; margin: 4px 0 0; font-weight: 500;">Your submitted payment proof was rejected. Please re-upload a clear and correct copy.</p>
+                        <p style="color: #991b1b; font-size: 0.75rem; margin: 4px 0 0; font-weight: 500;">Your submitted payment proof was rejected. Please re-upload a clear copy.</p>
                     </div>
-                    <button onclick="openReuploadProofModal()" class="btn-action-elite btn-primary-orange" style="background: #ef4444; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);">
-                        Re-upload Proof of Payment <i class="fas fa-file-upload"></i>
+                    <button onclick="openReuploadProofModal()" class="btn-action-elite btn-primary-orange" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);">
+                        Re-upload Payment Proof <i class="fas fa-file-upload"></i>
                     </button>
                 {% elif booking.status in ['pending_quotation', 'awaiting_customer'] %}
                     <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-action-elite btn-primary-orange">
-                        Sign Contract <i class="fas fa-file-signature"></i>
-                    </a>
-                {% elif booking.status == 'awaiting_caterer' %}
-                    <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-action-elite btn-outline-slate">
-                        View Contract <i class="fas fa-file-contract"></i>
+                        Sign Digital Contract <i class="fas fa-file-signature"></i>
                     </a>
                 {% elif booking.status in ['pending_payment', 'awaiting_payment'] and booking.payment_status not in ['proof_submitted', 'reupload_requested'] %}
                     <a href="/bookings/step/payment/{{ booking.id }}" class="btn-action-elite btn-primary-orange">
-                        Settle Reservation <i class="fas fa-credit-card"></i>
+                        Settle Reservation Deposit <i class="fas fa-credit-card"></i>
                     </a>
                 {% elif booking.payment_status == 'balance_reupload_requested' %}
-                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 1rem; margin-bottom: 0.5rem;">
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 0.85rem; margin-bottom: 0.25rem;">
                         <div style="color: #b91c1c; font-size: 0.8rem; font-weight: 800; display: flex; align-items: center; gap: 8px;">
                             <i class="fas fa-exclamation-circle"></i> Balance Proof Rejected
                         </div>
-                        <p style="color: #991b1b; font-size: 0.75rem; margin: 4px 0 0; font-weight: 500;">Your submitted balance payment proof was rejected. Please re-upload a clear and correct copy.</p>
+                        <p style="color: #991b1b; font-size: 0.75rem; margin: 4px 0 0; font-weight: 500;">Your balance payment proof was rejected. Please re-upload a valid receipt.</p>
                     </div>
-                    <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange" style="background: #ef4444; box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);">
+                    <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);">
                         Re-upload Balance Proof <i class="fas fa-file-upload"></i>
                     </a>
-                {% elif balance_val > 0 and booking.payment_plan != 'full' %}
+                {% elif balance_val > 0 and booking.payment_plan != 'full' and booking.status == 'confirmed' %}
                     <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange">
-                        Pay Balance <i class="fas fa-wallet"></i>
+                        Pay Remaining Balance <i class="fas fa-wallet"></i>
                     </a>
-                {% endif %}
-                
-                {% if not booking.review and (booking.status == 'completed' or (is_food_order and booking.status == 'arrived')) %}
-                    <a href="/customer/feedback/{{ booking.id }}" class="btn-action-elite" style="background: var(--up-emerald); color: white; border: none;">
-                        Rate & Review <i class="fas fa-star"></i>
+                {% elif not booking.review and (booking.status == 'completed' or (is_food_order and booking.status == 'arrived')) %}
+                    <a href="/customer/feedback/{{ booking.id }}" class="btn-action-elite" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);">
+                        Rate & Review Caterer <i class="fas fa-star"></i>
                     </a>
                 {% elif booking.review %}
-                    <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 1rem; margin-top: 0.5rem; text-align: center;">
-                        <div style="color: #059669; font-weight: 800; font-size: 0.85rem;"><i class="fas fa-check-circle"></i> You reviewed this caterer</div>
+                    <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 14px; padding: 1.15rem; text-align: center;">
+                        <div style="color: #059669; font-weight: 850; font-size: 0.9rem;"><i class="fas fa-check-circle"></i> You reviewed this caterer</div>
+                        <span style="font-size: 0.75rem; color: #047857; margin-top: 4px; display: block;">Thank you for your feedback!</span>
+                    </div>
+                {% else %}
+                    <div style="background: var(--dm-slate-50); border: 1px solid var(--dm-slate-200); border-radius: 14px; padding: 1.15rem; text-align: center;">
+                        <div style="color: var(--up-slate-900); font-weight: 800; font-size: 0.9rem;"><i class="fas fa-check-double" style="color:var(--up-emerald);"></i> All Required Actions Complete</div>
+                        <p style="font-size: 0.75rem; color: var(--dm-slate-500); margin: 4px 0 0; font-weight: 500;">Your caterer is managing your booking.</p>
                     </div>
                 {% endif %}
 
-                <a href="/customer/messages?caterer_id={{ booking.caterer.user_id }}&caterer_name={{ booking.caterer.business_name | urlencode }}" class="btn-action-elite btn-outline-slate">
-                    Message Caterer <i class="fas fa-comments"></i>
-                </a>
-                
-                <button onclick="openReportModal()" class="btn-action-elite" style="background: transparent; border: 2px solid #fee2e2; color: #ef4444; margin-top: 0.5rem;">
-                    Report Issue <i class="fas fa-flag"></i>
-                </button>
+                <!-- Secondary Action Menu Dropdown -->
+                <div class="action-dropdown">
+                    <button type="button" onclick="toggleActionDropdown(event)" class="btn-action-elite btn-outline-slate">
+                        <span>More Actions & Options</span> <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div id="actionDropdownMenu" class="action-dropdown-menu">
+                        <a href="javascript:void(0)" onclick="switchTab('chat', document.querySelectorAll('.tab-btn')[3]); closeActionDropdown();" class="action-dropdown-item">
+                            <i class="fas fa-comments" style="width: 20px; color: var(--up-orange);"></i> Open Consultation Chat
+                        </a>
+                        {% if booking.package and booking.quotation %}
+                        <a href="javascript:void(0)" onclick="openContractModal('{{ booking.id }}'); closeActionDropdown();" class="action-dropdown-item">
+                            <i class="fas fa-file-contract" style="width: 20px; color: var(--up-slate-900);"></i> View Digital Contract
+                        </a>
+                        {% endif %}
+                        <a href="javascript:void(0)" onclick="document.getElementById('termsModalOverlay').style.display='flex'; closeActionDropdown();" class="action-dropdown-item">
+                            <i class="fas fa-file-alt" style="width: 20px; color: var(--dm-slate-500);"></i> View Terms & Conditions
+                        </a>
+                        <a href="/customer/messages?caterer_id={{ booking.caterer.user_id }}&caterer_name={{ booking.caterer.business_name | urlencode }}" class="action-dropdown-item">
+                            <i class="fas fa-envelope" style="width: 20px; color: var(--up-emerald);"></i> Direct Inbox Message
+                        </a>
+                        <a href="javascript:void(0)" onclick="openReportModal(); closeActionDropdown();" class="action-dropdown-item" style="color: #ef4444;">
+                            <i class="fas fa-flag" style="width: 20px;"></i> Report an Issue / Dispute
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
+    </div>
 
-        <!-- DOCUMENTS REPOSITORY -->
-        {% set has_contract = booking.package and booking.quotation %}
-        {% set has_terms = (is_rental_only and (booking.caterer.rental_policies or booking.caterer.general_terms)) or (is_food_order and booking.caterer.general_terms) %}
-        
-        {% if has_contract or has_terms %}
-        <div class="panel">
-            <div class="panel-header">
-                <h3>Your Documents</h3>
-            </div>
-            <div class="panel-body">
-                {% if has_contract %}
-                <a href="javascript:void(0)" onclick="openContractModal('{{ booking.id }}')" 
-                   style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 0.85rem; background: var(--dm-slate-50); border-radius: 12px; transition: all 0.2s; border: 1px solid transparent; margin-bottom: 0.5rem;"
-                   onmouseover="this.style.borderColor='var(--up-orange)'; this.style.background='#fff';" 
-                   onmouseout="this.style.borderColor='transparent'; this.style.background='var(--dm-slate-50)';">
-                    <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(255,123,84,0.1); display: flex; align-items: center; justify-content: center; color: var(--up-orange); font-size: 1.1rem;">
-                        <i class="fas fa-file-contract"></i>
-                    </div>
-                    <div style="flex: 1;">
-                        <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">Event Contract</b>
-                        <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">View officially signed contract</span>
-                    </div>
-                    <i class="fas fa-chevron-right" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
-                </a>
-                {% endif %}
-                
-                {% if has_terms %}
-                <a href="javascript:void(0)" onclick="document.getElementById('termsModalOverlay').style.display='flex'" 
-                   style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 0.85rem; background: var(--dm-slate-50); border-radius: 12px; transition: all 0.2s; border: 1px solid transparent;"
-                   onmouseover="this.style.borderColor='var(--up-orange)'; this.style.background='#fff';" 
-                   onmouseout="this.style.borderColor='transparent'; this.style.background='var(--dm-slate-50)';">
-                    <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(255,123,84,0.1); display: flex; align-items: center; justify-content: center; color: var(--up-orange); font-size: 1.1rem;">
-                        <i class="fas fa-file-alt"></i>
-                    </div>
-                    <div style="flex: 1;">
-                        <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">Terms & Conditions</b>
-                        <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">Agreed terms for this booking</span>
-                    </div>
-                    <i class="fas fa-chevron-right" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
-                </a>
-                {% endif %}
-            </div>
+    <!-- ── CUSTOM REQUIREMENTS CARD (if custom event) ── -->
+    {% if booking.is_custom_event %}
+    <div class="panel">
+        <div class="panel-header">
+            <h3>Custom Requirements & Theme Motif</h3>
         </div>
-        {% endif %}
-
-        {% set is_rental = booking.event_type == 'Equipment Rental' %}
-        {% if is_rental and (booking.release_photo_url or booking.damage_proof_url) %}
-        <div class="panel">
-            <div class="panel-header">
-                <h3>Rental Inspection Records</h3>
+        <div class="panel-body">
+            <div style="background: var(--dm-slate-50); padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <b style="font-size: 0.9rem; color: var(--up-slate-900);">Custom Event Specification</b>
+                    <p style="font-size: 0.75rem; color: var(--dm-slate-400); margin: 2px 0 0; font-weight: 600;">Submitted for tailored quotation</p>
+                </div>
             </div>
-            <div class="panel-body">
-                {% if booking.release_photo_url %}
-                <a href="{{ booking.release_photo_url }}" target="_blank" 
-                   style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 0.85rem; background: var(--dm-slate-50); border-radius: 12px; transition: all 0.2s; border: 1px solid transparent; margin-bottom: 0.5rem;"
-                   onmouseover="this.style.borderColor='var(--up-orange)'; this.style.background='#fff';" 
-                   onmouseout="this.style.borderColor='transparent'; this.style.background='var(--dm-slate-50)';">
-                    <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(255,123,84,0.1); display: flex; align-items: center; justify-content: center; color: var(--up-orange); font-size: 1.1rem;">
-                        <i class="fas fa-camera"></i>
-                    </div>
-                    <div style="flex: 1;">
-                        <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">Release Photo</b>
-                        <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">Condition before handover</span>
-                    </div>
-                    <i class="fas fa-chevron-right" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
-                </a>
-                {% endif %}
-
-                {% if booking.damage_proof_url %}
-                <a href="{{ booking.damage_proof_url }}" target="_blank" 
-                   style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 0.85rem; background: var(--dm-slate-50); border-radius: 12px; transition: all 0.2s; border: 1px solid transparent;"
-                   onmouseover="this.style.borderColor='#ef4444'; this.style.background='#fff';" 
-                   onmouseout="this.style.borderColor='transparent'; this.style.background='var(--dm-slate-50)';">
-                    <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(239, 68, 68, 0.1); display: flex; align-items: center; justify-content: center; color: #ef4444; font-size: 1.1rem;">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <div style="flex: 1;">
-                        <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">Damage Proof</b>
-                        <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">Evidence of damages</span>
-                    </div>
-                    <i class="fas fa-chevron-right" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
-                </a>
-                {% endif %}
+            
+            <div class="detail-item">
+                <span class="detail-label">Estimated Budget</span>
+                <span class="detail-value">₱{{ "{:,.2f}".format(booking.custom_requirements.get('budget', 0)) }}</span>
             </div>
+            <div class="detail-item" style="flex-direction: column; align-items: flex-start; gap: 0.5rem; border-bottom: none; margin-top: 0.5rem;">
+                <span class="detail-label">Theme / Description</span>
+                <div style="font-size: 0.85rem; color: var(--up-slate-900); background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; width: 100%; white-space: pre-wrap;">{{ booking.custom_requirements.get('theme_description', 'No description provided.') }}</div>
+            </div>
+            
+            {% if booking.custom_requirements.get('reference_images') %}
+            <div class="detail-item" style="flex-direction: column; align-items: flex-start; gap: 0.5rem; border-bottom: none; margin-top: 1rem;">
+                <span class="detail-label">Reference Images</span>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    {% for img in booking.custom_requirements.get('reference_images') %}
+                    <a href="{{ img }}" target="_blank" style="display: block; width: 80px; height: 80px; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
+                        <img src="{{ img }}" style="width: 100%; height: 100%; object-fit: cover;">
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
         </div>
-        {% endif %}
+    </div>
+    {% endif %}
 
-        <!-- TRANSACTION LOGS -->
-        <div class="panel">
-            <div class="panel-header">
-                <h3>Payment History</h3>
+    <!-- ── RENTAL INSPECTION RECORDS (if equipment rental) ── -->
+    {% set is_rental = booking.event_type == 'Equipment Rental' or is_rental_only %}
+    {% if is_rental and (booking.release_photo_url or booking.damage_proof_url) %}
+    <div class="panel">
+        <div class="panel-header">
+            <h3>Rental Inspection Records</h3>
+        </div>
+        <div class="panel-body" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+            {% if booking.release_photo_url %}
+            <a href="{{ booking.release_photo_url }}" target="_blank" 
+               style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 1rem; background: var(--dm-slate-50); border-radius: 12px; transition: all 0.2s; border: 1px solid var(--dm-slate-200);"
+               onmouseover="this.style.borderColor='var(--up-orange)'; this.style.background='#fff';" 
+               onmouseout="this.style.borderColor='var(--dm-slate-200)'; this.style.background='var(--dm-slate-50)';">
+                <div style="width: 45px; height: 45px; border-radius: 10px; background: rgba(249,115,22,0.1); display: flex; align-items: center; justify-content: center; color: var(--up-orange); font-size: 1.2rem;">
+                    <i class="fas fa-camera"></i>
+                </div>
+                <div style="flex: 1;">
+                    <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">Handover Release Photo</b>
+                    <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">Verified equipment condition on handover</span>
+                </div>
+                <i class="fas fa-external-link-alt" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
+            </a>
+            {% endif %}
+
+            {% if booking.damage_proof_url %}
+            <a href="{{ booking.damage_proof_url }}" target="_blank" 
+               style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 1rem; background: #fef2f2; border-radius: 12px; transition: all 0.2s; border: 1px solid #fecaca;"
+               onmouseover="this.style.borderColor='#ef4444'; this.style.background='#fff';" 
+               onmouseout="this.style.borderColor='#fecaca'; this.style.background='#fef2f2';">
+                <div style="width: 45px; height: 45px; border-radius: 10px; background: rgba(239, 68, 68, 0.1); display: flex; align-items: center; justify-content: center; color: #ef4444; font-size: 1.2rem;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div style="flex: 1;">
+                    <b style="font-size: 0.85rem; color: #b91c1c; display: block;">Damage Evidence Photo</b>
+                    <span style="font-size: 0.7rem; color: #991b1b; font-weight: 600;">Reported damage or missing items</span>
+                </div>
+                <i class="fas fa-external-link-alt" style="font-size: 0.75rem; color: #ef4444;"></i>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ── TAB 2: INCLUSIONS & ITEMS ── -->
+<div id="tab-menu" class="tab-pane">
+    <div class="panel">
+        <div class="panel-header">
+            <h3>Package & Selected Inclusions</h3>
+        </div>
+        <div class="panel-body">
+            <div style="background: var(--dm-slate-50); padding: 1.25rem; border-radius: 14px; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--dm-slate-200); flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <b style="font-size: 1.05rem; color: var(--up-slate-900);">{{ booking.package.name if booking.package else display_title }}</b>
+                    <p style="font-size: 0.8rem; color: var(--dm-slate-500); margin: 2px 0 0; font-weight: 600;">{{ 'Package Details & Itemized Breakdown' if booking.package else 'Itemized Selection Breakdown' }}</p>
+                </div>
+                <span style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 6px 14px; border-radius: 20px; font-size: 0.7rem; font-weight: 850; color: #059669; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-shield-check"></i> VERIFIED SELECTION
+                </span>
             </div>
-            <div class="panel-body" style="padding-top: 0.5rem; max-height: 300px; overflow-y: auto;">
-                {% if booking.history %}
-                    {% for h in booking.history|sort(attribute='created_at', reverse=True) %}
-                    <div class="audit-log-item">
-                        <div class="audit-icon" style="color: {% if 'reject' in h.notes|lower or 'reupload' in h.notes|lower %}#ef4444{% else %}var(--up-emerald){% endif %};">
-                            <i class="fas {% if 'reject' in h.notes|lower or 'reupload' in h.notes|lower %}fa-times-circle{% elif h.status == 'confirmed' %}fa-check-double{% else %}fa-check{% endif %}"></i>
+
+            {% if booking.package and booking.package.inclusions %}
+            <div style="margin-bottom: 2rem;">
+                <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-box-open" style="margin-right: 6px;"></i> Package Core Inclusions</h4>
+                <div style="background: var(--dm-slate-50); border: 1px solid var(--dm-slate-200); border-radius: 12px; padding: 1rem; display: flex; flex-wrap: wrap; gap: 8px;">
+                    {% if booking.package.inclusions is mapping %}
+                        {% for key, val in booking.package.inclusions.items() %}
+                            {% if val %}
+                            <span style="background: white; border: 1px solid var(--dm-slate-200); padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: var(--up-slate-900); display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                                <i class="fas fa-check-circle" style="color: var(--up-emerald); font-size: 0.75rem;"></i> {{ key }}
+                            </span>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <span style="font-size: 0.85rem; color: var(--up-slate-900);">{{ booking.package.inclusions }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if food_items %}
+            <div style="margin-bottom: 2rem;">
+                <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-utensils" style="margin-right: 6px;"></i> Food & Beverages</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+                    {% for b_item in food_items %}
+                    <div style="background: #fff; border: 1px solid var(--dm-slate-200); padding: 1rem; border-radius: 14px; display: flex; flex-direction: column; gap: 0.5rem; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-check-circle" style="color: var(--up-emerald); font-size: 0.9rem;"></i>
+                                <span style="font-size: 0.9rem; font-weight: 750; color: var(--up-slate-900);">{{ b_item.menu_item.name }}</span>
+                            </div>
+                            <span style="font-size: 0.8rem; font-weight: 850; color: var(--up-orange); background: rgba(249,115,22,0.1); padding: 2px 8px; border-radius: 8px;">x{{ b_item.quantity if b_item.quantity else (1 if not b_item.is_add_on else booking.guest_count) }}</span>
                         </div>
-                        <div class="audit-info">
-                            <b>{{ h.status|capitalize }}</b>
-                            <span>{{ h.notes }} &bull; <br>{{ h.created_at.strftime('%b %d, %Y %I:%M %p') }}</span>
+                        {% if b_item.choices %}
+                        <div style="margin-top: 0.25rem; font-size: 0.75rem; color: #64748b; background: #f8fafc; padding: 0.6rem; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                            <span style="font-weight: 800; color: #0f766e; display: block; margin-bottom: 4px;"><i class="fas fa-list-ul"></i> Platter Choices:</span>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
+                                {% for choice in b_item.choices %}
+                                    <span style="background: white; border: 1px solid #e2e8f0; padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 0.7rem; color: var(--up-slate-900);">{{ choice }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if equipment_items %}
+            <div style="margin-bottom: 2rem;">
+                <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-chair" style="margin-right: 6px;"></i> Equipment Rentals</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+                    {% for b_item in equipment_items %}
+                    <div style="background: #fff; border: 1px solid var(--dm-slate-200); padding: 1rem; border-radius: 14px; display: flex; flex-direction: column; gap: 0.5rem; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-check-circle" style="color: var(--up-emerald); font-size: 0.9rem;"></i>
+                                <span style="font-size: 0.9rem; font-weight: 750; color: var(--up-slate-900);">{{ b_item.equipment.name }}</span>
+                            </div>
+                            <span style="font-size: 0.8rem; font-weight: 850; color: var(--up-orange); background: rgba(249,115,22,0.1); padding: 2px 8px; border-radius: 8px;">x{{ b_item.quantity }}</span>
                         </div>
                     </div>
                     {% endfor %}
-                {% else %}
-                    <div style="text-align: center; padding: 1rem; color: var(--dm-slate-400); font-size: 0.8rem;">No payment history yet.</div>
-                {% endif %}
+                </div>
             </div>
+            {% endif %}
+
+            {% if service_items %}
+            <div style="margin-bottom: 1rem;">
+                <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-concierge-bell" style="margin-right: 6px;"></i> Extra Services & Manpower</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+                    {% for b_item in service_items %}
+                    <div style="background: #fff; border: 1px solid var(--dm-slate-200); padding: 1rem; border-radius: 14px; display: flex; flex-direction: column; gap: 0.5rem; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-check-circle" style="color: var(--up-emerald); font-size: 0.9rem;"></i>
+                                <span style="font-size: 0.9rem; font-weight: 750; color: var(--up-slate-900);">{{ b_item.service.name }}</span>
+                            </div>
+                            <span style="font-size: 0.8rem; font-weight: 850; color: var(--up-orange); background: rgba(249,115,22,0.1); padding: 2px 8px; border-radius: 8px;">x{{ b_item.quantity }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if not food_items and not equipment_items and not service_items and not (booking.package and booking.package.inclusions) %}
+            <div style="text-align: center; padding: 3.5rem 1rem; color: var(--dm-slate-400); background: var(--dm-slate-50); border-radius: 16px; border: 1px dashed var(--dm-slate-200);">
+                <div style="width: 60px; height: 60px; border-radius: 50%; background: white; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                    <i class="fas fa-box-open fa-2x" style="color: var(--dm-slate-300);"></i>
+                </div>
+                <h4 style="font-size: 1rem; font-weight: 800; color: var(--up-slate-900); margin: 0 0 4px 0;">No Itemized Selections Recorded</h4>
+                <p style="font-size: 0.8rem; max-width: 400px; margin: 0 auto; color: var(--dm-slate-500); font-weight: 500;">Your caterer is currently reviewing your event requirements and will attach custom inclusions to this quotation shortly.</p>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
 
+<!-- ── TAB 3: FINANCIALS & LEGAL DOCUMENTS ── -->
+<div id="tab-financials" class="tab-pane">
+    <div class="exec-grid-2">
+        <!-- LEFT: FINANCIAL TERMINAL -->
+        <div class="financial-card">
+            <div>
+                <span class="fin-label">Outstanding Balance</span>
+                {% set total_val = booking.total_amount|float %}
+                {% set res_fee = booking.reservation_fee|float if booking.reservation_fee else 0.0 %}
+                {% set paid_amt = 0.0 %}
+                
+                {% if booking.payment_plan == 'full' %}
+                    {% if booking.payment_status in ['paid', 'proof_submitted', 'reupload_requested'] %}
+                        {% set paid_amt = total_val %}
+                    {% endif %}
+                    {% set balance_val = total_val - paid_amt %}
+                {% else %}
+                    {% if booking.payment_status == 'paid' %}
+                        {% set paid_amt = total_val %}
+                    {% elif booking.payment_status in ['deposit_paid', 'balance_proof_submitted', 'balance_reupload_requested', 'proof_submitted', 'reupload_requested'] %}
+                        {% set paid_amt = res_fee %}
+                    {% endif %}
+                    {% set balance_val = total_val - paid_amt %}
+                {% endif %}
+                
+                <div class="fin-value">₱{{ "{:,.2f}".format(balance_val if booking.status != 'completed' else 0) }}</div>
+                
+                <div class="fin-grid">
+                    <div>
+                        <span class="fin-label">Total Contract Amount</span>
+                        <b style="font-size: 1.1rem; color: #fff;">₱{{ "{:,.2f}".format(total_val) }}</b>
+                    </div>
+                    <div style="text-align: right;">
+                        <span class="fin-label">Verified Amount Paid 
+                            {% if booking.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
+                            <span style="color:#f59e0b; font-size: 0.65rem; display:block;">(Pending Verification)</span>
+                            {% elif booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+                            <span style="color:#ef4444; font-size: 0.65rem; display:block;">(Unverified Receipt)</span>
+                            {% endif %}
+                        </span>
+                        <b style="font-size: 1.1rem; color: var(--up-emerald);">₱{{ "{:,.2f}".format(paid_amt) }}</b>
+                    </div>
+                </div>
 
+                {% if booking.quotation and booking.quotation.package_details %}
+                <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <span class="fin-label" style="margin-bottom: 0.75rem;">Quotation Itemized Breakdown</span>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem; color: rgba(255,255,255,0.85);">
+                        {% if booking.quotation.package_details and booking.quotation.package_details.base_amount|float > 0 %}
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Base Package: {{ booking.quotation.package_details.name }}</span>
+                            <b>₱{{ "{:,.2f}".format(booking.quotation.package_details.base_amount|float) }}</b>
+                        </div>
+                        {% endif %}
+                        
+                        {% if booking.quotation.addons %}
+                            {% for addon in booking.quotation.addons %}
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>{{ addon.name }} <span style="font-size: 0.75rem; opacity: 0.7;">(x{{ addon.quantity if addon.quantity else 1 }})</span></span>
+                                <b>₱{{ "{:,.2f}".format(addon.price|float) }}</b>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
 
+                {% set is_rental = booking.event_type == 'Equipment Rental' or is_rental_only %}
+                {% if is_rental and booking.security_deposit_amount %}
+                <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <span class="fin-label" style="margin-bottom: 0.75rem;">Security Deposit Ledger</span>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem; color: rgba(255,255,255,0.85);">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Original Deposit Held</span>
+                            <b>₱{{ "{:,.2f}".format(booking.security_deposit_amount|float) }}</b>
+                        </div>
+                        {% if booking.security_deposit_status == 'forfeited' or booking.damage_deduction_amount %}
+                        <div style="display: flex; justify-content: space-between; color: #ef4444;">
+                            <span>Damage Deduction</span>
+                            <b>-₱{{ "{:,.2f}".format(booking.damage_deduction_amount|float if booking.damage_deduction_amount else booking.security_deposit_amount|float) }}</b>
+                        </div>
+                        {% endif %}
+                        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed rgba(255,255,255,0.2);">
+                            <span style="font-weight: 800;">Deposit Status</span>
+                            <b style="text-transform: uppercase; color: {% if booking.security_deposit_status == 'fully_refunded' %}var(--up-emerald){% elif booking.security_deposit_status == 'forfeited' %}#ef4444{% else %}#f59e0b{% endif %} ;">
+                                {{ (booking.security_deposit_status or 'Held').replace('_', ' ') }}
+                            </b>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if balance_val > 0 and booking.status == 'confirmed' and booking.payment_status not in ['paid', 'proof_submitted', 'balance_proof_submitted'] %}
+            <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange" style="width: 100%; box-shadow: 0 6px 20px rgba(249, 115, 22, 0.35);">
+                    Settle Remaining Balance Now <i class="fas fa-wallet"></i>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- RIGHT: LEGAL AGREEMENTS & IDENTITY VERIFICATION (KYC) -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Legal Documents & Compliance</h3>
+            </div>
+            <div class="panel-body" style="display: flex; flex-direction: column; gap: 1.5rem; justify-content: space-between;">
+                <!-- Section 1: Legal Agreements -->
+                <div>
+                    <span class="detail-label" style="display: block; margin-bottom: 0.75rem;"><i class="fas fa-file-contract"></i> Applicable Legal Agreements</span>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        {% set has_contract = booking.package and booking.quotation %}
+                        {% if has_contract %}
+                        <a href="javascript:void(0)" onclick="openContractModal('{{ booking.id }}')" 
+                           style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 0.85rem 1rem; background: var(--dm-slate-50); border-radius: 12px; transition: all 0.2s; border: 1px solid var(--dm-slate-200);"
+                           onmouseover="this.style.borderColor='var(--up-orange)'; this.style.background='#fff'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.03)';" 
+                           onmouseout="this.style.borderColor='var(--dm-slate-200)'; this.style.background='var(--dm-slate-50)'; this.style.boxShadow='none';">
+                            <div style="width: 42px; height: 42px; border-radius: 10px; background: rgba(249,115,22,0.1); display: flex; align-items: center; justify-content: center; color: var(--up-orange); font-size: 1.1rem; flex-shrink: 0;">
+                                <i class="fas fa-file-signature"></i>
+                            </div>
+                            <div style="flex: 1;">
+                                <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">Master Catering Agreement</b>
+                                <span style="font-size: 0.7rem; color: var(--dm-slate-500); font-weight: 600;">Digitally signed & binding contract</span>
+                            </div>
+                            <i class="fas fa-chevron-right" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
+                        </a>
+                        {% elif is_rental_only or booking.event_type == 'Equipment Rental' %}
+                        <a href="javascript:void(0)" onclick="document.getElementById('termsModalOverlay').style.display='flex'" 
+                           style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 0.85rem 1rem; background: var(--dm-slate-50); border-radius: 12px; transition: all 0.2s; border: 1px solid var(--dm-slate-200);"
+                           onmouseover="this.style.borderColor='var(--up-blue)'; this.style.background='#fff'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.03)';" 
+                           onmouseout="this.style.borderColor='var(--dm-slate-200)'; this.style.background='var(--dm-slate-50)'; this.style.boxShadow='none';">
+                            <div style="width: 42px; height: 42px; border-radius: 10px; background: rgba(37,99,235,0.1); display: flex; align-items: center; justify-content: center; color: var(--up-blue); font-size: 1.1rem; flex-shrink: 0;">
+                                <i class="fas fa-handshake"></i>
+                            </div>
+                            <div style="flex: 1;">
+                                <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">Equipment Rental Agreement</b>
+                                <span style="font-size: 0.7rem; color: var(--dm-slate-500); font-weight: 600;">Turnover & security deposit policy</span>
+                            </div>
+                            <i class="fas fa-chevron-right" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
+                        </a>
+                        {% elif is_service_only %}
+                        <a href="javascript:void(0)" onclick="document.getElementById('termsModalOverlay').style.display='flex'" 
+                           style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 0.85rem 1rem; background: var(--dm-slate-50); border-radius: 12px; transition: all 0.2s; border: 1px solid var(--dm-slate-200);"
+                           onmouseover="this.style.borderColor='var(--up-emerald)'; this.style.background='#fff'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.03)';" 
+                           onmouseout="this.style.borderColor='var(--dm-slate-200)'; this.style.background='var(--dm-slate-50)'; this.style.boxShadow='none';">
+                            <div style="width: 42px; height: 42px; border-radius: 10px; background: rgba(16,185,129,0.1); display: flex; align-items: center; justify-content: center; color: var(--up-emerald); font-size: 1.1rem; flex-shrink: 0;">
+                                <i class="fas fa-file-contract"></i>
+                            </div>
+                            <div style="flex: 1;">
+                                <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">Service Level Agreement (SLA)</b>
+                                <span style="font-size: 0.7rem; color: var(--dm-slate-500); font-weight: 600;">Manpower & service standards</span>
+                            </div>
+                            <i class="fas fa-chevron-right" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
+                        </a>
+                        {% endif %}
+
+                        <a href="javascript:void(0)" onclick="document.getElementById('termsModalOverlay').style.display='flex'" 
+                           style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 0.85rem 1rem; background: var(--dm-slate-50); border-radius: 12px; transition: all 0.2s; border: 1px solid var(--dm-slate-200);"
+                           onmouseover="this.style.borderColor='var(--up-slate-900)'; this.style.background='#fff'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.03)';" 
+                           onmouseout="this.style.borderColor='var(--dm-slate-200)'; this.style.background='var(--dm-slate-50)'; this.style.boxShadow='none';">
+                            <div style="width: 42px; height: 42px; border-radius: 10px; background: rgba(148,163,184,0.15); display: flex; align-items: center; justify-content: center; color: var(--dm-slate-500); font-size: 1.1rem; flex-shrink: 0;">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <div style="flex: 1;">
+                                <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">General Terms & Conditions</b>
+                                <span style="font-size: 0.7rem; color: var(--dm-slate-500); font-weight: 600;">Standard operating rules & policies</span>
+                            </div>
+                            <i class="fas fa-chevron-right" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Section 2: Identity Verification (KYC) Multi-State Card -->
+                {% set kyc = user.identity_verification %}
+                {% set kyc_status = kyc.verification_status if kyc else ('verified' if (user.is_verified or user.is_kyc_complete) else 'not_submitted') %}
+                
+                <div style="background: {% if kyc_status == 'approved' or user.is_verified %}#ecfdf5{% elif kyc_status in ['pending', 'processing', 'manual_review'] %}#fffbeb{% elif kyc_status in ['rejected', 'blocked'] %}#fef2f2{% else %}var(--dm-slate-50){% endif %}; 
+                            border: 1px solid {% if kyc_status == 'approved' or user.is_verified %}#a7f3d0{% elif kyc_status in ['pending', 'processing', 'manual_review'] %}#fde68a{% elif kyc_status in ['rejected', 'blocked'] %}#fecaca{% else %}var(--dm-slate-200){% endif %}; 
+                            border-radius: 16px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.85rem;">
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 40px; height: 40px; border-radius: 12px; 
+                                        background: {% if kyc_status == 'approved' or user.is_verified %}#10b981{% elif kyc_status in ['pending', 'processing', 'manual_review'] %}#f59e0b{% elif kyc_status in ['rejected', 'blocked'] %}#ef4444{% else %}#64748b{% endif %}; 
+                                        color: white; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                                <i class="fas {% if kyc_status == 'approved' or user.is_verified %}fa-user-check{% elif kyc_status in ['pending', 'processing', 'manual_review'] %}fa-user-clock{% elif kyc_status in ['rejected', 'blocked'] %}fa-user-xmark{% else %}fa-user-shield{% endif %}"></i>
+                            </div>
+                            <div>
+                                <b style="font-size: 0.9rem; color: var(--up-slate-900); display: block;">Identity Compliance (KYC)</b>
+                                <span style="font-size: 0.7rem; color: var(--dm-slate-500); font-weight: 600;">
+                                    {% if kyc and kyc.verification_type %}ID Type: {{ kyc.verification_type|replace('_', ' ')|title }}{% else %}Biometric & ID Liveness Security{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <span style="background: {% if kyc_status == 'approved' or user.is_verified %}#10b981{% elif kyc_status in ['pending', 'processing', 'manual_review'] %}#f59e0b{% elif kyc_status in ['rejected', 'blocked'] %}#ef4444{% else %}#64748b{% endif %}; 
+                                     color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.65rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0;">
+                            {% if kyc_status == 'approved' or user.is_verified %}VERIFIED COMPLIANT
+                            {% elif kyc_status in ['pending', 'processing', 'manual_review'] %}UNDER REVIEW
+                            {% elif kyc_status in ['rejected', 'blocked'] %}ACTION REQUIRED
+                            {% else %}NOT VERIFIED{% endif %}
+                        </span>
+                    </div>
+
+                    <p style="font-size: 0.75rem; color: {% if kyc_status in ['rejected', 'blocked'] %}#b91c1c{% else %}var(--dm-slate-500){% endif %}; margin: 0; line-height: 1.4; font-weight: 500;">
+                        {% if kyc_status == 'approved' or user.is_verified %}
+                            <i class="fas fa-check-circle" style="color: #10b981;"></i> Your identity records are verified and active on the OccaServe zero-trust compliance network. Equipment turnover and service dispatch are pre-cleared.
+                        {% elif kyc_status in ['pending', 'processing', 'manual_review'] %}
+                            <i class="fas fa-clock" style="color: #f59e0b;"></i> Your submitted ID and biometric selfie are currently undergoing AI OCR and liveness verification by our compliance server.
+                        {% elif kyc_status in ['rejected', 'blocked'] %}
+                            <i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> <strong>Verification Failed:</strong> {{ kyc.failure_reason if (kyc and kyc.failure_reason) else 'Document unreadable or liveness check mismatch.' }} Please re-submit your ID.
+                        {% else %}
+                            Complete your Identity Verification (KYC) to establish trust with your caterer, expedite equipment release, and enable zero-trust security.
+                        {% endif %}
+                    </p>
+
+                    <a href="/customer/verification" class="btn-action-elite {% if kyc_status in ['rejected', 'blocked', 'not_submitted'] %}btn-primary-orange{% else %}btn-outline-slate{% endif %}" 
+                       style="padding: 0.75rem; font-size: 0.75rem; width: 100%; justify-content: center; {% if kyc_status not in ['rejected', 'blocked', 'not_submitted'] %}background: white; border-color: var(--dm-slate-300);{% elif kyc_status in ['rejected', 'blocked'] %}background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important; box-shadow: 0 4px 12px rgba(239,68,68,0.3);{% endif %}">
+                        <i class="fas {% if kyc_status == 'approved' or user.is_verified %}fa-id-card{% elif kyc_status in ['rejected', 'blocked', 'not_submitted'] %}fa-arrow-right{% else %}fa-magnifying-glass{% endif %}" style="color: {% if kyc_status == 'approved' or user.is_verified %}#10b981{% elif kyc_status in ['rejected', 'blocked', 'not_submitted'] %}white{% else %}var(--up-orange){% endif %};"></i>
+                        {% if kyc_status == 'approved' or user.is_verified %}View Verified Compliance Record
+                        {% elif kyc_status in ['pending', 'processing', 'manual_review'] %}Check Submission Status
+                        {% elif kyc_status in ['rejected', 'blocked'] %}Re-submit Identity Documents
+                        {% else %}Start Identity Verification Now{% endif %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── TRANSACTION LOGS LEDGER ── -->
+    <div class="panel">
+        <div class="panel-header">
+            <h3>Payment & Status History Ledger</h3>
+        </div>
+        <div class="panel-body" style="padding-top: 0.5rem; max-height: 350px; overflow-y: auto;">
+            {% if booking.history %}
+                {% for h in booking.history|sort(attribute='created_at', reverse=True) %}
+                <div class="audit-log-item">
+                    <div class="audit-icon" style="color: {% if 'reject' in h.notes|lower or 'reupload' in h.notes|lower %}#ef4444{% else %}var(--up-emerald){% endif %}; font-size: 1.1rem; margin-top: 2px;">
+                        <i class="fas {% if 'reject' in h.notes|lower or 'reupload' in h.notes|lower %}fa-times-circle{% elif h.status == 'confirmed' %}fa-check-double{% else %}fa-check-circle{% endif %}"></i>
+                    </div>
+                    <div class="audit-info" style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <b>{{ (h.status or 'Updated')|replace('_', ' ')|title }}</b>
+                            <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">{{ h.created_at.strftime('%b %d, %Y at %I:%M %p') }}</span>
+                        </div>
+                        <span style="display: block; margin-top: 2px; color: var(--dm-slate-500); font-size: 0.8rem;">{{ h.notes }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="text-align: center; padding: 2.5rem 1rem; color: var(--dm-slate-400); font-size: 0.85rem; background: var(--dm-slate-50); border-radius: 12px; border: 1px dashed var(--dm-slate-200);">
+                    <i class="fas fa-clipboard-list fa-2x" style="color: var(--dm-slate-300); margin-bottom: 0.5rem;"></i>
+                    <p style="margin: 0; font-weight: 600;">No transaction ledger entries recorded yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div id="tab-chat" class="tab-pane">
+    <div class="panel" style="overflow: visible;">
+        <!-- Chat Header -->
+        <div class="panel-header chat-panel-header">
+            <div class="chat-header-left">
+                <div class="chat-caterer-avatar">
+                    {{ booking.caterer.business_name[0] | upper }}
+                </div>
+                <div class="chat-caterer-info" style="min-width: 0;">
+                    <h3>{{ booking.caterer.business_name }}</h3>
+                    <span class="chat-caterer-status">
+                        <i class="fas fa-circle" style="font-size: 7px;"></i>
+                        Online Operations Partner &bull; Booking #{{ booking.id }}
+                    </span>
+                </div>
+            </div>
+            <a href="/customer/messages?caterer_id={{ booking.caterer.user_id }}&caterer_name={{ booking.caterer.business_name | urlencode }}"
+               class="btn-action-elite btn-outline-slate chat-inbox-btn">
+                <i class="fas fa-expand"></i> Full Inbox
+            </a>
+        </div>
+
+        <div class="panel-body" style="padding: 0; display: flex; flex-direction: column;">
+            <!-- Chat Messages Window -->
+            <div id="bookingChatMessages" class="chat-messages-window">
+                <div style="text-align: center; padding: 2.5rem; color: var(--dm-slate-400);">
+                    <i class="fas fa-circle-notch fa-spin fa-2x" style="color: var(--up-orange);"></i>
+                    <p style="margin-top: 0.75rem; font-size: 0.82rem; font-weight: 600;">Connecting to thread...</p>
+                </div>
+            </div>
+
+            <!-- Chat Input Form -->
+            <form id="bookingChatForm" onsubmit="sendCustomerBookingMessage(event)" class="chat-input-form">
+                <div id="chatAttachmentPreview" class="chat-attachment-preview">
+                    <span id="chatAttachmentName" style="font-weight: 600;">
+                        <i class="fas fa-paperclip" style="color: var(--up-orange); margin-right: 6px;"></i> File attached
+                    </span>
+                    <button type="button" onclick="clearChatAttachment()" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.9rem; padding: 0; line-height: 1;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="chat-input-row">
+                    <input type="file" id="chatFileInput" name="attachment" accept="image/*,.pdf,.doc,.docx" style="display: none;" onchange="handleChatFileSelect(this)">
+                    <button type="button" onclick="document.getElementById('chatFileInput').click()"
+                            class="btn-outline-slate chat-attach-btn"
+                            title="Attach image or document">
+                        <i class="fas fa-paperclip" style="font-size: 1rem; color: var(--dm-slate-500);"></i>
+                    </button>
+                    <textarea id="chatMessageInput" name="message" rows="1"
+                              placeholder="Type your message here..."
+                              class="chat-textarea"
+                              onfocus="this.style.borderColor='var(--up-orange)'"
+                              onblur="this.style.borderColor='var(--dm-slate-300)'"
+                              onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); document.getElementById('sendChatBtn').click(); }"></textarea>
+                    <button type="submit" id="sendChatBtn" class="btn-primary-orange chat-send-btn" style="width: 44px !important; height: 44px !important; padding: 0 !important; display: flex; align-items: center; justify-content: center; flex: 0 0 44px !important; border-radius: 12px;">
+                        <i class="fas fa-paper-plane" style="font-size: 1rem;"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 {% endblock %}
 
@@ -820,12 +1271,10 @@
     </div>
 </div>
 
-
-
-<!-- Re-upload Downpayment Proof Modal -->
+<!-- Re-upload Proof Modal -->
 <div id="reuploadProofModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-    <div style="background: white; width: 95%; max-width: 400px; border-radius: 20px; padding: 2rem; position: relative;">
-        <button onclick="closeReuploadProofModal()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.2rem; color: var(--dm-slate-400); cursor: pointer; transition: color 0.2s;"><i class="fas fa-times"></i></button>
+    <div style="background: white; width: 95%; max-width: 420px; border-radius: 20px; padding: 2rem; position: relative; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
+        <button onclick="closeReuploadProofModal()" style="position: absolute; top: 1.25rem; right: 1.25rem; background: none; border: none; font-size: 1.2rem; color: var(--dm-slate-400); cursor: pointer; transition: color 0.2s;"><i class="fas fa-times"></i></button>
         <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--up-slate-900); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
             <i class="fas fa-file-invoice-dollar" style="color: #ef4444;"></i> Re-upload Proof
         </h3>
@@ -833,55 +1282,53 @@
         
         <form action="/bookings/reupload-proof/{{ booking.id }}" method="POST" enctype="multipart/form-data">
             <input type="hidden" name="payment_method" value="{{ booking.payment_method }}">
-            
-            
 
             <div id="reuploadErrorMsg" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 1rem; border-radius: 12px; font-size: 0.85rem; margin-bottom: 1.25rem; font-weight: 500;"></div>
-            <div style="margin-bottom: 1rem; background: var(--dm-slate-50); border-radius: 12px; padding: 1rem; border: 1px solid var(--dm-slate-100);">
+            <div style="margin-bottom: 1rem; background: var(--dm-slate-50); border-radius: 12px; padding: 1rem; border: 1px solid var(--dm-slate-200);">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
                     <span style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dm-slate-400);">Payment Method</span>
-                    <span style="font-size: 0.85rem; font-weight: 800; color: var(--up-slate-900); background: white; padding: 4px 12px; border-radius: 50px; border: 1px solid var(--dm-slate-100);">{{ booking.payment_method }}</span>
+                    <span style="font-size: 0.85rem; font-weight: 800; color: var(--up-slate-900); background: white; padding: 4px 12px; border-radius: 50px; border: 1px solid var(--dm-slate-200);">{{ booking.payment_method }}</span>
                 </div>
                 
                 <div style="font-size: 0.75rem; color: var(--up-slate-900); font-weight: 600;">
                     {% if booking.payment_method == 'GCash' %}
                         <p style="margin: 0 0 4px 0;"><strong>Recipient:</strong> {{ booking.caterer.gcash_name or 'N/A' }}</p>
                         <p style="margin: 0 0 8px 0;"><strong>Number:</strong> {{ booking.caterer.gcash_number or 'N/A' }}</p>
-                        <ol style="margin: 0; padding-left: 1.2rem; color: var(--dm-slate-400); font-weight: 500;">
+                        <ol style="margin: 0; padding-left: 1.2rem; color: var(--dm-slate-500); font-weight: 500;">
                             <li>Open your e-wallet app and send the exact amount.</li>
-                            <li>Take a clear screenshot of the successful transaction.</li>
+                            <li>Take a clear screenshot of the transaction receipt.</li>
                             <li>Ensure the <strong>Reference Number</strong> and <strong>Amount</strong> are visible.</li>
                         </ol>
                     {% elif booking.payment_method == 'Maya' %}
                         <p style="margin: 0 0 4px 0;"><strong>Recipient:</strong> {{ booking.caterer.maya_name or 'N/A' }}</p>
                         <p style="margin: 0 0 8px 0;"><strong>Number:</strong> {{ booking.caterer.maya_number or 'N/A' }}</p>
-                        <ol style="margin: 0; padding-left: 1.2rem; color: var(--dm-slate-400); font-weight: 500;">
+                        <ol style="margin: 0; padding-left: 1.2rem; color: var(--dm-slate-500); font-weight: 500;">
                             <li>Open your e-wallet app and send the exact amount.</li>
-                            <li>Take a clear screenshot of the successful transaction.</li>
+                            <li>Take a clear screenshot of the transaction receipt.</li>
                             <li>Ensure the <strong>Reference Number</strong> and <strong>Amount</strong> are visible.</li>
                         </ol>
                     {% elif booking.payment_method == 'Bank Transfer' %}
                         <p style="margin: 0 0 4px 0;"><strong>Bank:</strong> {{ booking.caterer.bank_name or 'N/A' }}</p>
                         <p style="margin: 0 0 4px 0;"><strong>Account Name:</strong> {{ booking.caterer.bank_account_name or 'N/A' }}</p>
                         <p style="margin: 0 0 8px 0;"><strong>Account No.:</strong> {{ booking.caterer.bank_account_number or 'N/A' }}</p>
-                        <ol style="margin: 0; padding-left: 1.2rem; color: var(--dm-slate-400); font-weight: 500;">
+                        <ol style="margin: 0; padding-left: 1.2rem; color: var(--dm-slate-500); font-weight: 500;">
                             <li>Transfer the exact amount to the bank account above.</li>
                             <li>Take a clear screenshot of the confirmation page or receipt.</li>
                             <li>Ensure the <strong>Reference Number</strong> and <strong>Amount</strong> are visible.</li>
                         </ol>
                     {% else %}
-                        <p style="margin: 0;">Please follow the standard payment procedure for {{ booking.payment_method }}.</p>
+                        <p style="margin: 0;">Please follow standard payment procedure for {{ booking.payment_method }}.</p>
                     {% endif %}
                 </div>
             </div>
 
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--up-slate-900); margin-bottom: 0.5rem; text-transform: uppercase;">Upload New Receipt <span style="color: #ef4444;">*</span></label>
-                <input type="file" name="payment_proof" accept="image/jpeg, image/png, image/webp" required style="width: 100%; padding: 0.75rem; border: 2px dashed var(--up-orange); border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 0.8rem; color: var(--dm-slate-400); background: rgba(255,123,84,0.05);">
-                <p style="font-size: 0.65rem; color: var(--dm-slate-400); margin-top: 6px; text-align: center;"><i class="fas fa-robot"></i> Image will be verified automatically by our AI system.</p>
+                <input type="file" name="payment_proof" accept="image/jpeg, image/png, image/webp" required style="width: 100%; padding: 0.75rem; border: 2px dashed var(--up-orange); border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 0.8rem; color: var(--dm-slate-400); background: rgba(255,123,84,0.05); box-sizing: border-box;">
+                <p style="font-size: 0.65rem; color: var(--dm-slate-400); margin-top: 6px; text-align: center;"><i class="fas fa-robot"></i> Receipt will be verified automatically by our AI OCR system.</p>
             </div>
             <button type="submit" class="btn-action-elite btn-primary-orange" style="width: 100%;">
-                Submit Document <i class="fas fa-paper-plane"></i>
+                Submit Verified Document <i class="fas fa-paper-plane"></i>
             </button>
         </form>
     </div>
@@ -889,17 +1336,17 @@
 
 <!-- Report Issue Modal -->
 <div id="reportIssueModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-    <div style="background: white; width: 95%; max-width: 450px; border-radius: 20px; padding: 2rem; position: relative;">
-        <button onclick="closeReportModal()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.2rem; color: var(--dm-slate-400); cursor: pointer;"><i class="fas fa-times"></i></button>
+    <div style="background: white; width: 95%; max-width: 450px; border-radius: 20px; padding: 2rem; position: relative; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
+        <button onclick="closeReportModal()" style="position: absolute; top: 1.25rem; right: 1.25rem; background: none; border: none; font-size: 1.2rem; color: var(--dm-slate-400); cursor: pointer;"><i class="fas fa-times"></i></button>
         <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--up-slate-900); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
-            <i class="fas fa-flag" style="color: #ef4444;"></i> Report Issue
+            <i class="fas fa-flag" style="color: #ef4444;"></i> Report Issue / Dispute
         </h3>
-        <p style="font-size: 0.8rem; color: var(--dm-slate-400); margin-bottom: 1.5rem; font-weight: 500;">Please provide details of your dispute. This will be sent to the OccaServe Admin for investigation.</p>
+        <p style="font-size: 0.8rem; color: var(--dm-slate-400); margin-bottom: 1.5rem; font-weight: 500;">Please provide details of your dispute. This will be sent directly to OccaServe Compliance Admin for investigation.</p>
         
         <form id="reportForm" onsubmit="submitReport(event)">
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--up-slate-900); margin-bottom: 0.5rem; text-transform: uppercase;">Reason <span style="color: #ef4444;">*</span></label>
-                <select name="reason" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--dm-slate-200); border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 0.85rem; color: var(--up-slate-900); background: #fff; outline: none;">
+                <select name="reason" required style="width: 100%; padding: 0.85rem; border: 1px solid var(--dm-slate-200); border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 0.85rem; color: var(--up-slate-900); background: #fff; outline: none; box-sizing: border-box;">
                     <option value="">Select a reason...</option>
                     <option value="Caterer did not arrive">Caterer did not arrive</option>
                     <option value="Scam or fraud">Scam or fraud</option>
@@ -910,20 +1357,194 @@
             </div>
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--up-slate-900); margin-bottom: 0.5rem; text-transform: uppercase;">Details <span style="color: #ef4444;">*</span></label>
-                <textarea name="details" required rows="4" placeholder="Describe what happened in detail..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--dm-slate-200); border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 0.85rem; color: var(--up-slate-900); background: #fff; outline: none; resize: none;"></textarea>
+                <textarea name="details" required rows="4" placeholder="Describe what happened in detail..." style="width: 100%; padding: 0.85rem; border: 1px solid var(--dm-slate-200); border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 0.85rem; color: var(--up-slate-900); background: #fff; outline: none; resize: none; box-sizing: border-box;"></textarea>
             </div>
-            <button type="submit" class="btn-action-elite btn-primary-orange" style="width: 100%; background: #ef4444; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);">
+            <button type="submit" class="btn-action-elite btn-primary-orange" style="width: 100%; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);">
                 Submit Report <i class="fas fa-paper-plane"></i>
             </button>
         </form>
     </div>
 </div>
 
-
+<!-- Terms & Conditions Modal -->
+<div id="termsModalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: white; width: 95%; max-width: 650px; border-radius: 20px; position: relative; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
+        <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #fff;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(249,115,22,0.1); color: var(--up-orange); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <h2 style="font-size: 1.1rem; font-weight: 900; color: var(--up-slate-900); margin: 0;">Terms & Policies</h2>
+            </div>
+            <button onclick="document.getElementById('termsModalOverlay').style.display='none'" style="background: var(--dm-slate-50); border: none; width: 36px; height: 36px; border-radius: 10px; color: var(--dm-slate-400); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#fee2e2'; this.style.color='#ef4444';" onmouseout="this.style.background='var(--dm-slate-50)'; this.style.color='var(--dm-slate-400)';"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="padding: 1.5rem; overflow-y: auto; font-size: 0.85rem; color: #475569; line-height: 1.6; white-space: pre-wrap; background: #f8fafc; font-family: 'Poppins', sans-serif;">{% if is_rental_only or booking.event_type == 'Equipment Rental' %}{{ booking.caterer.rental_policies or booking.caterer.general_terms or 'Standard rental turnover and security deposit policies apply.' }}{% elif is_service_only %}{{ booking.caterer.terms_and_conditions or booking.caterer.general_terms or 'Standard service manpower rules apply.' }}{% else %}{{ booking.caterer.general_terms or 'Standard catering and event management terms apply.' }}{% endif %}</div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    const currentBookingId = {{ booking.id }};
+    let unreadChatCount = 0;
+
+    /* ── TAB SWITCHER ── */
+    function switchTab(tabId, btnElement) {
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        
+        const targetPane = document.getElementById(`tab-${tabId}`);
+        if (targetPane) targetPane.classList.add('active');
+        if (btnElement) btnElement.classList.add('active');
+
+        if (tabId === 'chat') {
+            unreadChatCount = 0;
+            const badge = document.getElementById('chatTabBadge');
+            if (badge) badge.style.display = 'none';
+            loadCustomerBookingMessages();
+        }
+    }
+
+    /* ── ACTION DROPDOWN ── */
+    function toggleActionDropdown(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('actionDropdownMenu');
+        if (menu) menu.classList.toggle('show');
+    }
+    function closeActionDropdown() {
+        const menu = document.getElementById('actionDropdownMenu');
+        if (menu) menu.classList.remove('show');
+    }
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.action-dropdown')) closeActionDropdown();
+    });
+
+    /* ── CONSULTATION CHAT LOGIC ── */
+    async function loadCustomerBookingMessages() {
+        const container = document.getElementById('bookingChatMessages');
+        if (!container) return;
+        
+        try {
+            const res = await fetch(`/bookings/${currentBookingId}/messages`);
+            const data = await res.json();
+            
+            if (data.status === 'success' && data.messages) {
+                if (data.messages.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 3rem; color: var(--dm-slate-400);">
+                            <i class="fas fa-comments fa-2x" style="color: var(--dm-slate-300); margin-bottom: 0.75rem;"></i>
+                            <p style="font-size: 0.9rem; font-weight: 600; margin: 0; color: var(--up-slate-900);">No consultation messages yet.</p>
+                            <span style="font-size: 0.75rem;">Send a message below to communicate directly with your caterer.</span>
+                        </div>`;
+                    return;
+                }
+
+                container.innerHTML = data.messages.map(m => {
+                    const bubbleClass = m.is_me ? 'chat-msg-me' : 'chat-msg-them';
+                    let attachHtml = '';
+                    if (m.attachment_url) {
+                        const isImg = /\.(jpg|jpeg|png|webp|gif)$/i.test(m.attachment_url);
+                        if (isImg) {
+                            attachHtml = `<div style="margin-top: 8px;"><a href="${m.attachment_url}" target="_blank"><img src="${m.attachment_url}" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);"></a></div>`;
+                        } else {
+                            attachHtml = `<div style="margin-top: 8px;"><a href="${m.attachment_url}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; background: rgba(0,0,0,0.05); border-radius: 6px; color: inherit; font-size: 0.75rem; text-decoration: none; font-weight: 700;"><i class="fas fa-file-download"></i> View Attached Document</a></div>`;
+                        }
+                    }
+                    const seenStatusHtml = m.is_me ? (m.is_read ? '<span style="color: #3b82f6; font-weight: 700; margin-left: 6px;"><i class="fas fa-check-double"></i> Seen</span>' : '<span style="color: #94a3b8; margin-left: 6px;"><i class="fas fa-check"></i> Sent</span>') : '';
+                    return `
+                        <div class="chat-msg-bubble ${bubbleClass}">
+                            ${!m.is_me ? `<span style="font-size: 0.7rem; font-weight: 800; color: var(--up-orange); display: block; margin-bottom: 2px;">${m.sender_name}</span>` : ''}
+                            <div>${m.message || ''}</div>
+                            ${attachHtml}
+                            <span class="chat-meta" style="text-align: ${m.is_me ? 'right' : 'left'};">${m.created_at}${seenStatusHtml}</span>
+                        </div>
+                    `;
+                }).join('');
+
+                container.scrollTop = container.scrollHeight;
+            }
+        } catch (err) {
+            console.error('Failed to load consultation messages:', err);
+        }
+    }
+
+    function handleChatFileSelect(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File size exceeds 10MB limit.');
+                input.value = '';
+                return;
+            }
+            document.getElementById('chatAttachmentName').innerHTML = `<i class="fas fa-paperclip" style="color: var(--up-orange); margin-right: 6px;"></i> ${file.name}`;
+            document.getElementById('chatAttachmentPreview').style.display = 'flex';
+        }
+    }
+
+    function clearChatAttachment() {
+        const input = document.getElementById('chatFileInput');
+        if (input) input.value = '';
+        const prev = document.getElementById('chatAttachmentPreview');
+        if (prev) prev.style.display = 'none';
+    }
+
+    async function sendCustomerBookingMessage(e) {
+        e.preventDefault();
+        const form = document.getElementById('bookingChatForm');
+        const input = document.getElementById('chatMessageInput');
+        const fileInput = document.getElementById('chatFileInput');
+        const sendBtn = document.getElementById('sendChatBtn');
+        
+        if (!input.value.trim() && (!fileInput.files || !fileInput.files[0])) return;
+
+        const formData = new FormData(form);
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        try {
+            const res = await fetch(`/bookings/${currentBookingId}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
+            const data = await res.json();
+            
+            if (data.status === 'success' || data.success) {
+                input.value = '';
+                clearChatAttachment();
+                await loadCustomerBookingMessages();
+            } else {
+                alert(data.message || 'Failed to send message.');
+            }
+        } catch (err) {
+            alert('Connection error while sending message.');
+        } finally {
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<span>Send</span> <i class="fas fa-paper-plane"></i>';
+        }
+    }
+
+    /* ── REAL-TIME WEBSOCKET CALLBACK ── */
+    window.onNewBookingMessage = function(data) {
+        if (data && (data.booking_id == currentBookingId || !data.booking_id)) {
+            const chatTab = document.getElementById('tab-chat');
+            if (chatTab && chatTab.classList.contains('active')) {
+                loadCustomerBookingMessages();
+            } else {
+                unreadChatCount++;
+                const badge = document.getElementById('chatTabBadge');
+                if (badge) {
+                    badge.textContent = unreadChatCount;
+                    badge.style.display = 'inline-block';
+                }
+            }
+        }
+    };
+
+    /* ── PAYMONGO & MODAL HELPERS ── */
     async function initiatePaymongo(type) {
         const formData = new FormData();
         formData.append('payment_type', type);
@@ -936,9 +1557,7 @@
     }
 
     function openContractModal(bookingId) {
-        // HIDE sidebar/header to ensure they are GONE
         document.body.classList.add('contract-modal-open');
-        
         const modal = document.getElementById('contractModal');
         const body = document.getElementById('contractModalBody');
         modal.style.display = 'flex';
@@ -963,61 +1582,10 @@
         document.body.style.overflow = 'auto';
     }
 
-    function openBalanceUploadModal() {
-        document.getElementById('balanceUploadModal').style.display = 'flex';
-    }
-    
-    function closeBalanceUploadModal() {
-        document.getElementById('balanceUploadModal').style.display = 'none';
-    }
+    function openReuploadProofModal() { document.getElementById('reuploadProofModal').style.display = 'flex'; }
+    function closeReuploadProofModal() { document.getElementById('reuploadProofModal').style.display = 'none'; }
 
-    function openReuploadProofModal() {
-        document.getElementById('reuploadProofModal').style.display = 'flex';
-    }
-    
-    function closeReuploadProofModal() {
-        document.getElementById('reuploadProofModal').style.display = 'none';
-    }
-    document.addEventListener('DOMContentLoaded', () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        
-        if (urlParams.has('validation_error')) {
-            const errorMsg = urlParams.get('validation_error');
-            
-            if (urlParams.has('open_reupload')) {
-                // Open modal and show error inside
-                const msgBox = document.getElementById('reuploadErrorMsg');
-                if (msgBox) {
-                    msgBox.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <strong>AI Verification Failed:</strong> ' + errorMsg.replace(/\+/g, ' ');
-                    msgBox.style.display = 'block';
-                }
-                openReuploadProofModal();
-            } else {
-                Swal.fire({
-                    title: 'AI Verification Failed',
-                    text: errorMsg,
-                    icon: 'error',
-                    confirmButtonColor: '#ef4444'
-                });
-            }
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-        
-        if (urlParams.has('success_msg')) {
-            Swal.fire({
-                title: 'Success!',
-                text: urlParams.get('success_msg'),
-                icon: 'success',
-                confirmButtonColor: 'var(--up-emerald-500)'
-            });
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-    });
-
-    function openReportModal() {
-        document.getElementById('reportIssueModal').style.display = 'flex';
-    }
-
+    function openReportModal() { document.getElementById('reportIssueModal').style.display = 'flex'; }
     function closeReportModal() {
         document.getElementById('reportIssueModal').style.display = 'none';
         document.getElementById('reportForm').reset();
@@ -1057,16 +1625,27 @@
             submitBtn.innerHTML = 'Submit Report <i class="fas fa-paper-plane"></i>';
         }
     }
-</script>
 
-<!-- Terms Modal -->
-<div id="termsModalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-    <div style="background: white; width: 95%; max-width: 600px; border-radius: 20px; position: relative; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
-        <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #fff;">
-            <h2 style="font-size: 1.1rem; font-weight: 900; color: var(--up-slate-900); margin: 0;">Terms & Conditions</h2>
-            <button onclick="document.getElementById('termsModalOverlay').style.display='none'" style="background: var(--dm-slate-50); border: none; width: 36px; height: 36px; border-radius: 10px; color: var(--dm-slate-400); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#fee2e2'; this.style.color='#ef4444';" onmouseout="this.style.background='var(--dm-slate-50)'; this.style.color='var(--dm-slate-400)';"><i class="fas fa-times"></i></button>
-        </div>
-        <div style="padding: 1.5rem; overflow-y: auto; font-size: 0.85rem; color: #475569; line-height: 1.6; white-space: pre-wrap; background: #f8fafc;">{% if is_rental_only %}{{ booking.caterer.rental_policies or booking.caterer.general_terms }}{% elif is_service_only %}{{ booking.caterer.terms_and_conditions or booking.caterer.general_terms }}{% else %}{{ booking.caterer.general_terms }}{% endif %}</div>
-    </div>
-</div>
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('validation_error')) {
+            const errorMsg = urlParams.get('validation_error');
+            if (urlParams.has('open_reupload')) {
+                const msgBox = document.getElementById('reuploadErrorMsg');
+                if (msgBox) {
+                    msgBox.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <strong>AI Verification Failed:</strong> ' + errorMsg.replace(/\+/g, ' ');
+                    msgBox.style.display = 'block';
+                }
+                openReuploadProofModal();
+            } else {
+                Swal.fire({ title: 'AI Verification Failed', text: errorMsg, icon: 'error', confirmButtonColor: '#ef4444' });
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        if (urlParams.has('success_msg')) {
+            Swal.fire({ title: 'Success!', text: urlParams.get('success_msg'), icon: 'success', confirmButtonColor: 'var(--up-emerald-500)' });
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    });
+</script>
 {% endblock %}

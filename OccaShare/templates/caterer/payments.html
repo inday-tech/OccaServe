@@ -71,6 +71,73 @@
     .pay-action-wrapper {
         position: relative;
     }
+
+    /* ══ CLEAN UI OVERRIDES ══════════════════════════════════════ */
+    .pay-table {
+        border-spacing: 0 !important;
+        border-collapse: collapse !important;
+    }
+    .pay-table th {
+        padding: 0.75rem 1.25rem !important;
+        font-size: 0.68rem !important;
+        font-weight: 700 !important;
+        color: #94a3b8 !important;
+        letter-spacing: 0.07em !important;
+        background: #f8fafc !important;
+        border-bottom: 1px solid #f0f4f8 !important;
+        text-transform: uppercase !important;
+    }
+    .payment-row td {
+        padding: 0.9rem 1.25rem !important;
+        border-bottom: 1px solid #f4f6f9 !important;
+        vertical-align: middle !important;
+    }
+    .payment-row:hover {
+        background: #fafbfd !important;
+        box-shadow: none !important;
+    }
+    .payment-row:last-child td { border-bottom: none !important; }
+
+    .pay-customer-name { font-size: 0.88rem !important; font-weight: 700 !important; color: #0f172a !important; display: block; }
+    .pay-booking-ref { font-size: 0.73rem !important; color: #94a3b8 !important; font-weight: 400 !important; display: block; margin-top: 2px; }
+
+    .pay-event-name { font-size: 0.88rem !important; font-weight: 700 !important; color: #0f172a !important; }
+    .amount-pro { font-size: 0.92rem !important; font-weight: 700 !important; color: #0f172a !important; }
+    
+    .pay-id {
+        font-size: 0.78rem !important;
+        font-weight: 600 !important;
+        color: #64748b !important;
+        letter-spacing: 0.04em !important;
+        text-transform: uppercase !important;
+    }
+
+    /* ══ STATUS BADGES (Synced with Bookings) ════════════════════ */
+    .badge-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px !important;
+        border-radius: 6px !important;
+        font-size: 0.72rem !important;
+        font-weight: 600 !important;
+        text-transform: none !important;
+        letter-spacing: 0 !important;
+        white-space: nowrap;
+    }
+    .badge-draft      { background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
+    .badge-pending    { background: #fff7ed; color: #c2410c; border: 1px solid #fde8cc; }
+    .badge-payment    { background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; }
+    .badge-confirmed  { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+    .badge-preparing  { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+    .badge-active     { background: #f0f9ff; color: #0284c7; border: 1px solid #bae6fd; }
+    .badge-in_progress{ background: #fff7ed; color: #c2410c; border: 1px solid #fde8cc; }
+    .badge-completed  { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+    .badge-cancelled  { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .badge-reupload   { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
+    .pulse-update     { animation: bk-blink 2s infinite; }
+    @keyframes bk-blink { 0%,100%{opacity:1} 50%{opacity:.55} }
+
 </style>
 {% endblock %}
 
@@ -242,15 +309,57 @@
                             {% set signed_dt = b.updated_at %}
                         {% endif %}
 
-                        {% if b.payment_status == 'paid' %}
-                            <span class="pay-status-badge pay-status-completed">Paid</span>
-                        {% elif b.payment_status == 'proof_submitted' or b.payment_status == 'balance_proof_submitted' %}
-                            <span class="pay-status-badge pay-status-pending pulse-update" style="background:#fef3c7; color:#d97706; border-color:#fcd34d;">Verify Pay</span>
-                        {% elif b.payment_status == 'deposit_paid' %}
-                            <span class="pay-status-badge pay-status-partial">Partial Pay</span>
-                        {% else %}
-                            <span class="pay-status-badge pay-status-pending timer-overdue-check" data-start="{{ signed_dt.isoformat() if signed_dt else '' }}">Pending Pay</span>
+                        {% set badge_class = 'badge-draft' %}
+                        {% set status_label = b.status.replace('_', ' ').title() if b.status else 'Unknown' %}
+                        
+                        {% if b.status == 'pending' %}
+                            {% if b.payment_status == 'proof_submitted' %}
+                                {% set badge_class = 'badge-payment pulse-update' %}
+                                {% set status_label = 'Verify Payment' %}
+                            {% else %}
+                                {% set badge_class = 'badge-pending timer-overdue-check' %}
+                                {% set status_label = 'Pending Pay' %}
+                            {% endif %}
+                        {% elif b.status == 'confirmed' %}
+                            {% if b.payment_status == 'balance_proof_submitted' %}
+                                {% set badge_class = 'badge-payment pulse-update' %}
+                                {% set status_label = 'Verify Balance' %}
+                            {% else %}
+                                {% set badge_class = 'badge-confirmed' %}
+                                {% set status_label = 'Confirmed' %}
+                            {% endif %}
+                        {% elif b.status == 'pending_quotation' %}
+                            {% set badge_class = 'badge-draft' %}
+                            {% set status_label = 'Draft' %}
+                        {% elif b.status in ['pending_review', 'under_review'] %}
+                            {% set badge_class = 'badge-pending pulse-update' %}
+                            {% set status_label = 'New Inquiry' %}
+                        {% elif b.status == 'quotation_phase' %}
+                            {% set badge_class = 'badge-draft' %}
+                            {% set status_label = 'Quoted' %}
+                        {% elif b.status == 'awaiting_caterer' %}
+                            {% set badge_class = 'badge-pending' %}
+                            {% set status_label = 'To Sign' %}
+                        {% elif b.status in ['awaiting_payment', 'pending_payment'] %}
+                            {% set badge_class = 'badge-payment timer-overdue-check' %}
+                        {% elif b.status == 'preparing' %}
+                            {% set badge_class = 'badge-preparing' %}
+                        {% elif b.status in ['on_the_way', 'ready_for_delivery', 'ready_for_pickup', 'arrived'] %}
+                            {% set badge_class = 'badge-active' %}
+                        {% elif b.status in ['in_progress', 'setup_ongoing'] %}
+                            {% set badge_class = 'badge-in_progress' %}
+                        {% elif b.status == 'completed' %}
+                            {% set badge_class = 'badge-completed' %}
+                        {% elif b.status == 'cancelled' %}
+                            {% set badge_class = 'badge-cancelled' %}
                         {% endif %}
+
+                        {% if b.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+                            {% set badge_class = 'badge-reupload' %}
+                            {% set status_label = 'Re-upload' %}
+                        {% endif %}
+                        
+                        <span class="badge-status {{ badge_class }}" data-start="{{ signed_dt.isoformat() if signed_dt else '' }}">{{ status_label }}</span>
                     </td>
                     <td class="pay-th-right">
                         <div class="pay-action-wrapper action-dropdown-container">
@@ -258,7 +367,7 @@
                                 <i class="fas fa-ellipsis-v"></i>
                             </button>
                             <div id="actionMenu-{{ b.id }}" class="pay-dropdown-menu">
-                                {% if b.payment_status != 'paid' %}
+                                {% if b.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
                                 <button class="pay-dropdown-item" onclick="verifyPayment('{{ b.id }}')">
                                     <i class="fas fa-check-circle" style="color: var(--accent-color);"></i> Verify Payment
                                 </button>

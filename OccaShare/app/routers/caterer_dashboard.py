@@ -623,6 +623,11 @@ async def update_booking_status(
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
+    if booking.is_archived:
+        raise HTTPException(status_code=400, detail="Cannot modify an archived booking.")
+    if booking.status in ['cancelled', 'completed'] and data.status not in ['cancelled', 'completed']:
+        raise HTTPException(status_code=400, detail=f"Booking is already {booking.status} and cannot be reopened or modified.")
+
     new_status = data.status
     allowed_statuses = ["preparing", "ready_for_delivery", "on_the_way", "arrived", "setup_ongoing", "completed", "cancelled"]
     
@@ -650,6 +655,13 @@ async def update_booking_status(
 
     # --- PAYMENT VERIFICATION & CASH HANDLING ---
     if new_status == "completed":
+        has_equipment = any(getattr(item, 'equipment_id', None) for item in booking.selected_items)
+        has_food = True if booking.package_id else any(getattr(item, 'menu_item_id', None) for item in booking.selected_items)
+        if has_equipment and not booking.return_photo_url:
+            raise HTTPException(status_code=400, detail="Cannot complete booking: Equipment Return Inspection (Photo) is required.")
+        if has_food and not booking.dispatch_proof_url:
+            raise HTTPException(status_code=400, detail="Cannot complete booking: Food Dispatch/Setup verification (Photo) is required.")
+
         if booking.payment_method == "Cash":
             # For Cash payments, caterer completing it implies they collected the physical cash
             booking.payment_status = "paid"
@@ -1409,6 +1421,14 @@ async def manage_bookings(
     from datetime import date
     today = date.today()
     
+    unread_chat_map = {}
+    for b in all_bookings:
+        unread_count = 0
+        for m in getattr(b, 'messages', []):
+            if not getattr(m, 'is_read', True) and getattr(m, 'sender_id') != user.id:
+                unread_count += 1
+        unread_chat_map[b.id] = unread_count
+    
     return templates.TemplateResponse("caterer/bookings.html", {
         "request": request,
         "user": user,
@@ -1419,7 +1439,8 @@ async def manage_bookings(
         "pending_count": pending_count,
         "cancelled_count": cancelled_count,
         "active_page": "bookings",
-        "today": today
+        "today": today,
+        "unread_chat_map": unread_chat_map
     })
 
 @router.get("/orders", response_class=HTMLResponse)
@@ -1594,6 +1615,11 @@ async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_u
     from ..services.notification import NotificationService
     import asyncio
     
+    if booking.is_archived:
+        raise HTTPException(status_code=400, detail="Cannot confirm or accept an archived booking.")
+    if booking.status in ['cancelled', 'completed']:
+        raise HTTPException(status_code=400, detail=f"Cannot confirm or accept a booking that is already {booking.status}.")
+
     old_payment_status = booking.payment_status
     history_note = "Booking confirmed by caterer."
     
@@ -1696,7 +1722,7 @@ async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_u
         "message": "Stats updated: Booking confirmed."
     })
 
-    return {"status": "success", "message": history_note}
+    return {"status": "success", "message": history_note, "new_status": "confirmed"}
 
 @router.post("/bookings/{booking_id}/accept")
 async def accept_booking_manual(
@@ -1722,6 +1748,11 @@ async def confirm_caterer_payment(
     booking = db.query(models.Booking).get(booking_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
+
+    if booking.is_archived:
+        raise HTTPException(status_code=400, detail="Cannot confirm payment for an archived booking.")
+    if booking.status in ['cancelled', 'completed']:
+        raise HTTPException(status_code=400, detail=f"Cannot modify payment for a booking that is already {booking.status}.")
         
     # [Rest of AI verification logic remains before calling logic]
 
@@ -1789,6 +1820,11 @@ async def request_new_proof(
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
+    if booking.is_archived:
+        raise HTTPException(status_code=400, detail="Cannot request proof for an archived booking.")
+    if booking.status in ['cancelled', 'completed']:
+        raise HTTPException(status_code=400, detail=f"Cannot request proof for a booking that is already {booking.status}.")
+
     data = await request.json()
     reason = data.get("reason", "The submitted proof was unreadable or incorrect.")
 
@@ -1838,6 +1874,28 @@ async def request_new_proof(
     })
 
     return {"status": "success", "message": "Customer notified to re-upload proof."}
+
+@router.get("/api/bookings/{booking_id}/contract/content")
+async def get_contract_content_caterer(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or (user.caterer_profile and booking.caterer_id != user.caterer_profile.id):
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    quotation = booking.quotation
+    if not quotation:
+        raise HTTPException(status_code=404, detail="Contract/Quotation not found")
+
+    return templates.TemplateResponse("shared/contract_content_partial.html", {
+        "request": request,
+        "booking": booking,
+        "quotation": quotation,
+        "user": user
+    })
 
 class DueDateRequest(BaseModel):
     due_date: str
@@ -2001,6 +2059,8 @@ async def update_booking_notes(
     booking = db.query(models.Booking).get(booking_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.is_archived:
+        raise HTTPException(status_code=400, detail="Cannot modify notes on an archived booking.")
     
     booking.caterer_notes = data.notes
     db.commit()
@@ -2017,15 +2077,22 @@ async def get_booking_messages(
         raise HTTPException(status_code=404, detail="Booking not found")
         
     messages = []
+    has_unread = False
     for msg in booking.messages:
+        if msg.sender_id != user.id and not msg.is_read:
+            msg.is_read = True
+            has_unread = True
         messages.append({
             "id": msg.id,
             "sender_id": msg.sender_id,
             "message": msg.message,
             "attachment_url": msg.attachment_url,
             "is_me": msg.sender_id == user.id,
+            "is_read": msg.is_read,
             "created_at": msg.created_at.strftime('%b %d, %I:%M %p')
         })
+    if has_unread:
+        db.commit()
     return {"status": "success", "messages": messages}
 
 
@@ -2153,6 +2220,7 @@ async def submit_proposal_maker(
 
 @router.post("/bookings/{booking_id}/complete")
 async def complete_booking(
+    request: Request,
     booking_id: int,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -2162,27 +2230,40 @@ async def complete_booking(
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    if booking.status not in ['confirmed', 'paid']:
-        raise HTTPException(status_code=400, detail="Only confirmed bookings can be marked as completed")
+    if booking.is_archived:
+        raise HTTPException(status_code=400, detail="Cannot modify an archived booking.")
+
+    if booking.status not in ['confirmed', 'paid', 'setup_ongoing', 'arrived', 'on_the_way', 'ready_for_delivery', 'preparing']:
+        raise HTTPException(status_code=400, detail="Only active confirmed bookings can be marked as completed")
 
     # --- PHASE 3: COMPLETION GATING LOGIC ---
-    has_equipment = False
-    has_food = True if booking.package_id else False
-    has_service = False
+    has_equipment = any(getattr(item, 'equipment_id', None) for item in booking.selected_items)
+    has_food = True if booking.package_id else any(getattr(item, 'menu_item_id', None) for item in booking.selected_items)
     
-    for item in booking.selected_items:
-        if getattr(item, 'equipment_id', None): has_equipment = True
-        if getattr(item, 'menu_item_id', None): has_food = True
-        if getattr(item, 'service_id', None): has_service = True
-        
     if has_equipment and not booking.return_photo_url:
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.headers.get("Content-Type") == "application/json":
+            return JSONResponse(status_code=400, content={"status": "error", "message": "Cannot complete booking: Equipment Return Inspection (Photo) is required."})
         return RedirectResponse(url=f"/caterer/bookings?error_msg=Cannot+complete+booking:+Equipment+Return+Inspection+is+required.", status_code=303)
         
     if has_food and not booking.dispatch_proof_url:
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.headers.get("Content-Type") == "application/json":
+            return JSONResponse(status_code=400, content={"status": "error", "message": "Cannot complete booking: Food Dispatch/Setup verification (Photo) is required."})
         return RedirectResponse(url=f"/caterer/bookings?error_msg=Cannot+complete+booking:+Food+Dispatch+verification+is+required.", status_code=303)
 
+    if booking.payment_method == "Cash":
+        booking.payment_status = "paid"
+        cash_log = models.AuditLog(
+            user_id=user.id,
+            action="CASH_RECEIVED_ACKNOWLEDGED",
+            notes=f"Caterer marked booking #{booking.id} completed via /complete endpoint, acknowledging receipt of Cash/COD."
+        )
+        db.add(cash_log)
+    elif booking.payment_status != "paid":
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.headers.get("Content-Type") == "application/json":
+            return JSONResponse(status_code=400, content={"status": "error", "message": "Cannot complete booking: You can only mark this as Completed once the booking is Fully Paid and verified."})
+        return RedirectResponse(url=f"/caterer/bookings?error_msg=Cannot+complete+booking:+Booking+must+be+Fully+Paid+first.", status_code=303)
+
     booking.status = 'completed'
-    booking.payment_status = 'paid'  # Mark as fully settled when event is completed
     snapshot_booking_actual_cost(booking)
 
     history = models.BookingHistory(
@@ -2209,7 +2290,7 @@ async def complete_booking(
     
     db.commit()
 
-    # Real-time alert to customer
+    # Real-time alert to customer & caterer
     import asyncio
     asyncio.create_task(manager.broadcast_to_user(booking.user_id, {
         "type": "booking_update",
@@ -2217,7 +2298,30 @@ async def complete_booking(
         "booking_id": booking.id,
         "status": "completed"
     }))
+    
+    asyncio.create_task(manager.broadcast_to_user(user.id, {
+        "type": "booking_update",
+        "booking_id": booking.id,
+        "new_status": "completed",
+        "message": "Booking completed."
+    }))
 
+    # Notify Customer
+    from ..services.notification import NotificationService
+    is_food_order = (booking.document_type == 'invoice')
+    ref_id = f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}"
+    caterer_name = user.caterer_profile.business_name
+    notif_link = f"/customer/orders/manage/{booking.id}" if is_food_order else f"/customer/bookings/manage/{booking.id}"
+    asyncio.create_task(NotificationService.notify_status_update(
+        db, 
+        booking.user_id, 
+        "Event Service Completed" if not is_food_order else "Order Completed!", 
+        f"Your {'booking' if not is_food_order else 'order'} '{booking.event_name}' ({ref_id}) with {caterer_name} has been marked as COMPLETED. Thank you for choosing OccaServe! Don't forget to leave a review.", 
+        notif_link
+    ))
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.headers.get("Content-Type") == "application/json":
+        return JSONResponse({"status": "success", "message": "Booking completed", "new_status": "completed"})
     return RedirectResponse(url=f"/caterer/bookings?success_msg=Booking+marked+as+completed", status_code=303)
 
 
@@ -2235,12 +2339,41 @@ async def update_actual_cost(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
+    if booking.is_archived:
+        raise HTTPException(status_code=400, detail="Cannot modify an archived booking.")
+    if booking.status == 'cancelled':
+        raise HTTPException(status_code=400, detail="Cannot update actual cost for a cancelled booking.")
+
     data = await request.json()
-    actual_cost = data.get("actual_cost", 0)
-    actual_cost_breakdown = data.get("actual_cost_breakdown", [])
+    try:
+        actual_cost = float(data.get("actual_cost", 0))
+        if actual_cost < 0:
+            raise ValueError()
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid actual cost amount. Must be a non-negative number.")
+        
+    raw_breakdown = data.get("actual_cost_breakdown", [])
+    if not isinstance(raw_breakdown, list):
+        raise HTTPException(status_code=400, detail="Breakdown must be a list.")
+    
+    clean_breakdown = []
+    for item in raw_breakdown:
+        if not isinstance(item, dict):
+            continue
+        try:
+            amt = float(item.get("amount", 0))
+            if amt < 0:
+                continue
+        except (ValueError, TypeError):
+            continue
+        clean_breakdown.append({
+            "category": str(item.get("category", "Expense"))[:100],
+            "name": str(item.get("name", "Item"))[:200],
+            "amount": amt
+        })
 
     booking.actual_cost = actual_cost
-    booking.actual_cost_breakdown = actual_cost_breakdown
+    booking.actual_cost_breakdown = clean_breakdown
     db.commit()
 
     return {"status": "success", "message": "Actual cost updated"}
@@ -4810,10 +4943,12 @@ async def add_booking_task(
     
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.is_archived or booking.status == 'cancelled':
+        raise HTTPException(status_code=400, detail="Cannot modify tasks on an archived or cancelled booking.")
         
     task = models.BookingTask(
         booking_id=booking_id,
-        title=data.get("title", "New Task")
+        title=str(data.get("title", "New Task"))[:200]
     )
     db.add(task)
     db.commit()
@@ -4833,6 +4968,8 @@ async def toggle_booking_task(
     
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    if task.booking.is_archived or task.booking.status == 'cancelled':
+        raise HTTPException(status_code=400, detail="Cannot modify tasks on an archived or cancelled booking.")
         
     task.is_completed = not task.is_completed
     db.commit()
@@ -4851,6 +4988,8 @@ async def delete_booking_task(
     
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    if task.booking.is_archived or task.booking.status == 'cancelled':
+        raise HTTPException(status_code=400, detail="Cannot modify tasks on an archived or cancelled booking.")
         
     db.delete(task)
     db.commit()
@@ -4900,6 +5039,11 @@ async def cancel_booking(
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
     
+    if booking.is_archived:
+        raise HTTPException(status_code=400, detail="Cannot cancel an archived booking.")
+    if booking.status in ['cancelled', 'completed']:
+        raise HTTPException(status_code=400, detail=f"Booking is already {booking.status}.")
+
     booking.status = "cancelled"
     
     history = models.BookingHistory(
@@ -4941,25 +5085,6 @@ async def cancel_booking(
 
     return RedirectResponse(url="/caterer/bookings?success_msg=Booking+cancelled+successfully", status_code=303)
 
-@router.post("/bookings/{booking_id}/accept")
-async def accept_booking(
-    request: Request,
-    booking_id: int,
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(caterer_only)
-):
-    booking = db.query(models.Booking).get(booking_id)
-    if not booking or booking.caterer_id != user.caterer_profile.id:
-        raise HTTPException(status_code=404, detail="Booking not found")
-    
-    booking.status = 'confirmed'
-    history = models.BookingHistory(booking_id=booking.id, status='confirmed', notes="Booking accepted by caterer manually.")
-    db.add(history)
-    db.commit()
-
-    
-    return JSONResponse({"status": "success", "message": "Booking accepted", "new_status": "confirmed"})
-
 @router.post("/bookings/{booking_id}/reject")
 async def reject_booking(
     request: Request,
@@ -4977,6 +5102,11 @@ async def reject_booking(
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
     
+    if booking.is_archived:
+        raise HTTPException(status_code=400, detail="Cannot reject an archived booking.")
+    if booking.status in ['cancelled', 'completed']:
+        raise HTTPException(status_code=400, detail=f"Booking is already {booking.status}.")
+
     booking.status = 'cancelled'
     history = models.BookingHistory(booking_id=booking.id, status='cancelled', notes=f"Rejected: {reason}")
     db.add(history)
@@ -5005,80 +5135,6 @@ async def reject_booking(
     
     return JSONResponse({"status": "success", "message": "Booking rejected", "new_status": "cancelled"})
 
-@router.post("/bookings/{booking_id}/complete")
-async def complete_booking(
-    request: Request,
-    booking_id: int,
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(caterer_only)
-):
-    booking = db.query(models.Booking).get(booking_id)
-    if not booking or booking.caterer_id != user.caterer_profile.id:
-        raise HTTPException(status_code=404, detail="Booking not found")
-    
-    # --- PHASE 3: COMPLETION GATING LOGIC ---
-    has_equipment = False
-    has_food = True if booking.package_id else False
-    has_service = False
-    
-    for item in booking.selected_items:
-        if getattr(item, 'equipment_id', None): has_equipment = True
-        if getattr(item, 'menu_item_id', None): has_food = True
-        if getattr(item, 'service_id', None): has_service = True
-        
-    if has_equipment and not booking.return_photo_url:
-        return JSONResponse(status_code=400, content={"status": "error", "message": "Cannot complete booking: Equipment Return Inspection (Photo) is required."})
-        
-    if has_food and not booking.dispatch_proof_url:
-        return JSONResponse(status_code=400, content={"status": "error", "message": "Cannot complete booking: Food Dispatch/Setup verification (Photo) is required."})
-    
-    # Optional: If services have specific completion proof in the future, add it here.
-    
-    booking.status = 'completed'
-    history = models.BookingHistory(booking_id=booking.id, status='completed', notes="Event marked as completed by caterer.")
-    db.add(history)
-
-    # Automatically generate commission record
-    config = db.query(models.WebsiteConfig).first()
-    commission_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
-    commission_due = (booking.total_amount or 0.0) * commission_rate
-
-    commission_record = models.BillingInvoice(
-        caterer_id=booking.caterer_id,
-        booking_id=booking.id,
-        billing_period=booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
-        amount=commission_due,
-        commission_rate=commission_rate,
-        status='pending'
-    )
-    db.add(commission_record)
-
-    db.commit()
-
-    await manager.broadcast_to_user(user.id, {
-        "type": "booking_update",
-        "booking_id": booking_id,
-        "new_status": "completed",
-        "message": "Booking completed."
-    })
-    
-    # Notify Customer
-    from ..services.notification import NotificationService
-    import asyncio
-    is_food_order = (booking.document_type == 'invoice')
-    ref_id = f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}"
-    caterer_name = user.caterer_profile.business_name
-    notif_link = f"/customer/orders/manage/{booking.id}" if is_food_order else f"/customer/bookings/manage/{booking.id}"
-    asyncio.create_task(NotificationService.notify_status_update(
-        db, 
-        booking.user_id, 
-        "Event Service Completed" if not is_food_order else "Order Completed!", 
-        f"Your {'booking' if not is_food_order else 'order'} '{booking.event_name}' ({ref_id}) with {caterer_name} has been marked as COMPLETED. Thank you for choosing OccaServe! Don't forget to leave a review.", 
-        notif_link
-    ))
-    
-    return JSONResponse({"status": "success", "message": "Booking completed", "new_status": "completed"})
-
 @router.post("/bookings/{booking_id}/archive")
 async def archive_booking(
     booking_id: int,
@@ -5092,6 +5148,9 @@ async def archive_booking(
     ).first()
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+
+    if booking.status not in ['completed', 'cancelled'] and not booking.is_archived:
+        raise HTTPException(status_code=400, detail="Cannot archive an active booking. Please complete or cancel it first.")
     
     booking.is_archived = True
     db.commit()

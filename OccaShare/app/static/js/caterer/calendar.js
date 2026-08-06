@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function () {
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
-                right: 'dayGridMonth,timeGridWeek,listMonth'
+                right: 'dayGridMonth,listMonth'
             },
             datesSet: function (info) {
                 const titleEl = document.querySelector('.fc-toolbar-title');

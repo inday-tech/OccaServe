@@ -103,8 +103,23 @@
         <h1>Ala Carte Food Order</h1>
         <p>Reference: <span style="background: var(--dm-slate-100); padding: 2px 8px; border-radius: 6px; color: var(--up-slate-900); font-weight: 800;">ORD-{{ "%03d" | format(booking.id) }}</span> &bull; Verified</p>
     </div>
-    <span style="background: #ecfdf5; color: #10b981; padding: 8px 20px; border-radius: 30px; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em;">
-        {{ booking.status|replace('_', ' ')|upper }}
+    {% set status_cfg = {
+        'draft': ('Draft', '#f1f5f9', '#475569'),
+        'pending': ('Submitted', '#fef3c7', '#b45309'),
+        'pending_payment': ('Awaiting Payment', '#fffbeb', '#b45309'),
+        'awaiting_payment': ('Verifying', '#fffbeb', '#b45309'),
+        'confirmed': ('Confirmed', '#ecfdf5', '#10b981'),
+        'preparing': ('Preparing', '#eff6ff', '#3b82f6'),
+        'out_for_delivery': ('On The Way', '#fce7f3', '#be185d'),
+        'ready_for_pickup': ('Ready for Pickup', '#fce7f3', '#be185d'),
+        'delivered': ('Delivered', '#d1fae5', '#047857'),
+        'arrived': ('Delivered', '#d1fae5', '#047857'),
+        'completed': ('Completed', '#f8fafc', '#64748b'),
+        'cancelled': ('Cancelled', '#fef2f2', '#dc2626'),
+        'expired': ('Overdue / Expired', '#fef2f2', '#dc2626')
+    }.get(booking.status, (booking.status|replace('_', ' ')|upper, '#f1f5f9', '#475569')) %}
+    <span style="background: {{ status_cfg[1] }}; color: {{ status_cfg[2] }}; padding: 8px 20px; border-radius: 30px; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
+        {{ status_cfg[0] }}
     </span>
 </div>
 

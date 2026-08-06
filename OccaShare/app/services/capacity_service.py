@@ -57,7 +57,7 @@ class CapacityService:
             
             # Calculate requested event window for this specific service
             req_start_dt = datetime.combine(event_date, event_time) - timedelta(hours=buffer_hours)
-            req_end_dt = datetime.combine(event_date, event_end_time) + timedelta(hours=buffer_hours) if event_end_time else req_start_dt + timedelta(hours=service.base_duration_hours or 3, hours=buffer_hours)
+            req_end_dt = datetime.combine(event_date, event_end_time) + timedelta(hours=buffer_hours) if event_end_time else req_start_dt + timedelta(hours=(service.base_duration_hours or 3) + buffer_hours)
             
             used_qty = 0
             
@@ -76,7 +76,7 @@ class CapacityService:
                     
                 # Calculate existing booking window for this service
                 b_start_dt = datetime.combine(b.event_date, b.event_time) - timedelta(hours=buffer_hours)
-                b_end_dt = datetime.combine(b.event_date, b.event_end_time) + timedelta(hours=buffer_hours) if b.event_end_time else b_start_dt + timedelta(hours=service.base_duration_hours or 3, hours=buffer_hours)
+                b_end_dt = datetime.combine(b.event_date, b.event_end_time) + timedelta(hours=buffer_hours) if b.event_end_time else b_start_dt + timedelta(hours=(service.base_duration_hours or 3) + buffer_hours)
                 
                 # Check overlap: (StartA < EndB) and (EndA > StartB)
                 if req_start_dt < b_end_dt and req_end_dt > b_start_dt:

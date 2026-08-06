@@ -36,13 +36,20 @@ document.addEventListener('DOMContentLoaded', function () {
     let cachedBarangays = {};
 
     // --- 1. Set Min and Max Date based on Lead Time ---
+    const getLocalISODate = (date) => {
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
     const minCalendarDate = new Date();
     minCalendarDate.setDate(minCalendarDate.getDate() + leadTime); // Using lead time dynamically
-    const minDateString = minCalendarDate.toISOString().split('T')[0];
+    const minDateString = getLocalISODate(minCalendarDate);
     
     const maxCalendarDate = new Date();
     maxCalendarDate.setMonth(maxCalendarDate.getMonth() + 7); // Max 7 months in advance
-    const maxDateString = maxCalendarDate.toISOString().split('T')[0];
+    const maxDateString = getLocalISODate(maxCalendarDate);
     
     if (dateInput) {
         dateInput.setAttribute('min', minDateString);
@@ -245,6 +252,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const response = await fetch(`/packages/api/check-availability?caterer_id=${catererId}&date_str=${date}`);
+            if (!response.ok) throw new Error('API failed');
             const data = await response.json();
 
             if (data.available && chip) {
@@ -257,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (submitBtn) submitBtn.disabled = true;
             }
         } catch (error) {
-            if (chip) chip.innerHTML = 'Error checking date';
+            if (chip) chip.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error checking date';
         }
     };
 
@@ -585,9 +593,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const validateEventTime = () => {
         if (!timeInput) return true;
         return validateField(timeInput, 'err-time', v => {
-            if (!v) return false;
+            const customTrigger = document.querySelector('#custom-time-select .form-input');
+            if (!v) {
+                if (customTrigger) customTrigger.classList.add('error');
+                return false;
+            }
             const parts = v.split(':');
-            if (parts.length !== 2) return false;
+            if (parts.length !== 2) {
+                if (customTrigger) customTrigger.classList.add('error');
+                return false;
+            }
             const hour = parseInt(parts[0]);
             const min = parseInt(parts[1]);
             
@@ -603,22 +618,226 @@ document.addEventListener('DOMContentLoaded', function () {
                 return h * 60 + m;
             };
             
+            const formatAmPm = (mins) => {
+                const h = Math.floor(mins / 60);
+                const m = mins % 60;
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                const h12 = h % 12 || 12;
+                return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
+            };
+            
             const selectedMins = hour * 60 + min;
             const openMins = parseTime(openTime);
-            let closeMins = parseTime(closeTime);
+            const closeMins = parseTime(closeTime);
             
-            // Strict 8 AM - 8 PM fallback limit (as per user request: "8 - 8 pm lqng")
+            // Strict 8 AM - 8 PM fallback limit
             const fallbackOpen = 8 * 60; // 8:00 AM
             const fallbackClose = 20 * 60; // 8:00 PM
             
-            if (selectedMins < Math.max(openMins, fallbackOpen) || selectedMins > Math.min(closeMins, fallbackClose)) {
+            const finalOpenMins = Math.max(openMins, fallbackOpen);
+            const finalCloseMins = Math.min(closeMins, fallbackClose);
+            
+            const openFormatted = formatAmPm(finalOpenMins);
+            const closeFormatted = formatAmPm(finalCloseMins);
+            
+            if (selectedMins < finalOpenMins || selectedMins > finalCloseMins) {
+                document.getElementById('err-time').innerText = `Please choose an event start time between ${openFormatted} and ${closeFormatted}.`;
+                if (customTrigger) customTrigger.classList.add('error');
                 return false;
             }
+            if (customTrigger) customTrigger.classList.remove('error');
             return true;
-        }, "Please select a time between 8:00 AM and 8:00 PM (or within caterer's hours).");
+        }, "Please select a valid time.");
     };
     if (timeInput) {
-        timeInput.addEventListener('input', validateEventTime);
+        let openTime = '08:00';
+        let closeTime = '20:00';
+        if (window.catererRules && window.catererRules.business_hours) {
+            openTime = window.catererRules.business_hours.open_time || openTime;
+            closeTime = window.catererRules.business_hours.close_time || closeTime;
+        }
+        
+        const parseTimeStr = (t) => {
+            const [h,m] = t.split(':').map(Number);
+            return h*60 + m;
+        };
+        const formatTimeStr = (mins) => {
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+        };
+        const formatAmPmStr = (mins) => {
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const h12 = h % 12 || 12;
+            return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
+        };
+        
+        const openMins = Math.max(parseTimeStr(openTime), 8*60);
+        const closeMins = Math.min(parseTimeStr(closeTime), 20*60);
+        
+        if (timeInput) {
+            timeInput.style.display = 'none';
+            const initialVal = timeInput.getAttribute('data-initial') || timeInput.value || '';
+            
+            let customSelect = document.getElementById('custom-time-select');
+            let menu = document.getElementById('time-dropdown-menu');
+            let triggerText = document.getElementById('time-trigger-text');
+            let icon = null;
+            let grid = null;
+
+            if (!customSelect) {
+                customSelect = document.createElement('div');
+                customSelect.id = 'custom-time-select';
+                customSelect.style.position = 'relative';
+                
+                // Trigger button
+                const trigger = document.createElement('div');
+                trigger.className = 'form-input';
+                trigger.style.cursor = 'pointer';
+                trigger.style.display = 'flex';
+                trigger.style.justifyContent = 'space-between';
+                trigger.style.alignItems = 'center';
+                
+                triggerText = document.createElement('span');
+                triggerText.id = 'time-trigger-text';
+                triggerText.innerText = initialVal ? formatAmPmStr(parseTimeStr(initialVal)) : '-- Select Time --';
+                triggerText.style.color = initialVal ? '#334155' : '#94a3b8';
+                
+                icon = document.createElement('i');
+                icon.className = 'fas fa-chevron-down';
+                icon.style.color = '#94a3b8';
+                icon.style.fontSize = '0.8rem';
+                
+                trigger.appendChild(triggerText);
+                trigger.appendChild(icon);
+                
+                // Dropdown Menu
+                menu = document.createElement('div');
+                menu.id = 'time-dropdown-menu';
+                menu.style.display = 'none';
+                menu.style.width = '100%';
+                menu.style.background = '#fff';
+                menu.style.border = '1px solid #e2e8f0';
+                menu.style.borderRadius = '0.5rem';
+                menu.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                menu.style.padding = '1rem';
+                menu.style.marginTop = '0.5rem';
+                menu.style.maxHeight = '220px';
+                menu.style.overflowY = 'auto';
+                
+                // Grid layout (Three columns for compactness)
+                grid = document.createElement('div');
+                grid.style.display = 'grid';
+                grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+                grid.style.gap = '0.5rem';
+                
+                menu.appendChild(grid);
+                customSelect.appendChild(trigger);
+                customSelect.appendChild(menu);
+                
+                timeInput.parentNode.insertBefore(customSelect, timeInput.nextSibling);
+                
+                // Toggle Dropdown
+                trigger.onclick = (e) => {
+                    e.stopPropagation();
+                    const isVisible = menu.style.display === 'block';
+                    menu.style.display = isVisible ? 'none' : 'block';
+                    icon.className = isVisible ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+                };
+                
+                // Close on outside click
+                document.addEventListener('click', (e) => {
+                    if (!customSelect.contains(e.target)) {
+                        menu.style.display = 'none';
+                        icon.className = 'fas fa-chevron-down';
+                    }
+                });
+            } else {
+                grid = menu.querySelector('div');
+                icon = customSelect.querySelector('i');
+            }
+            
+            grid.innerHTML = '';
+            
+            for (let m = openMins; m <= closeMins; m += 30) {
+                const valStr = formatTimeStr(m);
+                const labelStr = formatAmPmStr(m);
+                
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'time-chip';
+                chip.innerText = labelStr;
+                chip.style.padding = '0.6rem 0.2rem';
+                chip.style.border = '1px solid #cbd5e1';
+                chip.style.borderRadius = '0.375rem';
+                chip.style.background = '#f8fafc';
+                chip.style.color = '#475569';
+                chip.style.cursor = 'pointer';
+                chip.style.fontSize = '0.8rem';
+                chip.style.textAlign = 'center';
+                chip.style.transition = 'all 0.1s';
+                
+                if (valStr === initialVal) {
+                    chip.style.background = 'var(--wiz-primary, #ff7b54)';
+                    chip.style.color = '#fff';
+                    chip.style.borderColor = 'var(--wiz-primary, #ff7b54)';
+                }
+                
+                chip.onmouseenter = function() {
+                    if (timeInput.value !== valStr) {
+                        this.style.background = '#e2e8f0';
+                    }
+                };
+                chip.onmouseleave = function() {
+                    if (timeInput.value !== valStr) {
+                        this.style.background = '#f8fafc';
+                    }
+                };
+                
+                chip.onclick = function(e) {
+                    e.stopPropagation();
+                    
+                    Array.from(grid.children).forEach(c => {
+                        c.style.background = '#f8fafc';
+                        c.style.color = '#475569';
+                        c.style.borderColor = '#cbd5e1';
+                    });
+                    
+                    this.style.background = 'var(--wiz-primary, #ff7b54)';
+                    this.style.color = '#fff';
+                    this.style.borderColor = 'var(--wiz-primary, #ff7b54)';
+                    
+                    timeInput.value = valStr;
+                    triggerText.innerText = labelStr;
+                    triggerText.style.color = '#334155';
+                    
+                    menu.style.display = 'none';
+                    icon.className = 'fas fa-chevron-down';
+                    
+                    timeInput.classList.remove('error');
+                    const errTime = document.getElementById('err-time');
+                    if (errTime) errTime.classList.remove('show');
+                    
+                    if (typeof validateEventTime === 'function') validateEventTime();
+                };
+                
+                grid.appendChild(chip);
+            }
+        }
+        
+        let hintLabel = document.getElementById('time-hint-label');
+        if (!hintLabel) {
+            hintLabel = document.createElement('div');
+            hintLabel.id = 'time-hint-label';
+            hintLabel.style.fontSize = '0.75rem';
+            hintLabel.style.color = '#64748b';
+            hintLabel.style.marginTop = '0.5rem';
+            timeInput.parentNode.insertBefore(hintLabel, timeInput.nextSibling);
+        }
+        hintLabel.innerText = `Select your preferred start time from the available schedule.`;
+
         timeInput.addEventListener('change', validateEventTime);
         timeInput.addEventListener('blur', validateEventTime);
     }

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from ..core.templates import templates
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -1551,12 +1551,16 @@ async def _validate_receipt_with_gemini(b64_string: str, payment_method: str, ex
     return is_valid
 
 @router.get("/step/payment/{booking_id}", response_class=HTMLResponse)
-async def step_payment_v2_page(booking_id: int, request: Request, db: Session = Depends(database.get_db)):
+async def step_payment_v2_page(booking_id: str, request: Request, db: Session = Depends(database.get_db)):
     user = get_current_user_from_session(request, db)
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/step/payment/{booking_id}")
         
-    booking = db.query(models.Booking).get(booking_id)
+    if not booking_id.isdigit():
+        return RedirectResponse(url="/customer/dashboard")
+    booking_id_int = int(booking_id)
+        
+    booking = db.query(models.Booking).get(booking_id_int)
     if not booking: raise HTTPException(status_code=404)
 
     # STRICT GATE: Ensure user is verified before payment (Skip for fast-track unless it's equipment rental)
@@ -2047,6 +2051,43 @@ async def delete_or_archive_booking(
     db.commit()
     return {"success": True, "message": "Booking moved to archive.", "action": "archived"}
 
+@router.get("/{booking_id}/messages")
+async def get_booking_messages_universal(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(database.get_db)
+):
+    user = get_current_user_from_session(request, db)
+    if not user:
+        return JSONResponse({"status": "error", "message": "Unauthorized"}, status_code=401)
+        
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking:
+        return JSONResponse({"status": "error", "message": "Booking not found"}, status_code=404)
+        
+    if user.id != booking.user_id and user.id != booking.caterer.user_id and user.role != 'admin':
+        return JSONResponse({"status": "error", "message": "Forbidden"}, status_code=403)
+        
+    messages = []
+    has_unread = False
+    for msg in booking.messages:
+        if msg.sender_id != user.id and not msg.is_read:
+            msg.is_read = True
+            has_unread = True
+        messages.append({
+            "id": msg.id,
+            "sender_id": msg.sender_id,
+            "sender_name": f"{msg.sender.first_name or ''} {msg.sender.last_name or ''}".strip() if msg.sender else "User",
+            "message": msg.message,
+            "attachment_url": msg.attachment_url,
+            "is_me": msg.sender_id == user.id,
+            "is_read": msg.is_read,
+            "created_at": msg.created_at.strftime('%b %d, %I:%M %p')
+        })
+    if has_unread:
+        db.commit()
+    return {"status": "success", "messages": messages}
+
 @router.post("/{booking_id}/messages")
 async def send_booking_message(
     booking_id: int,
@@ -2071,8 +2112,15 @@ async def send_booking_message(
         
     attachment_url = None
     if attachment and attachment.filename:
-        from app.services.storage import upload_file_to_cloudinary
         content_bytes = await attachment.read()
+        if len(content_bytes) > 10 * 1024 * 1024:
+            return JSONResponse({"success": False, "message": "Attachment file size exceeds 10MB limit."}, status_code=400)
+            
+        allowed_exts = ('.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx')
+        if not attachment.filename.lower().endswith(allowed_exts):
+            return JSONResponse({"success": False, "message": "Invalid attachment format. Allowed: JPG, PNG, GIF, WEBP, PDF, DOC, DOCX."}, status_code=400)
+
+        from app.services.storage import upload_file_to_cloudinary
         attachment_url = upload_file_to_cloudinary(content_bytes, folder="chat_attachments")
 
         
@@ -2087,15 +2135,51 @@ async def send_booking_message(
     db.refresh(new_msg)
     
     receiver_id = booking.caterer.user_id if user.id == booking.user_id else booking.user_id
-    from ..services.realtime import manager
+
+    # ── Persistent notification so receiver gets bell icon alert ──────────────
+    _fname = (user.first_name or "").strip()
+    _lname = (user.last_name or "").strip()
+    sender_name = f"{_fname} {_lname}".strip() or user.email or "Someone"
+    booking_ref = f"Booking #{booking_id}"
+    is_sender_customer = user.id == booking.user_id
+    notif_title = "New Consultation Message"
+    notif_msg   = f"{sender_name} sent you a message about {booking_ref}."
+    notif_link  = (
+        f"/caterer/bookings" if is_sender_customer
+        else f"/customer/bookings/manage/{booking_id}"
+    )
+    db.add(models.Notification(
+        user_id=receiver_id,
+        title=notif_title,
+        message=notif_msg,
+        type="info",
+        link=notif_link,
+        is_read=False,
+    ))
+    db.commit()
+
+    # ── Real-time WebSocket push to receiver ──────────────────────────────────
     import asyncio
     asyncio.create_task(manager.broadcast_to_user(receiver_id, {
         "type": "new_booking_message",
         "booking_id": booking_id,
         "sender_id": user.id,
+        "sender_name": sender_name,
         "message": new_msg.message,
         "attachment_url": new_msg.attachment_url,
-        "created_at": new_msg.created_at.isoformat()
+        "created_at": new_msg.created_at.isoformat(),
+        "notification_title": notif_title,
+        "notification_body": notif_msg,
+        "link": notif_link,
     }))
     
+    is_ajax_or_fetch = (
+        request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        or "application/json" in request.headers.get("Accept", "")
+        or "*/*" in request.headers.get("Accept", "")
+        or request.headers.get("sec-fetch-dest") == "empty"
+        or request.headers.get("sec-fetch-mode") in ["cors", "same-origin"]
+    )
+    if is_ajax_or_fetch:
+        return JSONResponse({"success": True, "message": "Message sent", "data": {"id": new_msg.id, "message": new_msg.message, "attachment_url": new_msg.attachment_url, "created_at": new_msg.created_at.strftime('%b %d, %I:%M %p')}})
     return RedirectResponse(url=request.headers.get("referer", f"/customer/bookings/manage/{booking_id}"), status_code=303)

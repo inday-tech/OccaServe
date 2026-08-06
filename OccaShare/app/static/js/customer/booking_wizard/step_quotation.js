@@ -191,15 +191,28 @@ window.setDPTier = async function (percent) {
         const data = await response.json();
         if (data.success) {
             input.value = percent;
-            const formattedDeposit = '₱' + data.new_deposit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            const formattedDeposit = data.new_deposit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
             if (dpValEl) dpValEl.textContent = formattedDeposit;
+            
+            // Update Pro Dashboard Elements
+            const tierLabel = document.getElementById('selected-tier-label');
+            if (tierLabel) tierLabel.textContent = `${percent}% Deposit`;
+
+            const totalInput = document.getElementById('total-amount-input');
+            const totalVal = totalInput ? parseFloat(totalInput.value) : 0;
+            const remainingBal = totalVal - data.new_deposit;
+            const balValEl = document.getElementById('remaining-balance-val');
+            if (balValEl) balValEl.textContent = '₱' + remainingBal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+            const balBox = document.getElementById('balance-box');
+            if (balBox) balBox.style.display = (percent == 100 || remainingBal <= 0) ? 'none' : 'flex';
             
             // Update contract text REAL-TIME
             const contractPct = document.getElementById('contract-dp-pct');
             const contractVal = document.getElementById('contract-dp-val');
             
             if (contractPct) contractPct.innerText = percent;
-            if (contractVal) contractVal.innerText = data.new_deposit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (contractVal) contractVal.innerText = formattedDeposit;
         }
     } catch (error) {
         console.error('Error updating DP tier:', error);

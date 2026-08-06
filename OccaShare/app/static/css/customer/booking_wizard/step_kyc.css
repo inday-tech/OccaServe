@@ -18,12 +18,13 @@
 /* ── Layout container ─────────────────────────────────────────────── */
 #kyc-form-container {
     background: #ffffff !important;
-    border-radius: 2rem !important;
-    padding: 3rem !important;
-    box-shadow: 0 20px 50px -12px rgba(0,0,0,0.08) !important;
+    border-radius: 1.75rem !important;
+    padding: 2.5rem 3.5rem !important;
+    box-shadow: 0 15px 40px -10px rgba(0, 0, 0, 0.06) !important;
     border: 1px solid var(--kyc-slate-200) !important;
-    margin: 2rem auto !important;
-    max-width: 800px !important;
+    margin: 1.5rem auto 2.5rem !important;
+    max-width: 1050px !important;
+    width: 100% !important;
 }
 
 /* ── Status tracker (legacy) ─────────────────────────────────────── */
@@ -53,8 +54,8 @@
 .status-item.completed { opacity: 1 !important; }
 
 .status-icon {
-    width: 40px !important;
-    height: 40px !important;
+    width: 44px !important;
+    height: 44px !important;
     border-radius: 50% !important;
     background: var(--kyc-slate-200) !important;
     display: flex !important;
@@ -62,25 +63,29 @@
     justify-content: center !important;
     font-weight: 700 !important;
     color: var(--kyc-slate-400) !important;
-    font-size: 0.95rem !important;
+    font-size: 1rem !important;
     margin-bottom: 0.75rem !important;
     border: 3px solid transparent !important;
+    transition: all 0.3s ease !important;
 }
 
 .status-item.active .status-icon {
-    background: var(--kyc-accent-soft) !important;
-    color: var(--kyc-accent) !important;
+    background: var(--kyc-accent) !important;
+    color: #fff !important;
     border-color: var(--kyc-accent) !important;
+    box-shadow: 0 6px 16px rgba(249, 115, 22, 0.3) !important;
+    transform: scale(1.1);
 }
 
 .status-item.completed .status-icon {
-    background: var(--kyc-accent) !important;
-    color: #fff !important;
+    background: #dcfce7 !important;
+    color: #15803d !important;
+    border-color: #22c55e !important;
 }
 
 .status-label {
-    font-size: 0.7rem !important;
-    font-weight: 700 !important;
+    font-size: 0.72rem !important;
+    font-weight: 800 !important;
     color: var(--kyc-slate-400) !important;
     text-transform: uppercase !important;
     letter-spacing: 0.05em !important;
@@ -100,14 +105,19 @@
 .minimal-input {
     background: var(--kyc-slate-50) !important;
     border: 2px solid var(--kyc-slate-200) !important;
-    border-radius: 0.75rem !important;
+    border-radius: 1rem !important;
     padding: 1rem 1.25rem !important;
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    color: var(--kyc-slate-700) !important;
+    transition: all 0.25s ease !important;
 }
 
 .minimal-input:focus {
     border-color: var(--kyc-accent) !important;
     background: #fff !important;
-    box-shadow: 0 0 0 4px var(--kyc-accent-soft) !important;
+    box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.15) !important;
+    outline: none !important;
 }
 
 /* ── Option boxes ────────────────────────────────────────────────── */
@@ -122,29 +132,37 @@
     border: 2px dashed var(--kyc-slate-200) !important;
     border-radius: 1.25rem !important;
     padding: 2.5rem 1.5rem !important;
-    transition: all 0.3s cubic-bezier(0.4,0,0.2,1) !important;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
+    cursor: pointer !important;
 }
 
 .kyc-option-box:hover:not(.disabled) {
     border-color: var(--kyc-accent) !important;
+    background: #fffaf5 !important;
     transform: translateY(-5px) !important;
-    box-shadow: 0 15px 30px -10px rgba(0,0,0,0.1) !important;
+    box-shadow: 0 15px 30px -10px rgba(249, 115, 22, 0.15) !important;
 }
 
 .option-icon {
-    width: 56px !important;
-    height: 56px !important;
-    background: var(--kyc-accent-soft) !important;
+    width: 60px !important;
+    height: 60px !important;
+    background: linear-gradient(135deg, #fff7ed, #ffedd5) !important;
     color: var(--kyc-accent) !important;
-    border-radius: 14px !important;
+    border: 1px solid #fed7aa !important;
+    border-radius: 16px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 1.4rem !important;
+    font-size: 1.5rem !important;
     margin-bottom: 1rem !important;
+    transition: transform 0.3s ease !important;
+}
+
+.kyc-option-box:hover:not(.disabled) .option-icon {
+    transform: scale(1.1);
 }
 
 /* ═══════════════════════════════════════════════════════════════════

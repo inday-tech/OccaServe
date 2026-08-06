@@ -26,7 +26,9 @@ class QuotationService:
                 "description": getattr(package, 'description', ''),
                 "unit_price": float(actual_unit_price),
                 "guest_count": booking.guest_count,
-                "base_amount": float(base_amount)
+                "base_amount": float(base_amount),
+                "pricing_mode": getattr(package, 'pricing_mode', 'per_pax'),
+                "price_unit": getattr(package, 'price_unit', 'per_guest')
             }
         
         # Calculate add-ons / itemized components from BookingMenuItem

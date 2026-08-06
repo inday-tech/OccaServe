@@ -114,7 +114,8 @@
             'delivered': ('Delivered', '#d1fae5', '#047857'),
             'arrived': ('Delivered', '#d1fae5', '#047857'),
             'completed': ('Completed', '#f8fafc', '#64748b'),
-            'cancelled': ('Cancelled', '#fef2f2', '#dc2626')
+            'cancelled': ('Cancelled', '#fef2f2', '#dc2626'),
+            'expired': ('Overdue / Expired', '#fef2f2', '#dc2626')
         }.get(booking.status, (booking.status|capitalize, '#f1f5f9', '#475569')) %}
         <span style="background: {{ status_cfg[1] }}; color: {{ status_cfg[2] }}; padding: 8px 20px; border-radius: 30px; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
             {{ status_cfg[0] }}

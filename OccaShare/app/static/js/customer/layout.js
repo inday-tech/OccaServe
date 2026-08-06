@@ -328,15 +328,25 @@ function initWebSocket() {
         try {
             const d = JSON.parse(data);
 
-            // 1. Messages — instantly refresh message badge + dropdown
-            if (['message', 'chat_message'].includes(d.type)) {
+            // 1. Messages — instantly refresh message badge + dropdown + active chat
+            if (['message', 'chat_message', 'new_booking_message'].includes(d.type)) {
                 fetchIntelligence();
+                if (d.type === 'new_booking_message') {
+                    const senderLabel = d.sender_name || 'Your caterer';
+                    const bookingLabel = d.booking_id ? ` (Booking #${d.booking_id})` : '';
+                    if (window.showToast) window.showToast(`💬 New message from ${senderLabel}${bookingLabel}`, 'info');
+                    // Also bump the notification bell so the persistent DB notif shows
+                    if (window.fetchGlobalNotifications) window.fetchGlobalNotifications(true);
+                    if (typeof window.onNewBookingMessage === 'function') {
+                        window.onNewBookingMessage(d);
+                    }
+                }
             }
 
             // 2. Any notification-class event — instantly refresh notification badge + panel
             const notifTypes = ['notification', 'new_notification', 'Booking', 'Payment',
                                 'booking_update', 'payment_update', 'status_update',
-                                'booking_rejected', 'booking_cancelled', 'payment_rejected'];
+                                'booking_rejected', 'booking_cancelled', 'payment_rejected', 'kyc_update'];
             if (notifTypes.includes(d.type)) {
                 if (window.fetchGlobalNotifications) window.fetchGlobalNotifications(true);
             }
@@ -346,6 +356,11 @@ function initWebSocket() {
                 if (window.softRefresh) window.softRefresh();
             }, 900);
 
+            if (d.type === 'kyc_update') {
+                if (window.showToast)
+                    window.showToast(d.message || 'Your identity verification status was updated.', d.status === 'verified' ? 'success' : 'warning');
+                refresh();
+            }
             if (d.type === 'booking_update' || d.type === 'status_update') {
                 if (window.showToast)
                     window.showToast(d.message || 'Your booking status has been updated.', 'info');

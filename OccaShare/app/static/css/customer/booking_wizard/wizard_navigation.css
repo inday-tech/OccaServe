@@ -1,66 +1,112 @@
-/* Shared Wizard Navigation Styles */
+/* Shared Wizard Navigation Styles - Standardized & Pantay-Pantay */
 
-.wizard-actions {
+/* ── 1. GLOBAL WIZARD CONTAINER PARITY (Pantay-Pantay na Containers) ── */
+.wizard-container,
+.details-step,
+.kyc-step,
+.quotation-step,
+.payment-step-container,
+.step-details-container,
+.step-kyc-container,
+.step-contract-container,
+.wizard-content {
+    max-width: 1100px !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+    box-sizing: border-box !important;
+}
+
+/* ── 2. STANDARDIZED BACK & NEXT BUTTONS (Iisang UI Lang) ── */
+.wizard-actions,
+.wizard-actions-clean {
     display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 1.25rem;
     margin-top: 2.5rem;
     padding-top: 1.5rem;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid #e2e8f0;
+    width: 100%;
 }
 
-.btn-wizard-back {
-    flex: 1;
-    display: flex;
+.btn-wizard-back,
+.btn-back-clean {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.75rem;
-    height: 3.5rem;
-    background: white;
+    gap: 0.5rem;
+    padding: 0.9rem 1.5rem;
+    height: auto;
+    background: #ffffff;
     color: #475569;
     border: 1.5px solid #cbd5e1;
-    border-radius: 999px;
-    font-weight: 700;
+    border-radius: 12px;
+    font-family: 'Poppins', 'Inter', sans-serif;
+    font-weight: 600;
     font-size: 0.95rem;
     text-decoration: none;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s cubic-bezier(0.165, 0.84, 0.44, 1);
+    cursor: pointer;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    white-space: nowrap;
 }
 
-.btn-wizard-back:hover {
+.btn-wizard-back:hover,
+.btn-back-clean:hover {
     background: #f8fafc;
-    transform: translateY(-2px);
-    color: #1e293b;
+    color: #0f172a;
     border-color: #94a3b8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
 }
 
 .btn-wizard-next {
-    flex: 1;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.75rem;
-    height: 3.5rem;
-    background: #1e293b;
-    color: white;
-    border: none;
-    border-radius: 999px;
+    gap: 0.5rem;
+    padding: 0.9rem 1.75rem;
+    height: auto;
+    background: #0f172a;
+    color: #ffffff;
+    border: 1.5px solid #0f172a;
+    border-radius: 12px;
+    font-family: 'Poppins', 'Inter', sans-serif;
     font-weight: 700;
     font-size: 0.95rem;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    transition: all 0.2s cubic-bezier(0.165, 0.84, 0.44, 1);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.15);
+    text-decoration: none;
+    white-space: nowrap;
 }
 
 .btn-wizard-next:hover:not(:disabled) {
+    background: #1e293b;
+    border-color: #1e293b;
     transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(0,0,0,0.15);
-    background: #0f172a;
+    box-shadow: 0 6px 15px rgba(15, 23, 42, 0.25);
 }
 
-.btn-wizard-next:disabled {
-    background: #cbd5e1;
+.btn-wizard-next:disabled,
+.btn-proceed-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.9rem 1.5rem;
+    background: #f1f5f9;
+    border: 1.5px dashed #cbd5e1;
+    border-radius: 12px;
+    color: #94a3b8;
+    font-weight: 600;
+    font-size: 0.95rem;
     cursor: not-allowed;
     box-shadow: none;
-    opacity: 0.7;
+    opacity: 0.85;
+    transform: none;
 }
 
 /* Payment Specific Improvements */
@@ -69,13 +115,13 @@
     padding: 1.25rem;
     background: #f8fafc;
     border-radius: 1rem;
-    border: 2px dashed var(--border-color);
+    border: 2px dashed #cbd5e1;
     text-align: center;
 }
 
 .qr-hint {
     font-size: 0.8rem;
-    color: var(--text-light);
+    color: #64748b;
     margin-bottom: 0.75rem;
     font-weight: 600;
 }
@@ -89,11 +135,16 @@
 }
 
 @media (max-width: 640px) {
-    .wizard-actions {
+    .wizard-actions,
+    .wizard-actions-clean {
         flex-direction: column-reverse;
+        gap: 0.75rem;
     }
     
-    .btn-wizard-back, .btn-wizard-next {
+    .btn-wizard-back,
+    .btn-back-clean,
+    .btn-wizard-next,
+    .btn-proceed-placeholder {
         width: 100%;
     }
 }
@@ -104,7 +155,7 @@
     padding: 1rem;
     background: white;
     border-radius: 0.75rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid #cbd5e1;
     display: inline-block;
 }
 

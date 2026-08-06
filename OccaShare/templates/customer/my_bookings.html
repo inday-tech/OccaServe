@@ -67,8 +67,8 @@
                                 <td>{{ booking.guest_count }}</td>
                                 <td>
                                     <span
-                                        class="status {{ 'active' if booking.status == 'confirmed' else 'inactive' if booking.status == 'pending' else '' }}">
-                                        {{ booking.status|capitalize }}
+                                        class="status {{ 'active' if booking.status == 'confirmed' else 'inactive' if booking.status in ['pending', 'expired'] else '' }}" style="{{ 'background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;' if booking.status == 'expired' else '' }}">
+                                        {{ 'Overdue / Expired' if booking.status == 'expired' else booking.status|replace('_', ' ')|capitalize }}
                                     </span>
                                 </td>
                                 <td>

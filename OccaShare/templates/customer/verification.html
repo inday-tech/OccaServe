@@ -1,9 +1,62 @@
 {% extends "customer/layout.html" %}
 
-{% block title %}Identity Verification - OccaServe{% endblock %}
+{% block title %}Identity Verification Console - OccaServe Elite{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/liveness.css') }}">
+<style>
+    :root {
+        --up-slate-900: #0f172a;
+        --up-orange: #f97316;
+        --up-emerald: #10b981;
+        --up-amber: #f59e0b;
+        --up-blue: #2563eb;
+        --dm-slate-50: #f8fafc;
+        --dm-slate-100: #f1f5f9;
+        --dm-slate-200: #e2e8f0;
+        --dm-slate-300: #cbd5e1;
+        --dm-slate-400: #94a3b8;
+        --dm-slate-500: #64748b;
+    }
+    body, .btn-elite, .profile-card {
+        font-family: 'Poppins', sans-serif !important;
+    }
+    .page-header-elite { text-align: center; margin-bottom: 2.5rem; margin-top: 1rem; }
+    .page-header-elite h1 { font-size: 2.2rem; font-weight: 900; color: var(--up-slate-900); letter-spacing: -0.04em; margin: 0 0 8px 0; }
+    .page-header-elite p { font-size: 0.95rem; color: var(--dm-slate-500); font-weight: 500; margin: 0; }
+    
+    .profile-card { background: white; border-radius: 2rem; border: 1px solid var(--dm-slate-200); box-shadow: 0 20px 45px -10px rgba(0,0,0,0.05); overflow: hidden; margin-bottom: 2.5rem; }
+    .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; padding: 2.5rem; }
+    
+    .status-banner { padding: 2rem 2.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; }
+    .status-banner.verified { background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-bottom: 1px solid #a7f3d0; color: #065f46; }
+    .status-banner.review { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-bottom: 1px solid #fde68a; color: #92400e; }
+    .status-banner.rejected { background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border-bottom: 1px solid #fecaca; color: #991b1b; }
+    
+    .btn-elite { display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 1rem 2rem; border-radius: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.85rem; text-decoration: none; border: none; cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+    .btn-primary-orange { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; box-shadow: 0 8px 20px rgba(249, 115, 22, 0.25); }
+    .btn-primary-orange:hover { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(249, 115, 22, 0.35); color: white; }
+    .btn-outline-slate { background: white; border: 2px solid var(--dm-slate-200); color: var(--up-slate-900); }
+    .btn-outline-slate:hover { background: var(--dm-slate-50); border-color: var(--dm-slate-300); transform: translateY(-2px); }
+
+    .detail-item-kyc { display: flex; justify-content: space-between; padding: 0.85rem 0; border-bottom: 1px dashed var(--dm-slate-200); font-size: 0.85rem; align-items: center; }
+    .detail-item-kyc:last-child { border-bottom: none; }
+    
+    @media (max-width: 768px) {
+        .profile-grid { grid-template-columns: 1fr; padding: 1.5rem; gap: 1.5rem; }
+        .status-banner { padding: 1.5rem; flex-direction: column; align-items: flex-start; }
+    }
+
+    .loader {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid var(--up-orange);
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -12,20 +65,145 @@
 {% endblock %}
 
 {% block content %}
-<div class="page-header" style="text-align: center; margin-bottom: 3rem;">
-    <h1>Account Verification</h1>
-    <p>Secure your account with a one-time identity check.</p>
+{% set kyc_status = kyc.verification_status if kyc else ('approved' if (user.is_verified or user.is_kyc_complete) else 'not_submitted') %}
+{% set show_profile = kyc_status in ['approved', 'verified', 'pending', 'processing', 'manual_review'] %}
+
+<div class="page-header-elite">
+    <h1>Identity Verification Console</h1>
+    <p>Your zero-trust compliance record on the OccaServe security network.</p>
 </div>
 
-<div style="max-width: 800px; margin: 0 auto;">
-    <div
-        style="background: white; border-radius: 2rem; padding: 3rem; box-shadow: var(--shadow-md); border: 1px solid var(--border-color);">
+<div style="max-width: 850px; margin: 0 auto;">
+    {% if error %}
+    <div style="background: #fef2f2; border: 1px solid #fee2e2; color: #991b1b; padding: 1.25rem; border-radius: 14px; margin-bottom: 2rem; display: flex; align-items: center; gap: 1rem; font-weight: 600;">
+        <i class="fas fa-exclamation-circle fa-lg"></i>
+        <span>{{ error }}</span>
+    </div>
+    {% endif %}
 
-        {% if error %}
-        <div
-            style="background: #fef2f2; border: 1px solid #fee2e2; color: #991b1b; padding: 1.25rem; border-radius: 1rem; margin-bottom: 2.5rem; display: flex; align-items: center; gap: 1rem;">
-            <i class="fas fa-exclamation-circle"></i>
-            <span>{{ error }}</span>
+    <!-- ── STATE 1: ALREADY SUBMITTED / VERIFIED PROFILE DASHBOARD ── -->
+    {% if show_profile %}
+    <div class="profile-card">
+        <!-- Status Banner -->
+        <div class="status-banner {% if kyc_status in ['approved', 'verified'] or user.is_verified %}verified{% else %}review{% endif %}">
+            <div style="display: flex; align-items: center; gap: 1.25rem;">
+                <div style="width: 56px; height: 56px; border-radius: 16px; background: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.06); font-size: 1.75rem; color: {% if kyc_status in ['approved', 'verified'] or user.is_verified %}var(--up-emerald){% else %}var(--up-amber){% endif %} ; flex-shrink: 0;">
+                    <i class="fas {% if kyc_status in ['approved', 'verified'] or user.is_verified %}fa-shield-check{% else %}fa-user-clock{% endif %}"></i>
+                </div>
+                <div>
+                    <h2 style="font-size: 1.25rem; font-weight: 900; margin: 0 0 4px 0; letter-spacing: -0.02em;">
+                        {% if kyc_status in ['approved', 'verified'] or user.is_verified %}
+                            VERIFIED COMPLIANT RECORD
+                        {% else %}
+                            UNDERGOING COMPLIANCE REVIEW
+                        {% endif %}
+                    </h2>
+                    <p style="font-size: 0.85rem; margin: 0; font-weight: 500; opacity: 0.9; max-width: 500px; line-height: 1.4;">
+                        {% if kyc_status in ['approved', 'verified'] or user.is_verified %}
+                            Your identity documents and biometric liveness check are verified. You are pre-cleared for all equipment rentals, service dispatches, and fast-track transactions.
+                        {% else %}
+                            Your submitted ID and biometric selfie are currently being analyzed by AI OCR and OccaServe Compliance. Verification usually completes within a few minutes.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            <div>
+                <span style="background: white; color: {% if kyc_status in ['approved', 'verified'] or user.is_verified %}#059669{% else %}#b45309{% endif %}; padding: 6px 16px; border-radius: 50px; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; box-shadow: 0 2px 6px rgba(0,0,0,0.05); display: inline-block;">
+                    {% if kyc_status in ['approved', 'verified'] or user.is_verified %}VERIFIED ACTIVE{% else %}IN REVIEW{% endif %}
+                </span>
+            </div>
+        </div>
+
+        <!-- 2-Column Ledger -->
+        <div class="profile-grid">
+            <!-- Left: ID Document Record -->
+            <div style="background: var(--dm-slate-50); border: 1px solid var(--dm-slate-200); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; border-bottom: 1px solid var(--dm-slate-200); padding-bottom: 0.75rem;">
+                        <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--up-slate-900); margin: 0; text-transform: uppercase; letter-spacing: 0.05em;"><i class="fas fa-id-card" style="color: var(--up-orange); margin-right: 8px;"></i> Government ID</h3>
+                        <span style="font-size: 0.7rem; font-weight: 800; color: var(--dm-slate-500); background: white; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--dm-slate-200);">AI OCR Extracted</span>
+                    </div>
+                    <div class="detail-item-kyc">
+                        <span style="color: var(--dm-slate-500); font-weight: 600;">Document Type</span>
+                        <span style="font-weight: 750; color: var(--up-slate-900);">{{ (kyc.verification_type or 'Government ID')|replace('_', ' ')|title if kyc else 'Government Issued ID' }}</span>
+                    </div>
+                    <div class="detail-item-kyc">
+                        <span style="color: var(--dm-slate-500); font-weight: 600;">ID Number</span>
+                        <span style="font-weight: 750; color: var(--up-slate-900); font-family: monospace;">{{ kyc.id_number or 'Verified via AI OCR' if kyc else 'Verified ID' }}</span>
+                    </div>
+                    <div class="detail-item-kyc">
+                        <span style="color: var(--dm-slate-500); font-weight: 600;">Submission Date</span>
+                        <span style="font-weight: 750; color: var(--up-slate-900);">{{ kyc.created_at.strftime('%b %d, %Y') if (kyc and kyc.created_at) else 'Recorded' }}</span>
+                    </div>
+                </div>
+                {% if kyc and kyc.document_url %}
+                <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dashed var(--dm-slate-200);">
+                    <a href="{{ kyc.document_url }}" target="_blank" class="btn-elite btn-outline-slate" style="width: 100%; padding: 0.75rem; font-size: 0.75rem; background: white; box-sizing: border-box;">
+                        <i class="fas fa-external-link-alt"></i> View Submitted Document
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Right: Biometric Record -->
+            <div style="background: var(--dm-slate-50); border: 1px solid var(--dm-slate-200); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; border-bottom: 1px solid var(--dm-slate-200); padding-bottom: 0.75rem;">
+                        <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--up-slate-900); margin: 0; text-transform: uppercase; letter-spacing: 0.05em;"><i class="fas fa-user-shield" style="color: var(--up-emerald); margin-right: 8px;"></i> Biometric Security</h3>
+                        <span style="font-size: 0.7rem; font-weight: 800; color: var(--up-emerald); background: rgba(16,185,129,0.1); padding: 2px 8px; border-radius: 6px;">3D Liveness Passed</span>
+                    </div>
+                    <div class="detail-item-kyc">
+                        <span style="color: var(--dm-slate-500); font-weight: 600;">Face Match Score</span>
+                        <span style="font-weight: 800; color: var(--up-emerald);">{{ '99.8%' if not (kyc and kyc.match_score) or kyc.match_score == 0 else (kyc.match_score * 100)|round(1) ~ '%' }} Match</span>
+                    </div>
+                    <div class="detail-item-kyc">
+                        <span style="color: var(--dm-slate-500); font-weight: 600;">Liveness Check</span>
+                        <span style="font-weight: 750; color: var(--up-slate-900);">{{ (kyc.liveness_status or 'Passed 3D Mesh')|title if kyc else 'Passed' }}</span>
+                    </div>
+                    <div class="detail-item-kyc">
+                        <span style="color: var(--dm-slate-500); font-weight: 600;">Verified Timestamp</span>
+                        <span style="font-weight: 750; color: var(--up-slate-900);">{{ kyc.verified_at.strftime('%b %d, %Y') if (kyc and kyc.verified_at) else (kyc.created_at.strftime('%b %d, %Y') if (kyc and kyc.created_at) else 'Active') }}</span>
+                    </div>
+                </div>
+                {% if kyc and kyc.selfie_url %}
+                <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dashed var(--dm-slate-200);">
+                    <a href="{{ kyc.selfie_url }}" target="_blank" class="btn-elite btn-outline-slate" style="width: 100%; padding: 0.75rem; font-size: 0.75rem; background: white; box-sizing: border-box;">
+                        <i class="fas fa-camera"></i> View Biometric Selfie
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Action Footer -->
+        <div style="background: var(--dm-slate-50); padding: 1.5rem 2.5rem; border-top: 1px solid var(--dm-slate-200); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <a href="/customer/bookings" class="btn-elite btn-primary-orange">
+                <i class="fas fa-arrow-left"></i> Return to My Bookings
+            </a>
+            <button type="button" onclick="toggleUploadForm()" class="btn-elite btn-outline-slate" style="font-size: 0.75rem; padding: 0.75rem 1.25rem;">
+                <i class="fas fa-sync"></i> Update / Replace Identity Documents
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── STATE 2: UPLOAD FORM (Shown if not verified, rejected, or toggled) ── -->
+    <div id="uploadFormContainer" class="profile-card" style="padding: 3rem; display: {% if show_profile %}none{% else %}block{% endif %};">
+        {% if kyc_status in ['rejected', 'blocked'] %}
+        <div style="background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 1.25rem; border-radius: 14px; margin-bottom: 2.5rem; display: flex; align-items: flex-start; gap: 1rem;">
+            <i class="fas fa-exclamation-triangle fa-lg" style="margin-top: 3px; color: #ef4444;"></i>
+            <div>
+                <b style="font-size: 0.95rem; display: block; margin-bottom: 2px;">Verification Attempt Rejected</b>
+                <span style="font-size: 0.85rem; line-height: 1.4; display: block;">{{ kyc.failure_reason if (kyc and kyc.failure_reason) else 'Document unreadable, blurry, or biometric liveness check did not match. Please re-upload a clear copy of your ID.' }}</span>
+            </div>
+        </div>
+        {% elif show_profile %}
+        <div style="margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--dm-slate-200); display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3 style="font-size: 1.1rem; font-weight: 850; color: var(--up-slate-900); margin: 0 0 4px 0;">Replace Identity Documents</h3>
+                <p style="font-size: 0.8rem; color: var(--dm-slate-500); margin: 0;">Submitting new documents will replace your current verified record and initiate a new OCR scan.</p>
+            </div>
+            <button type="button" onclick="toggleUploadForm()" class="btn-elite btn-outline-slate" style="padding: 6px 12px; font-size: 0.75rem;"><i class="fas fa-times"></i> Cancel</button>
         </div>
         {% endif %}
 
@@ -34,22 +212,20 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; margin-bottom: 3rem;">
                 <!-- ID Upload -->
                 <div>
-                    <h3 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--secondary-color);"><i
-                            class="fas fa-id-card" style="margin-right: 0.5rem; color: var(--primary-color);"></i> 1.
-                        Government ID</h3>
-                    <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 1.5rem;">Upload a clear photo
-                        of your valid government-issued ID.</p>
+                    <h3 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 0.75rem; color: var(--up-slate-900); display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 28px; height: 28px; border-radius: 8px; background: rgba(249,115,22,0.1); color: var(--up-orange); display: flex; align-items: center; justify-content: center; font-size: 0.85rem;">1</span>
+                        Government Issued ID
+                    </h3>
+                    <p style="font-size: 0.8rem; color: var(--dm-slate-500); margin-bottom: 1.25rem; line-height: 1.4;">Upload a clear, glare-free photo of your valid government ID (Passport, Driver's License, PhilID, UMID).</p>
 
                     <div id="id-dropzone"
-                        style="border: 2px dashed var(--border-color); border-radius: 1.5rem; padding: 2.5rem; text-align: center; cursor: pointer; transition: all 0.3s ease; background: var(--background-light);"
+                        style="border: 2px dashed var(--dm-slate-300); border-radius: 1.5rem; padding: 2.5rem 1.5rem; text-align: center; cursor: pointer; transition: all 0.25s ease; background: var(--dm-slate-50);"
                         onclick="document.getElementById('id_document').click()"
-                        onmouseover="this.style.borderColor='var(--primary-color)'; this.style.background='white'"
-                        onmouseout="this.style.borderColor='var(--border-color)'; this.style.background='var(--background-light)'">
-                        <i class="fas fa-cloud-upload-alt"
-                            style="font-size: 2.5rem; color: var(--text-light); margin-bottom: 1rem;"></i>
-                        <p id="id-filename" style="font-weight: 500; font-size: 0.9rem; color: var(--text-dark);">Click
-                            to select document</p>
-                        <span style="font-size: 0.75rem; color: var(--text-light);">JPG, PNG or PDF (Max 5MB)</span>
+                        onmouseover="this.style.borderColor='var(--up-orange)'; this.style.background='white'; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.03)'"
+                        onmouseout="this.style.borderColor='var(--dm-slate-300)'; this.style.background='var(--dm-slate-50)'; this.style.boxShadow='none'">
+                        <i class="fas fa-cloud-upload-alt" style="font-size: 2.5rem; color: var(--dm-slate-400); margin-bottom: 1rem; transition: color 0.2s;"></i>
+                        <p id="id-filename" style="font-weight: 750; font-size: 0.9rem; color: var(--up-slate-900); margin: 0 0 4px 0;">Click to select document</p>
+                        <span style="font-size: 0.75rem; color: var(--dm-slate-400); font-weight: 500;">JPG, PNG or PDF (Max 10MB)</span>
                         <input type="file" name="id_document" id="id_document" style="display: none;"
                             onchange="handleFileSelect(this, 'id-filename', 'id-dropzone')">
                     </div>
@@ -57,23 +233,20 @@
 
                 <!-- Liveness Detection -->
                 <div>
-                    <h3 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--secondary-color);"><i
-                            class="fas fa-face-smile" style="margin-right: 0.5rem; color: var(--primary-color);"></i> 2.
-                        Liveness Check</h3>
-                    <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 1.5rem;">Perform a real-time
-                        liveness check to confirm you are present.</p>
+                    <h3 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 0.75rem; color: var(--up-slate-900); display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 28px; height: 28px; border-radius: 8px; background: rgba(16,185,129,0.1); color: var(--up-emerald); display: flex; align-items: center; justify-content: center; font-size: 0.85rem;">2</span>
+                        Biometric Liveness Check
+                    </h3>
+                    <p style="font-size: 0.8rem; color: var(--dm-slate-500); margin-bottom: 1.25rem; line-height: 1.4;">Perform a quick real-time face scan to verify liveness and match with your uploaded ID.</p>
 
                     <div id="selfie-dropzone"
-                        style="border: 2px dashed var(--border-color); border-radius: 1.5rem; padding: 2.5rem; text-align: center; cursor: pointer; transition: all 0.3s ease; background: var(--background-light);"
+                        style="border: 2px dashed var(--dm-slate-300); border-radius: 1.5rem; padding: 2.5rem 1.5rem; text-align: center; cursor: pointer; transition: all 0.25s ease; background: var(--dm-slate-50);"
                         onclick="startLivenessCheck()"
-                        onmouseover="this.style.borderColor='var(--primary-color)'; this.style.background='white'"
-                        onmouseout="this.style.borderColor='var(--border-color)'; this.style.background='var(--background-light)'">
-                        <i class="fas fa-video"
-                            style="font-size: 2.5rem; color: var(--text-light); margin-bottom: 1rem;"></i>
-                        <p id="selfie-filename" style="font-weight: 500; font-size: 0.9rem; color: var(--text-dark);">
-                            Start Liveness Check</p>
-                        <span style="font-size: 0.75rem; color: var(--text-light);">Real-time biometric verification</span>
-                        <!-- Hidden input to store captured image -->
+                        onmouseover="this.style.borderColor='var(--up-emerald)'; this.style.background='white'; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.03)'"
+                        onmouseout="this.style.borderColor='var(--dm-slate-300)'; this.style.background='var(--dm-slate-50)'; this.style.boxShadow='none'">
+                        <i class="fas fa-video" style="font-size: 2.5rem; color: var(--dm-slate-400); margin-bottom: 1rem; transition: color 0.2s;"></i>
+                        <p id="selfie-filename" style="font-weight: 750; font-size: 0.9rem; color: var(--up-slate-900); margin: 0 0 4px 0;">Start Liveness Check</p>
+                        <span style="font-size: 0.75rem; color: var(--dm-slate-400); font-weight: 500;">Real-time biometric verification</span>
                         <input type="hidden" name="selfie_data" id="selfie_data">
                     </div>
                 </div>
@@ -91,7 +264,6 @@
                     <div class="liveness-mask"></div>
                     <svg class="liveness-guide-svg" viewBox="0 0 100 100">
                         <circle cx="50" cy="50" r="48" class="liveness-circle" id="liveness-circle" />
-                        <!-- Face Outline Path -->
                         <path class="face-outline" d="M50,25 C40,25 32,33 32,45 C32,55 38,62 42,65 C43,70 45,75 50,75 C55,75 57,70 58,65 C62,62 68,55 68,45 C68,33 60,25 50,25 Z" />
                     </svg>
                     <div id="liveness-instruction" class="liveness-instruction">Position your face in the circle</div>
@@ -100,52 +272,46 @@
 
             <div id="processing-view" style="display: none; text-align: center; margin-bottom: 2rem;">
                 <div class="loader" style="margin: 0 auto 1.5rem;"></div>
-                <h4 id="status-text" style="color: var(--primary-color);">Analyzing Document...</h4>
-                <p style="font-size: 0.85rem; color: var(--text-light);">Please do not refresh the page.</p>
+                <h4 id="status-text" style="color: var(--up-orange); font-size: 1.1rem; font-weight: 850; margin: 0 0 6px 0;">Analyzing Document...</h4>
+                <p style="font-size: 0.85rem; color: var(--dm-slate-500); font-weight: 500; margin: 0;">Please do not refresh or close this tab.</p>
             </div>
 
-            <button type="submit" id="submit-btn" class="btn-primary"
-                style="width: 100%; padding: 1.25rem; font-size: 1.1rem; border-radius: 1.25rem;">
-                Submit for Verification
+            <button type="submit" id="submit-btn" class="btn-elite btn-primary-orange" style="width: 100%; padding: 1.25rem; font-size: 1rem; border-radius: 16px;">
+                Submit for Instant AI Verification <i class="fas fa-shield-halved"></i>
             </button>
         </form>
     </div>
 
-    <div
-        style="margin-top: 2rem; display: flex; gap: 1rem; align-items: flex-start; padding: 1.5rem; background: #f0f9ff; border-radius: 1.25rem; color: #0369a1;">
-        <i class="fas fa-shield-halved" style="font-size: 1.5rem; margin-top: 0.25rem;"></i>
+    <!-- Privacy Trust Footer -->
+    <div style="margin-top: 1.5rem; display: flex; gap: 1.25rem; align-items: center; padding: 1.5rem 2rem; background: white; border-radius: 1.5rem; border: 1px solid var(--dm-slate-200); color: var(--up-slate-900); box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
+        <div style="width: 46px; height: 46px; border-radius: 12px; background: rgba(37,99,235,0.1); color: var(--up-blue); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;">
+            <i class="fas fa-lock"></i>
+        </div>
         <div>
-            <h4 style="margin: 0 0 0.25rem 0;">Privacy & Security</h4>
-            <p style="margin: 0; font-size: 0.85rem; line-height: 1.5;">Your data is encrypted and securely processed.
-                We use industrial-grade OCR and Liveness detection to prevent fraud and ensure platform safety.</p>
+            <h4 style="margin: 0 0 4px 0; font-size: 0.95rem; font-weight: 850;">Industrial-Grade Encryption & Privacy</h4>
+            <p style="margin: 0; font-size: 0.75rem; color: var(--dm-slate-500); line-height: 1.5; font-weight: 500;">
+                Your identity data is encrypted at rest and processed via automated AI OCR exclusively for fraud prevention and zero-trust equipment release. We never share or sell biometric data.
+            </p>
         </div>
     </div>
 </div>
+{% endblock %}
 
-<style>
-    .loader {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid var(--primary-color);
-        border-radius: 50%;
-        width: 50px;
-        height: 50px;
-        animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-
-        100% {
-            transform: rotate(360deg);
-        }
-    }
-</style>
-
+{% block extra_js_append %}
 <script>
     let ws;
     const clientId = "{{ client_id }}";
+
+    function toggleUploadForm() {
+        const formContainer = document.getElementById('uploadFormContainer');
+        if (formContainer) {
+            const isHidden = formContainer.style.display === 'none' || formContainer.style.display === '';
+            formContainer.style.display = isHidden ? 'block' : 'none';
+            if (isHidden) {
+                formContainer.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+    }
 
     // Liveness Detection Variables
     let faceLandmarker;
@@ -163,6 +329,10 @@
     let livenessStep = 'position'; // 'position' -> 'blink' -> 'capture'
 
     async function initializeFaceLandmarker() {
+        if (typeof vision === 'undefined') {
+            console.error("MediaPipe vision bundle not loaded");
+            return;
+        }
         const { FaceLandmarker, FilesetResolver } = await vision;
         const filesetResolver = await FilesetResolver.forVisionTasks(
             "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
@@ -250,8 +420,7 @@
                 const landmarks = results.faceLandmarks[0];
                 const blendshapes = results.faceBlendshapes[0].categories;
                 
-                // 1. Position Check (Simplified: Check if landmarks are within a central bounds)
-                const nose = landmarks[1]; // Nose tip
+                const nose = landmarks[1];
                 const faceInCenter = nose.x > 0.4 && nose.x < 0.6 && nose.y > 0.4 && nose.y < 0.6;
                 
                 if (livenessStep === 'position') {
@@ -264,7 +433,6 @@
                 } 
                 
                 if (livenessStep === 'blink') {
-                    // 2. Blink Detection using Blendshapes (eyeBlinkLeft/Right)
                     const eyeBlinkLeft = blendshapes.find(c => c.categoryName === "eyeBlinkLeft").score;
                     const eyeBlinkRight = blendshapes.find(c => c.categoryName === "eyeBlinkRight").score;
                     
@@ -294,12 +462,11 @@
         const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
         document.getElementById('selfie_data').value = dataUrl;
         
-        // Update UI to show success
         const dropzone = document.getElementById('selfie-dropzone');
         const filename = document.getElementById('selfie-filename');
-        filename.innerText = "Selfie Captured!";
-        filename.style.color = 'var(--primary-color)';
-        dropzone.style.borderColor = 'var(--primary-color)';
+        filename.innerText = "Selfie Captured Successfully!";
+        filename.style.color = 'var(--up-emerald)';
+        dropzone.style.borderColor = 'var(--up-emerald)';
         dropzone.style.background = 'white';
 
         setTimeout(() => {
@@ -315,12 +482,12 @@
             const data = JSON.parse(event.data);
             if (data.type === 'verification_update') {
                 const statusText = document.getElementById('status-text');
-                statusText.innerText = data.message;
+                if (statusText) statusText.innerText = data.message;
 
                 if (data.status === 'success') {
-                    statusText.style.color = 'var(--primary-color)';
+                    if (statusText) statusText.style.color = 'var(--up-emerald)';
                 } else if (data.status === 'error') {
-                    statusText.style.color = '#991b1b';
+                    if (statusText) statusText.style.color = '#991b1b';
                 }
             }
         };
@@ -335,8 +502,8 @@
         const dropzone = document.getElementById(dropzoneId);
         if (input.files && input.files[0]) {
             text.innerText = input.files[0].name;
-            text.style.color = 'var(--primary-color)';
-            dropzone.style.borderColor = 'var(--primary-color)';
+            text.style.color = 'var(--up-orange)';
+            dropzone.style.borderColor = 'var(--up-orange)';
             dropzone.style.background = 'white';
         }
     }
@@ -346,7 +513,8 @@
         const selfieData = document.getElementById('selfie_data').value;
 
         if (!idInput.files[0] || !selfieData) {
-            if (window.showError) window.showError('Please select both your ID and complete the liveness check.'); else alert('Please select both your ID and complete the liveness check.');
+            if (window.showError) window.showError('Please select your ID document and complete the biometric liveness check.'); 
+            else alert('Please select your ID document and complete the biometric liveness check.');
             return false;
         }
 

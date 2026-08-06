@@ -12,6 +12,7 @@
        ===================================================== */
 
     :root {
+        scroll-behavior: smooth;
         --hub-primary: #FF7B54;
         --hub-slate-50: #f8fafc;
         --hub-slate-100: #f1f5f9;
@@ -118,15 +119,16 @@
 
     /* ---- TABS NAVIGATION ---- */
     .hub-tabs {
-        z-index: 1000 !important;
-        pointer-events: auto !important;
+        z-index: 100 !important;
         display: flex;
         gap: 2rem;
         border-bottom: 2px solid var(--hub-slate-100);
         margin-bottom: 2rem;
         padding-bottom: 0.5rem;
-        position: relative;
-        z-index: 50;
+        position: sticky;
+        top: 0;
+        background: #f8fafc;
+        padding-top: 1rem;
     }
 
     .tab-btn {
@@ -141,7 +143,7 @@
         position: relative;
         transition: all 0.3s;
         z-index: 1000;
-        pointer-events: auto;
+        text-decoration: none;
     }
 
     .tab-btn:hover {
@@ -164,26 +166,26 @@
         background: var(--hub-primary);
         border-radius: 10px;
     }
+    
+    .tab-panel {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-width: 0;
+    }
+
+    /* Phase 2: Priority Ordering */
+    #hub-tab-packages { order: 1; }
+    #hub-tab-menu { order: 2; }
+    #hub-tab-services { order: 3; }
+    #hub-tab-equipment { order: 4; }
+    #hub-tab-portfolio { order: 5; }
+    #hub-tab-policies { order: 6; }
+    #hub-tab-overview { order: 7; }
 
     .tab-content {
-        display: none;
-    }
-
-    .tab-content.active {
-        display: block !important;
-        animation: fadeIn 0.3s ease;
-    }
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        margin-bottom: 3.5rem;
+        scroll-margin-top: 100px;
     }
 
     /* ---- MAIN CONTENT LAYOUT ---- */
@@ -392,48 +394,56 @@
     .dish-modal-box {
         background: #fff;
         width: 100%;
-        max-width: 560px;
-        max-height: 85vh;
-        border-radius: 20px;
+        max-width: 580px;
+        max-height: 88vh;
+        border-radius: 24px;
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        box-shadow: 0 25px 60px rgba(0,0,0,0.18);
-        transform: translateY(20px);
-        transition: transform 0.25s ease;
+        box-shadow: 0 30px 80px rgba(0,0,0,0.15);
+        transform: translateY(30px) scale(0.98);
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .dish-modal-layer.active .dish-modal-box {
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
     }
     .dish-modal-header {
-        padding: 1.25rem 1.5rem;
+        padding: 1.5rem;
+        background: #fff;
         border-bottom: 1px solid var(--hub-slate-100);
         display: flex;
         align-items: center;
         justify-content: space-between;
         flex-shrink: 0;
+        position: relative;
+        z-index: 5;
     }
     .dish-modal-title {
-        font-size: 1rem;
+        font-size: 1.15rem;
         font-weight: 850;
         color: var(--hub-text-dark);
+        letter-spacing: -0.01em;
     }
     .dish-modal-close {
         background: var(--hub-slate-50);
         border: none;
-        width: 32px; height: 32px;
+        width: 36px; height: 36px;
         border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
-        display: flex; align-items: center; justify-content: center;
-        color: var(--hub-slate-600);
-        font-size: 0.9rem;
-        transition: background 0.2s;
+        color: var(--hub-slate-400);
+        transition: all 0.2s;
     }
-    .dish-modal-close:hover { background: var(--hub-slate-200); }
+    .dish-modal-close:hover {
+        background: #fee2e2;
+        color: #ef4444;
+    }
     .dish-modal-body {
         overflow-y: auto;
         flex: 1;
-        padding: 1rem 1.25rem;
+        padding: 1.5rem;
         display: flex;
         flex-direction: column;
         gap: 0.75rem;
@@ -563,15 +573,49 @@
             font-size: 0.85rem !important;
         }
 
-        /* --- Hero: shorter on mobile --- */
-        .hub-hero {
-            height: 180px !important;
+        /* --- Hero: Mobile Storefront Adjustments --- */
+        .storefront-hero {
             margin-bottom: 1rem !important;
         }
-        .hero-title { font-size: 1.6rem !important; }
-        .hero-overlay { padding: 1.25rem !important; }
-        .hero-meta { gap: 0.4rem !important; flex-wrap: wrap !important; }
-        .meta-pill { font-size: 0.72rem !important; padding: 0.3rem 0.6rem !important; }
+        .storefront-hero > div:first-child {
+            height: 160px !important;
+        }
+        .storefront-hero-body {
+            padding: 1rem !important;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .storefront-logo-box {
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            margin-top: -65px !important;
+            margin-bottom: 0.75rem !important;
+            width: 90px !important;
+            height: 90px !important;
+            border-width: 3px !important;
+        }
+        .storefront-hero-content {
+            margin-left: 0 !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        .storefront-text-col h1 {
+            justify-content: center !important;
+            font-size: 1.5rem !important;
+        }
+        .storefront-text-col > div {
+            justify-content: center !important;
+            margin-top: 0.5rem !important;
+        }
+        .storefront-hero-actions {
+            width: 100% !important;
+            justify-content: center !important;
+            margin-top: 0.75rem !important;
+        }
 
         /* --- Main grid: single column on mobile --- */
         .hub-main-grid {
@@ -1009,21 +1053,54 @@
 
 {% block content %}
 <div class="hub-container">
-    <!-- PREMIUM HERO BANNER -->
-    <div class="hub-hero">
-        {% if caterer.cover_image_url %}
-        <img src="{{ caterer.cover_image_url }}" class="hero-bg" alt="{{ caterer.business_name }}">
-        {% else %}
-        <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1200" class="hero-bg" alt="Cover">
-        {% endif %}
-
-        <div class="hero-overlay">
-            <div class="hero-content">
-                <div class="hero-title-wrap">
-                    <h1 class="hero-title">{{ caterer.business_name }}</h1>
-                    {% if caterer.is_verified %}
-                    <div class="v-badge-blue" title="OccaServe Verified"><i class="fas fa-circle-check"></i></div>
-                    {% endif %}
+    <!-- MARKETPLACE STOREFRONT HERO -->
+    <div class="storefront-hero" style="position: relative; background: #fff; border-radius: 16px; border: 1px solid var(--hub-slate-200); overflow: hidden; margin-bottom: 2rem;">
+        <div style="height: 240px; width: 100%; position: relative;">
+            {% if caterer.cover_image_url %}
+            <img src="{{ caterer.cover_image_url }}" style="width: 100%; height: 100%; object-fit: cover;" alt="{{ caterer.business_name }}">
+            {% else %}
+            <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1200" style="width: 100%; height: 100%; object-fit: cover;" alt="Cover">
+            {% endif %}
+            <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(15, 23, 42, 0.3) 0%, transparent 100%);"></div>
+        </div>
+        <div class="storefront-hero-body" style="padding: 1.5rem 2rem; position: relative; min-height: 120px;">
+            <div class="storefront-logo-box" style="position: absolute; top: -50px; left: 2rem; width: 110px; height: 110px; border-radius: 16px; border: 4px solid #fff; background: #fff; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 2;">
+                {% if caterer.user and caterer.user.profile_image_url %}
+                <img src="{{ caterer.user.profile_image_url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                {% else %}
+                <img src="https://ui-avatars.com/api/?name={{ caterer.business_name|urlencode }}&background=f1f5f9&color=FF7B54" style="width: 100%; height: 100%; object-fit: cover;">
+                {% endif %}
+            </div>
+            
+            <div class="storefront-hero-content" style="margin-left: 130px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                <div class="storefront-text-col">
+                    <h1 style="font-size: 1.8rem; font-weight: 900; color: var(--hub-text-dark); margin: 0 0 6px 0; display: flex; align-items: center; gap: 10px;">
+                        {{ caterer.business_name }}
+                        {% if caterer.is_verified %}
+                        <i class="fas fa-certificate" style="color: #3b82f6; font-size: 1.25rem; filter: drop-shadow(0 2px 4px rgba(59,130,246,0.3));" title="Verified Business"></i>
+                        {% endif %}
+                    </h1>
+                    
+                    <div style="display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; font-size: 0.88rem; color: var(--hub-slate-600);">
+                        <span style="font-weight: 800; color: #b45309; display: flex; align-items: center; gap: 4px; background: #fef3c7; padding: 3px 8px; border-radius: 6px;">
+                            <i class="fas fa-star"></i> {{ "%.1f"|format(caterer.rating or 0) }} 
+                            <span style="color: #d97706; font-size: 0.75rem;">({{ reviews|length }} Reviews)</span>
+                        </span>
+                        
+                        <span style="display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-map-marker-alt" style="color: var(--hub-primary);"></i> {{ [caterer.contact_address, caterer.barangay, caterer.city] | select | join(', ') or 'Address not specified' }}
+                        </span>
+                        
+                        <span style="display: flex; align-items: center; gap: 6px; color: #10b981; font-weight: 700;">
+                            <i class="fas fa-calendar-check"></i> {{ completed_events_count }} Events Done
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="storefront-hero-actions" style="display: flex; gap: 10px; align-items: center;">
+                    <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-packages')" class="btn-hub-main" style="padding: 0.65rem 1.25rem; font-size: 0.85rem; border-radius: 100px; width: auto; margin: 0;">
+                        View Offerings
+                    </a>
                 </div>
             </div>
         </div>
@@ -1044,26 +1121,65 @@
 
     <!-- TABS NAVIGATION -->
     <div class="hub-tabs">
-        <button type="button" class="tab-btn active" onclick="hubSwitchTab('hub-tab-overview', this)">About</button>
-        <button type="button" class="tab-btn" onclick="hubSwitchTab('hub-tab-packages', this)">Packages</button>
-        <button type="button" class="tab-btn" onclick="hubSwitchTab('hub-tab-menu', this)">Menu</button>
-        <button type="button" class="tab-btn" onclick="hubSwitchTab('hub-tab-services', this)">Services</button>
-        <button type="button" class="tab-btn" onclick="hubSwitchTab('hub-tab-equipment', this)">Equipment</button>
-        <button type="button" class="tab-btn" onclick="hubSwitchTab('hub-tab-portfolio', this)">Gallery</button>
-        <button type="button" class="tab-btn" onclick="hubSwitchTab('hub-tab-policies', this)">Reviews</button>
+        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-packages')" class="tab-btn active">Packages</a>
+        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-menu')" class="tab-btn">Menu</a>
+        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-services')" class="tab-btn">Services</a>
+        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-equipment')" class="tab-btn">Equipment</a>
+        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-portfolio')" class="tab-btn">Gallery</a>
+        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-policies')" class="tab-btn">Reviews</a>
+        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-overview')" class="tab-btn">About Us</a>
     </div>
 
     <script>
         // GLOBAL HUB ENGINE (Priority Execution)
         window.catererRules = {{ (caterer.scheduling_rules or {}) | tojson | safe }};
-        window.hubSwitchTab = function(tabId, btn) {
-            console.log('Hub: Switching to', tabId);
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        
+        window.hubSwitchTab = function(tabId) {
             const target = document.getElementById(tabId);
-            if (target) target.classList.add('active');
-            if (btn) btn.classList.add('active');
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         };
+
+        // Scroll Spy Logic for Active Tab Highlighting
+        document.addEventListener('DOMContentLoaded', function() {
+            const sections = document.querySelectorAll('.tab-content');
+            const navLinks = document.querySelectorAll('.tab-btn');
+            const tabsContainer = document.querySelector('.hub-tabs');
+            
+            const observerOptions = {
+                root: null,
+                rootMargin: '-120px 0px -60% 0px',
+                threshold: 0
+            };
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        navLinks.forEach(link => {
+                            link.classList.remove('active');
+                            if (link.getAttribute('onclick').includes(entry.target.id)) {
+                                link.classList.add('active');
+                                
+                                // Safely scroll horizontal tabs on mobile without snapping main window
+                                if (tabsContainer && tabsContainer.scrollWidth > tabsContainer.clientWidth) {
+                                    const linkRect = link.getBoundingClientRect();
+                                    const containerRect = tabsContainer.getBoundingClientRect();
+                                    if (linkRect.left < containerRect.left || linkRect.right > containerRect.right) {
+                                        tabsContainer.scrollTo({
+                                            left: link.offsetLeft - (tabsContainer.offsetWidth / 2) + (link.offsetWidth / 2),
+                                            behavior: 'smooth'
+                                        });
+                                    }
+                                }
+                            }
+                        });
+                    }
+                });
+            }, observerOptions);
+            
+            sections.forEach(sec => observer.observe(sec));
+        });
 
         // Business Hours Logic
         document.addEventListener('DOMContentLoaded', function() {
@@ -1423,24 +1539,6 @@
                     </div>
                 </div>
 
-                <!-- VISUAL PORTFOLIO -->
-                {% if public_portfolios %}
-                <div class="intel-card" style="padding: 1.75rem;">
-                    <h2 class="section-title" style="margin-bottom: 1.25rem;">Visual Portfolio</h2>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;">
-                        {% for p in public_portfolios %}
-                        {% set cover_img = (p.images | selectattr('is_cover', 'equalto', True) | first) %}
-                        {% set img_url = cover_img.image_url if cover_img else (p.images[0].image_url if p.images else '/static/images/default-portfolio.jpg') %}
-                        <div style="height: 130px; border-radius: 12px; overflow: hidden; cursor: pointer; position: relative;" onclick="window.openPortfolioViewModal('{{ p.id }}')" class="hover:shadow-md transition">
-                            <img src="{{ img_url }}" onerror="this.src='/static/images/default-portfolio.jpg'" style="width: 100%; height: 100%; object-fit: cover;">
-                            <div style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.8)); padding: 8px; color: white; font-size: 0.75rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                {{ p.title }}
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
             </div>
 
                         <!-- PACKAGES TAB -->
@@ -1474,13 +1572,15 @@
                                     </span>
                                     {% endif %}
                                 </div>
-                                {% if pkg.dishes and pkg.dishes|length > 0 %}
-                                <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:0.5rem; max-height:45px; overflow:hidden;">
-                                    {% for dish in pkg.dishes[:3] %}
-                                    <span style="font-size:0.65rem; background:var(--hub-slate-50); color:var(--hub-slate-600); padding:2px 8px; border-radius:100px; border:1px solid var(--hub-slate-100); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;">{{ dish }}</span>
+                                {% if pkg.parsed_inclusions and pkg.parsed_inclusions|length > 0 %}
+                                <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:0.75rem; max-height:45px; overflow:hidden;">
+                                    {% for inc in pkg.parsed_inclusions[:3] %}
+                                    <span style="font-size:0.65rem; background:var(--hub-slate-50); color:var(--hub-slate-600); padding:2px 8px; border-radius:100px; border:1px solid var(--hub-slate-100); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;">
+                                        <i class="fas fa-check" style="color:#10b981; margin-right:2px;"></i> {{ inc }}
+                                    </span>
                                     {% endfor %}
-                                    {% if pkg.dishes|length > 3 %}
-                                    <span style="font-size:0.65rem; background:var(--hub-slate-100); color:var(--hub-slate-600); padding:2px 8px; border-radius:100px; font-weight:700;">+{{ pkg.dishes|length - 3 }}</span>
+                                    {% if pkg.parsed_inclusions|length > 3 %}
+                                    <span style="font-size:0.65rem; background:var(--hub-slate-100); color:var(--hub-slate-600); padding:2px 8px; border-radius:100px; font-weight:700;">+{{ pkg.parsed_inclusions|length - 3 }}</span>
                                     {% endif %}
                                 </div>
                                 {% endif %}
@@ -1734,77 +1834,104 @@
                 <!-- OPERATIONAL POLICIES (Real-Time) -->
                 <div class="intel-card" style="padding: 1.75rem; margin-top: 2rem;">
                     <h2 class="section-title">Booking Rules</h2>
-                    <div class="policy-grid" style="display: grid; grid-template-columns: 1fr; gap: 1rem; margin-top: 1.5rem;">
-                        <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
+                    <div class="policy-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-top: 1.5rem;">
+                        <div class="meta-pill" style="background: #fff; color: var(--hub-text-dark); justify-content: flex-start; padding: 1.25rem; border: 1px solid var(--hub-slate-200); height: auto; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; gap: 1rem;">
+                            <div style="width: 40px; height: 40px; border-radius: 10px; background: #eff6ff; color: #3b82f6; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
                             <div>
-                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;"><i class="fas fa-calendar-alt" style="margin-right: 4px;"></i> Booking Lead Time</div>
-                                <div style="font-weight: 850; margin-top: 4px;">Must be booked at least {{ caterer.booking_lead_time if caterer.booking_lead_time else 7 }} days in advance.</div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--hub-slate-400); letter-spacing: 0.05em;">Booking Lead Time</div>
+                                <div style="color: var(--hub-slate-600); font-weight: 500; margin-top: 4px; font-size: 0.95rem;">Must be booked at least {{ caterer.booking_lead_time if caterer.booking_lead_time else 7 }} days in advance.</div>
                             </div>
                         </div>
-                        <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
+                        <div class="meta-pill" style="background: #fff; color: var(--hub-text-dark); justify-content: flex-start; padding: 1.25rem; border: 1px solid var(--hub-slate-200); height: auto; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; gap: 1rem;">
+                            <div style="width: 40px; height: 40px; border-radius: 10px; background: #f0fdf4; color: #10b981; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                                <i class="fas fa-users"></i>
+                            </div>
                             <div>
-                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;"><i class="fas fa-users" style="margin-right: 4px;"></i> Minimum Guests</div>
-                                <div style="font-weight: 850; margin-top: 4px;">Services start for groups of {{ caterer.min_pax if caterer.min_pax else 20 }} pax and above.</div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--hub-slate-400); letter-spacing: 0.05em;">Minimum Guests</div>
+                                <div style="color: var(--hub-slate-600); font-weight: 500; margin-top: 4px; font-size: 0.95rem;">Services start for groups of {{ caterer.min_pax if caterer.min_pax else 20 }} pax and above.</div>
                             </div>
                         </div>
-                        <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
+                        <div class="meta-pill" style="background: #fff; color: var(--hub-text-dark); justify-content: flex-start; padding: 1.25rem; border: 1px solid var(--hub-slate-200); height: auto; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; gap: 1rem;">
+                            <div style="width: 40px; height: 40px; border-radius: 10px; background: #fef2f2; color: #ef4444; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                                <i class="fas fa-clock"></i>
+                            </div>
                             <div>
-                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;"><i class="fas fa-clock" style="margin-right: 4px;"></i> Equipment Turnover Time</div>
-                                <div style="font-weight: 850; margin-top: 4px;">Items require a {{ caterer.equipment_turnover_hours if caterer.equipment_turnover_hours is not none else 24 }} hour cleaning buffer before next rental.</div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--hub-slate-400); letter-spacing: 0.05em;">Equipment Turnover Time</div>
+                                <div style="color: var(--hub-slate-600); font-weight: 500; margin-top: 4px; font-size: 0.95rem;">Items require a {{ caterer.equipment_turnover_hours if caterer.equipment_turnover_hours is not none else 24 }} hour cleaning buffer.</div>
                             </div>
                         </div>
                         {% set pols = caterer.scheduling_rules.get('policies', {}) if caterer.scheduling_rules else {} %}
                         
                         {% if caterer.terms_and_conditions %}
-                        <div class="meta-pill" style="background: rgba(239, 68, 68, 0.05); color: #991b1b; justify-content: flex-start; padding: 1rem; border: 1px solid rgba(239, 68, 68, 0.1); height: auto;">
+                        <div class="meta-pill" style="background: #fff; color: var(--hub-text-dark); justify-content: flex-start; padding: 1.25rem; border: 1px solid var(--hub-slate-200); height: auto; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; gap: 1rem;">
+                            <div style="width: 40px; height: 40px; border-radius: 10px; background: #fef2f2; color: #ef4444; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                                <i class="fas fa-ban"></i>
+                            </div>
                             <div>
-                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;"><i class="fas fa-ban" style="margin-right: 4px;"></i> Cancellation Policy</div>
-                                <div style="font-weight: 850; margin-top: 4px; white-space: pre-wrap; font-size: 0.85rem; line-height: 1.5;">{{ caterer.terms_and_conditions }}</div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--hub-slate-400); letter-spacing: 0.05em;">Cancellation Policy</div>
+                                <div style="color: var(--hub-slate-600); font-weight: 500; margin-top: 4px; font-size: 0.95rem; line-height: 1.5; white-space: pre-wrap;">{{ caterer.terms_and_conditions }}</div>
                             </div>
                         </div>
                         {% endif %}
                         
                         {% if pols.get('refund_policy') %}
-                        <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
+                        <div class="meta-pill" style="background: #fff; color: var(--hub-text-dark); justify-content: flex-start; padding: 1.25rem; border: 1px solid var(--hub-slate-200); height: auto; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; gap: 1rem;">
+                            <div style="width: 40px; height: 40px; border-radius: 10px; background: #f3f4f6; color: #4b5563; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                                <i class="fas fa-undo"></i>
+                            </div>
                             <div>
-                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;"><i class="fas fa-undo" style="margin-right: 4px;"></i> Refund Policy</div>
-                                <div style="font-weight: 850; margin-top: 4px; white-space: pre-wrap; font-size: 0.85rem; line-height: 1.5;">{{ pols.get('refund_policy') }}</div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--hub-slate-400); letter-spacing: 0.05em;">Refund Policy</div>
+                                <div style="color: var(--hub-slate-600); font-weight: 500; margin-top: 4px; white-space: pre-wrap; font-size: 0.9rem; line-height: 1.5;">{{ pols.get('refund_policy') }}</div>
                             </div>
                         </div>
                         {% endif %}
                         
                         {% if pols.get('reschedule_policy') %}
-                        <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
+                        <div class="meta-pill" style="background: #fff; color: var(--hub-text-dark); justify-content: flex-start; padding: 1.25rem; border: 1px solid var(--hub-slate-200); height: auto; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; gap: 1rem;">
+                            <div style="width: 40px; height: 40px; border-radius: 10px; background: #fff7ed; color: #f97316; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
                             <div>
-                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;"><i class="fas fa-calendar-alt" style="margin-right: 4px;"></i> Reschedule Policy</div>
-                                <div style="font-weight: 850; margin-top: 4px; white-space: pre-wrap; font-size: 0.85rem; line-height: 1.5;">{{ pols.get('reschedule_policy') }}</div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--hub-slate-400); letter-spacing: 0.05em;">Reschedule Policy</div>
+                                <div style="color: var(--hub-slate-600); font-weight: 500; margin-top: 4px; white-space: pre-wrap; font-size: 0.9rem; line-height: 1.5;">{{ pols.get('reschedule_policy') }}</div>
                             </div>
                         </div>
                         {% endif %}
                         
                         {% if pols.get('late_payment_policy') %}
-                        <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
+                        <div class="meta-pill" style="background: #fff; color: var(--hub-text-dark); justify-content: flex-start; padding: 1.25rem; border: 1px solid var(--hub-slate-200); height: auto; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; gap: 1rem;">
+                            <div style="width: 40px; height: 40px; border-radius: 10px; background: #fce7f3; color: #db2777; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </div>
                             <div>
-                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;"><i class="fas fa-money-bill-wave" style="margin-right: 4px;"></i> Late Payment Policy</div>
-                                <div style="font-weight: 850; margin-top: 4px; white-space: pre-wrap; font-size: 0.85rem; line-height: 1.5;">{{ pols.get('late_payment_policy') }}</div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--hub-slate-400); letter-spacing: 0.05em;">Late Payment Policy</div>
+                                <div style="color: var(--hub-slate-600); font-weight: 500; margin-top: 4px; white-space: pre-wrap; font-size: 0.9rem; line-height: 1.5;">{{ pols.get('late_payment_policy') }}</div>
                             </div>
                         </div>
                         {% endif %}
                         
                         {% if pols.get('no_show_policy') %}
-                        <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
+                        <div class="meta-pill" style="background: #fff; color: var(--hub-text-dark); justify-content: flex-start; padding: 1.25rem; border: 1px solid var(--hub-slate-200); height: auto; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; gap: 1rem;">
+                            <div style="width: 40px; height: 40px; border-radius: 10px; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                                <i class="fas fa-user-slash"></i>
+                            </div>
                             <div>
-                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;"><i class="fas fa-user-slash" style="margin-right: 4px;"></i> No-Show Policy</div>
-                                <div style="font-weight: 850; margin-top: 4px; white-space: pre-wrap; font-size: 0.85rem; line-height: 1.5;">{{ pols.get('no_show_policy') }}</div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--hub-slate-400); letter-spacing: 0.05em;">No-Show Policy</div>
+                                <div style="color: var(--hub-slate-600); font-weight: 500; margin-top: 4px; white-space: pre-wrap; font-size: 0.9rem; line-height: 1.5;">{{ pols.get('no_show_policy') }}</div>
                             </div>
                         </div>
                         {% endif %}
                         
                         {% if caterer.general_terms %}
-                        <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
+                        <div class="meta-pill" style="background: #fff; color: var(--hub-text-dark); justify-content: flex-start; padding: 1.25rem; border: 1px solid var(--hub-slate-200); height: auto; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; gap: 1rem; grid-column: 1 / -1;">
+                            <div style="width: 40px; height: 40px; border-radius: 10px; background: #fef9c3; color: #ca8a04; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                                <i class="fas fa-clipboard-check"></i>
+                            </div>
                             <div>
-                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;"><i class="fas fa-clipboard-check" style="margin-right: 4px;"></i> General Order Terms</div>
-                                <div style="font-weight: 850; margin-top: 4px; white-space: pre-wrap; font-size: 0.85rem; line-height: 1.5;">{{ caterer.general_terms }}</div>
+                                <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--hub-slate-400); letter-spacing: 0.05em;">General Order Terms</div>
+                                <div style="color: var(--hub-slate-600); font-weight: 500; margin-top: 4px; white-space: pre-wrap; font-size: 0.9rem; line-height: 1.6;">{{ caterer.general_terms }}</div>
                             </div>
                         </div>
                         {% endif %}
@@ -1845,54 +1972,65 @@
         </div>
 
         <aside class="profile-sidebar">
-            <!-- RELATIONSHIP INTELLIGENCE -->
-            {% if has_previous_bookings %}
-            <div class="elite-sidebar" style="background: linear-gradient(135deg, #fff 0%, #fffbeb 100%); border-color: #fcd34d;">
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.75rem;">
-                    <div style="background: #f59e0b; color: #fff; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;">
-                        <i class="fas fa-crown"></i>
-                    </div>
-                    <span style="font-size: 0.85rem; font-weight: 850; color: #92400e;">Preferred Customer</span>
+            <!-- COMPACT STICKY BOOKING PANEL -->
+            <div class="elite-sidebar" style="background: #fff; border-radius: 16px; border: 1px solid var(--hub-slate-200); box-shadow: 0 10px 30px rgba(0,0,0,0.04); overflow: hidden; padding: 0;">
+                
+                {% if caterer_unavailable %}
+                <div style="background: #fef2f2; padding: 1.5rem; text-align: center; border-bottom: 1px solid #fee2e2;">
+                    <i class="fas fa-store-slash" style="font-size: 2rem; color: #ef4444; margin-bottom: 10px;"></i>
+                    <h3 style="font-size: 1rem; font-weight: 800; color: #991b1b; margin: 0 0 5px 0;">Currently Closed</h3>
+                    <p style="font-size: 0.8rem; color: #b91c1c; margin: 0;">Not accepting new bookings at this time.</p>
                 </div>
-                <p style="font-size: 0.75rem; color: #b45309; line-height: 1.5; margin-bottom: 1rem;">
-                    Welcome back! You have a booking history with <strong>{{ caterer.business_name }}</strong>.
-                </p>
-                <a href="/customer/dashboard" class="btn-elite-sm" style="background: #fff; border: 1px solid #fde68a; color: #92400e; padding: 0.6rem; font-size: 0.75rem; width: 100%; text-align: center; text-decoration: none; display: block;">
-                    <i class="fas fa-clock-rotate-left"></i> View My History
-                </a>
-            </div>
-            {% endif %}
+                {% else %}
+                <div style="background: var(--hub-slate-50); padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--hub-slate-200);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <span style="font-size: 0.72rem; font-weight: 850; color: var(--hub-slate-400); text-transform: uppercase; letter-spacing: 0.08em;">Status</span>
+                            <div style="font-size: 0.95rem; font-weight: 900; color: #10b981; display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                                <div style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 0 3px #d1fae5;"></div> Accepting Orders
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
 
-            <!-- PROFESSIONAL STATUS -->
-            <div class="elite-sidebar">
-                <h4
-                    style="font-size: 0.75rem; font-weight: 800; color: var(--hub-slate-400); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem;">
-                    Professional Status</h4>
+                <div style="padding: 1.5rem;">
+                    {% if has_previous_bookings %}
+                    <div style="background: #fef3c7; border: 1px solid #fde68a; border-radius: 10px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; display: flex; align-items: flex-start; gap: 10px;">
+                        <i class="fas fa-handshake" style="color: #d97706; font-size: 1rem; margin-top: 2px;"></i>
+                        <span style="font-size: 0.75rem; font-weight: 700; color: #92400e; line-height: 1.4;">You've successfully booked with this caterer before.</span>
+                    </div>
+                    {% endif %}
 
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    {% if caterer_unavailable %}
-                    <button class="btn-hub-main" disabled style="opacity:0.5;cursor:not-allowed;">
-                        <i class="fas fa-ban"></i> Currently Unavailable
-                    </button>
-                    {% else %}
-                    <a href="/bookings/start/{{ caterer.id }}" class="btn-hub-main">
-                        <i class="fas fa-calendar-plus"></i> Standard Booking
-                    </a>
-                    <a href="/bookings/custom/request/{{ caterer.id }}" class="btn-hub-main" style="background: #0f172a;">
-                        <i class="fas fa-magic text-highlight"></i> Request Custom Event
-                    </a>
-                    {% endif %}
-                    {% if has_previous_communication %}
-                    <a href="/customer/messages?recipient_id={{ caterer.user_id }}" class="btn-elite-sm"
-                        style="background: #fff; border: 1px solid var(--hub-slate-200); color: var(--hub-text-dark); padding: 1rem; width: 100%; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        <i class="fas fa-comments"></i> Resume Conversation
-                    </a>
-                    {% else %}
-                    <button type="button" class="btn-elite-sm" onclick='window.openMessageModal()'
-                        style="background: #fff; border: 1px solid var(--hub-slate-200); color: var(--hub-text-dark); padding: 1rem; width: 100%;">
-                        <i class="fas fa-paper-plane"></i> Message Professional
-                    </button>
-                    {% endif %}
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        {% if not caterer_unavailable %}
+                        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-packages')" class="btn-hub-main" style="border-radius: 12px; margin: 0;">
+                            <i class="fas fa-bolt"></i> Book Package
+                        </a>
+                        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-menu')" class="btn-elite-sm" style="background: var(--hub-slate-50); color: var(--hub-text-dark); border: 1px solid var(--hub-slate-200); border-radius: 12px; padding: 1rem; font-size: 0.9rem; margin: 0; text-align: center; text-decoration: none;">
+                            <i class="fas fa-utensils"></i> Order Food Menu
+                        </a>
+                        {% endif %}
+                        
+                        <button type="button" class="btn-elite-sm" onclick='window.openMessageModal()' style="background: #fff; border: 1px solid var(--hub-slate-200); color: var(--hub-text-dark); border-radius: 12px; padding: 1rem; width: 100%; font-size: 0.9rem; margin: 0; margin-top: 10px;">
+                            <i class="fas fa-paper-plane"></i> Message Caterer
+                        </button>
+                    </div>
+                    
+                    <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px dashed var(--hub-slate-200);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 0.75rem; color: var(--hub-slate-500); font-weight: 600;"><i class="fas fa-clock" style="width: 16px;"></i> Response Time</span>
+                            <span style="font-size: 0.75rem; font-weight: 800; color: var(--hub-text-dark);">{{ caterer.avg_response_time or 'Within a few hours' }}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 0.75rem; color: var(--hub-slate-500); font-weight: 600;"><i class="fas fa-shield-alt" style="width: 16px;"></i> Verified Partner</span>
+                            <span style="font-size: 0.75rem; font-weight: 800; color: var(--hub-text-dark);">{{ 'Yes' if caterer.is_verified else 'Pending' }}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.75rem; color: var(--hub-slate-500); font-weight: 600;"><i class="fas fa-history" style="width: 16px;"></i> In Business</span>
+                            <span style="font-size: 0.75rem; font-weight: 800; color: var(--hub-text-dark);">{{ caterer.years_in_business ~ ' Years' if caterer.years_in_business else 'New Partner' }}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -2195,10 +2333,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     class="fas fa-times"></i></button>
             <h2 style="font-size: 1.25rem; font-weight: 850; color: var(--hub-text-dark); margin-bottom: 0.5rem;">Message Professional</h2>
             <p style="color: var(--hub-slate-400); font-size: 0.85rem; margin-bottom: 1.5rem;">Ask about availability, custom menus, or other details.</p>
-            <form onsubmit="window.sendHubMessage(event, '{{ caterer.user_id }}')">
+            <form onsubmit="window.sendHubMessage(event, '{{ caterer.user_id }}')" style="display: flex; gap: 0.5rem; align-items: flex-end;">
                 <textarea id="hub-msg-body" required placeholder="Hi! I have a question about..."
-                    style="width: 100%; height: 120px; border: 1.5px solid var(--hub-slate-200); border-radius: 14px; padding: 1rem; font-family: 'Poppins'; margin-bottom: 1.5rem; resize: vertical;"></textarea>
-                <button type="submit" id="hub-send-btn" class="btn-hub-main">Send Direct Message</button>
+                    style="flex: 1; min-height: 50px; max-height: 120px; border: 1.5px solid var(--hub-slate-200); border-radius: 14px; padding: 0.85rem 1rem; font-family: 'Poppins'; resize: vertical; margin-bottom: 0; outline: none; transition: border-color 0.2s;"></textarea>
+                <button type="submit" id="hub-send-btn" class="btn-hub-main" style="width: 50px; height: 50px; border-radius: 14px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Send Direct Message">
+                    <i class="fas fa-paper-plane" style="font-size: 1.25rem;"></i>
+                </button>
             </form>
         </div>
     </div>
