@@ -328,12 +328,24 @@ def master_migration():
         # Apply helper
         def add_cols(table_name, columns):
             print(f"  Migrating {table_name}...")
+            failed = []
             for col_name, col_type in columns:
                 try:
-                    with engine.begin() as conn:
+                    # Use AUTOCOMMIT isolation level so DDL statements are committed
+                    # immediately and are not wrapped in a transaction that may be
+                    # silently rolled back by the connection pool.
+                    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
                         conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
+                    print(f"    OK: {col_name} ({col_type})")
                 except Exception as e:
-                    print(f"    Warning: Could not add '{col_name}' to '{table_name}': {e}")
+                    print(f"    ERROR: Could not add '{col_name}' to '{table_name}': {e}")
+                    failed.append((col_name, str(e)))
+            if failed:
+                raise RuntimeError(
+                    f"Migration failed for table '{table_name}'. "
+                    f"The following columns could not be added: "
+                    + ", ".join(name for name, _ in failed)
+                )
 
         add_cols("bookings", booking_cols)
         add_cols("reviews", review_cols)
@@ -390,7 +402,7 @@ def master_migration():
         
         # Create Social Posts table if missing
         try:
-            with engine.begin() as conn:
+            with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
                 conn.execute(text("""
                     CREATE TABLE IF NOT EXISTS social_posts (
                         id SERIAL PRIMARY KEY,
@@ -408,7 +420,7 @@ def master_migration():
 
         # Create Profile Views table for unique view tracking
         try:
-            with engine.begin() as conn:
+            with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
                 conn.execute(text("""
                     CREATE TABLE IF NOT EXISTS profile_views (
                         id SERIAL PRIMARY KEY,
@@ -420,7 +432,7 @@ def master_migration():
             print("  Table profile_views checked/created.")
             # Add unique constraint to ensure one view per user per caterer
             try:
-                with engine.begin() as conn:
+                with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
                     conn.execute(text("""
                         CREATE UNIQUE INDEX IF NOT EXISTS uix_profile_views_caterer_viewer
                         ON profile_views (caterer_id, viewer_id);
@@ -434,4 +446,8 @@ def master_migration():
     print("Master migration completed successfully.")
 
 if __name__ == "__main__":
-    master_migration()
+    try:
+        master_migration()
+    except Exception as e:
+        print(f"FATAL: Master migration failed: {e}")
+        sys.exit(1)
