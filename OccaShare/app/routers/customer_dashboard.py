@@ -146,13 +146,10 @@ async def customer_dashboard(
 
     # Calculate Profile Completion
     completion_points = 0
-    total_points = 5
     if user.first_name and user.last_name: completion_points += 1
     if user.phone_number: completion_points += 1
-    if user.address: completion_points += 1
-    if user.emergency_contact_name and user.emergency_contact_phone: completion_points += 1
-    if user.profile_image_url or user.is_verified: completion_points += 1
-    profile_completion = int((completion_points / total_points) * 100)
+    if user.province and user.city_municipality: completion_points += 1
+    profile_completion = int((completion_points / 3) * 100)
     
     # Featured Caterers for FTUX
     featured_caterers = []
@@ -724,13 +721,10 @@ async def customer_profile(
 ):
     # Calculate Profile Completion
     completion_points = 0
-    total_points = 5
     if user.first_name and user.last_name: completion_points += 1
     if user.phone_number: completion_points += 1
     if user.province and user.city_municipality: completion_points += 1
-    if user.emergency_contact_name and user.emergency_contact_phone: completion_points += 1
-    if user.profile_image_url or user.is_verified: completion_points += 1
-    profile_completion = int((completion_points / total_points) * 100)
+    profile_completion = int((completion_points / 3) * 100)
     
     return templates.TemplateResponse("customer/profile.html", {
         "request": request,
@@ -811,14 +805,12 @@ async def customer_update_notifications(
     request: Request,
     email_promos: Optional[str] = Form(None),
     email_bookings: Optional[str] = Form(None),
-    sms_bookings: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
     prefs = user.notification_preferences or {}
     prefs["email_promos"] = email_promos == "on"
     prefs["email_bookings"] = email_bookings == "on"
-    prefs["sms_bookings"] = sms_bookings == "on"
     
     # Required to trigger JSONB update in SQLAlchemy
     import copy
@@ -1066,7 +1058,7 @@ async def customer_marketplace(
                 ))
             END
         """).bindparams(lat=lat, lon=lon)
-        query = query.order_by(distance_query.asc())
+        query = query.order_by(distance_query)
     elif sort == "rating":
         query = query.order_by(models.CatererProfile.rating.desc())
     elif sort == "price_low":

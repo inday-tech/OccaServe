@@ -45,7 +45,7 @@ window.filterCustomerTable = function(searchQuery = null) {
     const statusSelect = document.getElementById('tableFilterStatus');
     const statusFilter = statusSelect ? statusSelect.value : 'All';
     
-    const rows = document.querySelectorAll('#customersTableBody .table-row-pro');
+    const rows = document.querySelectorAll('#customersTableBody .premium-row');
     let visibleCount = 0;
     
     rows.forEach(row => {
@@ -54,11 +54,12 @@ window.filterCustomerTable = function(searchQuery = null) {
         
         let statusMatch = true;
         if (statusFilter !== 'All') {
-            const badge = row.querySelector('.badge-pro');
+            const badge = row.querySelector('.premium-status-badge');
             const rowStatus = badge ? badge.innerText.trim() : '';
-            if (statusFilter === 'VIP Elite' && rowStatus !== 'VIP Elite') statusMatch = false;
-            if (statusFilter === 'Standard' && rowStatus !== 'Standard') statusMatch = false;
-            if (statusFilter === 'Blacklisted' && rowStatus !== 'Blacklisted') statusMatch = false;
+            if (statusFilter === 'VIP Elite' && !rowStatus.includes('VIP')) statusMatch = false;
+            if (statusFilter === 'Standard' && !rowStatus.includes('Standard')) statusMatch = false;
+            if (statusFilter === 'Blacklisted' && !rowStatus.includes('Blacklisted')) statusMatch = false;
+            if (statusFilter === 'New Client' && !rowStatus.includes('New Client')) statusMatch = false;
         }
         
         if (textMatch && statusMatch) {
@@ -90,7 +91,7 @@ window.filterCustomerTable = function(searchQuery = null) {
 };
 
 window.exportCustomerCSV = function(format = 'csv') {
-    const rows = document.querySelectorAll('#customersTableBody .table-row-pro');
+    const rows = document.querySelectorAll('#customersTableBody .premium-row');
     if (rows.length === 0) {
         if (window.showError) window.showError("No data to export.");
         return;
@@ -103,7 +104,7 @@ window.exportCustomerCSV = function(format = 'csv') {
         if (row.style.display === 'none') return;
         try {
             const cells = row.querySelectorAll('td');
-            const id = cells[0].innerText.replace('#', '').trim();
+            const id = cells[0].innerText.replace('CUST-', '').trim();
             const fullName = row.querySelector('.name-text').innerText.trim();
             const names = fullName.split(' ');
             const firstName = names[0];
@@ -131,7 +132,7 @@ window.exportCustomerCSV = function(format = 'csv') {
 
 window.exportCustomerPDF = function() {
     window.toggleActionMenu('export');
-    const rows = document.querySelectorAll('#customersTableBody .table-row-pro');
+    const rows = document.querySelectorAll('#customersTableBody .premium-row');
     if (rows.length === 0) {
         if (window.showError) window.showError("No data to export.");
         return;
@@ -156,7 +157,7 @@ window.exportCustomerPDF = function() {
         if (row.style.display === 'none') return;
         try {
             const cells = row.querySelectorAll('td');
-            const id = cells[0].innerText.replace('#', '').trim();
+            const id = cells[0].innerText.replace('CUST-', '').trim();
             const fullName = row.querySelector('.name-text').innerText.trim();
             const email = row.querySelector('.email-text').innerText.trim();
             const tier = cells[2].innerText.trim();
@@ -226,9 +227,6 @@ window.openCustomerProfile = async function(id) {
         
         const phoneEl = document.getElementById('profPhone');
         if (phoneEl) phoneEl.innerText = c.phone || 'N/A';
-        
-        const notesEl = document.getElementById('profNotes');
-        if (notesEl) notesEl.innerText = c.notes || "No operational notes recorded.";
         
         const blacklistBtn = document.getElementById('blacklistBtn');
 
@@ -451,46 +449,47 @@ function dynamicallyUpdateCustomerRow(c) {
     const existingRow = document.getElementById(`row-cust-${c.id}`);
     
     let badgeHtml = '';
-    if (c.status === 'BLACKLISTED') badgeHtml = '<span class="badge-pro badge-danger">Blacklisted</span>';
-    else if (c.total_bookings > 5 || c.status === 'VIP') badgeHtml = '<span class="badge-pro badge-warning">VIP Elite</span>';
-    else badgeHtml = '<span class="badge-pro badge-secondary">Standard</span>';
+    if (c.status === 'BLACKLISTED') badgeHtml = '<span class="premium-status-badge ps-badge-cancelled">Blacklisted</span>';
+    else if (c.total_bookings > 5 || c.status === 'VIP') badgeHtml = '<span class="premium-status-badge ps-badge-warning">VIP Elite</span>';
+    else if (c.status === 'NEW') badgeHtml = '<span class="premium-status-badge ps-badge-pending">New Client</span>';
+    else badgeHtml = '<span class="premium-status-badge ps-badge-confirmed">Standard</span>';
 
     const fnInitial = c.first_name ? c.first_name[0].toUpperCase() : '?';
     const lnInitial = c.last_name ? c.last_name[0].toUpperCase() : '';
 
     const rowContent = `
-        <td>
-            <span class="badge-subtle">#${String(c.id).padStart(3, '0')}</span>
+        <td class="premium-cell">
+            <span class="pay-id" style="font-weight: 700; color: #0f172a; font-size: 0.88rem;">CUST-${String(c.id).padStart(3, '0')}</span>
         </td>
-        <td>
+        <td class="premium-cell">
             <div class="identity-flex">
                 <div class="avatar-circle-pro">${fnInitial}${lnInitial}</div>
                 <div class="identity-text">
-                    <div class="name-text">${c.first_name} ${c.last_name}</div>
-                    <div class="email-text">${c.email}</div>
+                    <div class="name-text" style="font-weight: 600; color: #334155;">${c.first_name} ${c.last_name}</div>
+                    <div class="email-text" style="font-size: 0.75rem; color: #64748b;">${c.email}</div>
                 </div>
             </div>
         </td>
-        <td>${badgeHtml}</td>
-        <td>
-            <div class="amount-text">₱${parseFloat(c.total_spent || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+        <td class="premium-cell">${badgeHtml}</td>
+        <td class="premium-cell">
+            <div class="amount-text" style="font-weight: 700; color: #0f172a;">₱${parseFloat(c.total_spent || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
         </td>
-        <td>
-            <span class="badge-pro bg-primary-light" style="color: var(--primary-color);">${c.total_bookings || 0} events</span>
+        <td class="premium-cell">
+            <span style="font-weight: 600; color: var(--primary-color);">${c.total_bookings || 0} events</span>
         </td>
-        <td>
-            <div class="date-text">
+        <td class="premium-cell">
+            <div class="date-text" style="font-weight: 600; color: #334155;">
                 ${c.history && c.history.length > 0 ? new Date(c.history[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No data'}
             </div>
         </td>
-        <td class="text-right">
+        <td class="premium-cell" style="text-align: right;">
             <div class="action-dropdown-container">
-                <button class="btn-icon-dots" onclick="window.toggleActionMenu('cust${c.id}')">
+                <button class="btn-icon-dots" onclick="window.toggleActionMenu('cust${c.id}')" style="background: none; border: none; color: #64748b; cursor: pointer;">
                     <i class="fas fa-ellipsis-v"></i>
                 </button>
                 <div class="action-dropdown-menu" id="actionMenu-cust${c.id}">
                     <button onclick="window.openCustomerProfile(${c.id})"><i class="fas fa-id-card text-primary"></i> View Profile</button>
-                    <button onclick="window.quickEditCustomer(${c.id})"><i class="fas fa-pen text-warning"></i> Quick Edit</button>
+                    <button onclick="window.quickEditCustomer(${c.id})"><i class="fas fa-pen text-warning"></i> Add Note</button>
                     <div class="dropdown-divider"></div>
                     <button onclick="window.quickToggleBlacklist(${c.id}, '${c.status}')">
                         <i class="fas ${c.status === 'BLACKLISTED' ? 'fa-check text-success' : 'fa-ban text-danger'}"></i> 
@@ -510,7 +509,7 @@ function dynamicallyUpdateCustomerRow(c) {
         setTimeout(() => existingRow.style.backgroundColor = '', 1000);
     } else {
         const tr = document.createElement('tr');
-        tr.className = 'table-row-pro';
+        tr.className = 'premium-row';
         tr.id = `row-cust-${c.id}`;
         tr.dataset.name = `${c.first_name} ${c.last_name}`.toLowerCase();
         tr.dataset.email = c.email.toLowerCase();
@@ -529,8 +528,8 @@ function dynamicallyUpdateCustomerRow(c) {
 
 window.quickEditCustomer = async function(id) {
     await window.openCustomerProfile(id);
-    const editTab = document.querySelector('.tab-btn-pro[data-tab="edit"]');
-    if(editTab) window.switchIntelTab('edit', editTab);
+    const notesArea = document.getElementById('editNotes');
+    if (notesArea) notesArea.focus();
 }
 
 window.quickToggleBlacklist = function(id, currentStatus) {

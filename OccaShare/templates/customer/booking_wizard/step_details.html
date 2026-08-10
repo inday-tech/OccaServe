@@ -189,11 +189,14 @@
                                 <div class="menu-item-cards selection-group" data-limit="{{ rule_limit }}" data-category="{{ cat.grouper|replace(' ', '') }}">
                                     {% for item in cat.list %}
                                     <div class="menu-item-card selectable" onclick="window.toggleCardSelection(this)">
-                                        <input type="checkbox" name="selected_items" value="{{ item.id }}" style="display: none;">
+                                        <input type="checkbox" name="selected_items" value="{{ item.id }}" style="display: none;" data-upgrade-fee="{{ item.upgrade_fee or 0 }}">
                                         <div class="indicator-circle"></div>
                                         <div class="mic-info">
                                             <span class="mic-name">{{ item.name }}</span>
                                             <span class="mic-cat">{{ item.description|truncate(40) if item.description else 'Included' }}</span>
+                                            {% if item.upgrade_fee and item.upgrade_fee > 0 %}
+                                            <span style="font-size: 0.65rem; color: #4338ca; background: #eef2ff; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-top: 4px; display: inline-block; width: fit-content;">+₱{{ "{:,.0f}".format(item.upgrade_fee) }}/pax</span>
+                                            {% endif %}
                                         </div>
                                     </div>
                                     {% endfor %}
@@ -207,10 +210,13 @@
                             <div class="menu-item-cards">
                                 {% for item in food_items %}
                                 <div class="menu-item-card included" id="slot-{{ loop.index }}">
-                                    <input type="hidden" name="selected_items" value="{{ item.id }}" class="slot-input">
+                                    <input type="hidden" name="selected_items" value="{{ item.id }}" class="slot-input" data-upgrade-fee="{{ item.upgrade_fee or 0 }}">
                                     <div class="mic-info">
                                         <span class="mic-name" id="name-{{ loop.index }}">{{ item.name }}</span>
-                                        <span class="mic-cat">{{ item.category }}</span>
+                                        <span class="mic-cat" id="cat-{{ loop.index }}">{{ item.category }}</span>
+                                        {% if item.upgrade_fee and item.upgrade_fee > 0 %}
+                                        <span class="upgrade-badge" style="font-size: 0.65rem; color: #4338ca; background: #eef2ff; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-top: 4px; display: inline-block; width: fit-content;">+₱{{ "{:,.0f}".format(item.upgrade_fee) }}/pax</span>
+                                        {% endif %}
                                     </div>
                                     <div class="mic-actions">
                                         <span class="mic-status" style="font-weight: 500;">Included</span>
@@ -416,11 +422,17 @@
 <div class="swap-modal-overlay" id="swapModal">
     <div class="swap-modal-content">
         <div class="modal-header-pro">
-            <div>
-                <h3 id="modalCategoryTitle">Swap Dish</h3>
-                <p class="form-subtitle" style="margin: 0; font-size: 0.75rem;">Select an alternative from the same category</p>
+            <div style="width: 100%;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 id="modalCategoryTitle">Swap Dish</h3>
+                    <button type="button" class="btn-close-modal" onclick="closeSwapModal()">&times;</button>
+                </div>
+                <div style="margin-top: 10px;">
+                    <select id="swapCategoryFilter" class="form-input" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem;" onchange="filterSwapOptions(this.value)">
+                        <option value="all">All Categories</option>
+                    </select>
+                </div>
             </div>
-            <button type="button" class="btn-close-modal" onclick="closeSwapModal()">&times;</button>
         </div>
         
         <div class="swap-options-list" id="swapOptionsContainer">
@@ -436,7 +448,8 @@
             id: {{ item.id }},
             name: {{ item.name | tojson | safe }},
             category: {{ item.category | tojson | safe }},
-            is_addon: {{ 'true' if item.is_addon else 'false' }}
+            is_addon: {{ 'true' if item.is_addon else 'false' }},
+            upgrade_fee: {{ item.upgrade_fee or 0.0 }}
         }{% if not loop.last %},{% endif %}
         {% endfor %}
     ];

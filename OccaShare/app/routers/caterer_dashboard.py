@@ -1492,7 +1492,8 @@ async def view_contract_caterer(
         "user": user,
         "booking": booking,
         "quotation": quotation,
-        "active_page": "bookings"
+        "active_page": "bookings",
+        "is_modal": request.query_params.get("modal") == "true"
     })
 
 @router.get("/bookings/{booking_id}/sign", response_class=HTMLResponse)
@@ -1515,7 +1516,8 @@ async def sign_contract_caterer(
         "user": user,
         "booking": booking,
         "quotation": quotation,
-        "active_page": "bookings"
+        "active_page": "bookings",
+        "is_modal": request.query_params.get("modal") == "true"
     })
 
 @router.get("/archives", response_class=HTMLResponse)
@@ -2548,18 +2550,22 @@ async def caterer_customers(
                 models.Booking.caterer_id == user.caterer_profile.id
             ).order_by(models.Booking.event_date.desc()).all()
             
-            bookings_count = len(all_bookings)
-            total_spent = sum(b.total_price for b in all_bookings if b.status == 'completed')
+            # Only count completed bookings for VIP status and total stats
+            completed_bookings = [b for b in all_bookings if b.status == 'completed']
+            bookings_count = len(completed_bookings)
+            
+            total_spent = sum(b.total_price for b in completed_bookings)
             last_booking = all_bookings[0] if all_bookings else None
             first_booking = all_bookings[-1] if all_bookings else None
             
             # Status Logic
             status = "REGULAR"
-            if bookings_count >= 3:
+            if c.status == "blacklisted":
+                status = "BLACKLISTED"
+            elif bookings_count >= 3:
                 status = "VIP"
                 vip_customers_count += 1
-            
-            if first_booking and first_booking.created_at >= first_of_month:
+            elif first_booking and first_booking.created_at >= first_of_month:
                 status = "NEW"
                 new_customers_this_month_count += 1
             
@@ -3426,13 +3432,12 @@ async def add_menu_item(
     pricing_type = pricing_mode # Save as pricing_type for backwards compatibility
 
     price = 0.0
-    serving_size = None
+    serving_size = form_data.get("serving_size")
     if not (usage_type == "package_only") and pricing_mode == "single":
         try:
             price = float(form_data.get("price", "0").replace(",", ""))
         except ValueError:
             price = 0.0
-        serving_size = form_data.get("serving_size")
 
     if not (usage_type == "package_only"):
         min_order_qty = int(form_data.get("min_order_qty", "1") or "1")
@@ -3441,18 +3446,30 @@ async def add_menu_item(
     
     is_hidden = form_data.get("visibility") == "hidden"
     
+    try:
+        upgrade_fee = float(form_data.get("upgrade_fee", "0").replace(",", ""))
+    except ValueError:
+        upgrade_fee = 0.0
+    
     is_addon = False
     addon_price = 0.0
     cost_price = 0.0
     item_type = form_data.get("item_type", "single")
     is_combo = (item_type == "preset_combo")
     included_dishes = form_data.getlist("included_dishes[]")
-    combo_options = {"included_menu_ids": [int(x) for x in included_dishes if x.isdigit()]} if is_combo else {}
+    custom_items = form_data.get("custom_included_items", "").strip()
+    combo_options = {}
+    if is_combo:
+        combo_options["included_menu_ids"] = [int(x) for x in included_dishes if x.isdigit()]
+        if custom_items:
+            combo_options["custom_items"] = custom_items
     max_choices = 0
     
     dietary_tags = form_data.getlist("dietary_tags")
     allergen_info = form_data.getlist("allergen_info")
     serving_style = form_data.get("serving_style")
+    if serving_style:
+        serving_style = serving_style.strip()
     
     image = form_data.get("image")
     import base64
@@ -3492,6 +3509,7 @@ async def add_menu_item(
         max_choices=max_choices,
         combo_options=combo_options,
         serving_style=serving_style,
+        upgrade_fee=upgrade_fee,
         is_archived=False
     )
     db.add(new_item)
@@ -4497,13 +4515,12 @@ async def update_menu_item(
     pricing_type = pricing_mode
 
     price = 0.0
-    serving_size = None
+    serving_size = form_data.get("serving_size")
     if not (usage_type == "package_only") and pricing_mode == "single":
         try:
             price = float(form_data.get("price", "0").replace(",", ""))
         except ValueError:
             price = 0.0
-        serving_size = form_data.get("serving_size")
 
     if not (usage_type == "package_only"):
         min_order_qty = int(form_data.get("min_order_qty", "1") or "1")
@@ -4512,18 +4529,30 @@ async def update_menu_item(
     
     is_hidden = form_data.get("visibility") == "hidden"
     
+    try:
+        upgrade_fee = float(form_data.get("upgrade_fee", "0").replace(",", ""))
+    except ValueError:
+        upgrade_fee = 0.0
+    
     is_addon = False
     addon_price = 0.0
     cost_price = 0.0
     item_type = form_data.get("item_type", "single")
     is_combo = (item_type == "preset_combo")
     included_dishes = form_data.getlist("included_dishes[]")
-    combo_options = {"included_menu_ids": [int(x) for x in included_dishes if x.isdigit()]} if is_combo else {}
+    custom_items = form_data.get("custom_included_items", "").strip()
+    combo_options = {}
+    if is_combo:
+        combo_options["included_menu_ids"] = [int(x) for x in included_dishes if x.isdigit()]
+        if custom_items:
+            combo_options["custom_items"] = custom_items
     max_choices = 0
     
     dietary_tags = form_data.getlist("dietary_tags")
     allergen_info = form_data.getlist("allergen_info")
     serving_style = form_data.get("serving_style")
+    if serving_style:
+        serving_style = serving_style.strip()
     
     remove_image = form_data.get("remove_image", "false")
     image = form_data.get("image")
@@ -4542,6 +4571,7 @@ async def update_menu_item(
     item.available_for_order = available_for_order
     item.pricing_type = pricing_type
     item.pricing_unit = pricing_type
+    item.upgrade_fee = upgrade_fee
         
     item.is_hidden = is_hidden
     item.is_addon = is_addon
@@ -5530,8 +5560,7 @@ async def view_compliance_queue(
         models.User.is_archived == False,
         models.IdentityVerification.verification_status.in_([
             "pending", "pending_confirmation", "pending_liveliness", 
-            "processing", "pending_manual_review", "manual_review", 
-            "liveliness_failed", "verified", "approved", "rejected", "failed"
+            "processing", "pending_manual_review", "manual_review"
         ]),
         models.IdentityVerification.is_archived == False
     ).distinct().all()
@@ -5615,7 +5644,8 @@ async def view_customer_verification(
         "target_user": target_user,
         "verification": verification,
         "bookings": bookings,
-        "active_page": "compliance"
+        "active_page": "compliance",
+        "is_modal": request.query_params.get("modal") == "true"
     })
 
 @router.post("/compliance/{user_id}/verify")
@@ -5704,7 +5734,7 @@ async def verify_customer_compliance(
     except Exception as e:
         print(f"[KYC WS] Failed to notify user {user_id}: {e}")
 
-    return RedirectResponse(url=f"/caterer/compliance/view/{user_id}?success_msg=Identity+{action}d+successfully", status_code=303)
+    return RedirectResponse(url=f"/caterer/compliance?success_msg=Identity+{action}d+successfully", status_code=303)
 
 
 # --- SMART PRICING & QUICK BOOK SYSTEM ---

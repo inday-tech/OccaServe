@@ -100,17 +100,34 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Add-ons price
-        const checkedAddons = document.querySelectorAll('.menu-item-card.addon input[type="checkbox"]:checked');
         let addonsTotal = 0;
-        checkedAddons.forEach(cb => {
+        document.querySelectorAll('input[name="selected_addons"]:checked').forEach(cb => {
             const price = parseFloat(cb.getAttribute('data-price')) || 0;
-            addonsTotal += price;
+            addonsTotal += price * guests; // Menu Add-ons are per pax
+        });
+        document.querySelectorAll('input[name="selected_equipment_addons"]:checked, input[name="selected_service_addons"]:checked').forEach(cb => {
+            const price = parseFloat(cb.getAttribute('data-price')) || 0;
+            addonsTotal += price; // Equipment and Services are flat fees
         });
 
-        if (calcAddonsCount) calcAddonsCount.innerText = checkedAddons.length;
-        if (calcAddonsTotal) calcAddonsTotal.innerText = '+₱' + addonsTotal.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        // Upgrades price (Swapped / Premium Items)
+        let upgradesTotal = 0;
+        document.querySelectorAll('.menu-item-card.selectable input[type="checkbox"]:checked').forEach(cb => {
+            const fee = parseFloat(cb.getAttribute('data-upgrade-fee')) || 0;
+            upgradesTotal += fee * guests;
+        });
+        document.querySelectorAll('.slot-input').forEach(input => {
+            const fee = parseFloat(input.getAttribute('data-upgrade-fee')) || 0;
+            upgradesTotal += fee * guests;
+        });
+
+        const addonsCount = document.querySelectorAll('.menu-item-card.addon input[type="checkbox"]:checked').length;
+        if (calcAddonsCount) calcAddonsCount.innerText = addonsCount;
         
-        total += addonsTotal;
+        const extraCharges = addonsTotal + upgradesTotal;
+        if (calcAddonsTotal) calcAddonsTotal.innerText = '+₱' + extraCharges.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        
+        total += extraCharges;
         total += (window.currentDeliveryFee || 0);
 
         const calcDeliveryFee = document.getElementById('calc-delivery-fee');
@@ -971,31 +988,64 @@ document.addEventListener('DOMContentLoaded', function () {
         const modal = document.getElementById('swapModal');
         const container = document.getElementById('swapOptionsContainer');
         const title = document.getElementById('modalCategoryTitle');
+        const catSelect = document.getElementById('swapCategoryFilter');
 
-        title.innerText = `Swap ${category}`;
+        title.innerText = `Swap Dish`;
         container.innerHTML = '<p class="form-subtitle">Loading items...</p>';
         modal.style.display = 'flex';
 
-        // Filter items by category
-        const options = window.allMenuItems.filter(i => i.category === category && !i.is_addon);
+        // Get all unique categories for the dropdown
+        const allOptions = window.allMenuItems.filter(i => !i.is_addon);
+        const categories = [...new Set(allOptions.map(i => i.category))].sort();
+        
+        if (catSelect) {
+            catSelect.innerHTML = `<option value="all">All Categories</option>`;
+            categories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.innerText = cat;
+                if (cat === category) opt.selected = true;
+                catSelect.appendChild(opt);
+            });
+        }
+
+        window.filterSwapOptions(category);
+    };
+
+    window.filterSwapOptions = function(categoryFilter) {
+        const container = document.getElementById('swapOptionsContainer');
+        container.innerHTML = '';
+        
+        let options = window.allMenuItems.filter(i => !i.is_addon);
+        if (categoryFilter !== 'all') {
+            options = options.filter(i => i.category === categoryFilter);
+        }
+
+        // Exclude items already selected in the package
+        const selectedIds = Array.from(document.querySelectorAll('.slot-input, input[name="selected_items"]:checked')).map(input => parseInt(input.value));
+        options = options.filter(i => !selectedIds.includes(i.id));
 
         if (options.length === 0) {
-            container.innerHTML = `<p class="form-subtitle">No other ${category} options available from this caterer.</p>`;
+            container.innerHTML = `<p class="form-subtitle">No alternative options available.</p>`;
             return;
         }
 
-        container.innerHTML = '';
         options.forEach(item => {
             const card = document.createElement('div');
             card.className = 'swap-option-card';
+            let feeBadge = '';
+            if (item.upgrade_fee > 0) {
+                feeBadge = `<span style="font-size: 0.65rem; color: #4338ca; background: #eef2ff; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-top: 4px; display: inline-block; width: fit-content;">+₱${item.upgrade_fee}/pax</span>`;
+            }
             card.innerHTML = `
                 <div class="soc-info">
                     <span class="soc-name">${item.name}</span>
                     <span class="soc-cat">${item.category}</span>
+                    ${feeBadge}
                 </div>
-                <button type="button" class="btn-select-swap" onclick="selectSwapItem(${item.id}, '${item.name.replace(/'/g, "\\'")}')">Select</button>
+                <button type="button" class="btn-select-swap" onclick="selectSwapItem(${item.id}, '${item.name.replace(/'/g, "\\'")}', ${item.upgrade_fee || 0})">Select</button>
             `;
-            card.onclick = () => selectSwapItem(item.id, item.name);
+            card.onclick = () => selectSwapItem(item.id, item.name, item.upgrade_fee || 0);
             container.appendChild(card);
         });
     };
@@ -1005,7 +1055,7 @@ document.addEventListener('DOMContentLoaded', function () {
         activeSlotIndex = null;
     };
 
-    window.selectSwapItem = function(itemId, itemName) {
+    window.selectSwapItem = function(itemId, itemName, upgradeFee = 0) {
         if (!activeSlotIndex) return;
 
         const slot = document.getElementById(`slot-${activeSlotIndex}`);
@@ -1014,7 +1064,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (input && nameSpan) {
             input.value = itemId;
+            input.setAttribute('data-upgrade-fee', upgradeFee);
+            
             nameSpan.innerText = itemName;
+            
+            const infoDiv = nameSpan.parentElement;
+            const existingBadge = infoDiv.querySelector('.upgrade-badge');
+            if (existingBadge) existingBadge.remove();
+
+            if (upgradeFee > 0) {
+                const badge = document.createElement('span');
+                badge.className = 'upgrade-badge';
+                badge.style.cssText = 'font-size: 0.65rem; color: #4338ca; background: #eef2ff; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-top: 4px; display: inline-block; width: fit-content;';
+                badge.innerText = `+₱${upgradeFee}/pax`;
+                infoDiv.appendChild(badge);
+            }
             
             // Visual feedback
             slot.style.borderColor = 'var(--wiz-primary)';
@@ -1022,6 +1086,8 @@ document.addEventListener('DOMContentLoaded', function () {
             setTimeout(() => {
                 slot.style.background = 'var(--wiz-slate-50)';
             }, 500);
+            
+            window.updateCalculator();
         }
 
         closeSwapModal();

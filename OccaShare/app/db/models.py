@@ -405,6 +405,9 @@ class MenuItem(Base):
     average_rating = Column(Float, default=0.0)
     review_count = Column(Integer, default=0)
     
+    # Premium Swap Upgrade
+    upgrade_fee = Column(Float, default=0.0)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     caterer = relationship("CatererProfile", back_populates="menu_items")

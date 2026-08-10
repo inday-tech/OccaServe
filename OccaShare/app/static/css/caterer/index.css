@@ -9,8 +9,8 @@
     --text-primary: #111827;
     --text-secondary: #4b5563;
     --text-tertiary: #9ca3af;
-    --brand-primary: #2563eb;
-    --brand-hover: #1d4ed8;
+    --brand-primary: var(--primary-color, #2563eb);
+    --brand-hover: var(--highlight-color, #1d4ed8);
     --border-subtle: #f3f4f6;
     --border-strong: #e5e7eb;
     
@@ -24,8 +24,8 @@
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
     --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
     
-    --radius-btn: 6px;
-    --radius-card: 12px;
+    --radius-btn: calc(var(--border-radius, 12px) * 0.7);
+    --radius-card: var(--border-radius, 12px);
 }
 
 body {
@@ -89,7 +89,7 @@ body {
 }
 
 .btn-primary-action:hover {
-    background-color: var(--brand-hover);
+    filter: brightness(0.9);
 }
 
 .btn-secondary-action {
@@ -121,6 +121,12 @@ body {
     border-radius: var(--radius-card);
     box-shadow: var(--shadow-card);
     overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.dash-card:hover {
+    border-color: var(--brand-primary);
+    box-shadow: 0 8px 24px rgba(var(--primary-color-rgb, 0,0,0), 0.08);
 }
 
 .card-header {
@@ -153,7 +159,7 @@ body {
 .kpi-card-clean {
     background: #ffffff;
     padding: 1.15rem;
-    border-radius: 12px;
+    border-radius: var(--border-radius, 12px);
     border: 1px solid rgba(226, 232, 240, 0.8);
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     display: flex;
@@ -166,7 +172,7 @@ body {
 .kpi-card-clean:hover {
     transform: translateY(-4px);
     box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.08);
-    border-color: #2563eb;
+    border-color: var(--brand-primary);
 }
 
 .kpi-info { flex: 1; min-width: 0; }
@@ -328,7 +334,7 @@ body {
         display: flex;
         flex-direction: column;
         margin-bottom: 1rem;
-        border-radius: 12px;
+        border-radius: var(--border-radius, 12px);
         padding: 0.5rem;
     }
     
@@ -349,8 +355,8 @@ body {
         text-align: left;
     }
     
-    .booking-cell-first { border-radius: 12px 12px 0 0; }
-    .booking-cell-last { border-radius: 0 0 12px 12px; }
+    .booking-cell-first { border-radius: var(--border-radius, 12px) var(--border-radius, 12px) 0 0; }
+    .booking-cell-last { border-radius: 0 0 var(--border-radius, 12px) var(--border-radius, 12px); }
 }
 
 @media (max-width: 480px) {

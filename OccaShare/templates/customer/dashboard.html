@@ -543,109 +543,70 @@
     <!-- ============================================== -->
     <!-- ONBOARDING MODE (FTUX) -->
     <!-- ============================================== -->
-    <div class="dash-header"
-        style="background: linear-gradient(135deg, var(--up-orange-50, #fff7ed) 0%, var(--up-orange-100, #ffedd5) 100%); padding: 2.5rem; border-radius: 1rem; border: 1px solid var(--up-orange-200, #fed7aa); margin-bottom: 2rem; position: relative; overflow: hidden;">
-        <div style="position: relative; z-index: 1;">
-            <h1
-                style="color: var(--up-orange-900, #7c2d12); font-size: 2rem; font-weight: 900; margin-bottom: 0.5rem; letter-spacing: -0.02em;">
-                Welcome to OccaServe, {{ user.first_name or 'there' }}! <span
-                    style="display:inline-block; animation: wave 2s infinite transform-origin: 70% 70%;">👋</span></h1>
-            <p
-                style="color: var(--up-orange-800, #9a3412); max-width: 600px; font-size: 1rem; font-weight: 500; line-height: 1.5;">
-                We're thrilled to have you here. OccaServe is your all-in-one platform for discovering top caterers,
-                booking delicious packages, and renting event equipment seamlessly. Let's plan your perfect event
-                together!
+    <div class="dash-header" style="padding: 2.5rem 2rem; background: #fff; border-radius: 1.25rem; border: 1px solid #f1f5f9; box-shadow: 0 10px 40px -10px rgba(0,0,0,0.04); margin-bottom: 2rem; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
+        <div style="position: absolute; right: 0; top: 0; bottom: 0; width: 40%; background: linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%), url('https://images.unsplash.com/photo-1555244162-803834f70033?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80') center/cover; opacity: 0.15; z-index: 0; pointer-events: none;"></div>
+        <div style="position: relative; z-index: 1; max-width: 650px;">
+            <div style="display: inline-block; padding: 6px 12px; background: rgba(16, 185, 129, 0.1); color: #10b981; border-radius: 100px; font-size: 0.75rem; font-weight: 700; margin-bottom: 1rem; letter-spacing: 0.05em; text-transform: uppercase;">New Account</div>
+            <h1 style="color: #0f172a; font-size: 2.25rem; font-weight: 800; margin-bottom: 0.75rem; letter-spacing: -0.03em; line-height: 1.1;">
+                Welcome to OccaServe, {{ user.first_name or 'there' }}
+            </h1>
+            <p style="color: #64748b; font-size: 1.05rem; font-weight: 400; line-height: 1.6; margin: 0;">
+                Discover top-tier caterers, book curated packages, and rent premium event equipment—all in one seamless platform. Let's make your next event unforgettable.
             </p>
         </div>
-        <i class="fas fa-glass-cheers"
-            style="position: absolute; right: -20px; bottom: -30px; font-size: 12rem; color: var(--up-orange-500, #f97316); opacity: 0.1; z-index: 0; transform: rotate(-15deg);"></i>
     </div>
-
-    <style>
-        @keyframes wave {
-            0% {
-                transform: rotate(0.0deg)
-            }
-
-            10% {
-                transform: rotate(14.0deg)
-            }
-
-            20% {
-                transform: rotate(-8.0deg)
-            }
-
-            30% {
-                transform: rotate(14.0deg)
-            }
-
-            40% {
-                transform: rotate(-4.0deg)
-            }
-
-            50% {
-                transform: rotate(10.0deg)
-            }
-
-            60% {
-                transform: rotate(0.0deg)
-            }
-
-            100% {
-                transform: rotate(0.0deg)
-            }
-        }
-    </style>
 
     <div class="data-grid">
         <!-- Getting Started Checklist -->
-        <div class="panel">
-            <div class="panel-header">
-                <h3>Getting Started Guide</h3>
+        <div class="panel" style="border: 1px solid #f1f5f9; box-shadow: 0 4px 15px -3px rgba(0,0,0,0.03);">
+            <div class="panel-header" style="border-bottom: 1px solid #f8fafc; padding: 1.5rem;">
+                <h3 style="font-size: 1.1rem; font-weight: 700; color: #0f172a; letter-spacing: -0.01em;">Your Onboarding Guide</h3>
             </div>
             <div style="padding: 1.5rem;">
-                <div class="steps-vertical">
+                <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                    
                     <!-- Step 1 -->
-                    <div class="v-step {{ 'completed' if profile_completion == 100 else 'active' }}">
-                        <div class="v-step-icon"><i
-                                class="fas {{ 'fa-check' if profile_completion == 100 else 'fa-user-pen' }}"></i></div>
-                        <div class="v-step-content">
-                            <h4>Complete your profile</h4>
-                            <p>Update your details so caterers can contact you easily.</p>
-                            {% if profile_completion < 100 %} <a href="/customer/profile" class="btn-action-primary-sm"
-                                style="margin-top: 10px; display: inline-block;">Update Profile</a>
-                                {% endif %}
+                    <div style="display: flex; align-items: flex-start; gap: 1rem; padding-bottom: 1.25rem; border-bottom: 1px solid #f1f5f9;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: {{ '#10b981' if profile_completion == 100 else '#f8fafc' }}; color: {{ '#fff' if profile_completion == 100 else '#94a3b8' }}; border: 1px solid {{ '#10b981' if profile_completion == 100 else '#e2e8f0' }}; font-size: 0.85rem;">
+                            <i class="fas {{ 'fa-check' if profile_completion == 100 else 'fa-1' }}"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <h4 style="margin: 0 0 4px 0; font-size: 0.95rem; font-weight: 700; color: #0f172a;">Complete your profile</h4>
+                            <p style="margin: 0; font-size: 0.85rem; color: #64748b; line-height: 1.4;">Add your contact details so caterers can reach you.</p>
+                            {% if profile_completion < 100 %} 
+                            <a href="/customer/profile" style="display: inline-block; margin-top: 10px; font-size: 0.8rem; font-weight: 600; color: var(--primary-color); text-decoration: none;">Update Profile <i class="fas fa-arrow-right" style="font-size: 0.7rem; margin-left: 4px;"></i></a>
+                            {% endif %}
                         </div>
                     </div>
+                    
                     <!-- Step 2 -->
-                    <div class="v-step active">
-                        <div class="v-step-icon"><i class="fas fa-search"></i></div>
-                        <div class="v-step-content">
-                            <h4>Browse Caterers</h4>
-                            <p>Explore our wide selection of professional caterers.</p>
+                    <div style="display: flex; align-items: flex-start; gap: 1rem; padding-bottom: 1.25rem; border-bottom: 1px solid #f1f5f9;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: #f8fafc; color: #94a3b8; border: 1px solid #e2e8f0; font-size: 0.85rem;">
+                            <i class="fas fa-2"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <h4 style="margin: 0 0 4px 0; font-size: 0.95rem; font-weight: 700; color: #0f172a;">Browse Caterers</h4>
+                            <p style="margin: 0; font-size: 0.85rem; color: #64748b; line-height: 1.4;">Explore our curated selection of professional caterers.</p>
                         </div>
                     </div>
+
                     <!-- Step 3 -->
-                    <div class="v-step active">
-                        <div class="v-step-icon"><i class="fas fa-list-check"></i></div>
-                        <div class="v-step-content">
-                            <h4>Compare Services</h4>
-                            <p>Check out packages, food orders, and rentals.</p>
+                    <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: #f8fafc; color: #94a3b8; border: 1px solid #e2e8f0; font-size: 0.85rem;">
+                            <i class="fas fa-3"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <h4 style="margin: 0 0 4px 0; font-size: 0.95rem; font-weight: 700; color: #0f172a;">Request a Booking</h4>
+                            <p style="margin: 0; font-size: 0.85rem; color: #64748b; line-height: 1.4;">Select your desired package and secure your event date.</p>
                         </div>
                     </div>
-                    <!-- Step 4 -->
-                    <div class="v-step">
-                        <div class="v-step-icon"><i class="fas fa-calendar-plus"></i></div>
-                        <div class="v-step-content">
-                            <h4>Submit a Request</h4>
-                            <p>Book a caterer or request a custom quotation.</p>
-                        </div>
-                    </div>
+
                 </div>
 
-                <div style="margin-top: 2rem; text-align: center;">
-                    <a href="/customer/marketplace" class="btn-action-primary"><i class="fas fa-compass"></i> Start
-                        Exploring Caterers</a>
+                <div style="margin-top: 2rem;">
+                    <a href="/customer/marketplace" style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 0.85rem; background: #0f172a; color: #fff; text-decoration: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; transition: all 0.2s; box-shadow: 0 4px 10px rgba(15,23,42,0.15);">
+                        Explore Marketplace
+                    </a>
                 </div>
             </div>
         </div>
@@ -708,20 +669,36 @@
 
     <!-- Featured Caterers -->
     {% if featured_caterers %}
-    <div style="margin-top: 2rem; margin-bottom: 1rem;">
-        <h3 style="font-size: 1.2rem; font-weight: 800; color: #0f172a; margin-bottom: 1rem;">Featured Caterers to Start
-            With</h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem;">
+    <div style="margin-top: 2.5rem; margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.25rem;">
+            <div>
+                <h3 style="font-size: 1.35rem; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.02em;">Featured Caterers</h3>
+                <p style="margin: 4px 0 0; font-size: 0.9rem; color: #64748b;">Top-rated partners to elevate your event.</p>
+            </div>
+            <a href="/customer/marketplace" style="font-size: 0.85rem; font-weight: 600; color: var(--primary-color); text-decoration: none;">View All <i class="fas fa-arrow-right" style="font-size: 0.75rem; margin-left: 4px;"></i></a>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
             {% for cat in featured_caterers %}
-            <div class="panel"
-                style="padding: 1.25rem; display: flex; gap: 1rem; align-items: center; cursor: pointer; transition: transform 0.2s;"
-                onclick="location.href='/caterers/{{ cat.id }}'">
-                <img src="{{ cat.logo_url or 'https://via.placeholder.com/80' }}"
-                    style="width: 70px; height: 70px; border-radius: 12px; object-fit: cover;">
-                <div>
-                    <div style="font-weight: 800; color: #0f172a; font-size: 1rem;">{{ cat.business_name }}</div>
-                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;"><i class="fas fa-star"
-                            style="color:#fbbf24;"></i> {{ "%.1f"|format(cat.rating) }} Rating • {{ cat.city }}</div>
+            <div style="background: #fff; border: 1px solid #f1f5f9; border-radius: 16px; overflow: hidden; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 20px -5px rgba(0,0,0,0.03);" 
+                 onclick="location.href='/caterers/{{ cat.id }}'"
+                 onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 30px -10px rgba(0,0,0,0.08)';"
+                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 20px -5px rgba(0,0,0,0.03)';">
+                
+                <div style="height: 120px; background: url('{{ cat.cover_image_url or 'https://images.unsplash.com/photo-1555244162-803834f70033?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80' }}') center/cover; position: relative;">
+                    <div style="position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.9); backdrop-filter: blur(4px); padding: 4px 8px; border-radius: 100px; font-size: 0.75rem; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 4px;">
+                        <i class="fas fa-star" style="color: #fbbf24;"></i> {{ "%.1f"|format(cat.rating) }}
+                    </div>
+                </div>
+                
+                <div style="padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem; position: relative;">
+                    <img src="{{ cat.logo_url or 'https://ui-avatars.com/api/?name=' ~ (cat.business_name|urlencode) ~ '&background=f1f5f9' }}" style="width: 50px; height: 50px; border-radius: 10px; object-fit: cover; border: 2px solid #fff; margin-top: -2.5rem; background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+                    <div style="flex: 1; min-width: 0;">
+                        <h4 style="margin: 0 0 2px 0; font-size: 1rem; font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ cat.business_name }}</h4>
+                        <div style="font-size: 0.8rem; color: #64748b; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-location-dot" style="opacity: 0.6;"></i> {{ cat.city }}
+                        </div>
+                    </div>
                 </div>
             </div>
             {% endfor %}
@@ -729,39 +706,36 @@
     </div>
     {% endif %}
 
-    <!-- How it works visual timeline -->
-    <div class="panel" style="margin-top: 2rem; margin-bottom: 2rem;">
-        <div class="panel-header">
-            <h3>How Booking Works</h3>
+    <!-- How it works -->
+    <div style="margin-top: 2.5rem; margin-bottom: 2rem; background: #fff; border-radius: 16px; padding: 2rem; border: 1px solid #f1f5f9; box-shadow: 0 4px 20px -5px rgba(0,0,0,0.02);">
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <h3 style="font-size: 1.2rem; font-weight: 800; color: #0f172a; margin: 0;">How OccaServe Works</h3>
+            <p style="font-size: 0.9rem; color: #64748b; margin: 4px 0 0;">Booking your event is as easy as 1-2-3</p>
         </div>
-        <div style="padding: 2.5rem 1.5rem; display: flex; justify-content: space-between; position: relative;">
-            <div
-                style="position: absolute; top: 50%; left: 10%; right: 10%; height: 2px; background: #e2e8f0; z-index: 0; transform: translateY(-50%);">
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+            <div style="text-align: center; padding: 1rem;">
+                <div style="width: 56px; height: 56px; margin: 0 auto 1rem; background: #f8fafc; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #0f172a; font-size: 1.5rem;">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h4 style="margin: 0 0 6px 0; font-size: 1rem; font-weight: 700; color: #0f172a;">1. Discover</h4>
+                <p style="margin: 0; font-size: 0.85rem; color: #64748b; line-height: 1.5;">Find the perfect caterer that fits your budget and style.</p>
             </div>
-
-            <div style="position: relative; z-index: 1; text-align: center; background: #fff; padding: 0 10px;">
-                <div
-                    style="width: 48px; height: 48px; background: #f8fafc; border: 2px solid var(--up-emerald-500, #10b981); color: var(--up-emerald-600, #059669); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 1.2rem;">
-                    <i class="fas fa-search"></i></div>
-                <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a;">1. Discover</div>
+            
+            <div style="text-align: center; padding: 1rem;">
+                <div style="width: 56px; height: 56px; margin: 0 auto 1rem; background: #f8fafc; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #0f172a; font-size: 1.5rem;">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <h4 style="margin: 0 0 6px 0; font-size: 1rem; font-weight: 700; color: #0f172a;">2. Book</h4>
+                <p style="margin: 0; font-size: 0.85rem; color: #64748b; line-height: 1.5;">Select a package, customize your menu, and lock in the date.</p>
             </div>
-            <div style="position: relative; z-index: 1; text-align: center; background: #fff; padding: 0 10px;">
-                <div
-                    style="width: 48px; height: 48px; background: #f8fafc; border: 2px solid var(--up-emerald-500, #10b981); color: var(--up-emerald-600, #059669); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 1.2rem;">
-                    <i class="fas fa-list-check"></i></div>
-                <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a;">2. Select</div>
-            </div>
-            <div style="position: relative; z-index: 1; text-align: center; background: #fff; padding: 0 10px;">
-                <div
-                    style="width: 48px; height: 48px; background: #f8fafc; border: 2px solid var(--up-emerald-500, #10b981); color: var(--up-emerald-600, #059669); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 1.2rem;">
-                    <i class="fas fa-calendar-check"></i></div>
-                <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a;">3. Book</div>
-            </div>
-            <div style="position: relative; z-index: 1; text-align: center; background: #fff; padding: 0 10px;">
-                <div
-                    style="width: 48px; height: 48px; background: #f8fafc; border: 2px solid var(--up-emerald-500, #10b981); color: var(--up-emerald-600, #059669); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 1.2rem;">
-                    <i class="fas fa-glass-cheers"></i></div>
-                <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a;">4. Enjoy</div>
+            
+            <div style="text-align: center; padding: 1rem;">
+                <div style="width: 56px; height: 56px; margin: 0 auto 1rem; background: #f8fafc; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #0f172a; font-size: 1.5rem;">
+                    <i class="fas fa-glass-cheers"></i>
+                </div>
+                <h4 style="margin: 0 0 6px 0; font-size: 1rem; font-weight: 700; color: #0f172a;">3. Enjoy</h4>
+                <p style="margin: 0; font-size: 0.85rem; color: #64748b; line-height: 1.5;">Relax and let our professionals handle the food and setup.</p>
             </div>
         </div>
     </div>
@@ -959,32 +933,32 @@
             </div>
             <div class="qa-grid">
                 <a href="/customer/marketplace" class="qa-btn">
+                    <div class="qa-icon"><i class="fas fa-store"></i></div>
                     <div class="qa-info">
                         <b>Find Caterers</b>
-                        <span>Find and book caterers</span>
+                        <span>Browse marketplace</span>
                     </div>
-                    <i class="fas fa-chevron-right" style="margin-left:auto; color:var(--dm-slate-300);"></i>
+                </a>
+                <a href="/customer/marketplace?sort=rating&rating=4" class="qa-btn">
+                    <div class="qa-icon"><i class="fas fa-star"></i></div>
+                    <div class="qa-info">
+                        <b>Top Rated</b>
+                        <span>Best caterers</span>
+                    </div>
                 </a>
                 <a href="/customer/bookings" class="qa-btn">
+                    <div class="qa-icon"><i class="fas fa-calendar-check"></i></div>
                     <div class="qa-info">
                         <b>Track Bookings</b>
                         <span>View your booking status</span>
                     </div>
-                    <i class="fas fa-chevron-right" style="margin-left:auto; color:var(--dm-slate-300);"></i>
                 </a>
                 <a href="/customer/payments" class="qa-btn">
+                    <div class="qa-icon"><i class="fas fa-file-invoice-dollar"></i></div>
                     <div class="qa-info">
                         <b>Billing & Payments</b>
                         <span>View payments and receipts</span>
                     </div>
-                    <i class="fas fa-chevron-right" style="margin-left:auto; color:var(--dm-slate-300);"></i>
-                </a>
-                <a href="/customer/profile" class="qa-btn">
-                    <div class="qa-info">
-                        <b>Profile Settings</b>
-                        <span>Update your personal details</span>
-                    </div>
-                    <i class="fas fa-chevron-right" style="margin-left:auto; color:var(--dm-slate-300);"></i>
                 </a>
             </div>
         </div>

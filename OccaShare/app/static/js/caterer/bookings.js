@@ -851,7 +851,7 @@ window.viewCustomerKyc = function(event) {
         event.stopPropagation();
     }
     if (window.currentBookingTargetUserId && window.currentBookingTargetUserId !== 'undefined' && window.currentBookingTargetUserId !== '') {
-        window.location.href = `/caterer/compliance/view/${window.currentBookingTargetUserId}`;
+        window.openIframeModal(`/caterer/compliance/view/${window.currentBookingTargetUserId}?modal=true`, 'Customer KYC Audit');
     } else {
         alert('No KYC identity verification profile found for this customer (Walk-in or Unregistered).');
     }
@@ -896,11 +896,14 @@ function showBookingDetails(btn) {
     const isFoodOrder = data.isFoodOrder === 'true' || data.isFoodOrder === true;
     let titlePrefix = isFoodOrder ? 'Food Order #' : (data.status === 'pending_review' ? 'Inquiry Details #' : 'Booking #');
     document.getElementById('modalBookingId').innerText = titlePrefix + data.id;
+    const mbId = document.getElementById('modalBookingIdMobile');
+    if (mbId) mbId.innerText = (isFoodOrder ? 'Order #' : 'Booking #') + data.id;
     
     // Urgent Indicator in Modal Header
     const headerTitle = document.getElementById('modalBookingId');
     if (data.isUrgent === 'true') {
         headerTitle.innerHTML = `${titlePrefix}${data.id} <span style="background: #fff1f2; color: #e11d48; font-size: 0.65rem; padding: 2px 8px; border-radius: 50px; margin-left: 8px; border: 1px solid #fecdd3; vertical-align: middle;"><i class="fas fa-clock"></i> URGENT</span>`;
+        if (mbId) mbId.innerHTML = `${(isFoodOrder ? 'Order #' : 'Booking #')}${data.id} <span style="background: #fff1f2; color: #e11d48; font-size: 0.65rem; padding: 2px 8px; border-radius: 50px; margin-left: 8px; border: 1px solid #fecdd3; vertical-align: middle;"><i class="fas fa-clock"></i> URGENT</span>`;
     }
 
     document.getElementById('modalCustomer').innerText = data.customer;
@@ -972,8 +975,17 @@ function showBookingDetails(btn) {
     }
 
     var statusEl = document.getElementById('modalStatus');
-    statusEl.innerText = data.displayStatus || data.status.replace(/_/g, ' ').toUpperCase();
+    var statusElMobile = document.getElementById('modalStatusMobile');
+    var statusText = data.displayStatus || data.status.replace(/_/g, ' ').toUpperCase();
+    
+    statusEl.innerText = statusText;
     statusEl.className = 'badge-status';
+    
+    if (statusElMobile) {
+        statusElMobile.innerText = statusText;
+        statusElMobile.className = 'badge-status';
+    }
+    
     var statusMap = {
         'pending': 'badge-pending',
         'pending_quotation': 'badge-draft',
@@ -991,7 +1003,9 @@ function showBookingDetails(btn) {
         'completed': 'badge-completed',
         'cancelled': 'badge-cancelled'
     };
-    statusEl.classList.add(data.displayBadge || statusMap[data.status] || 'badge-draft');
+    var badgeClass = data.displayBadge || statusMap[data.status] || 'badge-draft';
+    statusEl.classList.add(badgeClass);
+    if (statusElMobile) statusElMobile.classList.add(badgeClass);
 
     var menuSource = document.getElementById('booking-items-' + data.id);
     var menuTarget = document.getElementById('modalMenuItems');
@@ -1052,21 +1066,29 @@ function showBookingDetails(btn) {
 
     // RISK ALERT HANDLING
     var riskAlert = document.getElementById('modalRiskAlert');
+    var riskAlertMobile = document.getElementById('modalRiskAlertMobile');
     if (riskAlert) {
+        let alertHtml = '';
         if (data.paymentStatus === 'expired') {
-            riskAlert.style.display = 'block';
-            riskAlert.innerHTML = '<span style="background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; padding: 4px 12px; border-radius: 50px; font-weight: 800; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-exclamation-triangle"></i> RESERVATION EXPIRED</span>';
-            riskAlert.style.background = 'transparent';
-            riskAlert.style.border = 'none';
-            riskAlert.style.padding = '0';
+            alertHtml = '<span style="background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; padding: 4px 12px; border-radius: 50px; font-weight: 800; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-exclamation-triangle"></i> RESERVATION EXPIRED</span>';
         } else if (['pending', 'pending_quotation', 'awaiting_payment', 'awaiting_caterer'].includes(data.status) && (data.isUrgent === 'true' || data.isUrgent === true)) {
+            alertHtml = '<span style="background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; padding: 4px 12px; border-radius: 50px; font-weight: 800; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-clock"></i> URGENT REQUEST</span>';
+        }
+        
+        if (alertHtml) {
             riskAlert.style.display = 'block';
-            riskAlert.innerHTML = '<span style="background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; padding: 4px 12px; border-radius: 50px; font-weight: 800; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-clock"></i> URGENT REQUEST</span>';
+            riskAlert.innerHTML = alertHtml;
             riskAlert.style.background = 'transparent';
             riskAlert.style.border = 'none';
             riskAlert.style.padding = '0';
+            
+            if (riskAlertMobile) {
+                riskAlertMobile.style.display = 'block';
+                riskAlertMobile.innerHTML = alertHtml;
+            }
         } else {
             riskAlert.style.display = 'none';
+            if (riskAlertMobile) riskAlertMobile.style.display = 'none';
         }
     }
 
@@ -1076,6 +1098,56 @@ function showBookingDetails(btn) {
     const isPackage = data.isPackage === 'true' || data.isPackage === true;
 
     const isRental = data.eventType === 'Equipment Rental';
+    
+    let nextStepMsg = 'No further action required.';
+    if (data.paymentStatus === 'expired') {
+        nextStepMsg = 'Reservation expired. Please cancel or archive this booking.';
+    } else if (data.status === 'pending') {
+        if (data.paymentStatus === 'proof_submitted') nextStepMsg = 'Customer submitted payment proof. Please verify and accept.';
+        else if (data.paymentStatus === 'reupload_requested') nextStepMsg = 'Re-upload requested. Waiting for customer.';
+        else nextStepMsg = 'Awaiting payment proof from customer.';
+    } else if (data.status === 'awaiting_caterer') {
+        nextStepMsg = 'Customer accepted quotation. Please sign the contract to finalize.';
+    } else if (data.status === 'confirmed') {
+        if (data.paymentStatus === 'balance_proof_submitted') nextStepMsg = 'Customer submitted final balance proof. Please verify.';
+        else if (isRental) nextStepMsg = 'Booking is confirmed. Prepare equipment for release.';
+        else nextStepMsg = 'Booking is confirmed. Start preparation when ready.';
+    } else if (data.status === 'preparing') {
+        if (data.venue === 'PICKUP') nextStepMsg = 'Mark items as ready for pickup.';
+        else if (isFoodOrder) nextStepMsg = 'Dispatch order for delivery.';
+        else nextStepMsg = 'Mark items as ready for delivery.';
+    } else if (data.status === 'ready_for_pickup') {
+        nextStepMsg = 'Waiting for customer to pick up the items.';
+    } else if (data.status === 'released') {
+        nextStepMsg = 'Equipment released. Awaiting return for inspection.';
+    } else if (data.status === 'ready_for_delivery') {
+        nextStepMsg = 'Mark as out for delivery.';
+    } else if (data.status === 'on_the_way') {
+        nextStepMsg = isPackage ? 'Arrive at the venue location.' : 'Deliver items to customer.';
+    } else if (data.status === 'arrived') {
+        nextStepMsg = isPackage ? 'Setup the event and start serving.' : 'Complete the delivery/order.';
+    } else if (data.status === 'setup_ongoing' || data.status === 'in_progress') {
+        if (data.paymentStatus === 'paid' || data.amount === "₱0.00" || data.paymentPlan === 'full') {
+            nextStepMsg = 'Event in progress. Mark as completed when done.';
+        } else {
+            if (data.paymentStatus === 'balance_proof_submitted') nextStepMsg = 'Verify final balance proof.';
+            else nextStepMsg = 'Event in progress. Waiting for final bill settlement.';
+        }
+    } else if (data.status === 'completed') {
+        nextStepMsg = 'Booking completed successfully.';
+    } else if (data.status === 'cancelled') {
+        nextStepMsg = 'Booking was cancelled.';
+    }
+    
+    var desktopNST = document.getElementById('desktopNextStepText');
+    var mobileNST = document.getElementById('mobileNextStepText');
+    if (desktopNST) desktopNST.innerText = nextStepMsg;
+    if (mobileNST) mobileNST.innerText = nextStepMsg;
+    
+    var mobileCST = document.getElementById('mobileCompactStatusText');
+    var mobileCNST = document.getElementById('mobileCompactNextStatusText');
+    if (mobileCST) mobileCST.innerText = data.displayStatus || data.status.replace(/_/g, ' ').toUpperCase();
+    if (mobileCNST) mobileCNST.innerText = nextStepMsg;
 
     if (actionsEl) {
         actionsEl.style.display = 'flex';
@@ -1093,9 +1165,9 @@ function showBookingDetails(btn) {
                         <h4 style="margin:0; font-size:0.85rem; color:#9a3412; font-weight:800;">UNVERIFIED CUSTOMER</h4>
                         <p style="margin:2px 0 0; font-size:0.75rem; color:#c2410c;">Audit their identity before accepting this booking to prevent fraud.</p>
                     </div>
-                    <a href="/caterer/compliance/view/${targetUserId}" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#fdba74; color:#9a3412;">
+                    <button type="button" onclick="window.openIframeModal('/caterer/compliance/view/${targetUserId}?modal=true', 'Customer KYC Audit')" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#fdba74; color:#9a3412; cursor:pointer;">
                         <i class="fas fa-search"></i> Audit Now
-                    </a>
+                    </button>
                 </div>
             `;
         }
@@ -1104,21 +1176,21 @@ function showBookingDetails(btn) {
         
         if (data.paymentStatus === 'expired') {
             actionsEl.innerHTML = `
-                <div style="width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; background: #fff1f2; padding: 1rem 1.25rem; border-radius: 12px; border: 1px solid #fecdd3;">
-                    <div style="display: flex; align-items: center; gap: 0.75rem; color: #881337; font-size: 0.85rem; font-weight: 600;">
-                        <div style="width: 36px; height: 36px; border-radius: 50%; background: #ffe4e6; display: flex; align-items: center; justify-content: center; color: #e11d48; flex-shrink: 0; font-size: 1rem;">
+                <div style="width: 100%; display: flex; flex-direction: column; gap: 1rem; background: #fff1f2; padding: 1rem; border-radius: 12px; border: 1px solid #fecdd3;">
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; color: #881337; font-size: 0.85rem; font-weight: 600; text-align: center;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: #ffe4e6; display: flex; align-items: center; justify-content: center; color: #e11d48; font-size: 1.2rem; margin: 0 auto;">
                             <i class="fas fa-clock"></i>
                         </div>
                         <div>
-                            <div style="font-weight: 800; color: #991b1b; margin-bottom: 2px;">48-Hour Reservation Window Expired</div>
-                            <div style="font-size: 0.8rem; color: #be123c; font-weight: 500;">The customer failed to submit their payment proof on time. This slot is no longer secured.</div>
+                            <div style="font-weight: 800; color: #991b1b; margin-bottom: 2px;">Reservation Expired</div>
+                            <div style="font-size: 0.8rem; color: #be123c; font-weight: 500;">Failed to submit payment proof on time. Slot is no longer secured.</div>
                         </div>
                     </div>
-                    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
-                        <button type="button" onclick="window.confirmRejectBooking(${data.id})" style="background: #e11d48; color: white; border: none; padding: 0.65rem 1.25rem; border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s; box-shadow: 0 2px 6px rgba(225,29,72,0.25);">
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <button type="button" onclick="window.confirmRejectBooking(${data.id})" style="background: #e11d48; color: white; border: none; padding: 0.65rem 1rem; border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.2s; box-shadow: 0 2px 6px rgba(225,29,72,0.25); width: 100%;">
                             <i class="fas fa-times-circle"></i> Cancel Booking
                         </button>
-                        <button type="button" onclick="window.confirmArchiveBooking(${data.id})" style="background: white; color: #475569; border: 1px solid #cbd5e1; padding: 0.65rem 1.25rem; border-radius: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
+                        <button type="button" onclick="window.confirmArchiveBooking(${data.id})" style="background: white; color: #475569; border: 1px solid #cbd5e1; padding: 0.65rem 1rem; border-radius: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.2s; width: 100%;">
                             <i class="fas fa-archive"></i> Archive Record
                         </button>
                     </div>
@@ -1149,7 +1221,7 @@ function showBookingDetails(btn) {
             
         } else if (data.status === 'awaiting_caterer') {
             actionsEl.innerHTML = `
-                <a href="/caterer/bookings/${data.id}/sign" class="btn-footer-action btn-status-confirm" style="text-decoration:none;"><i class="fas fa-pen-nib"></i> Sign Contract Now</a>
+                <button type="button" onclick="window.openIframeModal('/caterer/bookings/${data.id}/sign?modal=true', 'Sign Service Agreement')" class="btn-footer-action btn-status-confirm"><i class="fas fa-pen-nib"></i> Sign Contract Now</button>
                 <button type="button" class="btn-footer-action" onclick="window.confirmRejectBooking(${data.id})" style="background: white; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600;"><i class="fas fa-times-circle"></i> Reject Booking</button>
             `;
             
@@ -1230,12 +1302,24 @@ function showBookingDetails(btn) {
             `;
         }
 
-        const actionCenterWrapper = document.getElementById('actionCenterWrapper');
-        if (actionCenterWrapper) {
-            const hasActions = actionsEl.innerHTML.trim() !== '';
-            actionCenterWrapper.style.display = hasActions ? 'block' : 'none';
-            if (hasActions && typeof window.toggleActionCenter === 'function') {
-                window.toggleActionCenter(true);
+        const oldWrapper = document.getElementById('actionCenterWrapper');
+        const hasActions = actionsEl.innerHTML.trim() !== '';
+        if (oldWrapper) {
+            oldWrapper.style.display = 'none'; // Ensure old desktop wrapper is hidden on new UI
+        }
+        
+        // Reset Mobile Sticky Footer Actions
+        const actionCard = document.getElementById('actionCardSticky');
+        const actionIcon = document.getElementById('mobileActionToggleIcon');
+        const actionText = document.getElementById('mobileActionToggleText');
+        
+        if (actionCard) {
+            actionCard.style.display = hasActions ? 'block' : 'none';
+            if (hasActions) {
+                // Ensure expanded by default so user knows actions are required
+                actionCard.classList.remove('collapsed');
+                if (actionIcon) actionIcon.className = 'fas fa-chevron-down';
+                if (actionText) actionText.innerText = 'Hide Actions';
             }
         }
     }
@@ -1247,12 +1331,40 @@ function showBookingDetails(btn) {
     if (payRefEl) {
         if (data.paymentRef && data.paymentRef.trim() !== '') {
             payRefEl.innerText = `Ref: ${data.paymentRef}`;
-            payRefEl.style.display = 'block';
+            payRefEl.style.display = 'inline-block';
         } else {
             payRefEl.style.display = 'none';
         }
     }
+    
     document.getElementById('modalTotalAmount').innerText = data.amount;
+    var totalElMobile = document.getElementById('modalTotalAmountMobile');
+    if (totalElMobile) totalElMobile.innerText = data.amount;
+    
+    // Overview Cards logic
+    let totalRaw = parseFloat(data.totalRawAmount) || 0;
+    let paidRaw = 0;
+    if (data.paymentStatus === 'paid' || data.paymentStatus === 'fully_paid' || data.status === 'completed') {
+        paidRaw = totalRaw;
+    } else if (data.status !== 'pending' && data.status !== 'awaiting_payment' && data.status !== 'pending_quotation' && data.status !== 'awaiting_caterer') {
+        paidRaw = totalRaw * 0.5;
+    }
+    let balanceRaw = totalRaw - paidRaw;
+    const formatMoney = (val) => '₱' + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    
+    let dtTotal = document.getElementById('desktopOverviewTotal');
+    let dtPaid = document.getElementById('desktopOverviewPaid');
+    let dtBalance = document.getElementById('desktopOverviewBalance');
+    if (dtTotal) dtTotal.innerText = formatMoney(totalRaw);
+    if (dtPaid) dtPaid.innerText = formatMoney(paidRaw);
+    if (dtBalance) dtBalance.innerText = formatMoney(balanceRaw);
+    
+    let moTotal = document.getElementById('mobileOverviewTotal');
+    let moPaid = document.getElementById('mobileOverviewPaid');
+    let moBalance = document.getElementById('mobileOverviewBalance');
+    if (moTotal) moTotal.innerText = formatMoney(totalRaw);
+    if (moPaid) moPaid.innerText = formatMoney(paidRaw);
+    if (moBalance) moBalance.innerText = formatMoney(balanceRaw);
 
     // --- PROFIT SUMMARY INJECTION FOR COMPLETED BOOKINGS ---
     const profitSummary = document.getElementById('completedProfitSummary');
@@ -1333,6 +1445,10 @@ function showBookingDetails(btn) {
     }
 
     var pStatusEl = document.getElementById('modalPaymentStatus');
+    var pStatusElText = document.getElementById('modalPaymentStatusText');
+    var pStatusBadge = document.getElementById('modalPaymentStatusBadge');
+    var pStatusMobile = document.getElementById('modalPaymentStatusMobile');
+    
     var pLabels = { 
         'paid': 'Fully Paid', 
         'deposit_paid': 'Downpayment Paid', 
@@ -1343,9 +1459,12 @@ function showBookingDetails(btn) {
         'balance_reupload_requested': 'Balance Re-upload Requested',
         'expired': 'Overdue / Expired'
     };
-    if (pStatusEl) {
-        pStatusEl.innerText = pLabels[data.paymentStatus] || data.paymentStatus.replace(/_/g, ' ').toUpperCase();
-    }
+    
+    var labelText = pLabels[data.paymentStatus] || data.paymentStatus.replace(/_/g, ' ').toUpperCase();
+    if (pStatusEl) pStatusEl.innerText = labelText;
+    if (pStatusElText) pStatusElText.innerText = labelText;
+    if (pStatusBadge) pStatusBadge.innerText = labelText;
+    if (pStatusMobile) pStatusMobile.innerText = labelText;
 
     // Handle Checklist Display Logic
     const checklistSection = document.getElementById('modalChecklistSection');
@@ -2891,4 +3010,34 @@ window.submitRentalInspection = async function(e) {
         btn.disabled = false;
         btn.innerHTML = 'Complete Return';
     }
+};
+
+window.toggleMobileActions = function() {
+    const card = document.getElementById('actionCardSticky');
+    const icon = document.getElementById('mobileActionToggleIcon');
+    const text = document.getElementById('mobileActionToggleText');
+    
+    if (card && icon && text) {
+        if (card.classList.contains('collapsed')) {
+            card.classList.remove('collapsed');
+            icon.className = 'fas fa-chevron-down';
+            text.innerText = 'Hide Actions';
+        } else {
+            card.classList.add('collapsed');
+            icon.className = 'fas fa-chevron-up';
+            text.innerText = 'Show Actions';
+        }
+    }
+};
+
+window.openIframeModal = function(url, title) {
+    const modal = document.getElementById('iframeModal');
+    if (!modal) return;
+    
+    document.getElementById('iframeModalTitle').innerText = title || 'View Document';
+    document.getElementById('iframeModalLoading').style.display = 'flex';
+    document.getElementById('iframeModalContent').src = url;
+    
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('active'), 10);
 };

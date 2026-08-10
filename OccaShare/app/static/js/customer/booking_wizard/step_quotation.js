@@ -174,7 +174,7 @@ window.setDPTier = async function (percent) {
     const input = document.getElementById('dp-percent-input');
     
     // UI Feedback for options
-    document.querySelectorAll('.dp-option-landscape').forEach(opt => {
+    document.querySelectorAll('.dp-card-clean').forEach(opt => {
         opt.classList.remove('active');
         if (opt.querySelector('.dp-pct').textContent.includes(percent + '%')) {
             opt.classList.add('active');

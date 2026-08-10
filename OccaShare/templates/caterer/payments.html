@@ -5,138 +5,55 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/payments.css') }}?v=3.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/index.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/dashboard_premium.css') }}">
 <style>
-    /* Bulletproof Fallback Styles for the Withdraw Panel */
-    .pay-withdraw-panel {
-        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
-        padding: 2rem 2.5rem !important;
-        border-radius: 24px !important;
-        margin-bottom: 2.5rem !important;
-        color: white !important;
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        box-shadow: 0 20px 40px rgba(var(--primary-color-rgb), 0.25) !important;
-        position: relative !important;
-        overflow: hidden !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        width: 100% !important;
+    .pay-page-header {
+        margin-bottom: 2rem;
     }
-
-    .pay-withdraw-action {
-        display: flex !important;
-        align-items: center !important;
-        gap: 3rem !important;
-        background: rgba(255, 255, 255, 0.1) !important;
-        backdrop-filter: blur(10px) !important;
-        -webkit-backdrop-filter: blur(10px) !important;
-        padding: 1.25rem 2rem !important;
-        border-radius: 20px !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    .pay-page-header h1 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: var(--color-neutral-900);
+        margin-bottom: 0.2rem;
     }
-
-    .btn-withdraw {
-        padding: 0.875rem 1.75rem !important;
-        background: white !important;
-        color: var(--primary-color) !important;
-        border: none !important;
-        border-radius: 12px !important;
-        font-weight: 800 !important;
-        font-size: 0.95rem !important;
-        cursor: pointer !important;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        gap: 0.75rem !important;
+    .pay-page-header p {
+        color: var(--color-neutral-500);
+        font-size: 0.9rem;
+        margin: 0;
     }
-
-    /* Fix Export Dropdown Position */
-    .pay-header-actions {
-        position: relative !important;
-    }
-
-    /* Fix Table Overlap and Squeezing */
-    .pay-table-scroll { 
-        width: 100%; 
-        overflow-x: auto; 
-        -webkit-overflow-scrolling: touch; 
-        padding-bottom: 12rem; /* Allow space for dropdown */
-    }
-    .pay-table th, .pay-table td { 
-        white-space: nowrap; 
-    }
-    
-    /* Ensure action dropdowns aren't clipped */
-    .pay-action-wrapper {
-        position: relative;
-    }
-
-    /* ══ CLEAN UI OVERRIDES ══════════════════════════════════════ */
-    .pay-table {
-        border-spacing: 0 !important;
-        border-collapse: collapse !important;
-    }
-    .pay-table th {
-        padding: 0.75rem 1.25rem !important;
-        font-size: 0.68rem !important;
-        font-weight: 700 !important;
-        color: #94a3b8 !important;
-        letter-spacing: 0.07em !important;
-        background: #f8fafc !important;
-        border-bottom: 1px solid #f0f4f8 !important;
-        text-transform: uppercase !important;
-    }
-    .payment-row td {
-        padding: 0.9rem 1.25rem !important;
-        border-bottom: 1px solid #f4f6f9 !important;
-        vertical-align: middle !important;
-    }
-    .payment-row:hover {
-        background: #fafbfd !important;
-        box-shadow: none !important;
-    }
-    .payment-row:last-child td { border-bottom: none !important; }
-
-    .pay-customer-name { font-size: 0.88rem !important; font-weight: 700 !important; color: #0f172a !important; display: block; }
-    .pay-booking-ref { font-size: 0.73rem !important; color: #94a3b8 !important; font-weight: 400 !important; display: block; margin-top: 2px; }
-
-    .pay-event-name { font-size: 0.88rem !important; font-weight: 700 !important; color: #0f172a !important; }
-    .amount-pro { font-size: 0.92rem !important; font-weight: 700 !important; color: #0f172a !important; }
-    
-    .pay-id {
-        font-size: 0.78rem !important;
-        font-weight: 600 !important;
-        color: #64748b !important;
-        letter-spacing: 0.04em !important;
-        text-transform: uppercase !important;
-    }
-
-    /* ══ STATUS BADGES (Synced with Bookings) ════════════════════ */
-    .badge-status {
-        display: inline-flex;
+    .pay-toolbar-actions {
+        display: flex;
         align-items: center;
-        gap: 5px;
-        padding: 4px 10px !important;
-        border-radius: 6px !important;
-        font-size: 0.72rem !important;
-        font-weight: 600 !important;
-        text-transform: none !important;
-        letter-spacing: 0 !important;
+        gap: 1rem;
+    }
+    .pay-filter-select {
+        padding: 0.5rem 1rem;
+        border-radius: var(--border-radius, 8px);
+        border: 1px solid var(--color-neutral-200);
+        font-weight: 600;
+        color: var(--color-neutral-700);
+        outline: none;
+    }
+    .pay-dropdown-menu { display: none; position: absolute; right: 0; top: calc(100% + 5px); background: white; border: 1px solid #e2e8f0; border-radius: var(--border-radius, 8px); box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 0.5rem; z-index: 100; min-width: 180px; }
+    .pay-dropdown-menu.active { display: block; }
+    .pay-dropdown-item { display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.5rem 1rem; background: none; border: none; text-align: left; font-size: 0.85rem; font-weight: 600; cursor: pointer; border-radius: 6px; }
+    .pay-dropdown-item:hover { background: var(--color-neutral-50); color: var(--primary-color); }
+    .pay-header-actions { position: relative; }
+    .pay-action-wrapper { position: relative; }
+    .pay-action-btn { background: none; border: none; cursor: pointer; color: var(--color-neutral-500); padding: 0.5rem; }
+    .pay-action-btn:hover { color: var(--primary-color); }
+
+    /* Ensure Action Dropdowns Aren't Clipped */
+    .table-container { 
+        padding-bottom: 8rem !important; /* Allow space for dropdowns */
+    }
+
+    /* Prevent Messy Wrapping on Desktop */
+    .premium-table th, .premium-table td {
         white-space: nowrap;
     }
-    .badge-draft      { background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
-    .badge-pending    { background: #fff7ed; color: #c2410c; border: 1px solid #fde8cc; }
-    .badge-payment    { background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; }
-    .badge-confirmed  { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
-    .badge-preparing  { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
-    .badge-active     { background: #f0f9ff; color: #0284c7; border: 1px solid #bae6fd; }
-    .badge-in_progress{ background: #fff7ed; color: #c2410c; border: 1px solid #fde8cc; }
-    .badge-completed  { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
-    .badge-cancelled  { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
-    .badge-reupload   { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
-    .pulse-update     { animation: bk-blink 2s infinite; }
-    @keyframes bk-blink { 0%,100%{opacity:1} 50%{opacity:.55} }
+
 
 </style>
 {% endblock %}
@@ -169,17 +86,17 @@
 
 <div class="pay-dashboard-container" style="padding: 0 5px;">
     <!-- Platform Dues Panel -->
-    <div class="pay-withdraw-panel" style="background: linear-gradient(135deg, #7f1d1d, #991b1b) !important;">
+    <div class="dash-card" style="background: white; border: 1px solid var(--primary-color); border-left: 6px solid var(--primary-color); padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
         <div class="pay-withdraw-info">
-            <h2 style="color: white; margin-bottom: 5px;">Outstanding Platform Dues</h2>
-            <p style="color: rgba(255,255,255,0.85); font-size: 0.9rem;">This is your accumulated commission owed to the platform for successful bookings.</p>
+            <h2 style="color: var(--color-neutral-900); margin: 0 0 5px 0; font-size: 1.25rem;">Platform Fees Due</h2>
+            <p style="color: var(--color-neutral-500); font-size: 0.9rem; margin: 0;">These are the fees you owe to the platform for completed bookings.</p>
         </div>
-        <div class="pay-withdraw-action" style="background: rgba(0, 0, 0, 0.2) !important;">
-            <div class="pay-withdrawable-amount">
-                <div class="label" style="font-size: 0.7rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 700;">Amount Due</div>
-                <div class="value" style="font-size: 2rem; font-weight: 900; color: white;">₱{{ "{:,.2f}".format(outstanding_balance) }}</div>
+        <div style="display: flex; align-items: center; gap: 1.5rem;">
+            <div style="text-align: right;">
+                <div style="font-size: 0.7rem; color: var(--color-neutral-500); text-transform: uppercase; font-weight: 700;">Amount Due</div>
+                <div style="font-size: 1.75rem; font-weight: 900; color: var(--color-neutral-900);">₱{{ "{:,.2f}".format(outstanding_balance) }}</div>
             </div>
-            <button class="btn-withdraw" id="btnSettleDues" {% if outstanding_balance <= 0 %}disabled{% endif %} onclick="openSettleModal()" style="color: #991b1b !important;">
+            <button class="btn-primary-pro" id="btnSettleDues" {% if outstanding_balance <= 0 %}disabled{% endif %} onclick="openSettleModal()">
                 <i class="fas fa-file-invoice-dollar"></i> Settle Dues
             </button>
         </div>
@@ -210,47 +127,47 @@
         </div>
     </div>
 
-    <div class="pay-stats-grid">
-        <div class="pay-stat-card pay-stat-released">
-            <div class="pay-stat-icon pay-icon-green"><i class="fas fa-coins"></i></div>
-            <div class="pay-stat-info">
-                <div class="pay-stat-label">Lifetime Revenue</div>
-                <div class="pay-stat-value">₱{{ "{:,.2f}".format(lifetime_revenue) }}</div>
-                <div class="pay-stat-hint">Gross sales on OccaServe</div>
+    <!-- Dashboard KPI Grid -->
+    <div class="kpi-grid-clean" style="margin-bottom: 2rem;">
+        <div class="kpi-card-clean">
+            <div class="kpi-info">
+                <span class="kpi-label">Lifetime Revenue</span>
+                <span class="kpi-value">₱{{ "{:,.2f}".format(lifetime_revenue) }}</span>
+                <span class="trend-badge">Gross sales</span>
             </div>
+            <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: #059669;"><i class="fas fa-coins"></i></div>
         </div>
-        <div class="pay-stat-card pay-stat-escrow">
-            <div class="pay-stat-icon pay-icon-amber"><i class="fas fa-file-invoice-dollar"></i></div>
-            <div class="pay-stat-info">
-                <div class="pay-stat-label">Commissions Paid</div>
-                <div class="pay-stat-value">₱{{ "{:,.2f}".format(total_commission_paid) }}</div>
-                <div class="pay-stat-hint">Total dues settled to platform</div>
+        <div class="kpi-card-clean">
+            <div class="kpi-info">
+                <span class="kpi-label">Commissions Paid</span>
+                <span class="kpi-value">₱{{ "{:,.2f}".format(total_commission_paid) }}</span>
+                <span class="trend-badge">Platform fees</span>
             </div>
+            <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.1); color: #d97706;"><i class="fas fa-file-invoice-dollar"></i></div>
         </div>
-        <div class="pay-stat-card pay-stat-active">
-            <div class="pay-stat-icon pay-icon-gray"><i class="fas fa-calendar-check"></i></div>
-            <div class="pay-stat-info">
-                <div class="pay-stat-label">Active Bookings</div>
-                <div class="pay-stat-value">{{ active_count }}</div>
-                <div class="pay-stat-hint">Ongoing event contracts</div>
+        <div class="kpi-card-clean">
+            <div class="kpi-info">
+                <span class="kpi-label">Active Bookings</span>
+                <span class="kpi-value">{{ active_count }}</span>
+                <span class="trend-badge">Ongoing contracts</span>
             </div>
+            <div class="kpi-icon" style="background: rgba(100, 116, 139, 0.1); color: #475569;"><i class="fas fa-calendar-check"></i></div>
         </div>
-        <div class="pay-stat-card pay-stat-payout">
-            <div class="pay-stat-icon pay-icon-purple"><i class="fas fa-clock"></i></div>
-            <div class="pay-stat-info">
-                <div class="pay-stat-label">Billing Cycle</div>
-                <div class="pay-stat-value" style="font-size: 1rem; color: #475569;">End of Month</div>
-                <div class="pay-stat-hint">Platform fee settlement</div>
+        <div class="kpi-card-clean">
+            <div class="kpi-info">
+                <span class="kpi-label">Billing Cycle</span>
+                <span class="kpi-value" style="font-size: 1.1rem; color: #475569;">End of Month</span>
+                <span class="trend-badge">Next settlement</span>
             </div>
+            <div class="kpi-icon" style="background: rgba(99, 102, 241, 0.1); color: #4f46e5;"><i class="fas fa-clock"></i></div>
         </div>
     </div>
 
 <!-- Main Table Card -->
-<div class="pay-card">
-    <div class="pay-section-header">
+<div class="dash-card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem;">
         <div class="pay-header-left">
-            <i class="fas fa-history"></i>
-            <h3>Transaction History</h3>
+            <h3 class="card-title"><i class="fas fa-history" style="margin-right: 8px;"></i> Transaction History</h3>
         </div>
         <div class="pay-toolbar-actions">
             <input type="hidden" id="paymentSearch">
@@ -266,38 +183,47 @@
 
     <!-- Table -->
     {% if bookings %}
-    <div class="pay-table-scroll">
-        <table class="pay-table">
+    <div class="table-container" style="padding: 0 1.5rem 1.5rem 1.5rem; overflow-x: auto;">
+        <table class="premium-table" style="border-collapse: collapse; border-spacing: 0; min-width: 800px;">
             <thead>
                 <tr>
-                    <th>Ref ID</th>
-                    <th>Customer</th>
-                    <th>Event Details</th>
-                    <th>Amount</th>
+                    <th>Payment ID</th>
+                    <th>Customer Name</th>
+                    <th>Event Type</th>
+                    <th>Total Amount</th>
                     <th>Method</th>
-                    <th>Date</th>
+                    <th>Date Created</th>
                     <th>Status</th>
-                    <th class="pay-th-right">Actions</th>
+                    <th style="text-align: right;">Actions</th>
                 </tr>
             </thead>
             <tbody id="paymentsTableBody">
                 {% for b in bookings %}
-                <tr class="payment-row" data-status="
+                <tr class="premium-row" data-status="
                     {% if b.payment_status == 'paid' %}completed
                     {% elif b.payment_status == 'deposit_paid' %}partial
                     {% else %}pending{% endif %}">
-                    <td><span class="pay-id payment-id">PAY-{{ "%03d"|format(b.id) }}</span></td>
-                    <td>
-                        <div class="pay-customer-cell">
-                            <span class="pay-customer-name cust-name">{{ b.user.first_name }} {{ b.user.last_name }}</span>
-                            <span class="pay-booking-ref bk-id">{% if b.document_type == 'invoice' %}Order #ORD-{% else %}Booking #BK-{% endif %}{{ b.id }}</span>
-                        </div>
+                    <td class="premium-cell" data-label="Payment ID">
+                        <span class="pay-id payment-id" style="font-weight: 700; color: #0f172a; font-size: 0.88rem;">PAY-{{ "%03d"|format(b.id) }}</span>
                     </td>
-                    <td><span class="pay-event-name">{{ b.event_name or b.event_type }}</span></td>
-                    <td><span class="pay-amount amount-pro">₱{{ "{:,.0f}".format(b.total_amount or 0) }}</span></td>
-                    <td><span class="pay-method">{{ b.payment_method or 'Direct' }}</span></td>
-                    <td><span class="pay-date">{{ b.created_at.strftime('%b %d, %Y') }}</span></td>
-                    <td>
+                    <td class="premium-cell" data-label="Customer Name">
+                        <span class="pay-customer-name cust-name" style="font-weight: 600; color: #334155; font-size: 0.85rem;">{{ b.user.first_name }} {{ b.user.last_name }}</span>
+                        <!-- Hidden for JS Export -->
+                        <span class="pay-booking-ref bk-id" style="display: none;">{% if b.document_type == 'invoice' %}Order #ORD-{% else %}Booking #BK-{% endif %}{{ b.id }}</span>
+                    </td>
+                    <td class="premium-cell" data-label="Event Type">
+                        <span class="pay-event-name" style="font-weight: 600; color: #334155; font-size: 0.85rem;">{{ b.event_name or b.event_type }}</span>
+                    </td>
+                    <td class="premium-cell" data-label="Total Amount">
+                        <span class="amount-pro" style="font-weight: 700; color: #0f172a; font-size: 0.92rem;">₱{{ "{:,.0f}".format(b.total_amount or 0) }}</span>
+                    </td>
+                    <td class="premium-cell" data-label="Method">
+                        <span class="pay-method" style="font-weight: 600; color: #334155; font-size: 0.85rem;">{{ b.payment_method or 'Direct' }}</span>
+                    </td>
+                    <td class="premium-cell" data-label="Date Created">
+                        <span class="pay-date" style="font-weight: 700; color: #0f172a; font-size: 0.88rem;">{{ b.created_at.strftime('%b %d, %Y') }}</span>
+                    </td>
+                    <td class="premium-cell" data-label="Status">
                         {% set signed_dt = None %}
                         {% if b.contract and b.contract.customer_signed_at %}
                             {% set signed_dt = b.contract.customer_signed_at %}
@@ -309,59 +235,59 @@
                             {% set signed_dt = b.updated_at %}
                         {% endif %}
 
-                        {% set badge_class = 'badge-draft' %}
+                        {% set badge_class = 'ps-badge-pending' %}
                         {% set status_label = b.status.replace('_', ' ').title() if b.status else 'Unknown' %}
                         
                         {% if b.status == 'pending' %}
                             {% if b.payment_status == 'proof_submitted' %}
-                                {% set badge_class = 'badge-payment pulse-update' %}
+                                {% set badge_class = 'ps-badge-pending pulse-update' %}
                                 {% set status_label = 'Verify Payment' %}
                             {% else %}
-                                {% set badge_class = 'badge-pending timer-overdue-check' %}
+                                {% set badge_class = 'ps-badge-pending timer-overdue-check' %}
                                 {% set status_label = 'Pending Pay' %}
                             {% endif %}
                         {% elif b.status == 'confirmed' %}
                             {% if b.payment_status == 'balance_proof_submitted' %}
-                                {% set badge_class = 'badge-payment pulse-update' %}
+                                {% set badge_class = 'ps-badge-pending pulse-update' %}
                                 {% set status_label = 'Verify Balance' %}
                             {% else %}
-                                {% set badge_class = 'badge-confirmed' %}
+                                {% set badge_class = 'ps-badge-confirmed' %}
                                 {% set status_label = 'Confirmed' %}
                             {% endif %}
                         {% elif b.status == 'pending_quotation' %}
-                            {% set badge_class = 'badge-draft' %}
+                            {% set badge_class = 'ps-badge-pending' %}
                             {% set status_label = 'Draft' %}
                         {% elif b.status in ['pending_review', 'under_review'] %}
-                            {% set badge_class = 'badge-pending pulse-update' %}
+                            {% set badge_class = 'ps-badge-pending pulse-update' %}
                             {% set status_label = 'New Inquiry' %}
                         {% elif b.status == 'quotation_phase' %}
-                            {% set badge_class = 'badge-draft' %}
+                            {% set badge_class = 'ps-badge-pending' %}
                             {% set status_label = 'Quoted' %}
                         {% elif b.status == 'awaiting_caterer' %}
-                            {% set badge_class = 'badge-pending' %}
+                            {% set badge_class = 'ps-badge-pending' %}
                             {% set status_label = 'To Sign' %}
                         {% elif b.status in ['awaiting_payment', 'pending_payment'] %}
-                            {% set badge_class = 'badge-payment timer-overdue-check' %}
+                            {% set badge_class = 'ps-badge-pending timer-overdue-check' %}
                         {% elif b.status == 'preparing' %}
-                            {% set badge_class = 'badge-preparing' %}
+                            {% set badge_class = 'ps-badge-pending' %}
                         {% elif b.status in ['on_the_way', 'ready_for_delivery', 'ready_for_pickup', 'arrived'] %}
-                            {% set badge_class = 'badge-active' %}
+                            {% set badge_class = 'ps-badge-confirmed' %}
                         {% elif b.status in ['in_progress', 'setup_ongoing'] %}
-                            {% set badge_class = 'badge-in_progress' %}
+                            {% set badge_class = 'ps-badge-pending' %}
                         {% elif b.status == 'completed' %}
-                            {% set badge_class = 'badge-completed' %}
+                            {% set badge_class = 'ps-badge-confirmed' %}
                         {% elif b.status == 'cancelled' %}
-                            {% set badge_class = 'badge-cancelled' %}
+                            {% set badge_class = 'ps-badge-cancelled' %}
                         {% endif %}
 
                         {% if b.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
-                            {% set badge_class = 'badge-reupload' %}
+                            {% set badge_class = 'ps-badge-cancelled' %}
                             {% set status_label = 'Re-upload' %}
                         {% endif %}
                         
-                        <span class="badge-status {{ badge_class }}" data-start="{{ signed_dt.isoformat() if signed_dt else '' }}">{{ status_label }}</span>
+                        <span class="premium-status-badge {{ badge_class }}" data-start="{{ signed_dt.isoformat() if signed_dt else '' }}" style="display: inline-flex; align-items: center; gap: 4px;">{{ status_label }}</span>
                     </td>
-                    <td class="pay-th-right">
+                    <td class="premium-cell" style="text-align: right;">
                         <div class="pay-action-wrapper action-dropdown-container">
                             <button class="pay-action-btn" onclick="toggleActionMenu('{{ b.id }}', event)">
                                 <i class="fas fa-ellipsis-v"></i>
@@ -425,11 +351,10 @@
 </div>
 
 <!-- Billing & Statements Card -->
-<div class="pay-card" style="margin-top: 2.5rem;">
-    <div class="pay-section-header">
+<div class="dash-card" style="margin-top: 2.5rem;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem;">
         <div class="pay-header-left">
-            <i class="fas fa-file-invoice" style="color: var(--secondary-color);"></i>
-            <h3>Billing & Statements</h3>
+            <h3 class="card-title"><i class="fas fa-file-invoice" style="margin-right: 8px; color: var(--secondary-color);"></i> Billing & Statements</h3>
         </div>
         <div class="pay-toolbar-actions">
             <span style="font-size: 0.75rem; color: var(--color-neutral-400); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Commission Invoices</span>
@@ -437,8 +362,8 @@
     </div>
 
     {% if invoices %}
-    <div class="pay-table-scroll">
-        <table class="pay-table">
+    <div class="table-container" style="padding: 0 1.5rem 1.5rem 1.5rem; overflow-x: auto;">
+        <table class="premium-table" style="border-collapse: collapse; border-spacing: 0; min-width: 800px;">
             <thead>
                 <tr>
                     <th>Invoice ID</th>
@@ -451,19 +376,27 @@
             </thead>
             <tbody>
                 {% for inv in invoices %}
-                <tr>
-                    <td><span class="pay-id" style="background: var(--color-neutral-100); color: var(--color-neutral-700);">INV-{{ "%04d"|format(inv.id) }}</span></td>
-                    <td><span style="font-weight: 700; color: var(--color-neutral-800);">{{ inv.billing_period }}</span></td>
-                    <td><span class="pay-amount" style="font-weight: 800; color: var(--color-neutral-900);">₱{{ "{:,.2f}".format(inv.amount) }}</span></td>
-                    <td><span class="pay-date">{{ inv.due_date.strftime('%b %d, %Y') if inv.due_date else '---' }}</span></td>
-                    <td>
+                <tr class="premium-row">
+                    <td class="premium-cell" data-label="Invoice ID">
+                        <span class="pay-id" style="font-weight: 700; color: #0f172a; font-size: 0.88rem;">INV-{{ "%04d"|format(inv.id) }}</span>
+                    </td>
+                    <td class="premium-cell" data-label="Billing Period">
+                        <span style="font-weight: 600; color: #334155; font-size: 0.85rem;">{{ inv.billing_period }}</span>
+                    </td>
+                    <td class="premium-cell" data-label="Amount">
+                        <span class="pay-amount" style="font-weight: 700; color: #0f172a; font-size: 0.92rem;">₱{{ "{:,.2f}".format(inv.amount) }}</span>
+                    </td>
+                    <td class="premium-cell" data-label="Due Date">
+                        <span class="pay-date" style="font-weight: 700; color: #0f172a; font-size: 0.88rem;">{{ inv.due_date.strftime('%b %d, %Y') if inv.due_date else '---' }}</span>
+                    </td>
+                    <td class="premium-cell" data-label="Status">
                         {% if inv.status == 'paid' %}
-                            <span class="pay-status-badge" style="background: #ecfdf5; color: #059669; border-color: var(--accent-color);">Paid</span>
+                            <span class="premium-status-badge ps-badge-confirmed">Paid</span>
                         {% else %}
-                            <span class="pay-status-badge" style="background: #fffbeb; color: #d97706; border-color: var(--accent-color);">Pending</span>
+                            <span class="premium-status-badge ps-badge-pending">Pending</span>
                         {% endif %}
                     </td>
-                    <td class="pay-th-right">
+                    <td class="premium-cell" style="text-align: right;">
                         {% if inv.payment_proof_url %}
                             <button class="btn-sm-outline" onclick="showProof('{{ inv.payment_proof_url }}', 'Invoice Proof')">View Receipt</button>
                         {% else %}

@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let filteredRows = [];
 
     // Initialize
-    const allRows = Array.from(document.querySelectorAll('.payment-row'));
+    const allRows = Array.from(document.querySelectorAll('#paymentsTableBody .premium-row'));
     filteredRows = allRows;
     showPage(1);
 
@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     `P${amt.toLocaleString()}`, 
                     row.cells[4].textContent.trim(),
                     row.cells[5].textContent.trim(),
-                    row.querySelector('.badge-status-pro').textContent.trim().toUpperCase()
+                    row.querySelector('.premium-status-badge').textContent.trim().toUpperCase()
                 ];
             });
 
@@ -272,7 +272,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     amt,
                     row.cells[4].textContent.trim(),
                     row.cells[5].textContent.trim(),
-                    row.querySelector('.badge-status-pro').textContent.trim().toUpperCase()
+                    row.querySelector('.premium-status-badge').textContent.trim().toUpperCase()
                 ];
             });
 
@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     row.querySelector('.amount-pro').textContent.replace('₱', '').replace(/,/g, ''),
                     row.cells[4].textContent,
                     row.cells[5].textContent,
-                    row.querySelector('.badge-status-pro').textContent
+                    row.querySelector('.premium-status-badge').textContent
                 ];
                 csv += data.map(v => `"${v}"`).join(',') + '\n';
             });

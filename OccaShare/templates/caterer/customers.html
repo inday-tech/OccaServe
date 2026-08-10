@@ -13,12 +13,9 @@
     <!-- Header Section matching standard layout -->
     <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
         <div class="header-title-group">
-            <h1>Manage Clients</h1>
-            <p>Review, track, and manage all your customer profiles and history in one place.</p>
+            <h1>Customer Directory</h1>
+            <p>Review and track your customer profiles, engagement, and history.</p>
         </div>
-        <button class="btn-primary" onclick="window.openModal('addCustomerModal')" style="padding: 0.75rem 1.5rem; font-weight: 600;">
-            Register New Client
-        </button>
     </div>
 
     <!-- Stats Grid using Standard KPI Cards (Matching Bookings) -->
@@ -64,6 +61,7 @@
                 <select id="tableFilterStatus" class="form-control input-sm" onchange="window.filterCustomerTable()" style="width: auto; min-width: 150px;">
                     <option value="All">All Tiers</option>
                     <option value="VIP Elite">VIP Elite</option>
+                    <option value="New Client">New Client</option>
                     <option value="Standard">Standard</option>
                     <option value="Blacklisted">Blacklisted</option>
                 </select>
@@ -81,7 +79,7 @@
         </div>
         
         <div class="table-responsive">
-            <table class="table-dashboard" id="customersTable">
+            <table class="premium-table" id="customersTable" style="border-collapse: collapse; border-spacing: 0; min-width: 900px;">
                 <thead>
                     <tr>
                         <th>Client ID</th>
@@ -95,52 +93,59 @@
                 </thead>
                 <tbody id="customersTableBody">
                     {% for customer in customers %}
-                    <tr class="table-row-pro" id="row-cust-{{ customer.id }}" data-name="{{ customer.first_name | lower }} {{ customer.last_name | lower }}" data-email="{{ customer.email | lower }}">
-                        <td>
-                            <span class="badge-subtle">#{{ "00%d"|format(customer.id) }}</span>
+                    <tr class="premium-row" id="row-cust-{{ customer.id }}" data-name="{{ customer.first_name | lower }} {{ customer.last_name | lower }}" data-email="{{ customer.email | lower }}">
+                        <td class="premium-cell">
+                            <span class="pay-id" style="font-weight: 700; color: #0f172a; font-size: 0.88rem;">CUST-{{ "%03d"|format(customer.id) }}</span>
                         </td>
-                        <td>
+                        <td class="premium-cell">
                             <div class="identity-flex">
                                 <div class="avatar-circle-pro">
                                     {{ (customer.first_name[0]|upper) if customer.first_name else '?' }}{{ (customer.last_name[0]|upper) if customer.last_name else '' }}
                                 </div>
                                 <div class="identity-text">
-                                    <div class="name-text">{{ customer.first_name }} {{ customer.last_name }}</div>
-                                    <div class="email-text">{{ customer.email }}</div>
+                                    <div class="name-text" style="font-weight: 600; color: #334155;">{{ customer.first_name }} {{ customer.last_name }}</div>
+                                    <div class="email-text" style="font-size: 0.75rem; color: #64748b;">{{ customer.email }}</div>
                                 </div>
                             </div>
                         </td>
-                        <td>
-                            {% if customer.status == 'Blacklisted' %}
-                                <span class="badge-pro badge-danger">Blacklisted</span>
-                            {% elif customer.total_bookings > 5 %}
-                                <span class="badge-pro badge-warning">VIP Elite</span>
+                        <td class="premium-cell">
+                            {% if customer.status == 'BLACKLISTED' %}
+                                <span class="premium-status-badge ps-badge-cancelled">Blacklisted</span>
+                            {% elif customer.status == 'VIP' %}
+                                <span class="premium-status-badge ps-badge-warning">VIP Elite</span>
+                            {% elif customer.status == 'NEW' %}
+                                <span class="premium-status-badge ps-badge-pending">New Client</span>
                             {% else %}
-                                <span class="badge-pro badge-secondary">Standard</span>
+                                <span class="premium-status-badge ps-badge-confirmed">Standard</span>
                             {% endif %}
                         </td>
-                        <td>
-                            <div class="amount-text">₱{{ "{:,.2f}".format(customer.total_spent or 0) }}</div>
+                        <td class="premium-cell">
+                            <div class="amount-text" style="font-weight: 700; color: #0f172a;">₱{{ "{:,.2f}".format(customer.total_spent or 0) }}</div>
                         </td>
-                        <td>
-                            <span class="badge-pro bg-primary-light" style="color: var(--primary-color);">{{ customer.total_bookings }} events</span>
+                        <td class="premium-cell">
+                            <span style="font-weight: 600; color: var(--primary-color);">{{ customer.total_bookings }} events</span>
                         </td>
-                        <td>
-                            <div class="date-text">
+                        <td class="premium-cell">
+                            <div class="date-text" style="font-weight: 600; color: #334155;">
                                 {{ customer.last_booking_date.strftime('%b %d, %Y') if customer.last_booking_date else 'No data' }}
                             </div>
                         </td>
-                        <td class="text-right">
+                        <td class="premium-cell" style="text-align: right;">
                             <div class="action-dropdown-container">
-                                <button class="btn-icon-dots" onclick="window.toggleActionMenu('cust{{ customer.id }}')">
+                                <button class="btn-icon-dots" onclick="window.toggleActionMenu('cust{{ customer.id }}')" style="background: none; border: none; color: #64748b; cursor: pointer;">
                                     <i class="fas fa-ellipsis-v"></i>
                                 </button>
                                 <div class="action-dropdown-menu" id="actionMenu-cust{{ customer.id }}">
                                     <button onclick="window.openCustomerProfile({{ customer.id }})">
                                         <i class="fas fa-id-card text-primary"></i> View Profile
                                     </button>
+                                    {% if customer.is_verified %}
+                                    <button onclick="window.openIframeModal('/caterer/compliance/view/{{ customer.id }}?modal=true', 'Customer KYC')">
+                                        <i class="fas fa-shield-check" style="color: #10b981;"></i> View KYC
+                                    </button>
+                                    {% endif %}
                                     <button onclick="window.quickEditCustomer({{ customer.id }})">
-                                        <i class="fas fa-pen text-warning"></i> Quick Edit
+                                        <i class="fas fa-pen text-warning"></i> Add Note
                                     </button>
                                 </div>
                             </div>
@@ -150,11 +155,8 @@
                     <tr id="emptyStateRow">
                         <td colspan="7" class="empty-state-cell">
                             <div class="empty-icon"><i class="fas fa-users-slash"></i></div>
-                            <h4>No Client Records Found</h4>
-                            <p>Your client database is empty. Add a new customer to start building intelligence.</p>
-                            <button class="btn-primary mt-3" onclick="window.openModal('addCustomerModal')" style="padding: 0.6rem 1.25rem;">
-                                Register First Client
-                            </button>
+                            <h4>No Customer Records Found</h4>
+                            <p>Your directory is currently empty. Customers will automatically appear here once they book an event with you.</p>
                         </td>
                     </tr>
                     {% endfor %}
@@ -164,97 +166,7 @@
     </div>
 </div>
 
-<!-- Register New Customer Modal -->
-<div id="addCustomerModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-lg flex-col-modal">
-        <div class="occ-modal-header glass-header">
-            <div>
-                <h3 class="occ-modal-title"><i class="fas fa-user-plus"></i> Client Registration</h3>
-                <div class="occ-modal-subtitle">Establish a verified entry in your intelligence database.</div>
-            </div>
-            <button type="button" class="occ-modal-close" onclick="window.closeModal('addCustomerModal')">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
 
-        <form id="addCustomerForm" onsubmit="window.registerCustomer(event)" class="flex-1 overflow-hidden flex-col-modal">
-            <div class="occ-modal-body overflow-y-auto modal-padding">
-                
-                <h4 class="section-heading-pro"><i class="fas fa-id-badge"></i> Core Identity</h4>
-                
-                <div class="grid-2-col mb-4">
-                    <div class="form-group-pro">
-                        <label class="form-label">First Name <span class="text-danger">*</span></label>
-                        <input type="text" id="regFirstName" name="first_name" class="form-control" placeholder="e.g. Maria" required>
-                        <div class="invalid-feedback" id="error-regFirstName"></div>
-                    </div>
-                    <div class="form-group-pro">
-                        <label class="form-label">Last Name <span class="text-danger">*</span></label>
-                        <input type="text" id="regLastName" name="last_name" class="form-control" placeholder="e.g. Santos" required>
-                        <div class="invalid-feedback" id="error-regLastName"></div>
-                    </div>
-                </div>
-
-                <div class="grid-2-col mb-4">
-                    <div class="form-group-pro">
-                        <label class="form-label">Email Address <span class="text-danger">*</span></label>
-                        <input type="email" id="regEmail" name="email" class="form-control" placeholder="client@example.com" required>
-                        <div class="invalid-feedback" id="error-regEmail"></div>
-                    </div>
-                    <div class="form-group-pro">
-                        <label class="form-label">Mobile Number <span class="text-danger">*</span></label>
-                        <input type="text" id="regPhone" name="phone" class="form-control" placeholder="09XXXXXXXXX" required maxlength="11">
-                        <div class="invalid-feedback" id="error-regPhone"></div>
-                    </div>
-                </div>
-
-                <h4 class="section-heading-pro mt-4"><i class="fas fa-map-marker-alt"></i> Location Intelligence</h4>
-                
-                <div class="grid-2-col mb-4">
-                    <div class="form-group-pro">
-                        <label class="form-label">Province <span class="text-danger">*</span></label>
-                        <select id="regProv" name="province" class="form-control" required onchange="window.loadCities(this.value, 'regCity')">
-                            <option value="" disabled selected>Select Province</option>
-                        </select>
-                        <div class="invalid-feedback" id="error-regProv"></div>
-                    </div>
-                    <div class="form-group-pro">
-                        <label class="form-label">City / Municipality <span class="text-danger">*</span></label>
-                        <select id="regCity" name="city" class="form-control" required disabled onchange="window.loadBarangays(this.value, 'regBrgy')">
-                            <option value="" disabled selected>Select City</option>
-                        </select>
-                        <div class="invalid-feedback" id="error-regCity"></div>
-                    </div>
-                </div>
-                
-                <div class="grid-2-col mb-4">
-                    <div class="form-group-pro">
-                        <label class="form-label">Barangay <span class="text-danger">*</span></label>
-                        <select id="regBrgy" name="barangay" class="form-control" required disabled>
-                            <option value="" disabled selected>Select Barangay</option>
-                        </select>
-                        <div class="invalid-feedback" id="error-regBrgy"></div>
-                    </div>
-                    <div class="form-group-pro">
-                        <label class="form-label">Detailed Address <span class="text-danger">*</span></label>
-                        <input type="text" id="regLandmark" name="landmark" class="form-control" placeholder="e.g. 123 Main St" required>
-                        <div class="invalid-feedback" id="error-regLandmark"></div>
-                    </div>
-                </div>
-
-                <h4 class="section-heading-pro mt-4"><i class="fas fa-clipboard-list"></i> Operational Notes</h4>
-                <div class="form-group-pro mb-4">
-                    <textarea id="regNotes" name="notes" class="form-control" placeholder="Internal remarks, allergies, preferences..." rows="3"></textarea>
-                </div>
-            </div>
-            
-            <div class="occ-modal-footer">
-                <button type="button" class="btn-secondary" onclick="window.closeModal('addCustomerModal')">Cancel</button>
-                <button type="submit" id="btnSubmitRegistration" class="btn-primary">Authorize & Register</button>
-            </div>
-        </form>
-    </div>
-</div>
 
 <!-- CRM Hub Modal -->
 <div id="customerProfileModal" class="occ-modal-overlay">
@@ -271,13 +183,10 @@
 
         <div class="tab-header-container bg-primary-dark">
             <button class="tab-btn-pro active" data-tab="overview" onclick="switchIntelTab('overview', this)">
-                Identity
-            </button>
-            <button class="tab-btn-pro" data-tab="edit" onclick="switchIntelTab('edit', this)">
-                CRM Notes
+                Customer Profile
             </button>
             <button class="tab-btn-pro" data-tab="history" onclick="switchIntelTab('history', this)">
-                Ledger
+                Transaction History
             </button>
         </div>
 
@@ -322,28 +231,18 @@
                     </div>
                 </div>
 
-                <div class="dashboard-card p-4 bg-warning-light border-warning-subtle">
-                    <label class="text-xs font-semibold text-warning-dark block mb-2">Internal Operations Log</label>
-                    <div class="text-sm text-warning-dark whitespace-pre-wrap" id="profNotes">--</div>
-                </div>
-            </div>
-
-            <!-- Edit Tab -->
-            <div id="intel-edit" class="intel-content" style="display: none; height: 100%;">
-                <form id="editCustomerForm" onsubmit="window.updateCustomerProfile(event)" style="display: flex; flex-direction: column; height: 100%;">
-                    <div class="form-grid-2" style="flex: 1;">
-                        <div class="form-group-pro col-span-2">
-                            <label class="form-label">Internal Operations Notes</label>
-                            <textarea id="editNotes" name="notes" class="form-control" rows="8" placeholder="Add specific preferences, allergies, or past experiences with this client..."></textarea>
-                            <span class="field-hint" style="color:#64748b; font-size: 0.75rem;">Clients cannot view these internal CRM notes. Personal identity fields are locked for security and compliance.</span>
+                <div class="dashboard-card p-4 bg-gray-50 border-subtle mt-4">
+                    <label class="text-xs font-semibold text-muted text-uppercase mb-2 block">Internal CRM Notes</label>
+                    <form id="editCustomerForm" onsubmit="window.updateCustomerProfile(event)">
+                        <textarea id="editNotes" name="notes" class="form-control" rows="4" placeholder="Add specific preferences, allergies, or past experiences with this client..." style="margin-bottom: 0.75rem;"></textarea>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span class="field-hint" style="color:#64748b; font-size: 0.75rem; max-width: 70%;">Clients cannot view these notes. Personal identity fields are locked for compliance.</span>
+                            <button type="submit" class="btn-primary input-sm" id="btnUpdateCustomer">
+                                Save Notes
+                            </button>
                         </div>
-                    </div>
-                    <div style="margin-top: auto; text-align: right; padding-top: 1rem;">
-                        <button type="submit" class="btn-primary" id="btnUpdateCustomer">
-                            Commit Changes
-                        </button>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
 
             <!-- History Tab -->
@@ -355,8 +254,37 @@
         </div>
     </div>
 </div>
+
+<!-- Iframe Modal for KYC -->
+<div id="iframeModal" class="occ-modal-overlay" style="z-index: 1000001; display: none;">
+    <div class="occ-modal-box sz-lg flex-col-modal" style="padding: 0; display: flex; flex-direction: column; height: 95vh; max-height: 95vh; width: 95%; max-width: 1000px; border-radius: 12px; overflow: hidden; position: relative;">
+        <div style="background: #f8fafc; padding: 1rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+            <h2 id="iframeModalTitle" style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #0f172a;">View Document</h2>
+            <button onclick="document.getElementById('iframeModal').classList.remove('active'); setTimeout(() => document.getElementById('iframeModal').style.display='none', 300);" style="background: #e2e8f0; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #64748b;"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="flex: 1; position: relative; display: flex; flex-direction: column;">
+            <div id="iframeModalLoading" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: white; z-index: 10;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary-color);"></i>
+            </div>
+            <iframe id="iframeModalContent" src="" style="flex: 1; width: 100%; border: none; z-index: 20; position: relative;" onload="document.getElementById('iframeModalLoading').style.display='none'"></iframe>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{{ url_for('static', path='/js/caterer/customers.js') }}?v=10.4"></script>
+<script>
+    window.openIframeModal = function(url, title) {
+        const modal = document.getElementById('iframeModal');
+        if (!modal) return;
+        
+        document.getElementById('iframeModalTitle').innerText = title || 'View Document';
+        document.getElementById('iframeModalLoading').style.display = 'flex';
+        document.getElementById('iframeModalContent').src = url;
+        
+        modal.style.display = 'flex';
+        setTimeout(() => modal.classList.add('active'), 10);
+    };
+</script>
 {% endblock %}

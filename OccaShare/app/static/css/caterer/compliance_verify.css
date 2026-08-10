@@ -3,8 +3,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--space-2xl);
-    padding-bottom: var(--space-lg);
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
     border-bottom: 1px solid var(--color-neutral-100);
 }
 
@@ -54,7 +54,7 @@
 .verify-audit-grid {
     display: grid;
     grid-template-columns: 1fr 350px;
-    gap: var(--space-2xl);
+    gap: 1.5rem;
 }
 
 .audit-card {
@@ -62,7 +62,7 @@
     border-radius: var(--radius-lg);
     border: 1px solid var(--color-neutral-200);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04), 0 2px 6px rgba(0, 0, 0, 0.02);
-    margin-bottom: var(--space-2xl);
+    margin-bottom: 1.25rem;
     overflow: hidden;
     transition: box-shadow 0.3s ease;
 }
@@ -72,10 +72,10 @@
 }
 
 .card-header-pro {
-    padding: var(--space-lg);
+    padding: 1rem 1.25rem;
     display: flex;
     align-items: center;
-    gap: var(--space-lg);
+    gap: 1rem;
     border-bottom: 1px solid var(--color-neutral-50);
 }
 
@@ -106,10 +106,10 @@
 
 /* Biometric Viewport */
 .biometric-viewport {
-    padding: var(--space-xl);
+    padding: 1.25rem;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--space-xl);
+    gap: 1.25rem;
     background: var(--color-neutral-50);
     border-top: 1px solid var(--color-neutral-100);
     border-bottom: 1px solid var(--color-neutral-100);
@@ -160,10 +160,10 @@
 
 /* Score Box */
 .biometric-score-box {
-    padding: var(--space-xl);
+    padding: 1.25rem;
     display: flex;
     align-items: center;
-    gap: var(--space-xl);
+    gap: 1.25rem;
     background: white;
 }
 
@@ -225,7 +225,7 @@
 }
 
 .data-column {
-    padding: var(--space-xl);
+    padding: 1.25rem;
 }
 
 .column-title {
@@ -311,13 +311,13 @@
     font-weight: 700;
     color: var(--color-neutral-600);
     margin-bottom: var(--space-sm);
-    padding: var(--space-lg) var(--space-lg) 0;
+    padding: 1.25rem 1.25rem 0;
 }
 
 .form-group-pro textarea {
-    width: calc(100% - 2rem);
-    margin: 0 var(--space-lg);
-    padding: var(--space-md);
+    width: calc(100% - 2.5rem);
+    margin: 0 1.25rem;
+    padding: 0.75rem;
     border: 1px solid var(--color-neutral-200);
     border-radius: var(--radius-md);
     min-height: 100px;
@@ -326,7 +326,7 @@
 }
 
 .decision-buttons {
-    padding: var(--space-lg);
+    padding: 1rem 1.25rem;
     display: flex;
     flex-direction: column;
     gap: var(--space-sm);
@@ -411,12 +411,12 @@
     .verify-audit-header {
         flex-direction: column;
         align-items: flex-start;
-        gap: var(--space-md);
+        gap: 1rem;
     }
     
     .biometric-viewport {
         grid-template-columns: 1fr;
-        padding: var(--space-md);
+        padding: 1rem;
     }
     
     .data-comparison-grid {
@@ -424,12 +424,12 @@
     }
 
     .data-column {
-        padding: var(--space-lg);
+        padding: 1rem;
     }
     
     .biometric-score-box {
         flex-direction: column;
         text-align: center;
-        gap: var(--space-md);
+        gap: 1rem;
     }
 }

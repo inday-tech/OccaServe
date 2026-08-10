@@ -544,6 +544,8 @@
         text-transform: uppercase;
         letter-spacing: 0.05em;
         border-bottom: 2px solid var(--dm-slate-100);
+        text-align: left;
+        white-space: nowrap;
     }
 
     .dm-audit-row {
@@ -558,6 +560,7 @@
     .dm-audit-row td {
         padding: 1.5rem 1.75rem;
         vertical-align: middle;
+        white-space: nowrap;
     }
 
     /* CLUSTER STYLES */
@@ -705,6 +708,9 @@
         color: var(--dm-slate-600);
         line-height: 1.6;
         margin: 0;
+        white-space: normal;
+        min-width: 250px;
+        max-width: 400px;
     }
 
     /* EMPTY STATE V2 REFINEMENT */
@@ -877,6 +883,92 @@
     .dm-pag-dots {
         color: var(--dm-slate-200);
         padding: 0 4px;
+    }
+
+    /* ─── RESPONSIVE / MOBILE VIEW FIXES ─── */
+    .registry-scroller {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    @media (max-width: 768px) {
+        .header-main-flex-v2 {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1.5rem;
+        }
+
+        .operational-actions-v2 {
+            width: 100%;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .dm-btn-primary, .dm-btn-secondary {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .engine-header-v2 {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .btn-terminal-reset {
+            width: 100%;
+            justify-content: center;
+            background: var(--dm-slate-100);
+            padding: 0.75rem;
+            border-radius: 12px;
+        }
+
+        .filter-node-grid {
+            grid-template-columns: 1fr;
+            gap: 1.25rem;
+        }
+
+        .sync-intelligence-pill {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .dm-pagination-hub {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+            padding: 1.25rem 1rem;
+        }
+
+        .pag-control-group {
+            width: 100%;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .dm-pag-numbers {
+            width: 100%;
+            justify-content: center;
+            flex-wrap: wrap;
+            order: -1;
+        }
+
+        .dm-pag-btn {
+            flex: 1;
+            justify-content: center;
+            padding: 12px;
+        }
+
+        .flux-transition-v2 {
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .flux-connector {
+            transform: rotate(90deg);
+        }
     }
 </style>
 {% endblock %}

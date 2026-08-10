@@ -1,4 +1,4 @@
-{% extends "caterer/layout.html" %}
+{% extends "caterer/layout.html" if not is_modal else "caterer/modal_layout.html" %}
 
 {% block title %}Audit Terminal: {{ target_user.first_name }} - OccaServe{% endblock %}
 
@@ -7,12 +7,12 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-premium">
-    <header class="verify-audit-header">
+<div class="{% if not is_modal %}container-premium{% endif %}" {% if is_modal %}style="padding: 0.5rem;"{% endif %}>
+    <header class="verify-audit-header" {% if is_modal %}style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); padding-right: 3.5rem;"{% endif %}>
         <div class="header-main">
-            <div class="breadcrumb-text">KYC & Compliance / Identity Audit</div>
-            <h1>Verification Terminal: {{ target_user.first_name }} {{ target_user.last_name }}</h1>
-            <p>Review biometric data and OCR extraction to confirm customer legitimacy.</p>
+            {% if not is_modal %}<div class="breadcrumb-text">Customer Verifications / Identity Review</div>{% endif %}
+            <h2 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--text-primary); line-height: 1.3;">Verification: {{ target_user.first_name }} {{ target_user.last_name }}</h2>
+            <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">Review biometric data and OCR extraction to confirm customer legitimacy.</p>
         </div>
         <div class="header-status">
             {% set status = verification.verification_status if verification else 'PENDING' %}
@@ -29,8 +29,8 @@
                 <div class="card-header-pro">
                     <div class="header-icon"><i class="fas fa-fingerprint"></i></div>
                     <div class="header-text">
-                        <h3>Biometric Comparison</h3>
-                        <p>Visual cross-reference between ID and live capture.</p>
+                        <h3>Identity Documents</h3>
+                        <p>Review the uploaded ID and selfie to confirm the customer's identity.</p>
                     </div>
                 </div>
                 
@@ -60,8 +60,8 @@
                         <div class="score-val">{{ verification.fraud_score or 0 }}%</div>
                     </div>
                     <div class="score-info">
-                        <h4>Identity Match Confidence</h4>
-                        <p>AI suggests this is a <strong>{{ 'highly likely' if (verification.fraud_score or 0) >= 80 else 'possible' if (verification.fraud_score or 0) >= 50 else 'unlikely' }}</strong> match.</p>
+                        <h4>System Verification Check</h4>
+                        <p>The system detected a <strong>{{ 'highly likely' if (verification.fraud_score or 0) >= 80 else 'possible' if (verification.fraud_score or 0) >= 50 else 'unlikely' }}</strong> match.</p>
                     </div>
                 </div>
             </div>
@@ -69,28 +69,23 @@
             <!-- Data Extraction Section -->
             <div class="audit-card data-card">
                 <div class="card-header-pro">
-                    <div class="header-icon"><i class="fas fa-microchip"></i></div>
+                    <div class="header-icon"><i class="fas fa-file-alt"></i></div>
                     <div class="header-text">
-                        <h3>Data Extraction (OCR)</h3>
+                        <h3>Extracted Details</h3>
                         <p>Information extracted directly from the ID document.</p>
                     </div>
                     {% if verification.ocr_data %}
                     <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                         <!-- ID Type Badge -->
                         {% set id_type = verification.ocr_data.id_type or verification.verification_type or 'Unknown' %}
-                        <span style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; padding: 4px 12px; border-radius: var(--border-radius, 20px); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase;">
+                        <span style="background: var(--primary-color); color: #fff; padding: 4px 12px; border-radius: var(--border-radius, 20px); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase;">
                             📋 {{ id_type }}
-                        </span>
-                        <!-- Extraction Method Badge -->
-                        {% set method = verification.ocr_data.extraction_method or 'unknown' %}
-                        <span style="background: {{ 'var(--accent-color)' if method == 'gemini' else 'var(--accent-color)' if method == 'tesseract' else '#94a3b8' }}; color: #fff; padding: 4px 10px; border-radius: var(--border-radius, 20px); font-size: 0.65rem; font-weight: 800;">
-                            {{ '🤖 Gemini AI' if method == 'gemini' else '📝 Tesseract' if method == 'tesseract' else '❓ Unknown' }}
                         </span>
                         <!-- Confidence Score -->
                         {% set conf = verification.ocr_data.confidence_score or 0 %}
                         {% if conf %}
-                        <span style="background: {{ 'var(--accent-color)' if conf >= 0.8 else 'var(--accent-color)' if conf >= 0.5 else '#ef4444' }}; color: #fff; padding: 4px 10px; border-radius: var(--border-radius, 20px); font-size: 0.65rem; font-weight: 800;">
-                            {{ '%.0f' | format(conf * 100) }}% confidence
+                        <span style="background: {{ '#16a34a' if conf >= 0.8 else '#ca8a04' if conf >= 0.5 else '#ef4444' }}; color: #fff; padding: 4px 10px; border-radius: var(--border-radius, 20px); font-size: 0.65rem; font-weight: 800;">
+                            {{ '%.0f' | format(conf * 100) }}% match
                         </span>
                         {% endif %}
                     </div>
@@ -334,18 +329,4 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    function handleAudit(action) {
-        const title = action === 'approve' ? 'Mark as Verified?' : 'Mark as Rejected?';
-        const msg = action === 'approve' 
-            ? `Are you sure you want to mark this customer as <strong>VERIFIED</strong>? This will allow them to proceed with their bookings.`
-            : `Are you sure you want to mark this identity as <strong>REJECTED</strong>? The customer will be notified and may need to resubmit documents.`;
-        
-        window.showConfirm(msg, () => {
-            const form = document.getElementById('auditDecisionForm');
-            document.getElementById('auditActionInput').value = action;
-            form.submit();
-        }, title, action === 'approve' ? 'Yes, Verified' : 'Yes, Rejected', action === 'approve' ? 'success' : 'danger');
-    }
-</script>
 {% endblock %}

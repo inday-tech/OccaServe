@@ -31,9 +31,9 @@
         overflow: hidden;
     }
 
-    .dash-header { margin-bottom: 2rem; }
-    .dash-header h1 { font-size: 1.6rem; font-weight: 800; color: var(--up-slate-900); margin: 0; letter-spacing: -0.02em; }
-    .dash-header p { font-size: 0.88rem; color: var(--dm-slate-400); font-weight: 500; margin: 4px 0 0; }
+    .dash-header { margin-bottom: 2.5rem; padding: 2.5rem; background: #fff; border-radius: 1.25rem; border: 1px solid #f1f5f9; box-shadow: 0 10px 40px -10px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center; }
+    .dash-header h1 { font-size: 1.8rem; font-weight: 800; color: var(--up-slate-900); margin: 0; letter-spacing: -0.02em; }
+    .dash-header p { font-size: 0.95rem; color: var(--dm-slate-400); font-weight: 500; margin: 4px 0 0; }
 
     /* ── PROFILE TABS ── */
     .profile-tabs {
@@ -137,18 +137,18 @@
     }
 
     .btn-save {
-        background: var(--up-orange-600);
+        background: #0f172a;
         color: white;
         border: none;
-        padding: 0.85rem 2rem;
+        padding: 0.85rem 2.5rem;
         border-radius: 0.75rem;
-        font-size: 0.9rem;
-        font-weight: 700;
+        font-size: 0.95rem;
+        font-weight: 600;
         cursor: pointer;
         transition: 0.2s;
-        box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.2);
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
     }
-    .btn-save:hover { background: var(--up-orange-700); transform: translateY(-2px); }
+    .btn-save:hover { background: #1e293b; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(15, 23, 42, 0.2); }
     .btn-save:disabled { background: var(--dm-slate-400); cursor: not-allowed; transform: none; box-shadow: none; }
 
     /* ── AVATAR UPLOADER ── */
@@ -205,23 +205,21 @@
 
 {% block content %}
 <div class="dash-header">
-    <h1>Account Profile</h1>
-    <p>Manage your personal details, addresses, and booking preferences.</p>
-</div>
-
-<!-- Profile Completion Widget -->
-<div class="panel" style="margin-bottom: 2rem;">
-    <div style="padding: 1.5rem;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px;">
-            <div>
-                <h3 style="margin: 0; font-size: 1.1rem; color: var(--up-slate-900); font-weight: 800;">Profile Completeness</h3>
-                <p style="margin: 4px 0 0; font-size: 0.8rem; color: var(--dm-slate-400);">A complete profile helps caterers serve you better.</p>
-            </div>
-            <div style="font-size: 1.5rem; font-weight: 900; color: var(--up-emerald-600);" id="completion-val">{{ profile_completion }}%</div>
+    <div>
+        <h1>Account Settings</h1>
+        <p>Manage your personal details, addresses, and booking preferences.</p>
+    </div>
+    
+    <!-- Profile Completion Widget (Integrated into Header) -->
+    <div style="min-width: 250px; background: #f8fafc; padding: 1.25rem; border-radius: 1rem; border: 1px solid #e2e8f0; text-align: right;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-size: 0.8rem; font-weight: 800; color: var(--up-slate-900); text-transform: uppercase; letter-spacing: 0.05em;">Completeness</div>
+            <div style="font-size: 1.25rem; font-weight: 900; color: {{ '#10b981' if profile_completion == 100 else '#f97316' }};" id="completion-val">{{ profile_completion }}%</div>
         </div>
-        <div style="width: 100%; background: #e2e8f0; height: 12px; border-radius: 6px; overflow: hidden;">
-            <div id="completion-bar" style="width: {{ profile_completion }}%; background: var(--up-emerald-500); height: 100%; transition: width 0.5s ease;"></div>
+        <div style="width: 100%; background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 6px;">
+            <div id="completion-bar" style="width: {{ profile_completion }}%; background: {{ '#10b981' if profile_completion == 100 else '#f97316' }}; height: 100%; transition: width 0.5s ease;"></div>
         </div>
+        <div style="font-size: 0.75rem; color: var(--dm-slate-400); font-weight: 500; text-align: left;">{{ 'All required fields are complete!' if profile_completion == 100 else 'Complete all required fields.' }}</div>
     </div>
 </div>
 
@@ -407,13 +405,6 @@
                     <div>
                         <div style="font-weight: 800; color: var(--up-slate-900); font-size: 0.9rem;">Booking & Payment Updates (Email)</div>
                         <div style="font-size: 0.75rem; color: var(--dm-slate-400);">Receive receipts, quotations, and status changes via email.</div>
-                    </div>
-                </label>
-                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
-                    <input type="checkbox" name="sms_bookings" {% if prefs.get('sms_bookings') %}checked{% endif %} style="width: 18px; height: 18px; accent-color: var(--up-orange-500);">
-                    <div>
-                        <div style="font-weight: 800; color: var(--up-slate-900); font-size: 0.9rem;">SMS Alerts <span style="font-size: 0.75rem; font-weight: 500; color: var(--dm-slate-400);">(Optional)</span></div>
-                        <div style="font-size: 0.75rem; color: var(--dm-slate-400);">Get text messages for urgent payment reminders.</div>
                     </div>
                 </label>
                 <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">

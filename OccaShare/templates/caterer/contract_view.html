@@ -1,4 +1,4 @@
-{% extends "caterer/layout.html" %}
+{% extends "caterer/layout.html" if not is_modal else "caterer/modal_layout.html" %}
 
 {% block title %}Contract for {{ booking.user.first_name }} {{ booking.user.last_name }}{% endblock %}
 

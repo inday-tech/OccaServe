@@ -283,7 +283,7 @@
 
 .total-val-clean {
     font-family: 'Poppins', sans-serif;
-    font-size: 1.35rem;
+    font-size: 1.15rem;
     font-weight: 800;
     color: #0f172a;
 }
@@ -435,7 +435,7 @@
 
 .fin-val-highlight {
     font-family: 'Poppins', sans-serif;
-    font-size: 1.5rem;
+    font-size: 1.15rem;
     font-weight: 800;
     color: #15803d; /* Clean authentic green */
 }

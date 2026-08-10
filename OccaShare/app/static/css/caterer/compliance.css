@@ -200,6 +200,11 @@
     background: var(--color-neutral-50);
 }
 
+/* Enforce single-line layout for premium table inside compliance */
+#kycTablePackages .premium-cell {
+    white-space: nowrap;
+}
+
 /* ─── Identity Cell ─── */
 .kyc-user-identity-box {
     display: flex;

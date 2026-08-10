@@ -1,4 +1,4 @@
-{% extends "caterer/layout.html" %}
+{% extends "caterer/layout.html" if not is_modal else "caterer/modal_layout.html" %}
 
 {% block title %}Sign Contract - Booking #{{ booking.id }}{% endblock %}
 
@@ -314,11 +314,13 @@
             <h1>Sign Contract</h1>
             <p>Countersign the agreement for Booking #{{ booking.id }}</p>
         </div>
+        {% if not is_modal %}
         <div class="header-actions">
             <a href="/caterer/bookings" class="btn-premium-clear">
                 <i class="fas fa-chevron-left mr-2"></i> Back to Bookings
             </a>
         </div>
+        {% endif %}
     </div>
 
     <div class="signing-grid">
@@ -527,8 +529,11 @@
             const result = await response.json();
             
             if (result.success) {
-                // Immediate redirect
-                window.location.href = "/caterer/bookings?msg=contract_signed";
+                if (window.self !== window.top) {
+                    window.parent.location.reload();
+                } else {
+                    window.location.href = "/caterer/bookings?msg=contract_signed";
+                }
             } else {
                 throw new Error(result.detail || "Failed to finalize");
             }

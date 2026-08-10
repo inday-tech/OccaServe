@@ -4,7 +4,7 @@
 .stat-card-premium {
     background: var(--white);
     padding: 1.5rem 1.75rem;
-    border-radius: 1.25rem;
+    border-radius: var(--border-radius, 1.25rem);
     position: relative;
     overflow: hidden;
     border: 1px solid var(--border-color);
@@ -68,7 +68,7 @@
 /* Premium Containers */
 .c-card-premium {
     background: var(--white);
-    border-radius: 1.25rem;
+    border-radius: var(--border-radius, 1.25rem);
     padding: 1.5rem;
     border: 1px solid var(--border-color);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
@@ -285,7 +285,7 @@
 .p-card-premium,
 .caterer-card-premium {
     background: var(--white);
-    border-radius: 20px;
+    border-radius: var(--border-radius, 20px);
     overflow: hidden;
     border: 1px solid var(--border-color, #E8ECEF);
     display: flex;
@@ -351,7 +351,7 @@
     position: absolute;
     bottom: 1rem;
     right: 1rem;
-    background: #FF7B54;
+    background: var(--primary-color, #FF7B54);
     color: white;
     padding: 0.4rem 1rem;
     border-radius: 50px;
@@ -442,7 +442,7 @@
 
 .p-meta-item i,
 .meta-item-box i {
-    color: #FF7B54;
+    color: var(--primary-color, #FF7B54);
     font-size: var(--text-sm);
 }
 
@@ -451,7 +451,7 @@
     background: linear-gradient(135deg, #2D4059 0%, #1A2639 100%);
     color: white;
     padding: 0.85rem;
-    border-radius: 12px;
+    border-radius: calc(var(--border-radius, 12px) * 0.7);
     text-align: center;
     font-weight: 700;
     text-decoration: none;
@@ -468,7 +468,7 @@
 
 .p-btn-view:hover,
 .btn-view-details:hover {
-    background: #FF7B54;
+    background: var(--primary-color, #FF7B54);
     color: white;
     transform: translateY(-2px);
     box-shadow: 0 10px 20px rgba(255, 123, 84, 0.3);

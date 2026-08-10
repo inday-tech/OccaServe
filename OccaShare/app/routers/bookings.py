@@ -706,6 +706,31 @@ async def start_booking(request: Request, caterer_id: int, package_id: Optional[
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/start/{caterer_id}")
     
+    force_new = request.query_params.get("force_new")
+    
+    if package_id and not force_new:
+        existing_booking = db.query(models.Booking).filter(
+            models.Booking.user_id == user.id,
+            models.Booking.caterer_id == caterer_id,
+            models.Booking.package_id == package_id,
+            models.Booking.status.in_(['draft', 'pending_quotation', 'awaiting_caterer', 'pending_payment'])
+        ).order_by(models.Booking.created_at.desc()).first()
+
+        if existing_booking:
+            if existing_booking.status == 'draft':
+                request.session["booking_data"] = {
+                    "caterer_id": caterer_id,
+                    "package_id": package_id,
+                    "user_id": user.id,
+                    "booking_id": existing_booking.id
+                }
+                return RedirectResponse(url=f"/bookings/step/details/{existing_booking.id}", status_code=303)
+            else:
+                return RedirectResponse(
+                    url=f"/customer/bookings/manage/{existing_booking.id}?msg=You+already+have+an+ongoing+booking+for+this+package.+To+create+another+one,+cancel+this+first+or+contact+support.", 
+                    status_code=303
+                )
+
     # Initialize/Reset booking session data
     request.session["booking_data"] = {
         "caterer_id": caterer_id,
@@ -993,8 +1018,7 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
     all_menu_items = db.query(models.MenuItem).filter(
         models.MenuItem.caterer_id == caterer.id,
         models.MenuItem.is_archived == False,
-        models.MenuItem.available_for_package == True,
-        models.MenuItem.pricing_type == "fixed"
+        models.MenuItem.available_for_package == True
     ).all()
     
     addon_items = [i for i in all_menu_items if i.is_addon]
@@ -1306,7 +1330,7 @@ async def step_details_submit(
                 booking.travel_fee = 0.0
             else:
                 booking.travel_fee_status = "calculated"
-                booking.travel_fee = caterer.base_delivery_fee or 150.0
+                booking.travel_fee = caterer.base_delivery_fee or 0.0
     else:
         booking.travel_fee_status = "pending"
 
@@ -1337,11 +1361,13 @@ async def step_details_submit(
     for item_id in all_items:
         menu_item = db.query(models.MenuItem).get(item_id)
         if menu_item:
+            item_price = menu_item.addon_price if menu_item.is_addon else (getattr(menu_item, 'upgrade_fee', 0.0) or 0.0)
             booking_item = models.BookingMenuItem(
                 booking_id=booking.id,
                 menu_item_id=item_id,
                 is_add_on=menu_item.is_addon,
-                price=menu_item.addon_price if menu_item.is_addon else 0.0
+                price=item_price,
+                quantity=guest_count
             )
             db.add(booking_item)
             

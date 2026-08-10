@@ -41,8 +41,8 @@ class QuotationService:
         ).all()
 
         for item in booking_items:
-            # Skip items already accounted for in the package base amount
-            if package and not getattr(item, 'is_add_on', False):
+            # Skip items already accounted for in the package base amount, UNLESS they have an upgrade fee (price > 0)
+            if package and not getattr(item, 'is_add_on', False) and getattr(item, 'price', 0) <= 0:
                 continue
                 
             qty = getattr(item, 'quantity', 1) or 1

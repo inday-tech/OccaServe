@@ -75,6 +75,7 @@
                     data-is-combo="{{ 'true' if item.is_combo else 'false' }}"
                     data-combo-options='{{ item.combo_options|tojson|safe if item.combo_options else "{}" }}'
                     data-usage-type="{{ item.usage_type or 'both' }}"
+                    data-upgrade-fee="{{ item.upgrade_fee or 0 }}"
                     data-pricing-mode="{{ item.pricing_mode or item.pricing_type or 'single' }}"
                     data-variants='[
                         {%- for v in item.variants -%}
@@ -100,6 +101,7 @@
                     data-is-combo="{{ 'true' if item.is_combo else 'false' }}"
                     data-combo-options='{{ item.combo_options|tojson|safe if item.combo_options else "{}" }}'
                     data-usage-type="{{ item.usage_type or 'both' }}"
+                    data-upgrade-fee="{{ item.upgrade_fee or 0 }}"
                     data-pricing-mode="{{ item.pricing_mode or item.pricing_type or 'single' }}"
                     data-variants='[
                         {%- for v in item.variants -%}
@@ -208,7 +210,7 @@
                 <h4 style="font-size: 1rem; font-weight: 800; margin-bottom: 1rem; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Basic Information</h4>
                 
                 <div class="form-group-pro" style="margin-bottom: 1.5rem;">
-                    <label>Item Composition <span style="font-size: 0.8rem; color: #64748b; font-weight: normal; margin-left: 5px;">(Ano ang laman?)</span> *</label>
+                    <label>Item Composition <span style="font-size: 0.8rem; color: #64748b; font-weight: normal; margin-left: 5px;">(What does this item consist of?)</span> *</label>
                     <div style="display: flex; gap: 1rem; margin-top: 8px;">
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                             <input type="radio" name="item_type" value="single" checked onchange="toggleComboFields()"> Single Dish
@@ -220,8 +222,8 @@
                 </div>
 
                 <div class="form-group-pro" id="comboDishesContainer" style="display: none; margin-bottom: 1.5rem;">
-                    <label>Included Dishes <span style="font-size: 0.8rem; color: #64748b; font-weight: normal; margin-left: 5px;">(Select all that apply)</span></label>
-                    <div style="max-height: 200px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px;">
+                    <label>Included Dishes <span style="font-size: 0.8rem; color: #64748b; font-weight: normal; margin-left: 5px;">(Select from your library)</span></label>
+                    <div style="max-height: 200px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;">
                         {% for item in menu_items %}
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem; margin: 0;">
                             <input type="checkbox" name="included_dishes[]" value="{{ item.id }}" class="included-dish-cb"> 
@@ -229,6 +231,8 @@
                         </label>
                         {% endfor %}
                     </div>
+                    <label>Other Items (Not in library) <span style="font-size: 0.8rem; color: #64748b; font-weight: normal; margin-left: 5px;">(Optional, separate by commas)</span></label>
+                    <input type="text" name="custom_included_items" class="control-pro" placeholder="e.g. Rice, Sliced Fruits, Candies">
                 </div>
 
                 <div class="form-group-pro">
@@ -280,7 +284,7 @@
                 </div>
 
                 <div class="form-group-pro" style="margin-bottom: 1.5rem;">
-                    <label>Packaging / Serving Format * <span style="font-size: 0.8rem; color: #64748b; font-weight: normal; margin-left: 5px;">(Paano ise-serve or ide-deliver?)</span></label>
+                    <label>Packaging / Serving Format * <span style="font-size: 0.8rem; color: #64748b; font-weight: normal; margin-left: 5px;">(How will this be packed or served?)</span></label>
                     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 8px;">
                         <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
                             <input type="radio" name="serving_style" value="Standard Buffet" required onchange="suggestVariants()" style="margin-top:4px;"> 
@@ -351,7 +355,12 @@
                     </div>
                 </div>
 
-
+                <!-- SECTION: Premium Swap Upgrade Fee -->
+                <div class="form-group-pro" style="margin-top: 1rem; margin-bottom: 1.5rem; background: #fffbeb; padding: 1rem; border: 1px solid #fde68a; border-radius: 8px;">
+                    <label style="color: #92400e; font-weight: 800;">Premium Swap Upgrade Fee (₱) <span style="font-size: 0.8rem; color: #b45309; font-weight: normal; margin-left: 5px;">(Per Pax)</span></label>
+                    <p style="font-size: 0.8rem; color: #92400e; margin-bottom: 0.75rem; margin-top: 0.25rem;">If a customer swaps a standard dish with this item during package booking, this fee will be added to their per-head price.</p>
+                    <input type="text" name="upgrade_fee" id="upgrade_fee_input" class="control-pro js-format-comma" placeholder="e.g. 50" inputmode="numeric" style="max-width: 200px; border-color: #fcd34d;">
+                </div>
 
                 <!-- SECTION: Pricing Configuration -->
                 <div id="pricingSectionContainer">
@@ -677,6 +686,7 @@
         form.action = '/caterer/menu/add';
         form.reset();
         document.getElementById('removeImageFlag').value = 'false';
+        document.getElementById('upgrade_fee_input').value = '';
         removeImage();
         
         // Reset Serving Styles and Item Type
@@ -687,6 +697,8 @@
         
         // Reset Included Dishes
         document.querySelectorAll('.included-dish-cb').forEach(cb => cb.checked = false);
+        const customItemsInput = document.querySelector('input[name="custom_included_items"]');
+        if (customItemsInput) customItemsInput.value = '';
         
         document.getElementById('usage_both').checked = true;
         document.getElementById('pricing_mode_single').checked = true;
@@ -722,6 +734,7 @@
                 min_order_qty: el.dataset.minOrderQty,
                 image_url: el.dataset.imageUrl,
                 usage_type: el.dataset.usageType || 'both',
+                upgrade_fee: el.dataset.upgradeFee || 0,
                 pricing_mode: el.dataset.pricingMode || 'single',
                 variants: el.dataset.variants ? JSON.parse(el.dataset.variants) : []
             };
@@ -753,6 +766,10 @@
                         cb.checked = item.combo_options.included_menu_ids.includes(parseInt(cb.value));
                     });
                 }
+                const customItemsInput = document.querySelector('input[name="custom_included_items"]');
+                if (customItemsInput) {
+                    customItemsInput.value = item.combo_options && item.combo_options.custom_items ? item.combo_options.custom_items : '';
+                }
             } else {
                 document.querySelector('input[name="item_type"][value="single"]').checked = true;
                 toggleComboFields();
@@ -761,7 +778,9 @@
             // Set Serving Style
             document.querySelectorAll('input[name="serving_style"]').forEach(cb => cb.checked = false);
             if (item.serving_style) {
-                const rb = document.querySelector(`input[name="serving_style"][value="${item.serving_style}"]`);
+                const targetStyle = item.serving_style.trim().toLowerCase();
+                const rbs = Array.from(document.querySelectorAll('input[name="serving_style"]'));
+                const rb = rbs.find(r => r.value.trim().toLowerCase() === targetStyle);
                 if (rb) rb.checked = true;
             }
 
@@ -780,6 +799,7 @@
             
             // Set Price Fields
             document.getElementById('fixed_price_input').value = item.price || '';
+            document.getElementById('upgrade_fee_input').value = item.upgrade_fee || '';
             document.getElementById('fixed_capacity_input').value = item.serving_size || '';
             document.getElementById('min_order_qty_input').value = item.min_order_qty || 1;
 

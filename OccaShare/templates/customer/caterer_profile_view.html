@@ -544,6 +544,7 @@
         /* --- Container & Cards: no overflow, full width --- */
         .hub-container {
             padding: 0.5rem !important;
+            padding-bottom: 280px !important;
             width: 100% !important;
             max-width: 100vw !important;
         }
@@ -762,8 +763,33 @@
             border-radius: 12px !important;
         }
         .order-drawer {
-            padding: 1rem !important;
-            border-radius: 12px !important;
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 9000 !important;
+            border-radius: 24px 24px 0 0 !important;
+            box-shadow: 0 -15px 40px rgba(0,0,0,0.12) !important;
+            padding: 1.25rem 1.25rem 1.5rem 1.25rem !important;
+            background: #fff !important;
+            margin: 0 !important;
+            border: 1px solid var(--hub-slate-200) !important;
+        }
+        #order-items-list {
+            max-height: 130px !important;
+            border-bottom: 1px dashed var(--hub-slate-200) !important;
+            padding-bottom: 0.5rem !important;
+            margin-bottom: 0.75rem !important;
+        }
+        .hub-tabs {
+            z-index: 8900 !important; /* Keep under the fixed drawer */
+        }
+        .drawer-title {
+            font-size: 1rem !important;
+            margin-bottom: 0.75rem !important;
+        }
+        .drawer-footer > div:first-child {
+            margin-bottom: 0.75rem !important;
         }
 
         /* --- Buttons full-width on mobile --- */
@@ -1564,11 +1590,6 @@
                                     {% if pkg.min_guests %}
                                     <span style="font-size:0.65rem;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:4px;padding:2px 6px;font-weight:800;">
                                         <i class="fas fa-users" style="margin-right:2px;"></i> Min {{ pkg.min_guests }}{% if pkg.max_guests %} - Max {{ pkg.max_guests }}{% endif %} pax
-                                    </span>
-                                    {% endif %}
-                                    {% if pkg.service_duration %}
-                                    <span style="font-size:0.65rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:4px;padding:2px 6px;font-weight:800;">
-                                        <i class="fas fa-clock" style="margin-right:2px;"></i> {{ pkg.service_duration }} hrs
                                     </span>
                                     {% endif %}
                                 </div>
