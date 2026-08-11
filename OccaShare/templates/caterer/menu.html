@@ -287,16 +287,20 @@
                     <label>Packaging / Serving Format * <span style="font-size: 0.8rem; color: #64748b; font-weight: normal; margin-left: 5px;">(How will this be packed or served?)</span></label>
                     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 8px;">
                         <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
-                            <input type="radio" name="serving_style" value="Standard Buffet" required onchange="suggestVariants()" style="margin-top:4px;"> 
-                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Standard / Buffet</span><span style="font-size:0.75rem; color:#64748b;">For Package Setups</span></div>
+                            <input type="radio" name="serving_style" value="Buffet / Chafing Dish" required onchange="suggestVariants()" style="margin-top:4px;"> 
+                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Buffet / Setup</span><span style="font-size:0.75rem; color:#64748b;">Standard catered setups</span></div>
                         </label>
                         <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
                             <input type="radio" name="serving_style" value="Party Tray" required onchange="suggestVariants()" style="margin-top:4px;"> 
                             <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Party Tray</span><span style="font-size:0.75rem; color:#64748b;">Aluminum Food Trays</span></div>
                         </label>
                         <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+                            <input type="radio" name="serving_style" value="Food Platter" required onchange="suggestVariants()" style="margin-top:4px;"> 
+                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Food Platter</span><span style="font-size:0.75rem; color:#64748b;">Platters / Grazing Boards</span></div>
+                        </label>
+                        <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
                             <input type="radio" name="serving_style" value="Bilao" required onchange="suggestVariants()" style="margin-top:4px;"> 
-                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Bilao</span><span style="font-size:0.75rem; color:#64748b;">Traditional Round</span></div>
+                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Bilao</span><span style="font-size:0.75rem; color:#64748b;">Traditional Filipino Round</span></div>
                         </label>
                         <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
                             <input type="radio" name="serving_style" value="Packed Meal" required onchange="suggestVariants()" style="margin-top:4px;"> 
@@ -307,18 +311,23 @@
                             <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Crew Meal</span><span style="font-size:0.75rem; color:#64748b;">For Event Staff</span></div>
                         </label>
                         <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
-                            <input type="radio" name="serving_style" value="Solo Order" required onchange="suggestVariants()" style="margin-top:4px;"> 
-                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Solo Order</span><span style="font-size:0.75rem; color:#64748b;">1 Pax Retail Size</span></div>
+                            <input type="radio" name="serving_style" value="A La Carte" required onchange="suggestVariants()" style="margin-top:4px;"> 
+                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">A La Carte</span><span style="font-size:0.75rem; color:#64748b;">1-2 Pax / Restaurant Size</span></div>
                         </label>
                         <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
                             <input type="radio" name="serving_style" value="Per Kilo" required onchange="suggestVariants()" style="margin-top:4px;"> 
-                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Per Kilo</span><span style="font-size:0.75rem; color:#64748b;">Weight Based</span></div>
+                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Per Kilo</span><span style="font-size:0.75rem; color:#64748b;">Weight-based Pricing</span></div>
                         </label>
                         <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
                             <input type="radio" name="serving_style" value="Whole Order" required onchange="suggestVariants()" style="margin-top:4px;"> 
-                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Whole Order</span><span style="font-size:0.75rem; color:#64748b;">Whole Lechon/Cake</span></div>
+                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Whole Order</span><span style="font-size:0.75rem; color:#64748b;">Lechon / Cakes / Pies</span></div>
+                        </label>
+                        <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+                            <input type="radio" name="serving_style" value="Other" required onchange="suggestVariants()" style="margin-top:4px;"> 
+                            <div style="display:flex; flex-direction:column; line-height:1.2;"><span style="font-weight:600; font-size:0.9rem;">Other</span><span style="font-size:0.75rem; color:#64748b;">Custom Format</span></div>
                         </label>
                     </div>
+                    <input type="text" name="custom_serving_style" id="customServingStyleInput" class="control-pro" placeholder="Type custom serving format (e.g. Bamboo Boat, Skewer)" style="display: none; margin-top: 10px;">
                 </div>
 
                 <div class="form-group-pro">
@@ -441,8 +450,8 @@
             </div>
 
             <div class="occ-modal-footer">
-                <button type="button" class="btn-secondary-pro" style="min-width:100px;" onclick="window.closeModal('menuModal')">Cancel</button>
-                <button type="submit" class="btn-primary-pro" style="padding:0 var(--space-xl);">Save Menu Item</button>
+                <button type="button" class="btn-secondary-pro" style="padding: 0.75rem 1.5rem; width: auto; min-width: max-content;" onclick="window.closeModal('menuModal')">Cancel</button>
+                <button type="submit" class="btn-primary-pro" style="padding: 0.75rem 1.5rem;">Save Menu Item</button>
             </div>
         </form>
     </div>
@@ -590,13 +599,15 @@
         }
     }
 
-    function toggleComboFields() {
+    function toggleComboFields(preventCategoryOverwrite = false) {
         const itemType = document.querySelector('input[name="item_type"]:checked').value;
         const comboContainer = document.getElementById('comboDishesContainer');
         const catSelect = document.getElementById('modalCategory');
         if (itemType === 'preset_combo') {
             comboContainer.style.display = 'block';
-            catSelect.value = 'Mixed/Combo';
+            if (!preventCategoryOverwrite) {
+                catSelect.value = 'Mixed/Combo';
+            }
         } else {
             comboContainer.style.display = 'none';
         }
@@ -606,17 +617,29 @@
         const style = document.querySelector('input[name="serving_style"]:checked');
         if (!style) return;
         
+        const customInput = document.getElementById('customServingStyleInput');
+        if (style.value === 'Other') {
+            customInput.style.display = 'block';
+            customInput.required = true;
+        } else {
+            customInput.style.display = 'none';
+            customInput.required = false;
+        }
+
         // Auto-select Multiple Variants
         document.getElementById('pricing_mode_variants').click();
         
         const suggestions = {
+            "Buffet / Chafing Dish": ["Standard Setup", "Premium Setup"],
             "Party Tray": ["Small Tray", "Medium Tray", "Large Tray"],
+            "Food Platter": ["Small Platter", "Medium Platter", "Large Platter", "Grazing Board"],
             "Bilao": ["Small Bilao", "Medium Bilao", "Large Bilao"],
             "Packed Meal": ["Regular Meal", "Premium Meal"],
             "Crew Meal": ["Standard Meal", "Premium Meal"],
             "Whole Order": ["Small", "Medium", "Large"],
-            "Solo Order": ["Regular"],
-            "Per Kilo": ["1 Kilogram"]
+            "A La Carte": ["Regular", "Large"],
+            "Per Kilo": ["1/2 Kilogram", "1 Kilogram", "2 Kilograms"],
+            "Other": ["Standard Size"]
         };
         
         const vals = suggestions[style.value];
@@ -694,6 +717,12 @@
         document.querySelector('input[name="item_type"][value="single"]').checked = true;
         toggleComboFields();
         document.querySelectorAll('input[name="serving_style"]').forEach(cb => cb.checked = false);
+        const customServingInput = document.getElementById('customServingStyleInput');
+        if (customServingInput) {
+            customServingInput.style.display = 'none';
+            customServingInput.value = '';
+            customServingInput.required = false;
+        }
         
         // Reset Included Dishes
         document.querySelectorAll('.included-dish-cb').forEach(cb => cb.checked = false);
@@ -760,7 +789,7 @@
             // Set Item Type
             if (item.is_combo) {
                 document.querySelector('input[name="item_type"][value="preset_combo"]').checked = true;
-                toggleComboFields();
+                toggleComboFields(true);
                 if (item.combo_options && item.combo_options.included_menu_ids) {
                     document.querySelectorAll('.included-dish-cb').forEach(cb => {
                         cb.checked = item.combo_options.included_menu_ids.includes(parseInt(cb.value));
@@ -772,16 +801,29 @@
                 }
             } else {
                 document.querySelector('input[name="item_type"][value="single"]').checked = true;
-                toggleComboFields();
+                toggleComboFields(true);
             }
 
             // Set Serving Style
             document.querySelectorAll('input[name="serving_style"]').forEach(cb => cb.checked = false);
+            const customServingInput = document.getElementById('customServingStyleInput');
+            customServingInput.style.display = 'none';
+            customServingInput.required = false;
+            customServingInput.value = '';
+
             if (item.serving_style) {
                 const targetStyle = item.serving_style.trim().toLowerCase();
                 const rbs = Array.from(document.querySelectorAll('input[name="serving_style"]'));
                 const rb = rbs.find(r => r.value.trim().toLowerCase() === targetStyle);
-                if (rb) rb.checked = true;
+                if (rb) {
+                    rb.checked = true;
+                } else {
+                    const otherRb = rbs.find(r => r.value === 'Other');
+                    if (otherRb) otherRb.checked = true;
+                    customServingInput.style.display = 'block';
+                    customServingInput.required = true;
+                    customServingInput.value = item.serving_style;
+                }
             }
 
             form.description.value = item.description || '';

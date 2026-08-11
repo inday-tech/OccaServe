@@ -3468,7 +3468,10 @@ async def add_menu_item(
     dietary_tags = form_data.getlist("dietary_tags")
     allergen_info = form_data.getlist("allergen_info")
     serving_style = form_data.get("serving_style")
-    if serving_style:
+    if serving_style == "Other":
+        custom_style = form_data.get("custom_serving_style", "").strip()
+        serving_style = custom_style if custom_style else "Other"
+    elif serving_style:
         serving_style = serving_style.strip()
     
     image = form_data.get("image")
@@ -4551,7 +4554,10 @@ async def update_menu_item(
     dietary_tags = form_data.getlist("dietary_tags")
     allergen_info = form_data.getlist("allergen_info")
     serving_style = form_data.get("serving_style")
-    if serving_style:
+    if serving_style == "Other":
+        custom_style = form_data.get("custom_serving_style", "").strip()
+        serving_style = custom_style if custom_style else "Other"
+    elif serving_style:
         serving_style = serving_style.strip()
     
     remove_image = form_data.get("remove_image", "false")
