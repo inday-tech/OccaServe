@@ -617,7 +617,21 @@ window.apiAction = async function(url, options = {}, btn = null) {
             headers: headers
         });
 
-        const data = await response.json();
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseError) {
+            // This happens when the server returns an HTML error page (like a 500 error) instead of JSON
+            if (!response.ok) {
+                if (response.status >= 500) {
+                    throw new Error(`Server Error (${response.status}): The system encountered an internal problem. Please try again later.`);
+                } else {
+                    throw new Error(`System Error (${response.status}): Received an invalid response format from the server.`);
+                }
+            }
+            data = {};
+        }
+
         if (response.ok) {
             if (window.showToast && !options.muteToast) window.showToast(data.message || "Action completed", "success");
             return data;
@@ -633,11 +647,29 @@ window.apiAction = async function(url, options = {}, btn = null) {
                 }
             }
             if (window.showError) window.showError(errorMsg);
+            else if (window.showToast) window.showToast(errorMsg, "error");
+            else alert(errorMsg);
             return null;
         }
     } catch (error) {
         console.error("API Action Error:", error);
-        if (window.showError) window.showError("An unexpected error occurred.");
+        
+        let errorMsg = "An unexpected error occurred while processing your request.";
+        
+        if (!navigator.onLine) {
+            errorMsg = "No internet connection detected. Please check your wifi or mobile data and try again.";
+        } else if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+            errorMsg = "Cannot connect to the server. Your internet might be unstable, or the system is temporarily down.";
+        } else if (error.name === 'AbortError') {
+            errorMsg = "The request timed out. Your internet connection might be too slow.";
+        } else if (error.message) {
+            errorMsg = error.message; // From our custom thrown errors above
+        }
+
+        if (window.showError) window.showError(errorMsg);
+        else if (window.showToast) window.showToast(errorMsg, "error");
+        else alert(errorMsg);
+        
         return null;
     } finally {
         if (btn) {
