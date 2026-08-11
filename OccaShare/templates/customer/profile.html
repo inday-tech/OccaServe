@@ -200,6 +200,51 @@
     }
     .btn-remove:hover { background: #fca5a5; }
 
+    /* ── RESPONSIVE & MOBILE FIXES ── */
+    @media (max-width: 768px) {
+        .dash-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1.5rem;
+            padding: 1.5rem;
+        }
+        .dash-header > div:last-child {
+            width: 100%;
+            min-width: 0 !important;
+            box-sizing: border-box;
+        }
+        .avatar-section {
+            flex-direction: column;
+            text-align: center;
+            gap: 1.25rem;
+            align-items: center;
+        }
+        .avatar-actions {
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn-save {
+            width: 100%;
+            text-align: center;
+        }
+        .profile-tabs {
+            margin-bottom: 1.5rem;
+            padding-bottom: 5px;
+        }
+        .panel {
+            padding: 1.25rem !important;
+        }
+    }
+    
+    /* Hide scrollbar for tabs */
+    .profile-tabs {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    .profile-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
 </style>
 {% endblock %}
 
@@ -728,6 +773,24 @@
 
         try {
             const formData = new FormData(form);
+
+            // FIX: If the PSGC API is still loading or failed, the selects are disabled.
+            // Disabled inputs are excluded from FormData, which causes the backend to erase them (set to None).
+            // We must append the existing saved values to prevent erasing the address.
+            if (form.id === 'form-address') {
+                const cityEl = document.getElementById('addr-city');
+                const brgyEl = document.getElementById('addr-barangay');
+                
+                // If it's disabled, it means the user couldn't change it, so keep the old one.
+                // If it's enabled but empty (which shouldn't happen due to required validation), keep old one just in case.
+                if (cityEl.disabled || !formData.get('city_municipality')) {
+                    if (SAVED_CITY) formData.set('city_municipality', SAVED_CITY);
+                }
+                if (brgyEl.disabled || !formData.get('barangay')) {
+                    if (SAVED_BARANGAY) formData.set('barangay', SAVED_BARANGAY);
+                }
+            }
+
             const res = await fetch(url, { method: 'POST', body: formData });
             const data = await res.json();
             
@@ -740,7 +803,7 @@
                 Swal.fire('Error', data.message || 'Failed to save', 'error');
             }
         } catch(err) {
-            Swal.fire('Error', 'Network error', 'error');
+            Swal.fire('Error', 'Network error. Please check your connection.', 'error');
         } finally {
             btn.innerHTML = originalText;
             btn.disabled = false;
