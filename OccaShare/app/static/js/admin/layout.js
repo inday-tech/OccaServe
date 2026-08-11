@@ -67,6 +67,43 @@
         overlay.addEventListener('click', window.closeSidebar);
     }
 
+    // ─── Mobile Sidebar Swipe Gestures ───────────────────────────────────────
+    let touchStartX = 0;
+    let touchStartY = 0;
+    const SWIPE_THRESHOLD = 60; // Min swipe distance in pixels
+
+    document.addEventListener('touchstart', function(e) {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', function(e) {
+        if (window.innerWidth > 1024) return; // Only apply to mobile/tablet view
+        
+        const touchEndX = e.changedTouches[0].screenX;
+        const touchEndY = e.changedTouches[0].screenY;
+        
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+        
+        // Ensure it's a horizontal swipe (not scrolling up/down)
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > SWIPE_THRESHOLD) {
+            const isOpen = sidebar && sidebar.classList.contains('active');
+            
+            if (deltaX > 0) {
+                // Swiped Right -> Open Sidebar
+                if (!isOpen && touchStartX < 40) {
+                    window.openSidebar();
+                }
+            } else {
+                // Swiped Left -> Close Sidebar
+                if (isOpen) {
+                    window.closeSidebar();
+                }
+            }
+        }
+    }, { passive: true });
+
     // ─── Desktop Collapse Toggle ──────────────────────────────────────────────
     if (collapseBtn) {
         collapseBtn.addEventListener('click', function () {

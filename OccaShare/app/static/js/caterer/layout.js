@@ -121,6 +121,44 @@
         }
     });
 
+    // ─── Mobile Sidebar Swipe Gestures ───────────────────────────────────────
+    let touchStartX = 0;
+    let touchStartY = 0;
+    const SWIPE_THRESHOLD = 60; // Min swipe distance in pixels
+
+    document.addEventListener('touchstart', function(e) {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', function(e) {
+        if (window.innerWidth > 1024) return; // Only apply to mobile/tablet view
+        
+        const touchEndX = e.changedTouches[0].screenX;
+        const touchEndY = e.changedTouches[0].screenY;
+        
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+        
+        // Ensure it's a horizontal swipe (not scrolling up/down)
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > SWIPE_THRESHOLD) {
+            const isOpen = sidebar && sidebar.classList.contains('sidebar-open');
+            
+            if (deltaX > 0) {
+                // Swiped Right -> Open Sidebar
+                // Only trigger if starting near the left edge of the screen to prevent accidental opens while scrolling horizontally
+                if (!isOpen && touchStartX < 40) {
+                    openSidebar();
+                }
+            } else {
+                // Swiped Left -> Close Sidebar
+                if (isOpen) {
+                    closeSidebar();
+                }
+            }
+        }
+    }, { passive: true });
+
 
     // ─── Header Dropdowns (Profile, Messages, Notifications) ───────────────────
     window.toggleHeaderDropdown = function (dropdownId, triggerEl) {
