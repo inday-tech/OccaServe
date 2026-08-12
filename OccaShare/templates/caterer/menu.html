@@ -479,6 +479,11 @@
             <h3 id="viewMenuName" style="font-size: 1.5rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;"></h3>
             <p id="viewMenuDesc" style="font-size: 0.95rem; color: #64748b; line-height: 1.6; margin-bottom: 1.5rem;"></p>
             
+            <div id="viewMenuInclusionsContainer" style="display: none; margin-bottom: 1.5rem; background: #f8fafc; padding: 1rem; border-radius: var(--border-radius); border: 1px solid #e2e8f0;">
+                <span style="display: block; font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Included Items / Platter Contents</span>
+                <ul id="viewMenuInclusionsList" style="margin: 0.5rem 0 0 0; padding-left: 1.25rem; font-size: 0.9rem; color: #334155; display: flex; flex-direction: column; gap: 4px;"></ul>
+            </div>
+            
             <div style="display: grid; grid-template-columns: 1fr; gap: 1rem; background: #f8fafc; padding: 1rem; border-radius: var(--border-radius); border: 1px solid #e2e8f0;">
                 <div>
                     <span style="display: block; font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Pricing & Sizes</span>
@@ -656,6 +661,35 @@
         document.getElementById('viewMenuServing').innerText = el.dataset.servingStyle || 'Standard';
         document.getElementById('viewMenuDesc').innerText = el.dataset.description || 'No description provided.';
         
+        if (el.dataset.isCombo === 'true') {
+            document.getElementById('viewMenuInclusionsContainer').style.display = 'block';
+            let listHTML = '';
+            try {
+                const opts = JSON.parse(el.dataset.comboOptions || '{}');
+                let itemsList = [];
+                if (opts.included_menu_ids && opts.included_menu_ids.length > 0) {
+                    opts.included_menu_ids.forEach(id => {
+                        const btn = document.querySelector(`.dropdown-item-pro[data-id="${id}"]`);
+                        if (btn && btn.dataset.name) itemsList.push(btn.dataset.name);
+                    });
+                }
+                if (opts.custom_items) {
+                    itemsList.push(...opts.custom_items.split(',').map(s => s.trim()).filter(Boolean));
+                }
+                
+                if (itemsList.length > 0) {
+                    listHTML = itemsList.map(name => `<li>${name}</li>`).join('');
+                } else {
+                    listHTML = '<li><i>No specific items listed</i></li>';
+                }
+            } catch(e) {
+                listHTML = '<li><i>Error loading inclusions</i></li>';
+            }
+            document.getElementById('viewMenuInclusionsList').innerHTML = listHTML;
+        } else {
+            document.getElementById('viewMenuInclusionsContainer').style.display = 'none';
+        }
+        
         const statusSpan = document.getElementById('viewMenuStatus');
         if (el.dataset.isHidden === 'true') {
             statusSpan.className = 'status-chip unavailable';
@@ -688,7 +722,9 @@
                 pricingContainer.innerHTML = '<span style="font-size: 0.9rem; font-weight: 800; color: #1e293b;">Error loading variants</span>';
             }
         } else {
-            pricingContainer.innerHTML = `<span style="font-size: 1.1rem; font-weight: 800; color: #1e293b;">₱${parseFloat(el.dataset.price || 0).toLocaleString()}</span>`;
+            const priceHtml = `<span style="font-size: 1.1rem; font-weight: 800; color: #1e293b;">₱${parseFloat(el.dataset.price || 0).toLocaleString()}</span>`;
+            const sizeHtml = el.dataset.servingSize ? `<span style="font-size: 0.85rem; color: #64748b; margin-left: 8px;">(${el.dataset.servingSize})</span>` : '';
+            pricingContainer.innerHTML = priceHtml + sizeHtml;
         }
 
         if (el.dataset.imageUrl) {

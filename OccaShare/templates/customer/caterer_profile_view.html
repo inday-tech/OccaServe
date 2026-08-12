@@ -2424,6 +2424,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 pricing_unit: {{ (item.pricing_unit or 'per_serving')|tojson }},
                 dietary_tags: {{ (item.dietary_tags or [])|tojson }},
                 allergen_info: {{ (item.allergen_info or [])|tojson }},
+                is_combo: {{ 'true' if item.is_combo else 'false' }},
+                combo_options: {{ item.combo_options|tojson|safe if item.combo_options else 'null' }},
                 pricing_type: "{{ item.pricing_type or 'fixed' }}",
                 variants: [
                     {% for v in item.variants %}
@@ -2598,7 +2600,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 optionsHtml = '<div style="margin-bottom:8px; font-weight:700; font-size:0.8rem;">Select Size:</div><select class="dish-row-qty" id="opt-' + item.id + '" style="width: 100%; border: 1px solid var(--hub-slate-200); border-radius: 8px; padding: 10px; font-size: 0.9rem; background:#fff;">' + item.size_prices.map(sp => `<option value="${sp.size_name}|${sp.price}">${sp.size_name} - ₱${parseFloat(sp.price).toLocaleString('en-PH', {minimumFractionDigits:0})}${unitSuffix}</option>`).join('') + '</select>';
                 priceDisplay = optionsHtml;
             } else {
-                priceDisplay = `<div style="font-size: 1.4rem; font-weight: 900; color: var(--hub-primary);">₱${parseFloat(item.price).toLocaleString('en-PH', {minimumFractionDigits:2})}${unitSuffix}</div>`;
+                let sizeHtml = item.serving_size ? `<div style="font-size: 0.85rem; color: var(--hub-slate-500); font-weight: 600; margin-top: 4px;">Good for: ${item.serving_size}</div>` : '';
+                priceDisplay = `<div style="font-size: 1.4rem; font-weight: 900; color: var(--hub-primary);">₱${parseFloat(item.price).toLocaleString('en-PH', {minimumFractionDigits:2})}${unitSuffix}</div>${sizeHtml}`;
             }
 
             const isSelected = window.selectedItems.some(s => String(s.id) === String(item.id) && (s.type ? s.type === 'Menu' : true));
@@ -2621,6 +2624,29 @@ document.addEventListener('DOMContentLoaded', function() {
                         <h3 style="font-size: 1.3rem; font-weight: 850; color: var(--hub-text-dark); margin: 0 0 6px 0; line-height:1.2;">${item.name}</h3>
                         ${item.description ? `<p style="font-size: 0.85rem; color: var(--hub-slate-600); margin: 0; line-height:1.5;">${item.description}</p>` : ''}
                     </div>
+                    
+                    ${(() => {
+                        if (!item.is_combo) return '';
+                        let itemsList = [];
+                        if (item.combo_options) {
+                            if (item.combo_options.included_menu_ids && item.combo_options.included_menu_ids.length > 0) {
+                                item.combo_options.included_menu_ids.forEach(includedId => {
+                                    const found = window.hubMenuItems.find(i => String(i.id) === String(includedId));
+                                    if (found) itemsList.push(found.name);
+                                });
+                            }
+                            if (item.combo_options.custom_items) {
+                                itemsList.push(...item.combo_options.custom_items.split(',').map(s => s.trim()).filter(Boolean));
+                            }
+                        }
+                        if (itemsList.length === 0) return '';
+                        return `<div style="background: #fff; padding: 12px; border: 1px solid var(--hub-slate-200); border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                                    <span style="display:block; font-size: 0.75rem; font-weight: 800; color: var(--hub-slate-400); text-transform: uppercase; margin-bottom: 6px;">Included Items / Platter Contents</span>
+                                    <ul style="margin: 0; padding-left: 16px; font-size: 0.85rem; color: var(--hub-text-dark); display: flex; flex-direction: column; gap: 4px;">
+                                        ${itemsList.map(name => `<li>${name}</li>`).join('')}
+                                    </ul>
+                                </div>`;
+                    })()}
                     
                     <div style="background:var(--hub-slate-50); padding:16px; border-radius:12px; border:1px solid var(--hub-slate-100);">
                         ${priceDisplay}
