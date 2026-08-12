@@ -1697,25 +1697,30 @@
                                 {% endif %}
                                 
                                 {% if item.is_combo and item.combo_options %}
-                                <div style="font-size:0.75rem; color:var(--hub-text-dark); margin-top:8px; background:var(--hub-slate-50); padding:8px; border-radius:8px;">
-                                    <div style="font-weight: 800; color:var(--hub-slate-400); text-transform:uppercase; font-size:0.65rem; margin-bottom:4px;">Included Items:</div>
-                                    <ul style="margin:0; padding-left:14px; display:flex; flex-direction:column; gap:2px;">
-                                    {% if item.combo_options.get('included_menu_ids') %}
-                                        {% for id in item.combo_options['included_menu_ids'] %}
-                                            {% set found = namespace(name='') %}
-                                            {% for m in active_menu %}
-                                                {% if m.id == id %}{% set found.name = m.name %}{% endif %}
+                                <details style="margin-top:8px;">
+                                    <summary style="font-size:0.7rem; font-weight:700; color:var(--hub-slate-500); background:var(--hub-slate-100); padding:6px 12px; border-radius:6px; cursor:pointer; list-style:none; display:flex; justify-content:space-between; align-items:center;">
+                                        <span>View Inclusions</span>
+                                        <i class="fas fa-chevron-down" style="font-size:0.6rem;"></i>
+                                    </summary>
+                                    <div style="font-size:0.75rem; color:var(--hub-text-dark); margin-top:4px; background:var(--hub-slate-50); padding:8px; border-radius:8px; border:1px solid var(--hub-slate-200); max-height:100px; overflow-y:auto;" class="custom-scrollbar">
+                                        <ul style="margin:0; padding-left:14px; display:flex; flex-direction:column; gap:2px;">
+                                        {% if item.combo_options.get('included_menu_ids') %}
+                                            {% for id in item.combo_options['included_menu_ids'] %}
+                                                {% set found = namespace(name='') %}
+                                                {% for m in active_menu %}
+                                                    {% if m.id == id %}{% set found.name = m.name %}{% endif %}
+                                                {% endfor %}
+                                                {% if found.name %}<li>{{ found.name }}</li>{% endif %}
                                             {% endfor %}
-                                            {% if found.name %}<li>{{ found.name }}</li>{% endif %}
-                                        {% endfor %}
-                                    {% endif %}
-                                    {% if item.combo_options.get('custom_items') %}
-                                        {% for cust in item.combo_options['custom_items'].split(',') %}
-                                            {% if cust.strip() %}<li>{{ cust.strip() }}</li>{% endif %}
-                                        {% endfor %}
-                                    {% endif %}
-                                    </ul>
-                                </div>
+                                        {% endif %}
+                                        {% if item.combo_options.get('custom_items') %}
+                                            {% for cust in item.combo_options['custom_items'].split(',') %}
+                                                {% if cust.strip() %}<li>{{ cust.strip() }}</li>{% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+                                        </ul>
+                                    </div>
+                                </details>
                                 {% endif %}
                                 
                                 <button type="button" onclick="window.openDishDetails({{ item.id }})" class="btn-elite-sm" style="margin-top:auto;">

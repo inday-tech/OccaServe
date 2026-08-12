@@ -1158,8 +1158,14 @@
         document.getElementById('category-showcase-modal').classList.add('flex');
     }
 
-    function openCategoryShowcase(categoryName) {
+    let currentCategoryPage = 1;
+    const itemsPerPage = 6;
+    let currentCategoryDishes = [];
+
+    function openCategoryShowcase(categoryName, page = 1) {
+        currentCategoryPage = page;
         const dishes = menuDishes[categoryName] || [];
+        currentCategoryDishes = dishes;
 
         // Update Title & Count
         document.getElementById('showcase-title').innerText = categoryName;
@@ -1219,7 +1225,11 @@
                 </div>
             `;
         } else {
-            grid.innerHTML = dishes.map(item => {
+            const totalPages = Math.ceil(dishes.length / itemsPerPage);
+            const startIndex = (page - 1) * itemsPerPage;
+            const paginatedDishes = dishes.slice(startIndex, startIndex + itemsPerPage);
+
+            grid.innerHTML = paginatedDishes.map(item => {
                 let initialCap = item.serving_size === 'Single' ? '1 Pax' : (String(item.serving_size).toLowerCase().includes('pax') ? item.serving_size : item.serving_size + ' Pax');
                 if (item.variants && item.variants.length > 0) {
                     let vc = item.variants[0].serving_capacity;
@@ -1274,18 +1284,33 @@
                                 list.push(...item.combo_options.custom_items.split(',').map(s => s.trim()).filter(Boolean));
                             }
                             if (list.length === 0) return '';
-                            return `<div class="w-full text-left bg-slate-50 p-2 rounded-lg mt-2 mb-2">
-                                        <div class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Included Items:</div>
-                                        <ul class="text-[9px] text-slate-600 pl-4 list-disc space-y-0.5">
-                                            ${list.map(i => `<li>${i}</li>`).join('')}
-                                        </ul>
-                                    </div>`;
+                            return `<details class="w-full mt-2 mb-2 group">
+                                        <summary class="text-[9px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg cursor-pointer list-none flex justify-between items-center transition-colors" style="list-style: none;">
+                                            <span>View Inclusions (${list.length})</span>
+                                            <i class="fas fa-chevron-down transition-transform group-open:rotate-180"></i>
+                                        </summary>
+                                        <div class="mt-1 bg-slate-50 p-2 rounded-lg border border-slate-100 text-left h-24 overflow-y-auto custom-scrollbar">
+                                            <ul class="text-[9px] text-slate-600 pl-4 list-disc space-y-0.5">
+                                                ${list.map(i => `<li>${i}</li>`).join('')}
+                                            </ul>
+                                        </div>
+                                    </details>`;
                         })() : ''}
                         <button onclick="promptBookingAuth()" class="mt-2 w-full text-[10px] font-bold text-white bg-primary rounded-full py-1.5 transition hover:bg-primary/90 shadow-sm uppercase tracking-widest"><i class="fas ${categoryName === 'Rentals' ? 'fa-box' : (categoryName === 'Services' ? 'fa-calendar-check' : 'fa-cart-plus')}"></i> ${categoryName === 'Rentals' ? 'Rent' : (categoryName === 'Services' ? 'Book' : 'Order')}</button>
                     </div>
                 </div>
             `;
             }).join('');
+
+            if (totalPages > 1) {
+                grid.innerHTML += `
+                    <div class="col-span-full flex justify-center items-center gap-4 mt-4 mb-2">
+                        <button onclick="openCategoryShowcase('${categoryName.replace(/'/g, "\\'")}', ${page - 1})" ${page === 1 ? 'disabled class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 cursor-not-allowed"' : 'class="w-8 h-8 rounded-full bg-white border border-slate-200 text-brand shadow-sm hover:bg-brand hover:text-white transition-colors"'}><i class="fas fa-chevron-left"></i></button>
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Page ${page} of ${totalPages}</span>
+                        <button onclick="openCategoryShowcase('${categoryName.replace(/'/g, "\\'")}', ${page + 1})" ${page === totalPages ? 'disabled class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 cursor-not-allowed"' : 'class="w-8 h-8 rounded-full bg-white border border-slate-200 text-brand shadow-sm hover:bg-brand hover:text-white transition-colors"'}><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                `;
+            }
         }
 
         // Show Modal
