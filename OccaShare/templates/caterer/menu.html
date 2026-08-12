@@ -722,7 +722,8 @@
                 pricingContainer.innerHTML = '<span style="font-size: 0.9rem; font-weight: 800; color: #1e293b;">Error loading variants</span>';
             }
         } else {
-            const priceHtml = `<span style="font-size: 1.1rem; font-weight: 800; color: #1e293b;">₱${parseFloat(el.dataset.price || 0).toLocaleString()}</span>`;
+            const unit = el.dataset.servingStyle ? ` <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">/ ${el.dataset.servingStyle}</span>` : '';
+            const priceHtml = `<span style="font-size: 1.1rem; font-weight: 800; color: #1e293b;">₱${parseFloat(el.dataset.price || 0).toLocaleString()}</span>${unit}`;
             const sizeHtml = el.dataset.servingSize ? `<span style="font-size: 0.85rem; color: #64748b; margin-left: 8px;">(${el.dataset.servingSize})</span>` : '';
             pricingContainer.innerHTML = priceHtml + sizeHtml;
         }

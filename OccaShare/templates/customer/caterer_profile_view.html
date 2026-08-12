@@ -1682,7 +1682,7 @@
                                     {% endif %}
                                 </div>
                                 <span class="ei-name" style="min-height: auto; margin-top: 4px;">{{ item.name }}</span>
-                                <span class="ei-price" style="font-size: 1rem; margin-top: 4px;">₱{{ "{:,.2f}".format(item_price) }}</span>
+                                <span class="ei-price" style="font-size: 1rem; margin-top: 4px;">₱{{ "{:,.2f}".format(item_price) }} <span style="font-size: 0.7rem; color: var(--hub-slate-400); font-weight: 700; text-transform: uppercase;">/ {{ item.serving_style or item.pricing_unit or 'Order' }}</span></span>
                                 
                                 {% if item.serving_size or item.serving_capacity %}
                                 <div style="font-size:0.7rem; color:var(--hub-slate-500); margin-top:4px;">
@@ -1694,6 +1694,28 @@
                                 <p style="font-size:0.75rem; color:var(--hub-slate-500); margin-top:8px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
                                     {{ item.description }}
                                 </p>
+                                {% endif %}
+                                
+                                {% if item.is_combo and item.combo_options %}
+                                <div style="font-size:0.75rem; color:var(--hub-text-dark); margin-top:8px; background:var(--hub-slate-50); padding:8px; border-radius:8px;">
+                                    <div style="font-weight: 800; color:var(--hub-slate-400); text-transform:uppercase; font-size:0.65rem; margin-bottom:4px;">Included Items:</div>
+                                    <ul style="margin:0; padding-left:14px; display:flex; flex-direction:column; gap:2px;">
+                                    {% if item.combo_options.get('included_menu_ids') %}
+                                        {% for id in item.combo_options['included_menu_ids'] %}
+                                            {% set found = namespace(name='') %}
+                                            {% for m in active_menu %}
+                                                {% if m.id == id %}{% set found.name = m.name %}{% endif %}
+                                            {% endfor %}
+                                            {% if found.name %}<li>{{ found.name }}</li>{% endif %}
+                                        {% endfor %}
+                                    {% endif %}
+                                    {% if item.combo_options.get('custom_items') %}
+                                        {% for cust in item.combo_options['custom_items'].split(',') %}
+                                            {% if cust.strip() %}<li>{{ cust.strip() }}</li>{% endif %}
+                                        {% endfor %}
+                                    {% endif %}
+                                    </ul>
+                                </div>
                                 {% endif %}
                                 
                                 <button type="button" onclick="window.openDishDetails({{ item.id }})" class="btn-elite-sm" style="margin-top:auto;">
