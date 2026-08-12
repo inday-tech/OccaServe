@@ -1035,13 +1035,17 @@
             {% for item in active_menu if item.category == cat %}
             {
                 name: {{ item.name|tojson }},
+                id: {{ item.id|tojson }},
                 image_url: "{{ item.image_url if item.image_url else '' }}",
                 serving_size: {{ (item.serving_size if item.serving_size else 'Single')|tojson }},
+                serving_style: {{ (item.serving_style or item.pricing_unit or 'Order')|tojson }},
                 price: {{ (item.price if item.price else 0)|tojson }},
                 pricing_type: "{{ item.pricing_type or 'fixed' }}",
                 status: {{ (item.status or 'available')|tojson }},
                 min_order_qty: {{ (item.min_order_qty or 1)|tojson }},
                 description: {{ item.description|default('', true)|tojson }},
+                is_combo: {{ 'true' if item.is_combo else 'false' }},
+                combo_options: {{ item.combo_options|tojson|safe if item.combo_options else 'null' }},
                 dietary_tags: {{ item.dietary_tags|default([], true)|tojson }},
                 allergen_info: {{ item.allergen_info|default([], true)|tojson }},
                 weight_prices: [
@@ -1257,6 +1261,26 @@
                             ? `<select onchange="const b = document.getElementById('badge-${item.id}'); if(b) b.innerHTML = '<i class=\'fas fa-users\'></i> ' + this.options[this.selectedIndex].getAttribute('data-capacity');" class="mt-auto text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 outline-none w-full text-center">` + item.size_prices.map(sp => { let cap = sp.capacity ? (String(sp.capacity).toLowerCase().includes('pax') ? sp.capacity : sp.capacity + ' Pax') : initialCap; let displayCap = sp.capacity ? (String(sp.capacity).toLowerCase().includes('good for') ? sp.capacity : 'Good for ' + sp.capacity) : ''; return `<option value="${sp.price}" data-capacity="${cap}">₱${parseFloat(sp.price).toLocaleString()} / ${sp.size_name} ${displayCap ? '(' + displayCap + ')' : ''}</option>`; }).join('') + `</select>`
                             : (item.price > 0 ? `<div class="text-primary font-black text-sm bg-primary/5 px-3 py-1 rounded-full border border-primary/10 mt-auto flex items-center gap-1 justify-center">₱${parseFloat(item.price).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} <span class="text-[9px] font-bold text-slate-500 uppercase whitespace-nowrap">/ ${item.serving_style || 'Order'}</span></div>` : `<div class="text-slate-500 font-bold text-[10px] bg-slate-100 px-3 py-1 rounded-full mt-auto border border-slate-200 flex justify-center">Price Varies / TBD</div>`)
                 }
+                        ${item.is_combo && item.combo_options ? (() => {
+                            const allActiveMenu = Object.values(menuDishes).flat();
+                            let list = [];
+                            if (item.combo_options.included_menu_ids) {
+                                item.combo_options.included_menu_ids.forEach(id => {
+                                    const m = allActiveMenu.find(x => String(x.id) === String(id));
+                                    if(m) list.push(m.name);
+                                });
+                            }
+                            if (item.combo_options.custom_items) {
+                                list.push(...item.combo_options.custom_items.split(',').map(s => s.trim()).filter(Boolean));
+                            }
+                            if (list.length === 0) return '';
+                            return `<div class="w-full text-left bg-slate-50 p-2 rounded-lg mt-2 mb-2">
+                                        <div class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Included Items:</div>
+                                        <ul class="text-[9px] text-slate-600 pl-4 list-disc space-y-0.5">
+                                            ${list.map(i => `<li>${i}</li>`).join('')}
+                                        </ul>
+                                    </div>`;
+                        })() : ''}
                         <button onclick="promptBookingAuth()" class="mt-2 w-full text-[10px] font-bold text-white bg-primary rounded-full py-1.5 transition hover:bg-primary/90 shadow-sm uppercase tracking-widest"><i class="fas ${categoryName === 'Rentals' ? 'fa-box' : (categoryName === 'Services' ? 'fa-calendar-check' : 'fa-cart-plus')}"></i> ${categoryName === 'Rentals' ? 'Rent' : (categoryName === 'Services' ? 'Book' : 'Order')}</button>
                     </div>
                 </div>
