@@ -2001,6 +2001,34 @@
 
 
 {% block extra_body %}
+<!-- Reject Reason Modal -->
+<div id="rejectReasonModal" class="occ-modal-overlay" style="z-index: 1100;">
+    <div class="occ-modal-box sz-sm occ-content-pop">
+        <div class="occ-modal-header glass-header">
+            <div>
+                <h2 class="occ-modal-title" style="color: #991b1b;"><i class="fas fa-ban"></i> Reject Booking</h2>
+                <div class="occ-modal-subtitle">Please provide a reason for the cancellation</div>
+            </div>
+            <button onclick="bk_closeModal('rejectReasonModal')" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="occ-modal-body">
+            <div class="occ-form-group">
+                <label class="occ-form-label" style="font-weight: 800;">Reason for Rejection</label>
+                <textarea id="rejectReasonInput" class="occ-form-input" style="height: 120px; resize: none; border-color: #fecaca;" placeholder="Example: Fully booked on this date, out of service area, etc."></textarea>
+                <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;"><i class="fas fa-info-circle"></i> This reason will be sent to the customer via email.</p>
+            </div>
+        </div>
+        <div class="occ-modal-footer">
+            <button onclick="bk_closeModal('rejectReasonModal')" class="btn-sm-outline">Go Back</button>
+            <button onclick="submitRejectionWithReason()" class="btn-sm-danger" style="background: #dc2626; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--border-radius, 8px); font-weight: 800; display: flex; align-items: center; gap: 0.5rem;">
+                Confirm Rejection
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════
      MODAL: DISPATCH PROOF (PANEL DEFENSE)
 ════════════════════════════════════════════════════ -->
