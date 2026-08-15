@@ -1004,8 +1004,8 @@ function showBookingDetails(btn) {
         'cancelled': 'badge-cancelled'
     };
     var badgeClass = data.displayBadge || statusMap[data.status] || 'badge-draft';
-    statusEl.classList.add(badgeClass);
-    if (statusElMobile) statusElMobile.classList.add(badgeClass);
+    statusEl.classList.add(...badgeClass.trim().split(/\s+/));
+    if (statusElMobile) statusElMobile.classList.add(...badgeClass.trim().split(/\s+/));
 
     var menuSource = document.getElementById('booking-items-' + data.id);
     var menuTarget = document.getElementById('modalMenuItems');
