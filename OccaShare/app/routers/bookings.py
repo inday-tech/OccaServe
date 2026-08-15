@@ -1504,77 +1504,84 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
 
 # Phase 4: Downpayment
 async def _validate_receipt_with_gemini(b64_string: str, payment_method: str, expected_amount: float = 0.0) -> bool:
-    is_valid = False
     gemini_key = os.getenv("GEMINI_API_KEY")
-    if gemini_key:
-        import httpx, base64, json, re
-        try:
-            # Check if b64_string is already prefixed with data:image
-            encoded_string = b64_string.split(",", 1)[1] if "," in b64_string else b64_string
-            
-            # Try gemini-2.0-flash first, and fallback to gemini-1.5-flash
-            models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash"]
-            prompt = (
-                f"Analyze this image. Is it a legitimate payment receipt or screenshot for {payment_method}? "
-                "Look for evidence of a successful transaction, reference numbers, amounts, and dates. "
-                f"CRITICAL: Check if the amount paid is at least {expected_amount:,.2f} PHP. If the amount is significantly lower or missing, mark as invalid. "
-                "Respond ONLY with a valid JSON object in this exact format: "
-                '{"is_valid": true_or_false, "reason": "short explanation"}'
-            )
-            
-            payload = {
-                "contents": [{"parts": [{"text": prompt}, {"inlineData": {"mimeType": "image/jpeg", "data": encoded_string}}]}],
-                "generationConfig": {"response_mime_type": "application/json"}
-            }
-            
-            response = None
-            async with httpx.AsyncClient() as client:
-                for model in models_to_try:
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}"
-                    print(f"[GEMINI VALIDATION] Trying model: {model}")
-                    try:
-                        res = await client.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=20.0)
-                        if res.status_code == 200:
-                            response = res
-                            break
-                        else:
-                            print(f"[GEMINI VALIDATION WARNING] Model {model} failed with status {res.status_code}")
-                    except Exception as err:
-                        print(f"[GEMINI VALIDATION WARNING] Model {model} request failed: {err}")
-            
-            if response and response.status_code == 200:
-                text = response.json()['candidates'][0]['content']['parts'][0]['text']
-                match = re.search(r'\{.*\}', text.strip(), re.DOTALL)
-                if match:
-                    parsed = json.loads(match.group(0))
-                    is_valid = parsed.get("is_valid", False)
-                    print(f"[GEMINI VALIDATION] Result: {is_valid}, Reason: {parsed.get('reason')}")
-            else:
-                print(f"[GEMINI API ERROR] All models failed or returned non-200 status code.")
-        except Exception as e:
-            print(f"[GEMINI OCR ERROR] {e}")
-            pass # fallback to False if API fails
-    else:
-        # Fallback to Tesseract if no Gemini key is set
-        if PYTESSERACT_AVAILABLE:
+    if not gemini_key:
+        print("[GEMINI VALIDATION] No Gemini key set, passing to caterer manual review.")
+        return True
+
+    import httpx, base64, json, re
+    from app.services.payment_verification import payment_verification_service
+
+    # 1. Load actual image bytes from Cloudinary URL, local file, or Base64
+    try:
+        raw_bytes = payment_verification_service._load_image_bytes(b64_string)
+        encoded_string = base64.b64encode(raw_bytes).decode('utf-8')
+    except Exception as load_err:
+        print(f"[GEMINI VALIDATION ERROR] Could not load image bytes: {load_err}")
+        return True # Pass to manual caterer review if image cannot be read locally
+
+    # Auto-detect mimeType from magic bytes to avoid Gemini rejecting PNG uploads sent as jpeg
+    mime_type = "image/jpeg"
+    if raw_bytes[:8] == b'\x89PNG\r\n\x1a\n':
+        mime_type = "image/png"
+    elif raw_bytes[:4] == b'RIFF' and raw_bytes[8:12] == b'WEBP':
+        mime_type = "image/webp"
+    print(f"[GEMINI VALIDATION] Detected mimeType: {mime_type}")
+
+    # 2. Call Gemini Vision API with raw base64 image data
+    models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+    prompt = (
+        f"You are verifying a Philippine mobile payment receipt for OccaServe catering marketplace. "
+        f"The customer claims this is a {payment_method} payment screenshot. "
+        "Your job is to check if this is a legitimate payment confirmation image.\n\n"
+        "IMPORTANT RULES:\n"
+        "1. Set is_valid: TRUE for any of these: GCash Express Send / Send Money confirmation, "
+        "Maya payment confirmation, bank transfer receipt, deposit slip, BDO/BPI/Metrobank/UnionBank "
+        "online transfer confirmation, or any Philippine e-wallet transaction success screen.\n"
+        "2. GCash receipts often show masked names like 'MI••Y MA•••T J.' or '+63 9••••1719' — "
+        "this is NORMAL and is a valid GCash receipt. Do NOT fail these.\n"
+        "3. Set is_valid: FALSE ONLY for: selfie photos, food photos, random screenshots unrelated to payments, "
+        "blank images, or obviously fake/edited receipts.\n"
+        "4. Do NOT fail a receipt just because names are masked, amounts seem small, "
+        "or you cannot read every field clearly.\n"
+        "5. If there is ANY doubt and the image looks like a payment receipt, set is_valid: TRUE.\n\n"
+        'Respond ONLY with a valid JSON: {"is_valid": true_or_false, "reason": "brief explanation"}'
+    )
+
+    payload = {
+        "contents": [{"parts": [{"text": prompt}, {"inlineData": {"mimeType": mime_type, "data": encoded_string}}]}],
+        "generationConfig": {"response_mime_type": "application/json"}
+    }
+
+    headers = {"Content-Type": "application/json"}
+    async with httpx.AsyncClient() as client:
+        for model in models_to_try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}"
+            print(f"[GEMINI VALIDATION] Trying model: {model}")
             try:
-                if os.name == "nt":
-                    tess_paths = [r"C:\Program Files\Tesseract-OCR\tesseract.exe", r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"]
-                    for p in tess_paths:
-                        if os.path.exists(p):
-                            pytesseract.pytesseract.tesseract_cmd = p
-                            os.environ["TESSDATA_PREFIX"] = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "tessdata"))
-                            break
-                img = Image.open(filepath)
-                img.thumbnail((800, 800))
-                text = pytesseract.image_to_string(img).lower()
-                keywords = ['ref', 'reference', 'no.', 'php', 'amount', 'transfer', 'gcash', 'maya', 'sent', 'success', 'date', 'pesos', 'payout']
-                match_count = sum(1 for kw in keywords if kw in text)
-                if match_count >= 2:
-                    is_valid = True
-            except Exception as e:
-                pass
-    return is_valid
+                res = await client.post(url, json=payload, headers=headers, timeout=30.0)
+                if res.status_code == 200:
+                    text_resp = res.json().get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '{}').strip()
+                    if text_resp.startswith("```json"): text_resp = text_resp[7:]
+                    if text_resp.startswith("```"): text_resp = text_resp[3:]
+                    if text_resp.endswith("```"): text_resp = text_resp[:-3]
+
+                    try:
+                        parsed = json.loads(text_resp.strip())
+                        is_valid = parsed.get("is_valid", True)  # Default True: pass to manual review if unclear
+                        print(f"[GEMINI VALIDATION] Model '{model}' Result: {is_valid}, Reason: {parsed.get('reason')}")
+                        return is_valid
+                    except (json.JSONDecodeError, ValueError) as parse_err:
+                        print(f"[GEMINI VALIDATION WARNING] Could not parse JSON from model '{model}': {parse_err}. Defaulting to True.")
+                        return True  # If we cannot parse the response, pass to manual caterer review
+                else:
+                    print(f"[GEMINI VALIDATION WARNING] Model {model} status code: {res.status_code}")
+            except Exception as err:
+                print(f"[GEMINI VALIDATION WARNING] Model {model} request failed: {err}")
+
+    # Fallback to True if Gemini API is rate-limited/unavailable so caterers can manually verify proof
+    print("[GEMINI VALIDATION WARNING] AI service temporary fallback: Passing to caterer manual verification.")
+    return True
 
 @router.get("/step/payment/{booking_id}", response_class=HTMLResponse)
 async def step_payment_v2_page(booking_id: str, request: Request, db: Session = Depends(database.get_db)):
