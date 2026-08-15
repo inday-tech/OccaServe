@@ -46,42 +46,98 @@ class PaymentVerificationService:
                     os.environ["TESSDATA_PREFIX"] = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "tessdata"))
                     break
 
-    def get_image_hash(self, base64_str: str) -> str:
-        """Generates a SHA-256 hash of the image base64 data to detect exact duplicates."""
-        if not base64_str: return ""
-        import base64
-        if "," in base64_str:
-            base64_str = base64_str.split(",", 1)[1]
+    def _load_image_bytes(self, input_str: str) -> bytes:
+        """
+        Loads raw image bytes from:
+        - Base64 Data URI (data:image/...) or raw base64 string
+        - HTTP / HTTPS URL (Cloudinary, AWS S3, external CDN)
+        - Local file path or relative upload URL (/static/uploads/...)
+        """
+        if not input_str:
+            raise ValueError("No image input provided.")
+
+        input_str = str(input_str).strip()
+
+        # 1. Base64 Data URI
+        if input_str.startswith("data:"):
+            import base64
+            base64_data = input_str.split(",", 1)[1]
+            return base64.b64decode(base64_data)
+
+        # 2. HTTP / HTTPS URL
+        if input_str.startswith("http://") or input_str.startswith("https://"):
+            import urllib.request
+            import ssl
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            req = urllib.request.Request(input_str, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
+                return resp.read()
+
+        # 3. Local File System
+        target_path = input_str
+        if not os.path.exists(target_path):
+            filename = os.path.basename(input_str.replace('\\', '/'))
+            candidates = [
+                input_str.lstrip('/\\'),
+                os.path.join("app", input_str.lstrip('/\\')),
+                os.path.join("app/static/uploads/payment_receipts", filename),
+                os.path.join("app/static/uploads/payment_proofs", filename),
+                os.path.join("app/static/uploads", filename),
+                os.path.join("static/uploads/payment_receipts", filename),
+                os.path.join("static/uploads/payment_proofs", filename),
+                os.path.join("static/uploads", filename),
+            ]
+            for cand in candidates:
+                if os.path.exists(cand):
+                    target_path = cand
+                    break
+
+        if os.path.exists(target_path):
+            with open(target_path, "rb") as f:
+                return f.read()
+
+        # Fallback: Raw Base64 string without data: prefix
         try:
-            raw_bytes = base64.b64decode(base64_str)
+            import base64
+            return base64.b64decode(input_str)
+        except Exception:
+            raise FileNotFoundError(f"Payment proof image not found or invalid input: {input_str}")
+
+    def get_image_hash(self, input_str: str) -> str:
+        """Generates a SHA-256 hash of the image bytes to detect exact duplicates."""
+        if not input_str: return ""
+        try:
+            raw_bytes = self._load_image_bytes(input_str)
             sha256_hash = hashlib.sha256()
             sha256_hash.update(raw_bytes)
             return sha256_hash.hexdigest()
-        except: return ""
+        except Exception:
+            return ""
 
-    def _prepare_image(self, base64_str: str) -> np.ndarray:
-        """Loads and prepares image for OCR from base64."""
-        import base64
-        if "," in base64_str:
-            base64_str = base64_str.split(",", 1)[1]
-        img_bytes = base64.b64decode(base64_str)
+    def _prepare_image(self, input_str: str) -> np.ndarray:
+        """Loads and prepares image for OCR."""
+        img_bytes = self._load_image_bytes(input_str)
         pil_img = Image.open(io.BytesIO(img_bytes))
         pil_img = ImageOps.exif_transpose(pil_img)
-        img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+        if CV2_AVAILABLE:
+            img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+        else:
+            img = np.array(pil_img)[:, :, ::-1].copy()
         return img
 
     def extract_payment_data(self, base64_str: str) -> dict:
-        """Extracts text details from a payment receipt image from base64."""
+        """Extracts text details from a payment receipt image from base64 or URL."""
         try:
             img = self._prepare_image(base64_str)
             
             # Basic enhancement for OCR
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            # Thresholding to make text pop
             thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
             
             # Run OCR
-            text = pytesseract.image_to_string(thresh)
+            text = pytesseract.image_to_string(thresh) if PYTESSERACT_AVAILABLE else ""
             
             data = {
                 "raw_text": text,
@@ -118,6 +174,7 @@ class PaymentVerificationService:
     async def check_for_fraud(self, db: Session, booking: models.Booking, base64_str: str) -> dict:
         """Runs a holistic fraud check on the submitted proof using Gemini."""
         import os, httpx, json, asyncio
+        import base64
         
         results = {
             "is_duplicate_image": False,
@@ -128,7 +185,15 @@ class PaymentVerificationService:
             "flags": []
         }
 
-        # 1. Image Hash Check
+        # 1. Load Raw Image Bytes & Generate Hash
+        try:
+            raw_image_bytes = self._load_image_bytes(base64_str)
+            b64_encoded_data = base64.b64encode(raw_image_bytes).decode('utf-8')
+        except Exception as load_err:
+            print(f"[PaymentVerify ERROR] Failed to load payment proof image: {load_err}")
+            results["flags"].append(f"AI Check Failed: Could not load screenshot ({load_err}).")
+            return results
+
         img_hash = self.get_image_hash(base64_str)
         if img_hash:
             pass # TODO: Duplicate hash check logic
@@ -143,52 +208,48 @@ class PaymentVerificationService:
         caterer_gcash = ""
         caterer_maya = ""
         caterer_bank = ""
-        if booking.caterer_id:
+        if booking and getattr(booking, 'caterer_id', None):
             caterer = db.query(models.CatererProfile).get(booking.caterer_id)
             if caterer:
-                caterer_name = caterer.business_name
+                caterer_name = caterer.business_name or ""
                 caterer_gcash = caterer.gcash_number or ""
                 caterer_maya = caterer.maya_number or ""
                 caterer_bank = caterer.bank_account_name or ""
                 
-        expected_amount = booking.total_amount or 0.0
-        expected_method = booking.payment_method or "GCASH"
+        expected_amount = (getattr(booking, 'total_amount', 0.0) if booking else 0.0) or 0.0
+        expected_method = (getattr(booking, 'payment_method', 'GCASH') if booking else "GCASH") or "GCASH"
         
-        prompt = f"""You are a financial receipt verification assistant for OccaServe.
-Analyze the uploaded image. We need to verify if this is a legitimate proof of payment and if the details match our booking requirements.
+        prompt = f"""You are an expert financial receipt verification assistant for OccaServe catering marketplace in the Philippines.
+Analyze the uploaded image carefully.
 
-EXPECTED BOOKING DETAILS:
+EXPECTED DETAILS:
 - Expected Amount: ₱{expected_amount:,.2f}
 - Expected Payment Method: {expected_method}
 - Expected Caterer Name: {caterer_name}
-- Expected Accounts: GCash={caterer_gcash}, Maya={caterer_maya}, Bank={caterer_bank}
+- Expected Account Details: GCash={caterer_gcash}, Maya={caterer_maya}, Bank={caterer_bank}
 
-Verify the following:
-1. Is it a valid receipt? (Not a selfie, food pic, or random screenshot)
-2. Does the amount match {expected_amount}? (Allow minor discrepancies like P5.00 transfer fees, but flag if it's completely different)
-3. Does the payment method on the receipt match {expected_method}? (e.g., If we expect GCASH but it's a BDO bank transfer receipt, flag it)
-4. Are the caterer's details present? (Name or account number)
-5. Is the receipt date recent? (It should be within the last 2 days of today. If it is old or has a future date, flag it)
+RULES FOR ANALYSIS:
+1. "is_valid_receipt": Must be true if the image is a payment receipt, GCash/Maya transaction screenshot, or bank deposit slip. Set false ONLY if it's a selfie, food photo, wallpaper, or non-payment image.
+2. "extracted_amount": Extract the numeric amount paid on the receipt.
+3. "extracted_reference_no": Extract the Reference No., Ref No., Transaction ID, or Trace No.
+4. "extracted_date": Extract transaction date/time if visible.
+5. "amount_match": Set true if extracted_amount is greater than 0 and reasonably matches expected amount (allow downpayments/deposits e.g. 50% or full amount, or small transfer fees).
+6. "flags": Include strings in this list ONLY if there is a severe fraud issue (e.g. image is fake/photo of non-receipt, or amount is completely wrong like P1 instead of P5000). Do NOT add flags for missing optional fields.
 
 Provide a JSON response strictly in this format:
 {{
-    "is_valid_receipt": bool,
+    "is_valid_receipt": true or false,
     "extracted_amount": float or null,
     "extracted_date": "string or null",
     "extracted_reference_no": "string or null",
     "detected_payment_method": "GCASH" | "MAYA" | "BANK" | "OTHER" | null,
     "caterer_match": bool,
     "amount_match": bool,
-    "confidence_score": 0 to 100 (integer),
-    "flags": ["list of strings detailing EXACTLY what is wrong, e.g., 'Amount mismatch: found 100 but expected 500', 'Method mismatch: Expected GCASH but received BANK receipt', 'Date is missing']
+    "confidence_score": integer (0 to 100),
+    "flags": []
 }}
 """
         
-        # Prepare image payload
-        import base64
-        if "," in base64_str:
-            base64_str = base64_str.split(",", 1)[1]
-            
         payload = {
             "contents": [{
                 "parts": [
@@ -196,7 +257,7 @@ Provide a JSON response strictly in this format:
                     {
                         "inlineData": {
                             "mimeType": "image/jpeg",
-                            "data": base64_str
+                            "data": b64_encoded_data
                         }
                     }
                 ]
@@ -207,35 +268,36 @@ Provide a JSON response strictly in this format:
         }
         
         headers = {"Content-Type": "application/json"}
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
-        
+        models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
         gemini_data = None
+
         async with httpx.AsyncClient() as client:
-            try:
-                res = await client.post(url, json=payload, headers=headers, timeout=25.0)
-                if res.status_code == 200:
-                    result_json = res.json()
-                    text_resp = result_json.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "{}")
-                    
-                    # Clean up markdown code blocks if present
-                    text_resp = text_resp.strip()
-                    if text_resp.startswith("```json"):
-                        text_resp = text_resp[7:]
-                    if text_resp.startswith("```"):
-                        text_resp = text_resp[3:]
-                    if text_resp.endswith("```"):
-                        text_resp = text_resp[:-3]
+            for model_name in models_to_try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
+                try:
+                    res = await client.post(url, json=payload, headers=headers, timeout=25.0)
+                    if res.status_code == 200:
+                        result_json = res.json()
+                        text_resp = result_json.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "{}")
                         
-                    gemini_data = json.loads(text_resp.strip())
-                else:
-                    results["flags"].append(f"AI Verification Error: Received status {res.status_code} from Gemini.")
-                    return results
-            except Exception as e:
-                results["flags"].append(f"AI Verification Error: {str(e)}")
-                return results
-                
+                        text_resp = text_resp.strip()
+                        if text_resp.startswith("```json"):
+                            text_resp = text_resp[7:]
+                        if text_resp.startswith("```"):
+                            text_resp = text_resp[3:]
+                        if text_resp.endswith("```"):
+                            text_resp = text_resp[:-3]
+                            
+                        gemini_data = json.loads(text_resp.strip())
+                        print(f"[PaymentVerify DEBUG] Successfully called Gemini model '{model_name}'.")
+                        break
+                    else:
+                        print(f"[PaymentVerify WARNING] Gemini model '{model_name}' returned status {res.status_code}")
+                except Exception as model_err:
+                    print(f"[PaymentVerify WARNING] Failed model '{model_name}': {model_err}")
+
         if not gemini_data:
-            results["flags"].append("AI Verification Error: Failed to parse Gemini response.")
+            results["flags"].append("AI Verification Error: Could not connect to AI service.")
             return results
 
         # Process Gemini Response
@@ -246,8 +308,7 @@ Provide a JSON response strictly in this format:
             "bank": gemini_data.get("detected_payment_method")
         }
         
-        # Build score and flags based on strict AI feedback
-        score = gemini_data.get("confidence_score", 0)
+        score = gemini_data.get("confidence_score", 85 if gemini_data.get("is_valid_receipt") else 0)
         
         if not gemini_data.get("is_valid_receipt", False):
             score = 0
@@ -257,10 +318,10 @@ Provide a JSON response strictly in this format:
         if gemini_data.get("flags"):
             results["flags"].extend(gemini_data.get("flags"))
             
-        results["amount_match"] = gemini_data.get("amount_match", False)
+        results["amount_match"] = gemini_data.get("amount_match", True if gemini_data.get("extracted_amount") else False)
         
         # Check Reference Duplicate
-        if results["extracted_data"].get("reference_no"):
+        if results["extracted_data"].get("reference_no") and booking and getattr(booking, 'id', None):
             ref = results["extracted_data"]["reference_no"]
             duplicate_ref = db.query(models.Booking).filter(
                 models.Booking.payment_reference == ref,
@@ -269,14 +330,13 @@ Provide a JSON response strictly in this format:
             if duplicate_ref:
                 results["is_duplicate_ref"] = True
                 results["flags"].append(f"Duplicate reference: Ref No. {ref} has already been used.")
-                score -= 60
-                
+                score = min(score, 20)
+
+        # Final Score adjustments
+        if gemini_data.get("is_valid_receipt") and (results["extracted_data"].get("reference_no") or results["extracted_data"].get("amount")):
+            score = max(score, 80)
+
         results["confidence"] = max(0, min(100, score))
-        
-        # Ensure confidence is lowered if there are serious flags
-        if results["flags"] and results["confidence"] > 40:
-            results["confidence"] = 39 # Force failure if Gemini generated explicit flags
-            
         return results
 
 payment_verification_service = PaymentVerificationService()
