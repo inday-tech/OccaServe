@@ -315,59 +315,92 @@ class VerificationService:
 
         return False
 
+    def _load_image_bytes(self, path_or_url: str) -> bytes:
+        """
+        Loads raw/decrypted image bytes from:
+        - Base64 Data URI (data:image/...)
+        - Remote HTTP/HTTPS URL (Cloudinary, AWS S3, etc.)
+        - Local File Path (absolute path, relative path, or filename in upload directories)
+        """
+        if not path_or_url:
+            raise ValueError("No image path or URL provided.")
+
+        # 1. Base64 Data URI
+        if path_or_url.startswith("data:"):
+            import base64
+            base64_data = path_or_url.split(",", 1)[1]
+            return base64.b64decode(base64_data)
+
+        # 2. Remote HTTP/HTTPS URL
+        if path_or_url.startswith("http://") or path_or_url.startswith("https://"):
+            import urllib.request
+            req = urllib.request.Request(path_or_url, headers={'User-Agent': 'Mozilla/5.0'})
+            try:
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    raw_data = resp.read()
+                try:
+                    return decrypt_data(raw_data)
+                except Exception:
+                    return raw_data
+            except Exception as http_err:
+                print(f"[KYC ERROR] Failed to fetch image from URL '{path_or_url}': {http_err}")
+                raise FileNotFoundError(f"KYC document could not be downloaded from URL: {path_or_url}")
+
+        # 3. Local File System
+        target_path = path_or_url
+        if not os.path.exists(target_path):
+            filename = os.path.basename(path_or_url.replace('\\', '/'))
+            candidates = [
+                path_or_url.lstrip('/\\'),
+                os.path.join("app", path_or_url.lstrip('/\\')),
+                os.path.join("app/static/uploads/verification", filename),
+                os.path.join("app/static/uploads/valid_ids", filename),
+                os.path.join("app/static/uploads/profile_images", filename),
+                os.path.join("app/static/uploads/caterer", filename),
+                os.path.join("app/static/uploads", filename),
+                os.path.join("static/uploads/verification", filename),
+                os.path.join("static/uploads/valid_ids", filename),
+                os.path.join("static/uploads", filename),
+            ]
+            found = False
+            for cand in candidates:
+                if os.path.exists(cand):
+                    target_path = cand
+                    found = True
+                    break
+            if not found:
+                raise FileNotFoundError(f"KYC document not found at {path_or_url}")
+
+        with open(target_path, "rb") as f:
+            raw_data = f.read()
+
+        try:
+            return decrypt_data(raw_data)
+        except Exception:
+            return raw_data
+
     def _prepare_image(self, encrypted_path: str, is_id: bool = True) -> np.ndarray:
         """Decrypts a file, handles EXIF orientation, and converts to OpenCV BGR."""
         try:
-            raw_data = None
-            filename = "base64_image"
-            if encrypted_path.startswith("data:image"):
-                import base64
-                base64_data = encrypted_path.split(",")[1]
-                decrypted_data = base64.b64decode(base64_data)
-            else:
-                filename = os.path.basename(encrypted_path.replace('\\', '/'))
-                real_path = os.path.join("app/static/uploads/verification", filename)
-                
-                if not os.path.exists(real_path):
-                    raise FileNotFoundError(f"KYC document not found at {real_path}")
-    
-                with open(real_path, "rb") as f:
-                    raw_data = f.read()
-                
-                # Try to decrypt
-                try:
-                    decrypted_data = decrypt_data(raw_data)
-                    print(f"[KYC DEBUG] Decrypted {filename} successfully.")
-                except Exception:
-                    # Fallback: Maybe it's not encrypted? (e.g. from a previous version or direct upload)
-                    decrypted_data = raw_data
-                    print(f"[KYC DEBUG] Could not decrypt {filename}, using raw data.")
-    
+            decrypted_data = self._load_image_bytes(encrypted_path)
+
             # Use PIL to handle EXIF orientation automatically
             pil_img = Image.open(io.BytesIO(decrypted_data))
             pil_img = ImageOps.exif_transpose(pil_img)
-            
+
             # Convert back to BGR for OpenCV compatibility
             if CV2_AVAILABLE:
                 img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
             else:
                 # Manual RGB to BGR conversion using numpy if cv2 is missing
                 img = np.array(pil_img)[:, :, ::-1].copy()
-                
+
             # Apply perspective correction if possible (Server-side auto crop and deskew)
             if is_id:
                 img = self._correct_perspective_if_possible(img)
             return img
         except Exception as e:
-            print(f"[KYC DEBUG] Fatal error preparing image {filename}: {e}")
-            if CV2_AVAILABLE and raw_data:
-                try:
-                    nparr = np.frombuffer(raw_data, np.uint8)
-                    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-                    if is_id:
-                        img = self._correct_perspective_if_possible(img)
-                    return img
-                except: pass
+            print(f"[KYC DEBUG] Fatal error preparing image {encrypted_path}: {e}")
             raise e
 
     def _order_points(self, pts: np.ndarray) -> np.ndarray:
@@ -1151,33 +1184,16 @@ class VerificationService:
     def _prepare_image_with_status(self, encrypted_path: str) -> Tuple[np.ndarray, bool]:
         """Decrypts a file, handles EXIF orientation, and returns (OpenCV_BGR_image, crop_succeeded)."""
         try:
-            if encrypted_path.startswith("data:image"):
-                import base64
-                base64_data = encrypted_path.split(",")[1]
-                decrypted_data = base64.b64decode(base64_data)
-            else:
-                filename = os.path.basename(encrypted_path.replace('\\', '/'))
-                real_path = os.path.join("app/static/uploads/verification", filename)
-                
-                if not os.path.exists(real_path):
-                    raise FileNotFoundError(f"KYC document not found at {real_path}")
-        
-                with open(real_path, "rb") as f:
-                    raw_data = f.read()
-                
-                try:
-                    decrypted_data = decrypt_data(raw_data)
-                except Exception:
-                    decrypted_data = raw_data
-    
+            decrypted_data = self._load_image_bytes(encrypted_path)
+
             pil_img = Image.open(io.BytesIO(decrypted_data))
             pil_img = ImageOps.exif_transpose(pil_img)
-            
+
             if CV2_AVAILABLE:
                 img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
             else:
                 img = np.array(pil_img)[:, :, ::-1].copy()
-                
+
             img, cropped = self._correct_perspective_with_status(img)
             return img, cropped
         except Exception as e:
@@ -1826,14 +1842,8 @@ class VerificationService:
             return None
         try:
             start_time = time.time()
-            filename = os.path.basename(image_path.replace('\\', '/'))
-            real_path = os.path.join("app/static/uploads/verification", filename)
-            if not os.path.exists(real_path):
-                print(f"[KYC ERROR] ID image not found at {real_path}")
-                return None
-
             # Prepare image for OCR (Resizing to reduce payload size)
-            img = self._prepare_image(real_path)
+            img = self._prepare_image(image_path)
             h, w = img.shape[:2]
             
             # Optimization: Resize to a max dimension of 1024 while maintaining aspect ratio
@@ -3139,35 +3149,12 @@ class VerificationService:
                     files = []
                     
                     # Read ID image
-                    if id_path.startswith("data:image"):
-                        import base64
-                        id_decrypted = base64.b64decode(id_path.split(",")[1])
-                    else:
-                        id_filename = os.path.basename(id_path.replace('\\', '/'))
-                        id_real_path = os.path.join("app/static/uploads/verification", id_filename)
-                        with open(id_real_path, "rb") as f:
-                            id_raw_data = f.read()
-                        try:
-                            id_decrypted = decrypt_data(id_raw_data)
-                        except Exception:
-                            id_decrypted = id_raw_data
-                    
+                    id_decrypted = self._load_image_bytes(id_path)
                     files.append(("img1", ("id_card.jpg", id_decrypted, "image/jpeg")))
                     
                     # Read and decrypt selfie images
                     for i, sp in enumerate(selfie_paths):
-                        if sp.startswith("data:image"):
-                            import base64
-                            selfie_decrypted = base64.b64decode(sp.split(",")[1])
-                        else:
-                            selfie_filename = os.path.basename(sp.replace('\\', '/'))
-                            selfie_real_path = os.path.join("app/static/uploads/verification", selfie_filename)
-                            with open(selfie_real_path, "rb") as f:
-                                selfie_raw_data = f.read()
-                            try:
-                                selfie_decrypted = decrypt_data(selfie_raw_data)
-                            except Exception:
-                                selfie_decrypted = selfie_raw_data
+                        selfie_decrypted = self._load_image_bytes(sp)
                         
                         # Add first selfie as img2
                         if i == 0:

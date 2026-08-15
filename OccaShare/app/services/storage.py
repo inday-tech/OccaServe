@@ -88,8 +88,8 @@ def upload_image_with_metadata(
     }
     """
     if not _CLOUDINARY_CONFIGURED:
-        print("Warning: Cloudinary is not configured. Set environment variables on Railway.")
-        return None
+        print("Warning: Cloudinary is not configured. Saving file locally to disk...")
+        return _save_file_locally(file_bytes, folder=folder, public_id=public_id)
 
     try:
         import cloudinary.uploader
@@ -109,7 +109,32 @@ def upload_image_with_metadata(
             "height": res.get("height")
         }
     except Exception as e:
-        print(f"Error uploading file to Cloudinary: {e}")
+        print(f"Error uploading file to Cloudinary: {e}. Falling back to local storage.")
+        return _save_file_locally(file_bytes, folder=folder, public_id=public_id)
+
+
+def _save_file_locally(file_bytes: bytes, folder: str = "general", public_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Fallback helper to save uploaded file to local app/static/uploads directory."""
+    try:
+        import uuid
+        upload_dir = os.path.join("app", "static", "uploads", folder)
+        os.makedirs(upload_dir, exist_ok=True)
+        filename = f"{public_id or uuid.uuid4().hex}.jpg"
+        if not filename.endswith((".jpg", ".png", ".jpeg")):
+            filename += ".jpg"
+        file_path = os.path.join(upload_dir, filename)
+        with open(file_path, "wb") as f:
+            f.write(file_bytes)
+        local_url = f"/static/uploads/{folder}/{filename}"
+        return {
+            "url": local_url,
+            "public_id": f"{folder}/{filename}",
+            "format": "jpg",
+            "width": 800,
+            "height": 600
+        }
+    except Exception as err:
+        print(f"Error saving file locally: {err}")
         return None
 
 
