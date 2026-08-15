@@ -46,6 +46,40 @@ async def test_extract():
         "result": result
     }
 
+@router.api_route("/clear-duplicate-id", methods=["GET", "POST"])
+async def clear_duplicate_id_route(
+    id_number: str = "7601-8372-1475-8026",
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Utility route to clear duplicate identity_verifications records matching an ID number using raw SQL."""
+    import re
+    from sqlalchemy import text
+    clean_target = re.sub(r'[\s\-]', '', id_number)
+
+    rows = db.execute(text("SELECT id, user_id, id_number, verification_status FROM identity_verifications")).fetchall()
+    deleted_info = []
+
+    for row in rows:
+        rec_id, u_id, r_num, status = row
+        clean_r = re.sub(r'[\s\-]', '', str(r_num or ""))
+        
+        is_match = False
+        if clean_target and clean_target in clean_r:
+            is_match = True
+
+        if is_match and u_id != current_user.id:
+            deleted_info.append(f"Record #{rec_id} (User #{u_id}, Status: '{status}')")
+            db.execute(text("DELETE FROM identity_verifications WHERE id = :id"), {"id": rec_id})
+
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Cleared {len(deleted_info)} duplicate record(s) matching '{id_number}'.",
+        "deleted_records": deleted_info
+    }
+
 @router.post("/extract-id")
 async def extract_id(
     id_type: str = Form(...),

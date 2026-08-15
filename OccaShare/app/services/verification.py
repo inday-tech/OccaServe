@@ -1133,12 +1133,24 @@ class VerificationService:
 
     def check_duplicate_id(self, db: Session, id_number: str, current_user_id: int) -> bool:
         """Checks if the ID number is already associated with another verified user."""
-        existing = db.query(IdentityVerification).filter(
-            IdentityVerification.id_number == id_number,
+        if not id_number or not str(id_number).strip():
+            return False
+        import re
+        clean_target = re.sub(r'[\s\-]', '', str(id_number))
+        if not clean_target:
+            return False
+
+        existing_records = db.query(IdentityVerification).filter(
             IdentityVerification.user_id != current_user_id,
-            IdentityVerification.verification_status.in_(['approved', 'verified'])
-        ).first()
-        return existing is not None
+            IdentityVerification.verification_status.in_(['approved', 'verified', 'Approved', 'Verified'])
+        ).all()
+
+        for rec in existing_records:
+            if rec.id_number:
+                clean_rec = re.sub(r'[\s\-]', '', str(rec.id_number))
+                if clean_target == clean_rec:
+                    return True
+        return False
 
     def _correct_perspective_with_status(self, image: np.ndarray) -> Tuple[np.ndarray, bool]:
         if not CV2_AVAILABLE:
