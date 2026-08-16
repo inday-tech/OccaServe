@@ -217,7 +217,7 @@
 <div class="dashboard-header-clean">
     <div class="header-title-area">
         <h1>Platform Bookings</h1>
-        <p>View and manage all customer bookings across all caterers.</p>
+        <p>Monitor all bookings across the OccaServe platform.</p>
     </div>
 </div>
 
@@ -226,56 +226,72 @@
         <div class="kpi-info">
             <h4>Total Bookings</h4>
             <span class="kpi-value">{{ metrics.total_bookings }}</span>
+            <span class="trend-badge trend-up">Platform Wide</span>
         </div>
     </div>
     <div class="kpi-card-clean">
         <div class="kpi-info">
-            <h4>Pending Bookings</h4>
+            <h4>Pending</h4>
             <span class="kpi-value">{{ metrics.pending_bookings }}</span>
+            <span class="trend-badge" style="background: #fef3c7; color: #92400e;">Awaiting Action</span>
         </div>
     </div>
     <div class="kpi-card-clean">
         <div class="kpi-info">
-            <h4>Completed Revenue</h4>
-            <span class="kpi-value">₱{{ "{:,.0f}".format(metrics.realized_revenue) }}</span>
+            <h4>Completed</h4>
+            <span class="kpi-value">{{ metrics.completed_bookings }}</span>
+            <span class="trend-badge trend-up">Finished</span>
         </div>
     </div>
     <div class="kpi-card-clean">
         <div class="kpi-info">
-            <h4>Projected Revenue</h4>
-            <span class="kpi-value">₱{{ "{:,.0f}".format(metrics.projected_revenue) }}</span>
+            <h4>Disputed</h4>
+            <span class="kpi-value">{{ metrics.disputed_bookings }}</span>
+            <span class="trend-badge trend-down">Needs Review</span>
         </div>
     </div>
 </div>
 
 <!-- Booking Terminal -->
 <div class="table-card-clean">
-    <div class="terminal-filter-strip"
-        style="display: flex; justify-content: space-between; align-items: center; padding: 1.75rem 2rem; background: #fff; border-top-left-radius: 24px; border-top-right-radius: 24px;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div>
-                <h3
-                    style="font-size: 1rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase; letter-spacing: 0.02em;">
-                    Booking List</h3>
-                <p style="font-size: 0.75rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Monitor all transactions and statuses</p>
-            </div>
-        </div>
-
-        <div style="display: flex; gap: 12px; align-items: center;">
-            <select id="statusFilter" onchange="filterBookings()" class="btn-clean"
-                style="padding: 12px 18px; font-size: 0.8rem; font-weight: 700; background: #fff; border-radius: 12px; min-width: 240px; border: 1.5px solid #e2e8f0; color: var(--adm-navy); cursor: pointer; transition: all 0.2s;">
-                <option value="all">All Bookings</option>
-                <option value="pending">Pending Only</option>
-                <option value="confirmed">Confirmed Only</option>
-                <option value="completed">Completed Only</option>
-                <option value="cancelled">Cancelled Only</option>
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; gap: 10px;">
+        <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase;">Booking List</h3>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <select id="statusFilter" onchange="filterBookings()" class="btn-clean" style="padding: 6px 12px; font-size: 0.75rem; background: #fff; border: 1px solid #e2e8f0; color: var(--adm-navy);">
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="disputed">Disputed</option>
             </select>
-
-            <button class="btn-clean"
-                style="padding: 12px; background: #fff; width: 48px; height: 48px; border-radius: 12px; border: 1.5px solid #e2e8f0; color: #64748b; transition: all 0.2s;"
-                title="Export List">
-                <i class="fas fa-download"></i>
-            </button>
+            <select id="dateFilter" onchange="filterBookings()" class="btn-clean" style="padding: 6px 12px; font-size: 0.75rem; background: #fff; border: 1px solid #e2e8f0; color: var(--adm-navy);">
+                <option value="all">All Date</option>
+                <option value="today">Today</option>
+                <option value="this_week">This Week</option>
+                <option value="this_month">This Month</option>
+            </select>
+            <select id="catererFilter" onchange="filterBookings()" class="btn-clean" style="padding: 6px 12px; font-size: 0.75rem; background: #fff; border: 1px solid #e2e8f0; color: var(--adm-navy);">
+                <option value="all">All Caterer</option>
+                {% set unique_caterers = [] %}
+                {% for b in bookings %}
+                    {% if b.caterer and b.caterer.business_name not in unique_caterers %}
+                        {% set _ = unique_caterers.append(b.caterer.business_name) %}
+                        <option value="{{ b.caterer.business_name }}">{{ b.caterer.business_name }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+            
+            <div class="action-menu-dm">
+                <button class="btn-clean dropdown-trigger" style="background: #fff; color: var(--adm-navy); border: 1px solid #e2e8f0; padding: 6px 12px; font-size: 0.75rem;" onclick="toggleActionDropdown(this, event)">
+                    <i class="fas fa-download"></i> Export <i class="fas fa-chevron-down" style="font-size: 0.6rem; margin-left: 4px;"></i>
+                </button>
+                <div class="dropdown-menu-dm">
+                    <button class="dropdown-item-dm" onclick="exportBookings('pdf')"><i class="fas fa-file-pdf"></i> Export PDF</button>
+                    <button class="dropdown-item-dm" onclick="exportBookings('excel')"><i class="fas fa-file-excel"></i> Export Excel (CSV)</button>
+                    <button class="dropdown-item-dm" onclick="exportBookings('word')"><i class="fas fa-file-word"></i> Export Word</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -283,17 +299,20 @@
         <table class="clean-table" id="bookingsTable" style="width: 100%; border-collapse: collapse;">
             <thead>
                 <tr>
-                    <th style="padding-left: 2rem; width: 20%;">Reference & Date</th>
-                    <th style="width: 20%;">Customer</th>
-                    <th style="width: 20%;">Caterer</th>
-                    <th style="width: 15%;">Total Amount</th>
-                    <th style="width: 15%;">Status</th>
-                    <th style="text-align: right; padding-right: 2rem; width: 10%;">Actions</th>
+                    <th style="padding-left: 1.5rem;">Reference & Date</th>
+                    <th>Customer</th>
+                    <th>Caterer</th>
+                    <th>Booking Amount</th>
+                    <th>Status</th>
+                    <th style="text-align: right; padding-right: 1.5rem;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for booking in bookings %}
-                <tr class="cust-row">
+                <tr class="cust-row" 
+                    data-status="{{ booking.status }}" 
+                    data-date="{{ booking.event_date.isoformat() if booking.event_date else '' }}" 
+                    data-caterer="{{ booking.caterer.business_name if booking.caterer else 'Internal Service' }}">
                     <td style="padding: 1.5rem 0 1.5rem 2rem;">
                         <div class="booking-ref-cell">
                             <span style="font-weight: 800; color: var(--adm-primary); font-size: 0.95rem;">#BK-{{
@@ -324,22 +343,22 @@
                             ₱{{ "{:,.2f}".format(booking.total_amount) if booking.total_amount else '0.00' }}</div>
                         <div
                             style="font-size: 0.6rem; color: var(--adm-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">
-                            Total Amount</div>
+                            Booking Amount</div>
                     </td>
                     <td>
                         <span class="status-badge-dm 
                             {% if booking.status == 'confirmed' %}status-confirmed
-                            {% elif booking.status == 'pending' %}status-pending
+                            {% elif booking.status in ['pending', 'pending_quotation', 'awaiting_payment'] %}status-pending
                             {% elif booking.status == 'completed' %}status-completed
                             {% elif booking.status == 'cancelled' %}status-cancelled
                             {% else %}status-neutral{% endif %}">
                             <i class="fas 
                                 {% if booking.status == 'confirmed' %}fa-check-circle
-                                {% elif booking.status == 'pending' %}fa-clock
+                                {% elif booking.status in ['pending', 'pending_quotation', 'awaiting_payment'] %}fa-clock
                                 {% elif booking.status == 'completed' %}fa-star
                                 {% elif booking.status == 'cancelled' %}fa-times-circle
                                 {% else %}fa-info-circle{% endif %}"></i>
-                            {{ booking.status.upper() }}
+                            {{ booking.status.replace('_', ' ').title() }}
                         </span>
                     </td>
                     <td style="text-align: right; padding-right: 2rem;">
@@ -357,24 +376,21 @@
                                 </button>
                                 
                                 <button class="dropdown-item-dm" onclick="dispatchAlert({{ booking.id }})">
-                                    <i class="fas fa-bell"></i> Send System Notification
+                                    <i class="fas fa-bell"></i> Send Notification
                                 </button>
 
-                                {% if booking.status not in ['completed', 'cancelled', 'under_dispute'] %}
+                                {% if booking.status in ['pending', 'pending_quotation', 'awaiting_payment', 'confirmed'] %}
                                 <div class="dropdown-divider"></div>
-                                <button class="dropdown-item-dm danger" onclick="cancelBooking({{ booking.id }})">
-                                    <i class="fas fa-ban"></i> Force Cancel Booking
-                                </button>
                                 <button class="dropdown-item-dm danger" onclick="flagDispute({{ booking.id }})">
                                     <i class="fas fa-flag"></i> Flag for Dispute
                                 </button>
-                                {% endif %}
-                                
-                                {% if booking.status in ['completed', 'cancelled'] %}
+                                <button class="dropdown-item-dm danger" onclick="cancelBooking({{ booking.id }})">
+                                    <i class="fas fa-ban"></i> Admin Cancel Booking
+                                </button>
+                                {% elif booking.status == 'disputed' %}
                                 <div class="dropdown-divider"></div>
-                                <button class="dropdown-item-dm" onclick="archiveItem('bookings', {{ booking.id }})"
-                                    style="color: #64748b;">
-                                    <i class="fas fa-archive"></i> Archive Booking
+                                <button class="dropdown-item-dm" onclick="viewBookingDetails({{ booking.id }})">
+                                    <i class="fas fa-balance-scale"></i> Manage Dispute
                                 </button>
                                 {% endif %}
                             </div>
@@ -432,7 +448,24 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <script>
+    function toggleActionDropdown(btn, event) {
+        event.stopPropagation();
+        const menu = btn.nextElementSibling;
+        
+        document.querySelectorAll('.dropdown-menu-dm').forEach(m => {
+            if (m !== menu) m.classList.remove('show');
+        });
+        
+        if (menu.classList.contains('show')) {
+            menu.classList.remove('show');
+        } else {
+            menu.classList.add('show');
+        }
+    }
+
     function toggleActionMenu(btn, event) {
         event.stopPropagation();
         const menu = btn.nextElementSibling;
@@ -494,10 +527,44 @@
     }
 
     function filterBookings() {
-        const s = document.getElementById('statusFilter').value.toLowerCase();
+        const statusFilter = document.getElementById('statusFilter').value;
+        const dateFilter = document.getElementById('dateFilter').value;
+        const catererFilter = document.getElementById('catererFilter').value;
+        
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startOfWeek = new Date(startOfToday);
+        startOfWeek.setDate(startOfToday.getDate() - startOfToday.getDay());
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
         rows.forEach(r => {
-            const stat = r.querySelector('.status-badge-dm')?.innerText.toLowerCase() || '';
-            if (s === 'all' || stat.includes(s.replace('status: ', '').replace(' only', ''))) {
+            const rowStatus = r.getAttribute('data-status');
+            const rowDateStr = r.getAttribute('data-date');
+            const rowCaterer = r.getAttribute('data-caterer');
+
+            let matchStatus = true;
+            if (statusFilter !== 'all') {
+                if (statusFilter === 'pending') matchStatus = ['pending', 'pending_quotation', 'awaiting_payment'].includes(rowStatus);
+                else matchStatus = rowStatus === statusFilter;
+            }
+
+            let matchCaterer = (catererFilter === 'all' || rowCaterer === catererFilter);
+
+            let matchDate = true;
+            if (dateFilter !== 'all' && rowDateStr) {
+                const rowDate = new Date(rowDateStr);
+                if (dateFilter === 'today') {
+                    matchDate = rowDate >= startOfToday;
+                } else if (dateFilter === 'this_week') {
+                    matchDate = rowDate >= startOfWeek;
+                } else if (dateFilter === 'this_month') {
+                    matchDate = rowDate >= startOfMonth;
+                }
+            } else if (dateFilter !== 'all' && !rowDateStr) {
+                matchDate = false;
+            }
+
+            if (matchStatus && matchCaterer && matchDate) {
                 r.classList.remove('filtered-out');
             } else {
                 r.classList.add('filtered-out');
@@ -674,22 +741,25 @@
 
     function cancelBooking(id) {
         openDiamondModal({
-            title: 'Force Cancel Booking',
-            desc: '<span style="color: #ef4444; font-weight: 700;">Warning:</span> This action cannot be undone and should only be used for severe policy violations.',
+            title: 'Cancel Booking?',
+            desc: 'This action will be recorded in System Audit Logs. Please provide a reason.',
             html: `
-                <input id="cancelReason" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif;" placeholder="Enter strictly required reason" autocomplete="off">
-                <div id="cancelReasonError" style="color: #ef4444; font-size: 0.75rem; display: none; margin-top: 4px;">Reason is strictly required.</div>
+                <select id="cancelReasonSelect" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif; margin-bottom: 10px;">
+                    <option value="Caterer violated platform rules">Caterer violated platform rules</option>
+                    <option value="Dispute requires cancellation">Dispute requires cancellation</option>
+                    <option value="Payment fraud detected">Payment fraud detected</option>
+                    <option value="Booking violates system policy">Booking violates system policy</option>
+                    <option value="Caterer account suspended">Caterer account suspended</option>
+                    <option value="Customer requested escalation">Customer requested escalation</option>
+                </select>
+                <input id="cancelReason" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif;" placeholder="Additional Notes..." autocomplete="off">
             `,
             variant: 'danger',
-            confirmText: 'Cancel Booking',
+            confirmText: 'Confirm Cancellation',
             preConfirm: () => {
-                const reason = document.getElementById('cancelReason').value.trim();
-                if (!reason) {
-                    document.getElementById('cancelReasonError').style.display = 'block';
-                    document.getElementById('cancelReason').style.borderColor = '#ef4444';
-                    return false;
-                }
-                return reason;
+                const selectReason = document.getElementById('cancelReasonSelect').value;
+                const additionalNotes = document.getElementById('cancelReason').value.trim();
+                return additionalNotes ? `${selectReason} - ${additionalNotes}` : selectReason;
             },
             onConfirm: (reason) => {
                 Swal.fire({ title: 'Cancelling...', didOpen: () => Swal.showLoading() });
@@ -809,7 +879,91 @@
             }
         });
     }
-
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    // Export Functionality
+    function exportBookings(format) {
+        const table = document.getElementById('bookingsTable');
+        if (!table) return;
+
+        // Get visible rows only (excludes filtered-out rows)
+        const rows = Array.from(table.querySelectorAll('tbody tr')).filter(r => r.style.display !== 'none' && !r.classList.contains('filtered-out'));
+        
+        const headers = ['Reference & Date', 'Customer', 'Caterer', 'Amount', 'Status'];
+        const data = rows.map(r => {
+            const cols = r.querySelectorAll('td');
+            
+            const ref = cols[0].innerText.split('\n')[0].trim();
+            const cust = cols[1].innerText.split('\n').slice(0, 2).join(' - ').replace(' - VERIFIED PARTNER', '').trim();
+            const cat = cols[2].innerText.split('\n')[0].replace(' VERIFIED PARTNER', '').trim();
+            const amt = cols[3].innerText.split('\n')[0].trim(); 
+            const stat = cols[4].innerText.trim();
+            
+            return [ref, cust, cat, amt, stat];
+        });
+
+        if (format === 'excel') {
+            const csvContent = "\uFEFF" 
+                + headers.join(",") + "\n" 
+                + data.map(e => e.map(cell => `"${cell}"`).join(",")).join("\n");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "OccaServe_Platform_Bookings.csv";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } 
+        else if (format === 'pdf') {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            doc.setFontSize(18);
+            doc.text("OccaServe Platform Bookings", 14, 22);
+            
+            doc.setFontSize(11);
+            doc.setTextColor(100);
+            doc.text("Generated on: " + new Date().toLocaleString(), 14, 30);
+            
+            // jsPDF doesn't natively support the Peso sign without custom fonts,
+            // so we replace it with 'Php ' strictly for the PDF generation.
+            const pdfData = data.map(row => row.map(cell => cell.replace('₱', 'Php ')));
+
+            doc.autoTable({
+                startY: 36,
+                head: [headers],
+                body: pdfData,
+                theme: 'grid',
+                headStyles: { fillColor: [15, 23, 42] } // OccaServe Navy Blue
+            });
+            
+            doc.save('OccaServe_Platform_Bookings.pdf');
+        }
+        else if (format === 'word') {
+            let htmlContent = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head><meta charset='utf-8'><title>Platform Bookings</title></head>
+                <body>
+                    <h2>OccaServe Platform Bookings</h2>
+                    <p>Generated on: ${new Date().toLocaleString()}</p>
+                    <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+                        <thead><tr>${headers.map(h => `<th style="background-color: #0f172a; color: white;">${h}</th>`).join('')}</tr></thead>
+                        <tbody>
+                            ${data.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
+                        </tbody>
+                    </table>
+                </body></html>
+            `;
+            const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "OccaServe_Platform_Bookings.doc";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    }
 </script>
 {% endblock %}

@@ -1,36 +1,33 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Audit Intelligence Terminal - Admin Terminal{% endblock %}
+{% block title %}System Audit Logs{% endblock %}
 
 {% block content %}
 <!-- Print Document Header (System Internal Use) -->
 <div class="audit-print-document-header">
     <div class="print-brand-identity">
-        <img src="/static/img/logo.png" alt="OccaShare" class="print-logo-dim" onerror="this.style.display='none'">
-        <h1>OccaShare Intelligence Registry</h1>
+        <h1>System Audit Logs Report</h1>
     </div>
     <div class="print-metadata-grid">
         <div class="meta-node"><span>Report ID:</span> <strong>#AUD-{{ now.strftime('%Y%m%d') }}</strong></div>
         <div class="meta-node"><span>Operator:</span> <strong>{{ user.first_name }} {{ user.last_name }}</strong></div>
-        <div class="meta-node"><span>Timestamp:</span> <strong>{{ now.strftime('%b %d, %Y %H:%M:%S') }}</strong></div>
+        <div class="meta-node"><span>Generated On:</span> <strong>{{ now.strftime('%b %d, %Y %I:%M %p') }}</strong></div>
     </div>
 </div>
 
 <!-- Main Admin Header -->
 <div class="admin-page-header no-print">
     <div class="header-main-flex-v2">
-        <div class="title-intelligence-group">
-            <div class="title-text-stack">
-                <h1>Audit Intelligence Terminal</h1>
-                <p>Advanced security oversight and operational forensics.</p>
-            </div>
+        <div class="title-text-stack">
+            <h1>System Audit Logs</h1>
+            <p>Monitor and review system activities and administrative actions.</p>
         </div>
         <div class="operational-actions-v2">
             <button class="dm-btn-secondary" onclick="window.print()">
                 <i class="fas fa-print"></i> Generate Report
             </button>
             <a href="/admin/api/audit-logs/export" class="dm-btn-primary">
-                <i class="fas fa-download"></i> Export Dataset (CSV)
+                <i class="fas fa-download"></i> Export CSV
             </a>
         </div>
     </div>
@@ -41,46 +38,36 @@
     <form action="/admin/audit-logs" method="GET" id="auditAutoFilterForm">
         <div class="engine-header-v2">
             <div class="engine-badge-stack">
-                <span class="engine-label-text"><i class="fas fa-microchip"></i> AUTOMATED INTELLIGENCE FILTERS</span>
-                <span class="engine-status-tag">Status: {{ total_count }} Entries Syncing</span>
+                <span class="engine-label-text"><i class="fas fa-filter"></i> FILTERS</span>
+                <span class="engine-status-tag">{{ total_count }} log entries</span>
             </div>
             <button type="button" class="btn-terminal-reset" onclick="window.location.href='/admin/audit-logs'">
-                <i class="fas fa-sync-alt"></i> Reset Engine
+                <i class="fas fa-times-circle"></i> Clear Filters
             </button>
         </div>
         <div class="engine-body-v2">
             <div class="filter-node-grid">
+                <!-- Action Type -->
                 <div class="filter-node">
-                    <label class="dm-label-elite">Action Classification</label>
+                    <label class="dm-label-elite">Action Type</label>
                     <div class="dm-select-wrapper">
                         <select class="dm-select-elite" name="category" onchange="this.form.submit()">
-                            <option value="">All Operational Streams</option>
-                            <option value="LOGIN" {% if filters.category=='LOGIN' %}selected{% endif %}>Security
-                                Protocol: Login</option>
-                            <option value="ACCOUNT_ACTIVATED" {% if filters.category=='ACCOUNT_ACTIVATED' %}selected{%
-                                endif %}>Admin Protocol: Activation</option>
-                            <option value="INVESTIGATION_UPDATE" {% if filters.category=='INVESTIGATION_UPDATE'
-                                %}selected{% endif %}>System Protocol: Investigation</option>
-                            <option value="VERIFY_CATERER" {% if filters.category=='VERIFY_CATERER' %}selected{% endif
-                                %}>Entity Protocol: Verification</option>
+                            <option value="">All Actions</option>
+                            <option value="LOGIN" {% if filters.category=='LOGIN' %}selected{% endif %}>Login</option>
+                            <option value="ACCOUNT_ACTIVATED" {% if filters.category=='ACCOUNT_ACTIVATED' %}selected{% endif %}>Account Activated</option>
+                            <option value="INVESTIGATION_UPDATE" {% if filters.category=='INVESTIGATION_UPDATE' %}selected{% endif %}>Investigation Update</option>
+                            <option value="VERIFY_CATERER" {% if filters.category=='VERIFY_CATERER' %}selected{% endif %}>Verify Caterer</option>
                         </select>
                         <i class="fas fa-chevron-down select-caret"></i>
                     </div>
                 </div>
 
+                <!-- Date Range -->
                 <div class="filter-node">
-                    <label class="dm-label-elite">Temporal Node (Date)</label>
+                    <label class="dm-label-elite">Date Range</label>
                     <div class="dm-input-wrapper">
-                        <input type="date" name="date" value="{{ filters.date }}" class="dm-input-elite"
-                            onchange="this.form.submit()">
+                        <input type="date" name="date" value="{{ filters.date }}" class="dm-input-elite" onchange="this.form.submit()">
                         <i class="fas fa-calendar-day input-icon"></i>
-                    </div>
-                </div>
-
-                <div class="filter-node-sync">
-                    <div class="sync-intelligence-pill">
-                        <div class="sync-pulse"></div>
-                        <span class="sync-text">Real-time Filtering Active</span>
                     </div>
                 </div>
             </div>
@@ -95,77 +82,85 @@
             <thead>
                 <tr>
                     <th>Timestamp</th>
-                    <th>Intelligence Node</th>
-                    <th>Operation</th>
-                    <th>Flux State</th>
-                    <th>Origin Node</th>
-                    <th>Tactical Notes</th>
+                    <th>User / Actor</th>
+                    <th>Role</th>
+                    <th>Action</th>
+                    <th>Module</th>
+                    <th>Status</th>
+                    <th>Details</th>
+                    <th style="text-align: right;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for log in logs %}
+                
+                {% set action_lower = log.action.lower() if log.action else '' %}
+                {% set module = 'System' %}
+                {% if 'login' in action_lower or 'auth' in action_lower %}
+                    {% set module = 'Authentication' %}
+                {% elif 'caterer' in action_lower %}
+                    {% set module = 'Caterers' %}
+                {% elif 'book' in action_lower %}
+                    {% set module = 'Bookings' %}
+                {% elif 'investigation' in action_lower or 'account' in action_lower or 'suspend' in action_lower or 'activate' in action_lower %}
+                    {% set module = 'Users' %}
+                {% endif %}
+
+                {% set final_status = 'Success' %}
+                {% if log.new_status %}
+                    {% set ns_lower = log.new_status.lower() %}
+                    {% if 'suspend' in ns_lower or 'fail' in ns_lower or 'reject' in ns_lower %}
+                        {% set final_status = 'Failed' %}
+                    {% elif 'warn' in ns_lower or 'pending' in ns_lower %}
+                        {% set final_status = 'Warning' %}
+                    {% endif %}
+                {% endif %}
+
                 <tr class="dm-audit-row">
                     <td>
                         <div class="ts-cluster">
                             <span class="ts-main">{{ log.timestamp.strftime('%b %d, %Y') }}</span>
-                            <span class="ts-sub">{{ log.timestamp.strftime('%H:%M:%S') }}</span>
+                            <span class="ts-sub">{{ log.timestamp.strftime('%I:%M %p') }}</span>
                         </div>
                     </td>
                     <td>
                         <div class="node-identity">
-                            <div class="node-avatar-v2 {{ 'sys-protocol' if not log.user else '' }}">
-                                {% if log.user %}
-                                {{ log.user.first_name[0] }}{{ log.user.last_name[0] }}
-                                {% else %}
-                                <i class="fas fa-shield-halved"></i>
-                                {% endif %}
-                            </div>
-                            <div class="node-details">
-                                <span class="node-primary">{{ log.user.first_name ~ ' ' ~ log.user.last_name if log.user
-                                    else 'System Protocol' }}</span>
-                                <span class="node-secondary">{{ log.user.role|upper if log.user else 'CORE' }}</span>
-                            </div>
+                            <span class="node-primary">{{ log.user.first_name ~ ' ' ~ log.user.last_name if log.user else 'System' }}</span>
                         </div>
                     </td>
                     <td>
-                        <span class="dm-tag-action {{ log.action.lower() }}">
-                            {{ log.action.replace('_', ' ') }}
-                        </span>
+                        <span class="node-secondary">{{ log.user.role|title if log.user else 'Admin' }}</span>
                     </td>
                     <td>
-                        {% if log.old_status or log.new_status %}
-                        <div class="flux-transition-v2">
-                            <span class="flux-origin">{{ log.old_status or 'Null' }}</span>
-                            <i class="fas fa-arrow-right-long flux-connector"></i>
-                            <span class="flux-destination">{{ log.new_status or 'Null' }}</span>
-                        </div>
-                        {% else %}
-                        <span class="flux-static-v2">Stable State</span>
-                        {% endif %}
+                        <span class="dm-tag-action">{{ log.action.replace('_', ' ')|title }}</span>
                     </td>
                     <td>
-                        <div class="ip-intelligence-chip">
-                            <i class="fas fa-satellite-dish"></i>
-                            <span>{{ log.ip_address or '0.0.0.0' }}</span>
-                        </div>
+                        <span class="module-text">{{ module }}</span>
                     </td>
                     <td>
-                        <p class="registry-narrative">{{ log.notes or 'Routine automated log entry captured.' }}</p>
+                        <span class="status-badge {{ final_status|lower }}">{{ final_status }}</span>
+                    </td>
+                    <td>
+                        <p class="registry-narrative text-truncate">{{ log.notes or 'Action completed successfully.' }}</p>
+                    </td>
+                    <td style="text-align: right;">
+                        <button type="button" class="btn-clean" onclick="viewLogDetails('{{ log.timestamp.strftime('%b %d, %Y %I:%M %p') }}', '{{ log.user.first_name ~ ' ' ~ log.user.last_name if log.user else 'System' }}', '{{ log.user.role|title if log.user else 'Admin' }}', '{{ log.action.replace('_', ' ')|title }}', '{{ module }}', '{{ final_status }}', '{{ log.ip_address if log.ip_address and log.ip_address != '127.0.0.1' else 'xxx.xxx.xxx.xxx' }}', '{{ log.notes|replace('\n', ' ')|replace('\r', '')|escape if log.notes else 'Action completed successfully.' }}')">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </button>
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" class="dm-empty-registry">
+                    <td colspan="8" class="dm-empty-registry">
                         <div class="empty-state-v2">
                             <div class="empty-icon-container">
-                                <i class="fas fa-database"></i>
-                                <div class="empty-icon-ripple"></div>
+                                <i class="fas fa-list-alt"></i>
                             </div>
-                            <h3>No Operational Intelligence Identified</h3>
-                            <p>The system could not locate any logs matching your current filter criteria.</p>
+                            <h3>No Audit Logs Found</h3>
+                            <p>There are no system activities matching your current filters.</p>
                             <button type="button" class="dm-btn-reset-empty"
                                 onclick="window.location.href='/admin/audit-logs'">
-                                <i class="fas fa-filter-circle-xmark"></i> Clear All Intelligence Filters
+                                Clear Filters
                             </button>
                         </div>
                     </td>
@@ -207,12 +202,59 @@
     {% endif %}
 </div>
 
+<!-- View Details Modal -->
+<div id="logDetailsModal" class="log-modal" style="display: none;">
+    <div class="log-modal-content">
+        <div class="log-modal-header">
+            <h3>VIEW LOG DETAILS</h3>
+            <button onclick="closeLogModal()" class="log-modal-close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="log-modal-body">
+            <div class="log-detail-row">
+                <div class="log-detail-label">Timestamp</div>
+                <div class="log-detail-value" id="modalTimestamp"></div>
+            </div>
+            <div class="log-detail-row">
+                <div class="log-detail-label">User</div>
+                <div class="log-detail-value" id="modalUser"></div>
+            </div>
+            <div class="log-detail-row">
+                <div class="log-detail-label">Role</div>
+                <div class="log-detail-value" id="modalRole"></div>
+            </div>
+            <div class="log-detail-row">
+                <div class="log-detail-label">Action</div>
+                <div class="log-detail-value" id="modalAction"></div>
+            </div>
+            <div class="log-detail-row">
+                <div class="log-detail-label">Module</div>
+                <div class="log-detail-value" id="modalModule"></div>
+            </div>
+            <div class="log-detail-row">
+                <div class="log-detail-label">Status</div>
+                <div class="log-detail-value"><span id="modalStatus" class="status-badge"></span></div>
+            </div>
+            <div class="log-detail-row">
+                <div class="log-detail-label">IP Address</div>
+                <div class="log-detail-value" style="font-family: monospace;" id="modalIp"></div>
+            </div>
+            <div class="log-detail-row log-detail-desc" style="border-bottom: none; flex-direction: column; align-items: flex-start; gap: 8px;">
+                <div class="log-detail-label">Description</div>
+                <div class="log-detail-value" id="modalDesc" style="font-size: 0.9rem; line-height: 1.5; color: var(--dm-slate-800);"></div>
+            </div>
+        </div>
+        <div class="log-modal-footer">
+            <button class="dm-btn-secondary" onclick="closeLogModal()">Close</button>
+        </div>
+    </div>
+</div>
+
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
 
     :root {
-        --dm-primary: #f97316;
-        --dm-secondary: #0f172a;
+        --dm-primary: #0f172a; /* Slate 900 for professional look */
+        --dm-secondary: #1e293b;
         --dm-slate-50: #f8fafc;
         --dm-slate-100: #f1f5f9;
         --dm-slate-200: #e2e8f0;
@@ -220,7 +262,7 @@
         --dm-slate-600: #475569;
         --dm-slate-800: #1e293b;
         --dm-white: #ffffff;
-        --dm-radius: 20px;
+        --dm-radius: 12px;
     }
 
     /* GLOBAL POPPINS OVERRIDE */
@@ -245,15 +287,10 @@
             padding-bottom: 1.5rem;
         }
 
-        .print-brand-identity {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .print-logo-dim {
-            height: 40px;
+        .print-brand-identity h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #000;
         }
 
         .print-metadata-grid {
@@ -282,28 +319,9 @@
         margin-bottom: 2.5rem;
     }
 
-    .title-intelligence-group {
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-    }
-
-    .intelligence-icon-glow {
-        width: 64px;
-        height: 64px;
-        border-radius: 18px;
-        background: linear-gradient(135deg, var(--dm-primary), #fb923c);
-        color: var(--dm-white);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.75rem;
-        box-shadow: 0 15px 30px rgba(249, 115, 22, 0.25);
-    }
-
     .title-text-stack h1 {
-        font-size: 1.85rem;
-        font-weight: 800;
+        font-size: 1.75rem;
+        font-weight: 700;
         color: var(--dm-secondary);
         margin: 0;
         letter-spacing: -0.02em;
@@ -326,41 +344,39 @@
         background: var(--dm-secondary);
         color: var(--dm-white);
         border: none;
-        padding: 0.85rem 1.75rem;
-        border-radius: 14px;
-        font-weight: 700;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
         font-size: 0.85rem;
         text-decoration: none;
         display: flex;
         align-items: center;
-        gap: 10px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 4px 6px rgba(15, 23, 42, 0.1);
+        gap: 8px;
+        transition: all 0.2s ease;
     }
 
     .dm-btn-primary:hover {
-        background: #1e293b;
-        transform: translateY(-3px);
-        box-shadow: 0 12px 20px rgba(15, 23, 42, 0.15);
+        background: #0f172a;
+        transform: translateY(-2px);
     }
 
     .dm-btn-secondary {
         background: var(--dm-white);
         color: var(--dm-secondary);
-        border: 2px solid var(--dm-slate-200);
-        padding: 0.85rem 1.75rem;
-        border-radius: 14px;
-        font-weight: 700;
+        border: 1px solid var(--dm-slate-200);
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
         font-size: 0.85rem;
         cursor: pointer;
-        transition: all 0.3s;
+        transition: all 0.2s ease;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
     }
 
     .dm-btn-secondary:hover {
-        border-color: var(--dm-secondary);
+        border-color: var(--dm-slate-400);
         background: var(--dm-slate-50);
     }
 
@@ -369,15 +385,15 @@
         background: var(--dm-white);
         border-radius: var(--dm-radius);
         border: 1px solid var(--dm-slate-200);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.02);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         overflow: hidden;
         margin-bottom: 2rem;
     }
 
     .engine-header-v2 {
-        padding: 1.5rem 1.75rem;
+        padding: 1.25rem 1.5rem;
         border-bottom: 1px solid var(--dm-slate-100);
-        background: #fcfcfd;
+        background: #f8fafc;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -385,59 +401,63 @@
 
     .engine-badge-stack {
         display: flex;
-        flex-direction: column;
-        gap: 4px;
+        align-items: center;
+        gap: 12px;
     }
 
     .engine-label-text {
-        font-size: 0.7rem;
-        font-weight: 800;
-        color: var(--dm-slate-600);
-        letter-spacing: 0.08em;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--dm-secondary);
     }
 
     .engine-status-tag {
-        font-size: 0.85rem;
-        font-weight: 700;
-        color: var(--dm-secondary);
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--dm-slate-600);
+        background: var(--dm-slate-200);
+        padding: 2px 8px;
+        border-radius: 6px;
     }
 
     .btn-terminal-reset {
         background: none;
         border: none;
-        color: var(--dm-slate-400);
+        color: var(--dm-slate-500);
         font-size: 0.85rem;
-        font-weight: 700;
+        font-weight: 600;
         cursor: pointer;
         transition: color 0.2s;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
     }
 
     .btn-terminal-reset:hover {
-        color: var(--dm-primary);
+        color: #ef4444;
     }
 
     .engine-body-v2 {
-        padding: 1.75rem;
+        padding: 1.5rem;
     }
 
     .filter-node-grid {
-        display: grid;
-        grid-template-columns: 1.2fr 1fr 1fr;
+        display: flex;
         gap: 2rem;
         align-items: flex-end;
+    }
+    
+    .filter-node {
+        flex: 1;
+        max-width: 300px;
     }
 
     .dm-label-elite {
         display: block;
-        font-size: 0.7rem;
-        font-weight: 800;
+        font-size: 0.75rem;
+        font-weight: 600;
         color: var(--dm-slate-600);
-        margin-bottom: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+        margin-bottom: 8px;
     }
 
     .dm-select-wrapper,
@@ -448,30 +468,28 @@
     .dm-select-elite,
     .dm-input-elite {
         width: 100%;
-        padding: 0.85rem 1.25rem;
-        border-radius: 14px;
-        border: 2px solid var(--dm-slate-100);
-        background: var(--dm-slate-50);
-        font-size: 0.9rem;
-        font-weight: 600;
+        padding: 0.65rem 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--dm-slate-200);
+        background: var(--dm-white);
+        font-size: 0.85rem;
+        font-weight: 500;
         color: var(--dm-secondary);
         appearance: none;
         outline: none;
-        transition: all 0.2s;
+        transition: border-color 0.2s;
         cursor: pointer;
     }
 
     .dm-select-elite:focus,
     .dm-input-elite:focus {
-        border-color: var(--dm-primary);
-        background: var(--dm-white);
-        box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.08);
+        border-color: var(--dm-slate-400);
     }
 
     .select-caret,
     .input-icon {
         position: absolute;
-        right: 15px;
+        right: 12px;
         top: 50%;
         transform: translateY(-50%);
         color: var(--dm-slate-400);
@@ -479,54 +497,12 @@
         font-size: 0.85rem;
     }
 
-    /* SYNC PILL */
-    .sync-intelligence-pill {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        background: #f0fdf4;
-        padding: 0.85rem 1.5rem;
-        border-radius: 14px;
-        border: 1.5px solid #dcfce7;
-    }
-
-    .sync-text {
-        font-size: 0.8rem;
-        font-weight: 700;
-        color: #15803d;
-    }
-
-    .sync-pulse {
-        width: 10px;
-        height: 10px;
-        background: #10b981;
-        border-radius: 50%;
-        animation: dm-pulse 2s infinite;
-    }
-
-    @keyframes dm-pulse {
-        0% {
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-        }
-
-        70% {
-            transform: scale(1);
-            box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
-        }
-
-        100% {
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-        }
-    }
-
     /* TABLE REGISTRY */
     .audit-registry-wrapper {
         background: var(--dm-white);
-        border-radius: 24px;
+        border-radius: var(--dm-radius);
         border: 1px solid var(--dm-slate-200);
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.03);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         overflow: hidden;
     }
 
@@ -536,21 +512,19 @@
     }
 
     .dm-intelligence-table th {
-        background: #fcfcfd;
-        padding: 1.25rem 1.75rem;
+        background: #f8fafc;
+        padding: 1rem 1.5rem;
         font-size: 0.75rem;
-        font-weight: 800;
+        font-weight: 700;
         color: var(--dm-slate-600);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        border-bottom: 2px solid var(--dm-slate-100);
+        border-bottom: 1px solid var(--dm-slate-200);
         text-align: left;
         white-space: nowrap;
     }
 
     .dm-audit-row {
-        border-bottom: 1px solid #f8fafc;
-        transition: all 0.2s;
+        border-bottom: 1px solid var(--dm-slate-100);
+        transition: background 0.2s;
     }
 
     .dm-audit-row:hover {
@@ -558,7 +532,7 @@
     }
 
     .dm-audit-row td {
-        padding: 1.5rem 1.75rem;
+        padding: 1rem 1.5rem;
         vertical-align: middle;
         white-space: nowrap;
     }
@@ -567,157 +541,100 @@
     .ts-cluster {
         display: flex;
         flex-direction: column;
-        gap: 2px;
     }
 
     .ts-main {
-        font-weight: 700;
+        font-weight: 600;
         color: var(--dm-secondary);
         font-size: 0.85rem;
     }
 
     .ts-sub {
-        color: var(--dm-slate-400);
+        color: var(--dm-slate-500);
         font-size: 0.75rem;
-        font-family: 'JetBrains Mono', monospace !important;
     }
 
     .node-identity {
         display: flex;
         align-items: center;
-        gap: 14px;
-    }
-
-    .node-avatar-v2 {
-        width: 44px;
-        height: 44px;
-        border-radius: 14px;
-        background: var(--dm-slate-100);
-        color: var(--dm-slate-600);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
-        font-size: 0.9rem;
-        border: 2px solid var(--dm-white);
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
-    }
-
-    .node-avatar-v2.sys-protocol {
-        background: var(--dm-secondary);
-        color: var(--dm-white);
     }
 
     .node-primary {
-        font-weight: 700;
+        font-weight: 600;
         color: var(--dm-secondary);
         font-size: 0.85rem;
-        display: block;
     }
 
     .node-secondary {
-        font-size: 0.65rem;
-        color: var(--dm-slate-400);
-        font-weight: 800;
-        letter-spacing: 0.05em;
-    }
-
-    /* TAGS */
-    .dm-tag-action {
-        padding: 5px 14px;
-        border-radius: 10px;
-        font-size: 0.7rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        white-space: nowrap;
-    }
-
-    .dm-tag-action.login {
-        background: #e0f2fe;
-        color: #0369a1;
-    }
-
-    .dm-tag-action.account_activated {
-        background: #dcfce7;
-        color: #15803d;
-    }
-
-    .dm-tag-action.investigation_update {
-        background: #fef3c7;
-        color: #b45309;
-    }
-
-    /* FLUX */
-    .flux-transition-v2 {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .flux-origin {
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: var(--dm-slate-400);
-        background: var(--dm-slate-50);
-        padding: 5px 10px;
-        border-radius: 8px;
-    }
-
-    .flux-connector {
-        color: var(--dm-slate-200);
-        font-size: 0.75rem;
-    }
-
-    .flux-destination {
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: var(--dm-primary);
-        background: #fff7ed;
-        padding: 5px 10px;
-        border-radius: 8px;
-    }
-
-    .flux-static-v2 {
         font-size: 0.8rem;
-        color: var(--dm-slate-400);
-        font-weight: 500;
+        color: var(--dm-slate-500);
     }
 
-    /* CHIPS */
-    .ip-intelligence-chip {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: var(--dm-slate-600);
+    .dm-tag-action {
         font-size: 0.85rem;
         font-weight: 600;
-        font-family: 'JetBrains Mono', monospace !important;
-        background: var(--dm-slate-50);
-        padding: 6px 14px;
-        border-radius: 20px;
-        width: fit-content;
+        color: var(--dm-secondary);
     }
-
-    .ip-intelligence-chip i {
-        color: var(--dm-slate-400);
-        font-size: 0.8rem;
+    
+    .module-text {
+        font-size: 0.85rem;
+        color: var(--dm-slate-600);
+    }
+    
+    .status-badge {
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .status-badge.success {
+        background: #ecfdf5;
+        color: #059669;
+    }
+    
+    .status-badge.failed {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+    
+    .status-badge.warning {
+        background: #fff7ed;
+        color: #d97706;
     }
 
     .registry-narrative {
         font-size: 0.85rem;
         color: var(--dm-slate-600);
-        line-height: 1.6;
         margin: 0;
-        white-space: normal;
-        min-width: 250px;
-        max-width: 400px;
+    }
+    
+    .text-truncate {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .btn-clean {
+        background: none;
+        border: none;
+        color: var(--dm-slate-400);
+        font-size: 1rem;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+    
+    .btn-clean:hover {
+        background: var(--dm-slate-100);
+        color: var(--dm-secondary);
     }
 
-    /* EMPTY STATE V2 REFINEMENT */
+    /* EMPTY STATE */
     .dm-empty-registry {
-        padding: 6rem 2rem !important;
+        padding: 4rem 2rem !important;
         text-align: center;
-        background: #fff;
     }
 
     .empty-state-v2 {
@@ -728,247 +645,240 @@
     }
 
     .empty-icon-container {
-        position: relative;
-        width: 100px;
-        height: 100px;
-        background: var(--dm-slate-50);
-        border-radius: 30px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 2rem;
-        color: var(--dm-slate-200);
-        font-size: 3rem;
-    }
-
-    .empty-icon-ripple {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        border: 2px solid var(--dm-slate-100);
-        border-radius: 30px;
-        animation: ripple 2s infinite ease-out;
-    }
-
-    @keyframes ripple {
-        0% {
-            transform: scale(1);
-            opacity: 0.8;
-        }
-
-        100% {
-            transform: scale(1.6);
-            opacity: 0;
-        }
+        font-size: 2.5rem;
+        color: var(--dm-slate-300);
+        margin-bottom: 1rem;
     }
 
     .empty-state-v2 h3 {
-        font-size: 1.25rem;
-        font-weight: 800;
+        font-size: 1.1rem;
+        font-weight: 700;
         color: var(--dm-secondary);
-        margin-bottom: 0.75rem;
+        margin-bottom: 0.5rem;
     }
 
     .empty-state-v2 p {
-        font-size: 0.95rem;
-        color: var(--dm-slate-400);
-        max-width: 400px;
-        margin-bottom: 2rem;
-        font-weight: 500;
+        font-size: 0.9rem;
+        color: var(--dm-slate-500);
+        margin-bottom: 1.5rem;
     }
 
     .dm-btn-reset-empty {
         background: var(--dm-white);
-        color: var(--dm-primary);
-        border: 2px solid var(--dm-primary);
-        padding: 0.75rem 1.5rem;
-        border-radius: 12px;
-        font-weight: 800;
+        color: var(--dm-secondary);
+        border: 1px solid var(--dm-slate-200);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 600;
         font-size: 0.8rem;
         cursor: pointer;
         transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
     }
 
     .dm-btn-reset-empty:hover {
-        background: var(--dm-primary);
-        color: #fff;
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px rgba(249, 115, 22, 0.2);
+        background: var(--dm-slate-50);
+        border-color: var(--dm-slate-300);
     }
 
     /* PAGINATION V2 */
     .dm-pagination-hub {
-        padding: 1.5rem 1.75rem;
+        padding: 1rem 1.5rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background: #fcfcfd;
+        background: #fff;
         border-top: 1px solid var(--dm-slate-100);
     }
 
     .pag-stats {
-        font-size: 0.85rem;
-        color: var(--dm-slate-600);
-        font-weight: 500;
+        font-size: 0.8rem;
+        color: var(--dm-slate-500);
     }
 
     .pag-control-group {
         display: flex;
         align-items: center;
-        gap: 1.5rem;
+        gap: 1rem;
     }
 
     .dm-pag-btn {
-        padding: 10px 22px;
-        border-radius: 12px;
-        border: 2px solid var(--dm-slate-200);
+        padding: 6px 14px;
+        border-radius: 6px;
+        border: 1px solid var(--dm-slate-200);
         background: var(--dm-white);
-        font-size: 0.85rem;
-        font-weight: 700;
+        font-size: 0.8rem;
+        font-weight: 600;
         color: var(--dm-secondary);
         text-decoration: none;
         transition: all 0.2s;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 6px;
     }
 
     .dm-pag-btn:hover:not(.disabled) {
-        border-color: var(--dm-primary);
-        color: var(--dm-primary);
-        transform: translateY(-1px);
+        border-color: var(--dm-slate-400);
+        background: var(--dm-slate-50);
     }
 
     .dm-pag-btn.disabled {
         opacity: 0.5;
         pointer-events: none;
-        background: var(--dm-slate-100);
     }
 
     .dm-pag-numbers {
         display: flex;
-        gap: 8px;
+        gap: 4px;
     }
 
     .dm-pag-item {
-        width: 40px;
-        height: 40px;
+        width: 32px;
+        height: 32px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 12px;
+        border-radius: 6px;
         font-size: 0.85rem;
-        font-weight: 700;
+        font-weight: 600;
         text-decoration: none;
         color: var(--dm-slate-600);
-        transition: all 0.2s;
     }
 
     .dm-pag-item:hover {
         background: var(--dm-slate-100);
-        color: var(--dm-secondary);
     }
 
     .dm-pag-item.active {
-        background: var(--dm-primary);
+        background: var(--dm-secondary);
         color: var(--dm-white);
-        box-shadow: 0 8px 15px rgba(249, 115, 22, 0.3);
     }
 
     .dm-pag-dots {
-        color: var(--dm-slate-200);
+        color: var(--dm-slate-400);
         padding: 0 4px;
     }
-
-    /* ─── RESPONSIVE / MOBILE VIEW FIXES ─── */
-    .registry-scroller {
+    
+    /* MODAL */
+    .log-modal {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(15, 23, 42, 0.4);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(2px);
+    }
+    .log-modal-content {
+        background: #fff;
         width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+        max-width: 500px;
+        border-radius: 16px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+    .log-modal-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--dm-slate-100);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .log-modal-header h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        color: var(--dm-secondary);
+    }
+    .log-modal-close {
+        background: none; border: none; font-size: 1.25rem; color: var(--dm-slate-400); cursor: pointer;
+    }
+    .log-modal-close:hover { color: var(--dm-slate-800); }
+    
+    .log-modal-body {
+        padding: 1.5rem;
+    }
+    .log-detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px dashed var(--dm-slate-200);
+        font-size: 0.85rem;
+    }
+    .log-detail-label {
+        font-weight: 600;
+        color: var(--dm-slate-500);
+    }
+    .log-detail-value {
+        font-weight: 600;
+        color: var(--dm-secondary);
+        text-align: right;
+    }
+    .log-modal-footer {
+        padding: 1rem 1.5rem;
+        background: #f8fafc;
+        border-top: 1px solid var(--dm-slate-100);
+        display: flex;
+        justify-content: flex-end;
     }
 
     @media (max-width: 768px) {
         .header-main-flex-v2 {
             flex-direction: column;
             align-items: flex-start;
-            gap: 1.5rem;
-        }
-
-        .operational-actions-v2 {
-            width: 100%;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-
-        .dm-btn-primary, .dm-btn-secondary {
-            width: 100%;
-            justify-content: center;
-        }
-
-        .engine-header-v2 {
-            flex-direction: column;
-            align-items: flex-start;
             gap: 1rem;
         }
-
-        .btn-terminal-reset {
+        .operational-actions-v2 {
             width: 100%;
-            justify-content: center;
-            background: var(--dm-slate-100);
-            padding: 0.75rem;
-            border-radius: 12px;
         }
-
+        .dm-btn-primary, .dm-btn-secondary {
+            flex: 1;
+            justify-content: center;
+        }
         .filter-node-grid {
-            grid-template-columns: 1fr;
-            gap: 1.25rem;
+            flex-direction: column;
+            gap: 1rem;
         }
-
-        .sync-intelligence-pill {
-            width: 100%;
-            justify-content: center;
+        .filter-node {
+            max-width: 100%;
         }
-
         .dm-pagination-hub {
             flex-direction: column;
             gap: 1rem;
-            text-align: center;
-            padding: 1.25rem 1rem;
-        }
-
-        .pag-control-group {
-            width: 100%;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-        }
-
-        .dm-pag-numbers {
-            width: 100%;
-            justify-content: center;
-            flex-wrap: wrap;
-            order: -1;
-        }
-
-        .dm-pag-btn {
-            flex: 1;
-            justify-content: center;
-            padding: 12px;
-        }
-
-        .flux-transition-v2 {
-            flex-direction: column;
-            gap: 4px;
-        }
-        
-        .flux-connector {
-            transform: rotate(90deg);
         }
     }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function viewLogDetails(timestamp, user, role, action, module, status, ip, desc) {
+        document.getElementById('modalTimestamp').innerText = timestamp;
+        document.getElementById('modalUser').innerText = user;
+        document.getElementById('modalRole').innerText = role;
+        document.getElementById('modalAction').innerText = action;
+        document.getElementById('modalModule').innerText = module;
+        
+        const statusEl = document.getElementById('modalStatus');
+        statusEl.innerText = status;
+        statusEl.className = 'status-badge ' + status.toLowerCase();
+        
+        document.getElementById('modalIp').innerText = ip;
+        document.getElementById('modalDesc').innerText = desc;
+        
+        document.getElementById('logDetailsModal').style.display = 'flex';
+    }
+    
+    function closeLogModal() {
+        document.getElementById('logDetailsModal').style.display = 'none';
+    }
+    
+    // Close modal when clicking outside
+    document.getElementById('logDetailsModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeLogModal();
+        }
+    });
+</script>
 {% endblock %}

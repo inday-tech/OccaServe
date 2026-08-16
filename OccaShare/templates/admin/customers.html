@@ -196,8 +196,8 @@
 {% block content %}
 <div class="dashboard-header-clean">
     <div class="header-title-area">
-        <h1>Customer Directory</h1>
-        <p>Monitor and manage all customer accounts on the platform.</p>
+        <h1>Customer Management</h1>
+        <p>Monitor and manage customer accounts on the platform.</p>
     </div>
 </div>
 
@@ -207,71 +207,65 @@
         <div class="kpi-info">
             <h4>Total Customers</h4>
             <span class="kpi-value">{{ metrics.total_customers }}</span>
+            <span class="trend-badge trend-up">All Registered</span>
         </div>
     </div>
     <div class="kpi-card-clean">
         <div class="kpi-info">
-            <h4>Verified Customers</h4>
+            <h4>Active Customers</h4>
             <span class="kpi-value">{{ metrics.active_customers }}</span>
+            <span class="trend-badge trend-up">Trusted</span>
         </div>
     </div>
     <div class="kpi-card-clean">
         <div class="kpi-info">
-            <h4>Flagged for Audit</h4>
-            <span class="kpi-value">0</span>
+            <h4>Suspended</h4>
+            <span class="kpi-value">{{ metrics.suspended_customers }}</span>
+            <span class="trend-badge trend-down">Restricted</span>
         </div>
     </div>
     <div class="kpi-card-clean">
         <div class="kpi-info">
-            <h4>Total Bookings Amount</h4>
-            <span class="kpi-value">₱{{ "{:,.0f}".format(customers | map(attribute='bookings') | map('list') |
-                sum(start=[]) | selectattr('status', 'equalto', 'completed') | map(attribute='total_amount') | sum if
-                customers else 0) }}</span>
+            <h4>Flagged for Review</h4>
+            <span class="kpi-value">{{ metrics.flagged_customers }}</span>
+            <span class="trend-badge" style="background: #fef3c7; color: #92400e;">Needs Action</span>
         </div>
     </div>
 </div>
 
 <!-- Identity Registry Terminal -->
-<div class="table-card-clean" style="box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05);">
-    <div class="terminal-filter-strip"
-        style="display: flex; justify-content: space-between; align-items: center; padding: 1.75rem 2rem; background: #fff; border-top-left-radius: 24px; border-top-right-radius: 24px;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div>
-                <h3
-                    style="font-size: 1rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase; letter-spacing: 0.02em;">
-                    Customer List</h3>
-                <p style="font-size: 0.75rem; color: var(--adm-muted); margin: 0; font-weight: 600;">View and manage customer activities</p>
+<div class="table-card-clean" style="margin-top: 1rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; gap: 10px;">
+        <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase;">Customer Directory</h3>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <select id="statusFilter" onchange="filterRegistry()" class="btn-clean" style="padding: 6px 12px; font-size: 0.75rem; background: #fff; border: 1px solid #e2e8f0; color: var(--adm-navy);">
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+                <option value="flagged">Flagged</option>
+            </select>
+            <div class="actions-dropdown">
+                <button class="btn-clean dropdown-trigger" style="background: #fff; color: var(--adm-navy); border: 1px solid #e2e8f0; padding: 6px 12px; font-size: 0.75rem;" onclick="toggleActionDropdown(this, event)">
+                    <i class="fas fa-download"></i> Export <i class="fas fa-chevron-down" style="font-size: 0.6rem; margin-left: 4px;"></i>
+                </button>
+                <div class="dropdown-menu-dm">
+                    <button class="dropdown-item-dm" onclick="alert('Exporting to PDF...')"><i class="fas fa-file-pdf"></i> Export PDF</button>
+                    <button class="dropdown-item-dm" onclick="alert('Exporting to Excel...')"><i class="fas fa-file-excel"></i> Export Excel</button>
+                    <button class="dropdown-item-dm" onclick="alert('Exporting to Word...')"><i class="fas fa-file-word"></i> Export Word</button>
+                </div>
             </div>
-        </div>
-
-        <div style="display: flex; gap: 12px; align-items: center;">
-            <div style="position: relative;">
-                <select id="statusFilter" onchange="filterRegistry()" class="btn-clean"
-                    style="padding: 12px 18px; font-size: 0.8rem; font-weight: 700; background: #fff; border-radius: 12px; min-width: 240px; border: 1.5px solid #e2e8f0; color: var(--adm-navy); cursor: pointer; transition: all 0.2s;">
-                    <option value="all">All Customers</option>
-                    <option value="verified">Verified Only</option>
-                    <option value="pending">Pending KYC</option>
-                    <option value="suspended">Suspended Only</option>
-                </select>
-            </div>
-
-            <button class="btn-clean"
-                style="padding: 12px; background: #fff; width: 48px; height: 48px; border-radius: 12px; border: 1.5px solid #e2e8f0; color: #64748b; transition: all 0.2s;"
-                title="Export List">
-                <i class="fas fa-download"></i>
-            </button>
         </div>
     </div>
 
-    <div class="table-responsive-wrapper" style="padding: 0 0 5rem 0; position: relative; z-index: 10;">
-        <table class="clean-table" id="registryTable" style="width: 100%; border-collapse: collapse;">
+    <div class="table-responsive-wrapper">
+        <table class="clean-table" id="registryTable">
             <thead>
                 <tr>
-                    <th style="padding-left: 2rem; width: 30%;">Customer Name</th>
-                    <th style="width: 25%;">Account Status</th>
-                    <th style="width: 15%;">Total Bookings</th>
-                    <th style="width: 15%;">Date Joined</th>
-                    <th style="text-align: right; padding-right: 2rem; width: 15%;">Actions</th>
+                    <th style="padding-left: 1.5rem;">Customer Name</th>
+                    <th>Status</th>
+                    <th>Total Bookings</th>
+                    <th>Date Joined</th>
+                    <th style="text-align: right; padding-right: 1.5rem;">Actions</th>
                 </tr>
             </thead>
             <tbody id="registryBody">
@@ -288,18 +282,23 @@
                                     style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem; display: block; line-height: 1.2; margin-bottom: 2px;">{{
                                     customer.first_name }} {{ customer.last_name }}</span>
                                 <span
-                                    style="font-size: 0.7rem; color: #64748b; font-weight: 700; letter-spacing: 0.02em; line-height: 1;">CUSTOMER ID
+                                    style="font-size: 0.7rem; color: #64748b; font-weight: 700; letter-spacing: 0.02em; line-height: 1;">CUSTOMER
+                                    ID
                                     #{{ "%05d"|format(customer.id) }}</span>
                             </div>
                         </div>
                     </td>
                     <td>
                         <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <span
-                                class="status-badge-dm {% if customer.is_verified %}status-active{% else %}status-flagged{% endif %}">
-                                <i
-                                    class="fas {% if customer.is_verified %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
-                                {{ 'VERIFIED' if customer.is_verified else 'PENDING KYC' }}
+                            <span class="status-badge-dm {% if customer.status == 'suspended' %}status-suspended{% elif customer.is_verified %}status-active{% else %}status-flagged{% endif %}">
+                                <i class="fas {% if customer.status == 'suspended' %}fa-ban{% elif customer.is_verified %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+                                {% if customer.status == 'suspended' %}
+                                    SUSPENDED
+                                {% elif customer.status == 'flagged' %}
+                                    FLAGGED
+                                {% else %}
+                                    {{ 'ACTIVE' if customer.is_verified else 'PENDING KYC' }}
+                                {% endif %}
                             </span>
                             <div
                                 style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #64748b; font-weight: 600;">
@@ -308,10 +307,8 @@
                             </div>
                         </div>
                     </td>
-                    <td>
-                        <div class="ltv-value">₱{{ "{:,.2f}".format(customer.bookings | selectattr('status', 'equalto',
-                            'completed') | map(attribute='total_amount') | sum) }}</div>
-                        <div class="ltv-label">Total Amount</div>
+                    <td data-label="Total Bookings">
+                        <div class="ltv-value">{{ customer.bookings|length if customer.bookings else 0 }} bookings</div>
                     </td>
                     <td>
                         <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.85rem; margin-bottom: 2px;">
@@ -324,26 +321,39 @@
                         <div class="action-menu-dm" style="display: inline-block;">
                             <div class="action-dots-adm" onclick="toggleActionMenu(this, event)">
                                 <i class="fas fa-ellipsis-h"></i>
-                            </div>
-                            <div class="dropdown-menu-dm">
+                            </div>                            <div class="dropdown-menu-dm">
                                 <button class="dropdown-item-dm" 
+                                    data-id="{{ customer.id }}"
                                     data-name="{{ customer.first_name }} {{ customer.last_name }}"
                                     data-email="{{ customer.email }}"
                                     data-phone="{{ customer.phone_number or 'N/A' }}"
                                     data-joined="{{ customer.created_at.strftime('%b %d, %Y') if customer.created_at else 'N/A' }}"
                                     data-bookings="{{ customer.bookings|length if customer.bookings else 0 }}"
-                                    data-status="{{ 'VERIFIED' if customer.is_verified else 'PENDING KYC' }}"
+                                    data-status="{{ 'SUSPENDED' if customer.status == 'suspended' else ('FLAGGED' if customer.status == 'flagged' else ('ACTIVE' if customer.is_verified else 'PENDING KYC')) }}"
                                     onclick="viewCustomerDetails(this)">
-                                    <i class="fas fa-id-card"></i> View Account Details
+                                    <i class="fas fa-id-card"></i> View Details
                                 </button>
                                 <div class="dropdown-divider"></div>
+                                
+                                {% if customer.status == 'suspended' %}
+                                <button class="dropdown-item-dm" style="color: #2563eb;" onclick="reactivateAccount('{{ customer.id }}')">
+                                    <i class="fas fa-undo"></i> Reactivate Account
+                                </button>
+                                {% elif customer.status == 'flagged' %}
+                                <button class="dropdown-item-dm" onclick="viewCustomerDetails(this)" data-id="{{ customer.id }}" data-name="{{ customer.first_name }} {{ customer.last_name }}" data-email="{{ customer.email }}" data-phone="{{ customer.phone_number or 'N/A' }}" data-joined="{{ customer.created_at.strftime('%b %d, %Y') if customer.created_at else 'N/A' }}" data-bookings="{{ customer.bookings|length if customer.bookings else 0 }}" data-status="FLAGGED">
+                                    <i class="fas fa-search"></i> Review Account
+                                </button>
+                                <button class="dropdown-item-dm" style="color: #10b981;" onclick="clearFlag('{{ customer.id }}')">
+                                    <i class="fas fa-check-circle"></i> Clear Flag
+                                </button>
+                                {% else %}
                                 <button class="dropdown-item-dm danger" onclick="suspendAccount('{{ customer.id }}')">
                                     <i class="fas fa-ban"></i> Suspend Account
                                 </button>
-                                <button class="dropdown-item-dm" onclick="archiveItem('customers', '{{ customer.id }}')"
-                                    style="color: #64748b;">
-                                    <i class="fas fa-archive"></i> Archive Account
+                                <button class="dropdown-item-dm" style="color: #f59e0b;" onclick="flagAccount('{{ customer.id }}')">
+                                    <i class="fas fa-flag"></i> Flag for Review
                                 </button>
+                                {% endif %}
                             </div>
                         </div>
                     </td>
@@ -372,7 +382,7 @@
 
 <!-- Intelligence Modals -->
 <div id="intelligenceModal" class="admin-modal-overlay">
-    <div class="admin-modal-card" style="max-width: 600px;">
+    <div class="admin-modal-card" style="max-width: 650px;">
         <div class="modal-header-clean">
             <div style="display: flex; align-items: center; gap: 12px;">
                 <div
@@ -380,20 +390,21 @@
                     <i class="fas fa-fingerprint"></i>
                 </div>
                 <div>
-                    <h3 style="font-size: 0.95rem; font-weight: 800; text-transform: uppercase; margin: 0;">Account Details</h3>
-                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Customer profile overview.</p>
+                    <h3 style="font-size: 0.95rem; font-weight: 800; text-transform: uppercase; margin: 0;">Customer Overview</h3>
+                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Account details and metrics.</p>
                 </div>
             </div>
             <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
                 onclick="closeIntelligenceModal()">&times;</button>
         </div>
-        <div class="modal-body-clean" id="intelligenceBody"></div>
-        <div class="modal-footer-clean">
-            <button class="btn-clean" style="background: white; color: var(--adm-navy); border: 1px solid #e2e8f0;"
-                onclick="closeIntelligenceModal()">Close</button>
+        <div class="modal-body-clean" id="intelligenceBody" style="padding: 1.5rem;"></div>
+        <div class="modal-footer-clean" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between;">
+            <button class="btn-clean" style="background: white; color: var(--adm-navy); border: 1px solid #e2e8f0;" onclick="closeIntelligenceModal()">Close</button>
+            <button class="btn-clean" style="background: var(--adm-navy); color: white;" onclick="alert('Editing administrative information...')"><i class="fas fa-edit"></i> Edit Information</button>
         </div>
     </div>
 </div>
+
 
 
 
@@ -415,12 +426,12 @@
         const filteredRows = rows.filter(row => {
             const badge = row.querySelector('.status-badge-dm').innerText.toLowerCase();
             const textContent = row.innerText.toLowerCase();
-            
+
             const matchesStatus = (status === 'all') ||
-                (status === 'verified' && badge.includes('verified')) ||
-                (status === 'pending' && badge.includes('pending')) ||
+                (status === 'active' && badge.includes('active')) ||
+                (status === 'flagged' && badge.includes('flagged')) ||
                 (status === 'suspended' && badge.includes('suspended'));
-                
+
             const matchesQuery = query === '' || textContent.includes(query);
 
             return matchesStatus && matchesQuery;
@@ -479,35 +490,67 @@
     };
 
     function viewCustomerDetails(btn) {
+        const id = btn.getAttribute('data-id');
         const name = btn.getAttribute('data-name');
         const email = btn.getAttribute('data-email');
         const phone = btn.getAttribute('data-phone');
         const joined = btn.getAttribute('data-joined');
         const bookings = btn.getAttribute('data-bookings');
         const status = btn.getAttribute('data-status');
-        
-        const badgeClass = status === 'VERIFIED' ? 'status-active' : 'status-flagged';
-        const initial = name ? name.charAt(0) : '?';
+
+        const badgeClass = status === 'ACTIVE' ? 'status-active' : (status === 'SUSPENDED' ? 'status-suspended' : 'status-flagged');
 
         document.getElementById('intelligenceBody').innerHTML = `
-            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                <div style="background: #f8fafc; padding: 1.5rem; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid #f1f5f9;">
-                    <div class="registry-avatar" style="width: 56px; height: 56px; font-size: 1.25rem;">${initial}</div>
-                    <div>
-                        <div style="font-weight: 800; color: var(--adm-navy); font-size: 1rem;">${name}</div>
-                        <div style="font-size: 0.8rem; color: var(--adm-muted); font-weight: 600;">${email}</div>
-                        <span class="status-badge-dm ${badgeClass}" style="margin-top: 6px;">${status}</span>
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <!-- Personal Information -->
+                <div>
+                    <div style="font-size: 0.75rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #f1f5f9;">Personal Information</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.8rem;">
+                        <div><span style="color: var(--adm-muted); font-weight: 600;">Name:</span> <span style="font-weight: 700; color: var(--adm-navy);">${name}</span></div>
+                        <div><span style="color: var(--adm-muted); font-weight: 600;">Email:</span> <span style="font-weight: 700; color: var(--adm-navy);">${email}</span></div>
+                        <div><span style="color: var(--adm-muted); font-weight: 600;">Contact Number:</span> <span style="font-weight: 700; color: var(--adm-navy);">${phone}</span></div>
+                        <div><span style="color: var(--adm-muted); font-weight: 600;">Customer ID:</span> <span style="font-weight: 700; color: var(--adm-navy);">#${String(id).padStart(5, '0')}</span></div>
                     </div>
                 </div>
-                <div style="padding: 1.5rem;">
-                    <div style="background: #eff6ff; padding: 1rem; border-radius: 12px; border: 1px solid #dbeafe; margin-bottom: 1rem;">
-                        <div style="font-size: 0.65rem; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 8px;">Account Overview</div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.75rem; font-weight: 700; color: #1e40af;">
-                            <div>Phone: ${phone}</div>
-                            <div>Date Joined: ${joined}</div>
-                            <div>Total Bookings: ${bookings}</div>
-                            <div>Status: ${status}</div>
+
+                <!-- Account Information -->
+                <div>
+                    <div style="font-size: 0.75rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #f1f5f9;">Account Information</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.8rem;">
+                        <div><span style="color: var(--adm-muted); font-weight: 600;">Status:</span> <span class="status-badge-dm ${badgeClass}" style="padding: 2px 6px; font-size: 0.6rem;">${status}</span></div>
+                        <div><span style="color: var(--adm-muted); font-weight: 600;">Date Registered:</span> <span style="font-weight: 700; color: var(--adm-navy);">${joined}</span></div>
+                        <div><span style="color: var(--adm-muted); font-weight: 600;">Last Login:</span> <span style="font-weight: 700; color: var(--adm-navy);">Recently</span></div>
+                    </div>
+                </div>
+
+                <!-- Booking Summary -->
+                <div>
+                    <div style="font-size: 0.75rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #f1f5f9;">Booking Summary</div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; font-size: 0.8rem; text-align: center;">
+                        <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <div style="font-weight: 800; color: var(--adm-navy); font-size: 1.1rem;">${bookings}</div>
+                            <div style="font-size: 0.65rem; color: var(--adm-muted); font-weight: 700; text-transform: uppercase;">Total</div>
                         </div>
+                        <div style="background: #f0fdf4; padding: 10px; border-radius: 8px; border: 1px solid #dcfce7;">
+                            <div style="font-weight: 800; color: #166534; font-size: 1.1rem;">${bookings}</div>
+                            <div style="font-size: 0.65rem; color: #166534; font-weight: 700; text-transform: uppercase;">Completed</div>
+                        </div>
+                        <div style="background: #fffbeb; padding: 10px; border-radius: 8px; border: 1px solid #fef3c7;">
+                            <div style="font-weight: 800; color: #b45309; font-size: 1.1rem;">0</div>
+                            <div style="font-size: 0.65rem; color: #b45309; font-weight: 700; text-transform: uppercase;">Pending</div>
+                        </div>
+                        <div style="background: #fef2f2; padding: 10px; border-radius: 8px; border: 1px solid #fee2e2;">
+                            <div style="font-weight: 800; color: #b91c1c; font-size: 1.1rem;">0</div>
+                            <div style="font-size: 0.65rem; color: #b91c1c; font-weight: 700; text-transform: uppercase;">Cancelled</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div>
+                    <div style="font-size: 0.75rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #f1f5f9;">Recent Activity</div>
+                    <div style="font-size: 0.8rem; color: var(--adm-muted); padding: 10px; background: #f8fafc; border-radius: 8px; text-align: center; border: 1px dashed #cbd5e1;">
+                        No recent activity logs available.
                     </div>
                 </div>
             </div>
@@ -542,6 +585,78 @@
                     .then(res => res.json())
                     .then(data => {
                         if (data.success) Swal.fire('Suspended', data.message, 'success').then(() => location.reload());
+                        else Swal.fire('Error', data.message, 'error');
+                    })
+                    .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+            }
+        });
+    }
+
+    function reactivateAccount(id) {
+        openDiamondModal({
+            title: 'Reactivate Account?',
+            desc: 'This will restore the customer\'s access to the platform.',
+            variant: 'success',
+            confirmText: 'Yes, Reactivate',
+            onConfirm: () => {
+                Swal.fire({ title: 'Reactivating...', didOpen: () => Swal.showLoading() });
+                fetch(`/admin/api/customers/${id}/reactivate`, { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) Swal.fire('Reactivated', data.message, 'success').then(() => location.reload());
+                        else Swal.fire('Error', data.message, 'error');
+                    })
+                    .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+            }
+        });
+    }
+
+    function flagAccount(id) {
+        openDiamondModal({
+            title: 'Flag Account for Review?',
+            desc: 'Provide a reason for flagging this account.',
+            html: `
+                <input id="flagReason" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif;" placeholder="Enter reason for flagging" autocomplete="off">
+                <div id="flagReasonError" style="color: #ef4444; font-size: 0.75rem; display: none; margin-top: 4px;">Reason is required.</div>
+            `,
+            variant: 'warning',
+            confirmText: 'Flag Account',
+            preConfirm: () => {
+                const reason = document.getElementById('flagReason').value.trim();
+                if (!reason) {
+                    document.getElementById('flagReasonError').style.display = 'block';
+                    document.getElementById('flagReason').style.borderColor = '#ef4444';
+                    return false;
+                }
+                return reason;
+            },
+            onConfirm: (reason) => {
+                Swal.fire({ title: 'Flagging...', didOpen: () => Swal.showLoading() });
+                const fd = new FormData();
+                fd.append('reason', reason);
+                fetch(`/admin/api/customers/${id}/flag`, { method: 'POST', body: fd })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) Swal.fire('Flagged', data.message, 'success').then(() => location.reload());
+                        else Swal.fire('Error', data.message, 'error');
+                    })
+                    .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+            }
+        });
+    }
+
+    function clearFlag(id) {
+        openDiamondModal({
+            title: 'Clear Review Flag?',
+            desc: 'This will clear the flagged status and return the account to active.',
+            variant: 'success',
+            confirmText: 'Yes, Clear Flag',
+            onConfirm: () => {
+                Swal.fire({ title: 'Clearing Flag...', didOpen: () => Swal.showLoading() });
+                fetch(`/admin/api/customers/${id}/unflag`, { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) Swal.fire('Cleared', data.message, 'success').then(() => location.reload());
                         else Swal.fire('Error', data.message, 'error');
                     })
                     .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));

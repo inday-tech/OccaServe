@@ -165,8 +165,9 @@
         background: #ffffff !important;
         border: 1px solid #cbd5e1 !important;
         border-radius: 10px;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
     }
+
     .dm-input-group:focus-within {
         border-color: var(--adm-primary) !important;
         box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
@@ -182,11 +183,29 @@
         display: none;
     }
 
-    .status-indicator.show { display: inline-block; }
-    .status-ok { background: #dcfce7; color: #166534; }
-    .status-error { background: #fee2e2; color: #991b1b; }
-    .input-error { border-color: #ef4444 !important; background: #fffafb !important; }
-    .input-success { border-color: #10b981 !important; background: #f0fdf4 !important; }
+    .status-indicator.show {
+        display: inline-block;
+    }
+
+    .status-ok {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-error {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .input-error {
+        border-color: #ef4444 !important;
+        background: #fffafb !important;
+    }
+
+    .input-success {
+        border-color: #10b981 !important;
+        background: #f0fdf4 !important;
+    }
 </style>
 {% endblock %}
 
@@ -198,7 +217,7 @@
     </div>
     <div class="header-actions-area">
         <button class="btn-clean" style="background: var(--adm-navy); color: white;" onclick="openAddCatererModal()">
-            Add New Caterer
+            Add Caterer
         </button>
     </div>
 </div>
@@ -229,7 +248,7 @@
     <div class="kpi-card-clean">
         <div class="kpi-info">
             <h4>Suspended</h4>
-            <span class="kpi-value">{{ metrics.rejected_caterers_count }}</span>
+            <span class="kpi-value">{{ metrics.suspended_caterers_count }}</span>
             <span class="trend-badge" style="background: #fee2e2; color: #991b1b;">Restricted</span>
         </div>
     </div>
@@ -239,11 +258,13 @@
 <div class="table-card-clean">
     <div class="terminal-filter-strip">
         <div style="display: flex; align-items: center; gap: 12px;">
-            <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase;">
+            <h3
+                style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase;">
                 Partner Directory</h3>
         </div>
         <div style="display: flex; gap: 10px;">
-            <select id="catererStatusFilter" onchange="filterCaterers()" class="btn-clean" style="padding: 6px 14px; font-size: 0.8rem; font-weight: 700;">
+            <select id="catererStatusFilter" onchange="filterCaterers()" class="btn-clean"
+                style="padding: 6px 14px; font-size: 0.8rem; font-weight: 700;">
                 <option value="all">Filter: All Partners</option>
                 <option value="VERIFIED">Status: Verified</option>
                 <option value="REVIEW">Status: Needs Review</option>
@@ -270,68 +291,85 @@
                         <div class="partner-identity-cell">
                             <div class="partner-avatar">{{ caterer.business_name[0] }}</div>
                             <div>
-                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem;">{{ caterer.business_name }}</div>
+                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem;">{{
+                                    caterer.business_name }}</div>
                                 <div class="performance-mini">
                                     {% if caterer.rating and caterer.rating > 0 %}
-                                        {{ "%.1f"|format(caterer.rating) }} Rating
+                                    {{ "%.1f"|format(caterer.rating) }} Rating
                                     {% else %}
-                                        <span style="color: var(--adm-muted); opacity: 0.8;">NEW PARTNER</span>
+                                    <span style="color: var(--adm-muted); opacity: 0.8;">NEW PARTNER</span>
                                     {% endif %}
                                 </div>
                             </div>
                         </div>
                     </td>
                     <td>
-                        <div style="font-weight: 700; color: var(--adm-navy); font-size: 0.85rem;">{{ caterer.user.first_name }} {{ caterer.user.last_name }}</div>
+                        <div style="font-weight: 700; color: var(--adm-navy); font-size: 0.85rem;">{{
+                            caterer.user.first_name }} {{ caterer.user.last_name }}</div>
                         <div style="font-size: 0.75rem; color: var(--adm-muted);">{{ caterer.user.email }}</div>
                     </td>
-                    <td><span style="font-weight: 600; color: var(--adm-muted); font-size: 0.85rem;">{{ caterer.city or 'Not Set' }}</span></td>
+                    <td><span style="font-weight: 600; color: var(--adm-muted); font-size: 0.85rem;">{{ caterer.city or
+                            'Not Set' }}</span></td>
                     <td>
                         {% if caterer.verification_status == 'Verified' %}
                         <span class="badge-clean badge-active">VERIFIED</span>
-                        {% elif caterer.verification_status == 'Pending Review' or caterer.verification_status == 'Pending' %}
+                        {% elif caterer.verification_status == 'Pending Review' or caterer.verification_status ==
+                        'Pending' %}
                         <span class="badge-clean badge-pending">REVIEW</span>
                         {% else %}
-                        <span class="badge-clean" style="background: #f1f5f9; color: #64748b;">{{ caterer.verification_status }}</span>
+                        <span class="badge-clean" style="background: #f1f5f9; color: #64748b;">{{
+                            caterer.verification_status }}</span>
                         {% endif %}
                     </td>
                     <td style="text-align: right;">
                         <div class="actions-dropdown">
                             <button class="dropdown-trigger" onclick="toggleActionDropdown(this, event)">...</button>
                             <div class="dropdown-menu-dm">
-                                <button class="dm-dropdown-item" 
-                                    data-name="{{ caterer.business_name }}" 
-                                    data-owner="{{ caterer.user.first_name }} {{ caterer.user.last_name }}" 
-                                    data-email="{{ caterer.user.email }}" 
-                                    data-phone="{{ caterer.user.phone_number }}" 
-                                    data-address="{{ caterer.contact_address or caterer.city or 'Not Set' }}" 
-                                    data-status="{{ caterer.verification_status }}" 
+                                <button class="dm-dropdown-item" data-name="{{ caterer.business_name }}"
+                                    data-owner="{{ caterer.user.first_name }} {{ caterer.user.last_name }}"
+                                    data-email="{{ caterer.user.email }}" data-phone="{{ caterer.user.phone_number }}"
+                                    data-address="{{ caterer.contact_address or caterer.city or 'Not Set' }}"
+                                    data-status="{{ caterer.verification_status }}"
+                                    data-regdate="{{ caterer.created_at.strftime('%Y-%m-%d') if caterer.created_at else 'N/A' }}"
+                                    data-verdate="{{ caterer.verified_at.strftime('%Y-%m-%d') if caterer.verified_at else 'N/A' }}"
+                                    data-services="{{ caterer.services_offered or 'Not specified' }}"
                                     onclick="viewCatererDetails(this)">
                                     <i class="fas fa-eye" style="color: #64748b;"></i> View Details
                                 </button>
-                                
-                                {% if caterer.verification_status == 'Pending' or caterer.verification_status == 'Pending Review' or caterer.verification_status == 'Requires Revision' or caterer.verification_status == 'Verified' %}
+
+                                {% if caterer.verification_status == 'Pending' or caterer.verification_status ==
+                                'Pending Review' or caterer.verification_status == 'Requires Revision' %}
                                 <button class="dm-dropdown-item" onclick="openReviewModal({{ caterer.id }})">
                                     <i class="fas fa-file-contract" style="color: #64748b;"></i> Review Documents
                                 </button>
+                                <button class="dm-dropdown-item" style="color: #10b981;"
+                                    onclick="approveCaterer({{ caterer.id }})">
+                                    <i class="fas fa-check" style="color: #10b981;"></i> Approve Caterer
+                                </button>
+                                <button class="dm-dropdown-item danger" onclick="rejectCaterer({{ caterer.id }})">
+                                    <i class="fas fa-times" style="color: #ef4444;"></i> Reject Application
+                                </button>
                                 {% endif %}
-                                
-                                <button class="dm-dropdown-item" data-id="{{ caterer.id }}" data-fname="{{ caterer.user.first_name }}" data-lname="{{ caterer.user.last_name }}" data-email="{{ caterer.user.email }}" data-status="{{ caterer.user.status }}" onclick="openEditModal(this)">
-                                    Edit Profile
+
+                                {% if caterer.verification_status == 'Verified' and caterer.account_status !=
+                                'Suspended' and caterer.user.status != 'suspended' %}
+                                <button class="dm-dropdown-item" data-id="{{ caterer.id }}"
+                                    data-fname="{{ caterer.user.first_name }}" data-lname="{{ caterer.user.last_name }}"
+                                    data-email="{{ caterer.user.email }}" data-status="{{ caterer.user.status }}"
+                                    onclick="openEditModal(this)">
+                                    <i class="fas fa-edit" style="color: #64748b;"></i> Edit Profile
                                 </button>
-                                
                                 <div style="height: 1px; background: #f1f5f9; margin: 4px 8px;"></div>
-                                
-                                {% if caterer.verification_status == 'Rejected' or caterer.verification_status == 'Suspended' %}
-                                <button class="dm-dropdown-item" style="color: #2563eb;" onclick="restorePartner({{ caterer.id }})">
-                                    Reactivate Account
+                                <button class="dm-dropdown-item danger" onclick="suspendCaterer({{ caterer.id }})">
+                                    <i class="fas fa-ban" style="color: #ef4444;"></i> Suspend Account
                                 </button>
-                                {% else %}
-                                <button class="dm-dropdown-item" style="color: #f97316;" onclick="flagPartner({{ caterer.id }})">
-                                    Require Re-verification
-                                </button>
-                                <button class="dm-dropdown-item danger" onclick="suspendPartner({{ caterer.id }})">
-                                    Ban / Suspend Account
+                                {% endif %}
+
+                                {% if caterer.account_status == 'Suspended' or caterer.user.status == 'suspended' or
+                                caterer.verification_status == 'Rejected' %}
+                                <button class="dm-dropdown-item" style="color: #2563eb;"
+                                    onclick="reactivateCaterer({{ caterer.id }})">
+                                    <i class="fas fa-undo" style="color: #2563eb;"></i> Reactivate Account
                                 </button>
                                 {% endif %}
                             </div>
@@ -346,7 +384,8 @@
     <!-- Elite Pagination Control -->
     <div class="pagination-terminal">
         <div style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700;">
-            Showing <span id="entryStart">1</span> to <span id="entryEnd">10</span> of <span id="totalEntries">{{ caterers|length }}</span> partners
+            Showing <span id="entryStart">1</span> to <span id="entryEnd">10</span> of <span id="totalEntries">{{
+                caterers|length }}</span> partners
         </div>
         <div style="display: flex; gap: 8px;">
             <button class="pag-btn" id="prevBtn" onclick="changePage(-1)" disabled>
@@ -361,26 +400,33 @@
 
 <!-- Add Caterer Modal -->
 <div id="addCatererModal" class="admin-modal-overlay">
-    <div class="admin-modal-card" style="max-width: 900px; width: 95%; display: flex; flex-direction: column; max-height: 90vh;">
+    <div class="admin-modal-card"
+        style="max-width: 900px; width: 95%; display: flex; flex-direction: column; max-height: 90vh;">
         <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem;">
             <div>
-                <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Add New Caterer</h3>
-                <p style="font-size: 0.7rem; color: var(--adm-muted);">Add a pre-verified partner directly to the platform.</p>
+                <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Add Caterer</h3>
+                <p style="font-size: 0.7rem; color: var(--adm-muted);">Add a pre-verified partner directly to the
+                    platform.</p>
             </div>
-            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeAddCatererModal()">&times;</button>
+            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
+                onclick="closeAddCatererModal()">&times;</button>
         </div>
 
         <form id="addCatererForm" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
             <div class="modal-body-clean" style="overflow-y: auto; padding: 1.5rem 2rem; flex: 1;">
                 <div class="onboard-grid" style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 2.5rem;">
-                    
+
                     <!-- Primary Identity Column -->
                     <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-                        <h4 style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase;">Business Info</h4>
-                        
+                        <h4
+                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase;">
+                            Business Info</h4>
+
                         <!-- Official Business Name -->
                         <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <label style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 2px;">Official Business Name</label>
+                            <label
+                                style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 2px;">Official
+                                Business Name</label>
                             <div class="dm-input-group">
                                 <input type="text" name="business_name" id="onboard_biz_name" required>
                             </div>
@@ -391,21 +437,32 @@
                         <div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 80px; gap: 8px;">
                                 <div>
-                                    <label style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block;">First Name</label>
-                                    <div class="dm-input-group"><input type="text" name="first_name" id="onboard_fname" required></div>
+                                    <label
+                                        style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block;">First
+                                        Name</label>
+                                    <div class="dm-input-group"><input type="text" name="first_name" id="onboard_fname"
+                                            required></div>
                                 </div>
                                 <div>
-                                    <label style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block;">Middle Name</label>
-                                    <div class="dm-input-group"><input type="text" name="middle_name" id="onboard_mname"></div>
+                                    <label
+                                        style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block;">Middle
+                                        Name</label>
+                                    <div class="dm-input-group"><input type="text" name="middle_name"
+                                            id="onboard_mname"></div>
                                 </div>
                                 <div>
-                                    <label style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block;">Last Name</label>
-                                    <div class="dm-input-group"><input type="text" name="last_name" id="onboard_lname" required></div>
+                                    <label
+                                        style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block;">Last
+                                        Name</label>
+                                    <div class="dm-input-group"><input type="text" name="last_name" id="onboard_lname"
+                                            required></div>
                                 </div>
                                 <div>
-                                    <label style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block; text-align: center;">Suffix</label>
+                                    <label
+                                        style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block; text-align: center;">Suffix</label>
                                     <div class="dm-input-group">
-                                        <select name="name_suffix" id="onboard_suffix" style="padding: 0 10px; width: 100%; height: 100%; border: none; background: transparent; font-size: 0.75rem; font-weight: 700; color: #475569; outline: none; appearance: none; text-align: center;">
+                                        <select name="name_suffix" id="onboard_suffix"
+                                            style="padding: 0 10px; width: 100%; height: 100%; border: none; background: transparent; font-size: 0.75rem; font-weight: 700; color: #475569; outline: none; appearance: none; text-align: center;">
                                             <option value="" selected>-</option>
                                             <option value="Jr.">Jr.</option>
                                             <option value="Sr.">Sr.</option>
@@ -422,18 +479,26 @@
                         <!-- Contact Registry -->
                         <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
                             <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <label style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 2px;">Gmail Address</label>
-                                <div class="dm-input-group"><input type="email" name="email" id="onboard_email" required></div>
+                                <label
+                                    style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 2px;">Gmail
+                                    Address</label>
+                                <div class="dm-input-group"><input type="email" name="email" id="onboard_email"
+                                        required></div>
                                 <div id="email_audit_status" class="status-indicator"></div>
                             </div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <label style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 2px;">Mobile Number</label>
-                                <div class="dm-input-group"><input type="tel" name="phone" id="onboard_phone" maxlength="11" required></div>
+                                <label
+                                    style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 2px;">Mobile
+                                    Number</label>
+                                <div class="dm-input-group"><input type="tel" name="phone" id="onboard_phone"
+                                        maxlength="11" required></div>
                                 <div id="phone_audit_status" class="status-indicator"></div>
                             </div>
                         </div>
 
-                        <h4 style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; margin-top: 0.5rem;">Business Address (PSGC)</h4>
+                        <h4
+                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; margin-top: 0.5rem;">
+                            Business Address (PSGC)</h4>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                             <div class="dm-input-group">
                                 <select name="province" id="onboard_province" onchange="fetchMunicipalities()" required>
@@ -441,7 +506,8 @@
                                 </select>
                             </div>
                             <div class="dm-input-group">
-                                <select name="municipality" id="onboard_city" onchange="fetchBarangays()" disabled required>
+                                <select name="municipality" id="onboard_city" onchange="fetchBarangays()" disabled
+                                    required>
                                     <option value="" disabled selected>Select City/Muni</option>
                                 </select>
                             </div>
@@ -452,29 +518,39 @@
                                     <option value="" disabled selected>Select Barangay</option>
                                 </select>
                             </div>
-                            <div class="dm-input-group"><input type="text" name="street" placeholder="Bldg/Street/Subd" required></div>
+                            <div class="dm-input-group"><input type="text" name="street" placeholder="Bldg/Street/Subd"
+                                    required></div>
                         </div>
                     </div>
 
                     <!-- Service Matrix Column -->
                     <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-                        <h4 style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase;">Services Offered</h4>
-                        <div style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #f1f5f9;">
-                            <label style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 8px;">Events</label>
+                        <h4
+                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase;">
+                            Services Offered</h4>
+                        <div
+                            style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #f1f5f9;">
+                            <label
+                                style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 8px;">Events</label>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                                 <label><input type="checkbox" name="events" value="Wedding"> Wedding</label>
                                 <label><input type="checkbox" name="events" value="Birthday"> Birthday</label>
                                 <label><input type="checkbox" name="events" value="Corporate"> Corporate Events</label>
                                 <label><input type="checkbox" name="events" value="Debut"> Debuts & Milestones</label>
                                 <label><input type="checkbox" name="events" value="Baptism"> Baptism & Family</label>
-                                <label><input type="checkbox" name="events" value="Private Party"> Private Parties</label>
-                                <label><input type="checkbox" name="events" value="Fiesta"> Fiestas & Large Events</label>
-                                <label><input type="checkbox" name="events" value="Holiday"> Holiday Celebrations</label>
+                                <label><input type="checkbox" name="events" value="Private Party"> Private
+                                    Parties</label>
+                                <label><input type="checkbox" name="events" value="Fiesta"> Fiestas & Large
+                                    Events</label>
+                                <label><input type="checkbox" name="events" value="Holiday"> Holiday
+                                    Celebrations</label>
                             </div>
                         </div>
 
-                        <div style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #f1f5f9;">
-                            <label style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 8px;">Cuisine</label>
+                        <div
+                            style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #f1f5f9;">
+                            <label
+                                style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 8px;">Cuisine</label>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                                 <label><input type="checkbox" name="cuisines" value="Filipino"> Filipino</label>
                                 <label><input type="checkbox" name="cuisines" value="Asian"> Asian</label>
@@ -482,18 +558,25 @@
                             </div>
                         </div>
 
-                        <div style="margin-top: auto; padding: 0.75rem; background: var(--adm-primary-soft); border-radius: 10px;">
+                        <div
+                            style="margin-top: auto; padding: 0.75rem; background: var(--adm-primary-soft); border-radius: 10px;">
                             <p style="font-size: 0.65rem; color: var(--adm-navy); font-weight: 600; margin: 0;">
-                                Note: Added caterers bypass document audit and are marked as "Verified" immediately. They will receive their temporary password via email.
+                                Note: Added caterers bypass document audit and are marked as "Verified" immediately.
+                                They will receive their temporary password via email.
                             </p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="modal-footer-clean" style="padding: 1.25rem 2rem; background: #f8fafc; display: flex; justify-content: flex-end; gap: 10px;">
-                <button type="button" class="btn-clean" style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy);" onclick="closeAddCatererModal()">Cancel</button>
-                <button type="submit" class="btn-clean" style="background: var(--adm-primary); color: white; padding: 0.75rem 2rem;">Add New Caterer</button>
+            <div class="modal-footer-clean"
+                style="padding: 1.25rem 2rem; background: #f8fafc; display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn-clean"
+                    style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy);"
+                    onclick="closeAddCatererModal()">Cancel</button>
+                <button type="submit" class="btn-clean"
+                    style="background: var(--adm-primary); color: white; padding: 0.75rem 2rem;">Add New
+                    Caterer</button>
             </div>
         </form>
     </div>
@@ -507,27 +590,35 @@
                 <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Edit Caterer Profile</h3>
                 <p style="font-size: 0.7rem; color: var(--adm-muted);">Modify basic account information.</p>
             </div>
-            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeEditModal()">&times;</button>
+            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
+                onclick="closeEditModal()">&times;</button>
         </div>
         <form id="editCatererForm" onsubmit="submitEditCaterer(event)">
             <input type="hidden" id="edit_caterer_id">
             <div class="modal-body-clean" style="padding: 1.5rem 2rem;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                     <div class="dm-input-group">
-                        <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">First Name</label>
+                        <label
+                            style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">First
+                            Name</label>
                         <input type="text" id="edit_fname" name="first_name" required class="form-control">
                     </div>
                     <div class="dm-input-group">
-                        <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Last Name</label>
+                        <label
+                            style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Last
+                            Name</label>
                         <input type="text" id="edit_lname" name="last_name" required class="form-control">
                     </div>
                 </div>
                 <div class="dm-input-group" style="margin-bottom: 15px;">
-                    <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Email Address</label>
+                    <label
+                        style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Email
+                        Address</label>
                     <input type="email" id="edit_email" name="email" required class="form-control">
                 </div>
                 <div class="dm-input-group" style="margin-bottom: 15px;">
-                    <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Status</label>
+                    <label
+                        style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Status</label>
                     <select id="edit_status" name="status" class="form-control">
                         <option value="active">Active</option>
                         <option value="pending_kyc">Pending KYC</option>
@@ -536,9 +627,13 @@
                 </div>
                 <input type="hidden" name="is_active" value="true">
             </div>
-            <div class="modal-footer-clean" style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" class="btn-clean" style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy);" onclick="closeEditModal()">Cancel</button>
-                <button type="submit" class="btn-clean" style="background: var(--adm-primary); color: white;" id="saveEditBtn">Save Changes</button>
+            <div class="modal-footer-clean"
+                style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="btn-clean"
+                    style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy);"
+                    onclick="closeEditModal()">Cancel</button>
+                <button type="submit" class="btn-clean" style="background: var(--adm-primary); color: white;"
+                    id="saveEditBtn">Save Changes</button>
             </div>
         </form>
     </div>
@@ -546,83 +641,148 @@
 
 <!-- View Details Modal -->
 <div id="viewCatererModal" class="admin-modal-overlay">
-    <div class="admin-modal-card" style="max-width: 500px; width: 95%;">
+    <div class="admin-modal-card" style="max-width: 600px; width: 95%;">
         <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem;">
             <div>
-                <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Partner Details</h3>
-                <p style="font-size: 0.7rem; color: var(--adm-muted);">Overview of caterer's verified profile.</p>
+                <h3 id="vd_title" style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Caterer Details
+                </h3>
+                <p style="font-size: 0.7rem; color: var(--adm-muted);">Complete overview of caterer's profile.</p>
             </div>
-            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeViewCatererModal()">&times;</button>
+            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
+                onclick="closeViewCatererModal()">&times;</button>
         </div>
         <div class="modal-body-clean" style="padding: 1.5rem 2rem;">
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <div>
-                    <label style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Business Name</label>
-                    <div id="vc_name" style="font-size: 0.95rem; font-weight: 800; color: var(--adm-navy);"></div>
-                </div>
-                <div>
-                    <label style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Owner Name</label>
-                    <div id="vc_owner" style="font-size: 0.85rem; font-weight: 700; color: #475569;"></div>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div style="display: flex; gap: 15px; border-bottom: 1px solid #e2e8f0; margin-bottom: 15px;">
+                <div class="vd-tab active" onclick="switchVDTab('vd_overview', this)"
+                    style="padding-bottom: 10px; cursor: pointer; font-size: 0.75rem; font-weight: 700; color: var(--adm-primary); border-bottom: 2px solid var(--adm-primary);">
+                    Overview</div>
+                <div class="vd-tab" onclick="switchVDTab('vd_business', this)"
+                    style="padding-bottom: 10px; cursor: pointer; font-size: 0.75rem; font-weight: 700; color: var(--adm-muted); border-bottom: 2px solid transparent;">
+                    Business Info</div>
+                <div class="vd-tab" onclick="switchVDTab('vd_documents', this)"
+                    style="padding-bottom: 10px; cursor: pointer; font-size: 0.75rem; font-weight: 700; color: var(--adm-muted); border-bottom: 2px solid transparent;">
+                    Documents</div>
+            </div>
+
+            <div id="vd_overview" class="vd-tab-content">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div>
-                        <label style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Email</label>
+                        <label
+                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Business
+                            Name</label>
+                        <div id="vc_name" style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);"></div>
+                    </div>
+                    <div>
+                        <label
+                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Owner
+                            Name</label>
+                        <div id="vc_owner" style="font-size: 0.85rem; font-weight: 700; color: #475569;"></div>
+                    </div>
+                    <div>
+                        <label
+                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Verification
+                            Status</label>
+                        <div id="vc_status" style="margin-top: 4px;"></div>
+                    </div>
+                    <div>
+                        <label
+                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Registration
+                            Date</label>
+                        <div id="vc_regdate" style="font-size: 0.85rem; font-weight: 600; color: #475569;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="vd_business" class="vd-tab-content" style="display: none;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label
+                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Email</label>
                         <div id="vc_email" style="font-size: 0.85rem; font-weight: 600; color: #475569;"></div>
                     </div>
                     <div>
-                        <label style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Phone</label>
+                        <label
+                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Phone</label>
                         <div id="vc_phone" style="font-size: 0.85rem; font-weight: 600; color: #475569;"></div>
                     </div>
                 </div>
-                <div>
-                    <label style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Address</label>
+                <div style="margin-top: 15px;">
+                    <label
+                        style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Address</label>
                     <div id="vc_address" style="font-size: 0.85rem; font-weight: 600; color: #475569;"></div>
                 </div>
-                <div>
-                    <label style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Status</label>
-                    <div id="vc_status" style="margin-top: 4px;"></div>
+                <div style="margin-top: 15px;">
+                    <label
+                        style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Services
+                        Offered</label>
+                    <div id="vc_services" style="font-size: 0.85rem; font-weight: 600; color: #475569;"></div>
+                </div>
+            </div>
+
+            <div id="vd_documents" class="vd-tab-content" style="display: none;">
+                <p style="color: var(--adm-muted); font-size: 0.85rem;">Document review module is handled via KYC
+                    system.</p>
+                <div style="margin-top: 15px;">
+                    <label
+                        style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Verification
+                        Date</label>
+                    <div id="vc_verdate" style="font-size: 0.85rem; font-weight: 600; color: #475569;"></div>
                 </div>
             </div>
         </div>
-        <div class="modal-footer-clean" style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end;">
-            <button class="btn-clean" style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy);" onclick="closeViewCatererModal()">Close</button>
+        <div class="modal-footer-clean"
+            style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end;">
+            <button class="btn-clean" style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy);"
+                onclick="closeViewCatererModal()">Close</button>
         </div>
     </div>
 </div>
 
 <!-- Review Verification Modal -->
 <div id="reviewVerificationModal" class="admin-modal-overlay">
-    <div class="admin-modal-card" style="max-width: 900px; width: 95%; display: flex; flex-direction: column; max-height: 90vh;">
+    <div class="admin-modal-card"
+        style="max-width: 900px; width: 95%; display: flex; flex-direction: column; max-height: 90vh;">
         <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem;">
             <div>
-                <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Review Partner Verification</h3>
+                <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Review Partner Verification
+                </h3>
                 <p style="font-size: 0.7rem; color: var(--adm-muted);">Audit business and identity documents.</p>
             </div>
-            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeReviewModal()">&times;</button>
+            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
+                onclick="closeReviewModal()">&times;</button>
         </div>
 
         <div class="modal-body-clean" style="overflow-y: auto; padding: 1.5rem 2rem; flex: 1;">
             <div style="display: grid; grid-template-columns: 1fr 300px; gap: 2rem;">
-                
+
                 <!-- Left Panel: Documents -->
                 <div>
-                    <h4 style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; margin-bottom: 1rem;">Submitted Documents</h4>
+                    <h4
+                        style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; margin-bottom: 1rem;">
+                        Submitted Documents</h4>
                     <div id="reviewDocumentsGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <!-- Injected by JS -->
-                        <div style="color: #64748b; font-size: 0.85rem;"><i class="fas fa-spinner fa-spin"></i> Loading documents...</div>
+                        <div style="color: #64748b; font-size: 0.85rem;"><i class="fas fa-spinner fa-spin"></i> Loading
+                            documents...</div>
                     </div>
                 </div>
 
                 <!-- Right Panel: Actions -->
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
-                    <h4 style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase;">Review Actions</h4>
-                    
+                    <h4
+                        style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase;">
+                        Review Actions</h4>
+
                     <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
                         <input type="hidden" id="review_caterer_id">
-                        
+
                         <div style="margin-bottom: 1rem;">
-                            <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); display: block; margin-bottom: 0.5rem;">Action Taken</label>
-                            <select id="review_action_select" class="dm-input-group" style="width: 100%; padding: 0.5rem; border: none; background: white; font-size: 0.85rem; outline: none; appearance: auto;" onchange="toggleRemarks()">
+                            <label
+                                style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); display: block; margin-bottom: 0.5rem;">Action
+                                Taken</label>
+                            <select id="review_action_select" class="dm-input-group"
+                                style="width: 100%; padding: 0.5rem; border: none; background: white; font-size: 0.85rem; outline: none; appearance: auto;"
+                                onchange="toggleRemarks()">
                                 <option value="Verified">Approve / Verify</option>
                                 <option value="Requires Revision">Request Revision</option>
                                 <option value="Rejected">Reject</option>
@@ -631,11 +791,17 @@
                         </div>
 
                         <div id="review_remarks_container" style="display: none; margin-bottom: 1rem;">
-                            <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); display: block; margin-bottom: 0.5rem;">Admin Remarks <span style="color:#ef4444">*</span></label>
-                            <textarea id="review_remarks" rows="4" class="dm-input-group" style="width: 100%; padding: 0.75rem; border: none; background: white; font-size: 0.85rem; outline: none; resize: vertical;" placeholder="Explain why revision is needed or why they are rejected..."></textarea>
+                            <label
+                                style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); display: block; margin-bottom: 0.5rem;">Admin
+                                Remarks <span style="color:#ef4444">*</span></label>
+                            <textarea id="review_remarks" rows="4" class="dm-input-group"
+                                style="width: 100%; padding: 0.75rem; border: none; background: white; font-size: 0.85rem; outline: none; resize: vertical;"
+                                placeholder="Explain why revision is needed or why they are rejected..."></textarea>
                         </div>
-                        
-                        <button type="button" class="btn-clean" id="btnSubmitReview" style="background: var(--adm-primary); color: white; width: 100%; padding: 0.75rem; border-radius: 6px; font-weight: 700; text-align: center; justify-content: center; margin-top: 1rem;" onclick="submitReview()">
+
+                        <button type="button" class="btn-clean" id="btnSubmitReview"
+                            style="background: var(--adm-primary); color: white; width: 100%; padding: 0.75rem; border-radius: 6px; font-weight: 700; text-align: center; justify-content: center; margin-top: 1rem;"
+                            onclick="submitReview()">
                             Submit Decision
                         </button>
                     </div>
@@ -672,14 +838,14 @@
         const status = document.getElementById('catererStatusFilter').value.toLowerCase();
         const globalSearch = document.getElementById('globalSearchInput');
         const query = globalSearch ? globalSearch.value.toLowerCase().trim() : '';
-        
+
         const filteredRows = rows.filter(row => {
             const stat = row.querySelector('.badge-clean')?.innerText.toLowerCase() || '';
             const textContent = row.innerText.toLowerCase();
-            
+
             const matchesStatus = (status === 'all' || stat.includes(status));
             const matchesQuery = query === '' || textContent.includes(query);
-            
+
             return matchesStatus && matchesQuery;
         });
 
@@ -763,7 +929,7 @@
                 citySel.appendChild(opt);
             });
             citySel.disabled = false;
-        } catch (err) {}
+        } catch (err) { }
     }
     async function fetchBarangays() {
         const cityCode = document.getElementById('onboard_city').value;
@@ -779,7 +945,7 @@
                 brgySel.appendChild(opt);
             });
             brgySel.disabled = false;
-        } catch (err) {}
+        } catch (err) { }
     }
 
     // --- Real-time Identity Audit Engine ---
@@ -788,13 +954,13 @@
         const name = e.target.value.trim();
         const status = document.getElementById('biz_name_status');
         clearTimeout(bizCheckTimeout);
-        if (name.length < 3) { 
-            status.className = 'status-indicator'; 
-            e.target.className = ''; 
-            return; 
+        if (name.length < 3) {
+            status.className = 'status-indicator';
+            e.target.className = '';
+            return;
         }
 
-        status.textContent = 'Auditing...'; 
+        status.textContent = 'Auditing...';
         status.className = 'status-indicator show';
         bizCheckTimeout = setTimeout(async () => {
             try {
@@ -803,7 +969,7 @@
                 status.textContent = data.business_name_taken ? 'BUSINESS NAME TAKEN' : '✓ BUSINESS NAME AVAILABLE';
                 status.className = `status-indicator show ${data.business_name_taken ? 'status-error' : 'status-ok'}`;
                 e.target.className = data.business_name_taken ? 'input-error' : 'input-success';
-            } catch (err) {}
+            } catch (err) { }
         }, 500);
     });
 
@@ -830,7 +996,7 @@
             // 1. Logical Validation: Name Check
             const nameStat = document.getElementById('name_audit_status');
             const hasNumbers = /\d/.test(fname) || /\d/.test(lname) || /\d/.test(mname);
-            
+
             if (fname.length > 0 && fname.length < 2) {
                 nameStat.textContent = 'INVALID: FIRST NAME TOO SHORT';
                 nameStat.className = 'status-indicator show status-error';
@@ -877,17 +1043,17 @@
 
             // 3. API Check for Email, Phone & Name Collision
             const localNameValid = (fname.length >= 2 && lname.length >= 2 && !hasNumbers && fname !== lname);
-            
+
             if ((email && email.endsWith('@gmail.com')) || (phone && phone.length === 11) || localNameValid) {
                 let url = `/admin/api/caterers/audit-identity?`;
                 if (email) url += `email=${encodeURIComponent(email)}&`;
                 if (phone && phone.length === 11) url += `phone=${encodeURIComponent(phone)}&`;
                 if (localNameValid) url += `first_name=${encodeURIComponent(fname)}&last_name=${encodeURIComponent(lname)}&`;
-                
+
                 try {
                     const res = await fetch(url);
                     const data = await res.json();
-                    
+
                     const emailStat = document.getElementById('email_audit_status');
                     if (email) {
                         if (!email.endsWith('@gmail.com')) {
@@ -910,7 +1076,7 @@
                         phoneStat.className = `status-indicator show ${data.phone_taken ? 'status-error' : 'status-ok'}`;
                         phoneInp.className = data.phone_taken ? 'input-error' : 'input-success';
                     }
-                    
+
                     if (localNameValid) {
                         if (data.name_collision) {
                             nameStat.textContent = 'ACCOUNT WITH THIS EXACT NAME ALREADY EXISTS';
@@ -922,7 +1088,7 @@
                             fnameInp.className = lnameInp.className = 'input-success';
                         }
                     }
-                } catch (err) {}
+                } catch (err) { }
             }
         }, 500);
     }
@@ -956,7 +1122,7 @@
 
         const phone = fd.get('phone').replace(/\D/g, '');
         if (!phone.startsWith('09') || phone.length !== 11) return Swal.fire('Error', 'Phone must start with 09 and be 11 digits.', 'error');
-        
+
         if (fd.get('business_name').trim().length < 3) return Swal.fire('Error', 'Business name is too short.', 'error');
 
         const pSel = document.getElementById('onboard_province');
@@ -970,7 +1136,7 @@
         const cuisines = Array.from(e.target.querySelectorAll('input[name="cuisines"]:checked')).map(i => i.value);
         if (events.length === 0) return Swal.fire('Error', 'Select at least one Event Category.', 'error');
         if (cuisines.length === 0) return Swal.fire('Error', 'Select at least one Cuisine Specialty.', 'error');
-        
+
         fd.append('event_types', JSON.stringify(events));
         fd.append('cuisine_types', JSON.stringify(cuisines));
 
@@ -1015,24 +1181,103 @@
         document.getElementById('editCatererModal').classList.add('active');
     }
     function closeEditModal() { document.getElementById('editCatererModal').classList.remove('active'); }
-    
+
     // View Details Logic
+    function switchVDTab(tabId, el) {
+        document.querySelectorAll('.vd-tab-content').forEach(c => c.style.display = 'none');
+        document.querySelectorAll('.vd-tab').forEach(t => {
+            t.classList.remove('active');
+            t.style.color = 'var(--adm-muted)';
+            t.style.borderBottomColor = 'transparent';
+        });
+        document.getElementById(tabId).style.display = 'block';
+        el.classList.add('active');
+        el.style.color = 'var(--adm-primary)';
+        el.style.borderBottomColor = 'var(--adm-primary)';
+    }
+
     function viewCatererDetails(btn) {
+        document.getElementById('vd_title').innerText = btn.getAttribute('data-name') || 'N/A';
         document.getElementById('vc_name').innerText = btn.getAttribute('data-name') || 'N/A';
         document.getElementById('vc_owner').innerText = btn.getAttribute('data-owner') || 'N/A';
         document.getElementById('vc_email').innerText = btn.getAttribute('data-email') || 'N/A';
         document.getElementById('vc_phone').innerText = btn.getAttribute('data-phone') || 'N/A';
         document.getElementById('vc_address').innerText = btn.getAttribute('data-address') || 'N/A';
-        
+        document.getElementById('vc_regdate').innerText = btn.getAttribute('data-regdate') || 'N/A';
+        document.getElementById('vc_verdate').innerText = btn.getAttribute('data-verdate') || 'N/A';
+        document.getElementById('vc_services').innerText = btn.getAttribute('data-services') || 'Not specified';
+
         const status = btn.getAttribute('data-status');
         let badgeHtml = `<span class="badge-clean" style="background: #f1f5f9; color: #64748b;">${status}</span>`;
         if (status === 'Verified') badgeHtml = `<span class="badge-clean badge-active">VERIFIED</span>`;
-        if (status === 'Pending' || status === 'Pending Review') badgeHtml = `<span class="badge-clean badge-pending">REVIEW</span>`;
+        if (status === 'Pending' || status === 'Pending Review' || status === 'Requires Revision') badgeHtml = `<span class="badge-clean badge-pending">REVIEW</span>`;
         document.getElementById('vc_status').innerHTML = badgeHtml;
-        
+
+        // Reset tabs
+        const firstTab = document.querySelector('.vd-tab');
+        if (firstTab) switchVDTab('vd_overview', firstTab);
+
         document.getElementById('viewCatererModal').classList.add('active');
     }
     function closeViewCatererModal() { document.getElementById('viewCatererModal').classList.remove('active'); }
+
+    async function approveCaterer(id) {
+        openDiamondModal({
+            title: 'Approve Caterer?',
+            desc: 'Confirming will verify the caterer and allow full platform access.',
+            variant: 'success',
+            confirmText: 'Yes, Approve',
+            onConfirm: () => executePartnerAction(id, 'approve')
+        });
+    }
+
+    async function rejectCaterer(id) {
+        openDiamondModal({
+            title: 'Reject Application',
+            desc: 'Please select a reason for rejecting the application.',
+            html: `
+                <select id="rejectReason" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif;">
+                    <option value="Incomplete Information">Incomplete Information</option>
+                    <option value="Invalid Documents">Invalid Documents</option>
+                    <option value="Unverified Business Information">Unverified Business Information</option>
+                    <option value="Other">Other</option>
+                </select>
+            `,
+            variant: 'danger',
+            confirmText: 'Reject',
+            preConfirm: () => document.getElementById('rejectReason').value,
+            onConfirm: (reason) => executePartnerAction(id, 'reject', reason)
+        });
+    }
+
+    async function suspendCaterer(id) {
+        openDiamondModal({
+            title: 'Suspend Account',
+            desc: 'Provide a reason for suspending this active account.',
+            html: `
+                <input id="suspendReasonQuick" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif;" placeholder="Enter reason...">
+                <div id="suspendError" style="color: #ef4444; font-size: 0.75rem; display: none; margin-top: 4px;">Reason required.</div>
+            `,
+            variant: 'danger',
+            confirmText: 'Suspend Account',
+            preConfirm: () => {
+                const reason = document.getElementById('suspendReasonQuick').value.trim();
+                if (!reason) { document.getElementById('suspendError').style.display = 'block'; return false; }
+                return reason;
+            },
+            onConfirm: (reason) => executePartnerAction(id, 'suspend', reason)
+        });
+    }
+
+    async function reactivateCaterer(id) {
+        openDiamondModal({
+            title: 'Reactivate Account?',
+            desc: 'This will restore the caterer\'s access to the platform.',
+            variant: 'success',
+            confirmText: 'Yes, Reactivate',
+            onConfirm: () => executePartnerAction(id, 'activate')
+        });
+    }
 
     // Submit Edit
     async function submitEditCaterer(e) {
@@ -1042,7 +1287,7 @@
         const btn = document.getElementById('saveEditBtn');
         btn.disabled = true;
         btn.innerText = 'Saving...';
-        
+
         try {
             const formData = new FormData(form);
             const response = await fetch(`/admin/api/caterers/${catererId}/edit`, {
@@ -1138,15 +1383,15 @@
         document.getElementById('review_action_select').value = 'Verified';
         document.getElementById('review_remarks').value = '';
         toggleRemarks();
-        
+
         document.getElementById('reviewVerificationModal').classList.add('active');
         const grid = document.getElementById('reviewDocumentsGrid');
         grid.innerHTML = '<div style="color: #64748b; font-size: 0.85rem;"><i class="fas fa-spinner fa-spin"></i> Loading documents...</div>';
-        
+
         try {
             const res = await fetch(`/admin/api/caterers/${catererId}/documents`);
             const data = await res.json();
-            
+
             if (data.success) {
                 let html = '';
                 const docs = [
@@ -1160,14 +1405,14 @@
                     { name: 'BIR Reg', url: data.docs.bir_url },
                     { name: 'Mayor Permit', url: data.docs.mayors_permit_url }
                 ];
-                
+
                 let found = false;
                 docs.forEach(doc => {
                     if (doc.url && doc.url !== "None" && doc.url !== "null") {
                         found = true;
                         const isPdf = doc.url.toLowerCase().endsWith('.pdf');
                         let preview = isPdf ? `<div style="padding: 2rem; background: #f1f5f9; text-align: center; border-radius: 8px; color: #64748b;"><i class="fas fa-file-pdf fa-2x" style="color: #ef4444;"></i><br><span style="font-size: 0.75rem; font-weight: 600;">PDF Document</span></div>` : `<img src="${doc.url}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px;" onerror="this.onerror=null; this.outerHTML='<div style=\\'width: 100%; height: 120px; background: #fee2e2; color: #ef4444; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; font-size: 0.75rem; font-weight: 700; text-align: center; padding: 10px;\\'><i class=\\'fas fa-exclamation-triangle fa-2x\\' style=\\'margin-bottom: 8px;\\'></i>File Error / Encrypted<br><small style=\\'font-weight: 500; margin-top: 4px;\\'>Requires Re-upload</small></div>';">`;
-                        
+
                         html += `
                         <div style="background: white; border: 1px solid #e2e8f0; padding: 10px; border-radius: 10px;">
                             <div style="font-size: 0.75rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 8px; display: flex; justify-content: space-between;">
@@ -1195,11 +1440,11 @@
             grid.innerHTML = `<div style="color: #ef4444; font-size: 0.85rem;">Failed to fetch documents.</div>`;
         }
     }
-    
+
     function closeReviewModal() {
         document.getElementById('reviewVerificationModal').classList.remove('active');
     }
-    
+
     function toggleRemarks() {
         const val = document.getElementById('review_action_select').value;
         const container = document.getElementById('review_remarks_container');
@@ -1209,34 +1454,34 @@
             container.style.display = 'none';
         }
     }
-    
+
     async function submitReview() {
         const id = document.getElementById('review_caterer_id').value;
         const status = document.getElementById('review_action_select').value;
         const remarks = document.getElementById('review_remarks').value.trim();
-        
+
         if (status !== 'Verified' && remarks === '') {
             if (window.showError) window.showError("Admin remarks are required when requesting revision, rejecting, or suspending.");
             else alert("Admin remarks are required.");
             return;
         }
-        
+
         const btn = document.getElementById('btnSubmitReview');
         const oldHtml = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
         btn.disabled = true;
-        
+
         try {
             const formData = new FormData();
             formData.append('status', status);
             formData.append('remarks', remarks);
-            
+
             const res = await fetch(`/admin/api/caterers/${id}/review`, {
                 method: 'POST',
                 body: formData
             });
             const data = await res.json();
-            
+
             if (data.success) {
                 if (window.showSuccess) window.showSuccess(data.message);
                 else alert(data.message);

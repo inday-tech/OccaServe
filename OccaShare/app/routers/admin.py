@@ -521,12 +521,12 @@ async def manage_caterers(
         # Average rating is already a field in CatererProfile, but let's ensure it's fresh if needed
         # (Assuming the model updates it automatically on review submission)
 
-    # Caterer Metrics for Summary
     metrics = {
         "total_caterers": db.query(models.CatererProfile).join(models.User).filter(models.User.is_archived == False).count(),
         "pending_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Pending", models.User.is_archived == False).count(),
         "approved_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Verified", models.User.is_archived == False).count(),
         "rejected_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Rejected", models.User.is_archived == False).count(),
+        "suspended_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.account_status == "Suspended", models.User.is_archived == False).count(),
     }
 
     return templates.TemplateResponse("admin/caterers.html", {
@@ -1013,7 +1013,72 @@ async def admin_change_password(
     
     return {"success": True, "message": "Administrative key rotated successfully."}
 
-# --- Inquiries Management ---
+@router.post("/api/caterers/{caterer_id}/approve")
+async def approve_caterer(
+    caterer_id: int,
+    db: Session = Depends(database.get_db),
+    admin: models.User = Depends(admin_only)
+):
+    caterer = db.query(models.CatererProfile).get(caterer_id)
+    if not caterer: return {"success": False, "message": "Caterer not found"}
+    caterer.verification_status = "Verified"
+    caterer.account_status = "Active"
+    
+    audit = models.AuditLog(user_id=caterer.user_id, action="caterer_approved", notes=f"Admin {admin.first_name} verified caterer account.")
+    db.add(audit)
+    db.commit()
+    return {"success": True, "message": "Caterer successfully verified."}
+
+@router.post("/api/caterers/{caterer_id}/reject")
+async def reject_caterer(
+    caterer_id: int,
+    reason: str = Form(...),
+    db: Session = Depends(database.get_db),
+    admin: models.User = Depends(admin_only)
+):
+    caterer = db.query(models.CatererProfile).get(caterer_id)
+    if not caterer: return {"success": False, "message": "Caterer not found"}
+    caterer.verification_status = "Rejected"
+    
+    audit = models.AuditLog(user_id=caterer.user_id, action="caterer_rejected", notes=f"Admin {admin.first_name} rejected caterer application. Reason: {reason}")
+    db.add(audit)
+    db.commit()
+    return {"success": True, "message": "Caterer application rejected."}
+
+@router.post("/api/caterers/{caterer_id}/suspend")
+async def suspend_caterer_api(
+    caterer_id: int,
+    reason: str = Form(...),
+    db: Session = Depends(database.get_db),
+    admin: models.User = Depends(admin_only)
+):
+    caterer = db.query(models.CatererProfile).get(caterer_id)
+    if not caterer: return {"success": False, "message": "Caterer not found"}
+    caterer.account_status = "Suspended"
+    caterer.user.status = "suspended"
+    
+    audit = models.AuditLog(user_id=caterer.user_id, action="caterer_suspended", notes=f"Admin {admin.first_name} suspended caterer. Reason: {reason}")
+    db.add(audit)
+    db.commit()
+    return {"success": True, "message": "Caterer account suspended."}
+
+@router.post("/api/caterers/{caterer_id}/activate")
+async def reactivate_caterer_api(
+    caterer_id: int,
+    db: Session = Depends(database.get_db),
+    admin: models.User = Depends(admin_only)
+):
+    caterer = db.query(models.CatererProfile).get(caterer_id)
+    if not caterer: return {"success": False, "message": "Caterer not found"}
+    caterer.account_status = "Active"
+    caterer.user.status = "active"
+    
+    audit = models.AuditLog(user_id=caterer.user_id, action="caterer_reactivated", notes=f"Admin {admin.first_name} reactivated caterer account.")
+    db.add(audit)
+    db.commit()
+    return {"success": True, "message": "Caterer account reactivated."}
+
+# --- KYC & Review Management ---
 @router.get("/inquiries", response_class=HTMLResponse)
 async def list_inquiries(
     request: Request, 
@@ -1929,35 +1994,6 @@ async def review_verification(
         "active_page": "kyc"
     })
 
-@router.get("/kyc")
-async def view_kyc_queue(
-    request: Request,
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(admin_only)
-):
-    # 1. Fetch Pending Caterers (Always Action Required)
-    pending_caterers = db.query(models.CatererProfile).filter(
-        models.CatererProfile.verification_status == "Pending"
-    ).all()
-
-    pending_customers = db.query(models.User).join(models.IdentityVerification).filter(
-        models.User.role == "customer",
-        models.IdentityVerification.verification_status.in_(["Pending Review", "pending_confirmation", "processing", "pending_manual_review"])
-    ).all()
-
-    # 3. Fetch Verified History (Last 20 for history tab)
-    recent_history = db.query(models.IdentityVerification).filter(
-        models.IdentityVerification.verification_status.in_(["approved", "verified", "rejected"])
-    ).order_by(models.IdentityVerification.created_at.desc()).limit(20).all()
-
-    return templates.TemplateResponse("admin/kyc_logs.html", {
-        "request": request,
-        "user": user,
-        "pending_caterers": pending_caterers,
-        "pending_customers": pending_customers,
-        "recent_history": recent_history,
-        "active_page": "kyc"
-    })
 
 # --- New KYC & Fraud Admin Endpoints ---
 
@@ -2529,15 +2565,15 @@ async def admin_bookings(
     bookings = db.query(models.Booking).filter(models.Booking.is_archived == False).order_by(models.Booking.created_at.desc()).all()
     
     # Calculate metrics
-    realized_revenue = sum((b.total_amount or 0.0) for b in bookings if b.payment_status == 'paid')
-    projected_revenue = sum((b.total_amount or 0.0) for b in bookings if b.status == 'confirmed' and b.payment_status != 'paid')
-    pending_bookings = sum(1 for b in bookings if b.status == 'pending')
+    pending_bookings = sum(1 for b in bookings if b.status in ['pending', 'pending_quotation', 'awaiting_payment'])
+    completed_bookings = sum(1 for b in bookings if b.status == 'completed')
+    disputed_bookings = sum(1 for b in bookings if b.status == 'disputed')
     
     metrics = {
-        "realized_revenue": realized_revenue,
-        "projected_revenue": projected_revenue,
+        "total_bookings": len(bookings),
         "pending_bookings": pending_bookings,
-        "total_bookings": len(bookings)
+        "completed_bookings": completed_bookings,
+        "disputed_bookings": disputed_bookings
     }
 
     return templates.TemplateResponse("admin/bookings.html", {
@@ -2576,12 +2612,20 @@ async def admin_customers(
     
     metrics = {
         "total_customers": total_customers_all,
-        "verified_customers": verified_customers_all,
-        "active_customers": verified_customers_all, # Mapping for template
-        "new_this_month": db.query(models.User).filter(
+        "active_customers": db.query(models.User).filter(
             models.User.role == "customer",
             models.User.is_archived == False,
-            models.User.created_at >= start_of_month
+            models.User.status == "active"
+        ).count(),
+        "suspended_customers": db.query(models.User).filter(
+            models.User.role == "customer",
+            models.User.is_archived == False,
+            models.User.status == "suspended"
+        ).count(),
+        "flagged_customers": db.query(models.User).filter(
+            models.User.role == "customer",
+            models.User.is_archived == False,
+            models.User.status == "flagged"
         ).count()
     }
 
@@ -2660,8 +2704,8 @@ async def suspend_customer_account(
     
     return {"success": True, "message": f"Account for {target.first_name} has been suspended."}
 
-@router.post("/api/customers/{customer_id}/flag")
-async def flag_customer_account(
+@router.post("/api/customers/{customer_id}/reactivate")
+async def reactivate_customer_account(
     customer_id: int,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
@@ -2670,9 +2714,51 @@ async def flag_customer_account(
     if not target:
         return {"success": False, "message": "Participant not found."}
     
+    target.status = "active"
+    target.status_reason = None
+    db.commit()
+    
+    # Log Action
+    new_log = models.AuditLog(
+        user_id=user.id,
+        action=f"REACTIVATED_CUSTOMER",
+        details=f"Reactivated User ID {customer_id}."
+    )
+    db.add(new_log)
+    db.commit()
+    
+    return {"success": True, "message": f"Account for {target.first_name} has been reactivated."}
+
+@router.post("/api/customers/{customer_id}/flag")
+async def flag_customer_account(
+    customer_id: int,
+    reason: str = Form(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    target = db.query(models.User).get(customer_id)
+    if not target:
+        return {"success": False, "message": "Participant not found."}
+    
     target.status = "flagged"
+    target.status_reason = reason
     db.commit()
     return {"success": True, "message": f"Account for {target.first_name} has been flagged for review."}
+
+@router.post("/api/customers/{customer_id}/unflag")
+async def unflag_customer_account(
+    customer_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    target = db.query(models.User).get(customer_id)
+    if not target:
+        return {"success": False, "message": "Participant not found."}
+    
+    target.status = "active"
+    target.status_reason = None
+    db.commit()
+    return {"success": True, "message": f"Review flag cleared for {target.first_name}."}
 
 @router.post("/api/customers/{customer_id}/send-alert")
 async def send_system_alert(

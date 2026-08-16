@@ -83,21 +83,21 @@
                     <a href="/admin/dashboard" class="nav-item {{ 'active' if active_page == 'dashboard' }}"
                         onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-chart-pie"></i></div>
-                        <span class="nav-label">Overview</span>
+                        <span class="nav-label">Dashboard Overview</span>
                     </a>
                 </li>
                 <li>
                     <a href="/admin/caterers" class="nav-item {{ 'active' if active_page == 'caterers' }}"
                         onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-utensils"></i></div>
-                        <span class="nav-label">Caterer Partners</span>
+                        <span class="nav-label">Caterer Management</span>
                     </a>
                 </li>
                 <li>
                     <a href="/admin/customers" class="nav-item {{ 'active' if active_page == 'customers' }}"
                         onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-users"></i></div>
-                        <span class="nav-label">Customers</span>
+                        <span class="nav-label">Customer Management</span>
                     </a>
                 </li>
                 <li>
@@ -109,51 +109,14 @@
                 </li>
             </ul>
 
-            <span class="nav-section-label brand-text-label">Finance</span>
+            <span class="nav-section-label brand-text-label">Administration</span>
             <ul class="nav-list">
-                <li>
-                    <a href="/admin/commissions" class="nav-item {{ 'active' if active_page == 'commissions' }}"
-                        onclick="closeSidebar()">
-                        <div class="nav-icon"><i class="fas fa-file-invoice-dollar"></i></div>
-                        <span class="nav-label">Commission Verification</span>
-                        <span id="payoutNotifBadge" class="nav-badge" style="display:none;">NEW</span>
-                    </a>
-                </li>
+
                 <li>
                     <a href="/admin/revenue" class="nav-item {{ 'active' if active_page == 'revenue' }}"
                         onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
-                        <span class="nav-label">Platform Revenue</span>
-                    </a>
-                </li>
-            </ul>
-
-            <span class="nav-section-label brand-text-label">Compliance</span>
-            <ul class="nav-list">
-                <li>
-                    <a href="/admin/kyc" class="nav-item {{ 'active' if active_page == 'kyc' }}"
-                        onclick="closeSidebar()">
-                        <div class="nav-icon"><i class="fas fa-shield-halved"></i></div>
-                        <span class="nav-label">User Verifications</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/admin/inquiries" class="nav-item {{ 'active' if active_page == 'inquiries' }}">
-                        <div class="nav-icon"><i class="fas fa-envelope-open-text"></i></div>
-                        <span class="nav-label">Visitor Inquiries</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/admin/disputes" class="nav-item {{ 'active' if active_page == 'disputes' }}" onclick="closeSidebar()">
-                        <div class="nav-icon"><i class="fas fa-balance-scale"></i></div>
-                        <span class="nav-label">Conflict Resolution</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/admin/feedback" class="nav-item {{ 'active' if active_page == 'feedback' }}"
-                        onclick="closeSidebar()">
-                        <div class="nav-icon"><i class="fas fa-star"></i></div>
-                        <span class="nav-label">Platform Reviews</span>
+                        <span class="nav-label">Reports & Analytics</span>
                     </a>
                 </li>
             </ul>
@@ -169,17 +132,17 @@
                     </a>
                 </li>
                 <li>
-                    <a href="/admin/settings" class="nav-item {{ 'active' if active_page == 'settings' }}"
+                    <a href="/admin/audit-logs" class="nav-item {{ 'active' if active_page == 'audit-logs' }}"
                         onclick="closeSidebar()">
-                        <div class="nav-icon"><i class="fas fa-sliders"></i></div>
-                        <span class="nav-label">Site Settings</span>
+                        <div class="nav-icon"><i class="fas fa-list-ul"></i></div>
+                        <span class="nav-label">System Audit Logs</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/admin/archives" class="nav-item {{ 'active' if active_page == 'archives' }}"
+                    <a href="/admin/settings" class="nav-item {{ 'active' if active_page == 'settings' }}"
                         onclick="closeSidebar()">
-                        <div class="nav-icon"><i class="fas fa-box-archive"></i></div>
-                        <span class="nav-label">Archives</span>
+                        <div class="nav-icon"><i class="fas fa-sliders"></i></div>
+                        <span class="nav-label">Settings</span>
                     </a>
                 </li>
             </ul>
