@@ -2479,16 +2479,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 id: {{ item.id|tojson }},
                 name: {{ item.name|tojson }},
                 category: {{ (item.category or '')|tojson }},
-                price: {{ (item.display_price or 0)|tojson }},
+                price: {{ (item.rental_price if item.rental_price is defined else item.selling_price)|default(0, true)|tojson }},
                 image: {{ (item.image_url or '')|tojson }},
                 description: {{ (item.description or '')|tojson }},
                 pricing_unit: {{ (item.unit_type or 'piece')|tojson }},
-                type: {{ item.display_type|tojson }},
-                available_qty: {{ (item.display_qty or 1)|tojson }},
-                deposit_pct: {{ (item.deposit_pct or 0)|tojson }},
-                needs_kyc: {{ (item.needs_kyc or false)|tojson }},
-                min_hours: {{ (item.min_hours or 0)|tojson }},
-                min_quantity: {{ (item.min_quantity or 1)|tojson }}
+                type: {{ ('Equipment' if item.rental_price is defined else 'Service')|tojson }},
+                available_qty: {{ (item.available_qty if item.available_qty is defined else item.max_available)|default(1, true)|tojson }},
+                deposit_pct: {{ (item.security_deposit_pct if item.security_deposit_pct is defined else 0)|default(0, true)|tojson }},
+                needs_kyc: {{ (item.requires_kyc if item.requires_kyc is defined else false)|default(false, true)|tojson }},
+                min_hours: {{ (item.base_duration_hours if item.base_duration_hours is defined else 0)|default(0, true)|tojson }},
+                min_quantity: 1
             }{{ ',' if not loop.last else '' }}
             {% endfor %}
         ];
