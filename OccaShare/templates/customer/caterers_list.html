@@ -50,7 +50,17 @@
         const cachedLon = sessionStorage.getItem('user_lon');
 
         const doUpdate = (custLat, custLng) => {
-            document.querySelectorAll('.dist-display').forEach(badge => {
+            const grid = document.querySelector('.caterer-grid-new');
+            if (!grid) return;
+            
+            const cards = Array.from(grid.querySelectorAll('.caterer-elite-card'));
+            
+            cards.forEach(card => {
+                const badge = card.querySelector('.dist-display');
+                if (!badge) {
+                    card.dataset.distance = 99999;
+                    return;
+                }
                 const lat = parseFloat(badge.dataset.lat);
                 const lng = parseFloat(badge.dataset.lon);
                 if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
@@ -58,8 +68,15 @@
                     badge.style.display = 'flex';
                     const span = badge.querySelector('.dist-text');
                     if (span) span.innerText = dist.toFixed(1) + ' km away';
+                    card.dataset.distance = dist;
+                } else {
+                    card.dataset.distance = 99999;
                 }
             });
+            
+            // Sort DOM elements by distance
+            cards.sort((a, b) => parseFloat(a.dataset.distance) - parseFloat(b.dataset.distance));
+            cards.forEach(card => grid.appendChild(card));
         };
 
         if (cachedLat && cachedLon) {

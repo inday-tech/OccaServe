@@ -239,13 +239,13 @@ def unified_search_api(request: Request, q: str = "", lat: Optional[float] = Non
         distance_query = text("""
             CASE 
                 WHEN latitude IS NULL OR longitude IS NULL THEN 99999
-                ELSE (6371 * acos(
-                    LEAST(1.0, GREATEST(-1.0,
-                        cos(radians(:lat)) * cos(radians(latitude)) * 
-                        cos(radians(longitude) - radians(:lon)) + 
-                        sin(radians(:lat)) * sin(radians(latitude))
+                ELSE (
+                    6371 * 2 * ASIN(SQRT(
+                        POWER(SIN((radians(latitude) - radians(:lat)) / 2), 2) +
+                        COS(radians(:lat)) * COS(radians(latitude)) *
+                        POWER(SIN((radians(longitude) - radians(:lon)) / 2), 2)
                     ))
-                ))
+                )
             END
         """).bindparams(lat=lat, lon=lon)
         

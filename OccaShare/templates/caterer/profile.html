@@ -1646,6 +1646,11 @@
 
     const infoWindow = new google.maps.InfoWindow();
 
+    // Auto-calculate distance on load if location is cached
+    if (sessionStorage.getItem('user_lat') && sessionStorage.getItem('user_lon')) {
+        setTimeout(calcProfileDistance, 500); // Slight delay to ensure map/UI is ready
+    }
+
     function placeMarker(loc) {
         map.setCenter(loc);
         const marker = new google.maps.Marker({

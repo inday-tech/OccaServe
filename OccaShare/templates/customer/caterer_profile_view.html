@@ -1704,18 +1704,24 @@
                                     </summary>
                                     <div style="font-size:0.75rem; color:var(--hub-text-dark); margin-top:4px; background:var(--hub-slate-50); padding:8px; border-radius:8px; border:1px solid var(--hub-slate-200); max-height:100px; overflow-y:auto;" class="custom-scrollbar">
                                         <ul style="margin:0; padding-left:14px; display:flex; flex-direction:column; gap:2px;">
-                                        {% if item.combo_options.get('included_menu_ids') %}
-                                            {% for id in item.combo_options['included_menu_ids'] %}
-                                                {% set found = namespace(name='') %}
-                                                {% for m in active_menu %}
-                                                    {% if m.id == id %}{% set found.name = m.name %}{% endif %}
+                                        {% if item.combo_options is mapping %}
+                                            {% if item.combo_options.get('included_menu_ids') %}
+                                                {% for id in item.combo_options['included_menu_ids'] %}
+                                                    {% set found = namespace(name='') %}
+                                                    {% for m in active_menu %}
+                                                        {% if m.id == id %}{% set found.name = m.name %}{% endif %}
+                                                    {% endfor %}
+                                                    {% if found.name %}<li>{{ found.name }}</li>{% endif %}
                                                 {% endfor %}
-                                                {% if found.name %}<li>{{ found.name }}</li>{% endif %}
-                                            {% endfor %}
-                                        {% endif %}
-                                        {% if item.combo_options.get('custom_items') %}
-                                            {% for cust in item.combo_options['custom_items'].split(',') %}
-                                                {% if cust.strip() %}<li>{{ cust.strip() }}</li>{% endif %}
+                                            {% endif %}
+                                            {% if item.combo_options.get('custom_items') %}
+                                                {% for cust in item.combo_options['custom_items'].split(',') %}
+                                                    {% if cust.strip() %}<li>{{ cust.strip() }}</li>{% endif %}
+                                                {% endfor %}
+                                            {% endif %}
+                                        {% elif item.combo_options is sequence and not item.combo_options is string %}
+                                            {% for opt in item.combo_options %}
+                                                <li>{{ opt }}</li>
                                             {% endfor %}
                                         {% endif %}
                                         </ul>

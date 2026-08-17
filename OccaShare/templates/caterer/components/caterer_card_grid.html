@@ -26,10 +26,10 @@
                 <span style="flex: 1;">{{ caterer.contact_address if caterer.contact_address else (caterer.city or "Location TBD") }}</span>
             </div>
             
-            <div class="dist-display" data-lat="{{ caterer.latitude or 0 }}" data-lon="{{ caterer.longitude or 0 }}" style="display: flex; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; text-align: left; {% if caterer.distance_km is not defined or caterer.distance_km is none %}display: none;{% endif %}">
+            <div class="dist-display" data-lat="{{ caterer.latitude or 0 }}" data-lon="{{ caterer.longitude or 0 }}" style="display: flex; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; text-align: left; {% if caterer.distance_km is not defined or caterer.distance_km is none or caterer.distance_km >= 99999 %}display: none;{% endif %}">
                 <i class="fas fa-route" style="color: #94a3b8; width: 16px; text-align: center;"></i> 
                 <span class="dist-text" style="color: #475569;">
-                    {% if caterer.distance_km is defined and caterer.distance_km is not none %}
+                    {% if caterer.distance_km is defined and caterer.distance_km is not none and caterer.distance_km < 99999 %}
                         {{ "%.1f"|format(caterer.distance_km) }} km away
                     {% endif %}
                 </span>

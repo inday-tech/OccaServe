@@ -460,13 +460,17 @@
                                             </div>
                                             
                                             <div class="combo-options-grid" data-limit="{{ item.max_choices }}" data-id="{{ item.id }}" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
-                                                {% if item.combo_options %}
+                                                {% if item.combo_options and item.combo_options is sequence and not item.combo_options is string %}
                                                     {% for opt in item.combo_options %}
                                                     <label class="combo-opt-card" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s;">
                                                         <input type="checkbox" class="combo-checkbox" value="{{ opt }}" onchange="handleComboSelection(this)" style="accent-color: #14b8a6; width: 1.1rem; height: 1.1rem;">
                                                         <span style="font-size: 0.85rem; font-weight: 700; color: #334155;">{{ opt }}</span>
                                                     </label>
                                                     {% endfor %}
+                                                {% elif item.combo_options and item.combo_options is mapping %}
+                                                    <div style="grid-column: 1 / -1; font-size: 0.85rem; color: #64748b;">
+                                                        <i>This is a preset combo. The inclusions are fixed.</i>
+                                                    </div>
                                                 {% endif %}
                                             </div>
                                         </div>
