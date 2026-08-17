@@ -244,8 +244,28 @@ window.triggerGeolocation = function () {
         if (window.performUnifiedSearch) {
             window.performUnifiedSearch();
         }
-    }, function (error) {
-        // Reset button on error
+    }, async function (error) {
+        // Fallback to IP-based Geolocation since browser blocked it (likely HTTP insecure context)
+        try {
+            const res = await fetch('https://ipapi.co/json/');
+            const data = await res.json();
+            
+            if (data && data.latitude && data.longitude) {
+                sessionStorage.setItem('user_lat', data.latitude);
+                sessionStorage.setItem('user_lon', data.longitude);
+
+                setLocationActiveUI();
+
+                if (window.performUnifiedSearch) {
+                    window.performUnifiedSearch();
+                }
+                return; // successfully located via fallback
+            }
+        } catch (e) {
+            console.warn('IP Geolocation fallback failed', e);
+        }
+
+        // Complete failure
         if (icon) icon.className = 'fas fa-location-crosshairs';
         if (label) label.textContent = 'Near Me';
         if (btn) btn.disabled = false;
@@ -253,12 +273,12 @@ window.triggerGeolocation = function () {
         if (typeof Swal !== 'undefined') {
             Swal.fire({
                 icon: 'warning',
-                title: 'Location Access Denied',
-                text: 'Please allow location permissions to sort caterers by distance.',
+                title: 'Location Unavailable',
+                text: 'We could not detect your location. Please ensure you are connected to the internet and location services are enabled.',
                 confirmButtonColor: '#f97316'
             });
         } else {
-            alert('Location Access Denied. Please allow location permissions to find nearby caterers.');
+            alert('Location Unavailable. Please check your browser permissions or internet connection.');
         }
     }, { timeout: 10000 });
 };

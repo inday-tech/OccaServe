@@ -3,11 +3,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const catererId = window.catererId;
     const menuId = window.menuId;
 
-    let deliveryFee = 150; 
+    let deliveryFee = 0; 
     window.currentScreen = 1;
 
     // Delivery Fee logic will be determined by server.
-    const DEFAULT_FEE = window.catererBaseDeliveryFee || 150;
+    const DEFAULT_FEE = 0;
+    window.isManualQuote = true;
     
     // RECOVER SESSION: Use a more robust check
     const sessionKey = `alc_draft_${window.catererId}_${window.menuId}`;
@@ -740,8 +741,8 @@ document.addEventListener('DOMContentLoaded', function () {
             feeRow.querySelector('span:first-child').innerText = window.isServiceOnly ? 'Travel Fee' : 'Delivery Fee';
         }
         if (feeEl) {
-            if (window.isManualQuote) {
-                feeEl.innerText = '₱0.00 (TBD)';
+            if (window.isManualQuote || deliveryFee === 0 && !window.isServiceOnly && window.originalSavedAddressString === '') {
+                feeEl.innerText = 'TBD';
             } else {
                 feeEl.innerText = '₱' + deliveryFee.toLocaleString(undefined, { minimumFractionDigits: 2 });
             }
@@ -885,6 +886,40 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('hidden_province').value = window.userSavedAddress.province || '';
         document.getElementById('hidden_municipality').value = window.userSavedAddress.city || '';
         document.getElementById('hidden_barangay').value = window.userSavedAddress.brgy || '';
+    };
+
+    window.saveEditAddress = function() {
+        const provSelect = document.getElementById('prov_select');
+        const citySelect = document.getElementById('city_select');
+        const brgySelect = document.getElementById('brgy_select');
+
+        if (!provSelect.value || !citySelect.value || !brgySelect.value) {
+            Swal.fire({
+                title: 'Incomplete Address',
+                text: 'Please select a Province, Municipality, and Barangay.',
+                icon: 'warning',
+                confirmButtonColor: '#10b981'
+            });
+            return;
+        }
+
+        // Force a final sync
+        if (typeof window.syncAddress === 'function') window.syncAddress();
+        
+        // Update the display string and show display section
+        const hiddenAddress = document.getElementById('address').value;
+        const displayEl = document.getElementById('saved-address-text');
+        if (displayEl) displayEl.innerText = hiddenAddress.replace(', Philippines', '');
+        
+        document.getElementById('address-display-section').style.display = 'flex';
+        document.getElementById('address-edit-section').style.display = 'none';
+        window.addressEditing = false;
+        
+        // Save the current as the new original so canceling next time reverts to this
+        window.originalSavedAddressString = hiddenAddress;
+        window.userSavedAddress.province = document.getElementById('hidden_province').value;
+        window.userSavedAddress.city = document.getElementById('hidden_municipality').value;
+        window.userSavedAddress.brgy = document.getElementById('hidden_barangay').value;
     };
 
     window.handleProvinceChange = async function() {
@@ -1079,7 +1114,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         if (window.isManualQuote) {
              const feeEl = document.getElementById('sum-delivery-fee');
-             if (feeEl) feeEl.innerText = '₱0.00 (TBD)';
+             if (feeEl) feeEl.innerText = 'TBD';
         }
         
         updateCheckoutSummary();

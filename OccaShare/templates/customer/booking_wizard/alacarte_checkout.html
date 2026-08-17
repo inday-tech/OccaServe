@@ -31,39 +31,15 @@
         display: none !important;
     }
 
-    .checkout-container {
-        max-width: 1100px;
-        margin: 1.5rem auto;
-        padding: 0 1rem;
-    }
-
-    .checkout-grid {
-        display: grid;
-        grid-template-columns: 1fr 380px;
-        gap: 2.5rem;
-        align-items: start;
-    }
-
-    .checkout-card {
-        background: white;
-        border-radius: 16px;
-        padding: 2rem;
-        border: 1px solid var(--border-light);
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-        margin-bottom: 1.5rem;
-        position: relative;
-    }
-
     /* Wizard Steps from Service Checkout */
     .wizard-steps {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
         background: white;
-        padding: 1.5rem 2rem;
-        border-radius: 16px;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
         border: 1px solid var(--border-light);
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
     }
 
     .step-item {
@@ -143,22 +119,21 @@
 
     .fulfillment-opt {
         background: #ffffff;
-        border: 2px solid #e2e8f0;
-        border-radius: 1rem;
-        padding: 1.25rem 1.5rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1rem;
         display: flex;
         align-items: center;
-        gap: 1.25rem;
+        gap: 1rem;
         cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        transition: all 0.2s;
         position: relative;
     }
 
-    .fulfillment-opt:hover { border-color: #cbd5e1; transform: translateY(-2px); }
+    .fulfillment-opt:hover { border-color: #cbd5e1; }
     .fulfillment-opt.active {
         border-color: var(--checkout-primary);
         background: rgba(255, 107, 0, 0.03);
-        box-shadow: 0 8px 24px rgba(255, 107, 0, 0.08);
     }
 
     .fulfillment-icon {
@@ -179,18 +154,6 @@
     .fulfillment-opt.active .fulfillment-check { background: var(--checkout-primary); border-color: var(--checkout-primary); }
 
     /* Form & Sections */
-    .section-title {
-        font-size: 1.25rem;
-        font-weight: 800;
-        color: var(--text-slate);
-        margin-bottom: 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .section-subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
-
     .form-group label {
         display: block;
         font-weight: 600;
@@ -214,27 +177,6 @@
     .form-input:focus { border-color: var(--checkout-primary); background: #fff; outline: none; }
 
     /* Bill Summary Sidebar */
-    .bill-card-premium {
-        background: white;
-        border-radius: 16px;
-        border: 1px solid var(--border-light);
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-        position: sticky;
-        top: 2rem;
-        overflow: hidden;
-    }
-
-    .bill-title { 
-        background: #0f172a;
-        color: white;
-        padding: 1.5rem;
-        font-size: 1.1rem; 
-        font-weight: 800; 
-        margin: 0; 
-    }
-    .bill-body {
-        padding: 1.5rem;
-    }
     .bill-item-wrap {
         display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1.5rem;
         padding-bottom: 1.5rem; border-bottom: 1px dashed var(--border-light);
@@ -309,15 +251,15 @@
     .payment-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 1.5rem;
-        margin-top: 1.5rem;
+        gap: 1rem;
+        margin-top: 1rem;
     }
 
     .payment-opt {
         background: white;
-        border: 2px solid #e2e8f0;
-        border-radius: 1.25rem;
-        padding: 2rem 1.5rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1rem;
         text-align: center;
         cursor: pointer;
         transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -390,16 +332,6 @@
     }
 
     /* Error Message Fix */
-    .field-error {
-        display: none !important;
-        color: #ef4444;
-        font-size: 0.75rem;
-        font-weight: 700;
-        margin-top: 0.5rem;
-    }
-    .field-error.show {
-        display: block !important;
-    }
 
     @media (max-width: 992px) {
         .checkout-grid {
@@ -413,7 +345,7 @@
 {% endblock %}
 
 {% block wizard_content %}
-<div class="checkout-container">
+    <div style="max-width: 100%;">
     <!-- Stepper -->
     <div class="wizard-steps">
         <div class="step-item active" id="m-step-1">
@@ -437,25 +369,29 @@
         {% endif %}
     </div>
 
-    <div class="checkout-grid">
+    <div class="details-grid">
         <div class="form-area">
             <form id="checkoutForm">
                 <!-- STEP 1: DELIVERY INFORMATION -->
                 <div class="checkout-screen active" id="screen-1">
-                    <div class="checkout-card">
-                        <h3 class="section-title">
-                            <i class="fas {% if is_mixed %}fa-box-open{% elif has_services and not has_food %}fa-map-marker-alt{% else %}fa-truck{% endif %}" style="color: var(--checkout-primary);"></i>
-                            {% if is_mixed %}
-                                Fulfillment Details
-                            {% elif has_services and not has_food %}
-                                Service & Location Details
-                            {% elif is_rental %}
-                                Equipment Rental Details
-                            {% else %}
-                                Delivery Information
-                            {% endif %}
-                        </h3>
-                        <p class="section-subtitle">
+                    <div class="c-card-premium">
+                        <div class="section-header-wrap">
+                            <div class="section-icon-wrap">
+                                <i class="fas {% if is_mixed %}fa-box-open{% elif has_services and not has_food %}fa-map-marker-alt{% else %}fa-truck{% endif %}"></i>
+                            </div>
+                            <h3 class="form-section-title">
+                                {% if is_mixed %}
+                                    Fulfillment Details
+                                {% elif has_services and not has_food %}
+                                    Service & Location Details
+                                {% elif is_rental %}
+                                    Equipment Rental Details
+                                {% else %}
+                                    Delivery Information
+                                {% endif %}
+                            </h3>
+                        </div>
+                        <p class="form-subtitle">
                             {% if is_mixed %}
                                 Please provide details for the fulfillment of your mixed order.
                             {% elif has_services and not has_food %}
@@ -475,7 +411,7 @@
                                         <div class="fulfillment-name" id="lbl_fulfill_del">
                                             {% if is_mixed %}Event Delivery & Setup{% elif has_services and not has_food %}On-Site Service{% elif is_rental %}Delivery & Setup{% else %}Delivery{% endif %}
                                         </div>
-                                        <div class="fulfillment-hint">{% if has_services and not has_food %}Travel Fee may apply{% else %}+₱{{ "%.2f"|format(caterer.base_delivery_fee or 150.0) }} Base Fee{% endif %}</div>
+                                        <div class="fulfillment-hint">Calculated based on location</div>
                                     </div>
                                     <div class="fulfillment-check"><i class="fas fa-check"></i></div>
                                 </label>
@@ -644,14 +580,15 @@
                                     <div class="form-group" style="margin-bottom: 0;">
                                         <label>House No., Street & Landmark <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
                                         <input type="text" id="street_input" class="form-input" placeholder="e.g. 123 Diamond St., Near White Gate" oninput="syncAddress()">
-                                        <small style="color:var(--dm-slate-400); margin-top:4px;">Add details to make it easier to locate the delivery address.</small>
+                                        <small style="color:var(--dm-slate-400); margin-top:4px;">Do not include Barangay, City, or Province here to avoid duplicate display.</small>
                                     </div>
                                     
-                                    {% if default_address_text %}
-                                    <div style="text-align: right; margin-top: 0.5rem;">
-                                        <button type="button" onclick="cancelEditAddress()" style="background: none; border: none; font-size: 0.85rem; font-weight: 700; color: #ef4444; cursor: pointer; text-decoration: underline;">Cancel Edit</button>
+                                    <div style="text-align: right; margin-top: 1rem; display: flex; justify-content: flex-end; gap: 0.5rem;">
+                                        {% if default_address_text %}
+                                        <button type="button" onclick="cancelEditAddress()" style="background: none; border: 1px solid #e2e8f0; font-size: 0.85rem; font-weight: 700; color: #64748b; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer;">Cancel</button>
+                                        {% endif %}
+                                        <button type="button" onclick="saveEditAddress()" style="background: var(--checkout-primary); border: none; font-size: 0.85rem; font-weight: 700; color: white; padding: 0.5rem 1.25rem; border-radius: 8px; cursor: pointer;">Save Address</button>
                                     </div>
-                                    {% endif %}
                                 </div>
                             </div>
                             
@@ -663,28 +600,19 @@
                             <span class="field-error" id="err-address" style="margin-top: 0.5rem; margin-bottom: 1rem;">Full address is required.</span>
                         </div>
                     </div>
-
-                    <div class="checkout-nav-box">
-                        <div class="nav-right">
-                            <button type="button" class="btn-wizard-next" onclick="nextScreen(2)">
-                                Next Step: Payment <i class="fas fa-chevron-right" style="margin-left: 0.5rem;"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-
-
                 </div>
 
                 {% if requires_kyc and not user.is_verified and not user.is_kyc_complete %}
                 <!-- STEP 2: KYC VERIFICATION -->
                 <div class="checkout-screen" id="screen-2">
-                    <div class="checkout-card">
-                        <h3 class="section-title">
-                            <i class="fas fa-id-card" style="color: var(--checkout-primary);"></i> Identity Verification
-                        </h3>
-                        <p class="section-subtitle">
+                    <div class="c-card-premium">
+                        <div class="section-header-wrap">
+                            <div class="section-icon-wrap">
+                                <i class="fas fa-id-card"></i>
+                            </div>
+                            <h3 class="form-section-title">Identity Verification</h3>
+                        </div>
+                        <p class="form-subtitle">
                             You are renting high-value equipment. Please upload your ID to proceed. Your data is secure and encrypted.
                         </p>
                         
@@ -700,21 +628,22 @@
                             </div>
                         </div>
                     </div>
-                    <div class="checkout-actions">
-                        <button type="button" class="btn-wizard-back" onclick="nextScreen(1)">Back</button>
-                        <button type="button" class="btn-wizard-next" onclick="nextScreen(3)">Proceed to Payment <i class="fas fa-arrow-right"></i></button>
+                    <div class="checkout-nav-box" style="margin-top: 1.5rem;">
+                        <button type="button" class="btn-wizard-back" onclick="nextScreen(1)"><i class="fas fa-chevron-left"></i> Back</button>
                     </div>
                 </div>
                 {% endif %}
 
                 <!-- STEP FINAL: PAYMENT & CONFIRMATION -->
                 <div class="checkout-screen" id="screen-{{ 3 if (requires_kyc and not user.is_verified and not user.is_kyc_complete) else 2 }}">
-                    <div class="checkout-card">
-                        <h2 class="section-title">
-                            <i class="fas fa-wallet" style="color: var(--checkout-primary);"></i>
-                            Payment & Confirmation
-                        </h2>
-                        <p class="section-subtitle">Choose your payment method and confirm your order.</p>
+                    <div class="c-card-premium">
+                        <div class="section-header-wrap">
+                            <div class="section-icon-wrap">
+                                <i class="fas fa-wallet"></i>
+                            </div>
+                            <h3 class="form-section-title">Payment & Confirmation</h3>
+                        </div>
+                        <p class="form-subtitle">Choose your payment method and confirm your order.</p>
 
 
                         <div class="form-group">
@@ -898,40 +827,41 @@
 
         <!-- Sidebar Summary Box -->
         <aside class="calculator-sidebar">
-            <div class="bill-card-premium">
-                <div class="bill-title">
-                    <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 0.5rem;">Booking Summary</div>
-                    <div>{{ 'Mixed Order' if is_mixed else ('Equipment Rental' if is_rental else 'Food Order') }}</div>
-                    <div style="font-size: 0.9rem; color: #cbd5e1; margin-top: 4px; font-weight: 400;">with {{ caterer.business_name }}</div>
-                </div>
+            <div class="calc-card">
+                <h3 class="calc-title" style="flex-direction: column; align-items: flex-start; gap: 0.25rem;">
+                    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--wiz-slate-400);">Booking Summary</div>
+                    <div style="font-size: 1.15rem; color: var(--wiz-text-dark); display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-receipt" style="color: var(--checkout-primary);"></i> 
+                        {{ 'Mixed Order' if is_mixed else ('Equipment Rental' if is_rental else 'Food Order') }}
+                    </div>
+                </h3>
                 
-                <div class="bill-body">
-                    <div id="dynamic-bill-items">
-                        <!-- Populated by JS -->
-                    </div>
-
-                    <div class="bill-row">
-                        <span>Base Total</span>
-                        <span id="sum-base-total">₱0.00</span>
-                    </div>
-                    <div class="bill-row" id="delivery-row">
-                        <span>Delivery Fee</span>
-                        <span id="sum-delivery-fee">₱{{ "%.2f"|format(caterer.base_delivery_fee or 150.0) }}</span>
-                    </div>
-                    <div class="bill-row" id="deposit-row" style="display: none;">
-                        <span>Security Deposit (Refundable)</span>
-                        <span id="sum-deposit-fee">₱0.00</span>
-                    </div>
-
-                    <div class="bill-divider"></div>
-
-                    <div class="bill-total-impact">
-                        <span class="bill-total-label">Grand Total</span>
-                        <span class="bill-total-value" id="sum-grand-total">₱0.00</span>
-                    </div>
+                <div id="dynamic-bill-items">
+                    <!-- Populated by JS -->
                 </div>
-                <button type="button" class="btn-secure-checkout" id="sidebar-next-btn" onclick="nextScreen(window.currentScreen + 1)">
-                    PROCEED TO PAYMENT <i class="fas fa-arrow-right" style="margin-left: 0.5rem;"></i>
+
+                <div class="calc-divider"></div>
+
+                <div class="calc-row">
+                    <span class="calc-label">Base Total</span>
+                    <span class="calc-val" id="sum-base-total">₱0.00</span>
+                </div>
+                <div class="calc-row" id="delivery-row">
+                    <span class="calc-label">Delivery Fee</span>
+                    <span class="calc-val" id="sum-delivery-fee">TBD</span>
+                </div>
+                <div class="calc-row" id="deposit-row" style="display: none;">
+                    <span class="calc-label">Security Deposit (Refundable)</span>
+                    <span class="calc-val" id="sum-deposit-fee">₱0.00</span>
+                </div>
+
+                <div class="calc-total">
+                    <span class="total-label">Grand Total</span>
+                    <span class="total-price" id="sum-grand-total">₱0.00</span>
+                </div>
+
+                <button type="button" class="btn-wizard-next" id="sidebar-next-btn" onclick="nextScreen(window.currentScreen + 1)" style="width: 100%; justify-content: center; margin-top: 1.5rem;">
+                    PROCEED TO PAYMENT <i class="fas fa-arrow-right"></i>
                 </button>
             </div>
         </aside>

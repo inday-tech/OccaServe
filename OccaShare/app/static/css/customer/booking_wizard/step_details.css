@@ -171,17 +171,13 @@ textarea.form-input {
 
 /* ===== VALIDATION PILL STYLING ===== */
 .field-error {
-    background: #fff5f5;
-    border: 1px solid #fca5a5;
-    color: #dc2626;
-    font-size: 0.78rem;
-    font-weight: 500;
-    margin-top: 0.4rem;
-    padding: 0.4rem 0.75rem;
-    border-radius: 8px;
+    color: #ef4444;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 0.25rem;
     display: none;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
     animation: fadeIn 0.3s ease;
 }
 

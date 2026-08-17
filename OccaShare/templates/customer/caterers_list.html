@@ -45,25 +45,46 @@
         return R * c;
     }
 
-    function detectUserLocationAndUpdateDistances() {
+    async function detectUserLocationAndUpdateDistances() {
+        const cachedLat = sessionStorage.getItem('user_lat');
+        const cachedLon = sessionStorage.getItem('user_lon');
+
+        const doUpdate = (custLat, custLng) => {
+            document.querySelectorAll('.dist-display').forEach(badge => {
+                const lat = parseFloat(badge.dataset.lat);
+                const lng = parseFloat(badge.dataset.lon);
+                if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+                    const dist = haversineDistance(custLat, custLng, lat, lng);
+                    badge.style.display = 'flex';
+                    const span = badge.querySelector('.dist-text');
+                    if (span) span.innerText = dist.toFixed(1) + ' km away';
+                }
+            });
+        };
+
+        if (cachedLat && cachedLon) {
+            doUpdate(parseFloat(cachedLat), parseFloat(cachedLon));
+            return;
+        }
+
         if ('geolocation' in navigator) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    const custLat = position.coords.latitude;
-                    const custLng = position.coords.longitude;
-                    
-                    document.querySelectorAll('.dist-display').forEach(badge => {
-                        const lat = parseFloat(badge.dataset.lat);
-                        const lng = parseFloat(badge.dataset.lon);
-                        if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-                            const dist = haversineDistance(custLat, custLng, lat, lng);
-                            badge.style.display = 'flex';
-                            const span = badge.querySelector('.dist-text');
-                            if (span) span.innerText = dist.toFixed(1) + ' km away';
-                        }
-                    });
+                    sessionStorage.setItem('user_lat', position.coords.latitude);
+                    sessionStorage.setItem('user_lon', position.coords.longitude);
+                    doUpdate(position.coords.latitude, position.coords.longitude);
                 },
-                (error) => console.log('Location access denied.'),
+                async (error) => {
+                    try {
+                        const res = await fetch('https://ipapi.co/json/');
+                        const data = await res.json();
+                        if (data && data.latitude && data.longitude) {
+                            sessionStorage.setItem('user_lat', data.latitude);
+                            sessionStorage.setItem('user_lon', data.longitude);
+                            doUpdate(data.latitude, data.longitude);
+                        }
+                    } catch (e) { console.warn('IP fallback failed'); }
+                },
                 { enableHighAccuracy: true, timeout: 10000 }
             );
         }

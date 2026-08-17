@@ -1547,19 +1547,16 @@
         }, 150);
     }
 
-    function calcProfileDistance() {
+    async function calcProfileDistance() {
         let targetLat = {{ caterer.latitude if caterer.latitude else 0 }};
         let targetLon = {{ caterer.longitude if caterer.longitude else 0 }};
 
-    const btnText = document.getElementById('profileDistText');
-    const btn = document.getElementById('profileDistBtn');
+        const btnText = document.getElementById('profileDistText');
+        const btn = document.getElementById('profileDistBtn');
 
-    if ("geolocation" in navigator) {
         btnText.innerHTML = 'Locating...';
-        navigator.geolocation.getCurrentPosition(function (position) {
-            const uLat = position.coords.latitude;
-            const uLon = position.coords.longitude;
 
+        const doCalculate = (uLat, uLon) => {
             if (window.catererResolvedLat) targetLat = window.catererResolvedLat;
             if (window.catererResolvedLon) targetLon = window.catererResolvedLon;
 
@@ -1583,13 +1580,41 @@
             btn.classList.remove('bg-slate-800');
 
             if (window.updateMapDistance) window.updateMapDistance(distStr);
-        }, function (error) {
-            btnText.innerHTML = 'Denied';
-            alert('Please allow location permissions to calculate distance.');
-        });
-    } else {
-        alert("Geolocation is not supported by your browser.");
-    }
+        };
+
+        const cachedLat = sessionStorage.getItem('user_lat');
+        const cachedLon = sessionStorage.getItem('user_lon');
+
+        if (cachedLat && cachedLon) {
+            doCalculate(parseFloat(cachedLat), parseFloat(cachedLon));
+            return;
+        }
+
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(function (position) {
+                sessionStorage.setItem('user_lat', position.coords.latitude);
+                sessionStorage.setItem('user_lon', position.coords.longitude);
+                doCalculate(position.coords.latitude, position.coords.longitude);
+            }, async function (error) {
+                // Fallback to IP geolocation
+                try {
+                    const res = await fetch('https://ipapi.co/json/');
+                    const data = await res.json();
+                    if (data && data.latitude && data.longitude) {
+                        sessionStorage.setItem('user_lat', data.latitude);
+                        sessionStorage.setItem('user_lon', data.longitude);
+                        doCalculate(data.latitude, data.longitude);
+                        return;
+                    }
+                } catch (e) {
+                    console.warn('IP location fallback failed', e);
+                }
+                btnText.innerHTML = 'Denied';
+                alert('Please allow location permissions or check internet connection to calculate distance.');
+            });
+        } else {
+            alert("Geolocation is not supported by your browser.");
+        }
     }
 
     // Initialize Google Maps for Location
