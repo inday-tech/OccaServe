@@ -447,6 +447,10 @@
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('download')) {
+            setTimeout(() => { window.print(); }, 500);
+        }
+        
         if (urlParams.has('success')) {
             if (typeof Swal !== 'undefined') {
                 Swal.fire('Success!', 'Your proof of payment has been successfully uploaded! The caterer will verify it shortly.', 'success');

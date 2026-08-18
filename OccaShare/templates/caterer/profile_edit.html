@@ -779,6 +779,34 @@
                     <p>Set clear rules for different types of services so customers know exactly when and how they can book you.</p>
                 </div>
 
+                <!-- 0. GENERAL AVAILABILITY -->
+                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-store"></i> General Availability (Business Hours)</h4>
+                    <p class="field-hint" style="margin-bottom: 1.25rem;">Set your standard operating days and hours.</p>
+                    <div class="form-row-two-col">
+                        <div class="form-group">
+                            <label>Operating Hours</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="time" name="business_hours_open_time" value="{{ bh.get('open_time', '08:00') }}" style="width: 50%;">
+                                <span style="color:#64748b;">to</span>
+                                <input type="time" name="business_hours_close_time" value="{{ bh.get('close_time', '20:00') }}" style="width: 50%;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Operating Days</label>
+                            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
+                                {% set op_days = bh.get('operating_days', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']) %}
+                                {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem;">
+                                    <input type="checkbox" name="operating_days" value="{{ day }}" {% if day in op_days %}checked{% endif %}>
+                                    {{ day[:3] }}
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 1. BOOKING RULES (For Packages) -->
                 <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
                     <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-box"></i> 1. Booking Rules (Catering Packages)</h4>

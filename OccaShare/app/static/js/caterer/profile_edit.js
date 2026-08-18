@@ -9,6 +9,8 @@ const SECTION_META = {
     'location':         { title: 'Location & Contact',     subtitle: 'Your official business address used for search and bookings.' },
     'payment-methods':  { title: 'Payment Methods',        subtitle: 'Configure how customers can pay you and where you\'ll receive your earnings.' },
     'booking-policies': { title: 'Booking Policies',       subtitle: 'Set clear expectations for bookings, payments, and cancellations.' },
+    'availability':     { title: 'Booking & Availability', subtitle: 'Set clear rules for different types of services so customers know exactly when and how they can book you.' },
+    'delivery-settings':{ title: 'Delivery Zones & Fees',  subtitle: 'Define your delivery coverage and compute accurate travel fees for out-of-town bookings.' },
     'brand':            { title: 'Brand Colors & Style',   subtitle: 'Customize the look and feel of your caterer portal.' },
     'verification':     { title: 'Verification Center',    subtitle: 'Submit your compliance documents. These are private and never visible to customers.' },
     'account':          { title: 'Account & Security',     subtitle: 'Manage your personal info, notifications, and account preferences.' },

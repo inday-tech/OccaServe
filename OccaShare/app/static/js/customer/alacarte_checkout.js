@@ -12,12 +12,12 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // RECOVER SESSION: Use a more robust check
     const sessionKey = `alc_draft_${window.catererId}_${window.menuId}`;
-    let bookingId = sessionStorage.getItem(sessionKey); 
+    let bookingId = localStorage.getItem(sessionKey); 
     
     // Function to ensure we always have the latest ID
     function getActiveBookingId() {
         if (!bookingId) {
-            bookingId = sessionStorage.getItem(sessionKey);
+            bookingId = localStorage.getItem(sessionKey);
         }
         return bookingId;
     }
@@ -32,18 +32,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let selfieFrames = [];
     let isMobile = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    // --- SETUP DATE MIN & MAX ---
-    const dateInput = document.getElementById('delivery_date');
-    if (dateInput) {
-        const todayObj = new Date();
-        const today = todayObj.toISOString().split('T')[0];
-        dateInput.setAttribute('min', today);
-        
-        // 3 months max limit
-        const maxObj = new Date(todayObj.setMonth(todayObj.getMonth() + 3));
-        const maxDate = maxObj.toISOString().split('T')[0];
-        dateInput.setAttribute('max', maxDate);
-    }
+    // SETUP DATE MIN & MAX is handled in applyDynamicTerminology
 
     // --- COMBO BUILDER LOGIC ---
     window.handleComboSelection = function(checkbox) {
@@ -79,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // LOAD CART
     let parsedCart = [];
     try {
-        parsedCart = JSON.parse(sessionStorage.getItem('alacarte_cart_' + window.catererId));
+        parsedCart = JSON.parse(localStorage.getItem('alacarte_cart_' + window.catererId));
         if (!Array.isArray(parsedCart)) parsedCart = [];
     } catch (e) {
         parsedCart = [];
@@ -143,6 +132,45 @@ document.addEventListener('DOMContentLoaded', function () {
         const reviewTitle = document.getElementById('review-title');
         if (reviewTitle) {
             reviewTitle.innerHTML = window.isRentalOnly ? '<i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: var(--checkout-primary);"></i> Rent Review' : '<i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: var(--checkout-primary);"></i> Order Review';
+        }
+        
+        // --- SETUP DATE MIN & MAX ---
+        const dateInput = document.getElementById('delivery_date');
+        if (dateInput) {
+            const fr = window.catererRules?.food_rules || {};
+            const sr = window.catererRules?.service_rules || {};
+            const er = window.catererRules?.equipment_rules || {};
+            
+            let leadHours = fr.lead_time_hours || 24;
+            let allowSameDay = fr.allow_same_day === true;
+            
+            if (window.isRentalOnly) {
+                leadHours = er.lead_time_hours || 24;
+                allowSameDay = er.allow_same_day === true;
+            } else if (window.isServiceOnly) {
+                leadHours = sr.lead_time_hours || 48;
+                allowSameDay = sr.allow_same_day === true;
+            }
+            
+            let leadDays = Math.ceil(leadHours / 24);
+            if (!allowSameDay && leadDays < 1) {
+                leadDays = 1;
+            }
+            
+            const todayObj = new Date();
+            todayObj.setDate(todayObj.getDate() + leadDays);
+            const yyyy = todayObj.getFullYear();
+            const mm = String(todayObj.getMonth() + 1).padStart(2, '0');
+            const dd = String(todayObj.getDate()).padStart(2, '0');
+            dateInput.setAttribute('min', `${yyyy}-${mm}-${dd}`);
+            
+            const maxAdvance = parseInt(window.catererRules?.booking_rules?.max_advance_booking_days) || 90;
+            const maxObj = new Date();
+            maxObj.setDate(maxObj.getDate() + maxAdvance);
+            const maxY = maxObj.getFullYear();
+            const maxM = String(maxObj.getMonth() + 1).padStart(2, '0');
+            const maxD = String(maxObj.getDate()).padStart(2, '0');
+            dateInput.setAttribute('max', `${maxY}-${maxM}-${maxD}`);
         }
     }
 
@@ -219,7 +247,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         window.cartItems[index].qty = newQty;
-        sessionStorage.setItem('alacarte_cart_' + window.catererId, JSON.stringify(window.cartItems));
+        localStorage.setItem('alacarte_cart_' + window.catererId, JSON.stringify(window.cartItems));
         window.renderBillItems();
     };
 
@@ -376,10 +404,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
             
-            // Create Draft Booking when moving from Step 1 to Step 2
+            // Removed Draft Booking creation here so orders are only saved when finally submitted
             if (window.currentScreen === 1 && n === 2) {
-                const ok = await createDraftBooking();
-                if (!ok) return;
+                // Draft logic removed
             }
             
             // Validate KYC if moving from Step 2 to Step 3 and KYC is required
@@ -742,68 +769,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return valid;
     }
 
-    // --- DRAFT CREATION ---
-    async function createDraftBooking() {
-        if (!validateCombos()) return false;
-
-        const form = document.getElementById('checkoutForm');
-        const formData = new FormData(form);
-        formData.append('caterer_id', catererId);
-        formData.append('items', menuId);
-        formData.append('cart_data', buildCartData());
-        formData.append('is_draft', 'true');
-        formData.append('total_amount', calculateTotal());
-
-        try {
-            const btn = document.getElementById('sidebar-next-btn');
-            if (btn) {
-                btn.innerHTML = 'Securing Details... <i class="fas fa-spinner fa-spin"></i>';
-                btn.disabled = true;
-            }
-
-            const res = await fetch('/bookings/alacarte/checkout/draft', {
-                method: 'POST',
-                body: formData
-            });
-            
-            if (!res.ok) {
-                let errorMsg = `Server error: ${res.status}`;
-                try {
-                    const text = await res.text();
-                    try {
-                        const json = JSON.parse(text);
-                        errorMsg = json.message || json.detail || errorMsg;
-                    } catch(e) {
-                        console.error("Non-JSON Server Error:", text);
-                        errorMsg = "Server encountered an error processing the request.";
-                    }
-                } catch(e) {}
-                throw new Error(errorMsg);
-            }
-
-            const data = await res.json();
-            
-            if (data.success) {
-                bookingId = data.booking_id;
-                sessionStorage.setItem(sessionKey, bookingId); // Persist ID
-                console.log("[CHECKOUT] Draft created/updated:", bookingId);
-                return true;
-            } else {
-                Swal.fire({icon: 'error', title: 'Booking Failed', text: data.message || 'An error occurred during booking.', confirmButtonColor: '#10b981'});
-                return false;
-            }
-        } catch (e) {
-            console.error("[CHECKOUT] Draft Error:", e);
-            Swal.fire({icon: 'error', title: 'Checkout Error', text: e.message || 'Connection error occurred while saving draft.', confirmButtonColor: '#10b981'});
-            return false;
-        } finally {
-            const btn = document.getElementById('sidebar-next-btn');
-            if (btn) {
-                btn.innerHTML = 'PROCEED TO PAYMENT <i class="fas fa-arrow-right"></i>';
-                btn.disabled = false;
-            }
-        }
-    }
 
     // --- SUMMARY & FULFILLMENT ---
     window.updateCheckoutSummary = function(calculatedBaseTotal = null) {
@@ -1322,14 +1287,11 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // Fallback recovery
+        // Removed fallback recovery strict check to allow new booking creation
         const currentId = getActiveBookingId();
-        
-        if (!currentId) {
-            Swal.fire({icon: 'error', title: 'Session Lost', text: 'Please try going back to the first step to re-save your details.', confirmButtonColor: '#10b981'});
-            console.error("[CHECKOUT] Submission failed: No bookingId found.");
-            return;
-        }
+
+        const form = document.getElementById('checkoutForm');
+        const formData = new FormData(form);
 
         // Attach KYC Documents if present
         if (window.requiresKycStep) {
@@ -1344,9 +1306,9 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.disabled = true;
         loader.style.display = 'block';
 
-        const form = document.getElementById('checkoutForm');
-        const formData = new FormData(form);
-        formData.append('booking_id', currentId);
+        if (currentId) {
+            formData.append('booking_id', currentId);
+        }
         formData.append('caterer_id', catererId);
         formData.append('items', menuId);
         formData.append('cart_data', buildCartData());
@@ -1387,7 +1349,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const data = await res.json();
             if (data.success) {
-                sessionStorage.removeItem(sessionKey); 
+                localStorage.removeItem(sessionKey); 
+                localStorage.removeItem('alacarte_cart_' + window.catererId);
                 window.closePaymentModal();
                 
                 const invBtn = document.getElementById('download-invoice-btn');

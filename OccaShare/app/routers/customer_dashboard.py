@@ -293,6 +293,8 @@ async def customer_bookings(
     for b in user.bookings:
         if b.customer_archived:
             continue
+        if b.status == 'draft':
+            continue
         if b.document_type == 'invoice':
             continue
             
@@ -341,7 +343,7 @@ async def customer_orders(
     user: models.User = Depends(customer_only)
 ):
     # Calculate Intelligence Stats
-    food_orders = [b for b in user.bookings if not b.customer_archived and b.document_type == 'invoice']
+    food_orders = [b for b in user.bookings if not b.customer_archived and b.document_type == 'invoice' and b.status != 'draft']
     total_orders = len(food_orders)
     
     def get_actual_paid(b):
