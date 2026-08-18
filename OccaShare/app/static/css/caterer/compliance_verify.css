@@ -43,18 +43,24 @@
     align-items: center;
     gap: 6px;
     text-transform: uppercase;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.05em;
+    border-radius: 6px;
 }
 
-.status-approved, .status-verified { background: #ecfdf5; color: #059669; border: 1px solid #d1fae5; }
-.status-pending, .status-pending_manual_review { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
-.status-rejected, .status-failed, .status-liveliness_failed { background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; }
+.status-approved, .status-verified { background: #10b981; color: white; border: none; box-shadow: 0 2px 4px rgba(16,185,129,0.2); }
+.status-pending, .status-pending_manual_review { background: #f59e0b; color: white; border: none; box-shadow: 0 2px 4px rgba(245,158,11,0.2); }
+.status-rejected, .status-failed, .status-liveliness_failed { background: #ef4444; color: white; border: none; box-shadow: 0 2px 4px rgba(239,68,68,0.2); }
 
 /* Grid Layout */
 .verify-audit-grid {
     display: grid;
     grid-template-columns: 1fr 350px;
-    gap: 1.5rem;
+    gap: 2rem;
+}
+@media (max-width: 1024px) {
+    .verify-audit-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .audit-card {
@@ -106,11 +112,16 @@
 }
 
 .biometric-viewport {
-    padding: 1.5rem;
+    padding: 2rem;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
+    gap: 2rem;
     background: white;
+}
+@media (max-width: 768px) {
+    .biometric-viewport {
+        grid-template-columns: 1fr;
+    }
 }
 
 .viewport-label {
@@ -137,23 +148,7 @@
     object-fit: contain;
 }
 
-.scan-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background: var(--primary-color);
-    box-shadow: 0 0 15px var(--primary-color);
-    animation: scan 3s linear infinite;
-    opacity: 0.5;
-}
 
-@keyframes scan {
-    0% { top: 0; }
-    50% { top: 100%; }
-    100% { top: 0; }
-}
 
 /* Score Box */
 .biometric-score-box {
