@@ -465,16 +465,62 @@ document.addEventListener('DOMContentLoaded', function () {
                     isValid = false;
                 }
             });
-            const rules = window.isRentalOnly ? (window.catererRules.equipment_rules || {}) : (window.isServiceOnly ? (window.catererRules.service_rules || {}) : {});
+            const fr = window.catererRules.food_rules || {};
+            const er = window.catererRules.equipment_rules || {};
+            const sr = window.catererRules.service_rules || {};
+            const rules = window.isRentalOnly ? er : (window.isServiceOnly ? sr : fr);
+            
             let earliestStart = rules.earliest_delivery || rules.earliest_start || '06:00';
             let latestEnd = rules.latest_pullout || rules.latest_end || '21:00';
 
             const dTime = document.getElementById('delivery_time');
+            const dDate = document.getElementById('delivery_date');
+            
             if (dTime && dTime.value) {
-                if (dTime.value < earliestStart || dTime.value > latestEnd) {
+                if (dTime.value < earliestStart) {
                     const errEl = document.getElementById('err-delivery_time');
                     if (errEl) {
-                        errEl.innerText = `Please select a time between ${earliestStart} and ${latestEnd}.`;
+                        errEl.innerText = `Time is before operating hours (${earliestStart} - ${latestEnd}).`;
+                        errEl.style.color = '#ef4444';
+                        errEl.style.fontSize = '0.75rem';
+                        errEl.style.fontWeight = '600';
+                        errEl.style.marginTop = '4px';
+                    }
+                    showError('delivery_time', 'err-delivery_time');
+                    isValid = false;
+                } else if (dTime.value > latestEnd) {
+                    const errEl = document.getElementById('err-delivery_time');
+                    if (errEl) {
+                        errEl.innerText = `Time is after operating hours (${earliestStart} - ${latestEnd}).`;
+                        errEl.style.color = '#ef4444';
+                        errEl.style.fontSize = '0.75rem';
+                        errEl.style.fontWeight = '600';
+                        errEl.style.marginTop = '4px';
+                    }
+                    showError('delivery_time', 'err-delivery_time');
+                    isValid = false;
+                }
+            }
+
+            // EXACT Lead Time Validation (Date + Time)
+            if (dDate && dDate.value && dTime && dTime.value && isValid) {
+                const selectedDateTime = new Date(`${dDate.value}T${dTime.value}:00`);
+                let exactLeadHours = 24;
+                if (window.isRentalOnly) exactLeadHours = er.lead_time_hours || 24;
+                else if (window.isServiceOnly) exactLeadHours = sr.lead_time_hours || 48;
+                else exactLeadHours = fr.lead_time_hours || 24;
+
+                const now = new Date();
+                const minAllowedTime = new Date(now.getTime() + (exactLeadHours * 60 * 60 * 1000));
+                
+                if (selectedDateTime < minAllowedTime) {
+                    const errEl = document.getElementById('err-delivery_time');
+                    if (errEl) {
+                        errEl.innerText = `Prep notice is ${exactLeadHours} hrs. Earliest time is ${minAllowedTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}.`;
+                        errEl.style.color = '#ef4444';
+                        errEl.style.fontSize = '0.75rem';
+                        errEl.style.fontWeight = '600';
+                        errEl.style.marginTop = '4px';
                     }
                     showError('delivery_time', 'err-delivery_time');
                     isValid = false;
@@ -669,14 +715,32 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('total_amount', calculateTotal());
 
         try {
-            const btn = document.querySelector('#screen-1 .btn-wizard-next');
-            btn.innerHTML = 'Securing Details... <i class="fas fa-spinner fa-spin"></i>';
-            btn.disabled = true;
+            const btn = document.getElementById('sidebar-next-btn');
+            if (btn) {
+                btn.innerHTML = 'Securing Details... <i class="fas fa-spinner fa-spin"></i>';
+                btn.disabled = true;
+            }
 
             const res = await fetch('/bookings/alacarte/checkout/draft', {
                 method: 'POST',
                 body: formData
             });
+            
+            if (!res.ok) {
+                let errorMsg = `Server error: ${res.status}`;
+                try {
+                    const text = await res.text();
+                    try {
+                        const json = JSON.parse(text);
+                        errorMsg = json.message || json.detail || errorMsg;
+                    } catch(e) {
+                        console.error("Non-JSON Server Error:", text);
+                        errorMsg = "Server encountered an error processing the request.";
+                    }
+                } catch(e) {}
+                throw new Error(errorMsg);
+            }
+
             const data = await res.json();
             
             if (data.success) {
@@ -685,17 +749,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.log("[CHECKOUT] Draft created/updated:", bookingId);
                 return true;
             } else {
-                Swal.fire({icon: 'error', title: 'Booking Failed', text: data.message, confirmButtonColor: '#10b981'});
+                Swal.fire({icon: 'error', title: 'Booking Failed', text: data.message || 'An error occurred during booking.', confirmButtonColor: '#10b981'});
                 return false;
             }
         } catch (e) {
-            console.error(e);
-            Swal.fire({icon: 'error', title: 'Network Error', text: 'Connection error occurred while saving draft.', confirmButtonColor: '#10b981'});
+            console.error("[CHECKOUT] Draft Error:", e);
+            Swal.fire({icon: 'error', title: 'Checkout Error', text: e.message || 'Connection error occurred while saving draft.', confirmButtonColor: '#10b981'});
             return false;
         } finally {
-            const btn = document.querySelector('#screen-1 .btn-wizard-next');
-            btn.innerHTML = 'Next Step: Payment <i class="fas fa-chevron-right"></i>';
-            btn.disabled = false;
+            const btn = document.getElementById('sidebar-next-btn');
+            if (btn) {
+                btn.innerHTML = 'PROCEED TO PAYMENT <i class="fas fa-arrow-right"></i>';
+                btn.disabled = false;
+            }
         }
     }
 
