@@ -762,39 +762,13 @@
                         <p>Configure specific policies for your catering services.</p>
                     </div>
                     
-                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr; gap: 1rem; margin-top: 1rem;">
                         <div class="form-group full-width">
-                            <label><i class="fas fa-ban"></i> Cancellation Policy</label>
-                            <textarea name="terms_and_conditions" rows="3" placeholder="Explain your cancellation rules. e.g. Cancellations made 7 days prior will receive a 50% refund.">{{ profile.terms_and_conditions or '' }}</textarea>
-                        </div>
-                        <div class="form-group full-width">
-                            <label><i class="fas fa-undo"></i> Refund Policy</label>
-                            <textarea name="refund_policy" rows="3" placeholder="Detail when and how refunds are processed.">{{ policies.get('refund_policy', '') }}</textarea>
+                            <label><i class="fas fa-clipboard-check"></i> General Terms & Policies</label>
+                            <textarea name="general_terms" rows="6" placeholder="Write your general rules, cancellation policy, refund policy, and other terms here. This will be displayed to the customer during checkout.">{{ profile.general_terms or profile.terms_and_conditions or '' }}</textarea>
+                            <span class="field-hint" style="display:block; margin-top:0.5rem;">These policies will automatically generate your digital contracts and checkout terms, ensuring a Single Source of Truth.</span>
                         </div>
                     </div>
-                    
-                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                        <div class="form-group full-width">
-                            <label><i class="fas fa-calendar-alt"></i> Reschedule Policy</label>
-                            <textarea name="reschedule_policy" rows="3" placeholder="Rules for moving event dates.">{{ policies.get('reschedule_policy', '') }}</textarea>
-                        </div>
-                        <div class="form-group full-width">
-                            <label><i class="fas fa-money-bill-wave"></i> Late Payment Policy</label>
-                            <textarea name="late_payment_policy" rows="3" placeholder="Penalties or actions for late balances.">{{ policies.get('late_payment_policy', '') }}</textarea>
-                        </div>
-                    </div>
-                    
-                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                        <div class="form-group full-width">
-                            <label><i class="fas fa-user-slash"></i> No-show Policy</label>
-                            <textarea name="no_show_policy" rows="3" placeholder="Policy if client is uncontactable.">{{ policies.get('no_show_policy', '') }}</textarea>
-                        </div>
-                        <div class="form-group full-width">
-                            <label><i class="fas fa-clipboard-check"></i> General Terms (For Fast-Track Orders)</label>
-                            <textarea name="general_terms" rows="3" placeholder="Quick terms for simple food trays and rentals.">{{ profile.general_terms or '' }}</textarea>
-                        </div>
-                    </div>
-                    <span class="field-hint" style="display:block; margin-top:0.5rem;">These policies will automatically generate your digital contracts and checkout terms, ensuring a Single Source of Truth.</span>
             </div>
             <!-- End Section: Booking Policies -->
 

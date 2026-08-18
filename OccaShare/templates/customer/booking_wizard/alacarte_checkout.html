@@ -740,34 +740,8 @@
                             <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; max-height: 200px; overflow-y: auto; font-size: 0.85rem; color: #475569; margin-bottom: 1rem; line-height: 1.6;">
                                 {% if active_terms %}
                                 <div style="margin-bottom: 1rem;">
-                                    <strong><i class="fas fa-ban"></i> Cancellation Policy:</strong><br>
+                                    <strong><i class="fas fa-clipboard-check"></i> General Terms & Policies:</strong><br>
                                     {{ active_terms | replace('\n', '<br>') | safe }}
-                                </div>
-                                {% endif %}
-                                
-                                {% set pols = caterer.scheduling_rules.get('policies', {}) if caterer.scheduling_rules else {} %}
-                                {% if pols.get('refund_policy') %}
-                                <div style="margin-bottom: 1rem;">
-                                    <strong><i class="fas fa-undo"></i> Refund Policy:</strong><br>
-                                    {{ pols.get('refund_policy') | replace('\n', '<br>') | safe }}
-                                </div>
-                                {% endif %}
-                                {% if pols.get('reschedule_policy') %}
-                                <div style="margin-bottom: 1rem;">
-                                    <strong><i class="fas fa-calendar-alt"></i> Reschedule Policy:</strong><br>
-                                    {{ pols.get('reschedule_policy') | replace('\n', '<br>') | safe }}
-                                </div>
-                                {% endif %}
-                                {% if pols.get('late_payment_policy') %}
-                                <div style="margin-bottom: 1rem;">
-                                    <strong><i class="fas fa-money-bill-wave"></i> Late Payment Policy:</strong><br>
-                                    {{ pols.get('late_payment_policy') | replace('\n', '<br>') | safe }}
-                                </div>
-                                {% endif %}
-                                {% if pols.get('no_show_policy') %}
-                                <div style="margin-bottom: 1rem;">
-                                    <strong><i class="fas fa-user-slash"></i> No-Show Policy:</strong><br>
-                                    {{ pols.get('no_show_policy') | replace('\n', '<br>') | safe }}
                                 </div>
                                 {% endif %}
                             </div>
@@ -820,8 +794,12 @@
                             <p style="color: #4b6351; font-size: 0.9rem;">You can monitor the status of your order in the "My Bookings" section of your dashboard.</p>
                         </div>
 
-                        <a href="/customer/orders" class="btn-wizard-next" style="display: block; text-align: center; max-width: 320px; margin: 0 auto;">
+                        <a href="/customer/orders" class="btn-wizard-next" style="display: flex; justify-content: center; align-items: center; max-width: 320px; margin: 0 auto 1rem;">
                             VIEW MY ORDERS <i class="fas fa-arrow-right" style="margin-left: 0.75rem;"></i>
+                        </a>
+                        
+                        <a href="#" target="_blank" id="download-invoice-btn" style="display: flex; align-items: center; justify-content: center; max-width: 320px; margin: 0 auto; padding: 1rem 1.5rem; background: white; border: 2px solid var(--checkout-primary); color: var(--checkout-primary); border-radius: 0.75rem; font-weight: 700; font-size: 0.95rem; text-decoration: none; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                            DOWNLOAD INVOICE <i class="fas fa-download" style="margin-left: 0.75rem;"></i>
                         </a>
                     </div>
                 </div>

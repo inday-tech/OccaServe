@@ -465,66 +465,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     isValid = false;
                 }
             });
-            const fr = window.catererRules.food_rules || {};
-            const er = window.catererRules.equipment_rules || {};
-            const sr = window.catererRules.service_rules || {};
-            const rules = window.isRentalOnly ? er : (window.isServiceOnly ? sr : fr);
-            
-            let earliestStart = rules.earliest_delivery || rules.earliest_start || '06:00';
-            let latestEnd = rules.latest_pullout || rules.latest_end || '21:00';
-
-            const dTime = document.getElementById('delivery_time');
-            const dDate = document.getElementById('delivery_date');
-            
-            if (dTime && dTime.value) {
-                if (dTime.value < earliestStart) {
-                    const errEl = document.getElementById('err-delivery_time');
-                    if (errEl) {
-                        errEl.innerText = `Time is before operating hours (${earliestStart} - ${latestEnd}).`;
-                        errEl.style.color = '#ef4444';
-                        errEl.style.fontSize = '0.75rem';
-                        errEl.style.fontWeight = '600';
-                        errEl.style.marginTop = '4px';
-                    }
-                    showError('delivery_time', 'err-delivery_time');
-                    isValid = false;
-                } else if (dTime.value > latestEnd) {
-                    const errEl = document.getElementById('err-delivery_time');
-                    if (errEl) {
-                        errEl.innerText = `Time is after operating hours (${earliestStart} - ${latestEnd}).`;
-                        errEl.style.color = '#ef4444';
-                        errEl.style.fontSize = '0.75rem';
-                        errEl.style.fontWeight = '600';
-                        errEl.style.marginTop = '4px';
-                    }
-                    showError('delivery_time', 'err-delivery_time');
-                    isValid = false;
-                }
+            // Time validation (Operating Hours & Exact Lead Time)
+            runDateTimeValidation();
+            if (document.getElementById('err-delivery_time') && document.getElementById('err-delivery_time').classList.contains('show')) {
+                isValid = false;
             }
-
-            // EXACT Lead Time Validation (Date + Time)
-            if (dDate && dDate.value && dTime && dTime.value && isValid) {
-                const selectedDateTime = new Date(`${dDate.value}T${dTime.value}:00`);
-                let exactLeadHours = 24;
-                if (window.isRentalOnly) exactLeadHours = er.lead_time_hours || 24;
-                else if (window.isServiceOnly) exactLeadHours = sr.lead_time_hours || 48;
-                else exactLeadHours = fr.lead_time_hours || 24;
-
-                const now = new Date();
-                const minAllowedTime = new Date(now.getTime() + (exactLeadHours * 60 * 60 * 1000));
-                
-                if (selectedDateTime < minAllowedTime) {
-                    const errEl = document.getElementById('err-delivery_time');
-                    if (errEl) {
-                        errEl.innerText = `Prep notice is ${exactLeadHours} hrs. Earliest time is ${minAllowedTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}.`;
-                        errEl.style.color = '#ef4444';
-                        errEl.style.fontSize = '0.75rem';
-                        errEl.style.fontWeight = '600';
-                        errEl.style.marginTop = '4px';
-                    }
-                    showError('delivery_time', 'err-delivery_time');
-                    isValid = false;
-                }
+            if (document.getElementById('err-delivery_date') && document.getElementById('err-delivery_date').classList.contains('show')) {
+                isValid = false;
             }
             
             const pTime = document.getElementById('pullout_time');
@@ -557,6 +504,18 @@ document.addEventListener('DOMContentLoaded', function () {
             isValid = false;
         }
 
+        if (!isValid) {
+            const firstError = document.querySelector('.form-input.error, .field-error.show');
+            if (firstError) {
+                firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (firstError.tagName === 'INPUT' || firstError.tagName === 'SELECT') {
+                    firstError.focus({preventScroll: true});
+                } else if (firstError.previousElementSibling && firstError.previousElementSibling.tagName === 'INPUT') {
+                    firstError.previousElementSibling.focus({preventScroll: true});
+                }
+            }
+        }
+
         return isValid;
     }
 
@@ -587,6 +546,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         showError(id, `err-${id}`);
                     } else {
                         clearError(id, `err-${id}`);
+                        if (id === 'delivery_date' || id === 'delivery_time') {
+                            runDateTimeValidation();
+                        }
+                    }
+                });
+                el.addEventListener('change', function() {
+                    if (id === 'delivery_date' || id === 'delivery_time') {
+                        runDateTimeValidation();
                     }
                 });
             }
@@ -614,6 +581,77 @@ document.addEventListener('DOMContentLoaded', function () {
                     clearError('brgy_select', 'err-brgy_select');
                 }
             });
+        }
+    }
+
+    function runDateTimeValidation() {
+        const dTime = document.getElementById('delivery_time');
+        const dDate = document.getElementById('delivery_date');
+        
+        if (!dDate || !dTime) return;
+        
+        // Only run full complex validation if both have values (to prevent premature errors)
+        if (!dTime.value) return;
+
+        const fr = window.catererRules.food_rules || {};
+        const er = window.catererRules.equipment_rules || {};
+        const sr = window.catererRules.service_rules || {};
+        const rules = window.isRentalOnly ? er : (window.isServiceOnly ? sr : fr);
+        
+        let earliestStart = rules.earliest_delivery || rules.earliest_start || '06:00';
+        let latestEnd = rules.latest_pullout || rules.latest_end || '21:00';
+        
+        let timeIsValid = true;
+
+        if (dTime.value < earliestStart) {
+            const errEl = document.getElementById('err-delivery_time');
+            if (errEl) {
+                errEl.innerText = `Time is before operating hours (${earliestStart} - ${latestEnd}).`;
+                errEl.style.color = '#ef4444';
+                errEl.style.fontSize = '0.75rem';
+                errEl.style.fontWeight = '600';
+                errEl.style.marginTop = '4px';
+            }
+            showError('delivery_time', 'err-delivery_time');
+            timeIsValid = false;
+        } else if (dTime.value > latestEnd) {
+            const errEl = document.getElementById('err-delivery_time');
+            if (errEl) {
+                errEl.innerText = `Time is after operating hours (${earliestStart} - ${latestEnd}).`;
+                errEl.style.color = '#ef4444';
+                errEl.style.fontSize = '0.75rem';
+                errEl.style.fontWeight = '600';
+                errEl.style.marginTop = '4px';
+            }
+            showError('delivery_time', 'err-delivery_time');
+            timeIsValid = false;
+        } else {
+            clearError('delivery_time', 'err-delivery_time');
+        }
+
+        if (dDate.value && dDate.value.length === 10 && timeIsValid) {
+            const selectedDateTime = new Date(`${dDate.value}T${dTime.value}:00`);
+            let exactLeadHours = 24;
+            if (window.isRentalOnly) exactLeadHours = er.lead_time_hours || 24;
+            else if (window.isServiceOnly) exactLeadHours = sr.lead_time_hours || 48;
+            else exactLeadHours = fr.lead_time_hours || 24;
+
+            const now = new Date();
+            const minAllowedTime = new Date(now.getTime() + (exactLeadHours * 60 * 60 * 1000));
+            
+            if (selectedDateTime < minAllowedTime) {
+                const errEl = document.getElementById('err-delivery_time');
+                if (errEl) {
+                    errEl.innerText = `Prep notice is ${exactLeadHours} hrs. Earliest time is ${minAllowedTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}.`;
+                    errEl.style.color = '#ef4444';
+                    errEl.style.fontSize = '0.75rem';
+                    errEl.style.fontWeight = '600';
+                    errEl.style.marginTop = '4px';
+                }
+                showError('delivery_time', 'err-delivery_time');
+            } else {
+                clearError('delivery_time', 'err-delivery_time');
+            }
         }
     }
 
@@ -654,29 +692,31 @@ document.addEventListener('DOMContentLoaded', function () {
         dateInput.setAttribute('max', maxDate);
         
         dateInput.addEventListener('change', function() {
-            if (this.value && this.value < minDate) {
-                const errEl = document.getElementById('err-delivery_date');
-                if (errEl) errEl.innerText = `Bookings must be at least ${leadTime} days in advance (earliest is ${minDate}).`;
-                showError('delivery_date', 'err-delivery_date');
-            } else if (this.value && this.value > maxDate) {
-                const errEl = document.getElementById('err-delivery_date');
-                if (errEl) errEl.innerText = `Bookings can only be made up to ${maxAdvance} days in advance (latest is ${maxDate}).`;
-                showError('delivery_date', 'err-delivery_date');
-            } else if (this.value) {
-                // Check if caterer operates on this day
-                if (window.catererRules && window.catererRules.business_hours && window.catererRules.business_hours.operating_days) {
-                    const opDays = window.catererRules.business_hours.operating_days;
-                    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                    const selectedDate = new Date(this.value);
-                    const selectedDayName = dayNames[selectedDate.getDay()];
-                    if (!opDays.includes(selectedDayName)) {
-                        const errEl = document.getElementById('err-delivery_date');
-                        if (errEl) errEl.innerText = `This caterer does not operate on ${selectedDayName}s. Please select a different date.`;
-                        showError('delivery_date', 'err-delivery_date');
-                        return;
+            if (this.value && this.value.length === 10) {
+                if (this.value < minDate) {
+                    const errEl = document.getElementById('err-delivery_date');
+                    if (errEl) errEl.innerText = `Bookings must be at least ${leadTime} days in advance (earliest is ${minDate}).`;
+                    showError('delivery_date', 'err-delivery_date');
+                } else if (this.value > maxDate) {
+                    const errEl = document.getElementById('err-delivery_date');
+                    if (errEl) errEl.innerText = `Bookings can only be made up to ${maxAdvance} days in advance (latest is ${maxDate}).`;
+                    showError('delivery_date', 'err-delivery_date');
+                } else {
+                    // Check if caterer operates on this day
+                    if (window.catererRules && window.catererRules.business_hours && window.catererRules.business_hours.operating_days) {
+                        const opDays = window.catererRules.business_hours.operating_days;
+                        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                        const selectedDate = new Date(this.value);
+                        const selectedDayName = dayNames[selectedDate.getDay()];
+                        if (!opDays.includes(selectedDayName)) {
+                            const errEl = document.getElementById('err-delivery_date');
+                            if (errEl) errEl.innerText = `This caterer does not operate on ${selectedDayName}s. Please select a different date.`;
+                            showError('delivery_date', 'err-delivery_date');
+                            return;
+                        }
                     }
+                    clearError('delivery_date', 'err-delivery_date');
                 }
-                clearError('delivery_date', 'err-delivery_date');
             }
         });
     }
@@ -1330,10 +1370,31 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 body: formData
             });
+            
+            if (!res.ok) {
+                let errorMsg = `Server error: ${res.status}`;
+                try {
+                    const text = await res.text();
+                    try {
+                        const json = JSON.parse(text);
+                        errorMsg = json.message || json.detail || errorMsg;
+                    } catch(e) {
+                        errorMsg = "Server encountered an error processing the request.";
+                    }
+                } catch(e) {}
+                throw new Error(errorMsg);
+            }
+
             const data = await res.json();
             if (data.success) {
                 sessionStorage.removeItem(sessionKey); 
                 window.closePaymentModal();
+                
+                const invBtn = document.getElementById('download-invoice-btn');
+                if (invBtn && data.booking_id) {
+                    invBtn.href = `/customer/booking/${data.booking_id}/invoice?download=1`;
+                }
+                
                 nextScreen(window.paymentStep + 1, true); // Go to success screen! No redirect!
             } else {
                 if (paymentMethod !== 'CASH') {
@@ -1355,7 +1416,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 loader.style.display = 'none';
             }
         } catch (e) {
-            Swal.fire({icon: 'error', title: 'Network Error', text: 'A network error occurred.', confirmButtonColor: '#10b981'});
+            Swal.fire({icon: 'error', title: 'Submission Error', text: e.message || 'A network error occurred.', confirmButtonColor: '#10b981'});
             btn.disabled = false;
             loader.style.display = 'none';
             if (modalBtn) {
