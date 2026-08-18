@@ -215,48 +215,42 @@ body {
 .bookings-list-table {
     width: 100%;
     min-width: 600px;
-    border-collapse: separate;
-    border-spacing: 0 0.75rem;
+    border-collapse: collapse;
 }
 
 .bookings-list-table th {
     text-align: left;
-    color: #94a3b8;
+    color: #64748b;
     font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
     white-space: nowrap;
-    padding: 0 1.5rem 0.5rem 1.5rem;
+    padding: 1rem 1.5rem;
     letter-spacing: 0.05em;
-    border-bottom: none;
-    background: transparent;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
 }
 
 .booking-row-item {
     background: #ffffff;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid #f1f5f9;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    transition: all 0.2s ease;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .booking-row-item:hover {
     background: #f8fafc;
-    box-shadow: 0 4px 15px rgba(15, 23, 42, 0.08);
-    transform: translateY(-2px);
 }
 
 .booking-row-item td {
     padding: 1rem 1.5rem;
     vertical-align: middle;
-    border: none;
 }
 
 .booking-cell-first {
-    border-radius: 1rem 0 0 1rem;
+    /* No border radius needed for standard table */
 }
 
 .booking-cell-last {
-    border-radius: 0 1rem 1rem 0;
     text-align: right;
 }
 
