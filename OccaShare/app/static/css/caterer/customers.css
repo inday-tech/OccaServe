@@ -22,8 +22,9 @@ body, input, select, textarea, button, h1, h2, h3, h4, p, span {
 
 /* Table Container */
 .table-card-container {
-    overflow: hidden;
+    overflow: visible;
     border: 1px solid #e2e8f0;
+    border-radius: var(--border-radius, 12px);
 }
 .card-header-flex {
     padding: 1.5rem;
@@ -57,7 +58,8 @@ body, input, select, textarea, button, h1, h2, h3, h4, p, span {
 
 /* Table Styles */
 .table-responsive {
-    overflow-x: auto;
+    overflow: visible;
+    min-height: 250px;
 }
 .table-dashboard {
     width: 100%;
@@ -127,6 +129,10 @@ body, input, select, textarea, button, h1, h2, h3, h4, p, span {
 .date-text { font-size: 0.85rem; font-weight: 600; color: #64748b; }
 
 /* 3-Dot Dropdown */
+.premium-row:hover, .premium-row:has(.menu-open) {
+    position: relative;
+    z-index: 999;
+}
 .action-dropdown-container { position: relative; }
 .btn-icon-dots {
     background: transparent;
@@ -332,6 +338,7 @@ textarea.form-control {
 
 @media (max-width: 1024px) {
     .customers-page-container { padding: 1.25rem; }
+    .table-responsive { overflow-x: auto; }
     .form-grid-3, .form-grid-2, .grid-2-col { grid-template-columns: 1fr; }
     .col-span-2, .col-span-3 { grid-column: span 1; }
     .flex-wrap-mobile { flex-direction: column; text-align: center; }

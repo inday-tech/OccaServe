@@ -575,9 +575,21 @@ document.addEventListener('DOMContentLoaded', function () {
         const dateInput = document.getElementById('delivery_date');
         if (!dateInput) return;
         
-        const leadTime = window.bookingLeadTime || 7;
-        const rules = window.isRentalOnly ? (window.catererRules.equipment_rules || {}) : (window.isServiceOnly ? (window.catererRules.service_rules || {}) : {});
-        const maxAdvance = parseInt(rules.max_advance_days) || 90;
+        const fr = window.catererRules.food_rules || {};
+        const er = window.catererRules.equipment_rules || {};
+        const sr = window.catererRules.service_rules || {};
+        
+        let leadTime = 1;
+        if (window.isRentalOnly) {
+            leadTime = Math.ceil((er.lead_time_hours || 24) / 24);
+        } else if (window.isServiceOnly) {
+            leadTime = Math.ceil((sr.lead_time_hours || 48) / 24);
+        } else {
+            leadTime = Math.ceil((fr.lead_time_hours || 24) / 24);
+        }
+
+        const rules = window.isRentalOnly ? er : (window.isServiceOnly ? sr : fr);
+        const maxAdvance = parseInt(window.catererRules.booking_rules?.max_advance_booking_days) || 365;
         
         const today = new Date();
         today.setDate(today.getDate() + leadTime);

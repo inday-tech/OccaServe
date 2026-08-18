@@ -1164,11 +1164,23 @@ async def step_details_submit(
     today = dt_date.today()
     
     # 🚨 VALIDATION 1: Strict Lead Time Validation
-    # Must be at least `caterer.booking_lead_time` days in the future
-    lead_time = caterer.booking_lead_time or 3
-    min_lead_date = today + timedelta(days=lead_time)
+    rules = caterer.scheduling_rules or {}
+    pkg_rules = rules.get("package_rules", {})
+    food_rules = rules.get("food_rules", {})
+
+    is_package = package_id is not None
+    if is_package:
+        lead_time = caterer.booking_lead_time or 7
+        min_lead_date = today + timedelta(days=lead_time)
+        error_msg = f"Package bookings must be at least {lead_time} days in advance."
+    else:
+        lead_time_hours = food_rules.get("lead_time_hours", 24)
+        lead_time = max(0, lead_time_hours // 24)
+        min_lead_date = today + timedelta(days=lead_time)
+        error_msg = f"Food orders require at least {lead_time_hours} hours of preparation time."
+
     if event_date < min_lead_date:
-        return RedirectResponse(url=f"{redirect_base}?booking_error=err-date:Event+date+must+be+at+least+{lead_time}+days+in+advance+for+proper+preparation.", status_code=303)
+        return RedirectResponse(url=f"{redirect_base}?booking_error=err-date:{error_msg.replace(' ', '+')}", status_code=303)
 
     max_advance_date = today + timedelta(days=210)
     if event_date > max_advance_date:
@@ -1210,7 +1222,7 @@ async def step_details_submit(
         models.Booking.status.in_(['confirmed', 'preparing', 'in_progress', 'on_the_way'])
     ).all()
     
-    turnover = caterer.equipment_turnover_hours or 4.0
+    turnover = pkg_rules.get('turnover_time_hours', caterer.equipment_turnover_hours or 6.0) if is_package else 2.0
     for sdb in same_day_bookings:
         if sdb.event_time:
             dt1 = datetime.combine(today, event_time)
@@ -1221,11 +1233,11 @@ async def step_details_submit(
 
     # 🚨 VALIDATION 4: Guest Count Bounds
     package = None
-    min_guests_required = caterer.min_pax or 1
+    min_guests_required = caterer.min_pax or 50 if is_package else 1
     if package_id:
         package = db.query(models.CateringPackage).get(package_id)
         if package:
-            min_guests_required = package.min_guests or caterer.min_pax or 1
+            min_guests_required = package.min_guests or caterer.min_pax or 50
             if package.max_guests and guest_count > package.max_guests:
                 return RedirectResponse(url=f"{redirect_base}?booking_error=Guest+count+exceeds+the+package+maximum+capacity+of+{package.max_guests}.", status_code=303)
 

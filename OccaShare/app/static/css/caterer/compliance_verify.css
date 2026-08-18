@@ -59,24 +59,25 @@
 
 .audit-card {
     background: white;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--color-neutral-200);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04), 0 2px 6px rgba(0, 0, 0, 0.02);
+    border-radius: 16px;
+    border: 1px solid var(--color-neutral-100);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
     margin-bottom: 1.25rem;
     overflow: hidden;
     transition: box-shadow 0.3s ease;
 }
 
 .audit-card:hover {
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06), 0 4px 8px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
 }
 
 .card-header-pro {
-    padding: 1rem 1.25rem;
+    padding: 1.25rem 1.5rem;
     display: flex;
     align-items: center;
     gap: 1rem;
-    border-bottom: 1px solid var(--color-neutral-50);
+    border-bottom: 1px solid var(--color-neutral-100);
+    background: #fafafa;
 }
 
 .header-icon {
@@ -104,15 +105,12 @@
     color: var(--color-neutral-500);
 }
 
-/* Biometric Viewport */
 .biometric-viewport {
-    padding: 1.25rem;
+    padding: 1.5rem;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1.25rem;
-    background: var(--color-neutral-50);
-    border-top: 1px solid var(--color-neutral-100);
-    border-bottom: 1px solid var(--color-neutral-100);
+    gap: 1.5rem;
+    background: white;
 }
 
 .viewport-label {
@@ -127,11 +125,10 @@
 .viewport-img-box {
     position: relative;
     aspect-ratio: 4/3;
-    background: white;
-    border-radius: var(--radius-md);
+    background: #f8fafc;
+    border-radius: 12px;
     overflow: hidden;
     border: 1px solid var(--color-neutral-200);
-    box-shadow: var(--shadow-sm);
 }
 
 .viewport-img-box img {
@@ -221,7 +218,7 @@
 .data-comparison-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    background: var(--color-neutral-50);
+    background: white;
 }
 
 .data-column {
@@ -307,9 +304,9 @@
 /* Actions */
 .form-group-pro label {
     display: block;
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
     font-weight: 700;
-    color: var(--color-neutral-600);
+    color: var(--color-neutral-700);
     margin-bottom: var(--space-sm);
     padding: 1.25rem 1.25rem 0;
 }

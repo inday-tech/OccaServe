@@ -381,10 +381,21 @@
     {% set completed_bookings = user.bookings|selectattr('status', 'equalto', 'completed')|list|count %}
     {% set total_bookings_count = user.bookings|list|count %}
 
-    {# Intelligence Guard: Only show if they have at least 1 completed booking OR used the platform at least twice #}
-    {% if completed_bookings >= 1 or total_bookings_count >= 2 %}
     {% include "customer/partials/feedback_modal.html" %}
+    
     <script>
+        // Make sure it's always callable by the sidebar button
+        window.openPlatformFeedbackModal = function() {
+            const modal = document.getElementById('platformFeedbackModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+                localStorage.setItem('feedbackPopupShownOnce', 'true'); // Ensure it doesn't pop up again if opened manually
+            }
+        };
+
+        {# Intelligence Guard: Only auto-show if they have at least 1 completed booking OR used the platform at least twice #}
+        {% if completed_bookings >= 1 or total_bookings_count >= 2 %}
         document.addEventListener('DOMContentLoaded', () => {
             const hasPoppedUp = localStorage.getItem('feedbackPopupShownOnce');
             if (!hasPoppedUp) {
@@ -398,17 +409,8 @@
                 }, 5000); // Elite delay: show after 5s of interaction
             }
         });
-
-        window.openPlatformFeedbackModal = function() {
-            const modal = document.getElementById('platformFeedbackModal');
-            if (modal) {
-                modal.style.display = 'flex';
-                document.body.style.overflow = 'hidden';
-                localStorage.setItem('feedbackPopupShownOnce', 'true'); // Ensure it doesn't pop up again if opened manually
-            }
-        };
+        {% endif %}
     </script>
-    {% endif %}
     {% endif %}
 
 

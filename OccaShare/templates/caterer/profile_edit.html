@@ -706,27 +706,25 @@
 
             <!-- Section: Booking Policies -->
             <div class="settings-section" id="section-booking-policies">
+                {% set rules = profile.scheduling_rules or {} %}
+                {% set bh = rules.get('business_hours', {'open_time': '08:00', 'close_time': '20:00'}) %}
+                {% set bk = rules.get('booking_rules', {}) %}
+                {% set fr = rules.get('food_rules', {'delivery_available': true, 'pickup_available': true, 'delivery_start': '09:00', 'delivery_end': '17:00', 'lead_time_hours': 24, 'allow_same_day': false}) %}
+                {% set er = rules.get('equipment_rules', {'pickup_start': '08:00', 'pickup_end': '16:00', 'return_start': '08:00', 'return_end': '16:00', 'min_rental_hours': 24, 'max_rental_hours': 48}) %}
+                {% set sr = rules.get('service_rules', {'min_duration_hours': 3, 'max_duration_hours': 5, 'earliest_start': '09:00', 'latest_end': '18:00'}) %}
+                {% set pr = rules.get('package_rules', {'min_event_duration': 4, 'max_event_duration': 6, 'setup_time_hours': 2, 'cleanup_time_hours': 1, 'turnover_time_hours': 6}) %}
+                {% set policies = rules.get('policies', {}) %}
 
-                    <div class="form-row-three-col" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
-                        <div class="form-group">
-                            <label><i class="fas fa-calendar-alt"></i> Booking Lead Time (Days)</label>
-                            <input type="text" inputmode="numeric" name="booking_lead_time" class="js-format-comma" min="1" value="{{ profile.booking_lead_time or 7 }}">
-                            <span class="field-hint">Minimum days in advance.</span>
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-users"></i> Min Pax (Guests)</label>
-                            <input type="text" inputmode="numeric" name="min_pax" class="js-format-comma" min="1" value="{{ profile.min_pax or 20 }}">
-                            <span class="field-hint">Minimum pax required.</span>
-                        </div>
+                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <div class="form-group">
                             <label><i class="fas fa-tags"></i> Starting Price (₱)</label>
                             <input type="text" inputmode="numeric" name="starting_price" class="js-format-comma" min="0" value="{{ profile.starting_price or 0 }}">
                             <span class="field-hint">Your lowest per-head price.</span>
                         </div>
                         <div class="form-group">
-                            <label><i class="fas fa-clock"></i> Turnover (Hours)</label>
-                            <input type="number" name="equipment_turnover_hours" min="0" value="{{ profile.equipment_turnover_hours or 24 }}">
-                            <span class="field-hint">Rest period before reuse.</span>
+                            <label><i class="fas fa-calendar-plus"></i> Max Advance Booking (Days)</label>
+                            <input type="number" name="max_advance_booking_days" value="{{ bk.get('max_advance_booking_days', 365) }}" min="1">
+                            <span class="field-hint">How far in the future can clients book?</span>
                         </div>
                     </div>
                     
@@ -759,7 +757,6 @@
                         </div>
                     </div>
 
-                    {% set policies = rules.get('policies', {}) %}
                     <div class="section-header-compact" style="margin-top: 2rem;">
                         <h3><i class="fas fa-file-contract"></i> Detailed Business Policies</h3>
                         <p>Configure specific policies for your catering services.</p>
@@ -804,183 +801,130 @@
             <!-- Section: Booking & Availability -->
             <div class="settings-section" id="section-availability">
                 <div class="section-header-compact">
-                    <h3><i class="fas fa-clock"></i> Universal Scheduling & Availability</h3>
-                    <p>Set specific schedules and durations for different transaction types.</p>
+                    <h3><i class="fas fa-clock"></i> Booking & Scheduling Rules</h3>
+                    <p>Set clear rules for different types of services so customers know exactly when and how they can book you.</p>
                 </div>
 
-                {% set rules = profile.scheduling_rules or {} %}
-                {% set bh = rules.get('business_hours', {'open_time': '08:00', 'close_time': '20:00'}) %}
-                {% set bk = rules.get('booking_rules', {}) %}
-                {% set fr = rules.get('food_rules', {'delivery_available': true, 'pickup_available': true, 'delivery_start': '09:00', 'delivery_end': '19:00', 'lead_time_hours': 24, 'allow_same_day': false}) %}
-                {% set er = rules.get('equipment_rules', {'pickup_start': '08:00', 'pickup_end': '18:00', 'return_start': '08:00', 'return_end': '18:00', 'min_rental_hours': 24, 'max_rental_hours': 72}) %}
-                {% set sr = rules.get('service_rules', {'min_duration_hours': 3, 'max_duration_hours': 8, 'earliest_start': '08:00', 'latest_end': '22:00'}) %}
-                {% set pr = rules.get('package_rules', {'min_event_duration': 4, 'max_event_duration': 6, 'setup_time_hours': 2, 'cleanup_time_hours': 1}) %}
-
-                <!-- 1. Business Operating Hours -->
+                <!-- 1. BOOKING RULES (For Packages) -->
                 <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
-                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-store"></i> General Business Hours</h4>
-                    <p class="field-hint">When does your business generally operate and accept communications?</p>
+                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-box"></i> 1. Booking Rules (Catering Packages)</h4>
+                    <p class="field-hint">Used to check availability when a customer books a full catering package.</p>
                     <div class="form-row-two-col" style="margin-top: 1rem;">
                         <div class="form-group">
-                            <label>Opening Time</label>
-                            <input type="time" name="business_hours_open_time" value="{{ bh.open_time }}">
+                            <label>Booking Lead Time (Days)</label>
+                            <input type="number" name="booking_lead_time" value="{{ profile.booking_lead_time or 7 }}" min="1">
+                            <span class="field-hint">Days in advance a customer must book.</span>
                         </div>
                         <div class="form-group">
-                            <label>Closing Time</label>
-                            <input type="time" name="business_hours_close_time" value="{{ bh.close_time }}">
-                        </div>
-                    </div>
-                    {% set op_days = bh.get('operating_days', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']) %}
-                    <div class="form-group" style="margin-top: 1rem;">
-                        <label>Operating Days</label>
-                        <p class="field-hint" style="margin-bottom: 0.5rem;">Select the days of the week you accept bookings and orders.</p>
-                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                            {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
-                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                                <input type="checkbox" name="operating_days" value="{{ day }}" {% if day in op_days %}checked{% endif %} style="width: 16px; height: 16px; accent-color: var(--primary-color);">
-                                <span style="font-size: 0.85rem; font-weight: 600;">{{ day }}</span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    
-                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 1.5rem 0;">
-                    <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label><i class="fas fa-calendar-plus"></i> Max Advance Booking (Days)</label>
-                            <input type="number" name="max_advance_booking_days" value="{{ bk.get('max_advance_booking_days', 365) }}" min="1">
-                            <span class="field-hint">How far in the future can clients book?</span>
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-umbrella-beach"></i> Holiday Schedule / Blocked Days</label>
-                            <input type="text" name="holiday_schedule" value="{{ bk.get('holiday_schedule', '') }}" placeholder="e.g. Dec 24, Dec 25, Jan 1">
-                            <span class="field-hint">Comma-separated list of recurring holidays.</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 2. Food Order Scheduling -->
-                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
-                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-utensils"></i> Food Order Scheduling</h4>
-                    <p class="field-hint" style="margin-bottom: 1.25rem;">Define when customers can expect their food trays and packed meals to be delivered. This helps manage customer expectations and your kitchen prep time.</p>
-                    <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label>Delivery Operating Hours - Start</label>
-                            <input type="time" name="food_delivery_start" value="{{ fr.delivery_start }}">
-                            <span class="field-hint">Earliest time you can deliver food.</span>
-                        </div>
-                        <div class="form-group">
-                            <label>Delivery Operating Hours - End</label>
-                            <input type="time" name="food_delivery_end" value="{{ fr.delivery_end }}">
-                            <span class="field-hint">Latest time you can deliver food.</span>
+                            <label>Minimum Guests</label>
+                            <input type="number" name="min_pax" value="{{ profile.min_pax or 50 }}" min="1">
+                            <span class="field-hint">Minimum pax for package booking.</span>
                         </div>
                     </div>
                     <div class="form-row-two-col">
                         <div class="form-group">
-                            <label>Preparation Lead Time (Hours)</label>
-                            <input type="number" name="food_lead_time_hours" value="{{ fr.lead_time_hours }}" min="0">
-                            <span class="field-hint">How many hours of notice do you need to prepare a food order?</span>
-                        </div>
-                        <div class="form-group" style="display:flex; align-items:center; gap: 12px; margin-top: 1.5rem;">
-                            <label class="toggle-switch" style="margin: 0;">
-                                <input type="checkbox" name="food_allow_same_day" {% if fr.allow_same_day %}checked{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span style="font-weight: 700; color: #1e293b; font-size: 0.85rem;">Allow Same-Day Orders</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3. Equipment Rental Scheduling -->
-                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
-                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-box-open"></i> Equipment Rental Scheduling</h4>
-                    <p class="field-hint" style="margin-bottom: 1.25rem;">Set the rules for customers renting your catering equipment (e.g. chafing dishes, tables, chairs). Clear rules prevent scheduling conflicts.</p>
-                    <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label>Allowed Pickup Time - Start</label>
-                            <input type="time" name="equipment_pickup_start" value="{{ er.pickup_start }}">
-                            <span class="field-hint">Earliest time customers can pick up rented items.</span>
+                            <label>Event Duration (Min-Max Hours)</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="number" name="package_min_duration" value="{{ pr.min_event_duration }}" min="1" style="width: 50%;">
+                                <span style="color:#64748b;">to</span>
+                                <input type="number" name="package_max_duration" value="{{ pr.max_event_duration }}" min="1" style="width: 50%;">
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label>Allowed Pickup Time - End</label>
-                            <input type="time" name="equipment_pickup_end" value="{{ er.pickup_end }}">
-                            <span class="field-hint">Latest time customers can pick up or return items.</span>
+                            <label>Turnover Time (Hours)</label>
+                            <input type="number" name="package_turnover_time" value="{{ pr.get('turnover_time_hours', 6) }}" min="0">
+                            <span class="field-hint">Rest period before accepting the next event.</span>
                         </div>
                     </div>
                     <div class="form-row-two-col">
                         <div class="form-group">
-                            <label>Min Rental Duration (Hours)</label>
-                            <input type="number" name="equipment_min_rental" value="{{ er.min_rental_hours }}" min="1">
-                            <span class="field-hint">Shortest allowed rental period.</span>
-                        </div>
-                        <div class="form-group">
-                            <label>Max Rental Duration (Hours)</label>
-                            <input type="number" name="equipment_max_rental" value="{{ er.max_rental_hours }}" min="1">
-                            <span class="field-hint">Longest allowed rental period before incurring extra fees.</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 4. Service Staff Scheduling -->
-                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
-                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-user-tie"></i> Service Staff Scheduling</h4>
-                    <p class="field-hint" style="margin-bottom: 1.25rem;">Establish working hours for your waitstaff, bartenders, and on-site crew to ensure they are booked fairly and predictably.</p>
-                    <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label>Earliest Staff Arrival Time</label>
-                            <input type="time" name="service_earliest_start" value="{{ sr.earliest_start }}">
-                            <span class="field-hint">When can your staff start their shift?</span>
-                        </div>
-                        <div class="form-group">
-                            <label>Latest Staff Departure Time</label>
-                            <input type="time" name="service_latest_end" value="{{ sr.latest_end }}">
-                            <span class="field-hint">When must your staff end their shift?</span>
-                        </div>
-                    </div>
-                    <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label>Min Hire Duration (Hours)</label>
-                            <input type="number" name="service_min_duration" value="{{ sr.min_duration_hours }}" min="1">
-                            <span class="field-hint">Minimum hours a customer must hire your staff.</span>
-                        </div>
-                        <div class="form-group">
-                            <label>Max Hire Duration (Hours)</label>
-                            <input type="number" name="service_max_duration" value="{{ sr.max_duration_hours }}" min="1">
-                            <span class="field-hint">Maximum hours staff can work per booking.</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 5. Package Event Scheduling -->
-                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
-                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-gift"></i> Package Event Scheduling</h4>
-                    <p class="field-hint" style="margin-bottom: 1.25rem;">Configure the logistics required for full catering packages. This ensures you have enough time to set up and clean up the venue.</p>
-                    <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label>Standard Event Duration - Minimum (Hours)</label>
-                            <input type="number" name="package_min_duration" value="{{ pr.min_event_duration }}" min="1">
-                            <span class="field-hint">Minimum hours covered by standard packages.</span>
-                        </div>
-                        <div class="form-group">
-                            <label>Standard Event Duration - Maximum (Hours)</label>
-                            <input type="number" name="package_max_duration" value="{{ pr.max_event_duration }}" min="1">
-                            <span class="field-hint">Maximum hours covered before overtime fees.</span>
-                        </div>
-                    </div>
-                    <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label>Required Setup Time (Hours Before Event)</label>
+                            <label>Setup Time (Hours before event)</label>
                             <input type="number" name="package_setup_time" value="{{ pr.setup_time_hours }}" min="0">
-                            <span class="field-hint">Hours needed at the venue BEFORE the event starts.</span>
                         </div>
                         <div class="form-group">
-                            <label>Required Cleanup Time (Hours After Event)</label>
+                            <label>Cleanup Time (Hours after event)</label>
                             <input type="number" name="package_cleanup_time" value="{{ pr.cleanup_time_hours }}" min="0">
-                            <span class="field-hint">Hours needed at the venue AFTER the event ends.</span>
                         </div>
                     </div>
                 </div>
 
+                <!-- 2. FOOD ORDERS -->
+                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-utensils"></i> 2. Food Orders</h4>
+                    <p class="field-hint" style="margin-bottom: 1.25rem;">Rules for a la carte food trays and packed meals.</p>
+                    <div class="form-row-two-col">
+                        <div class="form-group">
+                            <label>Preparation Time (Hours)</label>
+                            <input type="number" name="food_lead_time_hours" value="{{ fr.lead_time_hours }}" min="0">
+                            <span class="field-hint">Notice needed to prepare a food order.</span>
+                        </div>
+                        <div class="form-group">
+                            <label>Delivery Hours</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="time" name="food_delivery_start" value="{{ fr.delivery_start }}" style="width: 50%;">
+                                <span style="color:#64748b;">to</span>
+                                <input type="time" name="food_delivery_end" value="{{ fr.delivery_end }}" style="width: 50%;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. EQUIPMENT RENTALS -->
+                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-chair"></i> 3. Equipment Rentals</h4>
+                    <p class="field-hint" style="margin-bottom: 1.25rem;">Rules for tables, chairs, chafing dishes, etc.</p>
+                    <div class="form-row-two-col">
+                        <div class="form-group">
+                            <label>Rental Duration (Min-Max Hours)</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="number" name="equipment_min_rental" value="{{ er.min_rental_hours }}" min="1" style="width: 50%;">
+                                <span style="color:#64748b;">to</span>
+                                <input type="number" name="equipment_max_rental" value="{{ er.max_rental_hours }}" min="1" style="width: 50%;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Pickup / Return Hours</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="time" name="equipment_pickup_start" value="{{ er.pickup_start }}" style="width: 50%;">
+                                <span style="color:#64748b;">to</span>
+                                <input type="time" name="equipment_pickup_end" value="{{ er.pickup_end }}" style="width: 50%;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. ADDITIONAL SERVICES -->
+                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-user-tie"></i> 4. Additional Services</h4>
+                    <p class="field-hint" style="margin-bottom: 1.25rem;">Rules for hiring waitstaff, hosts, bartenders, etc.</p>
+                    <div class="form-row-two-col">
+                        <div class="form-group">
+                            <label>Service Duration (Min-Max Hours)</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="number" name="service_min_duration" value="{{ sr.min_duration_hours }}" min="1" style="width: 50%;">
+                                <span style="color:#64748b;">to</span>
+                                <input type="number" name="service_max_duration" value="{{ sr.max_duration_hours }}" min="1" style="width: 50%;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Service Hours</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="time" name="service_earliest_start" value="{{ sr.earliest_start }}" style="width: 50%;">
+                                <span style="color:#64748b;">to</span>
+                                <input type="time" name="service_latest_end" value="{{ sr.latest_end }}" style="width: 50%;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Global Overrides -->
+                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #fee2e2; border-radius: 8px; background: #fef2f2;">
+                    <h4 style="margin-top:0; color: #991b1b;"><i class="fas fa-umbrella-beach"></i> Holiday Schedule / Blocked Days</h4>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <input type="text" name="holiday_schedule" value="{{ bk.get('holiday_schedule', '') }}" placeholder="e.g. Dec 24, Dec 25, Jan 1">
+                        <span class="field-hint" style="color: #b91c1c;">Comma-separated list of recurring holidays where you don't accept ANY bookings.</span>
+                    </div>
+                </div>
             </div>
             <!-- End Section: Booking & Availability -->
 

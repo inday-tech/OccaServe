@@ -22,28 +22,28 @@
     <div class="kpi-grid-clean" style="margin-bottom: var(--space-lg);">
         <div class="kpi-card-clean">
             <div class="kpi-info">
-                <h4 style="color: var(--primary-color);">Total Portfolio</h4>
+                <h4 style="color: var(--primary-color);">Total Customers</h4>
                 <span class="kpi-value" style="color: #0f172a;" id="statTotalClients">{{ stats.total }}</span>
                 <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">All registered accounts</span>
             </div>
         </div>
         <div class="kpi-card-clean">
             <div class="kpi-info">
-                <h4 style="color: var(--primary-color);">VIP Accounts</h4>
+                <h4 style="color: var(--primary-color);">VIP Customers</h4>
                 <span class="kpi-value" style="color: var(--accent-color);" id="statVipClients">{{ stats.vip }}</span>
                 <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">High-value clients</span>
             </div>
         </div>
         <div class="kpi-card-clean">
             <div class="kpi-info">
-                <h4 style="color: var(--primary-color);">Monthly Acquisition</h4>
+                <h4 style="color: var(--primary-color);">New Customers</h4>
                 <span class="kpi-value" style="color: var(--accent-color);" id="statGrowthClients">{{ stats.new }}</span>
                 <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">New accounts this month</span>
             </div>
         </div>
         <div class="kpi-card-clean">
             <div class="kpi-info">
-                <h4 style="color: var(--primary-color);">Repeat Rate</h4>
+                <h4 style="color: var(--primary-color);">Returning Customers</h4>
                 <span class="kpi-value" style="color: #ef4444;" id="statRepeatClients">{{ stats.repeat }}</span>
                 <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Returning customers</span>
             </div>
@@ -54,8 +54,8 @@
     <div class="dashboard-card table-card-container">
         <div class="card-header-flex">
             <div>
-                <h3 class="card-title-main">Relationship Database</h3>
-                <p class="card-subtitle-main">Real-time dynamic sync is active.</p>
+                <h3 class="card-title-main">Customer List</h3>
+                <p class="card-subtitle-main">Manage your clients and their booking records.</p>
             </div>
             <div class="card-actions-flex">
                 <select id="tableFilterStatus" class="form-control input-sm" onchange="window.filterCustomerTable()" style="width: auto; min-width: 150px;">
@@ -83,12 +83,12 @@
                 <thead>
                     <tr>
                         <th>Client ID</th>
-                        <th>Identity & Contact</th>
-                        <th>Account Tier</th>
-                        <th>Lifetime Spend</th>
-                        <th>Engagement</th>
+                        <th>Customer</th>
+                        <th>Status</th>
+                        <th>Total Spent</th>
+                        <th>Total Bookings</th>
                         <th>Last Active</th>
-                        <th class="text-right">Manage</th>
+                        <th class="text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="customersTableBody">
@@ -141,7 +141,7 @@
                                     </button>
                                     {% if customer.is_verified %}
                                     <button onclick="window.openIframeModal('/caterer/compliance/view/{{ customer.id }}?modal=true', 'Customer KYC')">
-                                        <i class="fas fa-shield-check" style="color: #10b981;"></i> View KYC
+                                        <i class="fas fa-user-shield" style="color: #10b981;"></i> View KYC
                                     </button>
                                     {% endif %}
                                     <button onclick="window.quickEditCustomer({{ customer.id }})">

@@ -321,6 +321,8 @@
                     <p style="color: var(--chk-text-light); font-size: 0.9rem; margin-bottom: 1.5rem;">Select the date and time block for this service.</p>
                     
                     {% set max_advance = caterer.scheduling_rules.get('booking_rules', {}).get('max_advance_booking_days', 90) if caterer.scheduling_rules else 90 %}
+                    {% set sr_lead_time_hours = caterer.scheduling_rules.get('service_rules', {}).get('lead_time_hours', 24) if caterer.scheduling_rules else 24 %}
+                    {% set lead_time_days = ((sr_lead_time_hours|int) / 24) | round(0, 'ceil') | int %}
                     {% set earliest_start = caterer.scheduling_rules.get('service_rules', {}).get('earliest_start', '08:00') if caterer.scheduling_rules else '08:00' %}
                     {% set latest_end = caterer.scheduling_rules.get('service_rules', {}).get('latest_end', '22:00') if caterer.scheduling_rules else '22:00' %}
                     {% set min_dur = caterer.scheduling_rules.get('service_rules', {}).get('min_duration_hours', 1) if caterer.scheduling_rules else 1 %}
@@ -339,7 +341,7 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <div class="form-group">
                             <label>Event Date <span style="color:red;">*</span></label>
-                            <input type="date" class="form-control" name="event_date" id="event_date" required min="{{ (today + timedelta(days=1)).strftime('%Y-%m-%d') }}" max="{{ (today + timedelta(days=max_advance|int)).strftime('%Y-%m-%d') }}">
+                            <input type="date" class="form-control" name="event_date" id="event_date" required min="{{ (today + timedelta(days=lead_time_days)).strftime('%Y-%m-%d') }}" max="{{ (today + timedelta(days=max_advance|int)).strftime('%Y-%m-%d') }}">
                             <span class="field-error" id="err-event_date">Event Date is required.</span>
                             <div style="color: #64748b; font-size: 0.75rem; margin-top: 4px; display: flex; align-items: center; gap: 4px;"><i class="fas fa-info-circle"></i> Max advance booking: {{ max_advance }} days</div>
                         </div>
@@ -646,12 +648,15 @@
                 document.getElementById('event_date').style.borderColor = '#ef4444';
                 isValid = false;
             } else {
-                // Validate Date (Must be in the future)
+                // Validate Date (Must be in the future, at least leadTimeDays ahead)
+                const leadTimeDays = {{ lead_time_days | default(1) }};
                 const selectedDate = new Date(dateVal);
-                const today = new Date();
-                today.setHours(0,0,0,0);
-                if (selectedDate <= today) {
-                    document.getElementById('err-event_date').innerText = 'Event date must be a future date.';
+                const minAllowedDate = new Date();
+                minAllowedDate.setHours(0,0,0,0);
+                minAllowedDate.setDate(minAllowedDate.getDate() + leadTimeDays);
+                
+                if (selectedDate < minAllowedDate) {
+                    document.getElementById('err-event_date').innerText = 'Please select a date at least ' + leadTimeDays + ' day(s) in advance.';
                     document.getElementById('err-event_date').style.display = 'block';
                     document.getElementById('event_date').style.borderColor = '#ef4444';
                     isValid = false;

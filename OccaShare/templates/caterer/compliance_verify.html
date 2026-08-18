@@ -27,9 +27,8 @@
             <!-- Biometric Comparison Section -->
             <div class="audit-card biometric-card">
                 <div class="card-header-pro">
-                    <div class="header-icon"><i class="fas fa-fingerprint"></i></div>
                     <div class="header-text">
-                        <h3>Identity Documents</h3>
+                        <h3 style="display: flex; align-items: center; gap: 8px;"><i class="fas fa-fingerprint" style="color: var(--primary-color);"></i> Identity Documents</h3>
                         <p>Review the uploaded ID and selfie to confirm the customer's identity.</p>
                     </div>
                 </div>
@@ -60,8 +59,8 @@
                         <div class="score-val">{{ verification.fraud_score or 0 }}%</div>
                     </div>
                     <div class="score-info">
-                        <h4>System Verification Check</h4>
-                        <p>The system detected a <strong>{{ 'highly likely' if (verification.fraud_score or 0) >= 80 else 'possible' if (verification.fraud_score or 0) >= 50 else 'unlikely' }}</strong> match.</p>
+                        <h4>Biometric Match Confidence</h4>
+                        <p>The facial recognition engine detected a <strong>{{ 'highly likely' if (verification.fraud_score or 0) >= 80 else 'possible' if (verification.fraud_score or 0) >= 50 else 'unlikely' }}</strong> match between the ID and the live selfie.</p>
                     </div>
                 </div>
             </div>
@@ -69,23 +68,22 @@
             <!-- Data Extraction Section -->
             <div class="audit-card data-card">
                 <div class="card-header-pro">
-                    <div class="header-icon"><i class="fas fa-file-alt"></i></div>
                     <div class="header-text">
-                        <h3>Extracted Details</h3>
+                        <h3 style="display: flex; align-items: center; gap: 8px;"><i class="fas fa-database" style="color: var(--primary-color);"></i> Extracted Details</h3>
                         <p>Information extracted directly from the ID document.</p>
                     </div>
                     {% if verification.ocr_data %}
                     <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                         <!-- ID Type Badge -->
                         {% set id_type = verification.ocr_data.id_type or verification.verification_type or 'Unknown' %}
-                        <span style="background: var(--primary-color); color: #fff; padding: 4px 12px; border-radius: var(--border-radius, 20px); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase;">
-                            📋 {{ id_type }}
+                        <span style="background: var(--color-neutral-100); color: var(--color-neutral-800); border: 1px solid var(--color-neutral-200); padding: 4px 12px; border-radius: var(--border-radius, 20px); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase;">
+                            <i class="fas fa-address-card"></i> {{ id_type }}
                         </span>
                         <!-- Confidence Score -->
                         {% set conf = verification.ocr_data.confidence_score or 0 %}
                         {% if conf %}
-                        <span style="background: {{ '#16a34a' if conf >= 0.8 else '#ca8a04' if conf >= 0.5 else '#ef4444' }}; color: #fff; padding: 4px 10px; border-radius: var(--border-radius, 20px); font-size: 0.65rem; font-weight: 800;">
-                            {{ '%.0f' | format(conf * 100) }}% match
+                        <span style="background: {{ '#f0fdf4' if conf >= 0.8 else '#fefce8' if conf >= 0.5 else '#fef2f2' }}; color: {{ '#166534' if conf >= 0.8 else '#854d0e' if conf >= 0.5 else '#991b1b' }}; border: 1px solid {{ '#bbf7d0' if conf >= 0.8 else '#fef08a' if conf >= 0.5 else '#fecaca' }}; padding: 4px 10px; border-radius: var(--border-radius, 20px); font-size: 0.65rem; font-weight: 800;">
+                            {{ '%.0f' | format(conf * 100) }}% OCR Accuracy
                         </span>
                         {% endif %}
                     </div>
@@ -258,7 +256,7 @@
             <!-- Related History -->
             <div class="audit-card sidebar-card">
                 <div class="card-header-sm">
-                    <i class="fas fa-calendar-check"></i> Recent Bookings
+                    <i class="fas fa-history" style="color: var(--primary-color);"></i> Recent Bookings
                 </div>
                 <div class="mini-booking-list">
                     {% for b in bookings %}
@@ -278,7 +276,7 @@
             <!-- Auditor Action -->
             <div class="audit-card sidebar-card action-card">
                 <div class="card-header-sm">
-                    <i class="fas fa-gavel"></i> Auditor Action
+                    <i class="fas fa-clipboard-check" style="color: var(--primary-color);"></i> Auditor Action
                 </div>
 
                 <!-- Current status context -->

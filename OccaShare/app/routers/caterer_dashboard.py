@@ -3619,8 +3619,7 @@ async def update_profile(
     card_number: Optional[str] = Form(None),
     cash_instructions: Optional[str] = Form(None),
     booking_lead_time: Optional[str] = Form("7"),
-    equipment_turnover_hours: Optional[str] = Form("24"),
-    min_pax: Optional[str] = Form("20"),
+    min_pax: Optional[str] = Form("50"),
     starting_price: Optional[str] = Form("0.0"),
     terms_and_conditions: Optional[str] = Form(None),
     general_terms: Optional[str] = Form(None),
@@ -3660,7 +3659,6 @@ async def update_profile(
     food_delivery_start: Optional[str] = Form("09:00"),
     food_delivery_end: Optional[str] = Form("19:00"),
     food_lead_time_hours: Optional[int] = Form(24),
-    food_allow_same_day: Optional[bool] = Form(False),
     equipment_pickup_start: Optional[str] = Form("08:00"),
     equipment_pickup_end: Optional[str] = Form("18:00"),
     equipment_min_rental: Optional[int] = Form(24),
@@ -3673,6 +3671,7 @@ async def update_profile(
     package_max_duration: Optional[int] = Form(6),
     package_setup_time: Optional[int] = Form(2),
     package_cleanup_time: Optional[int] = Form(1),
+    package_turnover_time: Optional[int] = Form(6),
     refund_policy: Optional[str] = Form(None),
     reschedule_policy: Optional[str] = Form(None),
     late_payment_policy: Optional[str] = Form(None),
@@ -3697,7 +3696,7 @@ async def update_profile(
         "food_rules": {
             "delivery_available": True, "pickup_available": True, 
             "delivery_start": food_delivery_start, "delivery_end": food_delivery_end, 
-            "lead_time_hours": food_lead_time_hours, "allow_same_day": bool(food_allow_same_day)
+            "lead_time_hours": food_lead_time_hours
         },
         "equipment_rules": {
             "pickup_start": equipment_pickup_start, "pickup_end": equipment_pickup_end, 
@@ -3710,7 +3709,8 @@ async def update_profile(
         },
         "package_rules": {
             "min_event_duration": package_min_duration, "max_event_duration": package_max_duration, 
-            "setup_time_hours": package_setup_time, "cleanup_time_hours": package_cleanup_time
+            "setup_time_hours": package_setup_time, "cleanup_time_hours": package_cleanup_time,
+            "turnover_time_hours": package_turnover_time
         },
         "booking_rules": {
             "max_advance_booking_days": max_advance_booking_days,
@@ -3793,8 +3793,8 @@ async def update_profile(
     profile.cash_instructions = cash_instructions
     try:
         profile.booking_lead_time = int(booking_lead_time) if booking_lead_time else 7
-        profile.equipment_turnover_hours = int(equipment_turnover_hours) if equipment_turnover_hours else 24
-        profile.min_pax = int(min_pax) if min_pax else 20
+        profile.equipment_turnover_hours = int(package_turnover_time) if package_turnover_time else 6
+        profile.min_pax = int(min_pax) if min_pax else 50
         profile.starting_price = float(starting_price) if starting_price else 0.0
     except ValueError:
         pass
@@ -5626,8 +5626,9 @@ async def view_customer_verification(
         models.Booking.caterer_id == profile.id,
         models.Booking.user_id == user_id
     ).first()
-    
     if not booking:
+        if request.query_params.get("modal") == "true":
+            return HTMLResponse("<div style='padding:2rem;text-align:center;font-family:sans-serif;color:#64748b;'><i class='fas fa-lock' style='font-size:3rem;color:#cbd5e1;margin-bottom:1rem;'></i><h3>Access Denied</h3><p>You do not have access to this user's verification data.</p></div>")
         raise HTTPException(status_code=403, detail="You do not have access to this user's verification data.")
 
     target_user = db.query(models.User).get(user_id)
@@ -5636,6 +5637,8 @@ async def view_customer_verification(
     
     verification = target_user.identity_verification
     if not verification:
+        if request.query_params.get("modal") == "true":
+            return HTMLResponse("<div style='padding:2rem;text-align:center;font-family:sans-serif;color:#64748b;'><i class='fas fa-id-card' style='font-size:3rem;color:#cbd5e1;margin-bottom:1rem;'></i><h3>No KYC Data</h3><p>This customer has not submitted identity verification yet.</p></div>")
         return RedirectResponse(url="/caterer/compliance?error_msg=No+verification+data+found+for+this+user.")
 
     # Fetch relevant bookings for historical context
