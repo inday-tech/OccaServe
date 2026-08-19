@@ -111,10 +111,15 @@
 
     /* Modern Fulfillment Selector */
     .fulfillment-selector {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
         margin-bottom: 2rem;
+    }
+    @media (max-width: 768px) {
+        .fulfillment-selector {
+            grid-template-columns: 1fr;
+        }
     }
 
     .fulfillment-opt {
@@ -696,7 +701,7 @@
                         <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 2.5rem 0;">
 
                         <div class="booking-summary-panel" style="background: white; border: 1px solid #e2e8f0; border-radius: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); overflow: hidden;">
-                            <div style="background: var(--up-slate-900); padding: 1.25rem 1.5rem;">
+                            <div style="background: #0f172a; padding: 1.25rem 1.5rem;">
                                 <h3 id="review-title" style="font-weight: 800; font-size: 1.1rem; margin: 0; color: white;"><i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: var(--checkout-primary);"></i> Order Review</h3>
                             </div>
                             <div style="padding: 1.5rem;">
@@ -932,8 +937,8 @@
                     <div id="uploadErrorMsg" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 1rem; border-radius: 12px; font-size: 0.85rem; margin-bottom: 1.25rem; font-weight: 500;"></div>
                 </div>
 
-                <button type="button" id="submit-payment-btn" onclick="finalSubmitOrder()" style="width: 100%; background: var(--up-emerald-500); color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: 0.2s;">
-                    Upload Proof & Finish Booking
+                <button type="button" id="submit-payment-btn" onclick="finalSubmitOrder()" style="width: 100%; background: #10b981; color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: 0.2s;">
+                    Upload Proof & Finish Order
                 </button>
             </div>
         </div>

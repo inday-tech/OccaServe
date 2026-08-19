@@ -478,10 +478,19 @@ document.addEventListener('DOMContentLoaded', function () {
             if (document.getElementById('event_duration')) required.push('event_duration');
             
             if (fulfillment === 'delivery') {
-                const brgy = document.getElementById('brgy_select');
-                if (!brgy.value) {
-                    showError('brgy_select', 'err-brgy_select');
-                    isValid = false;
+                const editSection = document.getElementById('address-edit-section');
+                if (editSection && editSection.style.display !== 'none') {
+                    const brgy = document.getElementById('brgy_select');
+                    if (!brgy.value) {
+                        showError('brgy_select', 'err-brgy_select');
+                        isValid = false;
+                    }
+                } else {
+                    const addressInput = document.getElementById('address');
+                    if (!addressInput || !addressInput.value.trim()) {
+                        isValid = false;
+                        Swal.fire('Address Required', 'Please provide a delivery address.', 'warning');
+                    }
                 }
             }
 
@@ -1368,7 +1377,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                     if (modalBtn) {
                         modalBtn.disabled = false;
-                        modalBtn.innerHTML = 'Upload Proof & Finish Booking';
+                        modalBtn.innerHTML = 'Upload Proof & Finish Order';
                         modalBtn.style.opacity = '1';
                     }
                 } else {
@@ -1384,7 +1393,7 @@ document.addEventListener('DOMContentLoaded', function () {
             loader.style.display = 'none';
             if (modalBtn) {
                 modalBtn.disabled = false;
-                modalBtn.innerHTML = 'Upload Proof & Finish Booking';
+                modalBtn.innerHTML = 'Upload Proof & Finish Order';
                 modalBtn.style.opacity = '1';
             }
         }
