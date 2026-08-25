@@ -461,10 +461,20 @@
                     <span class="pay-details-amount-lg" style="font-size: 1.25rem; color: #991b1b;">₱{{ "{:,.2f}".format(outstanding_balance) }}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid var(--color-neutral-100);">
+                    <span class="pay-details-label-sm" style="margin-bottom: 0;">Admin GCash Name:</span>
+                    <span style="font-weight: 800; font-size: 1rem; color: var(--color-neutral-900);">{{ config.admin_gcash_name or 'OccaServe Admin' }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px;">
                     <span class="pay-details-label-sm" style="margin-bottom: 0;">Admin GCash Number:</span>
-                    <span style="font-weight: 800; font-size: 1rem; color: var(--color-neutral-900);">0917-123-4567</span>
+                    <span style="font-weight: 800; font-size: 1rem; color: var(--color-neutral-900);">{{ config.admin_gcash_number or 'Contact Support' }}</span>
                 </div>
             </div>
+            {% if config and config.admin_gcash_qr_url %}
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <p style="font-size: 0.8rem; font-weight: 700; color: var(--color-neutral-600); margin-bottom: 0.5rem;">Scan to Pay</p>
+                <img src="{{ config.admin_gcash_qr_url }}" alt="Admin GCash QR" style="max-width: 150px; border-radius: 8px; border: 1px solid var(--color-neutral-200);">
+            </div>
+            {% endif %}
 
             <div class="pay-form-group">
                 <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: var(--color-neutral-700);">Billing Period</label>

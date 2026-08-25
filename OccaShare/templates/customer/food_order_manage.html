@@ -644,7 +644,11 @@
                     toast: true,
                     position: 'top-end',
                     showConfirmButton: false,
-                    timer: 3000
+                    timer: 3000,
+                    customClass: {
+                        popup: 'small-toast-popup',
+                        title: 'small-toast-title'
+                    }
                 }).then(() => {
                     window.location.reload();
                 });

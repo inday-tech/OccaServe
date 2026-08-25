@@ -292,11 +292,14 @@ async def admin_audit_logs(
     total_count = query.count()
     total_pages = (total_count + per_page - 1) // per_page
     logs = query.order_by(models.AuditLog.timestamp.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    
+    distinct_actions = [row[0] for row in db.query(models.AuditLog.action).distinct().all() if row[0]]
 
     return templates.TemplateResponse("admin/audit_logs.html", {
         "request": request,
         "user": user,
         "logs": logs,
+        "distinct_actions": distinct_actions,
         "active_page": "audit-logs",
         "total_pages": total_pages,
         "current_page": page,
@@ -847,6 +850,9 @@ async def update_website_settings(
     max_upload: Optional[int] = Form(None),
     maintenance_mode: str = Form("off"),
     maint_msg: str = Form(...),
+    admin_gcash_name: Optional[str] = Form(None),
+    admin_gcash_number: Optional[str] = Form(None),
+    admin_gcash_qr: Optional[UploadFile] = File(None),
     logo: Optional[UploadFile] = File(None),
     favicon: Optional[UploadFile] = File(None),
     hero_label_1: Optional[str] = Form(None),
@@ -902,6 +908,10 @@ async def update_website_settings(
         config.max_file_size_mb = max_upload
     config.maintenance_mode = new_maint_mode
     config.maintenance_message = maint_msg
+    if admin_gcash_name is not None:
+        config.admin_gcash_name = admin_gcash_name
+    if admin_gcash_number is not None:
+        config.admin_gcash_number = admin_gcash_number
 
     import time
     timestamp = int(time.time())
@@ -919,6 +929,18 @@ async def update_website_settings(
                 if c_url:
                     config.logo_url = c_url
                     changes.append("Updated Platform Logo")
+        except Exception as e:
+            pass
+
+    # Handle GCash QR Upload
+    if admin_gcash_qr and admin_gcash_qr.filename:
+        try:
+            qr_content = await admin_gcash_qr.read()
+            if qr_content:
+                c_url = upload_file_to_cloudinary(qr_content, folder="gallery")
+                if c_url:
+                    config.admin_gcash_qr_url = c_url
+                    changes.append("Updated Admin GCash QR")
         except Exception as e:
             pass
 
@@ -2060,6 +2082,17 @@ async def kyc_manual_action(
     
     if action == "approve":
         kyc.verification_status = "verified"
+        from datetime import datetime
+        from dateutil.relativedelta import relativedelta
+        valid_until = datetime.now() + relativedelta(months=6)
+        if hasattr(kyc, 'id_expiry_date') and kyc.id_expiry_date:
+            id_expiry = kyc.id_expiry_date
+            if isinstance(id_expiry, str):
+                try: id_expiry = datetime.strptime(id_expiry, '%Y-%m-%d').date()
+                except: pass
+            if not isinstance(id_expiry, str) and id_expiry < valid_until.date():
+                valid_until = datetime.combine(id_expiry, datetime.min.time())
+        kyc.verification_valid_until = valid_until
         kyc.failure_reason = None
         target_user.is_verified = True
         target_user.is_kyc_complete = True
@@ -2845,6 +2878,17 @@ async def kyc_manual_action(
         
     if action == "approve":
         kyc.verification_status = "verified"
+        from datetime import datetime
+        from dateutil.relativedelta import relativedelta
+        valid_until = datetime.now() + relativedelta(months=6)
+        if hasattr(kyc, 'id_expiry_date') and kyc.id_expiry_date:
+            id_expiry = kyc.id_expiry_date
+            if isinstance(id_expiry, str):
+                try: id_expiry = datetime.strptime(id_expiry, '%Y-%m-%d').date()
+                except: pass
+            if not isinstance(id_expiry, str) and id_expiry < valid_until.date():
+                valid_until = datetime.combine(id_expiry, datetime.min.time())
+        kyc.verification_valid_until = valid_until
         target_user.is_verified = True
         target_user.status = "active"
         

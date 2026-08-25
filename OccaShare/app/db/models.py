@@ -66,7 +66,7 @@ class User(Base):
     bookings = relationship("Booking", back_populates="user")
     reviews = relationship("Review", back_populates="user", cascade="all, delete-orphan")
     inquiries = relationship("Inquiry", back_populates="user", cascade="all, delete-orphan")
-    identity_verification = relationship("IdentityVerification", back_populates="user", uselist=False)
+    identity_verifications = relationship("IdentityVerification", foreign_keys="[IdentityVerification.user_id]", back_populates="user", cascade="all, delete-orphan")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     verification_attempts = relationship("VerificationAttempt", back_populates="user")
     refresh_tokens = relationship("RefreshToken", back_populates="user")
@@ -76,6 +76,12 @@ class User(Base):
     
     sent_messages = relationship("ChatMessage", foreign_keys="ChatMessage.sender_id", back_populates="sender")
     received_messages = relationship("ChatMessage", foreign_keys="ChatMessage.receiver_id", back_populates="receiver")
+
+    @property
+    def identity_verification(self):
+        if self.identity_verifications:
+            return sorted(self.identity_verifications, key=lambda x: x.id, reverse=True)[0]
+        return None
 
 class CatererProfile(Base):
     __tablename__ = "caterer_profiles"
@@ -482,6 +488,9 @@ class Equipment(Base):
     average_rating = Column(Float, default=0.0)
     review_count = Column(Integer, default=0)
     
+    # Metadata for Complex Structured Fields (Inclusions, Specifications, Rules, Extra Fees)
+    details_json = Column(JSONB, nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     caterer = relationship("CatererProfile", back_populates="equipment_items")
@@ -525,6 +534,9 @@ class Service(Base):
     # Granular Ratings Caching
     average_rating = Column(Float, default=0.0)
     review_count = Column(Integer, default=0)
+    
+    # Metadata for Complex Structured Fields (Inclusions, Requirements, Area, Rules)
+    details_json = Column(JSONB, nullable=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -690,7 +702,8 @@ class BookingContract(Base):
     customer_signed_at = Column(DateTime(timezone=True), nullable=True)
     caterer_signature = Column(String, nullable=True)
     caterer_signed_at = Column(DateTime(timezone=True), nullable=True)
-    status = Column(String, default="pending") # pending, customer_signed, fully_signed
+    status = Column(String, default="pending") # pending, customer_signed, fully_signed, expired
+    expires_at = Column(DateTime(timezone=True), nullable=True) # NEW: Contract Signing Deadline
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     booking = relationship("Booking", back_populates="contract")
@@ -835,17 +848,40 @@ class IdentityVerification(Base):
     __tablename__ = "identity_verifications"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), unique=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=True) # Added to link verification attempt directly to booking
     verification_type = Column(String, default='government_id')
     document_url = Column(String, nullable=True)
     document_back_url = Column(String, nullable=True)
+    
+    # ID Details
+    id_type = Column(String, nullable=True)
     id_number = Column(String, nullable=True)
+    id_expiry_date = Column(Date, nullable=True)
+    
+    # Selfie & Liveness
     selfie_url = Column(String, nullable=True) # selfie_1
     selfie_2_url = Column(String, nullable=True)
     selfie_3_url = Column(String, nullable=True)
+    
+    # Granular Statuses (System processing)
     ocr_data = Column(JSONB)
-    verification_status = Column(String, default='pending') # pending, processing, approved, rejected, manual_review, blocked
+    ocr_status = Column(String, nullable=True) # passed, failed, needs_review
+    liveness_status = Column(String, nullable=True) # passed, failed, needs_review
+    match_status = Column(String, nullable=True) # passed, failed, needs_review
+    
+    # Overall Status & Expiry
+    verification_status = Column(String, default='PROCESSING') # PROCESSING, VERIFIED, NEEDS_REVIEW, FAILED, EXPIRED, REVERIFICATION_REQUIRED
     failure_reason = Column(Text, nullable=True)
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+    verification_valid_until = Column(DateTime(timezone=True), nullable=True)
+    
+    # Manual Review Tracking (Admin)
+    review_status = Column(String, nullable=True) # approved, rejected, requested_reverification
+    reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Analytics & Fraud
     is_archived = Column(Boolean, default=False)
     fraud_score = Column(Integer, default=0)
     match_score = Column(Float, default=0.0) # Face match confidence
@@ -853,11 +889,12 @@ class IdentityVerification(Base):
     id_detected = Column(Boolean, default=False)
     ip_address = Column(String, nullable=True)
     device_info = Column(JSONB, nullable=True)
-    liveness_status = Column(String, nullable=True) # passed, failed
-    verified_at = Column(DateTime(timezone=True), nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    user = relationship("User", back_populates="identity_verification")
+    user = relationship("User", foreign_keys=[user_id], back_populates="identity_verifications")
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
+    booking = relationship("Booking")
 
 class Notification(Base):
     __tablename__ = "notifications"
@@ -1015,6 +1052,11 @@ class WebsiteConfig(Base):
     commission_rate = Column(Float, default=10.0)
     commission_fixed_amount = Column(Float, default=20.0)
     max_file_size_mb = Column(Integer, default=5)
+    
+    # Admin Payment Details
+    admin_gcash_name = Column(String, nullable=True)
+    admin_gcash_number = Column(String, nullable=True)
+    admin_gcash_qr_url = Column(String, nullable=True)
     
     # Maintenance
     maintenance_mode = Column(Boolean, default=False)

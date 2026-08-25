@@ -134,7 +134,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (calcDeliveryFee) {
             if (window.deliveryFeeStatus === "manual_quote") {
                 calcDeliveryFee.innerText = "TBD (Manual Quote)";
-            } else if (window.deliveryFeeStatus === "error" || window.deliveryFeeStatus === "pending") {
+            } else if (window.deliveryFeeStatus === "error") {
+                calcDeliveryFee.innerHTML = '<span style="color:red;">Out of Coverage</span>';
+            } else if (window.deliveryFeeStatus === "pending") {
                 calcDeliveryFee.innerText = "---";
             } else {
                 calcDeliveryFee.innerText = '+₱' + (window.currentDeliveryFee || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
@@ -894,6 +896,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (provinceSelect) check(validateField(provinceSelect, 'err-province', v => v !== ''));
                 if (citySelect) check(validateField(citySelect, 'err-city', v => v !== ''));
                 if (barangaySelect) check(validateField(barangaySelect, 'err-barangay', v => v !== ''));
+                
+                if (window.deliveryFeeStatus === "error") {
+                    isValid = false;
+                    alert("Out of Coverage: Sorry, the caterer does not deliver to your specified location.");
+                }
                 
                 // Selection Rules Validation
                 const selectionGroups = document.querySelectorAll('.selection-group');

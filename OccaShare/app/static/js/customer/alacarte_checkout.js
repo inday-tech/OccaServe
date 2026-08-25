@@ -539,6 +539,17 @@ document.addEventListener('DOMContentLoaded', function () {
         if (window.inventoryConflict) {
             isValid = false;
         }
+        
+        if (window.outOfCoverageReject) {
+            isValid = false;
+            Swal.fire({
+                title: 'Out of Coverage',
+                text: 'Sorry, the caterer does not deliver to your specified location.',
+                icon: 'error',
+                confirmButtonColor: '#ef4444'
+            });
+            return false;
+        }
 
         if (!isValid) {
             const firstError = document.querySelector('.form-input.error, .field-error.show');
@@ -1139,7 +1150,54 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     window.syncAddress = async function() {
+        const fulfillInput = document.querySelector('input[name="fulfillment"]:checked');
+        const fulfillment = fulfillInput ? fulfillInput.value : '';
+
         if (!window.addressEditing && window.originalSavedAddressString) {
+            // Already using saved address, just fetch dynamic fee if delivery
+            if (fulfillment === 'delivery' && window.userSavedAddress && window.userSavedAddress.city && window.userSavedAddress.province) {
+                const prov = window.userSavedAddress.province;
+                const city = window.userSavedAddress.city;
+                try {
+                    const res = await fetch(`/customer/api/caterer/${window.catererId}/delivery-fee?province=${encodeURIComponent(prov)}&municipality=${encodeURIComponent(city)}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.found) {
+                            if (data.is_manual_quote) {
+                                window.isManualQuote = true;
+                                window.outOfCoverageReject = false;
+                                document.getElementById('sum-delivery-fee').innerText = '₱0.00 (TBD)';
+                                deliveryFee = 0;
+                            } else {
+                                window.isManualQuote = false;
+                                window.outOfCoverageReject = false;
+                                deliveryFee = data.fee;
+                            }
+                        } else {
+                            if (data.out_of_coverage_action === 'manual') {
+                                window.isManualQuote = true;
+                                window.outOfCoverageReject = false;
+                                document.getElementById('sum-delivery-fee').innerText = '₱0.00 (TBD)';
+                                deliveryFee = 0;
+                            } else if (data.out_of_coverage_action === 'reject') {
+                                window.isManualQuote = false;
+                                window.outOfCoverageReject = true;
+                                document.getElementById('sum-delivery-fee').innerHTML = '<span style="color:red;">Out of Coverage</span>';
+                                deliveryFee = 0;
+                            } else {
+                                window.isManualQuote = false;
+                                window.outOfCoverageReject = false;
+                                deliveryFee = data.base_fee || DEFAULT_FEE;
+                            }
+                        }
+                    }
+                } catch (e) { console.error('Fee fetch error', e); }
+            } else if (fulfillment === 'delivery') {
+                deliveryFee = window.isServiceOnly ? 0 : DEFAULT_FEE;
+                window.isManualQuote = false;
+                window.outOfCoverageReject = false;
+            }
+            updateCheckoutSummary();
             return;
         }
         
@@ -1176,20 +1234,29 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (data.found) {
                             if (data.is_manual_quote) {
                                 window.isManualQuote = true;
+                                window.outOfCoverageReject = false;
                                 document.getElementById('sum-delivery-fee').innerText = '₱0.00 (TBD)';
                                 deliveryFee = 0;
                             } else {
                                 window.isManualQuote = false;
+                                window.outOfCoverageReject = false;
                                 deliveryFee = data.fee;
                             }
                         } else {
                             if (data.out_of_coverage_action === 'manual') {
                                 window.isManualQuote = true;
+                                window.outOfCoverageReject = false;
                                 document.getElementById('sum-delivery-fee').innerText = '₱0.00 (TBD)';
                                 deliveryFee = 0;
-                            } else {
-                                // Default/reject - fallback to base fee
+                            } else if (data.out_of_coverage_action === 'reject') {
                                 window.isManualQuote = false;
+                                window.outOfCoverageReject = true;
+                                document.getElementById('sum-delivery-fee').innerHTML = '<span style="color:red;">Out of Coverage</span>';
+                                deliveryFee = 0;
+                            } else {
+                                // Default to base fee if action is something else
+                                window.isManualQuote = false;
+                                window.outOfCoverageReject = false;
                                 deliveryFee = data.base_fee || DEFAULT_FEE;
                             }
                         }

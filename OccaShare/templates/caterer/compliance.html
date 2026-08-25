@@ -10,10 +10,9 @@
 <div class="container-premium">
 <div class="page-header kyc-page-header" id="page-header">
     <div>
-        <h1>Customer Verifications</h1>
-        <p>Review and verify customer identity documents to proceed with their bookings.</p>
+        <h1>Customer Directory</h1>
+        <p>Monitor your customers' platform verification status. For security and privacy, sensitive ID documents are handled and secured exclusively by the system administrators.</p>
     </div>
-    <!-- Local search removed, using global header search -->
     <input type="hidden" id="kycSearchInput">
 </div>
 
@@ -29,10 +28,7 @@
                     <tr>
                         <th>Customer</th>
                         <th>Event</th>
-                        <th>ID Document</th>
-                        <th>System Check</th>
                         <th>Status</th>
-                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -55,30 +51,28 @@
                             </div>
                         </td>
                         <td class="premium-cell">
-                            <span class="kyc-card-label">ID Type</span>
-                            <span class="kyc-id-type">
-                                {{ kyc.verification_type or 'Gov ID' }}
-                            </span>
-                        </td>
-                        <td class="premium-cell">
-                            <span class="kyc-card-label">System Check</span>
-                            <div class="fraud-score-pill {% if kyc.fraud_score >= 85 %}high{% elif kyc.fraud_score >= 60 %}mid{% else %}low{% endif %}">
-                                <i class="fas fa-fingerprint" style="font-size: 0.7rem; margin-right: 0.4rem;"></i>
-                                {{ kyc.fraud_score }}%
-                            </div>
-                        </td>
-                        <td class="premium-cell">
                             <span class="kyc-card-label">Status</span>
-                            <span class="kyc-status-badge status-{{ kyc.verification_status }}">
-                                <i class="fas fa-circle" style="font-size: 0.4rem;"></i>
-                                {{ kyc.verification_status|replace('_', ' ')|capitalize }}
-                            </span>
-                        </td>
-                        <td class="premium-cell">
-                            <span class="kyc-card-label">Action</span>
-                            <button onclick="openVerificationModal({{ u.id }})" class="btn-review-kyc" style="background: var(--bg-surface); padding: 0.5rem 1rem; border-radius: var(--border-radius, 6px); color: var(--primary-color); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid var(--border-strong);">
-                                View Details <i class="fas fa-chevron-right" style="font-size: 0.7rem;"></i>
-                            </button>
+                            {% if kyc and kyc.verification_status|lower in ['verified', 'approved'] %}
+                                <span class="kyc-status-badge status-verified">
+                                    <i class="fas fa-shield-check" style="font-size: 0.8rem;"></i>
+                                    Verified by Platform
+                                </span>
+                            {% elif kyc and kyc.verification_status|lower == 'pending_manual_review' %}
+                                <span class="kyc-status-badge status-pending">
+                                    <i class="fas fa-hourglass-half" style="font-size: 0.8rem;"></i>
+                                    Pending Platform Review
+                                </span>
+                            {% elif kyc and kyc.verification_status|lower in ['rejected', 'failed', 'blocked'] %}
+                                <span class="kyc-status-badge status-rejected">
+                                    <i class="fas fa-times-circle" style="font-size: 0.8rem;"></i>
+                                    Action Required by Customer
+                                </span>
+                            {% else %}
+                                <span class="kyc-status-badge status-pending">
+                                    <i class="fas fa-circle" style="font-size: 0.4rem;"></i>
+                                    Processing
+                                </span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% else %}
@@ -95,15 +89,6 @@
 </div>
 </div>
 </div>
-
-<!-- Verification Modal -->
-<div id="verificationModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
-    <div class="modal-content" style="background: white; border-radius: var(--border-radius, 1rem); width: 95%; max-width: 1000px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
-        <button onclick="closeVerificationModal()" style="position: absolute; top: 1.5rem; right: 1.5rem; background: #f1f5f9; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 1.25rem; color: #64748b; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"><i class="fas fa-times"></i></button>
-        <div id="verificationModalBody" style="padding: 1rem 1.5rem;">
-            <!-- Content will be loaded here -->
-        </div>
-    </div>
 </div>
 {% endblock %}
 
@@ -134,58 +119,5 @@
             filterKYC();
         }
     });
-
-    // Modal Logic
-    function openVerificationModal(userId) {
-        const modal = document.getElementById('verificationModal');
-        const body = document.getElementById('verificationModalBody');
-        modal.style.display = 'flex';
-        body.innerHTML = `
-            <div style="text-align: center; padding: 4rem;">
-                <i class="fas fa-circle-notch fa-spin" style="font-size: 2rem; color: var(--primary-color);"></i>
-                <p style="margin-top: 1rem; color: #64748b; font-weight: 500;">Loading verification details...</p>
-            </div>
-        `;
-
-        fetch(`/caterer/compliance/view/${userId}?modal=true`)
-            .then(res => res.text())
-            .then(html => {
-                body.innerHTML = html;
-            })
-            .catch(err => {
-                body.innerHTML = `
-                    <div style="text-align: center; padding: 4rem; color: #ef4444;">
-                        <i class="fas fa-exclamation-circle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                        <p>Failed to load verification details. Please try again.</p>
-                    </div>
-                `;
-            });
-    }
-
-    function closeVerificationModal() {
-        document.getElementById('verificationModal').style.display = 'none';
-        // Optional: refresh page if changes were made, but for now just close.
-    }
-
-    // Close modal on click outside
-    document.getElementById('verificationModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeVerificationModal();
-        }
-    });
-
-    // Handle Audit Action Form Submission
-    function handleAudit(action) {
-        const title = action === 'approve' ? 'Mark as Verified?' : 'Mark as Rejected?';
-        const msg = action === 'approve' 
-            ? `Are you sure you want to mark this customer as <strong>VERIFIED</strong>? This will allow them to proceed with their bookings.`
-            : `Are you sure you want to mark this identity as <strong>REJECTED</strong>? The customer will be notified and may need to resubmit documents.`;
-        
-        window.showConfirm(msg, () => {
-            const form = document.getElementById('auditDecisionForm');
-            document.getElementById('auditActionInput').value = action;
-            form.submit();
-        }, title, action === 'approve' ? 'Yes, Verified' : 'Yes, Rejected', action === 'approve' ? 'success' : 'danger');
-    }
 </script>
 {% endblock %}

@@ -39,6 +39,7 @@
         padding-left: 1.5rem !important;
         padding-right: 1.5rem !important;
     }
+    html, body { overflow-x: visible !important; }
 </style>
 <style>
     :root {
@@ -195,6 +196,7 @@
         z-index: 10;
         border: 1px solid rgba(226, 232, 240, 0.8);
     }
+    html, body { overflow-x: visible !important; }
 </style>
 <!-- Google Maps API -->
 <script>
@@ -365,79 +367,67 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <!-- Main Content Column -->
         <div class="lg:col-span-8 space-y-8">
+
             
             <!-- Business Hours Status Banner -->
             <div id="business-hours-banner" class="hidden rounded-2xl p-4 md:p-5 border shadow-sm flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left transition-all"></div>
 
-            <!-- Overview Section (Upgraded) -->
-            <section class="{% if caterer.glass_mode %}glass-card{% else %}card-premium{% endif %} p-6">
-                <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
-                    <span class="w-8 h-[1px] bg-slate-200"></span> Business Details
-                </h2>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div
-                        class="group bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
-                        <div class="mb-2 text-xl text-slate-400 transition-colors"><i class="far fa-clock"></i></div>
-                        <div class="text-xl font-black text-slate-800">{{ caterer.years_of_operation or 1 }}+</div>
-                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Years Exp</div>
-                    </div>
-                    <div
-                        class="group bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
-                        <div class="mb-2 text-xl text-slate-400 transition-colors"><i class="fas fa-utensils"></i></div>
-                        <div class="text-xl font-black text-slate-800">
-                            {{ active_menu|length }}
-                        </div>
-                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Dishes</div>
-                    </div>
-                    <div
-                        class="group bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
-                        <div class="mb-2 text-xl text-slate-400 transition-colors"><i class="fas fa-gift"></i></div>
-                        <div class="text-xl font-black text-slate-800">{{ packages|length }}</div>
-                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Live Pkgs</div>
-                    </div>
-                    <div
-                        class="group bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
-                        <div class="mb-2 text-xl text-slate-400 transition-colors"><i class="fas fa-shield-check"></i></div>
-                        <div class="text-xl font-black text-slate-800">100%</div>
-                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Audit Pass</div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Specialized Intelligence Tags -->
+            
+{% if packages %}
             <section class="card-premium p-6">
                 <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
-                    <span class="w-8 h-[1px] bg-slate-200"></span> Expertise
+                    <span class="w-8 h-[1px] bg-slate-200"></span> Packages
                 </h2>
-                <div class="flex flex-wrap gap-3">
-                    {% if caterer.event_types %}
-                    {% for event in caterer.event_types %}
-                    <span
-                        class="px-4 py-2 bg-brand/5 border border-brand/10 rounded-xl text-[10px] font-black text-brand uppercase tracking-widest flex items-center gap-2 transition-colors">
-                        <i class="fas fa-check"></i> {{ event }}
-                    </span>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    {% for pkg in packages %}
+                    <div
+                        class="border border-slate-200 rounded-3xl overflow-hidden flex flex-col group transition-all hover:shadow-xl hover:border-brand/30 bg-white">
+                        <div class="relative h-48 overflow-hidden bg-slate-50">
+                            {% if pkg.image_url %}
+                            <img src="{{ pkg.image_url }}"
+                                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            {% else %}
+                            <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400"
+                                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            {% endif %}
+                            <div class="absolute top-4 left-4">
+                                <span
+                                    class="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black text-accent uppercase tracking-widest shadow-sm">
+                                    {{ pkg.service_type if pkg.service_type else 'Premium' }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="p-6 flex-1 flex flex-col">
+                            <h3 class="text-base font-black text-slate-800 uppercase mb-2 leading-tight">{{ pkg.name }}
+                            </h3>
+                            <div class="text-brand font-black text-xl mb-4">
+                                {% if pkg.pricing_mode == 'per_pax' or pkg.price_unit == 'per_guest' %}
+                                ₱{{ "{:,.2f}".format(pkg.price_per_head if pkg.price_per_head else (pkg.price if
+                                pkg.price else 0)) }}<span class="text-[10px] text-slate-400 font-bold ml-1">/pax</span>
+                                {% else %}
+                                ₱{{ "{:,.2f}".format(pkg.price if pkg.price else (pkg.price_per_head if
+                                pkg.price_per_head else 0)) }}<span class="text-[10px] text-slate-400 font-bold ml-1">
+                                    total</span>
+                                {% endif %}
+                            </div>
+                            <p class="text-xs text-slate-500 mb-6 flex-1 line-clamp-3 leading-relaxed">{{
+                                pkg.description }}</p>
+
+                            <button onclick="openPublicPkgDetails({{ pkg.id }})"
+                                style="border-color: var(--brand-primary); color: var(--brand-primary);"
+                                class="mt-auto w-full py-3 bg-white hover:bg-brand hover:text-white border-2 rounded-2xl text-xs font-bold transition-all">
+                                Explore Package Details
+                            </button>
+                        </div>
+                    </div>
                     {% endfor %}
-                    {% endif %}
-                    {% if caterer.cuisine_types %}
-                    {% if caterer.cuisine_types|length >= 3 %}
-                    <span
-                        class="px-4 py-2 bg-secondary/5 border border-secondary/10 rounded-xl text-[10px] font-black text-secondary uppercase tracking-widest flex items-center gap-2 transition-colors">
-                        <i class="fas fa-globe"></i> Multi-Cuisine
-                    </span>
-                    {% else %}
-                    {% for cuisine in caterer.cuisine_types %}
-                    <span
-                        class="px-4 py-2 bg-secondary/5 border border-secondary/10 rounded-xl text-[10px] font-black text-secondary uppercase tracking-widest flex items-center gap-2 transition-colors">
-                        <i class="fas fa-utensils"></i> {{ cuisine }}
-                    </span>
-                    {% endfor %}
-                    {% endif %}
-                    {% endif %}
                 </div>
             </section>
+            {% endif %}
 
-            <!-- Culinary Selection (Compact Space-Saving Category Grid) -->
-            {% if active_menu %}
+            <!-- Gallery Section -->
+            
+{% if active_menu %}
             <section class="card-premium p-6">
                 <div class="flex items-center justify-between mb-8">
                     <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
@@ -520,19 +510,20 @@
             {% endif %}
 
             <!-- Rentals & Services Section -->
-            {% if active_inventory %}
+            
+{% if active_equipment %}
             <section class="card-premium p-6 mt-6">
                 <div class="flex items-center justify-between mb-8">
                     <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
-                        <span class="w-8 h-[1px] bg-slate-200"></span> Rentals & Services
+                        <span class="w-8 h-[1px] bg-slate-200"></span> Rentals
                     </h2>
                     <span class="text-[10px] font-black text-brand uppercase bg-brand/10 px-2.5 py-1 rounded-full">
-                        {{ active_inventory|length }} Items Available
+                        {{ active_equipment|length }} Items Available
                     </span>
                 </div>
 
                 {% set inventory_categories = [] %}
-                {% for item in active_inventory %}
+                {% for item in active_equipment %}
                 {% set cat_name = item.category if item.category else ('Equipment' if item.equipment_type else
                 'Service') %}
                 {% if cat_name not in inventory_categories %}
@@ -543,7 +534,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                     {% for cat in inventory_categories %}
                     {% set cat_items = [] %}
-                    {% for item in active_inventory %}
+                    {% for item in active_equipment %}
                     {% set item_cat = item.category if item.category else ('Equipment' if item.equipment_type else
                     'Service') %}
                     {% if item_cat == cat %}
@@ -578,7 +569,7 @@
 
                         <div
                             class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center z-20 border-2 border-white text-slate-400 group-hover:text-brand transition-colors">
-                            <i class="fas fa-box-open text-xl"></i>
+                            <i class="fas fa-chair text-xl"></i>
                         </div>
 
                         <div class="p-6 pt-10 text-center flex-1 flex flex-col">
@@ -602,60 +593,161 @@
                 </div>
             </section>
             {% endif %}
-            {% if packages %}
-            <section class="card-premium p-6">
-                <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
-                    <span class="w-8 h-[1px] bg-slate-200"></span> Packages
-                </h2>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {% for pkg in packages %}
-                    <div
-                        class="border border-slate-200 rounded-3xl overflow-hidden flex flex-col group transition-all hover:shadow-xl hover:border-brand/30 bg-white">
-                        <div class="relative h-48 overflow-hidden bg-slate-50">
-                            {% if pkg.image_url %}
-                            <img src="{{ pkg.image_url }}"
-                                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
-                            {% else %}
-                            <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400"
-                                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
-                            {% endif %}
-                            <div class="absolute top-4 left-4">
+            
+{% if active_services %}
+            <section class="card-premium p-6 mt-6">
+                <div class="flex items-center justify-between mb-8">
+                    <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
+                        <span class="w-8 h-[1px] bg-slate-200"></span> Services
+                    </h2>
+                    <span class="text-[10px] font-black text-brand uppercase bg-brand/10 px-2.5 py-1 rounded-full">
+                        {{ active_services|length }} Items Available
+                    </span>
+                </div>
+
+                {% set inventory_categories = [] %}
+                {% for item in active_services %}
+                {% set cat_name = item.category if item.category else ('Equipment' if item.equipment_type else
+                'Service') %}
+                {% if cat_name not in inventory_categories %}
+                {% set _ = inventory_categories.append(cat_name) %}
+                {% endif %}
+                {% endfor %}
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                    {% for cat in inventory_categories %}
+                    {% set cat_items = [] %}
+                    {% for item in active_services %}
+                    {% set item_cat = item.category if item.category else ('Equipment' if item.equipment_type else
+                    'Service') %}
+                    {% if item_cat == cat %}
+                    {% set _ = cat_items.append(item) %}
+                    {% endif %}
+                    {% endfor %}
+
+                    {# Extract first active item with valid image in this category #}
+                    {% set active_photo = namespace(url='') %}
+                    {% for item in cat_items %}
+                    {% if item.image_url and not active_photo.url %}
+                    {% set active_photo.url = item.image_url %}
+                    {% endif %}
+                    {% endfor %}
+                    {% set cat_cover_image = active_photo.url if active_photo.url else
+                    'https://ui-avatars.com/api/?name=' ~ (cat|urlencode) ~
+                    '&background=f1f5f9&color=64748b&size=400&font-size=0.2' %}
+
+                    <div class="group relative rounded-3xl overflow-hidden border border-slate-200 bg-white transition-all duration-300 hover:shadow-xl hover:border-brand/30 flex flex-col cursor-pointer"
+                        onclick='openInventoryShowcase({{ cat|tojson|safe }})'>
+
+                        <div
+                            class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent z-10 pointer-events-none opacity-100 transition-opacity">
+                        </div>
+
+                        <div class="h-32 w-full bg-slate-100 relative overflow-hidden">
+                            <img src="{{ cat_cover_image }}"
+                                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                alt="{{ cat }}">
+                            <div class="absolute inset-0 bg-black/10 transition-opacity opacity-100"></div>
+                        </div>
+
+                        <div
+                            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center z-20 border-2 border-white text-slate-400 group-hover:text-brand transition-colors">
+                            <i class="fas fa-concierge-bell text-xl"></i>
+                        </div>
+
+                        <div class="p-6 pt-10 text-center flex-1 flex flex-col">
+                            <div class="flex flex-col items-center mb-3">
+                                <h3
+                                    class="text-sm font-black text-slate-800 uppercase tracking-widest mb-1.5 truncate max-w-full px-2">
+                                    {{ cat }}</h3>
                                 <span
-                                    class="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black text-accent uppercase tracking-widest shadow-sm">
-                                    {{ pkg.service_type if pkg.service_type else 'Premium' }}
+                                    class="text-[9px] font-bold text-slate-400 bg-slate-100 group-hover:bg-brand group-hover:text-white px-3 py-1 rounded-full transition-colors flex-shrink-0">
+                                    {{ cat_items|length }} Items
                                 </span>
                             </div>
-                        </div>
-                        <div class="p-6 flex-1 flex flex-col">
-                            <h3 class="text-base font-black text-slate-800 uppercase mb-2 leading-tight">{{ pkg.name }}
-                            </h3>
-                            <div class="text-brand font-black text-xl mb-4">
-                                {% if pkg.pricing_mode == 'per_pax' or pkg.price_unit == 'per_guest' %}
-                                ₱{{ "{:,.2f}".format(pkg.price_per_head if pkg.price_per_head else (pkg.price if
-                                pkg.price else 0)) }}<span class="text-[10px] text-slate-400 font-bold ml-1">/pax</span>
-                                {% else %}
-                                ₱{{ "{:,.2f}".format(pkg.price if pkg.price else (pkg.price_per_head if
-                                pkg.price_per_head else 0)) }}<span class="text-[10px] text-slate-400 font-bold ml-1">
-                                    total</span>
-                                {% endif %}
-                            </div>
-                            <p class="text-xs text-slate-500 mb-6 flex-1 line-clamp-3 leading-relaxed">{{
-                                pkg.description }}</p>
 
-                            <button onclick="openPublicPkgDetails({{ pkg.id }})"
-                                style="border-color: var(--brand-primary); color: var(--brand-primary);"
-                                class="mt-auto w-full py-3 bg-white hover:bg-brand hover:text-white border-2 rounded-2xl text-xs font-bold transition-all">
-                                Explore Package Details
-                            </button>
+                            <div
+                                class="mt-auto flex items-center justify-center gap-1.5 text-[9px] font-black text-brand uppercase tracking-wider opacity-100 transition-opacity">
+                                Explore Items <i class="fas fa-arrow-right text-[8px] mt-0.5 animate-bounce"></i>
+                            </div>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
             </section>
             {% endif %}
+            
+<!-- Overview Section (Upgraded) -->
+            <section class="{% if caterer.glass_mode %}glass-card{% else %}card-premium{% endif %} p-6">
+                <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
+                    <span class="w-8 h-[1px] bg-slate-200"></span> Business Details
+                </h2>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div
+                        class="group bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                        <div class="mb-2 text-xl text-slate-400 transition-colors"><i class="far fa-clock"></i></div>
+                        <div class="text-xl font-black text-slate-800">{{ caterer.years_of_operation or 1 }}+</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Years Exp</div>
+                    </div>
+                    <div
+                        class="group bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                        <div class="mb-2 text-xl text-slate-400 transition-colors"><i class="fas fa-utensils"></i></div>
+                        <div class="text-xl font-black text-slate-800">
+                            {{ active_menu|length }}
+                        </div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Dishes</div>
+                    </div>
+                    <div
+                        class="group bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                        <div class="mb-2 text-xl text-slate-400 transition-colors"><i class="fas fa-gift"></i></div>
+                        <div class="text-xl font-black text-slate-800">{{ packages|length }}</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Live Pkgs</div>
+                    </div>
+                    <div
+                        class="group bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                        <div class="mb-2 text-xl text-slate-400 transition-colors"><i class="fas fa-shield-check"></i></div>
+                        <div class="text-xl font-black text-slate-800">100%</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Audit Pass</div>
+                    </div>
+                </div>
+            </section>
 
-            <!-- Gallery Section -->
-            {% if public_portfolios %}
+            
+<!-- Specialized Intelligence Tags -->
+            <section class="card-premium p-6">
+                <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
+                    <span class="w-8 h-[1px] bg-slate-200"></span> Expertise
+                </h2>
+                <div class="flex flex-wrap gap-3">
+                    {% if caterer.event_types %}
+                    {% for event in caterer.event_types %}
+                    <span
+                        class="px-4 py-2 bg-brand/5 border border-brand/10 rounded-xl text-[10px] font-black text-brand uppercase tracking-widest flex items-center gap-2 transition-colors">
+                        <i class="fas fa-check"></i> {{ event }}
+                    </span>
+                    {% endfor %}
+                    {% endif %}
+                    {% if caterer.cuisine_types %}
+                    {% if caterer.cuisine_types|length >= 3 %}
+                    <span
+                        class="px-4 py-2 bg-secondary/5 border border-secondary/10 rounded-xl text-[10px] font-black text-secondary uppercase tracking-widest flex items-center gap-2 transition-colors">
+                        <i class="fas fa-globe"></i> Multi-Cuisine
+                    </span>
+                    {% else %}
+                    {% for cuisine in caterer.cuisine_types %}
+                    <span
+                        class="px-4 py-2 bg-secondary/5 border border-secondary/10 rounded-xl text-[10px] font-black text-secondary uppercase tracking-widest flex items-center gap-2 transition-colors">
+                        <i class="fas fa-utensils"></i> {{ cuisine }}
+                    </span>
+                    {% endfor %}
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </section>
+
+            <!-- Culinary Selection (Compact Space-Saving Category Grid) -->
+            
+{% if public_portfolios %}
             <section class="card-premium p-6">
                 <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
                     <span class="w-8 h-[1px] bg-slate-200"></span> Gallery
@@ -680,7 +772,8 @@
             </section>
             {% endif %}
 
-            <!-- Operational Policies & Intelligence -->
+            
+<!-- Operational Policies & Intelligence -->
             <section class="card-premium p-6">
                 <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
                     <span class="w-8 h-[1px] bg-slate-200"></span> Policies
@@ -714,7 +807,8 @@
                 {% endif %}
             </section>
 
-            <!-- Business Map & Location -->
+            
+<!-- Business Map & Location -->
             <section class="card-premium p-6">
                 <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
                     <span class="w-8 h-[1px] bg-slate-200"></span> Location
@@ -742,7 +836,8 @@
                 </div>
             </section>
 
-            <!-- Reviews Section -->
+            
+<!-- Reviews Section -->
             <section class="card-premium p-6">
                 <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
                     <span class="w-8 h-[1px] bg-slate-200"></span> Reviews
@@ -801,7 +896,8 @@
                 {% endif %}
             </section>
 
-        </div>
+        
+</div>
 
         <!-- Sticky Sidebar CTA -->
         <aside class="lg:col-span-4 lg:sticky lg:top-28 space-y-4">
@@ -979,6 +1075,88 @@
     </div>
 </div>
 
+<!-- Public Inventory Detailed Modal -->
+<div id="public-inventory-modal" class="hidden fixed inset-0 z-[9999] items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 transition-all">
+    <div class="bg-white rounded-[24px] w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl relative">
+        <button onclick="closeInventoryDetails()" class="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition-colors">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <div id="inv-modal-img-container" class="w-full h-48 sm:h-64 bg-slate-100 relative shrink-0">
+            <img id="inv-modal-img" src="" class="w-full h-full object-cover" onerror="this.style.display='none'; document.getElementById('inv-modal-no-img').style.display='flex';">
+            <div id="inv-modal-no-img" class="hidden w-full h-full items-center justify-center bg-slate-50 text-slate-300 flex-col">
+                <i class="fas fa-box-open text-5xl mb-2"></i>
+                <span class="text-[10px] font-bold uppercase tracking-widest">No Image</span>
+            </div>
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+            
+            <div class="absolute bottom-4 left-6 right-6">
+                <div class="flex items-center gap-2 mb-2">
+                    <span id="inv-modal-cat" class="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded border border-white/30 text-white bg-white/10 backdrop-blur-sm">Category</span>
+                    <span id="inv-modal-type" class="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded border border-white/30 text-white bg-white/10 backdrop-blur-sm">Type</span>
+                </div>
+                <h2 id="inv-modal-title" class="text-2xl sm:text-3xl font-black text-white leading-tight">Item Name</h2>
+            </div>
+        </div>
+        
+        <div class="p-6 overflow-y-auto flex-1 custom-scrollbar bg-slate-50">
+            <p id="inv-modal-desc" class="text-sm text-slate-600 leading-relaxed mb-6"></p>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Pricing</div>
+                    <div id="inv-modal-price" class="text-xl font-black text-primary">₱0 <span class="text-xs text-slate-400 font-bold">/unit</span></div>
+                </div>
+                
+                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-center">
+                    <div id="inv-modal-qty" class="text-sm font-bold text-slate-700 mb-1"><i class="fas fa-cubes text-slate-400 mr-2"></i><span class="val">Available</span></div>
+                    <div id="inv-modal-min" class="text-sm font-bold text-slate-700"><i class="fas fa-clock text-slate-400 mr-2"></i><span class="val">Duration</span></div>
+                </div>
+            </div>
+            
+            <div id="inv-modal-inclusions-card" class="bg-white rounded-xl border border-slate-100 shadow-sm mb-4 overflow-hidden hidden">
+                <div class="bg-slate-50/80 px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                    <i class="fas fa-gift text-brand"></i>
+                    <h3 class="text-xs font-black uppercase tracking-widest text-slate-700">What's Included</h3>
+                </div>
+                <div class="p-4">
+                    <ul id="inv-modal-inclusions-list" class="flex flex-col gap-2"></ul>
+                </div>
+            </div>
+            
+            <div id="inv-modal-specs-card" class="bg-white rounded-xl border border-slate-100 shadow-sm mb-4 overflow-hidden hidden">
+                <div class="bg-slate-50/80 px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                    <i class="fas fa-info-circle text-brand"></i>
+                    <h3 class="text-xs font-black uppercase tracking-widest text-slate-700">Specifications & Requirements</h3>
+                </div>
+                <div class="p-4">
+                    <ul id="inv-modal-specs-list" class="flex flex-col gap-2"></ul>
+                </div>
+            </div>
+            
+            <div id="inv-modal-policies-card" class="bg-white rounded-xl border border-slate-100 shadow-sm mb-4 overflow-hidden hidden">
+                <div class="bg-slate-50/80 px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                    <i class="fas fa-scroll text-brand"></i>
+                    <h3 class="text-xs font-black uppercase tracking-widest text-slate-700">Policies & Extra Charges</h3>
+                </div>
+                <div class="p-4">
+                    <div id="inv-modal-deposit" class="mb-3 hidden">
+                        <span class="text-xs font-bold bg-orange-50 text-orange-600 px-2 py-1 rounded border border-orange-100"><i class="fas fa-shield-alt mr-1"></i> Security Deposit Required: <span class="val"></span></span>
+                    </div>
+                    <ul id="inv-modal-charges-list" class="flex flex-col gap-2 mb-3 hidden"></ul>
+                    <p id="inv-modal-policies-text" class="text-xs text-slate-500 whitespace-pre-wrap leading-relaxed border-t border-slate-100 pt-3 mt-3"></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="p-4 border-t border-slate-100 bg-white">
+            <button onclick="promptBookingAuth()" id="inv-modal-book-btn" class="w-full py-3 bg-primary text-white hover:bg-primary/90 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 uppercase tracking-widest">
+                <i class="fas fa-calendar-check"></i> <span>Book Now</span>
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
     const catererScheduling = {{ (caterer.scheduling_rules or {})|tojson }};
     const publicPortfoliosData = {
@@ -1084,6 +1262,7 @@
             {% set item_cat = item.category if item.category else ('Equipment' if item.equipment_type else 'Service') %}
             {% if item_cat == cat %}
             {
+                id: {{ item.id|tojson }},
                 name: {{ item.name|tojson }},
                 image_url: "{{ item.image_url if item.image_url else '' }}",
                 price: {{ (item.rental_price if item.rental_price is defined else (item.selling_price if item.selling_price is defined else (item.display_price if item.display_price is defined else 0)))|tojson }},
@@ -1093,13 +1272,136 @@
                 description: {{ item.description|default('', true)|tojson }},
                 display_qty: {{ (item.available_qty if item.available_qty is defined else (item.max_available if item.max_available is defined else 0))|tojson }},
                 deposit_pct: {{ (item.security_deposit_pct if item.security_deposit_pct is defined else 0)|tojson }},
-                min_hours: {{ (item.minimum_hours if item.minimum_hours is defined else (item.base_duration_hours if item.base_duration_hours is defined else 0))|tojson }}
+                min_hours: {{ (item.minimum_hours if item.minimum_hours is defined else (item.base_duration_hours if item.base_duration_hours is defined else 0))|tojson }},
+                details_json: {{ (item.details_json if item.details_json else {})|tojson|safe }}
             },
             {% endif %}
             {% endfor %}
         ],
         {% endfor %}
     };
+
+    function openInventoryDetails(categoryName, itemIndex) {
+        const item = inventoryItems[categoryName][itemIndex];
+        if(!item) return;
+
+        // Image
+        const img = document.getElementById('inv-modal-img');
+        const noImg = document.getElementById('inv-modal-no-img');
+        if(item.image_url) {
+            img.src = item.image_url;
+            img.style.display = 'block';
+            noImg.style.display = 'none';
+        } else {
+            img.style.display = 'none';
+            noImg.style.display = 'flex';
+        }
+
+        // Basics
+        document.getElementById('inv-modal-cat').innerText = categoryName;
+        document.getElementById('inv-modal-type').innerText = item.type;
+        document.getElementById('inv-modal-title').innerText = item.name;
+        document.getElementById('inv-modal-desc').innerText = item.description || 'No description provided.';
+        document.getElementById('inv-modal-price').innerHTML = `₱${parseFloat(item.price).toLocaleString()} <span class="text-xs text-slate-400 font-bold">/${item.unit_type}</span>`;
+        
+        document.getElementById('inv-modal-qty').querySelector('.val').innerText = item.display_qty ? `${item.display_qty} Units Available` : 'Available';
+        document.getElementById('inv-modal-min').querySelector('.val').innerText = item.min_hours ? `Minimum ${item.min_hours} Hours` : 'Flexible Duration';
+
+        // JSON Details
+        const details = item.details_json || {};
+        
+        // Inclusions
+        const incCard = document.getElementById('inv-modal-inclusions-card');
+        const incList = document.getElementById('inv-modal-inclusions-list');
+        if(details.inclusions && details.inclusions.length > 0) {
+            incList.innerHTML = details.inclusions.map(i => `<li class="flex items-start gap-2 text-sm text-slate-600"><i class="fas fa-check text-brand mt-1"></i> <div><span class="font-bold text-slate-800">${i.qty ? i.qty + 'x ' : ''}${i.name}</span> ${i.details ? '- ' + i.details : ''}</div></li>`).join('');
+            incCard.style.display = 'block';
+        } else {
+            incCard.style.display = 'none';
+        }
+
+        // Specifications & Requirements
+        const specCard = document.getElementById('inv-modal-specs-card');
+        const specList = document.getElementById('inv-modal-specs-list');
+        let specHtml = '';
+        if(details.specifications && details.specifications.length > 0) {
+            specHtml += details.specifications.map(s => `<li class="flex justify-between text-sm py-1 border-b border-slate-50 last:border-0"><span class="text-slate-500">${s.name}:</span> <span class="font-bold text-slate-800">${s.value}</span></li>`).join('');
+        }
+        if(details.requirements && details.requirements.length > 0) {
+            specHtml += `<li class="text-xs font-black uppercase tracking-widest text-slate-400 mt-2 mb-1">Customer Requirements</li>`;
+            specHtml += details.requirements.map(r => `<li class="flex items-center gap-2 text-sm text-slate-700"><i class="fas fa-exclamation-circle text-orange-400"></i> ${r}</li>`).join('');
+        }
+        if(details.area) {
+            specHtml += `<li class="flex items-center gap-2 text-sm text-slate-700 mt-2"><i class="fas fa-map-marker-alt text-brand"></i> Service Area: <b>${details.area}</b></li>`;
+        }
+        if(details.delivery) {
+            specHtml += `<li class="flex items-center gap-2 text-sm text-slate-700 mt-2"><i class="fas fa-truck text-brand"></i> Delivery: <b>${details.delivery}</b></li>`;
+        }
+        if(details.setup) {
+            specHtml += `<li class="flex items-center gap-2 text-sm text-slate-700 mt-2"><i class="fas fa-tools text-brand"></i> Setup: <b>${details.setup}</b></li>`;
+        }
+        if(specHtml) {
+            specList.innerHTML = specHtml;
+            specCard.style.display = 'block';
+        } else {
+            specCard.style.display = 'none';
+        }
+
+        // Policies & Extra Charges
+        const polCard = document.getElementById('inv-modal-policies-card');
+        let showPol = false;
+
+        const dep = document.getElementById('inv-modal-deposit');
+        if(details.deposit) {
+            dep.querySelector('.val').innerText = `${details.deposit.value}${details.deposit.type === 'Percentage' ? '%' : ' PHP'}. ${details.deposit.condition || ''}`;
+            dep.style.display = 'block';
+            showPol = true;
+        } else if(item.deposit_pct) {
+            dep.querySelector('.val').innerText = `${item.deposit_pct}% of total price.`;
+            dep.style.display = 'block';
+            showPol = true;
+        } else {
+            dep.style.display = 'none';
+        }
+
+        const chgList = document.getElementById('inv-modal-charges-list');
+        if(details.additional_charges && details.additional_charges.length > 0) {
+            chgList.innerHTML = `<li class="text-xs font-black uppercase tracking-widest text-slate-400 mb-1 mt-1">Extra Options / Fees</li>` + 
+                details.additional_charges.map(c => `<li class="flex justify-between text-sm"><span class="text-slate-600">${c.name}</span> <span class="font-bold text-slate-800">₱${c.price}</span></li>`).join('');
+            chgList.style.display = 'flex';
+            showPol = true;
+        } else {
+            chgList.style.display = 'none';
+        }
+
+        const polText = document.getElementById('inv-modal-policies-text');
+        if(details.policies) {
+            polText.innerText = details.policies;
+            polText.style.display = 'block';
+            showPol = true;
+        } else {
+            polText.style.display = 'none';
+        }
+
+        polCard.style.display = showPol ? 'block' : 'none';
+
+        // Reset Book Now text
+        const btn = document.getElementById('inv-modal-book-btn');
+        btn.innerHTML = '<i class="fas fa-calendar-check"></i> <span>Book Now</span>';
+
+        // Show Modal
+        const modal = document.getElementById('public-inventory-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeInventoryDetails() {
+        const modal = document.getElementById('public-inventory-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
 
     function openInventoryShowcase(categoryName) {
         const items = inventoryItems[categoryName] || [];
@@ -1148,7 +1450,10 @@
                         </div>
 
                         <div class="text-primary font-black text-sm bg-primary/5 px-3 py-1 rounded-full border border-primary/10 mt-auto">₱${parseFloat(item.price).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} <span class="text-[9px] text-slate-400 font-bold">/${item.unit_type}</span></div>
-                        <button onclick="promptBookingAuth()" class="mt-2 w-full text-[10px] font-bold text-white bg-primary rounded-full py-1.5 transition hover:bg-primary/90 shadow-sm uppercase tracking-widest"><i class="fas ${item.type === 'Equipment' ? 'fa-box' : 'fa-calendar-check'}"></i> ${item.type === 'Equipment' ? 'Rent' : 'Book'}</button>
+                        <div class="flex gap-2 w-full mt-2">
+                            <button onclick="openInventoryDetails('${categoryName.replace(/'/g, "\\'")}', ${items.indexOf(item)})" class="w-full text-[10px] font-bold text-brand bg-brand/10 border border-brand/20 rounded-full py-1.5 transition hover:bg-brand hover:text-white shadow-sm uppercase tracking-widest flex-1"><i class="fas fa-eye"></i> Details</button>
+                            <button onclick="promptBookingAuth()" class="w-full text-[10px] font-bold text-white bg-primary rounded-full py-1.5 transition hover:bg-primary/90 shadow-sm uppercase tracking-widest flex-1"><i class="fas ${item.type === 'Equipment' ? 'fa-box' : 'fa-calendar-check'}"></i> ${item.type === 'Equipment' ? 'Rent' : 'Book'}</button>
+                        </div>
                     </div>
                 </div>
             `).join('');
@@ -1296,7 +1601,10 @@
                                         </div>
                                     </details>`;
                         })() : ''}
-                        <button onclick="promptBookingAuth()" class="mt-2 w-full text-[10px] font-bold text-white bg-primary rounded-full py-1.5 transition hover:bg-primary/90 shadow-sm uppercase tracking-widest"><i class="fas ${categoryName === 'Rentals' ? 'fa-box' : (categoryName === 'Services' ? 'fa-calendar-check' : 'fa-cart-plus')}"></i> ${categoryName === 'Rentals' ? 'Rent' : (categoryName === 'Services' ? 'Book' : 'Order')}</button>
+                        <div class="flex gap-2 w-full mt-2">
+                            <button onclick="openMenuDetails('${categoryName.replace(/'/g, "\\'")}', ${currentCategoryDishes.indexOf(item)})" class="w-full text-[10px] font-bold text-brand bg-brand/10 border border-brand/20 rounded-full py-1.5 transition hover:bg-brand hover:text-white shadow-sm uppercase tracking-widest flex-1"><i class="fas fa-eye"></i> Details</button>
+                            <button onclick="promptBookingAuth()" class="w-full text-[10px] font-bold text-white bg-primary rounded-full py-1.5 transition hover:bg-primary/90 shadow-sm uppercase tracking-widest flex-1"><i class="fas fa-cart-plus"></i> Order</button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -1325,6 +1633,86 @@
         modal.classList.add('hidden');
         modal.classList.remove('flex');
         document.body.style.overflow = ''; // Unlock background scrolling
+    }
+
+    function openMenuDetails(categoryName, itemIndex) {
+        const item = currentCategoryDishes[itemIndex];
+        if(!item) return;
+
+        // Image
+        const img = document.getElementById('inv-modal-img');
+        const noImg = document.getElementById('inv-modal-no-img');
+        if(item.image_url) {
+            img.src = item.image_url;
+            img.style.display = 'block';
+            noImg.style.display = 'none';
+        } else {
+            img.style.display = 'none';
+            noImg.style.display = 'flex';
+        }
+
+        // Basics
+        document.getElementById('inv-modal-cat').innerText = categoryName;
+        document.getElementById('inv-modal-type').innerText = 'Dish';
+        document.getElementById('inv-modal-title').innerText = item.name;
+        document.getElementById('inv-modal-desc').innerText = item.description || 'No description provided.';
+        
+        let priceHtml = '';
+        if(item.variants && item.variants.length > 0) {
+            priceHtml = `₱${parseFloat(item.variants[0].price).toLocaleString()} <span class="text-xs text-slate-400 font-bold">/ ${item.variants[0].variant_name}</span>`;
+        } else if(item.price > 0) {
+            priceHtml = `₱${parseFloat(item.price).toLocaleString()} <span class="text-xs text-slate-400 font-bold">/${item.serving_style || 'Order'}</span>`;
+        } else {
+            priceHtml = 'Price Varies';
+        }
+        document.getElementById('inv-modal-price').innerHTML = priceHtml;
+        
+        let cap = item.serving_size === 'Single' ? '1 Pax' : (String(item.serving_size).toLowerCase().includes('pax') ? item.serving_size : item.serving_size + ' Pax');
+        if(item.variants && item.variants.length > 0 && item.variants[0].serving_capacity) {
+            cap = item.variants[0].serving_capacity;
+            cap = String(cap).toLowerCase().includes('pax') ? cap : cap + ' Pax';
+        }
+        
+        document.getElementById('inv-modal-qty').querySelector('.val').innerText = 'Good for ' + cap;
+        document.getElementById('inv-modal-min').querySelector('.val').innerText = item.min_order_qty > 1 ? `Min. ${item.min_order_qty} Orders` : 'No Minimum';
+
+        // Tags and Specs
+        let specHtml = '';
+        if(item.dietary_tags && item.dietary_tags.length > 0) {
+            specHtml += `<li class="flex items-center gap-2 text-sm text-slate-700 mt-1 mb-1"><i class="fas fa-leaf text-emerald-500"></i> Dietary: <b>${item.dietary_tags.join(', ')}</b></li>`;
+        }
+        if(item.allergen_info && item.allergen_info.length > 0) {
+            specHtml += `<li class="flex items-center gap-2 text-sm text-slate-700 mt-1 mb-1"><i class="fas fa-exclamation-triangle text-red-500"></i> Allergens: <b>${item.allergen_info.join(', ')}</b></li>`;
+        }
+        if(item.spice_level) {
+            specHtml += `<li class="flex items-center gap-2 text-sm text-slate-700 mt-1 mb-1"><i class="fas fa-pepper-hot text-red-600"></i> Spice Level: <b>${item.spice_level}</b></li>`;
+        }
+        if(catererScheduling && catererScheduling.food_rules && catererScheduling.food_rules.lead_time_hours) {
+            specHtml += `<li class="flex items-center gap-2 text-sm text-slate-700 mt-1 mb-1"><i class="fas fa-clock text-blue-500"></i> Lead Time: <b>Requires ${catererScheduling.food_rules.lead_time_hours}h Prep Notice</b></li>`;
+        }
+        
+        const specCard = document.getElementById('inv-modal-specs-card');
+        const specList = document.getElementById('inv-modal-specs-list');
+        if(specHtml) {
+            specList.innerHTML = specHtml;
+            specCard.style.display = 'block';
+        } else {
+            specCard.style.display = 'none';
+        }
+
+        // Hide other cards not applicable to menu
+        document.getElementById('inv-modal-inclusions-card').style.display = 'none';
+        document.getElementById('inv-modal-policies-card').style.display = 'none';
+
+        // Fix Book Now text
+        const btn = document.getElementById('inv-modal-book-btn');
+        btn.innerHTML = '<i class="fas fa-cart-plus"></i> <span>Order Now</span>';
+
+        // Show Modal
+        const modal = document.getElementById('public-inventory-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
     }
 
     function promptBookingAuth() {

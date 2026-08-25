@@ -907,6 +907,9 @@ async function submitManualEvent(e) {
     }
 
     if (window.apiAction) {
+        let pkgId = document.getElementById('manPackageMode') ? document.getElementById('manPackageMode').value : null;
+        if (pkgId === 'custom') pkgId = null;
+
         const payload = {
             first_name: fName,
             last_name: lName,
@@ -923,11 +926,15 @@ async function submitManualEvent(e) {
             landmark: landmark,
             guest_count: guests,
             total_amount: parseFloat(document.getElementById('manAmount').value) || 0,
-            package_id: document.getElementById('manPackage').value ? parseInt(document.getElementById('manPackage').value) : null,
+            amount_paid: parseFloat(document.getElementById('manAmountPaid').value) || 0,
+            remaining_balance: parseFloat(document.getElementById('manBalance').value) || 0,
+            discount_amount: parseFloat(document.getElementById('quoteDiscount').value) || 0,
+            quotation_items: window.quoteItems || [],
+            package_id: pkgId ? parseInt(pkgId) : null,
             special_notes: document.getElementById('manSpecialNotes') ? document.getElementById('manSpecialNotes').value.trim() : "",
             payment_method: document.getElementById('manPaymentMethod') ? document.getElementById('manPaymentMethod').value : "Cash",
             payment_status: document.getElementById('manPaymentStatus') ? document.getElementById('manPaymentStatus').value : "paid",
-            booking_source: document.getElementById('manBookingSource') ? document.getElementById('manBookingSource').value : "Facebook",
+            booking_source: document.getElementById('manBookingSource') ? document.getElementById('manBookingSource').value : "Walk-in",
             force_override: forceOverride
         };
 

@@ -172,8 +172,8 @@ async def extract_id(
         )
     
     # Update/Create verification record as pending_confirmation
-    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).first()
-    if not kyc_record:
+    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc()).first()
+    if not kyc_record or kyc_record.verification_status in ['VERIFIED', 'EXPIRED', 'rejected', 'blocked', 'verified']:
         kyc_record = models.IdentityVerification(user_id=current_user.id)
         db.add(kyc_record)
     
@@ -213,26 +213,26 @@ async def upload_id(
     if not booking or (booking.user_id != current_user.id and current_user.role != 'admin'):
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    # Fintech Attempt Limiter (Temporary higher limit for testing)
-    if current_user.kyc_attempts >= 100:
+    # Fintech Attempt Limiter
+    if current_user.kyc_attempts >= 3:
         # Check if they already have an IdentityVerification record to block
-        kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).first()
+        kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc()).first()
         if kyc_record:
             kyc_record.verification_status = "blocked"
-            kyc_record.failure_reason = "Maximum KYC attempts (3) reached."
+            kyc_record.failure_reason = "Maximum KYC attempts (3) reached. Please contact support."
         else:
             # Create a blocked record if none exists
             kyc_record = models.IdentityVerification(
                 user_id=current_user.id,
                 verification_status="blocked",
-                failure_reason="Maximum KYC attempts (3) reached.",
+                failure_reason="Maximum KYC attempts (3) reached. Please contact support.",
                 document_url="N/A",
                 selfie_url="N/A"
             )
             db.add(kyc_record)
         
         db.commit()
-        raise HTTPException(status_code=403, detail="Maximum KYC attempts reached. Your account has been blocked for verification.")
+        raise HTTPException(status_code=403, detail="Maximum KYC attempts reached. Your account has been blocked for verification. Please contact support.")
 
     # Increment attempts
     current_user.kyc_attempts += 1
@@ -256,10 +256,12 @@ async def upload_id(
 
 
     # Create/Update Verification Record
-    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).first()
-    if not kyc_record:
-        kyc_record = models.IdentityVerification(user_id=current_user.id)
+    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc()).first()
+    if not kyc_record or kyc_record.verification_status in ['VERIFIED', 'EXPIRED', 'rejected', 'blocked', 'verified']:
+        kyc_record = models.IdentityVerification(user_id=current_user.id, booking_id=booking_id)
         db.add(kyc_record)
+    else:
+        kyc_record.booking_id = booking_id
     
     # Check if the submitted name matches the registered customer's name
     reg_name_parts = [current_user.first_name]
@@ -281,10 +283,42 @@ async def upload_id(
     print(f"[KYC UPLOAD] Submitted name matching - Registered: '{user_full_name}', Submitted: '{submitted_full_name}', Matched: {submitted_name_matched}")
     
     if not submitted_name_matched:
+        kyc_record.verification_status = "failed"
+        kyc_record.failure_reason = "Name Mismatch | Ang pangalan sa iyong in-upload na ID ay hindi tugma sa iyong registered name."
+        db.commit()
         raise HTTPException(
             status_code=400,
             detail="Identity Verification Failed | Ang pangalan sa iyong in-upload na ID ay hindi tugma sa iyong registered name. Mangyaring i-upload ang sarili mong valid ID."
         )
+
+    # Validate DOB
+    if current_user.dob and dob:
+        from datetime import datetime
+        try:
+            submitted_dob_obj = datetime.strptime(dob, '%Y-%m-%d').date()
+            if submitted_dob_obj != current_user.dob:
+                kyc_record.verification_status = "failed"
+                kyc_record.failure_reason = "DOB Mismatch | The date of birth on your ID does not match the date of birth registered on your account."
+                db.commit()
+                raise HTTPException(
+                    status_code=400,
+                    detail="Identity Verification Failed | The date of birth on your ID does not match the date of birth registered on your account. Please review your information."
+                )
+            
+            # Age Calculation from verified ID DOB
+            import math
+            age = (datetime.now().date() - submitted_dob_obj).days / 365.2425
+            if age < 18:
+                kyc_record.verification_status = "blocked"
+                kyc_record.failure_reason = "Age Eligibility Failed | Based on the information extracted from your ID, you do not meet the minimum age requirement of 18 years old."
+                current_user.kyc_attempts = 3 # Max out attempts to lock the verification
+                db.commit()
+                raise HTTPException(
+                    status_code=400,
+                    detail="Booking unavailable | Based on the information extracted from your ID, you do not meet the minimum age requirement of 18 years old."
+                )
+        except ValueError:
+            pass # Ignore invalid date formats
 
     # Update User Profile with provided KYC data if available
     if first_name: current_user.first_name = first_name
@@ -453,7 +487,7 @@ async def verify_full(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).first()
+    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc()).first()
     if not kyc_record or kyc_record.verification_status == "blocked":
         raise HTTPException(status_code=400, detail="KYC process not initialized or blocked.")
 
@@ -521,7 +555,7 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
         print(f"\n[KYC BACKGROUND] Starting verification for User {user_id}...")
         user = db.query(models.User).get(user_id)
         booking = db.query(models.Booking).get(booking_id)
-        kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user_id).first()
+        kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user_id).order_by(models.IdentityVerification.created_at.desc()).first()
         session = db.query(models.VerificationSession).filter(models.VerificationSession.user_id == user_id).order_by(models.VerificationSession.created_at.desc()).first()
         
         # Simulate processing time
@@ -558,9 +592,29 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
             user.is_verified = True
             user.is_kyc_complete = True
             if kyc_record:
-                kyc_record.verification_status = "verified"
+                kyc_record.verification_status = "VERIFIED"
                 kyc_record.verified_at = func.now()
                 kyc_record.failure_reason = None
+                
+                # Calculate expiry: 6 months from now
+                from datetime import datetime
+                from dateutil.relativedelta import relativedelta
+                valid_until = datetime.now() + relativedelta(months=6)
+                
+                # Check if ID expires earlier
+                if kyc_record.id_expiry_date:
+                    if isinstance(kyc_record.id_expiry_date, str):
+                        try:
+                            id_expiry = datetime.strptime(kyc_record.id_expiry_date, '%Y-%m-%d').date()
+                        except:
+                            id_expiry = kyc_record.id_expiry_date
+                    else:
+                        id_expiry = kyc_record.id_expiry_date
+                        
+                    if id_expiry < valid_until.date():
+                        valid_until = datetime.combine(id_expiry, datetime.min.time())
+                
+                kyc_record.verification_valid_until = valid_until
                 
             db.query(models.Booking).filter(
                 models.Booking.user_id == user_id,
@@ -655,7 +709,7 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
             session = db.query(models.VerificationSession).filter(models.VerificationSession.user_id == user_id).order_by(models.VerificationSession.created_at.desc()).first()
             if session:
                 session.status = "failed"
-            kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user_id).first()
+            kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user_id).order_by(models.IdentityVerification.created_at.desc()).first()
             
             # Map exception / system failure to professional connection/interruption message
             interruption_msg = "Verification Interrupted | The verification process was interrupted due to a connection issue. Please check your internet connection and try again."
@@ -691,7 +745,7 @@ async def reset_kyc_status(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).first()
+    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc()).first()
     if kyc_record:
         kyc_record.verification_status = "pending"
         kyc_record.failure_reason = None
@@ -711,7 +765,7 @@ async def reset_liveness_status(
 ):
     """Resets KYC status back to pending_liveliness so the customer can retake selfies.
     Called automatically by the frontend when liveness fails, before showing the retry UI."""
-    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).first()
+    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc()).first()
     if kyc_record and kyc_record.verification_status == "liveliness_failed":
         kyc_record.verification_status = "pending_liveliness"
         kyc_record.failure_reason = None
@@ -726,7 +780,7 @@ async def get_kyc_status(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     session = db.query(models.VerificationSession).filter(models.VerificationSession.user_id == current_user.id).order_by(models.VerificationSession.created_at.desc()).first()
-    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).first()
+    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc()).first()
     
     # If blocked or rejected on the main compliance record, yield that
     if kyc_record and kyc_record.verification_status in ["blocked", "rejected"]:
@@ -776,7 +830,7 @@ async def view_kyc_document(
         proxy_url = f"/api/bookings/kyc/view/{filename}"
         identity = db.query(models.IdentityVerification).filter(
             models.IdentityVerification.user_id == current_user.id
-        ).first()
+        ).order_by(models.IdentityVerification.created_at.desc()).first()
         if identity:
             identity_urls = [identity.document_url, identity.selfie_url,
                            getattr(identity, 'selfie_2_url', None), getattr(identity, 'selfie_3_url', None)]
@@ -798,34 +852,10 @@ async def view_kyc_document(
         if file_url in doc_urls or proxy_url in doc_urls:
             is_owner = True
     
+    # Caterers are no longer authorized to view customer IDs (Platform handled)
     is_caterer_authorized = False
-    if current_user.role == "caterer":
-        # Check if this caterer has a booking with the user whose ID this is
-        try:
-            parts = filename.split("_")
-            target_user_id = None
-            if filename.startswith("cropped_"):
-                if len(parts) > 2 and parts[1] == "user":
-                    target_user_id = int(parts[2])
-                elif len(parts) > 3 and parts[1] == "temp" and parts[2] == "ocr":
-                    target_user_id = int(parts[3])
-            else:
-                if len(parts) > 1 and parts[0] == "user":
-                    target_user_id = int(parts[1])
-                elif len(parts) > 2 and parts[0] == "temp" and parts[1] == "ocr":
-                    target_user_id = int(parts[2])
 
-            if target_user_id is not None:
-                booking = db.query(models.Booking).filter(
-                    models.Booking.caterer_id == current_user.caterer_profile.id,
-                    models.Booking.user_id == target_user_id
-                ).first()
-                if booking:
-                    is_caterer_authorized = True
-        except Exception as parse_err:
-            print(f"[KYC VIEW] Caterer authorization parsing failed: {parse_err}")
-
-    if not (is_owner or is_admin or is_caterer_authorized):
+    if not (is_owner or is_admin):
         raise HTTPException(status_code=403, detail="Unauthorized access to this document.")
 
     path = os.path.join(UPLOAD_DIR, filename)

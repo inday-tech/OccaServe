@@ -448,6 +448,18 @@ async def create_manual_booking(
         payment_method = data.get("payment_method", "Cash")
         payment_status = data.get("payment_status", "paid")
         
+        # Build quotation data
+        quotation_items = data.get("quotation_items", [])
+        discount_amount = data.get("discount_amount", 0)
+        amount_paid = data.get("amount_paid", 0)
+        
+        custom_reqs = {
+            "is_walk_in": True,
+            "quotation_items": quotation_items,
+            "discount_amount": discount_amount,
+            "amount_paid": amount_paid
+        }
+        
         new_booking = models.Booking(
             user_id=target_user.id,
             caterer_id=user.caterer_profile.id,
@@ -464,10 +476,24 @@ async def create_manual_booking(
             payment_status=payment_status, 
             payment_method=payment_method,
             special_requests=special_requests,
-            booking_source=data.get("booking_source", "OccaServe")
+            custom_requirements=custom_reqs,
+            booking_source=data.get("booking_source", "Walk-in")
         )
         db.add(new_booking)
         db.flush()
+
+        # Save to Quotation table for audit trail
+        quotation = models.Quotation(
+            booking_id=new_booking.id,
+            package_details=quotation_items,
+            addons={"discount": discount_amount, "paid": amount_paid},
+            total_amount=data.get("total_amount", 0),
+            downpayment_percent=50,
+            status="signed",
+            customer_signed_at=func.now(),
+            caterer_signed_at=func.now()
+        )
+        db.add(quotation)
 
         # 3. Handle Selected Menu Items (Add-ons or Package items)
         menu_item_ids = data.get("menu_items", [])
@@ -694,9 +720,10 @@ async def update_booking_status(
         caterer_prof = user.caterer_profile
         
         # Use Global Admin Commission Setting
-        config = db.query(models.AdminSettings).first()
-        commission_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
-        commission_amount = float(booking.total_amount or 0.0) * commission_rate
+        config = db.query(models.WebsiteConfig).first()
+        comm_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
+        comm_fixed = config.commission_fixed_amount if config else 20.0
+        commission_amount = (float(booking.total_amount or 0.0) * comm_rate) + comm_fixed
         
         caterer_prof.outstanding_balance = float(caterer_prof.outstanding_balance or 0.0) + commission_amount
         booking.commission_calculated = True
@@ -1589,9 +1616,12 @@ async def caterer_payments(
         if invoice.status == 'paid':
             total_commission_paid += float(invoice.amount)
 
+    config = db.query(models.WebsiteConfig).first()
+
     return templates.TemplateResponse("caterer/payments.html", {
         "request": request,
         "user": user,
+        "config": config,
         "bookings": bookings,
         "invoices": invoices,
         "outstanding_balance": outstanding_balance,
@@ -1619,8 +1649,14 @@ async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_u
     
     if booking.is_archived:
         raise HTTPException(status_code=400, detail="Cannot confirm or accept an archived booking.")
-    if booking.status in ['cancelled', 'completed']:
+    if booking.status in ['cancelled', 'completed', 'expired']:
         raise HTTPException(status_code=400, detail=f"Cannot confirm or accept a booking that is already {booking.status}.")
+
+    # CONTINUOUS REVALIDATION: Protect Caterer from accepting expired bookings
+    from ..services.booking_validator import BookingValidator
+    is_valid, error_msg = BookingValidator.validate_booking_state(db, booking, update_if_expired=True)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
 
     old_payment_status = booking.payment_status
     history_note = "Booking confirmed by caterer."
@@ -2277,15 +2313,16 @@ async def complete_booking(
 
     # Automatically generate commission record
     config = db.query(models.WebsiteConfig).first()
-    commission_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
-    commission_due = (booking.total_amount or 0.0) * commission_rate
+    comm_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
+    comm_fixed = config.commission_fixed_amount if config else 20.0
+    commission_due = ((booking.total_amount or 0.0) * comm_rate) + comm_fixed
 
     commission_record = models.BillingInvoice(
         caterer_id=booking.caterer_id,
         booking_id=booking.id,
         billing_period=booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
         amount=commission_due,
-        commission_rate=commission_rate,
+        commission_rate=comm_rate,
         status='pending'
     )
     db.add(commission_record)
@@ -3134,6 +3171,89 @@ async def update_service_item(
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return JSONResponse({"status": "success", "message": "Item updated successfully"})
     return RedirectResponse(url="/caterer/services", status_code=303)
+
+@router.post("/api/services/add-rental-wizard")
+async def add_rental_wizard(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    form = await request.form()
+    
+    # Process image if uploaded
+    image = form.get("image")
+    image_url = None
+    if image and getattr(image, "filename", None):
+        try:
+            content_bytes = await image.read()
+            if content_bytes:
+                image_url = process_base64_image(content_bytes)
+        except Exception:
+            pass
+
+    import json
+    details_json = {}
+    try:
+        details_json = json.loads(form.get("details_json", "{}"))
+    except:
+        pass
+
+    new_item = models.Equipment(
+        caterer_id=user.caterer_profile.id,
+        name=form.get("name"),
+        category=form.get("category"),
+        description=form.get("description"),
+        rental_price=float(form.get("price", 0)),
+        unit_type=form.get("unit_type", "Per Set"),
+        available_qty=int(form.get("total_stock", 1)),
+        status=form.get("status", "Draft"),
+        details_json=details_json,
+        image_url=image_url
+    )
+    db.add(new_item)
+    db.commit()
+    return JSONResponse({"status": "success", "message": "Rental saved successfully!"})
+
+@router.post("/api/services/add-service-wizard")
+async def add_service_wizard(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    form = await request.form()
+    
+    image = form.get("image")
+    image_url = None
+    if image and getattr(image, "filename", None):
+        try:
+            content_bytes = await image.read()
+            if content_bytes:
+                image_url = process_base64_image(content_bytes)
+        except Exception:
+            pass
+
+    import json
+    details_json = {}
+    try:
+        details_json = json.loads(form.get("details_json", "{}"))
+    except:
+        pass
+
+    new_item = models.Service(
+        caterer_id=user.caterer_profile.id,
+        name=form.get("name"),
+        category=form.get("category"),
+        description=form.get("description"),
+        selling_price=float(form.get("price", 0)),
+        unit_type=form.get("unit_type", "Per Event"),
+        status=form.get("status", "Draft"),
+        base_duration_hours=int(form.get("base_duration_hours", 3)),
+        details_json=details_json,
+        image_url=image_url
+    )
+    db.add(new_item)
+    db.commit()
+    return JSONResponse({"status": "success", "message": "Service saved successfully!"})
 
 @router.post("/services/{item_id}/archive")
 async def archive_service_item(
@@ -5611,139 +5731,6 @@ async def view_compliance_queue(
         "active_page": "compliance"
     })
 
-
-
-@router.get("/compliance/view/{user_id}", response_class=HTMLResponse)
-async def view_customer_verification(
-    user_id: int,
-    request: Request,
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(caterer_only)
-):
-    profile = user.caterer_profile
-    # Verify this customer has a booking with this caterer
-    booking = db.query(models.Booking).filter(
-        models.Booking.caterer_id == profile.id,
-        models.Booking.user_id == user_id
-    ).first()
-    if not booking:
-        if request.query_params.get("modal") == "true":
-            return HTMLResponse("<div style='padding:2rem;text-align:center;font-family:sans-serif;color:#64748b;'><i class='fas fa-lock' style='font-size:3rem;color:#cbd5e1;margin-bottom:1rem;'></i><h3>Access Denied</h3><p>You do not have access to this user's verification data.</p></div>")
-        raise HTTPException(status_code=403, detail="You do not have access to this user's verification data.")
-
-    target_user = db.query(models.User).get(user_id)
-    if not target_user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    verification = target_user.identity_verification
-    if not verification:
-        if request.query_params.get("modal") == "true":
-            return HTMLResponse("<div style='padding:2rem;text-align:center;font-family:sans-serif;color:#64748b;'><i class='fas fa-id-card' style='font-size:3rem;color:#cbd5e1;margin-bottom:1rem;'></i><h3>No KYC Data</h3><p>This customer has not submitted identity verification yet.</p></div>")
-        return RedirectResponse(url="/caterer/compliance?error_msg=No+verification+data+found+for+this+user.")
-
-    # Fetch relevant bookings for historical context
-    bookings = db.query(models.Booking).filter(
-        models.Booking.caterer_id == profile.id,
-        models.Booking.user_id == user_id
-    ).order_by(models.Booking.created_at.desc()).all()
-
-    return templates.TemplateResponse("caterer/compliance_verify.html", {
-        "request": request,
-        "user": user,
-        "target_user": target_user,
-        "verification": verification,
-        "bookings": bookings,
-        "active_page": "compliance",
-        "is_modal": request.query_params.get("modal") == "true"
-    })
-
-@router.post("/compliance/{user_id}/verify")
-async def verify_customer_compliance(
-    user_id: int,
-    action: str = Form(...),
-    reason: Optional[str] = Form(None),
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(caterer_only)
-):
-    profile = user.caterer_profile
-    # Verify this customer has a booking with this caterer
-    booking = db.query(models.Booking).filter(
-        models.Booking.caterer_id == profile.id,
-        models.Booking.user_id == user_id
-    ).first()
-    
-    if not booking:
-        raise HTTPException(status_code=403, detail="Unauthorized")
-
-    target_user = db.query(models.User).get(user_id)
-    if not target_user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    kyc_record = target_user.identity_verification
-    
-    if action == "approve":
-        target_user.is_verified = True
-        target_user.is_kyc_complete = True
-        if kyc_record:
-            kyc_record.verification_status = "verified"
-            kyc_record.verified_at = func.now()
-        
-        # Update latest verification session
-        from ..db.models import VerificationSession
-        session = db.query(VerificationSession).filter(VerificationSession.user_id == user_id).order_by(VerificationSession.created_at.desc()).first()
-        if session:
-            session.status = "verified"
-        
-        # Also update all bookings for this user with this caterer
-        db.query(models.Booking).filter(
-            models.Booking.user_id == user_id,
-            models.Booking.caterer_id == profile.id
-        ).update({"ocr_verified": True, "liveness_verified": True})
-
-        # NOTIFY: Real-time update for customer
-        await NotificationService.notify_status_update(
-            db, user_id, 
-            "Identity Approved!", 
-            f"Your identity has been verified by {profile.business_name}. You may now proceed with your booking.",
-            f"/bookings/step/quotation/{booking.id}",
-            "kyc_update"
-        )
-            
-    elif action == "reject":
-        if kyc_record:
-            kyc_record.verification_status = "rejected"
-            kyc_record.failure_reason = reason
-        target_user.is_verified = False
-        
-        # Update latest verification session
-        from ..db.models import VerificationSession
-        session = db.query(VerificationSession).filter(VerificationSession.user_id == user_id).order_by(VerificationSession.created_at.desc()).first()
-        if session:
-            session.status = "rejected"
-
-        # NOTIFY: Failure alert for customer
-        await NotificationService.notify_status_update(
-            db, user_id, 
-            "Identity Action Required", 
-            f"Your identity verification was rejected by {profile.business_name}. Reason: {reason}",
-            f"/bookings/step/kyc/{booking.id}",
-            "kyc_update"
-        )
-        
-    db.commit()
-
-    # --- Real-time WebSocket Notification ---
-    # Notify the customer that their verification state has changed
-    try:
-        await manager.broadcast_to_user(target_user.id, {
-            "type": "kyc_update",
-            "status": "verified" if action == "approve" else "rejected",
-            "reason": reason if action == "reject" else None
-        })
-    except Exception as e:
-        print(f"[KYC WS] Failed to notify user {user_id}: {e}")
-
-    return RedirectResponse(url=f"/caterer/compliance?success_msg=Identity+{action}d+successfully", status_code=303)
 
 
 # --- SMART PRICING & QUICK BOOK SYSTEM ---

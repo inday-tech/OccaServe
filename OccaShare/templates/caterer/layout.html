@@ -6,6 +6,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <!-- CACHE BUSTING (Temp to ensure updates apply) -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>{% block title %}Caterer Dashboard - OccaServe{% endblock %}</title>
 
     <!-- Core Assets -->
@@ -2430,6 +2434,10 @@
                         showConfirmButton: false,
                         timer: 4000,
                         timerProgressBar: true,
+                        customClass: {
+                            popup: 'small-toast-popup',
+                            title: 'small-toast-title'
+                        },
                         didOpen: (toast) => {
                             toast.addEventListener('mouseenter', Swal.stopTimer)
                             toast.addEventListener('mouseleave', Swal.resumeTimer)

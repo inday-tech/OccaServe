@@ -26,8 +26,19 @@ async def customer_dashboard(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
-    # Filter out archived bookings
-    bookings = [b for b in user.bookings if not b.customer_archived]
+    # Filter out archived, drafts, and food orders to match Bookings page
+    bookings = []
+    for b in user.bookings:
+        if b.customer_archived or b.status == 'draft' or b.document_type == 'invoice':
+            continue
+        # Catch older or mislabeled food orders: fast track with ONLY food items
+        if b.transaction_type == 'fast_track' and b.selected_items:
+            has_food = any(i.menu_item_id for i in b.selected_items)
+            has_equip = any(i.equipment_id for i in b.selected_items)
+            has_service = any(i.service_id for i in b.selected_items)
+            if has_food and not has_equip and not has_service:
+                continue
+        bookings.append(b)
     today = date.today()
     upcoming_count = 0
     
@@ -146,9 +157,9 @@ async def customer_dashboard(
 
     # Calculate Profile Completion
     completion_points = 0
-    if user.first_name and user.last_name: completion_points += 1
+    if user.first_name and user.last_name and user.dob: completion_points += 1
     if user.phone_number: completion_points += 1
-    if user.province and user.city_municipality: completion_points += 1
+    if user.province and user.city_municipality and user.barangay and user.street_address: completion_points += 1
     profile_completion = int((completion_points / 3) * 100)
     
     # Featured Caterers for FTUX
@@ -723,9 +734,9 @@ async def customer_profile(
 ):
     # Calculate Profile Completion
     completion_points = 0
-    if user.first_name and user.last_name: completion_points += 1
+    if user.first_name and user.last_name and user.dob: completion_points += 1
     if user.phone_number: completion_points += 1
-    if user.province and user.city_municipality: completion_points += 1
+    if user.province and user.city_municipality and user.barangay and user.street_address: completion_points += 1
     profile_completion = int((completion_points / 3) * 100)
     
     return templates.TemplateResponse("customer/profile.html", {
@@ -741,43 +752,61 @@ async def customer_update_personal(
     request: Request,
     first_name: str = Form(...),
     last_name: str = Form(...),
+    phone_number: str = Form(...),
+    dob: str = Form(...),
     middle_name: Optional[str] = Form(None),
-    phone_number: Optional[str] = Form(None),
-    dob: Optional[str] = Form(None),
     gender: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
+    import re
+    from datetime import datetime, date
+
+    first_name = first_name.strip()
+    last_name = last_name.strip()
+    
+    if not first_name or not last_name:
+        return {"success": False, "message": "First name and last name are required."}
+        
+    if not re.match(r"^09[0-9]{9}$", phone_number):
+        return {"success": False, "message": "Please enter a valid 11-digit mobile number starting with 09."}
+        
+    try:
+        parsed_dob = datetime.strptime(dob, "%Y-%m-%d").date()
+        today = date.today()
+        age = today.year - parsed_dob.year - ((today.month, today.day) < (parsed_dob.month, parsed_dob.day))
+        if age < 18:
+            return {"success": False, "message": "You must be at least 18 years old."}
+        user.dob = parsed_dob
+    except ValueError:
+        return {"success": False, "message": "Invalid date format for birthday."}
+
     user.first_name = first_name
     user.last_name = last_name
-    user.middle_name = middle_name
+    user.middle_name = middle_name.strip() if middle_name else None
     user.phone_number = phone_number
     user.gender = gender
     
-    if dob:
-        from datetime import datetime
-        try:
-            user.dob = datetime.strptime(dob, "%Y-%m-%d").date()
-        except:
-            pass
-            
     db.commit()
     return {"success": True, "message": "Personal information updated successfully."}
 
 @router.post("/profile/update-address")
 async def customer_update_address(
     request: Request,
-    province: Optional[str] = Form(None),
-    city_municipality: Optional[str] = Form(None),
-    barangay: Optional[str] = Form(None),
-    street_address: Optional[str] = Form(None),
+    province: str = Form(...),
+    city_municipality: str = Form(...),
+    barangay: str = Form(...),
+    street_address: str = Form(...),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
-    user.province = province or None
-    user.city_municipality = city_municipality or None
-    user.barangay = barangay or None
-    user.street_address = street_address or None
+    if not province or not city_municipality or not barangay or not street_address:
+         return {"success": False, "message": "Province, City, Barangay, and Street Address are required."}
+
+    user.province = province
+    user.city_municipality = city_municipality
+    user.barangay = barangay
+    user.street_address = street_address
 
     # Also build the legacy single-line address for backward compatibility
     parts = [p for p in [street_address, barangay, city_municipality, province] if p]
@@ -902,6 +931,29 @@ async def customer_change_password(
     db.commit()
     
     return {"success": True, "message": "Password updated successfully."}
+
+@router.post("/profile/delete")
+async def customer_delete_account(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    try:
+        # Soft delete logic to preserve booking history for caterers
+        user.status = "deleted"
+        user.is_archived = True
+        user.email = f"deleted_{user.id}_{user.email}"
+        user.first_name = "Deleted"
+        user.last_name = "User"
+        user.phone_number = None
+        user.profile_image_url = None
+        user.address = None
+        
+        db.commit()
+        return {"success": True, "message": "Account successfully deleted."}
+    except Exception as e:
+        db.rollback()
+        return {"success": False, "message": str(e)}
 
 @router.get("/promotions", response_class=HTMLResponse)
 async def customer_promotions(

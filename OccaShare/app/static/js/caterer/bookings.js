@@ -1071,6 +1071,8 @@ function showBookingDetails(btn) {
         let alertHtml = '';
         if (data.paymentStatus === 'expired') {
             alertHtml = '<span style="background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; padding: 4px 12px; border-radius: 50px; font-weight: 800; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-exclamation-triangle"></i> RESERVATION EXPIRED</span>';
+        } else if (data.isPast === 'true') {
+            alertHtml = '<span style="background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; padding: 4px 12px; border-radius: 50px; font-weight: 800; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-calendar-times"></i> EVENT DATE PASSED</span>';
         } else if (['pending', 'pending_quotation', 'awaiting_payment', 'awaiting_caterer'].includes(data.status) && (data.isUrgent === 'true' || data.isUrgent === true)) {
             alertHtml = '<span style="background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; padding: 4px 12px; border-radius: 50px; font-weight: 800; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-clock"></i> URGENT REQUEST</span>';
         }
@@ -1139,15 +1141,19 @@ function showBookingDetails(btn) {
         nextStepMsg = 'Booking was cancelled.';
     }
     
-    var desktopNST = document.getElementById('desktopNextStepText');
-    var mobileNST = document.getElementById('mobileNextStepText');
-    if (desktopNST) desktopNST.innerText = nextStepMsg;
-    if (mobileNST) mobileNST.innerText = nextStepMsg;
+    var unifiedNST = document.getElementById('unifiedNextStepText');
+    if (unifiedNST) unifiedNST.innerText = nextStepMsg;
     
     var mobileCST = document.getElementById('mobileCompactStatusText');
     var mobileCNST = document.getElementById('mobileCompactNextStatusText');
     if (mobileCST) mobileCST.innerText = data.displayStatus || data.status.replace(/_/g, ' ').toUpperCase();
     if (mobileCNST) mobileCNST.innerText = nextStepMsg;
+
+    var primaryActionEl = document.getElementById('unifiedNextStepActionContainer');
+    if (primaryActionEl) {
+        primaryActionEl.innerHTML = '';
+        primaryActionEl.style.display = 'none';
+    }
 
     if (actionsEl) {
         actionsEl.style.display = 'flex';
@@ -1155,21 +1161,32 @@ function showBookingDetails(btn) {
         
         // --- KYC WARNING BANNER ---
         // Only show for Event Packages. Skip for Ala Carte / Food Orders.
+        var kycStatusEl = document.getElementById('modalKycStatus');
+        if (kycStatusEl) {
+            if (!isVerified && targetUserId) {
+                kycStatusEl.innerHTML = `<span style="color: #c2410c; background: #ffedd5; padding: 2px 6px; border-radius: 4px; font-weight: 700;"><i class="fas fa-shield-exclamation"></i> Unverified Profile</span>`;
+            } else if (isVerified) {
+                kycStatusEl.innerHTML = `<span style="color: #15803d; background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-weight: 700;"><i class="fas fa-check-circle"></i> Identity Verified</span>`;
+            } else {
+                kycStatusEl.innerHTML = ``;
+            }
+        }
+        
         if (!isVerified && targetUserId && isPackage) {
-            actionsEl.innerHTML = `
-                <div style="width:100%; margin-bottom: 1rem; background:#fff7ed; border:1px solid #fed7aa; padding:1rem; border-radius:0.75rem; display:flex; align-items:center; gap:0.75rem;">
-                    <div style="width:40px; height:40px; background:#ffedd5; color:#f97316; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
-                        <i class="fas fa-shield-exclamation"></i>
+            if (primaryActionEl) {
+                primaryActionEl.innerHTML = `
+                    <div style="width:100%; margin-bottom: 0.5rem; background:#fff7ed; border:1px solid #fed7aa; padding:1rem; border-radius:0.75rem; display:flex; flex-direction: column; gap:0.75rem;">
+                        <div>
+                            <h4 style="margin:0; font-size:0.85rem; color:#9a3412; font-weight:800;">UNVERIFIED CUSTOMER</h4>
+                            <p style="margin:2px 0 0; font-size:0.75rem; color:#c2410c;">Audit their identity before accepting this booking to prevent fraud.</p>
+                        </div>
+                        <button type="button" onclick="window.openIframeModal('/caterer/compliance/view/${targetUserId}?modal=true', 'Customer KYC Audit')" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#fdba74; color:#9a3412; cursor:pointer; width: 100%;">
+                            <i class="fas fa-search"></i> Audit Now
+                        </button>
                     </div>
-                    <div style="flex:1;">
-                        <h4 style="margin:0; font-size:0.85rem; color:#9a3412; font-weight:800;">UNVERIFIED CUSTOMER</h4>
-                        <p style="margin:2px 0 0; font-size:0.75rem; color:#c2410c;">Audit their identity before accepting this booking to prevent fraud.</p>
-                    </div>
-                    <button type="button" onclick="window.openIframeModal('/caterer/compliance/view/${targetUserId}?modal=true', 'Customer KYC Audit')" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#fdba74; color:#9a3412; cursor:pointer;">
-                        <i class="fas fa-search"></i> Audit Now
-                    </button>
-                </div>
-            `;
+                `;
+                primaryActionEl.style.display = 'block';
+            }
         }
 
         const plan = (data.paymentPlan || 'downpayment').toUpperCase();
@@ -1208,7 +1225,13 @@ function showBookingDetails(btn) {
             const btnIcon = isPayment ? 'fa-check-double' : 'fa-check-circle';
             
             if (isPayment || isCashOrCOD) {
-                actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.confirmAcceptBooking(${data.id}, ${isPayment}, ${isVerified}, ${isPackage})"><i class="fas ${btnIcon}"></i> ${btnLabel}</button>`;
+                if (primaryActionEl) {
+                    primaryActionEl.innerHTML = `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.confirmAcceptBooking(${data.id}, ${isPayment}, ${isVerified}, ${isPackage})"><i class="fas ${btnIcon}"></i> ${btnLabel}</button>`;
+                    primaryActionEl.style.display = 'block';
+                } else {
+                    actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.confirmAcceptBooking(${data.id}, ${isPayment}, ${isVerified}, ${isPackage})"><i class="fas ${btnIcon}"></i> ${btnLabel}</button>`;
+                }
+                
                 if (isPayment) {
                     actionsEl.innerHTML += `<button type="button" class="btn-footer-action" onclick="window.requestNewProof(${data.id})" style="background: white; color: #475569; border: 1px solid #cbd5e1; font-weight: 600;"><i class="fas fa-redo"></i> Request New Proof</button>`;
                 }
@@ -1223,6 +1246,23 @@ function showBookingDetails(btn) {
             actionsEl.innerHTML = `
                 <button type="button" onclick="window.openIframeModal('/caterer/bookings/${data.id}/sign?modal=true', 'Sign Service Agreement')" class="btn-footer-action btn-status-confirm"><i class="fas fa-pen-nib"></i> Sign Contract Now</button>
                 <button type="button" class="btn-footer-action" onclick="window.confirmRejectBooking(${data.id})" style="background: white; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600;"><i class="fas fa-times-circle"></i> Reject Booking</button>
+            `;
+            
+        } else if (data.status === 'awaiting_customer') {
+            actionsEl.innerHTML = `
+                <div style="padding: 0.65rem 1rem; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; font-size: 0.85rem; font-weight: 600; flex: 1; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-clock"></i> Waiting for Customer to Sign</div>
+                <button type="button" class="btn-footer-action" onclick="window.confirmRejectBooking(${data.id})" style="background: white; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600;"><i class="fas fa-times-circle"></i> Cancel Booking</button>
+            `;
+            
+        } else if (data.status === 'pending_quotation') {
+            actionsEl.innerHTML = `
+                <div style="padding: 0.65rem 1rem; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; font-size: 0.85rem; font-weight: 600; flex: 1; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-file-invoice-dollar"></i> Waiting for Customer Approval</div>
+                <button type="button" class="btn-footer-action" onclick="window.confirmRejectBooking(${data.id})" style="background: white; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600;"><i class="fas fa-times-circle"></i> Cancel Booking</button>
+            `;
+            
+        } else if (data.status === 'draft') {
+            actionsEl.innerHTML = `
+                <button type="button" class="btn-footer-action" onclick="window.confirmRejectBooking(${data.id})" style="background: white; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600;"><i class="fas fa-trash-alt"></i> Delete Draft</button>
             `;
             
         } else {
@@ -1274,16 +1314,25 @@ function showBookingDetails(btn) {
                 }
             } else if (data.status === 'setup_ongoing' || data.status === 'in_progress') {
                 if (data.paymentStatus === 'paid' || data.amount === "₱0.00" || data.paymentPlan === 'full') {
-                    const btnLabel = isPackage ? 'Mark as Done (Step 6)' : 'Mark as Completed';
-                    actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-complete" onclick="window.confirmCompleteBooking(' + data.id + ')"><i class="fas fa-flag-checkered"></i> ' + btnLabel + '</button>';
+                    const btnLabel = isPackage ? 'Mark as Completed' : 'Mark as Completed';
+                    if (primaryActionEl) {
+                        primaryActionEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-complete" onclick="window.confirmCompleteBooking(' + data.id + ')"><i class="fas fa-flag-checkered"></i> ' + btnLabel + '</button>';
+                        primaryActionEl.style.display = 'block';
+                    } else {
+                        actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-complete" onclick="window.confirmCompleteBooking(' + data.id + ')"><i class="fas fa-flag-checkered"></i> ' + btnLabel + '</button>';
+                    }
                 } else {
                     if (data.paymentStatus === 'balance_proof_submitted') {
-                        actionsEl.innerHTML = `<button type="button" class="btn-footer-action btn-status-confirm pulse-update" onclick="window.confirmAcceptBooking(${data.id}, true)" style="margin-bottom:0.5rem;width:100%;"><i class="fas fa-check-double"></i> Verify Final Balance</button>`;
-                    }
-                    const lockMsg = isPackage ? 'Step 6 Locked: Final Payment Required' : 'Bill Settlement Required to Complete';
-                    actionsEl.innerHTML += `<div class="completion-pending-hint" style="background:#fff7ed;color:#c2410c;padding:0.75rem;border-radius:0.75rem;font-size:0.85rem;font-weight:600;display:flex;align-items:center;gap:0.5rem;width:100%;"><i class="fas fa-lock"></i> ${lockMsg}</div>`;
-                    if (data.paymentStatus === 'balance_proof_submitted') {
+                        if (primaryActionEl) {
+                            primaryActionEl.innerHTML = `<button type="button" class="btn-footer-action btn-status-confirm pulse-update" onclick="window.confirmAcceptBooking(${data.id}, true)" style="width:100%;"><i class="fas fa-check-double"></i> Verify Final Balance</button>`;
+                            primaryActionEl.style.display = 'block';
+                        }
                         actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-reject" onclick="window.requestNewProof(${data.id})" style="margin-top:0.5rem; width:100%;"><i class="fas fa-undo"></i> Request Correct Balance Proof</button>`;
+                    } else {
+                        if (primaryActionEl) {
+                            primaryActionEl.innerHTML = `<button type="button" class="btn-footer-action" onclick="window.copyInvoiceLink(${data.id})" style="background: var(--primary-color); color: white; border: none; font-weight: 600;"><i class="fas fa-paper-plane"></i> Send Final Payment Request</button>`;
+                            primaryActionEl.style.display = 'block';
+                        }
                     }
                 }
             } else if (data.status === 'completed' || data.status === 'cancelled') {
@@ -1312,21 +1361,31 @@ function showBookingDetails(btn) {
         const actionCard = document.getElementById('actionCardSticky');
         const actionIcon = document.getElementById('mobileActionToggleIcon');
         const actionText = document.getElementById('mobileActionToggleText');
+        const isMobile = window.innerWidth <= 768;
         
         if (actionCard) {
             actionCard.style.display = hasActions ? 'block' : 'none';
             if (hasActions) {
-                // Ensure expanded by default so user knows actions are required
-                actionCard.classList.remove('collapsed');
-                if (actionIcon) actionIcon.className = 'fas fa-chevron-down';
-                if (actionText) actionText.innerText = 'Hide Actions';
+                if (isMobile) {
+                    // Start collapsed on mobile so content isn't blocked
+                    actionCard.classList.add('collapsed');
+                    if (actionIcon) actionIcon.className = 'fas fa-chevron-up';
+                    if (actionText) actionText.innerText = 'Show Actions';
+                } else {
+                    actionCard.classList.remove('collapsed');
+                    if (actionIcon) actionIcon.className = 'fas fa-chevron-down';
+                    if (actionText) actionText.innerText = 'Hide Actions';
+                }
             }
         }
     }
 
     document.getElementById('modalBookedOn').innerText = data.bookedOn;
     const displayPaymentPlan = (isFoodOrder || data.paymentPlan === 'full') ? 'FULL PAYMENT' : (data.paymentPlan || 'downpayment').toUpperCase();
-    document.getElementById('modalPaymentMethod').innerText = `${data.paymentMethod} (${displayPaymentPlan})`;
+    const paymentMethodEl = document.getElementById('modalPaymentMethod');
+    if (paymentMethodEl) {
+        paymentMethodEl.innerText = `${data.paymentMethod} (${displayPaymentPlan})`;
+    }
     const payRefEl = document.getElementById('modalPaymentRef');
     if (payRefEl) {
         if (data.paymentRef && data.paymentRef.trim() !== '') {
@@ -1352,19 +1411,19 @@ function showBookingDetails(btn) {
     let balanceRaw = totalRaw - paidRaw;
     const formatMoney = (val) => '₱' + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     
-    let dtTotal = document.getElementById('desktopOverviewTotal');
-    let dtPaid = document.getElementById('desktopOverviewPaid');
-    let dtBalance = document.getElementById('desktopOverviewBalance');
+    let dtTotal = document.getElementById('modalTotalAmount');
+    let dtPaid = document.getElementById('headerPaidAmount');
+    let dtBalance = document.getElementById('headerBalanceAmount');
     if (dtTotal) dtTotal.innerText = formatMoney(totalRaw);
-    if (dtPaid) dtPaid.innerText = formatMoney(paidRaw);
-    if (dtBalance) dtBalance.innerText = formatMoney(balanceRaw);
+    if (dtPaid) dtPaid.innerHTML = formatMoney(paidRaw) + ' paid';
+    if (dtBalance) dtBalance.innerHTML = formatMoney(balanceRaw) + ' balance';
     
-    let moTotal = document.getElementById('mobileOverviewTotal');
-    let moPaid = document.getElementById('mobileOverviewPaid');
-    let moBalance = document.getElementById('mobileOverviewBalance');
+    let moTotal = document.getElementById('modalTotalAmountMobile');
+    let moPaid = document.getElementById('headerPaidAmountMobile');
+    let moBalance = document.getElementById('headerBalanceAmountMobile');
     if (moTotal) moTotal.innerText = formatMoney(totalRaw);
-    if (moPaid) moPaid.innerText = formatMoney(paidRaw);
-    if (moBalance) moBalance.innerText = formatMoney(balanceRaw);
+    if (moPaid) moPaid.innerHTML = formatMoney(paidRaw) + ' paid';
+    if (moBalance) moBalance.innerHTML = formatMoney(balanceRaw) + ' balance';
 
     // --- PROFIT SUMMARY INJECTION FOR COMPLETED BOOKINGS ---
     const profitSummary = document.getElementById('completedProfitSummary');
@@ -1723,22 +1782,16 @@ async function saveCatererNotes() {
     }
     
     try {
-        const res = await fetch(`/caterer/api/bookings/${currentBookingId}/notes`, {
+        const data = await window.apiAction(`/caterer/api/bookings/${currentBookingId}/notes`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ notes: notes })
         });
         
-        if (res.ok) {
-            window.showSuccess('Notes saved successfully.');
+        if (data && data.status === 'success') {
             // Update the data attribute on the view button to persist change
             const viewBtn = document.querySelector(`.view-details[data-id="${currentBookingId}"]`);
             if (viewBtn) viewBtn.dataset.catererNotes = notes;
-        } else {
-            window.showError('Failed to save notes.');
         }
-    } catch (err) {
-        window.showError('Error connecting to server.');
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -1854,37 +1907,31 @@ function toggleDueDateEdit() {
 
 async function saveDueDate() {
     var newDate = document.getElementById('balanceDueDateInput').value;
-    if (!newDate) { window.showError('Please select a valid date.'); return; }
+    if (!newDate) { window.showToast('Please select a valid date.', 'error'); return; }
     var todayStr = new Date().toISOString().split('T')[0];
-    if (newDate < todayStr) { window.showError('Deadline cannot be set in the past.'); return; }
-    if (currentEventDate && newDate > currentEventDate) { window.showError('Deadline cannot be after the event date. It must be settled before or on the event day.'); return; }
-    try {
-        var response = await fetch('/caterer/api/bookings/' + currentBookingId + '/set-due-date', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ due_date: newDate })
-        });
-        if (response.ok) {
-            // Local UI Update
-            const parts = newDate.split('-');
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            const formatted = `${months[parseInt(parts[1])-1]} ${parts[2]}, ${parts[0]}`;
-            
-            document.getElementById('modalDueDate').innerText = formatted;
-            const badgeContainer = document.getElementById('dueDateBadgeContainer');
-            if (badgeContainer) badgeContainer.innerHTML = '<span class="due-date-badge"><i class="fas fa-check-circle"></i> Deadline Set</span>';
-            
-            toggleDueDateEdit();
-            
-            var btn = document.querySelector('.view-details[data-id="' + currentBookingId + '"]');
-            if (btn) btn.dataset.balanceDue = newDate;
-            
-            window.showSuccess('Payment deadline updated and customer has been notified!');
-        } else {
-            var err = await response.json();
-            window.showError(err.detail || 'Failed to update due date.');
-        }
-    } catch (error) { window.showError('An error occurred.'); }
+    if (newDate < todayStr) { window.showToast('Deadline cannot be set in the past.', 'error'); return; }
+    if (currentEventDate && newDate > currentEventDate) { window.showToast('Deadline cannot be after the event date. It must be settled before or on the event day.', 'error'); return; }
+    
+    const data = await window.apiAction('/caterer/api/bookings/' + currentBookingId + '/set-due-date', {
+        method: 'POST',
+        body: JSON.stringify({ due_date: newDate })
+    });
+    
+    if (data && data.status === 'success') {
+        // Local UI Update
+        const parts = newDate.split('-');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const formatted = `${months[parseInt(parts[1])-1]} ${parts[2]}, ${parts[0]}`;
+        
+        document.getElementById('modalDueDate').innerText = formatted;
+        const badgeContainer = document.getElementById('dueDateBadgeContainer');
+        if (badgeContainer) badgeContainer.innerHTML = '<span class="due-date-badge"><i class="fas fa-check-circle"></i> Deadline Set</span>';
+        
+        toggleDueDateEdit();
+        
+        var btn = document.querySelector('.view-details[data-id="' + currentBookingId + '"]');
+        if (btn) btn.dataset.balanceDue = newDate;
+    }
 }
 
 async function runAIScan() {
@@ -2047,7 +2094,7 @@ function confirmRejectBooking(bookingId) {
 async function submitRejectionWithReason() {
     const reason = document.getElementById('rejectReasonInput').value.trim();
     if (!reason) {
-        window.showError('Please provide a reason for the rejection.');
+        window.showToast('Please provide a reason for the rejection.', 'error');
         return;
     }
     
@@ -2060,23 +2107,16 @@ async function submitRejectionWithReason() {
     }
     
     try {
-        const response = await fetch(`/caterer/bookings/${rejectionBookingId}/reject`, {
+        const data = await window.apiAction(`/caterer/bookings/${rejectionBookingId}/reject`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ reason: reason })
         });
         
-        const data = await response.json();
-        if (response.ok && data.status === 'success') {
-            window.showSuccess('Booking rejected and customer notified.');
+        if (data && data.status === 'success') {
             bk_closeModal('rejectReasonModal');
             bk_closeModal('bookingDetailModal');
             if (window.refreshBookingsTable) window.refreshBookingsTable();
-        } else {
-            window.showError(data.detail || 'Failed to reject booking.');
         }
-    } catch (err) {
-        window.showError('Error connecting to server.');
     } finally {
         if (btn) {
             btn.disabled = false;

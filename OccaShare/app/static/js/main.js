@@ -92,6 +92,10 @@ window.showToast = function(message, icon = 'info') {
         timerProgressBar: true,
         background: '#ffffff',
         color: '#1e293b',
+        customClass: {
+            popup: 'small-toast-popup',
+            title: 'small-toast-title'
+        },
         didOpen: (toast) => {
             toast.addEventListener('mouseenter', Swal.stopTimer)
             toast.addEventListener('mouseleave', Swal.resumeTimer)

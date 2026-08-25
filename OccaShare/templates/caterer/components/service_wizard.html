@@ -1,0 +1,191 @@
+<!-- Add Service Wizard Modal -->
+<div id="serviceWizardModal" class="occ-modal-overlay" style="display: none; z-index: 99999;">
+    <div class="occ-modal-box sz-lg occ-content-pop" style="max-width: 800px; padding: 0;">
+        <div class="occ-modal-header glass-header" style="padding: 1.5rem 2rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3 class="occ-modal-title" style="margin:0;"><i class="fas fa-concierge-bell"></i> Add New Service</h3>
+            </div>
+            <button type="button" onclick="closeWizard('serviceWizardModal')" class="occ-modal-close" style="background: none; border: none; font-size: 1.25rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <!-- Visual Stepper Section -->
+        <div style="padding: 1.5rem 3rem; background: #ffffff; border-bottom: 1px solid #e2e8f0;">
+            <div style="display: flex; justify-content: space-between; position: relative; width: 100%;">
+                <div style="position: absolute; top: 12px; left: 0; right: 0; height: 2px; background: #e2e8f0; z-index: 1;"></div>
+                <div id="serviceStepperLine" style="position: absolute; top: 12px; left: 0; width: 0%; height: 2px; background: var(--primary-color); z-index: 2; transition: width 0.3s ease;"></div>
+                
+                <div class="service-step-marker" data-step="1" style="position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                    <div class="step-circle" style="width: 26px; height: 26px; border-radius: 50%; background: var(--primary-color); color: white; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: bold; border: 2px solid white; box-shadow: 0 0 0 2px var(--primary-color); transition: all 0.3s;">1</div>
+                    <span style="font-size: 10px; font-weight: 700; color: var(--primary-color); text-transform: uppercase;">Basic Info</span>
+                </div>
+                <div class="service-step-marker" data-step="2" style="position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                    <div class="step-circle" style="width: 26px; height: 26px; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: bold; border: 2px solid white; box-shadow: 0 0 0 2px #e2e8f0; transition: all 0.3s;">2</div>
+                    <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Inclusions</span>
+                </div>
+                <div class="service-step-marker" data-step="3" style="position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                    <div class="step-circle" style="width: 26px; height: 26px; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: bold; border: 2px solid white; box-shadow: 0 0 0 2px #e2e8f0; transition: all 0.3s;">3</div>
+                    <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Pricing</span>
+                </div>
+                <div class="service-step-marker" data-step="4" style="position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                    <div class="step-circle" style="width: 26px; height: 26px; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: bold; border: 2px solid white; box-shadow: 0 0 0 2px #e2e8f0; transition: all 0.3s;">4</div>
+                    <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Policies</span>
+                </div>
+            </div>
+        </div>
+
+        <form id="serviceWizardForm" action="/caterer/api/services/add-service-wizard" method="POST" enctype="multipart/form-data" novalidate style="display: flex; flex-direction: column; height: 65vh;">
+            <input type="hidden" name="details_json" id="serviceDetailsJson">
+            <input type="hidden" name="status" id="serviceStatusInput" value="Draft">
+
+            <div class="occ-modal-body" style="flex: 1; overflow-y: auto; padding: 2rem;">
+                
+                <!-- STEP 1: Basic Info -->
+                <div class="wizard-step active" id="serviceStep1">
+                    <div class="form-row-pro">
+                        <div class="form-group-pro">
+                            <label>Service Name *</label>
+                            <input type="text" name="name" class="control-pro" placeholder="e.g. Acoustic Band, Photobooth" required>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Category *</label>
+                            <select name="category" class="control-pro" required>
+                                <option value="Entertainment">Entertainment</option>
+                                <option value="Photography">Photography</option>
+                                <option value="Videography">Videography</option>
+                                <option value="Decoration">Decoration</option>
+                                <option value="Event Staff">Event Staff</option>
+                                <option value="Transportation">Transportation</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group-pro">
+                        <label>Description *</label>
+                        <textarea name="description" class="control-pro" placeholder="Describe the service, what makes it special..." style="height: 100px;" required></textarea>
+                    </div>
+
+                    <div class="form-group-pro">
+                        <label>Main Photo / Cover *</label>
+                        <div class="photo-dropzone-pro" id="servicePhotoDropzone" onclick="document.getElementById('serviceImageInput').click()">
+                            <i class="fas fa-camera"></i>
+                            <span>Upload photo</span>
+                            <input type="file" name="image" id="serviceImageInput" accept="image/*" style="display: none;" onchange="previewServiceImage(event)">
+                        </div>
+                        <div id="serviceImagePreviewContainer" class="preview-box-pro" style="display: none;">
+                            <img id="serviceImagePreview" src="" class="img-preview-pro" alt="Preview">
+                            <button type="button" class="btn-remove-img-pro" onclick="removeServiceImage()"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Service Inclusions -->
+                <div class="wizard-step" id="serviceStep2" style="display: none;">
+                    <div style="background: #f8fafc; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid #e2e8f0;">
+                        <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 1rem; font-size: 1rem;">What's Included?</h4>
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">List everything included in the base price (e.g. 3 musicians, basic sound system, 2 hours performance).</p>
+                        
+                        <div id="serviceInclusionsList" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;">
+                            <!-- Inclusions injected here -->
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="addSvcIncName" class="control-pro" placeholder="Included Item (e.g. Performers)" style="flex: 1;">
+                            <input type="text" id="addSvcIncDetails" class="control-pro" placeholder="Details (e.g. 3 musicians)" style="flex: 2;">
+                            <button type="button" class="btn-secondary-pro" onclick="addServiceInclusion()"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 3: Pricing & Duration -->
+                <div class="wizard-step" id="serviceStep3" style="display: none;">
+                    <div class="form-row-pro">
+                        <div class="form-group-pro">
+                            <label>Base Price / Starting Price (₱) *</label>
+                            <input type="number" name="price" class="control-pro" placeholder="0.00" required min="1">
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Pricing Type *</label>
+                            <select name="unit_type" class="control-pro" required>
+                                <option value="Per Event">Per Event (Fixed)</option>
+                                <option value="Per Hour">Per Hour</option>
+                                <option value="Starting Price">Starting Price (Custom Quote)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row-pro">
+                        <div class="form-group-pro">
+                            <label>Included Duration (Hours) *</label>
+                            <input type="number" name="base_duration_hours" class="control-pro" placeholder="e.g. 2" required min="1">
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Minimum Booking Hours</label>
+                            <input type="number" id="serviceMinHours" class="control-pro" value="1" min="1">
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8fafc; padding: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 1rem;">
+                        <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 1rem; font-size: 1rem;">Additional Charges (e.g. Overtime, Travel)</h4>
+                        
+                        <div id="serviceChargesList" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;">
+                            <!-- Charges injected here -->
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="addSvcChargeName" class="control-pro" placeholder="Charge (e.g. Extra Hour)" style="flex: 2;">
+                            <input type="text" id="addSvcChargePrice" class="control-pro" placeholder="Price (e.g. 2000)" style="flex: 1;">
+                            <button type="button" class="btn-secondary-pro" onclick="addServiceCharge()"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 4: Area, Requirements & Policies -->
+                <div class="wizard-step" id="serviceStep4" style="display: none;">
+                    
+                    <div class="form-group-pro">
+                        <label>Service Area</label>
+                        <select id="serviceArea" class="control-pro">
+                            <option value="Within city">Within City</option>
+                            <option value="Within province">Within Province</option>
+                            <option value="Anywhere">Anywhere (Travel fees apply)</option>
+                        </select>
+                    </div>
+
+                    <div style="background: #f8fafc; padding: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 1.5rem;">
+                        <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 1rem; font-size: 1rem;">Venue / Customer Requirements</h4>
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">What do you need from the customer? (e.g. Power outlet, parking, covered area)</p>
+                        
+                        <div id="serviceReqsList" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;">
+                            <!-- Reqs injected here -->
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="addSvcReqName" class="control-pro" placeholder="Requirement (e.g. Power outlet)" style="flex: 1;">
+                            <button type="button" class="btn-secondary-pro" onclick="addServiceReq()"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="form-group-pro">
+                        <label>Service Policies / Rules</label>
+                        <textarea id="servicePolicies" class="control-pro" placeholder="Enter cancellation, rescheduling, or overtime policies here..." style="height: 100px;"></textarea>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="occ-modal-footer" style="padding: 1rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" id="serviceBtnPrev" class="btn-secondary-pro" style="display: none; padding: 0.75rem 1rem;" onclick="navigateServiceWizard(-1)" title="Back"><i class="fas fa-arrow-left"></i></button>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button type="button" id="serviceBtnDraft" class="btn-secondary-pro" style="display: none; border: none; background: transparent; color: #64748b; font-weight: 600; padding: 0.5rem 1rem;" onclick="submitServiceWizard('Draft')" title="Save as Draft"><i class="fas fa-save" style="font-size: 1.2rem;"></i></button>
+                    <button type="button" id="serviceBtnNext" class="btn-primary-pro" style="padding: 0.75rem 1.2rem;" onclick="navigateServiceWizard(1)" title="Next Step"><i class="fas fa-arrow-right"></i></button>
+                    <button type="button" id="serviceBtnPublish" class="btn-primary-pro" style="display: none; background: #10b981; border-color: #10b981; padding: 0.75rem 1.2rem;" onclick="submitServiceWizard('Published')" title="Publish"><i class="fas fa-check"></i></button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

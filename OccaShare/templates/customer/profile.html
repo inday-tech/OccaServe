@@ -329,17 +329,17 @@
                     <small style="color:var(--dm-slate-400); margin-top:4px;">Email cannot be changed.</small>
                 </div>
                 <div class="form-group">
-                    <label>Mobile Number <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
-                    <input type="tel" name="phone_number" class="form-input" value="{{ user.phone_number or '' }}" placeholder="09XX XXX XXXX" pattern="^09[0-9]{9}$" title="Must be a valid 11-digit Philippine mobile number starting with 09" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11);">
+                    <label>Mobile Number <span style="text-transform:none; font-weight:500; color: #ef4444;">*</span></label>
+                    <input type="tel" name="phone_number" class="form-input" value="{{ user.phone_number or '' }}" required placeholder="09XX XXX XXXX" pattern="^09[0-9]{9}$" title="Must be a valid 11-digit Philippine mobile number starting with 09" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11);">
                     <span class="error-msg">Please enter a valid 11-digit number starting with 09.</span>
                 </div>
             </div>
 
             <div class="form-grid">
                 <div class="form-group">
-                    <label>Birthday <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
-                    <input type="date" name="dob" class="form-input" value="{{ user.dob.strftime('%Y-%m-%d') if user.dob else '' }}">
-                    <span class="error-msg">You must be at least 18 years old (and no more than 50 years old).</span>
+                    <label>Birthday <span style="text-transform:none; font-weight:500; color: #ef4444;">*</span></label>
+                    <input type="date" name="dob" class="form-input" value="{{ user.dob.strftime('%Y-%m-%d') if user.dob else '' }}" required>
+                    <span class="error-msg">You must be at least 18 years old.</span>
                 </div>
                 <div class="form-group">
                     <label>Gender <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
@@ -385,8 +385,8 @@
 
             <!-- Barangay -->
             <div class="form-group">
-                <label>Barangay <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
-                <select name="barangay" id="addr-barangay" class="form-input" disabled>
+                <label>Barangay <span style="text-transform:none; font-weight:500; color: #ef4444;">*</span></label>
+                <select name="barangay" id="addr-barangay" class="form-input" required disabled>
                     <option value="" disabled selected hidden>-- Barangay --</option>
                 </select>
                 <span class="error-msg">Please select a valid barangay.</span>
@@ -394,9 +394,9 @@
 
             <!-- Street / Landmark -->
             <div class="form-group">
-                <label>House No. / Street / Landmark <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
+                <label>House No. / Street / Landmark <span style="text-transform:none; font-weight:500; color: #ef4444;">*</span></label>
                 <input type="text" name="street_address" id="addr-street" class="form-input"
-                    value="{{ user.street_address or '' }}"
+                    value="{{ user.street_address or '' }}" required
                     placeholder="e.g. 123 Rizal St., near SM City" maxlength="255">
                 <small style="color:var(--dm-slate-400); margin-top:4px;">Add details to make it easier for the caterer to locate.</small>
                 <span class="error-msg">Please enter a valid address.</span>
@@ -503,6 +503,22 @@
                 <button type="submit" class="btn-save"><i class="fas fa-key"></i> Update Password</button>
             </div>
         </form>
+        
+        <!-- Account Deletion Section -->
+        <div style="border-top: 1px solid var(--dm-slate-100); padding-top: 2rem; margin-top: 2.5rem;">
+            <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem; color: #ef4444;">Danger Zone</h2>
+            <p style="font-size: 0.85rem; color: var(--dm-slate-400); margin-bottom: 1.5rem;">Deleting your account is permanent and cannot be undone. All your data, bookings, and preferences will be erased.</p>
+            
+            <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 1rem; padding: 1.5rem; display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                <div>
+                    <h4 style="margin: 0 0 4px; font-size: 1rem; font-weight: 800; color: #991b1b;">Delete Account</h4>
+                    <p style="margin: 0; font-size: 0.8rem; color: #b91c1c;">Once you delete your account, there is no going back. Please be certain.</p>
+                </div>
+                <button type="button" onclick="confirmAccountDeletion()" style="background: #ef4444; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 0.75rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: 0.2s; white-space: nowrap; box-shadow: 0 4px 10px rgba(239,68,68,0.2);">
+                    <i class="fas fa-trash-alt"></i> Delete My Account
+                </button>
+            </div>
+        </div>
     </div>
 
 </div>
@@ -808,6 +824,47 @@
             btn.innerHTML = originalText;
             btn.disabled = false;
         }
+    }
+
+    function confirmAccountDeletion() {
+        Swal.fire({
+            title: 'Delete Account?',
+            text: "This action is irreversible. All your data will be permanently deleted.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#94a3b8',
+            confirmButtonText: 'Yes, delete my account'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Verifying...',
+                    text: 'Please wait while we process your request.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                fetch('/customer/profile/delete', {
+                    method: 'POST'
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Deleted!', 'Your account has been deleted.', 'success')
+                        .then(() => {
+                            window.location.href = '/';
+                        });
+                    } else {
+                        Swal.fire('Error', data.message || 'Could not delete account.', 'error');
+                    }
+                })
+                .catch(() => {
+                    Swal.fire('Error', 'Network error occurred.', 'error');
+                });
+            }
+        });
     }
 
     async function changePassword(e) {

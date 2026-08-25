@@ -244,4 +244,23 @@ h6 {
     transform: translateY(-2px) !important;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
 }
+
+/* ============================================================ 
+   DIAMOND STANDARD: SMALL TOAST NOTIFICATIONS
+   ============================================================ */
+.small-toast-popup {
+    padding: 10px 16px !important;
+    border-radius: 8px !important;
+    min-height: 40px !important;
+    width: auto !important;
+    max-width: 350px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.small-toast-title {
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+    line-height: 1.4 !important;
+}
 

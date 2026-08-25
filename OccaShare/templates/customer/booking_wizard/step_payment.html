@@ -373,7 +373,7 @@
                         </div>
                         <h4 class="channel-name">{{ profile.business_name }}</h4>
                         <div class="channel-number">{{ profile.gcash_number }}</div>
-                        <button type="button" class="btn-copy-num" onclick="navigator.clipboard.writeText('{{ profile.gcash_number }}'); Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'GCash Number Copied!', showConfirmButton: false, timer: 1500});"><i class="far fa-copy"></i> Copy Number</button>
+                        <button type="button" class="btn-copy-num" onclick="navigator.clipboard.writeText('{{ profile.gcash_number }}'); Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'GCash Number Copied!', showConfirmButton: false, timer: 1500, customClass: { popup: 'small-toast-popup', title: 'small-toast-title' }});"><i class="far fa-copy"></i> Copy Number</button>
                     </div>
                     <div class="instruction-steps-clean mb-3">
                         <div class="inst-step"><i class="fas fa-mobile-alt"></i> 1. Open your GCash App and select Scan QR or Send Money</div>
@@ -390,7 +390,7 @@
                         </div>
                         <h4 class="channel-name">{{ profile.business_name }}</h4>
                         <div class="channel-number emerald">{{ profile.maya_number }}</div>
-                        <button type="button" class="btn-copy-num" onclick="navigator.clipboard.writeText('{{ profile.maya_number }}'); Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'Maya Number Copied!', showConfirmButton: false, timer: 1500});"><i class="far fa-copy"></i> Copy Number</button>
+                        <button type="button" class="btn-copy-num" onclick="navigator.clipboard.writeText('{{ profile.maya_number }}'); Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'Maya Number Copied!', showConfirmButton: false, timer: 1500, customClass: { popup: 'small-toast-popup', title: 'small-toast-title' }});"><i class="far fa-copy"></i> Copy Number</button>
                     </div>
                     <div class="instruction-steps-clean mb-3">
                         <div class="inst-step"><i class="fas fa-wallet"></i> 1. Open your Maya App and select Scan QR or Send Money</div>
@@ -408,7 +408,7 @@
                         <h4 class="channel-name">{{ profile.bank_name }}</h4>
                         <div style="font-size: 0.85rem; font-weight: 600; color: var(--pay-slate-600); margin-bottom: 0.25rem;">Account Name: {{ profile.bank_account_name }}</div>
                         <div class="channel-number amber">{{ profile.bank_account_number }}</div>
-                        <button type="button" class="btn-copy-num" onclick="navigator.clipboard.writeText('{{ profile.bank_account_number }}'); Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'Account Number Copied!', showConfirmButton: false, timer: 1500});"><i class="far fa-copy"></i> Copy Account Number</button>
+                        <button type="button" class="btn-copy-num" onclick="navigator.clipboard.writeText('{{ profile.bank_account_number }}'); Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'Account Number Copied!', showConfirmButton: false, timer: 1500, customClass: { popup: 'small-toast-popup', title: 'small-toast-title' }});"><i class="far fa-copy"></i> Copy Account Number</button>
                     </div>
                     <div class="instruction-steps-clean mb-3">
                         <div class="inst-step"><i class="fas fa-university"></i> 1. Open your Bank App and select InstaPay or PESONet</div>

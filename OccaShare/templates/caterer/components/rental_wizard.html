@@ -1,0 +1,222 @@
+<!-- Add Rental Wizard Modal -->
+<div id="rentalWizardModal" class="occ-modal-overlay" style="display: none; z-index: 99999;">
+    <div class="occ-modal-box sz-lg occ-content-pop" style="max-width: 800px; padding: 0;">
+        <div class="occ-modal-header glass-header" style="padding: 1.5rem 2rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3 class="occ-modal-title" style="margin:0;"><i class="fas fa-chair"></i> Add New Rental</h3>
+            </div>
+            <button type="button" onclick="closeWizard('rentalWizardModal')" class="occ-modal-close" style="background: none; border: none; font-size: 1.25rem; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <!-- Visual Stepper Section -->
+        <div style="padding: 1.5rem 3rem; background: #ffffff; border-bottom: 1px solid #e2e8f0;">
+            <div style="display: flex; justify-content: space-between; position: relative; width: 100%;">
+                <div style="position: absolute; top: 12px; left: 0; right: 0; height: 2px; background: #e2e8f0; z-index: 1;"></div>
+                <div id="rentalStepperLine" style="position: absolute; top: 12px; left: 0; width: 0%; height: 2px; background: var(--primary-color); z-index: 2; transition: width 0.3s ease;"></div>
+                
+                <div class="rental-step-marker" data-step="1" style="position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                    <div class="step-circle" style="width: 26px; height: 26px; border-radius: 50%; background: var(--primary-color); color: white; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: bold; border: 2px solid white; box-shadow: 0 0 0 2px var(--primary-color); transition: all 0.3s;">1</div>
+                    <span style="font-size: 10px; font-weight: 700; color: var(--primary-color); text-transform: uppercase;">Basic Info</span>
+                </div>
+                <div class="rental-step-marker" data-step="2" style="position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                    <div class="step-circle" style="width: 26px; height: 26px; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: bold; border: 2px solid white; box-shadow: 0 0 0 2px #e2e8f0; transition: all 0.3s;">2</div>
+                    <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Inclusions</span>
+                </div>
+                <div class="rental-step-marker" data-step="3" style="position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                    <div class="step-circle" style="width: 26px; height: 26px; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: bold; border: 2px solid white; box-shadow: 0 0 0 2px #e2e8f0; transition: all 0.3s;">3</div>
+                    <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Pricing</span>
+                </div>
+                <div class="rental-step-marker" data-step="4" style="position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                    <div class="step-circle" style="width: 26px; height: 26px; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: bold; border: 2px solid white; box-shadow: 0 0 0 2px #e2e8f0; transition: all 0.3s;">4</div>
+                    <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Policies</span>
+                </div>
+            </div>
+        </div>
+
+        <form id="rentalWizardForm" action="/caterer/api/services/add-rental-wizard" method="POST" enctype="multipart/form-data" novalidate style="display: flex; flex-direction: column; height: 60vh;">
+            <input type="hidden" name="details_json" id="rentalDetailsJson">
+            <input type="hidden" name="status" id="rentalStatusInput" value="Draft">
+
+            <div class="occ-modal-body" style="flex: 1; overflow-y: auto; padding: 2rem;">
+                
+                <!-- STEP 1: Basic Info -->
+                <div class="wizard-step active" id="rentalStep1">
+                    <div class="form-row-pro">
+                        <div class="form-group-pro">
+                            <label>Item Name *</label>
+                            <input type="text" name="name" class="control-pro" placeholder="e.g. Round Table for 6 Seaters" required>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Category *</label>
+                            <select name="category" class="control-pro" required>
+                                <option value="Tables">Tables</option>
+                                <option value="Chairs">Chairs</option>
+                                <option value="Tents & Canopies">Tents & Canopies</option>
+                                <option value="Decorations">Decorations</option>
+                                <option value="Sound Equipment">Sound Equipment</option>
+                                <option value="Catering Equipment">Catering Equipment</option>
+                                <option value="Utensils">Utensils</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group-pro">
+                        <label>Description *</label>
+                        <textarea name="description" class="control-pro" placeholder="Describe the item, its purpose, and condition..." style="height: 100px;" required></textarea>
+                    </div>
+
+                    <div class="form-group-pro">
+                        <label>Main Photo *</label>
+                        <div class="photo-dropzone-pro" id="rentalPhotoDropzone" onclick="document.getElementById('rentalImageInput').click()">
+                            <i class="fas fa-camera"></i>
+                            <span>Upload photo</span>
+                            <input type="file" name="image" id="rentalImageInput" accept="image/*" style="display: none;" onchange="previewRentalImage(event)">
+                        </div>
+                        <div id="rentalImagePreviewContainer" class="preview-box-pro" style="display: none;">
+                            <img id="rentalImagePreview" src="" class="img-preview-pro" alt="Preview">
+                            <button type="button" class="btn-remove-img-pro" onclick="removeRentalImage()"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Inclusions & Specifications -->
+                <div class="wizard-step" id="rentalStep2" style="display: none;">
+                    <div style="background: #f8fafc; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid #e2e8f0;">
+                        <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 1rem; font-size: 1rem;">What's Included?</h4>
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">List exactly what the customer gets when they rent 1 unit/set of this item.</p>
+                        
+                        <div id="rentalInclusionsList" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;">
+                            <!-- Inclusions injected here -->
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="addIncName" class="control-pro" placeholder="Item Name (e.g. Chair)" style="flex: 2;">
+                            <input type="number" id="addIncQty" class="control-pro" placeholder="Qty" style="flex: 1;" min="1" value="1">
+                            <button type="button" class="btn-secondary-pro" onclick="addRentalInclusion()"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+
+                    <div style="background: #f8fafc; padding: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0;">
+                        <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 1rem; font-size: 1rem;">Specifications</h4>
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Add details like dimensions, capacity, or material.</p>
+                        
+                        <div id="rentalSpecsList" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;">
+                            <!-- Specs injected here -->
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="addSpecName" class="control-pro" placeholder="Spec (e.g. Material)" style="flex: 1;">
+                            <input type="text" id="addSpecValue" class="control-pro" placeholder="Value (e.g. Wood)" style="flex: 1;">
+                            <button type="button" class="btn-secondary-pro" onclick="addRentalSpec()"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 3: Pricing & Inventory -->
+                <div class="wizard-step" id="rentalStep3" style="display: none;">
+                    <div class="form-row-pro">
+                        <div class="form-group-pro">
+                            <label>Rental Price (₱) *</label>
+                            <input type="number" name="price" class="control-pro" placeholder="0.00" required min="1">
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Pricing Unit *</label>
+                            <select name="unit_type" class="control-pro" required>
+                                <option value="Per Piece">Per Piece</option>
+                                <option value="Per Set">Per Set</option>
+                                <option value="Per Day">Per Day</option>
+                                <option value="Per Event">Per Event</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row-pro">
+                        <div class="form-group-pro">
+                            <label>Total Inventory Capacity * <i class="fas fa-info-circle text-muted" title="Your total stock. The system will auto-calculate availability per date based on bookings."></i></label>
+                            <input type="number" name="total_stock" class="control-pro" placeholder="e.g. 20" required min="1">
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Minimum Rental Duration (Days)</label>
+                            <input type="number" id="rentalMinDays" class="control-pro" value="1" min="1">
+                        </div>
+                    </div>
+
+                    <div style="background: #fff8f1; padding: 1.5rem; border-radius: 12px; border: 1px solid #ffedd5; margin-top: 1rem;">
+                        <h4 style="font-weight: 700; color: #c2410c; margin-bottom: 1rem; font-size: 1rem;">Security Deposit</h4>
+                        
+                        <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                            <input type="checkbox" id="requireDeposit" style="width: 18px; height: 18px;" onchange="toggleDepositFields()">
+                            <label for="requireDeposit" style="margin:0; font-weight: 600; color: #1e293b;">Require Security Deposit</label>
+                        </div>
+                        
+                        <div id="depositFields" style="display: none; display: flex; gap: 10px;">
+                            <select id="depositType" class="control-pro" style="flex: 1;">
+                                <option value="Fixed">Fixed Amount</option>
+                                <option value="Percentage">Percentage of Price</option>
+                            </select>
+                            <input type="number" id="depositValue" class="control-pro" placeholder="Amount / %" style="flex: 1;">
+                        </div>
+                        <div id="depositRules" style="display: none; margin-top: 1rem;">
+                            <input type="text" id="depositCondition" class="control-pro" placeholder="Refund condition e.g. Refundable after item inspection in good condition.">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 4: Delivery & Policies -->
+                <div class="wizard-step" id="rentalStep4" style="display: none;">
+                    <div class="form-row-pro">
+                        <div class="form-group-pro">
+                            <label>Delivery Available?</label>
+                            <select id="rentalDelivery" class="control-pro">
+                                <option value="Yes">Yes</option>
+                                <option value="No">No (Customer Pickup Only)</option>
+                            </select>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Setup Included?</label>
+                            <select id="rentalSetup" class="control-pro">
+                                <option value="No">No</option>
+                                <option value="Yes">Yes, included</option>
+                                <option value="Paid">Yes, for an extra fee</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="background: #f8fafc; padding: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 1rem; margin-bottom: 1rem;">
+                        <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 1rem; font-size: 1rem;">Additional Charges (Optional)</h4>
+                        
+                        <div id="rentalChargesList" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;">
+                            <!-- Charges injected here -->
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="addChargeName" class="control-pro" placeholder="Charge (e.g. Late Return)" style="flex: 2;">
+                            <input type="text" id="addChargePrice" class="control-pro" placeholder="Price (e.g. 100/hr)" style="flex: 1;">
+                            <button type="button" class="btn-secondary-pro" onclick="addRentalCharge()"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="form-group-pro">
+                        <label>Rental Policies / Rules</label>
+                        <textarea id="rentalPolicies" class="control-pro" placeholder="Enter cancellation, return, or damage policies here..." style="height: 100px;"></textarea>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="occ-modal-footer" style="padding: 1rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" id="rentalBtnPrev" class="btn-secondary-pro" style="display: none; padding: 0.75rem 1rem;" onclick="navigateRentalWizard(-1)" title="Back"><i class="fas fa-arrow-left"></i></button>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button type="button" id="rentalBtnDraft" class="btn-secondary-pro" style="display: none; border: none; background: transparent; color: #64748b; font-weight: 600; padding: 0.5rem 1rem;" onclick="submitRentalWizard('Draft')" title="Save as Draft"><i class="fas fa-save" style="font-size: 1.2rem;"></i></button>
+                    <button type="button" id="rentalBtnNext" class="btn-primary-pro" style="padding: 0.75rem 1.2rem;" onclick="navigateRentalWizard(1)" title="Next Step"><i class="fas fa-arrow-right"></i></button>
+                    <button type="button" id="rentalBtnPublish" class="btn-primary-pro" style="display: none; background: #10b981; border-color: #10b981; padding: 0.75rem 1.2rem;" onclick="submitRentalWizard('Published')" title="Publish"><i class="fas fa-check"></i></button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

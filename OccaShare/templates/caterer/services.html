@@ -15,9 +15,14 @@
     </div>
     <div class="menu-header-actions">
         <input type="hidden" id="menuSearchInput">
-        <button class="btn-primary-pro" onclick="openAddMenuModal()">
-            <span>Add New Item/Service</span>
-        </button>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn-primary-pro" style="background: var(--brand-secondary, #2D4059);" onclick="openWizard('rentalWizardModal')">
+                <i class="fas fa-chair"></i> <span>Add Rental</span>
+            </button>
+            <button class="btn-primary-pro" onclick="openWizard('serviceWizardModal')">
+                <i class="fas fa-concierge-bell"></i> <span>Add Service</span>
+            </button>
+        </div>
     </div>
 </div>
 
@@ -369,6 +374,8 @@
         </div>
     </div>
 </div>
+{% include "caterer/components/rental_wizard.html" %}
+{% include "caterer/components/service_wizard.html" %}
 {% endblock %}
 
 {% block extra_js %}
@@ -682,6 +689,449 @@
         const h = document.getElementById('menuSearchInput');
         if (h) { h.value = e.detail.value; filterMenu(); }
     });
+    
+    // Prevent form submission on Enter key (fixes missing step content issue)
+    document.addEventListener('DOMContentLoaded', () => {
+        const rentalForm = document.getElementById('rentalWizardForm');
+        if (rentalForm) {
+            rentalForm.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    navigateRentalWizard(1);
+                }
+            });
+        }
+        
+        const serviceForm = document.getElementById('serviceWizardForm');
+        if (serviceForm) {
+            serviceForm.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    navigateServiceWizard(1);
+                }
+            });
+        }
+        
+        // Handle Mobile/Hardware Back Button
+        window.addEventListener('popstate', function(e) {
+            const rModal = document.getElementById('rentalWizardModal');
+            const sModal = document.getElementById('serviceWizardModal');
+            let closedAny = false;
+            if (rModal && (rModal.style.display === 'flex' || rModal.style.display === 'block')) {
+                closeWizard('rentalWizardModal');
+                closedAny = true;
+            }
+            if (sModal && (sModal.style.display === 'flex' || sModal.style.display === 'block')) {
+                closeWizard('serviceWizardModal');
+                closedAny = true;
+            }
+            // If we closed a modal, the popstate already navigated back in history, which is what we want.
+        });
+    });
+
+    // WIZARD LOGIC
+    function openWizard(modalId) {
+        if (modalId === 'rentalWizardModal') {
+            rentalStep = 1;
+            updateRentalStepUI();
+        } else if (modalId === 'serviceWizardModal') {
+            serviceStep = 1;
+            updateServiceStepUI();
+        }
+        if(window.openModal) window.openModal(modalId);
+        else document.getElementById(modalId).style.display = 'flex';
+        
+        // Push a dummy state so hardware back button can be intercepted
+        if (window.history && window.history.pushState) {
+            window.history.pushState({wizardOpen: true}, '', window.location.href);
+        }
+    }
+    function closeWizard(modalId) {
+        if(window.closeModal) window.closeModal(modalId);
+        else document.getElementById(modalId).style.display = 'none';
+    }
+
+    // Rental Wizard State
+    let rentalStep = 1;
+    let rentalInclusions = [];
+    let rentalSpecs = [];
+    let rentalCharges = [];
+    
+    function updateRentalStepUI() {
+        document.querySelectorAll('#rentalWizardForm .wizard-step').forEach((el, i) => {
+            el.style.display = (i + 1 === rentalStep) ? 'block' : 'none';
+        });
+        
+        // Update Stepper Line
+        const line = document.getElementById('rentalStepperLine');
+        if(line) line.style.width = ((rentalStep - 1) / 3 * 100) + '%';
+        
+        document.querySelectorAll('.rental-step-marker').forEach((marker) => {
+            const stepNum = parseInt(marker.getAttribute('data-step'));
+            const circle = marker.querySelector('.step-circle');
+            const text = marker.querySelector('span');
+            
+            if (stepNum < rentalStep) {
+                circle.style.background = 'var(--primary-color)';
+                circle.style.color = 'white';
+                circle.style.boxShadow = '0 0 0 2px var(--primary-color)';
+                circle.innerHTML = '<i class="fas fa-check"></i>';
+                text.style.color = 'var(--primary-color)';
+            } else if (stepNum === rentalStep) {
+                circle.style.background = 'var(--primary-color)';
+                circle.style.color = 'white';
+                circle.style.boxShadow = '0 0 0 2px var(--primary-color)';
+                circle.innerHTML = stepNum;
+                text.style.color = 'var(--primary-color)';
+            } else {
+                circle.style.background = '#e2e8f0';
+                circle.style.color = '#64748b';
+                circle.style.boxShadow = '0 0 0 2px #e2e8f0';
+                circle.innerHTML = stepNum;
+                text.style.color = '#64748b';
+            }
+        });
+
+        if (rentalStep > 1) {
+            document.getElementById('rentalBtnPrev').style.display = '';
+        } else {
+            document.getElementById('rentalBtnPrev').style.display = 'none';
+        }
+        
+        if (rentalStep === 4) {
+            document.getElementById('rentalBtnNext').style.display = 'none';
+            document.getElementById('rentalBtnDraft').style.display = '';
+            document.getElementById('rentalBtnPublish').style.display = '';
+        } else {
+            document.getElementById('rentalBtnNext').style.display = '';
+            document.getElementById('rentalBtnDraft').style.display = 'none';
+            document.getElementById('rentalBtnPublish').style.display = 'none';
+        }
+    }
+
+    function navigateRentalWizard(dir) {
+        if (dir === 1) {
+            const currentStepEl = document.getElementById('rentalStep' + rentalStep);
+            if (currentStepEl) {
+                const inputs = currentStepEl.querySelectorAll('input, select, textarea');
+                let valid = true;
+                for (let i = 0; i < inputs.length; i++) {
+                    if (!inputs[i].checkValidity()) {
+                        inputs[i].reportValidity();
+                        valid = false;
+                        break;
+                    }
+                }
+                if (!valid) return;
+            }
+        }
+        rentalStep += dir;
+        updateRentalStepUI();
+    }
+
+    function addRentalInclusion() {
+        const name = document.getElementById('addIncName').value.trim();
+        const qty = document.getElementById('addIncQty').value;
+        if(name) {
+            rentalInclusions.push({ name, qty });
+            document.getElementById('addIncName').value = '';
+            document.getElementById('addIncQty').value = '1';
+            renderRentalInclusions();
+        }
+    }
+    function renderRentalInclusions() {
+        const list = document.getElementById('rentalInclusionsList');
+        list.innerHTML = rentalInclusions.map((inc, idx) => `
+            <div style="display: flex; justify-content: space-between; background: white; padding: 10px 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div><span style="font-weight: 700;">${inc.qty}x</span> ${inc.name}</div>
+                <button type="button" onclick="rentalInclusions.splice(${idx}, 1); renderRentalInclusions()" style="background:none; border:none; color: #ef4444; cursor: pointer;"><i class="fas fa-trash"></i></button>
+            </div>
+        `).join('');
+    }
+
+    function addRentalSpec() {
+        const name = document.getElementById('addSpecName').value.trim();
+        const val = document.getElementById('addSpecValue').value.trim();
+        if(name && val) {
+            rentalSpecs.push({ name, value: val });
+            document.getElementById('addSpecName').value = '';
+            document.getElementById('addSpecValue').value = '';
+            renderRentalSpecs();
+        }
+    }
+    function renderRentalSpecs() {
+        const list = document.getElementById('rentalSpecsList');
+        list.innerHTML = rentalSpecs.map((spec, idx) => `
+            <div style="display: flex; justify-content: space-between; background: white; padding: 10px 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div><span style="color: #64748b;">${spec.name}:</span> <span style="font-weight: 600;">${spec.value}</span></div>
+                <button type="button" onclick="rentalSpecs.splice(${idx}, 1); renderRentalSpecs()" style="background:none; border:none; color: #ef4444; cursor: pointer;"><i class="fas fa-trash"></i></button>
+            </div>
+        `).join('');
+    }
+
+    function addRentalCharge() {
+        const name = document.getElementById('addChargeName').value.trim();
+        const price = document.getElementById('addChargePrice').value.trim();
+        if(name && price) {
+            rentalCharges.push({ name, price });
+            document.getElementById('addChargeName').value = '';
+            document.getElementById('addChargePrice').value = '';
+            renderRentalCharges();
+        }
+    }
+    function renderRentalCharges() {
+        const list = document.getElementById('rentalChargesList');
+        list.innerHTML = rentalCharges.map((ch, idx) => `
+            <div style="display: flex; justify-content: space-between; background: white; padding: 10px 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div>${ch.name}</div>
+                <div style="font-weight: 600;">₱${ch.price}</div>
+                <button type="button" onclick="rentalCharges.splice(${idx}, 1); renderRentalCharges()" style="background:none; border:none; color: #ef4444; cursor: pointer;"><i class="fas fa-trash"></i></button>
+            </div>
+        `).join('');
+    }
+
+    function toggleDepositFields() {
+        const checked = document.getElementById('requireDeposit').checked;
+        document.getElementById('depositFields').style.display = checked ? 'flex' : 'none';
+        document.getElementById('depositRules').style.display = checked ? 'block' : 'none';
+    }
+
+    function previewRentalImage(e) {
+        const f = e.target.files[0];
+        if(f) {
+            const r = new FileReader();
+            r.onload = ev => {
+                document.getElementById('rentalImagePreview').src = ev.target.result;
+                document.getElementById('rentalImagePreviewContainer').style.display = 'block';
+                document.getElementById('rentalPhotoDropzone').style.display = 'none';
+            };
+            r.readAsDataURL(f);
+        }
+    }
+    function removeRentalImage() {
+        document.getElementById('rentalImagePreview').src = '';
+        document.getElementById('rentalImagePreviewContainer').style.display = 'none';
+        document.getElementById('rentalPhotoDropzone').style.display = 'flex';
+        document.getElementById('rentalImageInput').value = '';
+    }
+
+    async function submitRentalWizard(status) {
+        const form = document.getElementById('rentalWizardForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+        document.getElementById('rentalStatusInput').value = status;
+        
+        const details = {
+            inclusions: rentalInclusions,
+            specifications: rentalSpecs,
+            min_days: document.getElementById('rentalMinDays').value,
+            deposit: document.getElementById('requireDeposit').checked ? {
+                type: document.getElementById('depositType').value,
+                value: document.getElementById('depositValue').value,
+                condition: document.getElementById('depositCondition').value
+            } : null,
+            delivery: document.getElementById('rentalDelivery').value,
+            setup: document.getElementById('rentalSetup').value,
+            additional_charges: rentalCharges,
+            policies: document.getElementById('rentalPolicies').value
+        };
+        
+        document.getElementById('rentalDetailsJson').value = JSON.stringify(details);
+        
+        const btn = status === 'Published' ? document.getElementById('rentalBtnPublish') : document.getElementById('rentalBtnDraft');
+        const data = new FormData(form);
+        if(window.apiAction) {
+            const res = await window.apiAction(form.action, { method: 'POST', body: data }, btn);
+            if(res) setTimeout(() => window.location.reload(), 1000);
+        }
+    }
+
+
+    // Service Wizard State
+    let serviceStep = 1;
+    let serviceInclusions = [];
+    let serviceCharges = [];
+    let serviceReqs = [];
+    
+    function updateServiceStepUI() {
+        document.querySelectorAll('#serviceWizardForm .wizard-step').forEach((el, i) => {
+            el.style.display = (i + 1 === serviceStep) ? 'block' : 'none';
+        });
+        
+        // Update Stepper Line
+        const line = document.getElementById('serviceStepperLine');
+        if (line) line.style.width = ((serviceStep - 1) / 3 * 100) + '%';
+        
+        // Update Stepper Circles
+        document.querySelectorAll('.service-step-marker').forEach((marker) => {
+            const stepNum = parseInt(marker.getAttribute('data-step'));
+            const circle = marker.querySelector('.step-circle');
+            const text = marker.querySelector('span');
+            
+            if (stepNum < serviceStep) {
+                circle.style.background = 'var(--primary-color)';
+                circle.style.color = 'white';
+                circle.style.boxShadow = '0 0 0 2px var(--primary-color)';
+                circle.innerHTML = '<i class="fas fa-check"></i>';
+                text.style.color = 'var(--primary-color)';
+            } else if (stepNum === serviceStep) {
+                circle.style.background = 'var(--primary-color)';
+                circle.style.color = 'white';
+                circle.style.boxShadow = '0 0 0 2px var(--primary-color)';
+                circle.innerHTML = stepNum;
+                text.style.color = 'var(--primary-color)';
+            } else {
+                circle.style.background = '#e2e8f0';
+                circle.style.color = '#64748b';
+                circle.style.boxShadow = '0 0 0 2px #e2e8f0';
+                circle.innerHTML = stepNum;
+                text.style.color = '#64748b';
+            }
+        });
+
+        if (serviceStep > 1) {
+            document.getElementById('serviceBtnPrev').style.display = '';
+        } else {
+            document.getElementById('serviceBtnPrev').style.display = 'none';
+        }
+        
+        if (serviceStep === 4) {
+            document.getElementById('serviceBtnNext').style.display = 'none';
+            document.getElementById('serviceBtnDraft').style.display = '';
+            document.getElementById('serviceBtnPublish').style.display = '';
+        } else {
+            document.getElementById('serviceBtnNext').style.display = '';
+            document.getElementById('serviceBtnDraft').style.display = 'none';
+            document.getElementById('serviceBtnPublish').style.display = 'none';
+        }
+    }
+
+    function navigateServiceWizard(dir) {
+        if (dir === 1) {
+            const currentStepEl = document.getElementById('serviceStep' + serviceStep);
+            if (currentStepEl) {
+                const inputs = currentStepEl.querySelectorAll('input, select, textarea');
+                let valid = true;
+                for (let i = 0; i < inputs.length; i++) {
+                    if (!inputs[i].checkValidity()) {
+                        inputs[i].reportValidity();
+                        valid = false;
+                        break;
+                    }
+                }
+                if (!valid) return;
+            }
+        }
+        serviceStep += dir;
+        updateServiceStepUI();
+    }
+
+    function addServiceInclusion() {
+        const name = document.getElementById('addSvcIncName').value.trim();
+        const details = document.getElementById('addSvcIncDetails').value.trim();
+        if(name) {
+            serviceInclusions.push({ name, details });
+            document.getElementById('addSvcIncName').value = '';
+            document.getElementById('addSvcIncDetails').value = '';
+            renderServiceInclusions();
+        }
+    }
+    function renderServiceInclusions() {
+        const list = document.getElementById('serviceInclusionsList');
+        list.innerHTML = serviceInclusions.map((inc, idx) => `
+            <div style="display: flex; justify-content: space-between; background: white; padding: 10px 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div><span style="font-weight: 700;">${inc.name}</span> <span style="color:#64748b; font-size: 0.85rem;">- ${inc.details}</span></div>
+                <button type="button" onclick="serviceInclusions.splice(${idx}, 1); renderServiceInclusions()" style="background:none; border:none; color: #ef4444; cursor: pointer;"><i class="fas fa-trash"></i></button>
+            </div>
+        `).join('');
+    }
+
+    function addServiceCharge() {
+        const name = document.getElementById('addSvcChargeName').value.trim();
+        const price = document.getElementById('addSvcChargePrice').value.trim();
+        if(name && price) {
+            serviceCharges.push({ name, price });
+            document.getElementById('addSvcChargeName').value = '';
+            document.getElementById('addSvcChargePrice').value = '';
+            renderServiceCharges();
+        }
+    }
+    function renderServiceCharges() {
+        const list = document.getElementById('serviceChargesList');
+        list.innerHTML = serviceCharges.map((ch, idx) => `
+            <div style="display: flex; justify-content: space-between; background: white; padding: 10px 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div>${ch.name}</div>
+                <div style="font-weight: 600;">₱${ch.price}</div>
+                <button type="button" onclick="serviceCharges.splice(${idx}, 1); renderServiceCharges()" style="background:none; border:none; color: #ef4444; cursor: pointer;"><i class="fas fa-trash"></i></button>
+            </div>
+        `).join('');
+    }
+
+    function addServiceReq() {
+        const req = document.getElementById('addSvcReqName').value.trim();
+        if(req) {
+            serviceReqs.push(req);
+            document.getElementById('addSvcReqName').value = '';
+            renderServiceReqs();
+        }
+    }
+    function renderServiceReqs() {
+        const list = document.getElementById('serviceReqsList');
+        list.innerHTML = serviceReqs.map((req, idx) => `
+            <div style="display: flex; justify-content: space-between; background: white; padding: 10px 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div><i class="fas fa-check-circle text-brand" style="margin-right: 8px;"></i> ${req}</div>
+                <button type="button" onclick="serviceReqs.splice(${idx}, 1); renderServiceReqs()" style="background:none; border:none; color: #ef4444; cursor: pointer;"><i class="fas fa-trash"></i></button>
+            </div>
+        `).join('');
+    }
+
+    function previewServiceImage(e) {
+        const f = e.target.files[0];
+        if(f) {
+            const r = new FileReader();
+            r.onload = ev => {
+                document.getElementById('serviceImagePreview').src = ev.target.result;
+                document.getElementById('serviceImagePreviewContainer').style.display = 'block';
+                document.getElementById('servicePhotoDropzone').style.display = 'none';
+            };
+            r.readAsDataURL(f);
+        }
+    }
+    function removeServiceImage() {
+        document.getElementById('serviceImagePreview').src = '';
+        document.getElementById('serviceImagePreviewContainer').style.display = 'none';
+        document.getElementById('servicePhotoDropzone').style.display = 'flex';
+        document.getElementById('serviceImageInput').value = '';
+    }
+
+    async function submitServiceWizard(status) {
+        const form = document.getElementById('serviceWizardForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+        document.getElementById('serviceStatusInput').value = status;
+        
+        const details = {
+            inclusions: serviceInclusions,
+            min_hours: document.getElementById('serviceMinHours').value,
+            additional_charges: serviceCharges,
+            area: document.getElementById('serviceArea').value,
+            requirements: serviceReqs,
+            policies: document.getElementById('servicePolicies').value
+        };
+        
+        document.getElementById('serviceDetailsJson').value = JSON.stringify(details);
+        
+        const btn = status === 'Published' ? document.getElementById('serviceBtnPublish') : document.getElementById('serviceBtnDraft');
+        const data = new FormData(form);
+        if(window.apiAction) {
+            const res = await window.apiAction(form.action, { method: 'POST', body: data }, btn);
+            if(res) setTimeout(() => window.location.reload(), 1000);
+        }
+    }
 </script>
 {% endblock %}
 

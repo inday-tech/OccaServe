@@ -728,82 +728,84 @@
                     </div>
                 </div>
 
-                <!-- STEP 2: PACKAGE SELECTION -->
+                <!-- STEP 2: QUOTATION BUILDER -->
                 <div class="step-content" id="step-2">
-                    <h4 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem;">Step 2: Package Selection</h4>
-                    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">Select a catering package for this event.</p>
+                    <h4 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem;">Step 2: Quotation Builder</h4>
+                    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">Build the quotation by selecting a base package or adding custom items, extra pax, and adjustments.</p>
                     
-                    <!-- Fallback standard select for backend submission -->
-                    <select id="manPackage" class="control-pro" style="display:none;" onchange="recalculateTotal(); validatePackage()">
-                        <option value="" data-price="0">Custom Selection (No Base Package)</option>
-                        {% for pkg in packages %}
-                        <option value="{{ pkg.id }}" data-price="{{ pkg.price or 0 }}" data-min="{{ pkg.min_pax or 1 }}" data-unit="{{ pkg.price_unit or 'fixed' }}" data-name="{{ pkg.name }}">
-                            {{ pkg.name }}
-                        </option>
-                        {% endfor %}
-                    </select>
-
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-                        <!-- Custom Package Option -->
-                        <div class="pkg-card-select selected" onclick="selectVisualPackage('', 0, 'fixed', 'Custom Selection (No Base Package)', this)">
-                            <div class="pkg-name">Custom Booking</div>
-                            <div class="pkg-price">Flexible</div>
-                            <div class="pkg-meta" style="margin-bottom: 0.5rem;">No base package required</div>
-                            <div style="font-size: 0.8rem; color: #475569; border-top: 1px dashed #e2e8f0; padding-top: 0.5rem;">
-                                Enter a custom agreed price for this booking.
-                            </div>
-                        </div>
-                        <!-- Database Packages -->
-                        {% for pkg in packages %}
-                        <div class="pkg-card-select" onclick="selectVisualPackage('{{ pkg.id }}', {{ pkg.price or 0 }}, '{{ pkg.price_unit or 'fixed' }}', '{{ pkg.name | escape }}', this)">
-                            <div class="pkg-name">{{ pkg.name }}</div>
-                            <div class="pkg-price">₱{{ '{:,.0f}'.format(pkg.price or 0) }} <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">{{ 'per head' if pkg.price_unit == 'per_head' else 'fixed rate' }}</span></div>
-                            <div class="pkg-meta" style="margin-bottom: 0.5rem;">
-                                <span><i class="fas fa-users"></i> Min {{ pkg.min_pax or 1 }} Pax</span>
-                                <span><i class="fas fa-concierge-bell"></i> {{ pkg.service_type or 'General' }}</span>
-                            </div>
-                            
-                            {% if pkg.description %}
-                            <div style="font-size: 0.85rem; color: #475569; margin-bottom: 0.5rem; border-top: 1px dashed #e2e8f0; padding-top: 0.5rem;">
-                                {{ pkg.description }}
-                            </div>
-                            {% endif %}
-                            
-                            {% if pkg.inclusions %}
-                            <div style="font-size: 0.8rem; color: #334155; margin-top: 0.5rem; background: #f8fafc; padding: 0.75rem; border-radius: 6px;">
-                                <strong style="display: block; margin-bottom: 0.25rem;">Inclusions:</strong>
-                                <ul style="padding-left: 1.25rem; margin-bottom: 0;">
-                                {% for item in pkg.inclusions %}
-                                    <li>{{ item }}</li>
+                    <div class="form-group-pro" style="margin-bottom: 1.5rem;">
+                        <label>Base Package / Booking Type <span style="color: #ef4444;">*</span></label>
+                        <select id="manPackageMode" class="control-pro" onchange="initializeQuotation()">
+                            <option value="custom">Fully Custom Booking (Start from scratch)</option>
+                            <optgroup label="Fixed Packages">
+                                {% for pkg in packages %}
+                                <option value="{{ pkg.id }}" data-price="{{ pkg.price or 0 }}" data-unit="{{ pkg.price_unit or 'fixed' }}" data-name="{{ pkg.name }}">{{ pkg.name }}</option>
                                 {% endfor %}
-                                </ul>
-                            </div>
-                            {% endif %}
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+                        <div style="background: #f8fafc; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 800; color: #334155; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center;">
+                            <span><i class="fas fa-list-ul"></i> Itemized Breakdown</span>
                         </div>
-                        {% endfor %}
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; text-align: left; border-collapse: collapse; min-width: 500px;">
+                                <thead style="background: #f1f5f9; border-bottom: 2px solid #e2e8f0;">
+                                    <tr>
+                                        <th style="padding: 12px 16px; font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Description</th>
+                                        <th style="padding: 12px 16px; font-size: 0.75rem; color: #64748b; text-transform: uppercase; width: 80px;">Qty</th>
+                                        <th style="padding: 12px 16px; font-size: 0.75rem; color: #64748b; text-transform: uppercase; width: 120px;">Unit Price (₱)</th>
+                                        <th style="padding: 12px 16px; font-size: 0.75rem; color: #64748b; text-transform: uppercase; width: 120px; text-align: right;">Amount (₱)</th>
+                                        <th style="padding: 12px; width: 50px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="quotationItems">
+                                    <!-- Dynamic rows inserted here -->
+                                </tbody>
+                                <tfoot style="border-top: 2px solid #e2e8f0;">
+                                    <tr>
+                                        <td colspan="5" style="padding: 12px; text-align: center;">
+                                            <button type="button" onclick="addQuotationRow('', 1, 0)" style="background: none; border: 1px dashed #cbd5e1; width: 100%; padding: 10px; border-radius: 8px; color: var(--primary-color); font-weight: 700; cursor: pointer; transition: all 0.2s;">
+                                                <i class="fas fa-plus"></i> Add Line Item (e.g., Extra Pax, Setup Fee, Custom Food)
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr style="background: #f8fafc;">
+                                        <td colspan="3" style="padding: 12px 16px; text-align: right; font-weight: 700; color: #475569;">Subtotal</td>
+                                        <td colspan="2" style="padding: 12px 16px; text-align: right; font-weight: 800; font-size: 1.1rem; color: #0f172a;" id="quoteSubtotal">₱0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="3" style="padding: 12px 16px; text-align: right; font-weight: 700; color: #ef4444; vertical-align: middle;">Discount / Adjustment</td>
+                                        <td colspan="2" style="padding: 12px 16px; text-align: right;">
+                                            <input type="number" id="quoteDiscount" class="control-pro" style="text-align: right; padding: 6px 12px; height: auto; max-width: 140px; margin-left: auto;" value="0" min="0" oninput="calculateQuotationTotal()">
+                                        </td>
+                                    </tr>
+                                    <tr style="background: #f0f9ff; border-top: 2px solid #bae6fd;">
+                                        <td colspan="3" style="padding: 16px; text-align: right; font-weight: 800; color: #0369a1; font-size: 1.1rem;">Final Agreed Total</td>
+                                        <td colspan="2" style="padding: 16px; text-align: right; font-weight: 900; color: #0369a1; font-size: 1.25rem;" id="quoteTotal">₱0.00</td>
+                                        <input type="hidden" id="manAmount" name="total_amount">
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
                     </div>
-
-                    <div id="customPriceDiv" style="margin-bottom: 1.5rem; background: #f8fafc; padding: 1.25rem; border: 1px solid #e2e8f0; border-radius: 12px;">
-                        <label style="font-weight: 700; color: #334155; margin-bottom: 0.5rem; display: block;">Agreed Custom Price (₱)</label>
-                        <input type="number" id="manCustomPrice" class="control-pro" placeholder="e.g. 50000" oninput="recalculateTotal()" min="0" value="0">
-                    </div>
-
-                    <div class="field-error-msg" id="error-manPackage"></div>
-
-                    <h5 style="font-size: 1rem; font-weight: 700; color: #334155; margin: 1.5rem 0 1rem 0; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;"><i class="fas fa-clipboard-list"></i> Additional Requests</h5>
+                    
+                    <h5 style="font-size: 1rem; font-weight: 700; color: #334155; margin: 1.5rem 0 1rem 0;"><i class="fas fa-clipboard-list"></i> Special Requests & Notes</h5>
                     <div class="form-group-pro">
-                        <textarea id="manSpecialNotes" name="special_notes" class="control-pro" rows="4" placeholder="Share important event details, dietary requests, venue restrictions, or setup instructions..."></textarea>
+                        <textarea id="manSpecialNotes" name="special_notes" class="control-pro" rows="3" placeholder="Dietary restrictions, venue instructions, etc..."></textarea>
                     </div>
                 </div>
 
-                <!-- STEP 3: CUSTOMER INFO -->
+                <!-- STEP 3: CUSTOMER & PAYMENT -->
                 <div class="step-content" id="step-3">
-                    <h4 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem;">Step 3: Customer Information</h4>
-                    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">Enter the contact details of the client.</p>
+                    <h4 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem;">Step 3: Customer & Payment</h4>
+                    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">Enter contact details and initial payment terms.</p>
                     
+                    <h5 style="font-size: 1rem; font-weight: 700; color: #334155; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;"><i class="fas fa-user"></i> Customer Info</h5>
                     <div id="userDetectionBadge" class="detection-badge-container" style="margin-bottom: 1.5rem;"></div>
 
-                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 2rem;">
                         <div class="form-group-pro">
                             <label>First Name <span style="color: #ef4444;">*</span></label>
                             <input type="text" id="manFirstName" name="first_name" class="control-pro" required oninput="validateFirstName()">
@@ -831,10 +833,42 @@
                         <div class="form-group-pro" style="grid-column: span 2;">
                             <label>Booking Source <span style="color: #ef4444;">*</span></label>
                             <select id="manBookingSource" name="booking_source" class="control-pro" required>
-                                <option value="Walk-in">Walk-in / In-Person</option>
-                                <option value="Facebook" selected>Facebook / Messenger</option>
+                                <option value="Walk-in" selected>Walk-in / In-Person</option>
+                                <option value="Facebook">Facebook / Messenger</option>
                                 <option value="Phone Call">Phone Call / SMS</option>
                                 <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <h5 style="font-size: 1rem; font-weight: 700; color: #334155; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;"><i class="fas fa-money-bill-wave"></i> Payment Details</h5>
+                    
+                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+                        <div class="form-group-pro">
+                            <label>Amount Paid (Deposit) <span style="color: #ef4444;">*</span></label>
+                            <input type="number" id="manAmountPaid" name="amount_paid" class="control-pro" value="0" min="0" oninput="calculateBalance()">
+                            <small style="color: #64748b; font-size: 0.75rem;">Enter 0 if no payment received yet.</small>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Remaining Balance</label>
+                            <div id="manBalanceDisplay" style="padding: 0.85rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-weight: 700; color: #ef4444; font-size: 1.1rem;">₱0.00</div>
+                            <input type="hidden" id="manBalance" name="balance" value="0">
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Payment Method <span style="color: #ef4444;">*</span></label>
+                            <select id="manPaymentMethod" name="payment_method" class="control-pro" required>
+                                <option value="Cash">Cash</option>
+                                <option value="GCash">GCash / Maya</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option value="None" selected>None yet</option>
+                            </select>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Payment Status <span style="color: #ef4444;">*</span></label>
+                            <select id="manPaymentStatus" name="payment_status" class="control-pro" required>
+                                <option value="pending" selected>Unpaid / Pending</option>
+                                <option value="deposit_paid">Partially Paid (Deposit)</option>
+                                <option value="paid">Fully Paid</option>
                             </select>
                         </div>
                     </div>
@@ -842,10 +876,10 @@
 
                 <!-- STEP 4: SUMMARY & CONFIRMATION -->
                 <div class="step-content" id="step-4">
-                    <h4 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 1.5rem;">Step 4: Review & Confirmation</h4>
+                    <h4 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 1.5rem;">Step 4: Finalize Booking</h4>
                     
                     <div class="summary-box" style="margin-bottom: 1.5rem;">
-                        <h5 style="margin: 0 0 1rem 0; font-size: 1rem; color: #334155;"><i class="fas fa-file-invoice"></i> Booking Summary</h5>
+                        <h5 style="margin: 0 0 1rem 0; font-size: 1rem; color: #334155;"><i class="fas fa-file-invoice"></i> Final Overview</h5>
                         <div class="summary-row">
                             <span class="summary-label">Client Name</span>
                             <span class="summary-value" id="sumClientName">-</span>
@@ -859,37 +893,20 @@
                             <span class="summary-value" id="sumVenue">-</span>
                         </div>
                         <div class="summary-row">
-                            <span class="summary-label">Package Selected</span>
+                            <span class="summary-label">Booking Mode</span>
                             <span class="summary-value" id="sumPackage">-</span>
                         </div>
                         <div class="summary-row" style="border-top: 2px solid #cbd5e1; border-bottom: none; padding-top: 1rem; margin-top: 0.5rem;">
                             <span class="summary-label" style="font-size: 1.1rem; color: #0f172a;">Grand Total</span>
-                            <span class="summary-value" id="displayTotal" style="font-size: 1.5rem; color: var(--primary-color);">₱0.00</span>
+                            <span class="summary-value" id="sumTotalAmount" style="font-size: 1.3rem; color: #0f172a;">₱0.00</span>
                         </div>
-                        <div class="summary-row" id="amountToPayRow" style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin-top: 1rem; border-bottom: none; display: flex; justify-content: space-between; align-items: center;">
-                            <span class="summary-label" style="font-size: 1.1rem; color: #1d4ed8; font-weight: 800;">Amount Received / To Pay</span>
-                            <span class="summary-value" id="displayAmountToPay" style="font-size: 1.5rem; color: #1d4ed8; font-weight: 900;">₱0.00</span>
+                        <div class="summary-row" style="border-bottom: none; padding-top: 0.5rem;">
+                            <span class="summary-label">Deposit Paid</span>
+                            <span class="summary-value" id="sumDepositPaid" style="color: var(--primary-color);">₱0.00</span>
                         </div>
-                        <input type="hidden" id="manAmount" name="total_amount">
-                    </div>
-
-                    <h5 style="font-size: 1rem; font-weight: 700; color: #334155; margin: 1.5rem 0 1rem 0;"><i class="fas fa-money-check"></i> Payment Information</h5>
-                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
-                        <div class="form-group-pro">
-                            <label>Payment Method <span style="color: #ef4444;">*</span></label>
-                            <select id="manPaymentMethod" class="control-pro" required>
-                                <option value="Cash">Cash on Delivery</option>
-                                <option value="GCash">GCash / Maya</option>
-                                <option value="Bank Transfer">Bank Transfer</option>
-                            </select>
-                        </div>
-                        <div class="form-group-pro">
-                            <label>Payment Status <span style="color: #ef4444;">*</span></label>
-                            <select id="manPaymentStatus" class="control-pro" required onchange="updatePaymentAmount()">
-                                <option value="pending">Unpaid (Pending)</option>
-                                <option value="deposit_paid">Deposit Paid (50%)</option>
-                                <option value="paid" selected>Fully Paid</option>
-                            </select>
+                        <div class="summary-row" style="background: #fef2f2; padding: 1rem; border-radius: 8px; margin-top: 1rem; border-bottom: none; display: flex; justify-content: space-between; align-items: center;">
+                            <span class="summary-label" style="font-size: 1.1rem; color: #b91c1c; font-weight: 800;">Remaining Balance</span>
+                            <span class="summary-value" id="sumBalanceFinal" style="font-size: 1.5rem; color: #b91c1c; font-weight: 900;">₱0.00</span>
                         </div>
                     </div>
                 </div>
@@ -915,69 +932,155 @@
     let currentStep = 1;
     const totalSteps = 4;
 
-    function selectVisualPackage(pkgId, price, unit, name, element) {
-        // Update hidden select
-        const select = document.getElementById('manPackage');
-        select.value = pkgId;
-        
-        // Update visual selection
-        document.querySelectorAll('.pkg-card-select').forEach(el => el.classList.remove('selected'));
-        element.classList.add('selected');
-        
-        // Toggle Custom Price field
-        if (!pkgId) {
-            document.getElementById('customPriceDiv').style.display = 'block';
-        } else {
-            document.getElementById('customPriceDiv').style.display = 'none';
-        }
-
-        // Recalculate
-        recalculateTotal();
-        if (typeof validatePackage === 'function') validatePackage();
-    }
-
-    function recalculateTotal() {
-        const pkgSelect = document.getElementById('manPackage');
-        const pkgOpt = pkgSelect.options[pkgSelect.selectedIndex];
+    // Quotation Builder Logic
+    window.quoteItems = [];
+    
+    function initializeQuotation() {
+        const mode = document.getElementById('manPackageMode');
+        const opt = mode.options[mode.selectedIndex];
         const guests = parseInt(document.getElementById('manGuests').value) || 0;
         
-        let total = 0;
-        if (!pkgOpt || !pkgOpt.value) {
-            total = parseFloat(document.getElementById('manCustomPrice').value) || 0;
-        } else {
-            const price = parseFloat(pkgOpt.getAttribute('data-price')) || 0;
-            const unit = pkgOpt.getAttribute('data-unit') || 'fixed';
+        window.quoteItems = [];
+        
+        if (opt.value !== 'custom') {
+            const price = parseFloat(opt.getAttribute('data-price')) || 0;
+            const unit = opt.getAttribute('data-unit') || 'fixed';
+            const name = opt.getAttribute('data-name') || 'Base Package';
+            
+            let qty = 1;
+            
             if (unit === 'per_head') {
-                total = price * guests;
-            } else {
-                total = price;
+                qty = guests;
             }
+            
+            window.quoteItems.push({
+                id: 'base_' + Date.now(),
+                desc: name + (unit === 'per_head' ? ' (Per Head)' : ' (Fixed Rate)'),
+                qty: qty,
+                price: price,
+                isBase: true
+            });
         }
         
+        renderQuotationTable();
+    }
+    
+    function addQuotationRow(desc = '', qty = 1, price = 0) {
+        window.quoteItems.push({
+            id: 'item_' + Date.now(),
+            desc: desc,
+            qty: qty,
+            price: price,
+            isBase: false
+        });
+        renderQuotationTable();
+    }
+    
+    function removeQuotationRow(id) {
+        window.quoteItems = window.quoteItems.filter(i => i.id !== id);
+        renderQuotationTable();
+    }
+    
+    function updateQuotationItem(id, field, value) {
+        const item = window.quoteItems.find(i => i.id === id);
+        if (item) {
+            item[field] = field === 'desc' ? value : parseFloat(value) || 0;
+            calculateQuotationTotal();
+        }
+    }
+    
+    function renderQuotationTable() {
+        const tbody = document.getElementById('quotationItems');
+        tbody.innerHTML = '';
+        
+        if (window.quoteItems.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="padding: 20px; text-align: center; color: #94a3b8; font-size: 0.9rem;">No items added yet. Click "Add Line Item" below.</td></tr>`;
+        }
+        
+        window.quoteItems.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #e2e8f0';
+            
+            const descHtml = item.isBase ? 
+                `<div style="font-weight: 700; color: #334155;">${item.desc}</div><small style="color: #64748b; font-size: 0.75rem;">Base Package</small>` :
+                `<input type="text" class="control-pro" style="padding: 6px 10px; height: auto;" placeholder="e.g. Extra Pax" value="${item.desc}" onchange="updateQuotationItem('${item.id}', 'desc', this.value)">`;
+                
+            const qtyHtml = item.isBase && item.desc.includes('(Fixed Rate)') ?
+                `<div style="text-align: center; font-weight: 600; color: #64748b;">1</div>` :
+                `<input type="number" class="control-pro" style="padding: 6px 10px; height: auto; text-align: center;" value="${item.qty}" min="1" oninput="updateQuotationItem('${item.id}', 'qty', this.value)">`;
+                
+            const priceHtml = item.isBase ?
+                `<div style="text-align: right; font-weight: 600; color: #64748b;">₱${item.price.toLocaleString('en-US', {minimumFractionDigits:2})}</div>` :
+                `<input type="number" class="control-pro" style="padding: 6px 10px; height: auto; text-align: right;" value="${item.price}" min="0" oninput="updateQuotationItem('${item.id}', 'price', this.value)">`;
+                
+            const delHtml = item.isBase ? '' : `<button type="button" onclick="removeQuotationRow('${item.id}')" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 4px;"><i class="fas fa-trash"></i></button>`;
+
+            tr.innerHTML = `
+                <td style="padding: 12px 16px;">${descHtml}</td>
+                <td style="padding: 12px 16px;">${qtyHtml}</td>
+                <td style="padding: 12px 16px;">${priceHtml}</td>
+                <td style="padding: 12px 16px; text-align: right; font-weight: 700; color: #0f172a;" id="amt_${item.id}">₱${(item.qty * item.price).toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                <td style="padding: 12px; text-align: center;">${delHtml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+        calculateQuotationTotal();
+    }
+    
+    function calculateQuotationTotal() {
+        let subtotal = 0;
+        quoteItems.forEach(item => {
+            const amt = (item.qty || 0) * (item.price || 0);
+            subtotal += amt;
+            const amtEl = document.getElementById(`amt_${item.id}`);
+            if (amtEl) amtEl.textContent = '₱' + amt.toLocaleString('en-US', {minimumFractionDigits:2});
+        });
+        
+        document.getElementById('quoteSubtotal').textContent = '₱' + subtotal.toLocaleString('en-US', {minimumFractionDigits:2});
+        
+        const discount = parseFloat(document.getElementById('quoteDiscount').value) || 0;
+        const total = Math.max(0, subtotal - discount);
+        
+        document.getElementById('quoteTotal').textContent = '₱' + total.toLocaleString('en-US', {minimumFractionDigits:2});
         document.getElementById('manAmount').value = total;
-        document.getElementById('displayTotal').textContent = '₱' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         
-        updatePaymentAmount();
+        calculateBalance();
     }
-
-    function updatePaymentAmount() {
+    
+    function calculateBalance() {
         const total = parseFloat(document.getElementById('manAmount').value) || 0;
-        const status = document.getElementById('manPaymentStatus').value;
-        let amountToPay = 0;
+        const paid = parseFloat(document.getElementById('manAmountPaid').value) || 0;
+        const balance = Math.max(0, total - paid);
         
-        if (status === 'paid') {
-            amountToPay = total;
-        } else if (status === 'deposit_paid') {
-            amountToPay = total * 0.5;
+        document.getElementById('manBalanceDisplay').textContent = '₱' + balance.toLocaleString('en-US', {minimumFractionDigits:2});
+        document.getElementById('manBalance').value = balance;
+        
+        // Auto-update status based on balance
+        const statusSelect = document.getElementById('manPaymentStatus');
+        if (paid === 0) {
+            statusSelect.value = 'pending';
+        } else if (paid >= total && total > 0) {
+            statusSelect.value = 'paid';
         } else {
-            amountToPay = 0;
+            statusSelect.value = 'deposit_paid';
         }
-        
-        document.getElementById('displayAmountToPay').textContent = '₱' + amountToPay.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
+    
+    document.getElementById('manGuests').addEventListener('input', () => {
+        // If they change pax, we only want to auto-update the base package row if it's per head.
+        const guests = parseInt(document.getElementById('manGuests').value) || 0;
+        const baseItem = quoteItems.find(i => i.isBase && i.desc.includes('(Per Head)'));
+        if (baseItem) {
+            baseItem.qty = guests;
+            renderQuotationTable();
+        }
+    });
 
-    // Attach listener to guest count to recalculate when pax changes
-    document.getElementById('manGuests').addEventListener('input', recalculateTotal);
+    // Initialize an empty custom quotation on load
+    document.addEventListener("DOMContentLoaded", () => {
+        initializeQuotation();
+    });
 
     function updateSummary() {
         const fName = document.getElementById('manFirstName').value;
@@ -995,48 +1098,55 @@
             dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         }
         
+        let timeStr = '-';
+        if (evTime) {
+            const [h, m] = evTime.split(':');
+            let hours = parseInt(h);
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; 
+            timeStr = `${hours}:${m} ${ampm}`;
+        }
+        
         document.getElementById('sumEventDetails').innerHTML = `
             ${evName || '-'}<br>
-            <small style="color:#64748b;">${dateStr} @ ${evTime || '-'} • ${pax || 0} Pax</small>
+            <small style="color:#64748b;">${dateStr} @ ${timeStr} • ${pax || 0} Pax</small>
         `;
 
         const prov = document.getElementById('manProvinceText').value;
         const city = document.getElementById('manMunicipalityText').value;
         document.getElementById('sumVenue').textContent = (city && prov) ? `${city}, ${prov}` : '-';
 
-        const pkgSelect = document.getElementById('manPackage');
-        const pkgOpt = pkgSelect.options[pkgSelect.selectedIndex];
-        document.getElementById('sumPackage').textContent = pkgOpt ? pkgOpt.text : '-';
+        const mode = document.getElementById('manPackageMode');
+        const opt = mode.options[mode.selectedIndex];
+        document.getElementById('sumPackage').textContent = opt ? opt.text : '-';
+        
+        const total = parseFloat(document.getElementById('manAmount').value) || 0;
+        const paid = parseFloat(document.getElementById('manAmountPaid').value) || 0;
+        const bal = parseFloat(document.getElementById('manBalance').value) || 0;
+        
+        document.getElementById('sumTotalAmount').textContent = '₱' + total.toLocaleString('en-US', {minimumFractionDigits: 2});
+        document.getElementById('sumDepositPaid').textContent = '₱' + paid.toLocaleString('en-US', {minimumFractionDigits: 2});
+        document.getElementById('sumBalanceFinal').textContent = '₱' + bal.toLocaleString('en-US', {minimumFractionDigits: 2});
     }
 
     function validateCurrentStep() {
-        if (currentStep === 1) {
-            validateEventName();
-            validateEventType();
-            validateEventDate();
-            validateEventTime();
-            validateGuestCount();
-            validateProvince();
-            validateMunicipality();
-            validateBarangay();
-            const errs = document.querySelectorAll('#step-1 .field-error-msg');
-            let hasErr = false;
-            errs.forEach(e => { if (e.textContent !== '') hasErr = true; });
-            return !hasErr;
-        } else if (currentStep === 2) {
-            // Package is always valid if selected
-            return true;
-        } else if (currentStep === 3) {
-            validateFirstName();
-            validateLastName();
-            validateEmail();
-            validateContact();
-            const errs = document.querySelectorAll('#step-3 .field-error-msg');
-            let hasErr = false;
-            errs.forEach(e => { if (e.textContent !== '') hasErr = true; });
-            return !hasErr;
+        const stepDiv = document.getElementById(`step-${currentStep}`);
+        if (!stepDiv) return true;
+        
+        const inputs = stepDiv.querySelectorAll('input[required], select[required], textarea[required]');
+        let isValid = true;
+        
+        // Use native form validation tooltips on the first invalid field
+        for (let input of inputs) {
+            if (!input.checkValidity()) {
+                input.reportValidity();
+                isValid = false;
+                break; // Stop and let user fix the first error
+            }
         }
-        return true;
+        
+        return isValid;
     }
 
     function changeStep(dir) {

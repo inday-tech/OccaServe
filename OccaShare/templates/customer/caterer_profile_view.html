@@ -1515,15 +1515,15 @@
                     {% endif %}
 
                     {% set soc = caterer.scheduling_rules.get('social_links', {}) if caterer.scheduling_rules else {} %}
-                    {% if soc.get('facebook') or soc.get('instagram') %}
+                    {% if (soc.get('facebook') and soc.get('facebook')|trim) or (soc.get('instagram') and soc.get('instagram')|trim) %}
                     <div style="margin-bottom: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
-                        {% if soc.get('facebook') %}
-                        {% set fb_link = soc.get('facebook') %}
+                        {% if soc.get('facebook') and soc.get('facebook')|trim %}
+                        {% set fb_link = soc.get('facebook')|trim %}
                         {% if not fb_link.startswith('http') %}{% set fb_link = 'https://' ~ fb_link %}{% endif %}
                         <a href="{{ fb_link }}" target="_blank" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(24, 119, 242, 0.1); color: #1877F2; border-radius: 100px; font-size: 0.85rem; font-weight: 700; text-decoration: none; transition: background 0.2s;"><i class="fab fa-facebook"></i> Facebook</a>
                         {% endif %}
-                        {% if soc.get('instagram') %}
-                        {% set ig_link = soc.get('instagram') %}
+                        {% if soc.get('instagram') and soc.get('instagram')|trim %}
+                        {% set ig_link = soc.get('instagram')|trim %}
                         {% if not ig_link.startswith('http') and not ig_link.startswith('@') %}{% set ig_link = 'https://instagram.com/' ~ ig_link %}
                         {% elif ig_link.startswith('@') %}{% set ig_link = 'https://instagram.com/' ~ ig_link[1:] %}{% endif %}
                         <a href="{{ ig_link }}" target="_blank" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(228, 64, 95, 0.1); color: #E4405F; border-radius: 100px; font-size: 0.85rem; font-weight: 700; text-decoration: none; transition: background 0.2s;"><i class="fab fa-instagram"></i> Instagram</a>
@@ -2494,6 +2494,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 deposit_pct: {{ (item.security_deposit_pct if item.security_deposit_pct is defined else 0)|default(0, true)|tojson }},
                 needs_kyc: {{ (item.requires_kyc if item.requires_kyc is defined else false)|default(false, true)|tojson }},
                 min_hours: {{ (item.base_duration_hours if item.base_duration_hours is defined else 0)|default(0, true)|tojson }},
+                details_json: {{ (item.details_json if item.details_json else {})|tojson|safe }},
                 min_quantity: 1
             }{{ ',' if not loop.last else '' }}
             {% endfor %}
@@ -2737,6 +2738,68 @@ document.addEventListener('DOMContentLoaded', function() {
                     </button>
                   </div>`;
 
+            // Parse details
+            const details = item.details_json || {};
+            let detailsHtml = '';
+
+            if(details.inclusions && details.inclusions.length > 0) {
+                detailsHtml += `
+                    <div style="background:#f8fafc; border:1px solid #f1f5f9; border-radius:12px; padding:16px; margin-top:8px;">
+                        <h4 style="font-size:0.75rem; font-weight:850; color:var(--hub-slate-600); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:12px;"><i class="fas fa-gift" style="color:var(--hub-primary);"></i> What's Included</h4>
+                        <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px;">
+                            ${details.inclusions.map(i => `<li style="font-size:0.85rem; color:var(--hub-text-dark); display:flex; align-items:flex-start; gap:8px;"><i class="fas fa-check" style="color:#10b981; margin-top:3px;"></i> <div><span style="font-weight:700;">${i.qty ? i.qty + 'x ' : ''}${i.name}</span> ${i.details ? '- ' + i.details : ''}</div></li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            let specHtml = '';
+            if(details.specifications && details.specifications.length > 0) {
+                specHtml += details.specifications.map(s => `<div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0;"><span style="color:var(--hub-slate-500);">${s.name}:</span> <span style="font-weight:700; color:var(--hub-text-dark);">${s.value}</span></div>`).join('');
+            }
+            if(details.requirements && details.requirements.length > 0) {
+                specHtml += `<div style="font-size:0.75rem; font-weight:850; color:var(--hub-slate-400); text-transform:uppercase; margin-top:12px; margin-bottom:6px;">Requirements</div>`;
+                specHtml += details.requirements.map(r => `<div style="font-size:0.85rem; color:var(--hub-text-dark); padding:4px 0;"><i class="fas fa-exclamation-circle" style="color:#f59e0b;"></i> ${r}</div>`).join('');
+            }
+            if(details.area || details.delivery || details.setup) {
+                if(details.area) specHtml += `<div style="font-size:0.85rem; color:var(--hub-text-dark); padding:4px 0;"><i class="fas fa-map-marker-alt" style="color:var(--hub-primary);"></i> Area: <b>${details.area}</b></div>`;
+                if(details.delivery) specHtml += `<div style="font-size:0.85rem; color:var(--hub-text-dark); padding:4px 0;"><i class="fas fa-truck" style="color:var(--hub-primary);"></i> Delivery: <b>${details.delivery}</b></div>`;
+                if(details.setup) specHtml += `<div style="font-size:0.85rem; color:var(--hub-text-dark); padding:4px 0;"><i class="fas fa-tools" style="color:var(--hub-primary);"></i> Setup: <b>${details.setup}</b></div>`;
+            }
+
+            if(specHtml) {
+                detailsHtml += `
+                    <div style="background:#f8fafc; border:1px solid #f1f5f9; border-radius:12px; padding:16px; margin-top:8px;">
+                        <h4 style="font-size:0.75rem; font-weight:850; color:var(--hub-slate-600); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:12px;"><i class="fas fa-info-circle" style="color:var(--hub-primary);"></i> Specifications</h4>
+                        ${specHtml}
+                    </div>
+                `;
+            }
+
+            let polHtml = '';
+            if(details.deposit) {
+                polHtml += `<div style="font-size:0.85rem; background:#fff7ed; color:#c2410c; padding:8px 12px; border-radius:8px; border:1px solid #ffedd5; margin-bottom:12px; font-weight:700;"><i class="fas fa-shield-alt"></i> Security Deposit: ${details.deposit.value}${details.deposit.type === 'Percentage' ? '%' : ' PHP'}. ${details.deposit.condition || ''}</div>`;
+            } else if(item.deposit_pct) {
+                polHtml += `<div style="font-size:0.85rem; background:#fff7ed; color:#c2410c; padding:8px 12px; border-radius:8px; border:1px solid #ffedd5; margin-bottom:12px; font-weight:700;"><i class="fas fa-shield-alt"></i> Security Deposit: ${item.deposit_pct}% of total price.</div>`;
+            }
+
+            if(details.additional_charges && details.additional_charges.length > 0) {
+                polHtml += `<div style="font-size:0.75rem; font-weight:850; color:var(--hub-slate-400); text-transform:uppercase; margin-bottom:6px;">Extra Charges</div>`;
+                polHtml += details.additional_charges.map(c => `<div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0;"><span style="color:var(--hub-slate-600);">${c.name}</span> <span style="font-weight:700; color:var(--hub-text-dark);">₱${c.price}</span></div>`).join('');
+            }
+            if(details.policies) {
+                polHtml += `<div style="font-size:0.85rem; color:var(--hub-slate-500); white-space:pre-wrap; margin-top:12px; padding-top:12px; border-top:1px solid #e2e8f0;">${details.policies}</div>`;
+            }
+
+            if(polHtml) {
+                detailsHtml += `
+                    <div style="background:#f8fafc; border:1px solid #f1f5f9; border-radius:12px; padding:16px; margin-top:8px;">
+                        <h4 style="font-size:0.75rem; font-weight:850; color:var(--hub-slate-600); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:12px;"><i class="fas fa-scroll" style="color:var(--hub-primary);"></i> Policies</h4>
+                        ${polHtml}
+                    </div>
+                `;
+            }
+
             body.innerHTML = `
                 <div style="display:flex; flex-direction:column; gap:16px;">
                     <div style="position:relative; width:100%; height:180px; border-radius:12px; overflow:hidden; background:var(--hub-slate-50); box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); display:flex; align-items:center; justify-content:center;">
@@ -2750,9 +2813,18 @@ document.addEventListener('DOMContentLoaded', function() {
                         ${item.description ? `<p style="font-size: 0.85rem; color: var(--hub-slate-600); margin: 0; line-height:1.5;">${item.description}</p>` : ''}
                     </div>
                     
-                    <div style="background:var(--hub-slate-50); padding:16px; border-radius:12px; border:1px solid var(--hub-slate-100);">
-                        ${priceDisplay}
+                    <div style="display:flex; justify-content:space-between; align-items:flex-end; padding-top:8px; border-top:1px solid var(--hub-slate-100);">
+                        <div>
+                            <span style="font-size: 0.72rem; font-weight: 700; color: var(--hub-slate-400); text-transform:uppercase; display:block; margin-bottom:2px;">Pricing</span>
+                            ${priceDisplay}
+                        </div>
+                        <div style="text-align:right;">
+                            <span style="font-size: 0.72rem; font-weight: 700; color: var(--hub-slate-400); text-transform:uppercase; display:block; margin-bottom:2px;">Min. Duration</span>
+                            <span style="font-size: 0.9rem; font-weight: 800; color: var(--hub-text-dark);">${item.min_hours ? item.min_hours + ' hrs' : 'Flexible'}</span>
+                        </div>
                     </div>
+
+                    ${detailsHtml}
 
                     <div style="display:flex; align-items:center; gap:12px; margin-top: 4px;">
                         ${actionHtml}

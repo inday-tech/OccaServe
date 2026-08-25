@@ -12,6 +12,7 @@ from ..db.models import BookingMenuItem
 from ..core.templates import templates
 from ..services.realtime import manager
 from ..services.notification import NotificationService
+from ..services.booking_validator import BookingValidator
 
 router = APIRouter(prefix="/api/bookings", tags=["quotations"])
 
@@ -177,7 +178,12 @@ async def sign_contract(
         raise HTTPException(status_code=404, detail="Quotation or Booking not found")
 
     booking = quotation.booking
-    
+
+    # CONTINUOUS REVALIDATION: Check if booking is still valid before signing
+    is_valid, error_msg = BookingValidator.validate_booking_state(db, booking, update_if_expired=True)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+        
     # Update Downpayment Percentage
     downpayment_percent = data.get("downpayment_percent")
     if downpayment_percent is not None:

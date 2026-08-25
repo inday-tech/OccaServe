@@ -17,6 +17,7 @@ import httpx
 from ..services.realtime import manager
 from ..services.notification import NotificationService
 from ..services.payment_verification import payment_verification_service
+from ..services.booking_validator import BookingValidator
 from PIL import Image
 try:
     import pytesseract
@@ -356,6 +357,12 @@ async def alacarte_checkout_submit(
             
         booking = db.query(models.Booking).get(booking_id) if booking_id else None
         
+        # CONTINUOUS REVALIDATION
+        if booking:
+            is_valid, error_msg = BookingValidator.validate_booking_state(db, booking, update_if_expired=True)
+            if not is_valid:
+                return {"success": False, "message": error_msg}
+
         # --- AI Receipt Verification (Zero-Trust) ---
         if proof_url and payment_method not in ["CASH", "COD"]:
             verify_booking = booking if booking else models.Booking(id=0, total_amount=total_amount, caterer_id=caterer_id, payment_method=payment_method)
@@ -1608,6 +1615,11 @@ async def step_payment_v2_page(booking_id: str, request: Request, db: Session = 
     booking = db.query(models.Booking).get(booking_id_int)
     if not booking: raise HTTPException(status_code=404)
 
+    # CONTINUOUS REVALIDATION: Block loading payment page if expired
+    is_valid, error_msg = BookingValidator.validate_booking_state(db, booking, update_if_expired=True)
+    if not is_valid:
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking_id_int}?error_msg={error_msg}", status_code=303)
+
     # STRICT GATE: Ensure user is verified before payment (Skip for fast-track unless it's equipment rental)
     has_equipment = any(item.equipment_id is not None for item in booking.selected_items)
     if booking.transaction_type != 'fast_track' or has_equipment:
@@ -1672,6 +1684,12 @@ async def step_payment_submit(
     booking = db.query(models.Booking).get(actual_booking_id)
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+
+    # CONTINUOUS REVALIDATION: Block submitting payment if expired
+    is_valid, error_msg = BookingValidator.validate_booking_state(db, booking, update_if_expired=True)
+    if not is_valid:
+        # If ajax request: raise HTTP error, else redirect
+        raise HTTPException(status_code=400, detail=error_msg)
 
     # STRICT GATE: Ensure both parties have signed before processing payment
     if booking.transaction_type != 'fast_track':
@@ -1807,6 +1825,11 @@ async def alacarte_manage_payment_submit(
     if not booking or booking.user_id != user.id:
         return {"success": False, "message": "Booking not found"}
         
+    # CONTINUOUS REVALIDATION
+    is_valid, error_msg = BookingValidator.validate_booking_state(db, booking, update_if_expired=True)
+    if not is_valid:
+        return {"success": False, "message": error_msg}
+        
     # File validation
     allowed_types = ["image/jpeg", "image/png", "image/jpg", "image/webp", "application/pdf"]
     if proof_image.content_type not in allowed_types:
@@ -1880,6 +1903,13 @@ async def reupload_proof_submit(
     if not booking or booking.user_id != user.id:
         raise HTTPException(status_code=404, detail="Booking not found")
         
+    # CONTINUOUS REVALIDATION
+    is_valid, error_msg = BookingValidator.validate_booking_state(db, booking, update_if_expired=True)
+    if not is_valid:
+        import urllib.parse
+        encoded_error = urllib.parse.quote(error_msg)
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error_msg={encoded_error}", status_code=303)
+
     if booking.payment_status not in ['reupload_requested']:
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error_msg=No+re-upload+requested", status_code=303)
 
