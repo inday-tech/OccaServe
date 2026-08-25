@@ -1,0 +1,496 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Caterer Verification Module{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
+<style>
+    .partner-identity-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .partner-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background: var(--adm-primary-soft);
+        color: var(--adm-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.95rem;
+        flex-shrink: 0;
+        border: 1px solid rgba(249, 115, 22, 0.1);
+    }
+
+    .terminal-filter-strip {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.25rem 1.5rem;
+        background: #fff;
+        border-bottom: 1px solid var(--adm-border-light);
+    }
+
+    /* Modal Styling */
+    .doc-viewer {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .doc-viewer h4 {
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: var(--adm-navy);
+        text-transform: uppercase;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .doc-box {
+        aspect-ratio: 4/3;
+        background: #f1f5f9;
+        border-radius: 10px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        position: relative;
+        border: 1px solid var(--adm-border-light);
+    }
+
+    .doc-box img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    .doc-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .doc-box:hover .doc-overlay {
+        opacity: 1;
+    }
+
+    .doc-overlay i {
+        color: white;
+        font-size: 2rem;
+    }
+
+    .placeholder-text {
+        color: var(--adm-muted);
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .placeholder-text i {
+        font-size: 2rem;
+    }
+
+    .dm-input-group {
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 10px;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header-clean">
+    <div class="header-title-area">
+        <h1>Caterer Verification Module</h1>
+        <p>Check and approve caterer documents.</p>
+    </div>
+</div>
+
+<!-- KPI Metrics Cluster -->
+<div class="kpi-grid-clean">
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Pending Review</h4>
+            <span class="kpi-value">{{ pending_count }}</span>
+            <span class="trend-badge" style="background: #fef3c7; color: #92400e;">Needs Action</span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Verified</h4>
+            <span class="kpi-value">{{ verified_count }}</span>
+            <span class="trend-badge trend-up">Trusted</span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Needs Revision</h4>
+            <span class="kpi-value">{{ resubmission_count }}</span>
+            <span class="trend-badge" style="background: #ffedd5; color: #c2410c;">Revision Needed</span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Rejected</h4>
+            <span class="kpi-value">{{ rejected_count }}</span>
+            <span class="trend-badge" style="background: #fee2e2; color: #991b1b;">Denied</span>
+        </div>
+    </div>
+</div>
+
+<!-- Main Registry Terminal -->
+<div class="table-card-clean">
+    <div class="terminal-filter-strip">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase;">
+                Verification Queue
+            </h3>
+        </div>
+
+    </div>
+
+    <div class="table-responsive-wrapper">
+        <table class="clean-table" id="verificationsTable">
+            <thead>
+                <tr>
+                    <th>Business Name</th>
+                    <th>Submitted Date</th>
+                    <th>Status</th>
+                    <th>Admin Reviewer</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in verifications %}
+                <tr class="cust-row">
+                    <td>
+                        <div class="partner-identity-cell">
+                            <div class="partner-avatar">{{ item.caterer.business_name[0] }}</div>
+                            <div>
+                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem;">{{ item.caterer.business_name }}</div>
+                                <div style="font-size: 0.75rem; color: var(--adm-muted);">{{ item.caterer.user.email }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span style="font-weight: 600; color: var(--adm-muted); font-size: 0.85rem;">
+                            {{ item.submitted_at.strftime('%b %d, %Y %I:%M %p') }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if item.status == 'PENDING_REVIEW' %}
+                            <span class="badge-clean badge-pending">PENDING</span>
+                        {% elif item.status == 'VERIFIED' %}
+                            <span class="badge-clean badge-active">VERIFIED</span>
+                        {% elif item.status == 'RESUBMISSION_REQUIRED' %}
+                            <span class="badge-clean" style="background: #ffedd5; color: #c2410c;">RESUBMIT</span>
+                        {% elif item.status == 'REJECTED' %}
+                            <span class="badge-clean" style="background: #fee2e2; color: #991b1b;">REJECTED</span>
+                        {% elif item.status == 'EXPIRED' %}
+                            <span class="badge-clean" style="background: #f1f5f9; color: #475569;">EXPIRED</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.reviewer %}
+                            <div style="font-weight: 700; color: var(--adm-navy); font-size: 0.85rem;">
+                                {{ item.reviewer.first_name }} {{ item.reviewer.last_name }}
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--adm-muted);">
+                                {{ item.reviewed_at.strftime('%b %d, %Y') if item.reviewed_at else '' }}
+                            </div>
+                        {% else %}
+                            <span style="font-size: 0.75rem; color: var(--adm-muted); font-style: italic;">Unassigned</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">
+                        <button class="btn-clean" style="background: var(--adm-primary-soft); color: var(--adm-primary); font-size: 0.75rem; font-weight: 800; padding: 6px 14px;" 
+                            onclick="viewVerification({{ item.id }})">
+                            Review <i class="fas fa-arrow-right" style="margin-left: 4px;"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 3rem 1rem;">
+                        <i class="fas fa-inbox" style="font-size: 2rem; color: #cbd5e1; margin-bottom: 10px; display: block;"></i>
+                        <span style="color: var(--adm-muted); font-weight: 600;">No verifications found.</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Review Modal (Clean UI) -->
+<div id="review-modal" class="admin-modal-overlay">
+    <div class="admin-modal-card" style="max-width: 1000px; width: 95%; display: flex; flex-direction: column; max-height: 90vh;">
+        
+        <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem;">
+            <div>
+                <h3 id="modal-caterer-name" style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Loading...</h3>
+                <p id="modal-caterer-email" style="font-size: 0.7rem; color: var(--adm-muted);"></p>
+            </div>
+            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeModal()">&times;</button>
+        </div>
+        
+        <div class="modal-body-clean" style="overflow-y: auto; padding: 1.5rem 2rem; flex: 1;">
+            <input type="hidden" id="modal-verification-id">
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                
+                <!-- Gov ID -->
+                <div class="doc-viewer">
+                    <h4><i class="fas fa-id-card" style="color: var(--adm-primary);"></i> Government ID</h4>
+                    <div class="doc-box" onclick="openLightbox('doc-gov-id')">
+                        <img id="doc-gov-id" src="" style="display: none;">
+                        <div id="doc-gov-id-placeholder" class="placeholder-text">
+                            <i class="fas fa-image"></i>
+                            <span>No Document</span>
+                        </div>
+                        <div class="doc-overlay">
+                            <i class="fas fa-search-plus"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Selfie -->
+                <div class="doc-viewer">
+                    <h4><i class="fas fa-user-circle" style="color: var(--adm-primary);"></i> Selfie Verification</h4>
+                    <div class="doc-box" onclick="openLightbox('doc-selfie')">
+                        <img id="doc-selfie" src="" style="display: none;">
+                        <div id="doc-selfie-placeholder" class="placeholder-text">
+                            <i class="fas fa-image"></i>
+                            <span>No Document</span>
+                        </div>
+                        <div class="doc-overlay">
+                            <i class="fas fa-search-plus"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Permit -->
+                <div class="doc-viewer">
+                    <h4><i class="fas fa-file-certificate" style="color: var(--adm-primary);"></i> Business Permit</h4>
+                    <div class="doc-box" onclick="openLightbox('doc-permit')">
+                        <img id="doc-permit" src="" style="display: none;">
+                        <div id="doc-permit-placeholder" class="placeholder-text">
+                            <i class="fas fa-image"></i>
+                            <span>No Document</span>
+                        </div>
+                        <div class="doc-overlay">
+                            <i class="fas fa-search-plus"></i>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 10px;">
+                        <label style="font-size: 0.65rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase;">Expiration Date</label>
+                        <div class="dm-input-group" style="margin-top: 4px;">
+                            <input type="date" id="modal-permit-expiry" style="width: 100%; border: none; outline: none; background: transparent; padding: 8px 12px; font-size: 0.85rem;">
+                        </div>
+                        <p style="font-size: 0.65rem; color: var(--adm-muted); margin-top: 4px;">You can change this if the caterer entered the wrong date.</p>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <!-- Actions Section -->
+            <div style="background: #f8fafc; padding: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0;">
+                <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 12px;">Admin Decision</h4>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); display: block; margin-bottom: 5px;">Reason (Required if Rejecting or Asking for Revision)</label>
+                    <textarea id="modal-reason" rows="3" class="dm-input-group" style="width: 100%; padding: 12px; border: none; background: white; font-size: 0.85rem; outline: none; resize: vertical;" placeholder="e.g. ID is blurry, Permit is expired..."></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn-clean" style="flex: 1; background: #10b981; color: white; justify-content: center;" onclick="submitReview('approve')">
+                        <i class="fas fa-check" style="margin-right: 8px;"></i> Approve
+                    </button>
+                    <button class="btn-clean" style="flex: 1; background: #f97316; color: white; justify-content: center;" onclick="submitReview('resubmit')">
+                        <i class="fas fa-undo" style="margin-right: 8px;"></i> Ask for Revision
+                    </button>
+                    <button class="btn-clean" style="flex: 1; background: #ef4444; color: white; justify-content: center;" onclick="submitReview('reject')">
+                        <i class="fas fa-ban" style="margin-right: 8px;"></i> Reject
+                    </button>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox" style="position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; display: none; align-items: center; justify-content: center; flex-direction: column; padding: 20px;" onclick="closeLightbox()">
+    <button style="position: absolute; top: 20px; right: 30px; background: none; border: none; color: white; font-size: 2rem; cursor: pointer;" onclick="closeLightbox()">
+        <i class="fas fa-times"></i>
+    </button>
+    <img id="lightbox-img" src="" style="max-width: 100%; max-height: 90vh; object-fit: contain; border-radius: 10px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 4px solid rgba(255,255,255,0.1);" onclick="event.stopPropagation()">
+    <div style="color: rgba(255,255,255,0.5); font-size: 0.85rem; margin-top: 15px; letter-spacing: 1px;"><i class="fas fa-search-plus" style="margin-right: 5px;"></i> CLICK ANYWHERE TO CLOSE</div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const modal = document.getElementById('review-modal');
+
+    async function viewVerification(id) {
+        Swal.fire({ title: 'Loading...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+        
+        try {
+            const res = await fetch(`/admin/api/caterer-verification/${id}`);
+            const result = await res.json();
+            
+            if (result.success) {
+                const data = result.data;
+                
+                document.getElementById('modal-verification-id').value = data.id;
+                document.getElementById('modal-caterer-name').textContent = data.caterer_name;
+                document.getElementById('modal-caterer-email').textContent = data.caterer_email;
+                document.getElementById('modal-reason').value = data.rejection_reason || '';
+                
+                const setDoc = (type, imgId) => {
+                    const doc = data.documents[type];
+                    const img = document.getElementById(`doc-${imgId}`);
+                    const placeholder = document.getElementById(`doc-${imgId}-placeholder`);
+                    
+                    if (doc && doc.path) {
+                        img.src = doc.path;
+                        img.style.display = 'block';
+                        placeholder.style.display = 'none';
+                        
+                        if (type === 'BUSINESS_PERMIT' && doc.expires_at) {
+                            document.getElementById('modal-permit-expiry').value = doc.expires_at.split('T')[0];
+                        }
+                    } else {
+                        img.style.display = 'none';
+                        placeholder.style.display = 'flex';
+                    }
+                };
+                
+                setDoc('GOVERNMENT_ID', 'gov-id');
+                setDoc('SELFIE', 'selfie');
+                setDoc('BUSINESS_PERMIT', 'permit');
+                
+                Swal.close();
+                modal.style.display = 'flex';
+            } else {
+                Swal.fire('Error', result.message, 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Error', 'Failed to fetch verification details.', 'error');
+        }
+    }
+    
+    function closeModal() {
+        modal.style.display = 'none';
+    }
+    
+    // Set min date for permit expiry to today
+    const todayStr = new Date().toISOString().split('T')[0];
+    document.getElementById('modal-permit-expiry').setAttribute('min', todayStr);
+    
+    function openLightbox(imgId) {
+        const img = document.getElementById(imgId);
+        if (img && img.style.display !== 'none' && img.src) {
+            document.getElementById('lightbox-img').src = img.src;
+            document.getElementById('lightbox').style.display = 'flex';
+        }
+    }
+    
+    function closeLightbox() {
+        document.getElementById('lightbox').style.display = 'none';
+    }
+    
+    async function submitReview(action) {
+        const id = document.getElementById('modal-verification-id').value;
+        const reason = document.getElementById('modal-reason').value;
+        const expiry = document.getElementById('modal-permit-expiry').value;
+        
+        if ((action === 'reject' || action === 'resubmit') && !reason.trim()) {
+            Swal.fire('Required', 'Please enter a reason.', 'warning');
+            return;
+        }
+
+        if (action === 'approve') {
+            if (!expiry) {
+                Swal.fire('Required', 'Please enter the Business Permit Expiration Date.', 'warning');
+                return;
+            }
+            
+            const expiryDate = new Date(expiry);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if (expiryDate < today) {
+                Swal.fire('Invalid Date', 'The entered Business Permit Expiration Date is in the past. It must be valid.', 'warning');
+                return;
+            }
+        }
+        
+        let confirmText = '';
+        let confirmColor = '';
+        if (action === 'approve') { confirmText = 'Approve Caterer'; confirmColor = '#10b981'; }
+        else if (action === 'resubmit') { confirmText = 'Ask for Revision'; confirmColor = '#f97316'; }
+        else { confirmText = 'Reject Caterer'; confirmColor = '#ef4444'; }
+        
+        const { isConfirmed } = await Swal.fire({
+            title: 'Are you sure?',
+            text: `You are about to ${action} this caterer.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: confirmColor,
+            confirmButtonText: confirmText
+        });
+        
+        if (isConfirmed) {
+            Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            
+            const formData = new FormData();
+            formData.append('action', action);
+            formData.append('reason', reason);
+            if (expiry) formData.append('permit_expiry', expiry);
+            
+            try {
+                const res = await fetch(`/admin/api/caterer-verification/${id}/review`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await res.json();
+                
+                if (result.success) {
+                    Swal.fire('Success', result.message, 'success').then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', result.message, 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'Failed to submit review.', 'error');
+            }
+        }
+    }
+    
+</script>
+{% endblock %}

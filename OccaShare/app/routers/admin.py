@@ -513,7 +513,8 @@ async def manage_caterers(
     caterers_list = db.query(models.CatererProfile).options(
         joinedload(models.CatererProfile.user)
     ).join(models.User).filter(
-        models.User.is_archived == False
+        models.User.is_archived == False,
+        models.CatererProfile.verification_status.in_(['Verified', 'Suspended'])
     ).all()
     
     # Enrich with performance metrics
@@ -676,7 +677,8 @@ async def get_caterers_overview(
     caterers = db.query(models.CatererProfile).options(
         joinedload(models.CatererProfile.user)
     ).join(models.User).filter(
-        models.User.is_archived == False
+        models.User.is_archived == False,
+        models.CatererProfile.verification_status.in_(['Verified', 'Suspended'])
     ).all()
     
     # Enrichment

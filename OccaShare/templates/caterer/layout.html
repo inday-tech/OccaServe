@@ -1776,12 +1776,7 @@
                             <span class="nav-label">Reviews</span>
                         </a>
                     </li>
-                    <li>
-                        <a href="/caterer/compliance" class="nav-item {{ 'active' if active_page == 'compliance' }}">
-                            <div class="nav-icon"><i class="fas fa-shield-halved"></i></div>
-                            <span class="nav-label">Identity Verification</span>
-                        </a>
-                    </li>
+
                 </ul>
 
                 <span class="nav-section-label">System</span>
@@ -2137,17 +2132,14 @@
                 {% if user and user.caterer_profile and user.caterer_profile.verification_status != 'Verified' and
                 active_page != 'dashboard' and active_page != 'settings' %}
                 <div class="unverified-banner"
-                    style="background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 12px 20px; border-radius: var(--border-radius, 8px); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 1.2rem; color: #dc2626;"></i>
-                    <div style="flex: 1;">
-                        <strong style="display: block; font-size: 0.95rem; margin-bottom: 2px;">Account Verification
-                            Required</strong>
-                        <span style="font-size: 0.85rem;">Your account is currently unverified. Your profile is hidden
-                            from the public and you cannot receive bookings.</span>
+                    style="background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 12px 20px; border-radius: var(--border-radius, 8px); margin-bottom: 20px; display: flex; align-items: flex-start; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 1.2rem; color: #dc2626; margin-top: 3px;"></i>
+                    <div style="flex: 1; min-width: 200px;">
+                        <strong style="display: block; font-size: 0.95rem; margin-bottom: 2px;">Account Verification Required</strong>
+                        <span style="font-size: 0.85rem;">Your account is currently unverified. Your profile is hidden from the public and you cannot receive bookings.</span>
                     </div>
-                    <a href="/caterer/profile#verification" class="btn-primary-pro"
-                        style="background: #ef4444; border-color: #ef4444; color: white; padding: 6px 16px; font-size: 0.85rem; text-decoration: none; border-radius: 6px; flex-shrink: 0; box-shadow: none;">Go
-                        to Verification Center</a>
+                    <a href="/caterer/profile" class="btn-primary-pro"
+                        style="background: #ef4444; border-color: #ef4444; color: white; padding: 6px 14px; font-size: 0.8rem; text-decoration: none; border-radius: 6px; flex-shrink: 0; box-shadow: none; white-space: nowrap; height: fit-content; align-self: center;">Verify Account</a>
                 </div>
                 {% endif %}
                 {% block content %}{% endblock %}

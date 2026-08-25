@@ -612,17 +612,14 @@ function validateBarangay() {
 }
 
 function validatePackage() {
-    const field = document.getElementById('manPackage');
-    const error = document.getElementById('error-manPackage');
-
+    const field = document.getElementById('manPackageMode');
+    if (!field) return true;
+    
     if (!field.value) {
-        error.textContent = 'Please select a catering package';
         field.classList.add('is-invalid');
         return false;
     }
     field.classList.remove('is-invalid');
-    error.textContent = '';
-    error.textContent = '';
     return true;
 }
 

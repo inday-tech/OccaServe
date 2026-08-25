@@ -267,7 +267,6 @@
                 style="padding: 6px 14px; font-size: 0.8rem; font-weight: 700;">
                 <option value="all">Filter: All Partners</option>
                 <option value="VERIFIED">Status: Verified</option>
-                <option value="REVIEW">Status: Needs Review</option>
                 <option value="SUSPENDED">Status: Suspended</option>
             </select>
         </div>
@@ -337,19 +336,7 @@
                                     <i class="fas fa-eye" style="color: #64748b;"></i> View Details
                                 </button>
 
-                                {% if caterer.verification_status == 'Pending' or caterer.verification_status ==
-                                'Pending Review' or caterer.verification_status == 'Requires Revision' %}
-                                <button class="dm-dropdown-item" onclick="openReviewModal({{ caterer.id }})">
-                                    <i class="fas fa-file-contract" style="color: #64748b;"></i> Review Documents
-                                </button>
-                                <button class="dm-dropdown-item" style="color: #10b981;"
-                                    onclick="approveCaterer({{ caterer.id }})">
-                                    <i class="fas fa-check" style="color: #10b981;"></i> Approve Caterer
-                                </button>
-                                <button class="dm-dropdown-item danger" onclick="rejectCaterer({{ caterer.id }})">
-                                    <i class="fas fa-times" style="color: #ef4444;"></i> Reject Application
-                                </button>
-                                {% endif %}
+
 
                                 {% if caterer.verification_status == 'Verified' and caterer.account_status !=
                                 'Suspended' and caterer.user.status != 'suspended' %}
@@ -365,8 +352,7 @@
                                 </button>
                                 {% endif %}
 
-                                {% if caterer.account_status == 'Suspended' or caterer.user.status == 'suspended' or
-                                caterer.verification_status == 'Rejected' %}
+                                {% if caterer.account_status == 'Suspended' or caterer.user.status == 'suspended' %}
                                 <button class="dm-dropdown-item" style="color: #2563eb;"
                                     onclick="reactivateCaterer({{ caterer.id }})">
                                     <i class="fas fa-undo" style="color: #2563eb;"></i> Reactivate Account

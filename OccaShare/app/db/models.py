@@ -213,6 +213,10 @@ class CatererProfile(Base):
     deactivation_reason = Column(Text, nullable=True)
     deactivated_at = Column(DateTime(timezone=True), nullable=True)
     
+    # NEW: Caterer Verification Module
+    verification_status = Column(String, default="NOT_SUBMITTED") # NOT_SUBMITTED, PENDING_REVIEW, RESUBMISSION_REQUIRED, VERIFIED, REJECTED, EXPIRED
+    account_status = Column(String, default="PENDING") # PENDING, ACTIVE, RESTRICTED, SUSPENDED
+    
     # NEW: Billing and Commission
     outstanding_balance = Column(Float, default=0.0)
     commission_rate = Column(Float, default=0.05) # 5% default commission
@@ -235,6 +239,7 @@ class CatererProfile(Base):
     business_expenses = relationship("BusinessExpense", back_populates="caterer", cascade="all, delete-orphan")
     portfolios = relationship("Portfolio", back_populates="caterer", cascade="all, delete-orphan")
     delivery_zones = relationship("DeliveryZone", back_populates="caterer", cascade="all, delete-orphan")
+    verifications = relationship("CatererVerification", back_populates="caterer", cascade="all, delete-orphan")
 
 class DeliveryZone(Base):
     __tablename__ = "delivery_zones"
@@ -895,6 +900,66 @@ class IdentityVerification(Base):
     user = relationship("User", foreign_keys=[user_id], back_populates="identity_verifications")
     reviewer = relationship("User", foreign_keys=[reviewed_by])
     booking = relationship("Booking")
+
+class CatererVerification(Base):
+    __tablename__ = "caterer_verifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"), index=True)
+    status = Column(String, default="PENDING_REVIEW") # PENDING_REVIEW, RESUBMISSION_REQUIRED, VERIFIED, REJECTED, EXPIRED
+    submitted_at = Column(DateTime(timezone=True), server_default=func.now())
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    rejection_reason = Column(Text, nullable=True)
+
+    caterer = relationship("CatererProfile", back_populates="verifications")
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
+    documents = relationship("VerificationDocument", back_populates="verification", cascade="all, delete-orphan")
+    results = relationship("VerificationResult", back_populates="verification", uselist=False, cascade="all, delete-orphan")
+    audit_logs = relationship("VerificationAuditLog", back_populates="verification", cascade="all, delete-orphan")
+
+
+class VerificationDocument(Base):
+    __tablename__ = "verification_documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    verification_id = Column(Integer, ForeignKey("caterer_verifications.id"))
+    document_type = Column(String) # GOVERNMENT_ID, SELFIE, BUSINESS_PERMIT
+    secure_file_path = Column(String) # Path to secure storage, not public URL
+    uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(Date, nullable=True)
+    status = Column(String, default="PENDING") # PENDING, VALID, INVALID, EXPIRED
+
+    verification = relationship("CatererVerification", back_populates="documents")
+
+
+class VerificationResult(Base):
+    __tablename__ = "verification_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    verification_id = Column(Integer, ForeignKey("caterer_verifications.id"))
+    name_match = Column(Boolean, default=False)
+    dob_match = Column(Boolean, default=False)
+    id_valid = Column(Boolean, default=False)
+    permit_valid = Column(Boolean, default=False)
+    selfie_check = Column(Boolean, default=False)
+    overall_result = Column(String, nullable=True) # PASS, FLAG, FAIL
+
+    verification = relationship("CatererVerification", back_populates="results")
+
+
+class VerificationAuditLog(Base):
+    __tablename__ = "verification_audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    verification_id = Column(Integer, ForeignKey("caterer_verifications.id"))
+    admin_id = Column(Integer, ForeignKey("users.id"))
+    action = Column(String) # Viewed ID, Approved, Rejected, etc.
+    reason = Column(Text, nullable=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+
+    verification = relationship("CatererVerification", back_populates="audit_logs")
+    admin = relationship("User", foreign_keys=[admin_id])
 
 class Notification(Base):
     __tablename__ = "notifications"
