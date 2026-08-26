@@ -124,14 +124,20 @@
             <ul class="nav-list">
 
                 <li>
-                    <a href="/admin/revenue" class="nav-item {{ 'active' if active_page == 'revenue' }}"
+                    <a href="/admin/reports" class="nav-item {{ 'active' if active_page == 'reports' }}"
                         onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
                         <span class="nav-label">Reports & Analytics</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/commissions" class="nav-item {{ 'active' if active_page == 'commissions' }}"
+                        onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-money-bill-wave"></i></div>
+                        <span class="nav-label">Commissions</span>
                         <span class="nav-badge nav-badge-red" id="badge-revenue" style="display:none;">0</span>
                     </a>
                 </li>
-            </ul>
 
             <span class="nav-section-label brand-text-label">System</span>
             <ul class="nav-list">

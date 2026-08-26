@@ -3,147 +3,181 @@
 {% block title %}Reports - Admin Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/reports.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
+<style>
+    /* Dashboard Specific Intelligence Extensions */
+    .chart-container-flex { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 2rem; }
+    .chart-box { flex: 1; min-width: 300px; background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 1.5rem; position: relative; }
+    .table-box { background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 1.5rem; overflow-x: auto; }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Analytics & Reports</h1>
-    <p>Deep dive into platform performance, growth, and accuracy metrics.</p>
+<div class="dashboard-header-clean">
+    <div class="header-title-area">
+        <h1>Analytics & Reports</h1>
+        <p>Deep dive into platform performance, user growth, and engagement metrics.</p>
+    </div>
 </div>
 
-<div class="reports-stats-grid">
+<!-- KPI Matrix (TOP) -->
+<div class="kpi-grid-clean" style="margin-bottom: 2rem;">
     <!-- Growth Card -->
-    <div class="report-analytics-card">
-        <h3 class="report-card-label"><i class="fas fa-chart-line"></i> Monthly Growth</h3>
-        <div class="report-card-value">
-            {% if monthly_growth_pct is defined %}
-            {% if monthly_growth_pct >= 0 %}+{% endif %}{{ monthly_growth_pct }}%
-            {% else %}
-            0%
-            {% endif %}
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Monthly Growth</h4>
+            <span class="kpi-value">
+                {% if monthly_growth_pct is defined %}
+                    {% if monthly_growth_pct >= 0 %}+{% endif %}{{ monthly_growth_pct }}%
+                {% else %}
+                    0%
+                {% endif %}
+            </span>
+            <span class="trend-badge {% if monthly_growth_pct >= 0 %}trend-up{% else %}trend-down{% endif %}">
+                <i class="fas fa-user-plus"></i> {{ new_users_this_month if new_users_this_month is defined else 0 }} new
+            </span>
         </div>
-        <p class="report-card-meta">{{ new_users_this_month if new_users_this_month is defined else 0 }} new user(s)
-            registered this month.</p>
     </div>
 
     <!-- Satisfaction Card -->
-    <div class="report-analytics-card">
-        <h3 class="report-card-label"><i class="fas fa-smile"></i> User Satisfaction</h3>
-        <div class="report-card-value">{{ avg_rating if avg_rating is defined else '0.0' }}/5</div>
-        <p class="report-card-meta">Based on {{ total_reviews if total_reviews is defined else 0 }} platform-wide
-            rating(s).</p>
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>User Satisfaction</h4>
+            <span class="kpi-value">{{ avg_rating if avg_rating is defined else '0.0' }} <span style="font-size: 1rem; color: #94a3b8;">/ 5</span></span>
+            <span class="trend-badge trend-up">
+                <i class="fas fa-star"></i> {{ total_reviews if total_reviews is defined else 0 }} reviews
+            </span>
+        </div>
     </div>
 
     <!-- Total Bookings Card -->
-    <div class="report-analytics-card">
-        <h3 class="report-card-label"><i class="fas fa-calendar-check"></i> Total Bookings</h3>
-        <div class="report-card-value">{{ total_bookings if total_bookings is defined else 0 }}</div>
-        <p class="report-card-meta">{{ paid_bookings if paid_bookings is defined else 0 }} paid booking(s) confirmed.
-        </p>
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Total Bookings</h4>
+            <span class="kpi-value">{{ total_bookings if total_bookings is defined else 0 }}</span>
+            <span class="trend-badge trend-up">
+                <i class="fas fa-calendar-check"></i> {{ paid_bookings if paid_bookings is defined else 0 }} paid
+            </span>
+        </div>
     </div>
 
     <!-- Revenue Card -->
-    <div class="report-analytics-card">
-        <h3 class="report-card-label"><i class="fas fa-peso-sign"></i> Total Revenue</h3>
-        <div class="report-card-value">₱{{ "{:,.0f}".format(total_revenue if total_revenue is defined else 0) }}</div>
-        <p class="report-card-meta">From all paid bookings on the platform.</p>
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Total Revenue Volume</h4>
+            <span class="kpi-value">₱{{ "{:,.0f}".format(total_revenue if total_revenue is defined else 0) }}</span>
+            <span class="trend-badge trend-up">
+                <i class="fas fa-money-bill-wave"></i> Gross
+            </span>
+        </div>
     </div>
 </div>
 
-<!-- Booking Trend Chart -->
-<div class="performance-detail-wrapper" style="margin-bottom: 2.5rem;">
-    <div class="performance-header-flex">
-        <h3 class="performance-title-text"><i class="fas fa-chart-bar"></i> 6-Month Booking Trend</h3>
+<!-- Analytics Split (MIDDLE) -->
+<div class="chart-container-flex">
+    <div class="chart-box" style="flex: 2;">
+        <div class="card-title-clean" style="margin-bottom:1rem; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-chart-bar" style="color: var(--adm-primary);"></i> 6-Month Booking Trend
+        </div>
+        <div class="chart-container-clean" style="height: 320px; position: relative;">
+            <canvas id="bookingTrendChart"></canvas>
+        </div>
     </div>
-    <canvas id="bookingTrendChart" height="100"></canvas>
-</div>
 
-<!-- Top Caterers Table -->
-<div class="performance-detail-wrapper" style="margin-bottom: 2.5rem;">
-    <div class="performance-header-flex">
-        <h3 class="performance-title-text"><i class="fas fa-trophy"></i> Top Performing Caterers</h3>
+    <div class="chart-box table-box" style="flex: 1.2;">
+        <div class="card-title-clean" style="margin-bottom:1rem; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-trophy" style="color: #f59e0b;"></i> Top Performing Caterers
+        </div>
+        {% if top_caterers %}
+        <table class="clean-table" style="margin-top: 10px;">
+            <thead>
+                <tr>
+                    <th style="width: 50px;">Rank</th>
+                    <th>Caterer</th>
+                    <th style="text-align: right;">Bookings</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in top_caterers %}
+                <tr>
+                    <td style="font-size: 1.1rem; text-align: center;">
+                        {% if loop.index0 == 0 %}<i class="fas fa-medal" style="color: #f59e0b;" title="1st Place"></i>
+                        {% elif loop.index0 == 1 %}<i class="fas fa-medal" style="color: #94a3b8;" title="2nd Place"></i>
+                        {% elif loop.index0 == 2 %}<i class="fas fa-medal" style="color: #b45309;" title="3rd Place"></i>
+                        {% else %}<span style="font-weight: 700; color: #64748b; font-size: 0.8rem;">#{{ loop.index }}</span>{% endif %}
+                    </td>
+                    <td><span style="font-weight: 700; color: var(--adm-navy);">{{ c.name }}</span></td>
+                    <td style="text-align: right; font-weight: 700; color: var(--adm-primary);">{{ c.bookings }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; padding: 3rem; color: var(--adm-muted);">
+            <i class="fas fa-box-open" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+            <p>No booking data available yet.</p>
+        </div>
+        {% endif %}
     </div>
-    {% if top_caterers %}
-    <table style="width: 100%; border-collapse: separate; border-spacing: 0;">
-        <thead>
-            <tr>
-                <th
-                    style="text-align: left; padding: 1rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">
-                    Rank</th>
-                <th
-                    style="text-align: left; padding: 1rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">
-                    Caterer</th>
-                <th
-                    style="text-align: right; padding: 1rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">
-                    Bookings</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for c in top_caterers %}
-            <tr>
-                <td style="padding: 1rem; border-bottom: 1px solid #f1f5f9;">
-                    <span
-                        style="font-weight: 700; color: {% if loop.index0 == 0 %}#f59e0b{% elif loop.index0 == 1 %}#94a3b8{% elif loop.index0 == 2 %}#b45309{% else %}#64748b{% endif %};">
-                        {% if loop.index0 == 0 %}🥇{% elif loop.index0 == 1 %}🥈{% elif loop.index0 == 2 %}🥉{% else
-                        %}#{{ loop.index }}{% endif %}
-                    </span>
-                </td>
-                <td style="padding: 1rem; border-bottom: 1px solid #f1f5f9; font-weight: 600;">{{ c.name }}</td>
-                <td
-                    style="padding: 1rem; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: 700; color: var(--primary-color);">
-                    {{ c.bookings }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <div style="text-align: center; padding: 3rem; color: #64748b;">
-        <p>No booking data available yet.</p>
-    </div>
-    {% endif %}
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const ctx = document.getElementById('bookingTrendChart').getContext('2d');
-    const bookingTrendChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: {{ monthly_labels | safe if monthly_labels is defined else '[]' }},
-    datasets: [{
-        label: 'Bookings',
-        data: {{ monthly_bookings | safe if monthly_bookings is defined else '[]' }},
-    backgroundColor: 'rgba(99, 102, 241, 0.15)',
-        borderColor: 'rgba(99, 102, 241, 0.9)',
-            borderWidth: 2,
-                borderRadius: 8,
-                    borderSkipped: false,
-            }]
-        },
-    options: {
-        responsive: true,
-            plugins: {
-            legend: { display: false },
-            tooltip: {
-                callbacks: {
-                    label: (context) => ` ${context.parsed.y} booking(s)`
+    document.addEventListener('DOMContentLoaded', () => {
+        const ctx = document.getElementById('bookingTrendChart').getContext('2d');
+        const rawLabels = {{ monthly_labels | safe if monthly_labels is defined else '[]' }};
+        const rawData = {{ monthly_bookings | safe if monthly_bookings is defined else '[]' }};
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: rawLabels,
+                datasets: [{
+                    label: 'Bookings Generated',
+                    data: rawData,
+                    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+                    hoverBackgroundColor: '#0f172a',
+                    borderWidth: 0,
+                    borderRadius: 6,
+                    barPercentage: 0.6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#0f172a',
+                        titleFont: { family: 'Poppins', size: 13, weight: 600 },
+                        bodyFont: { family: 'Poppins', size: 12 },
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: false,
+                        callbacks: {
+                            label: (context) => `${context.parsed.y} Booking(s)`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1, precision: 0, font: { family: 'Poppins', size: 11, color: '#64748b' } },
+                        grid: { color: '#f1f5f9', drawBorder: false }
+                    },
+                    x: {
+                        grid: { display: false, drawBorder: false },
+                        ticks: { font: { family: 'Poppins', size: 11, weight: 600, color: '#475569' } }
+                    }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
                 }
             }
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-                    ticks: { stepSize: 1, precision: 0 },
-                grid: { color: '#f1f5f9' }
-            },
-            x: {
-                grid: { display: false }
-            }
-        }
-    }
+        });
     });
 </script>
 {% endblock %}

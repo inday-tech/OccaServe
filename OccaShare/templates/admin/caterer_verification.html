@@ -368,7 +368,12 @@
                 document.getElementById('modal-reason').value = data.rejection_reason || '';
                 
                 const setDoc = (type, imgId) => {
-                    const doc = data.documents[type];
+                    let doc = data.documents[type];
+                    // Fallback for GOVERNMENT_ID_FRONT if GOVERNMENT_ID is not found
+                    if (!doc && type === 'GOVERNMENT_ID') {
+                        doc = data.documents['GOVERNMENT_ID_FRONT'];
+                    }
+                    
                     const img = document.getElementById(`doc-${imgId}`);
                     const placeholder = document.getElementById(`doc-${imgId}-placeholder`);
                     
