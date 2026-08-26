@@ -1034,7 +1034,11 @@ async def customer_marketplace(
         stats_subquery.c.min_price,
         stats_subquery.c.max_capacity
     ).outerjoin(stats_subquery, models.CatererProfile.id == stats_subquery.c.caterer_id)\
-     .filter(models.CatererProfile.status == "Published")
+     .filter(
+         models.CatererProfile.status == "Published",
+         models.CatererProfile.is_verified == True,
+         models.CatererProfile.account_status == 'Active'
+     )
 
     # Search filter (deep unified search across all fields)
     if q:

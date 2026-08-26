@@ -17,12 +17,48 @@ async def view_caterer_verifications(
     db: Session = Depends(database.get_db), 
     admin: models.User = Depends(admin_only)
 ):
-    # Fetch all verifications
-    verifications = db.query(models.CatererVerification).order_by(
-        # Sort pending first
-        models.CatererVerification.status == 'PENDING_REVIEW',
-        desc(models.CatererVerification.submitted_at)
+    # Auto-sync any caterers who uploaded documents but don't have a CatererVerification record
+    pending_profiles = db.query(models.CatererProfile).filter(
+        models.CatererProfile.verification_status.in_(["Pending Review", "Pending", "PENDING_REVIEW"])
     ).all()
+    
+    for p in pending_profiles:
+        existing = db.query(models.CatererVerification).filter(
+            models.CatererVerification.caterer_id == p.id,
+            models.CatererVerification.status == 'PENDING_REVIEW'
+        ).first()
+        if not existing:
+            new_v = models.CatererVerification(
+                caterer_id=p.id,
+                status='PENDING_REVIEW'
+            )
+            db.add(new_v)
+            db.commit()
+            db.refresh(new_v)
+            
+            # Add documents
+            if p.permit_url:
+                db.add(models.VerificationDocument(verification_id=new_v.id, document_type='BUSINESS_PERMIT', secure_file_path=p.permit_url, expires_at=p.permit_expiry_date))
+            if p.dti_url:
+                db.add(models.VerificationDocument(verification_id=new_v.id, document_type='DTI', secure_file_path=p.dti_url))
+            if p.bir_url:
+                db.add(models.VerificationDocument(verification_id=new_v.id, document_type='BIR', secure_file_path=p.bir_url))
+            if p.mayors_permit_url:
+                db.add(models.VerificationDocument(verification_id=new_v.id, document_type='MAYORS_PERMIT', secure_file_path=p.mayors_permit_url))
+            
+            ident = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == p.user_id).first()
+            if ident:
+                if getattr(ident, 'document_url', None):
+                    db.add(models.VerificationDocument(verification_id=new_v.id, document_type='GOVERNMENT_ID_FRONT', secure_file_path=ident.document_url))
+                if getattr(ident, 'document_back_url', None):
+                    db.add(models.VerificationDocument(verification_id=new_v.id, document_type='GOVERNMENT_ID_BACK', secure_file_path=ident.document_back_url))
+                if getattr(ident, 'selfie_url', None):
+                    db.add(models.VerificationDocument(verification_id=new_v.id, document_type='SELFIE', secure_file_path=ident.selfie_url))
+            db.commit()
+
+    # Fetch all verifications
+    verifications_query = db.query(models.CatererVerification).order_by(desc(models.CatererVerification.submitted_at)).all()
+    verifications = sorted(verifications_query, key=lambda x: 0 if x.status == 'PENDING_REVIEW' else 1)
     
     # Counts for dashboard
     pending_count = sum(1 for v in verifications if v.status == 'PENDING_REVIEW')
@@ -87,8 +123,11 @@ async def api_review_verification(
     
     if action == "approve":
         verification.status = "VERIFIED"
-        caterer.verification_status = "VERIFIED"
-        caterer.account_status = "ACTIVE"
+        caterer.verification_status = "Verified"
+        caterer.account_status = "Active"
+        caterer.is_verified = True
+        if caterer.user:
+            caterer.user.is_verified = True
         audit_action = "Approved Verification"
         
         # Update expiry date if admin edited it

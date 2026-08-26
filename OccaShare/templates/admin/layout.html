@@ -91,6 +91,7 @@
                         onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-utensils"></i></div>
                         <span class="nav-label">Caterer Management</span>
+                        <span class="nav-badge nav-badge-red" id="badge-caterers" style="display:none;">0</span>
                     </a>
                 </li>
                 <li>
@@ -98,6 +99,7 @@
                         onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-shield-halved"></i></div>
                         <span class="nav-label">Caterer Verification</span>
+                        <span class="nav-badge nav-badge-red" id="badge-caterer_verification" style="display:none;">0</span>
                     </a>
                 </li>
                 <li>
@@ -105,6 +107,7 @@
                         onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-users"></i></div>
                         <span class="nav-label">Customer Management</span>
+                        <span class="nav-badge nav-badge-red" id="badge-customers" style="display:none;">0</span>
                     </a>
                 </li>
                 <li>
@@ -112,6 +115,7 @@
                         onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-calendar-check"></i></div>
                         <span class="nav-label">All Bookings</span>
+                        <span class="nav-badge nav-badge-red" id="badge-bookings" style="display:none;">0</span>
                     </a>
                 </li>
             </ul>
@@ -124,6 +128,7 @@
                         onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
                         <span class="nav-label">Reports & Analytics</span>
+                        <span class="nav-badge nav-badge-red" id="badge-revenue" style="display:none;">0</span>
                     </a>
                 </li>
             </ul>
@@ -599,7 +604,11 @@
                     setLiveStatus(true);
                     fetch('/admin/api/notifications/unread')
                         .then(r => r.json())
-                        .then(data => data.success && updateBadge(data.unread_count))
+                        .then(data => {
+                            if(data.success) updateBadge(data.unread_count);
+                            // Also fetch sidebar badges after reconnect
+                            if(window.fetchSidebarBadges) window.fetchSidebarBadges();
+                        })
                         .catch(e => console.error("Notif fetch error", e));
                 };
                 socket.onmessage = function (event) {
@@ -629,7 +638,29 @@
                 socket.onerror = function (err) { console.error("WebSocket error:", err); };
             }
 
-            if (adminId && adminId !== "None") connectWebSocket();
+            // Function to fetch sidebar badges
+            window.fetchSidebarBadges = function() {
+                fetch('/admin/api/sidebar-badges')
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success && data.badges) {
+                            for (const [key, val] of Object.entries(data.badges)) {
+                                const badgeEl = document.getElementById('badge-' + key);
+                                if (badgeEl) {
+                                    badgeEl.textContent = val > 99 ? '99+' : val;
+                                    badgeEl.style.display = val > 0 ? 'inline-block' : 'none';
+                                }
+                            }
+                        }
+                    })
+                    .catch(e => console.error("Sidebar badge fetch error", e));
+            };
+
+            // Call it on initial load
+            if (adminId && adminId !== "None") {
+                connectWebSocket();
+                window.fetchSidebarBadges();
+            }
         })();
 
         // ===== GLOBAL UTILITIES =====

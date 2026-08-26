@@ -171,6 +171,41 @@ async def mark_all_read(
     db.commit()
     return {"success": True}
 
+@router.get("/api/sidebar-badges")
+async def get_sidebar_badges(
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    # Caterer Management (No direct action needed by default, badge hidden)
+    caterers_count = 0
+
+    # Caterer Verification (Action Needed: pending verifications)
+    verifications_count = db.query(models.CatererVerification).filter(
+        models.CatererVerification.status == 'PENDING_REVIEW'
+    ).count()
+
+    # Customer Management (No direct action needed by default, badge hidden)
+    customers_count = 0
+
+    # All Bookings (No direct action needed by default, badge hidden)
+    bookings_count = 0
+
+    # Reports & Analytics (Action Needed: pending invoices/payouts)
+    revenue_count = db.query(models.BillingInvoice).filter(
+        models.BillingInvoice.status == 'pending'
+    ).count()
+
+    return {
+        "success": True,
+        "badges": {
+            "caterers": caterers_count,
+            "caterer_verification": verifications_count,
+            "customers": customers_count,
+            "bookings": bookings_count,
+            "revenue": revenue_count
+        }
+    }
+
 @router.get("/api/system-health")
 async def system_health(db: Session = Depends(database.get_db), user: models.User = Depends(admin_only)):
     # Real DB check
