@@ -357,13 +357,19 @@ function initEmailExistenceCheck() {
 // ─── FILTERING & PAGINATION ──────────────────────────────────────────────────
 
 function filterBookings() {
-    const searchInput = document.getElementById('bookingSearchInput').value.toLowerCase();
-    const statusFilter = document.getElementById('statusFilter').value;
+    const searchInput = document.getElementById('bookingSearchInput') ? document.getElementById('bookingSearchInput').value.toLowerCase() : '';
+    const statusFilter = document.getElementById('statusFilter') ? document.getElementById('statusFilter').value : '';
+    const sourceFilter = document.getElementById('sourceFilter') ? document.getElementById('sourceFilter').value : '';
+    const paymentFilter = document.getElementById('paymentFilter') ? document.getElementById('paymentFilter').value : '';
+    const dateFilter = document.getElementById('dateFilter') ? document.getElementById('dateFilter').value : '';
+    
     const allRows = Array.from(document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item'));
 
     filteredRows = allRows.filter(function(row) {
         const rawStatus = row.dataset.status || '';
         const payStatus = row.dataset.paymentStatus || '';
+        const rawSource = row.dataset.source || '';
+        const rowDateMonth = row.dataset.eventMonth || '';
         const rowText = row.textContent.toLowerCase();
         
         const matchesSearch = rowText.indexOf(searchInput) > -1;
@@ -372,20 +378,40 @@ function filterBookings() {
         if (statusFilter === '') {
             matchesStatus = true;
         } else if (statusFilter === 'action_required') {
-            // Smart Action Required Logic:
-            // 1. Needs signature (Draft or To Sign)
             const needsSignature = ['pending_quotation', 'awaiting_caterer'].includes(rawStatus);
-            // 2. Has pending payment proof to verify
             const needsPaymentVerify = ['proof_submitted', 'balance_proof_submitted'].includes(payStatus);
-            // 3. Urgent upcoming event (detected by backend in dataset)
             const isUrgent = row.dataset.isUrgent === 'true';
-            
             matchesStatus = needsSignature || needsPaymentVerify || isUrgent;
         } else {
             matchesStatus = rawStatus === statusFilter;
         }
+
+        let matchesSource = false;
+        if (sourceFilter === '') {
+            matchesSource = true;
+        } else {
+            matchesSource = rawSource === sourceFilter;
+        }
+
+        let matchesPayment = false;
+        if (paymentFilter === '') {
+            matchesPayment = true;
+        } else if (paymentFilter === 'paid') {
+            matchesPayment = ['paid', 'fully_paid'].includes(payStatus);
+        } else if (paymentFilter === 'partial') {
+            matchesPayment = ['downpayment_paid', 'partial_paid'].includes(payStatus);
+        } else if (paymentFilter === 'pending') {
+            matchesPayment = !['paid', 'fully_paid', 'downpayment_paid', 'partial_paid'].includes(payStatus);
+        }
+
+        let matchesDate = false;
+        if (dateFilter === '') {
+            matchesDate = true;
+        } else {
+            matchesDate = rowDateMonth === dateFilter;
+        }
         
-        return matchesSearch && matchesStatus;
+        return matchesSearch && matchesStatus && matchesSource && matchesPayment && matchesDate;
     });
 
     currentPage = 1;
@@ -845,18 +871,7 @@ async function submitExpenses(e) {
 
 // ─── MODAL: BOOKING DETAILS ──────────────────────────────────────────────────
 
-window.viewCustomerKyc = function(event) {
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-    if (window.currentBookingTargetUserId && window.currentBookingTargetUserId !== 'undefined' && window.currentBookingTargetUserId !== '') {
-        window.openIframeModal(`/caterer/compliance/view/${window.currentBookingTargetUserId}?modal=true`, 'Customer KYC Audit');
-    } else {
-        alert('No KYC identity verification profile found for this customer (Walk-in or Unregistered).');
-    }
-    return false;
-};
+
 
 function showBookingDetails(btn) {
     var data = btn.dataset;
@@ -904,6 +919,35 @@ function showBookingDetails(btn) {
     if (data.isUrgent === 'true') {
         headerTitle.innerHTML = `${titlePrefix}${data.id} <span style="background: #fff1f2; color: #e11d48; font-size: 0.65rem; padding: 2px 8px; border-radius: 50px; margin-left: 8px; border: 1px solid #fecdd3; vertical-align: middle;"><i class="fas fa-clock"></i> URGENT</span>`;
         if (mbId) mbId.innerHTML = `${(isFoodOrder ? 'Order #' : 'Booking #')}${data.id} <span style="background: #fff1f2; color: #e11d48; font-size: 0.65rem; padding: 2px 8px; border-radius: 50px; margin-left: 8px; border: 1px solid #fecdd3; vertical-align: middle;"><i class="fas fa-clock"></i> URGENT</span>`;
+    }
+
+    const modalSource = document.getElementById('modalBookingSource');
+    const modalSourceMobile = document.getElementById('modalBookingSourceMobile');
+    const isWalkin = (data.bookingSource === 'Walk-in' || !data.targetUserId || data.targetUserId === 'None' || data.targetUserId === '');
+    const sourceText = isWalkin ? 'Walk-in Booking' : 'Online Booking';
+    if (modalSource) modalSource.innerText = sourceText;
+    if (modalSourceMobile) modalSourceMobile.innerText = sourceText;
+
+    // Chat Tab Conditional Rendering
+    const tabBtnChat = document.getElementById('tabBtnChat');
+    const chatOnlineView = document.getElementById('chatOnlineView');
+    const chatWalkinView = document.getElementById('chatWalkinView');
+    if (tabBtnChat) {
+        if (isWalkin) {
+            tabBtnChat.innerHTML = '<span>Communication</span>';
+            if (chatOnlineView) chatOnlineView.style.display = 'none';
+            if (chatWalkinView) chatWalkinView.style.display = 'flex';
+            
+            // Set SMS and Email Links
+            const smsLink = document.getElementById('walkinCommSms');
+            const emailLink = document.getElementById('walkinCommEmail');
+            if (smsLink && data.contact) smsLink.href = 'sms:' + data.contact;
+            if (emailLink && data.email) emailLink.href = 'mailto:' + data.email;
+        } else {
+            tabBtnChat.innerHTML = '<span>Consultation</span>';
+            if (chatOnlineView) chatOnlineView.style.display = 'flex';
+            if (chatWalkinView) chatWalkinView.style.display = 'none';
+        }
     }
 
     document.getElementById('modalCustomer').innerText = data.customer;
@@ -961,6 +1005,13 @@ function showBookingDetails(btn) {
             titleMaster.innerHTML = '<i class="fas fa-file-contract" style="color: var(--primary-color, #FF7B54); font-size: 1rem;"></i> Master Catering Service Agreement';
             descMaster.innerText = 'Access digitally signed Master Service Agreement and complete package terms.';
             btnMaster.innerHTML = '<i class="fas fa-file-signature" style="margin-right: 8px;"></i> View Master Service Agreement';
+        }
+        
+        // Hide Contract Card completely for Walk-ins since they don't have accounts to sign with
+        if (isWalkin && titleMaster.parentElement) {
+            titleMaster.parentElement.style.display = 'none';
+        } else if (titleMaster.parentElement) {
+            titleMaster.parentElement.style.display = 'flex';
         }
     }
     const linkKyc = document.getElementById('linkViewCustomerAudit');
@@ -1094,15 +1145,36 @@ function showBookingDetails(btn) {
         }
     }
 
-    var actionsEl = document.getElementById('bookingModalActionsTop') || document.getElementById('bookingModalActions');
+    
+var actionsEl = document.getElementById('bookingModalActionsTop') || document.getElementById('bookingModalActions');
     const isVerified = data.isVerified === 'true' || data.isVerified === true;
     const targetUserId = data.targetUserId;
     const isPackage = data.isPackage === 'true' || data.isPackage === true;
 
     const isRental = data.eventType === 'Equipment Rental';
     
+    // Show/hide manual payment card
+    const manualPaymentCard = document.getElementById('manualPaymentCard');
+    if (manualPaymentCard) {
+        if (data.source && data.source.toLowerCase() !== 'occaserve online' && data.source !== 'Online') {
+            manualPaymentCard.style.display = 'block';
+        } else {
+            manualPaymentCard.style.display = 'none';
+        }
+    }
+
+    
+    const totalAmountRaw = parseFloat(data.totalRawAmount || '0');
+    const amountPaid = parseFloat(data.amountPaid || '0');
+    const balance = totalAmountRaw - amountPaid;
+    const prepStatus = data.preparationStatus || 'not_started';
+
     let nextStepMsg = 'No further action required.';
-    if (data.paymentStatus === 'expired') {
+    let actionBtnHtml = '';
+
+    if (data.status === 'cancelled' || data.status === 'completed') {
+        nextStepMsg = 'No further action required.';
+    } else if (data.paymentStatus === 'expired') {
         nextStepMsg = 'Reservation expired. Please cancel or archive this booking.';
     } else if (data.status === 'pending') {
         if (data.paymentStatus === 'proof_submitted') nextStepMsg = 'Customer submitted payment proof. Please verify and accept.';
@@ -1111,17 +1183,24 @@ function showBookingDetails(btn) {
     } else if (data.status === 'awaiting_caterer') {
         nextStepMsg = 'Customer accepted quotation. Please sign the contract to finalize.';
     } else if (data.status === 'confirmed') {
-        if (data.paymentStatus === 'balance_proof_submitted') nextStepMsg = 'Customer submitted final balance proof. Please verify.';
-        else if (isRental) nextStepMsg = 'Booking is confirmed. Prepare equipment for release.';
-        else nextStepMsg = 'Booking is confirmed. Start preparation when ready.';
+        if (data.paymentStatus === 'balance_proof_submitted') {
+            nextStepMsg = 'Customer submitted final balance proof. Please verify.';
+        } else if (balance > 0) {
+            nextStepMsg = `Collect remaining balance of ₱${balance.toLocaleString('en-US', {minimumFractionDigits:2})}.`;
+            actionBtnHtml = `<button type="button" onclick="window.sendPaymentReminder(${data.id})" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#d97706; color:#b45309; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-link"></i> Send Payment Reminder</button>`;
+        } else if (prepStatus === 'not_started') {
+            nextStepMsg = 'Booking is confirmed. Start preparation when ready.';
+            actionBtnHtml = `<button type="button" onclick="window.switchBookingTab('tasks', document.querySelector('.mtab-btn-pro[onclick*=\\'tasks\\']'))" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#10b981; color:#047857; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-tasks"></i> Open Preparation Checklist</button>`;
+        } else {
+            nextStepMsg = 'Preparation is ongoing. Continue tracking tasks.';
+            actionBtnHtml = `<button type="button" onclick="window.switchBookingTab('tasks', document.querySelector('.mtab-btn-pro[onclick*=\\'tasks\\']'))" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#10b981; color:#047857; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-tasks"></i> Manage Checklist</button>`;
+        }
     } else if (data.status === 'preparing') {
         if (data.venue === 'PICKUP') nextStepMsg = 'Mark items as ready for pickup.';
         else if (isFoodOrder) nextStepMsg = 'Dispatch order for delivery.';
         else nextStepMsg = 'Mark items as ready for delivery.';
     } else if (data.status === 'ready_for_pickup') {
         nextStepMsg = 'Waiting for customer to pick up the items.';
-    } else if (data.status === 'released') {
-        nextStepMsg = 'Equipment released. Awaiting return for inspection.';
     } else if (data.status === 'ready_for_delivery') {
         nextStepMsg = 'Mark as out for delivery.';
     } else if (data.status === 'on_the_way') {
@@ -1129,63 +1208,48 @@ function showBookingDetails(btn) {
     } else if (data.status === 'arrived') {
         nextStepMsg = isPackage ? 'Setup the event and start serving.' : 'Complete the delivery/order.';
     } else if (data.status === 'setup_ongoing' || data.status === 'in_progress') {
-        if (data.paymentStatus === 'paid' || data.amount === "₱0.00" || data.paymentPlan === 'full') {
+        if (balance <= 0) {
             nextStepMsg = 'Event in progress. Mark as completed when done.';
         } else {
             if (data.paymentStatus === 'balance_proof_submitted') nextStepMsg = 'Verify final balance proof.';
             else nextStepMsg = 'Event in progress. Waiting for final bill settlement.';
         }
-    } else if (data.status === 'completed') {
-        nextStepMsg = 'Booking completed successfully.';
-    } else if (data.status === 'cancelled') {
-        nextStepMsg = 'Booking was cancelled.';
     }
-    
     var unifiedNST = document.getElementById('unifiedNextStepText');
     if (unifiedNST) unifiedNST.innerText = nextStepMsg;
+
+    var primaryActionEl = document.getElementById('unifiedNextStepActionContainer');
+    if (primaryActionEl) {
+        primaryActionEl.innerHTML = '';
+        primaryActionEl.style.display = 'none';
+        if (actionBtnHtml) {
+            primaryActionEl.innerHTML = actionBtnHtml;
+            primaryActionEl.style.display = 'block';
+        }
+    }
     
     var mobileCST = document.getElementById('mobileCompactStatusText');
     var mobileCNST = document.getElementById('mobileCompactNextStatusText');
     if (mobileCST) mobileCST.innerText = data.displayStatus || data.status.replace(/_/g, ' ').toUpperCase();
     if (mobileCNST) mobileCNST.innerText = nextStepMsg;
 
-    var primaryActionEl = document.getElementById('unifiedNextStepActionContainer');
-    if (primaryActionEl) {
-        primaryActionEl.innerHTML = '';
-        primaryActionEl.style.display = 'none';
-    }
-
     if (actionsEl) {
         actionsEl.style.display = 'flex';
         actionsEl.innerHTML = '';
+
+        // Edit Booking Button
+        actionsEl.innerHTML += `<button onclick="window.openEditBookingModal()" class="btn-sm-outline" style="background:white; border:1px solid #cbd5e1; color:#475569; justify-content:flex-start; width:100%; margin-bottom: 8px;"><i class="fas fa-edit" style="width:16px;"></i> Edit Booking Details</button>`;
+
         
         // --- KYC WARNING BANNER ---
-        // Only show for Event Packages. Skip for Ala Carte / Food Orders.
         var kycStatusEl = document.getElementById('modalKycStatus');
         if (kycStatusEl) {
-            if (!isVerified && targetUserId) {
-                kycStatusEl.innerHTML = `<span style="color: #c2410c; background: #ffedd5; padding: 2px 6px; border-radius: 4px; font-weight: 700;"><i class="fas fa-shield-exclamation"></i> Unverified Profile</span>`;
-            } else if (isVerified) {
-                kycStatusEl.innerHTML = `<span style="color: #15803d; background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-weight: 700;"><i class="fas fa-check-circle"></i> Identity Verified</span>`;
+            if (isWalkin) {
+                kycStatusEl.innerHTML = `<div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;"><strong>No website account</strong> &bull; Platform KYC: N/A</div>`;
+            } else if (!isVerified) {
+                kycStatusEl.innerHTML = `<span style="color: #c2410c; background: #ffedd5; padding: 2px 6px; border-radius: 4px; font-weight: 700;"><i class="fas fa-clock"></i> Verification Pending by Admin</span>`;
             } else {
-                kycStatusEl.innerHTML = ``;
-            }
-        }
-        
-        if (!isVerified && targetUserId && isPackage) {
-            if (primaryActionEl) {
-                primaryActionEl.innerHTML = `
-                    <div style="width:100%; margin-bottom: 0.5rem; background:#fff7ed; border:1px solid #fed7aa; padding:1rem; border-radius:0.75rem; display:flex; flex-direction: column; gap:0.75rem;">
-                        <div>
-                            <h4 style="margin:0; font-size:0.85rem; color:#9a3412; font-weight:800;">UNVERIFIED CUSTOMER</h4>
-                            <p style="margin:2px 0 0; font-size:0.75rem; color:#c2410c;">Audit their identity before accepting this booking to prevent fraud.</p>
-                        </div>
-                        <button type="button" onclick="window.openIframeModal('/caterer/compliance/view/${targetUserId}?modal=true', 'Customer KYC Audit')" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#fdba74; color:#9a3412; cursor:pointer; width: 100%;">
-                            <i class="fas fa-search"></i> Audit Now
-                        </button>
-                    </div>
-                `;
-                primaryActionEl.style.display = 'block';
+                kycStatusEl.innerHTML = `<span style="color: #15803d; background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-weight: 700;"><i class="fas fa-check-circle"></i> Identity Verified by Admin</span>`;
             }
         }
 
@@ -1224,7 +1288,15 @@ function showBookingDetails(btn) {
             }
             const btnIcon = isPayment ? 'fa-check-double' : 'fa-check-circle';
             
-            if (isPayment || isCashOrCOD) {
+            if (isWalkin) {
+                if (primaryActionEl) {
+                    primaryActionEl.innerHTML = `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.confirmAcceptBooking(${data.id}, false, ${isVerified}, ${isPackage})"><i class="fas fa-check-circle"></i> Confirm Walk-in Booking</button>`;
+                    primaryActionEl.style.display = 'block';
+                } else {
+                    actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.confirmAcceptBooking(${data.id}, false, ${isVerified}, ${isPackage})"><i class="fas fa-check-circle"></i> Confirm Walk-in Booking</button>`;
+                }
+                actionsEl.innerHTML += `<button type="button" class="btn-footer-action" onclick="window.confirmRejectBooking(${data.id})" style="background: white; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600;"><i class="fas fa-times-circle"></i> Cancel Walk-in Booking</button>`;
+            } else if (isPayment || isCashOrCOD) {
                 if (primaryActionEl) {
                     primaryActionEl.innerHTML = `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.confirmAcceptBooking(${data.id}, ${isPayment}, ${isVerified}, ${isPackage})"><i class="fas ${btnIcon}"></i> ${btnLabel}</button>`;
                     primaryActionEl.style.display = 'block';
@@ -1235,12 +1307,14 @@ function showBookingDetails(btn) {
                 if (isPayment) {
                     actionsEl.innerHTML += `<button type="button" class="btn-footer-action" onclick="window.requestNewProof(${data.id})" style="background: white; color: #475569; border: 1px solid #cbd5e1; font-weight: 600;"><i class="fas fa-redo"></i> Request New Proof</button>`;
                 }
+                actionsEl.innerHTML += `<button type="button" class="btn-footer-action" onclick="window.confirmRejectBooking(${data.id})" style="background: white; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600;"><i class="fas fa-times-circle"></i> ${rejectLabel}</button>`;
             } else if (data.paymentStatus === 'reupload_requested') {
                 actionsEl.innerHTML += `<div style="padding: 0.65rem 1rem; color: #9f1239; background: #ffe4e6; border: 1px solid #fecdd3; border-radius: 8px; font-size: 0.85rem; font-weight: 600; flex: 1; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-exclamation-triangle"></i> Re-upload Requested. Waiting for customer.</div>`;
+                actionsEl.innerHTML += `<button type="button" class="btn-footer-action" onclick="window.confirmRejectBooking(${data.id})" style="background: white; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600;"><i class="fas fa-times-circle"></i> ${rejectLabel}</button>`;
             } else {
                 actionsEl.innerHTML += `<div style="padding: 0.65rem 1rem; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; font-size: 0.85rem; font-weight: 600; flex: 1; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-clock"></i> Awaiting Payment Proof from Customer</div>`;
+                actionsEl.innerHTML += `<button type="button" class="btn-footer-action" onclick="window.confirmRejectBooking(${data.id})" style="background: white; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600;"><i class="fas fa-times-circle"></i> ${rejectLabel}</button>`;
             }
-            actionsEl.innerHTML += `<button type="button" class="btn-footer-action" onclick="window.confirmRejectBooking(${data.id})" style="background: white; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600;"><i class="fas fa-times-circle"></i> ${rejectLabel}</button>`;
             
         } else if (data.status === 'awaiting_caterer') {
             actionsEl.innerHTML = `
@@ -1719,20 +1793,25 @@ function resetBookingTabs() {
 // Global copy payment link function
 window.copyInvoiceLink = function(bookingId) {
     const url = window.location.origin + '/customer/booking/' + bookingId + '/invoice';
-    navigator.clipboard.writeText(url).then(() => {
-        if (window.showSuccess) {
-            window.showSuccess('Payment link copied to clipboard!');
-        } else {
-            alert('Payment link copied to clipboard!');
-        }
-    }).catch(err => {
-        console.error('Could not copy text: ', err);
-        if (window.showError) {
-            window.showError('Failed to copy link.');
-        } else {
-            alert('Failed to copy link. Please manually copy: ' + url);
-        }
-    });
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+            if (window.showSuccess) window.showSuccess('Payment link copied to clipboard!');
+            else alert('Payment link copied to clipboard!');
+        }).catch(err => {
+            alert('Failed to copy: ' + url);
+        });
+    } else {
+        const el = document.createElement('textarea');
+        el.value = url;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        if (window.showSuccess) window.showSuccess('Payment link copied to clipboard!');
+        else alert('Payment link copied to clipboard!');
+    }
+
 };
 
 // ─── NEW: AUDIT HISTORY ──────────────────────────────────────────────────────
@@ -2047,11 +2126,13 @@ function confirmAcceptBooking(bookingId, isPayment, isVerified, isPackage) {
     
     // --- KYC GATEKEEPER ---
     // Only enforce for Packages. Ala Carte is exempt.
-    if (!isVerified && isPackage) {
+    const isWalkinBooking = rowBtn ? (rowBtn.dataset.bookingSource === 'Walk-in' || !rowBtn.dataset.targetUserId || rowBtn.dataset.targetUserId === 'None') : false;
+    
+    if (!isVerified && isPackage && !isWalkinBooking) {
         window.showAlert({
             type: 'warning',
             title: 'Customer Not Verified',
-            message: 'This customer has not submitted identity verification (KYC). Are you sure you want to accept this booking?<br><br><small style="color:#64748b;">Recommendation: Audit their identity on the Compliance page first to prevent fake bookings.</small>',
+            message: 'This customer has not yet been verified by the Admin. Are you sure you want to accept this booking?',
             confirmText: 'Accept Anyway',
             cancelText: 'Go to Audit',
             onConfirm: () => {
@@ -3080,4 +3161,180 @@ window.openIframeModal = function(url, title) {
     
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('active'), 10);
+};
+
+
+window.sendPaymentReminder = function(bookingId) {
+    if (!bookingId) return;
+    const url = window.location.origin + '/customer/booking/' + bookingId + '/invoice';
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+            if (window.showSuccess) window.showSuccess('Payment link copied to clipboard!');
+            else alert('Payment link copied to clipboard!');
+        }).catch(err => {
+            alert('Failed to copy: ' + url);
+        });
+    } else {
+        const el = document.createElement('textarea');
+        el.value = url;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        if (window.showSuccess) window.showSuccess('Payment link copied to clipboard!');
+        else alert('Payment link copied to clipboard!');
+    }
+
+};
+
+window.recordOfflinePayment = function(bookingId) {
+    if (!bookingId) return;
+    window.openIframeModal('/caterer/bookings/' + bookingId + '/payments/offline', 'Record Offline Payment');
+};
+
+window.sendPaymentLink = function(bookingId) {
+    window.sendPaymentReminder(bookingId);
+};
+
+document.addEventListener("DOMContentLoaded", function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const focusId = urlParams.get("focus") || urlParams.get("focus_id") || urlParams.get("booking_id");
+    if (focusId) {
+        setTimeout(() => {
+            const btn = document.querySelector(`button.view-details[data-id="${focusId}"]`);
+            if (btn) {
+                btn.click();
+            }
+        }, 500);
+    }
+});
+
+
+
+// ─── PHASE 2: EDIT BOOKING & PREPARATION ──────────────────────────────────────────
+
+window.openEditBookingModal = function() {
+    if (!currentBookingId) return;
+    
+    // Fetch current booking data
+    fetch(`/caterer/api/bookings/${currentBookingId}`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('editBookingId').value = data.id;
+            document.getElementById('editBookingOriginalStatus').value = data.status;
+            
+            document.getElementById('editCustomerName').value = data.customerName || data.customer;
+            document.getElementById('editEventDate').value = data.date;
+            document.getElementById('editEventTime').value = data.time || '00:00';
+            document.getElementById('editVenue').value = data.venue;
+            document.getElementById('editGuestCount').value = data.guests;
+            
+            const reasonContainer = document.getElementById('editReasonContainer');
+            const reasonInput = document.getElementById('editModificationReason');
+            
+            if (['confirmed', 'preparing', 'on_the_way', 'in_progress', 'ready_for_pickup', 'ready_for_delivery'].includes(data.status)) {
+                reasonContainer.style.display = 'block';
+                reasonInput.required = true;
+            } else {
+                reasonContainer.style.display = 'none';
+                reasonInput.required = false;
+                reasonInput.value = '';
+            }
+            
+            window.openModal('editBookingModal');
+        })
+        .catch(err => alert("Error fetching booking details: " + err));
+};
+
+window.submitEditBooking = async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitEdit');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    
+    const id = document.getElementById('editBookingId').value;
+    const data = {
+        customer_name: document.getElementById('editCustomerName').value,
+        event_date: document.getElementById('editEventDate').value,
+        event_time: document.getElementById('editEventTime').value,
+        venue_address: document.getElementById('editVenue').value,
+        guest_count: document.getElementById('editGuestCount').value,
+        reason: document.getElementById('editModificationReason').value
+    };
+    
+    try {
+        const res = await window.apiAction(`/caterer/api/bookings/${id}/edit`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        
+        if (res) {
+            window.closeModal('editBookingModal');
+            if (window.showSuccess) window.showSuccess('Booking updated successfully.');
+            // Refresh modal
+            window.openBookingDetailModal(id);
+        }
+    } catch(err) {
+        alert("Error saving booking: " + err);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Save Changes';
+    }
+};
+
+window.setPreparationDate = async function(bookingId) {
+    const dateInput = document.getElementById(`prepDateInput_${bookingId}`);
+    if (!dateInput || !dateInput.value) {
+        alert("Please select a preparation date first.");
+        return;
+    }
+    
+    try {
+        const res = await window.apiAction(`/caterer/api/bookings/${bookingId}/prep-date`, {
+            method: 'POST',
+            body: JSON.stringify({ preparation_date: dateInput.value })
+        });
+        if (res) {
+            if (window.showSuccess) window.showSuccess('Preparation lead time scheduled.');
+            window.openBookingDetailModal(bookingId);
+        }
+    } catch(err) {
+        alert("Error setting prep date: " + err);
+    }
+};
+
+
+// ─── PHASE 3: MANUAL PAYMENTS ───────────────────────────────────────────────
+
+window.submitManualPayment = async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitPayment');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recording...';
+    
+    const data = {
+        amount: document.getElementById('payAmount').value,
+        payment_method: document.getElementById('payMethod').value,
+        reference_number: document.getElementById('payReference').value,
+        notes: document.getElementById('payNotes').value
+    };
+    
+    try {
+        const res = await window.apiAction(`/caterer/api/bookings/${currentBookingId}/record-payment`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        
+        if (res) {
+            if (window.showSuccess) window.showSuccess('Manual payment recorded successfully.');
+            document.getElementById('recordPaymentForm').reset();
+            window.openBookingDetailModal(currentBookingId);
+        }
+    } catch(err) {
+        alert("Error recording payment: " + err);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Record Payment';
+    }
 };

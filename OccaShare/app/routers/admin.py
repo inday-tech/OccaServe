@@ -184,11 +184,15 @@ async def get_sidebar_badges(
         models.CatererVerification.status == 'PENDING_REVIEW'
     ).count()
 
-    # Customer Management (No direct action needed by default, badge hidden)
-    customers_count = 0
+    # Customer Management (Action Needed: pending KYC reviews)
+    customers_count = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.verification_status == 'pending_manual_review'
+    ).count()
 
-    # All Bookings (No direct action needed by default, badge hidden)
-    bookings_count = 0
+    # All Bookings (Action Needed: disputes or flagged bookings)
+    bookings_count = db.query(models.DisputeReport).filter(
+        models.DisputeReport.status == 'Open'
+    ).count()
 
     # Reports & Analytics (Action Needed: pending invoices/payouts)
     revenue_count = db.query(models.BillingInvoice).filter(
@@ -412,7 +416,7 @@ async def admin_dashboard(
     
     # Caterer Metrics
     total_caterers = db.query(models.CatererProfile).join(models.User).filter(models.User.is_archived == False).count()
-    pending_caterers = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Pending", models.User.is_archived == False).all()
+    pending_caterers = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status.in_(["Pending", "Pending Review"]), models.User.is_archived == False).all()
     approved_caterers_count = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Verified", models.User.is_archived == False).count()
     approved_caterers = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Verified", models.User.is_archived == False).order_by(models.CatererProfile.rating.desc()).limit(5).all()
     rejected_caterers_count = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Rejected", models.User.is_archived == False).count()
@@ -562,7 +566,7 @@ async def manage_caterers(
 
     metrics = {
         "total_caterers": db.query(models.CatererProfile).join(models.User).filter(models.User.is_archived == False).count(),
-        "pending_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Pending", models.User.is_archived == False).count(),
+        "pending_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status.in_(["Pending", "Pending Review"]), models.User.is_archived == False).count(),
         "approved_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Verified", models.User.is_archived == False).count(),
         "rejected_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Rejected", models.User.is_archived == False).count(),
         "suspended_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.account_status == "Suspended", models.User.is_archived == False).count(),
@@ -743,7 +747,7 @@ async def get_caterers_overview(
         
     metrics = {
         "total_caterers": db.query(models.CatererProfile).join(models.User).filter(models.User.is_archived == False).count(),
-        "pending_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Pending", models.User.is_archived == False).count(),
+        "pending_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status.in_(["Pending", "Pending Review"]), models.User.is_archived == False).count(),
         "approved_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Verified", models.User.is_archived == False).count(),
         "rejected_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Rejected", models.User.is_archived == False).count(),
     }
@@ -2045,6 +2049,33 @@ async def review_verification(
         db.commit()
         db.refresh(verification)
 
+    # Retroactive Permit OCR for older profiles
+    if target_user.role == 'caterer' and target_user.caterer_profile and target_user.caterer_profile.permit_url:
+        permit_ident = db.query(models.IdentityVerification).filter(
+            models.IdentityVerification.user_id == user_id,
+            models.IdentityVerification.verification_type == 'business_permit'
+        ).first()
+        
+        if not permit_ident:
+            from app.services.verification import VerificationService
+            try:
+                v_service = VerificationService()
+                permit_ocr_res = await v_service.extract_permit_data(target_user.caterer_profile.permit_url)
+                if permit_ocr_res and permit_ocr_res.get("success"):
+                    permit_ident = models.IdentityVerification(
+                        user_id=user_id,
+                        verification_type='business_permit',
+                        document_url=target_user.caterer_profile.permit_url,
+                        ocr_data=permit_ocr_res.get("data"),
+                        verification_status='Pending Review'
+                    )
+                    db.add(permit_ident)
+                    db.commit()
+                    # Refresh target user to ensure the new relation is loaded in the template
+                    db.refresh(target_user)
+            except Exception as e:
+                print(f"[KYC PERMIT OCR RECOVERY ERROR] {e}")
+
     return templates.TemplateResponse("admin/verification_detail.html", {
         "request": request,
         "user": user,
@@ -2361,7 +2392,10 @@ async def admin_reports(
         .all()
     )
     top_caterers = [{"name": c.business_name, "bookings": b} for c, b in top_caterers_raw]
-    
+    total_commission = db.query(func.sum(models.PayoutItem.commission_amount)).filter(
+        models.PayoutItem.status.in_(['released', 'ready'])
+    ).scalar() or 0
+
     return templates.TemplateResponse("admin/reports.html", {
         "request": request,
         "user": user,
@@ -2373,6 +2407,7 @@ async def admin_reports(
         "total_bookings": total_bookings,
         "paid_bookings": paid_bookings,
         "total_revenue": total_revenue,
+        "total_commission": total_commission,
         "monthly_labels": json.dumps(monthly_labels),
         "monthly_bookings": json.dumps(monthly_bookings),
         "top_caterers": top_caterers,
@@ -2943,6 +2978,18 @@ async def kyc_manual_action(
             target_user.email, 
             target_user.first_name
         )
+    elif action == "resubmit":
+        kyc.verification_status = "resubmission_required"
+        kyc.failure_reason = reason
+        target_user.status = "flagged"
+        
+        # Log action
+        audit = models.AuditLog(
+            user_id=user.id,
+            action="KYC_RESUBMIT",
+            notes=f"Requested KYC Resubmission for User ID {target_user_id}. Reason: {reason}"
+        )
+        db.add(audit)
     else:
         kyc.verification_status = "rejected"
         kyc.failure_reason = reason
@@ -2964,10 +3011,43 @@ async def kyc_manual_action(
             reason
         )
         
+    # Phase 1.5: Sync Caterer Verification if applicable
+    if target_user.role == "caterer" and target_user.caterer_profile:
+        cat_prof = target_user.caterer_profile
+        
+        if action == "approve":
+            cat_prof.verification_status = "Verified"
+        elif action == "resubmit":
+            cat_prof.verification_status = "Pending"
+        else:
+            cat_prof.verification_status = "Rejected"
+            
+        # Update specific CatererVerification record if it exists
+        latest_caterer_ver = db.query(models.CatererVerification).filter_by(caterer_id=cat_prof.id).order_by(models.CatererVerification.id.desc()).first()
+        if latest_caterer_ver:
+            if action == "approve":
+                latest_caterer_ver.status = "VERIFIED"
+            elif action == "resubmit":
+                latest_caterer_ver.status = "RESUBMISSION_REQUIRED"
+            else:
+                latest_caterer_ver.status = "REJECTED"
+            latest_caterer_ver.reviewed_by = user.id
+            latest_caterer_ver.reviewed_at = datetime.now()
+            latest_caterer_ver.reviewer_notes = reason
+
     # Phase 2: Notify Customer in-app
-    notif_type = "success" if action == "approve" else "danger"
-    title = "KYC Verification Approved" if action == "approve" else "KYC Verification Rejected"
-    msg = "Your identity verification has been approved." if action == "approve" else f"Your identity verification was rejected. Reason: {reason}"
+    if action == "approve":
+        notif_type = "success"
+        title = "KYC Verification Approved"
+        msg = "Your identity verification has been approved."
+    elif action == "resubmit":
+        notif_type = "warning"
+        title = "Action Required: KYC Resubmission"
+        msg = f"Your identity verification requires resubmission. Reason: {reason}"
+    else:
+        notif_type = "danger"
+        title = "KYC Verification Rejected"
+        msg = f"Your identity verification was rejected. Reason: {reason}"
     
     new_notif = models.Notification(
         user_id=target_user_id,

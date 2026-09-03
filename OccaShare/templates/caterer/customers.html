@@ -1,7 +1,7 @@
 {% extends "caterer/layout.html" %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/customers.css') }}?v=10.5">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/customers.css') }}?v=12.9">
 <style>
     .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2rem; }
     .table-dashboard th, .table-dashboard td { white-space: nowrap; }
@@ -11,7 +11,7 @@
 {% block content %}
 <div class="container-premium">
     <!-- Header Section matching standard layout -->
-    <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+    <div class="page-header">
         <div class="header-title-group">
             <h1>Customer Directory</h1>
             <p>Review and track your customer profiles, engagement, and history.</p>
@@ -139,11 +139,6 @@
                                     <button onclick="window.openCustomerProfile({{ customer.id }})">
                                         <i class="fas fa-id-card text-primary"></i> View Profile
                                     </button>
-                                    {% if customer.is_verified %}
-                                    <button onclick="window.openIframeModal('/caterer/compliance/view/{{ customer.id }}?modal=true', 'Customer KYC')">
-                                        <i class="fas fa-user-shield" style="color: #10b981;"></i> View KYC
-                                    </button>
-                                    {% endif %}
                                     <button onclick="window.quickEditCustomer({{ customer.id }})">
                                         <i class="fas fa-pen text-warning"></i> Add Note
                                     </button>
@@ -236,7 +231,7 @@
                     <form id="editCustomerForm" onsubmit="window.updateCustomerProfile(event)">
                         <textarea id="editNotes" name="notes" class="form-control" rows="4" placeholder="Add specific preferences, allergies, or past experiences with this client..." style="margin-bottom: 0.75rem;"></textarea>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span class="field-hint" style="color:#64748b; font-size: 0.75rem; max-width: 70%;">Clients cannot view these notes. Personal identity fields are locked for compliance.</span>
+                            <span class="field-hint" style="color:#64748b; font-size: 0.75rem; max-width: 70%;">Clients cannot view these notes. Personal fields are locked for data protection.</span>
                             <button type="submit" class="btn-primary input-sm" id="btnUpdateCustomer">
                                 Save Notes
                             </button>
@@ -255,7 +250,7 @@
     </div>
 </div>
 
-<!-- Iframe Modal for KYC -->
+<!-- General Iframe Modal -->
 <div id="iframeModal" class="occ-modal-overlay" style="z-index: 1000001; display: none;">
     <div class="occ-modal-box sz-lg flex-col-modal" style="padding: 0; display: flex; flex-direction: column; height: 95vh; max-height: 95vh; width: 95%; max-width: 1000px; border-radius: 12px; overflow: hidden; position: relative;">
         <div style="background: #f8fafc; padding: 1rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
@@ -273,7 +268,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/caterer/customers.js') }}?v=10.4"></script>
+<script src="{{ url_for('static', path='/js/caterer/customers.js') }}?v=12.9"></script>
 <script>
     window.openIframeModal = function(url, title) {
         const modal = document.getElementById('iframeModal');

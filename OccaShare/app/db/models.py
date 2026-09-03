@@ -567,6 +567,9 @@ class Booking(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
+    customer_name = Column(String, nullable=True)
+    customer_email = Column(String, nullable=True)
+    customer_contact = Column(String, nullable=True)
     caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"))
     package_id = Column(Integer, ForeignKey("catering_packages.id"), nullable=True)
     event_name = Column(String, nullable=True) # e.g. "Garcia Family Wedding"
@@ -593,8 +596,11 @@ class Booking(Base):
     travel_fee = Column(Float, default=0.0)
     travel_fee_status = Column(String, default="confirmed") # "confirmed", "tbd", "pending_quote"
     status = Column(String, default="pending")
-    payment_status = Column(String, default="pending") # pending, paid, deposit_paid
+    payment_status = Column(String, default="pending") # unpaid, partially_paid, fully_paid, overdue
     payment_method = Column(String, nullable=True) # GCash, Credit Card, etc.
+    amount_paid = Column(Float, default=0.0)
+    preparation_status = Column(String, default="not_started") # not_started, scheduled, in_preparation, ready, completed
+    preparation_date = Column(Date, nullable=True)
     customer_archived = Column(Boolean, default=False)
     payment_reference = Column(String, nullable=True)
     payment_proof_url = Column(String, nullable=True)
@@ -653,6 +659,21 @@ class Booking(Base):
     payout = relationship("Payout", back_populates="bookings")
     expenses = relationship("BookingExpense", back_populates="booking", cascade="all, delete-orphan")
     messages = relationship("BookingMessage", back_populates="booking", cascade="all, delete-orphan")
+    payment_records = relationship("BookingPaymentRecord", back_populates="booking", cascade="all, delete-orphan")
+
+class BookingPaymentRecord(Base):
+    __tablename__ = "booking_payment_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id"))
+    amount = Column(Float, nullable=False)
+    payment_date = Column(DateTime(timezone=True), server_default=func.now())
+    payment_method = Column(String, nullable=True)
+    payment_type = Column(String, nullable=True) # Deposit, Installment, Full
+    reference_notes = Column(Text, nullable=True)
+    recorded_by = Column(String, nullable=True) # "Caterer" or "System"
+
+    booking = relationship("Booking", back_populates="payment_records")
 
 class BookingMessage(Base):
     __tablename__ = "booking_messages"
@@ -677,6 +698,7 @@ class BookingMenuItem(Base):
     equipment_id = Column(Integer, ForeignKey("equipment.id"), nullable=True)
     service_id = Column(Integer, ForeignKey("services.id"), nullable=True)
     is_add_on = Column(Boolean, default=False)
+    custom_name = Column(String, nullable=True)
     price = Column(Float) # Price at the time of booking
     quantity = Column(Integer, default=1)
     choices = Column(JSONB, nullable=True) # Array of selected item names/IDs for combos
@@ -692,6 +714,8 @@ class BookingHistory(Base):
     id = Column(Integer, primary_key=True, index=True)
     booking_id = Column(Integer, ForeignKey("bookings.id"))
     status = Column(String) # The status being transitioned TO
+    entry_type = Column(String, default="system_change") # "system_change" or "communication"
+    communication_channel = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -709,6 +733,7 @@ class BookingContract(Base):
     caterer_signed_at = Column(DateTime(timezone=True), nullable=True)
     status = Column(String, default="pending") # pending, customer_signed, fully_signed, expired
     expires_at = Column(DateTime(timezone=True), nullable=True) # NEW: Contract Signing Deadline
+    contract_history = Column(JSONB, nullable=True) # Array of old contract versions
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     booking = relationship("Booking", back_populates="contract")
@@ -822,6 +847,21 @@ class Promotion(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     caterer = relationship("CatererProfile", back_populates="promotions")
+
+
+class InternalSchedule(Base):
+    __tablename__ = "internal_schedules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"))
+    title = Column(String)
+    schedule_type = Column(String)
+    date = Column(Date)
+    time = Column(Time, nullable=True)
+    is_pinned = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=func.now())
+
+    caterer = relationship("CatererProfile")
 
 class Availability(Base):
     __tablename__ = "availability"

@@ -1,0 +1,52 @@
+tus) && (data.isUrgent === 'true' || data.isUrgent === true)) {
+            alertHtml = '<span style="background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; padding: 4px 12px; border-radius: 50px; font-weight: 800; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-clock"></i> URGENT REQUEST</span>';
+        }
+        
+        if (alertHtml) {
+            riskAlert.style.display = 'block';
+            riskAlert.innerHTML = alertHtml;
+            riskAlert.style.background = 'transparent';
+            riskAlert.style.border = 'none';
+            riskAlert.style.padding = '0';
+            
+            if (riskAlertMobile) {
+                riskAlertMobile.style.display = 'block';
+                riskAlertMobile.innerHTML = alertHtml;
+            }
+        } else {
+            riskAlert.style.display = 'none';
+            if (riskAlertMobile) riskAlertMobile.style.display = 'none';
+        }
+    }
+
+    var actionsEl = document.getElementById('bookingModalActionsTop') || document.getElementById('bookingModalActions');
+    const isVerified = data.isVerified === 'true' || data.isVerified === true;
+    const targetUserId = data.targetUserId;
+    const isPackage = data.isPackage === 'true' || data.isPackage === true;
+
+    const isRental = data.eventType === 'Equipment Rental';
+    
+    const totalAmountRaw = parseFloat(data.totalRawAmount || '0');
+    const amountPaid = parseFloat(data.amountPaid || '0');
+    const balance = totalAmountRaw - amountPaid;
+    const prepStatus = data.preparationStatus || 'not_started';
+
+    let nextStepMsg = 'No further action required.';
+    let actionBtnHtml = '';
+
+    if (data.status === 'cancelled' || data.status === 'completed') {
+        nextStepMsg = 'No further action required.';
+    } else if (data.paymentStatus === 'expired') {
+        nextStepMsg = 'Reservation expired. Please cancel or archive this booking.';
+    } else if (data.status === 'pending') {
+        if (data.paymentStatus === 'proof_submitted') nextStepMsg = 'Customer submitted payment proof. Please verify and accept.';
+        else if (data.paymentStatus === 'reupload_requested') nextStepMsg = 'Re-upload requested. Waiting for customer.';
+        else nextStepMsg = 'Awaiting payment proof from customer.';
+    } else if (data.status === 'awaiting_caterer') {
+        nextStepMsg = 'Customer accepted quotation. Please sign the contract to finalize.';
+    } else if (data.status === 'confirmed') {
+        if (data.paymentStatus === 'balance_proof_submitted') {
+            nextStepMsg = 'Customer submitted final balance proof. Please verify.';
+        } else if (balance > 0) {
+            nextStepMsg = `Collect remaining balance of ₱${balance.toLocaleString('en-US', {minimumFractionDigits:2})}.`;
+            actionBtnHtml = `<button type="button" onclick="window.sendPaymentReminder(${data.id})" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#d977

@@ -151,8 +151,8 @@ body {
 /* ─── KPI Grid (Matches Bookings Page) ─── */
 .kpi-grid-clean {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
     margin-bottom: 1.5rem;
 }
 
@@ -351,6 +351,24 @@ body {
     
     .booking-cell-first { border-radius: var(--border-radius, 12px) var(--border-radius, 12px) 0 0; }
     .booking-cell-last { border-radius: 0 0 var(--border-radius, 12px) var(--border-radius, 12px); }
+}
+
+@media (max-width: 1024px) {
+    .kpi-grid-clean {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .kpi-grid-clean {
+        grid-template-columns: 1fr;
+    }
+    .kpi-value {
+        font-size: 1.25rem;
+    }
+    .kpi-card-clean {
+        padding: 1rem;
+    }
 }
 
 @media (max-width: 480px) {
@@ -555,4 +573,25 @@ body {
     0% { opacity: 1; }
     50% { opacity: 0.6; }
     100% { opacity: 1; }
+}
+
+    
+/* Responsive Dashboard Layouts */
+.dash-layout-2-1 {
+    display: grid; 
+    grid-template-columns: 2fr 1fr; 
+    gap: 1.5rem; 
+    align-items: start;
+}
+.dash-layout-15-1 {
+    display: grid; 
+    grid-template-columns: 1.5fr 1fr; 
+    gap: 1.5rem; 
+    align-items: start;
+}
+
+@media (max-width: 1024px) {
+    .dash-layout-2-1, .dash-layout-15-1 {
+        grid-template-columns: 1fr;
+    }
 }

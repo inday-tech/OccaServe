@@ -166,7 +166,9 @@ async def customer_dashboard(
     featured_caterers = []
     if total_bookings == 0:
         featured_caterers = db.query(models.CatererProfile).filter(
-            models.CatererProfile.status == "Published"
+            models.CatererProfile.status == "Published",
+            models.CatererProfile.verification_status == 'Verified',
+            models.CatererProfile.account_status == 'Active'
         ).order_by(models.CatererProfile.rating.desc()).limit(3).all()
 
     return templates.TemplateResponse("customer/dashboard.html", {
@@ -1036,7 +1038,7 @@ async def customer_marketplace(
     ).outerjoin(stats_subquery, models.CatererProfile.id == stats_subquery.c.caterer_id)\
      .filter(
          models.CatererProfile.status == "Published",
-         models.CatererProfile.is_verified == True,
+         models.CatererProfile.verification_status == 'Verified',
          models.CatererProfile.account_status == 'Active'
      )
 
@@ -1618,6 +1620,8 @@ async def customer_omni_search(
     # 1. Search Caterers (Name and Location)
     caterers = db.query(models.CatererProfile).filter(
         models.CatererProfile.status == "Published",
+        models.CatererProfile.verification_status == 'Verified',
+        models.CatererProfile.account_status == 'Active',
         or_(
             models.CatererProfile.business_name.ilike(search_filter),
             models.CatererProfile.city.ilike(search_filter),

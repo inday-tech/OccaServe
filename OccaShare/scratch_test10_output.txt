@@ -1,0 +1,59 @@
+06; color:#b45309; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-link"></i> Send Payment Reminder</button>`;
+        } else if (prepStatus === 'not_started') {
+            nextStepMsg = 'Booking is confirmed. Start preparation when ready.';
+            actionBtnHtml = `<button type="button" onclick="window.switchBookingTab('tasks', document.querySelector('.mtab-btn-pro[onclick*=\\'tasks\\']'))" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#10b981; color:#047857; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-tasks"></i> Open Preparation Checklist</button>`;
+        } else {
+            nextStepMsg = 'Preparation is ongoing. Continue tracking tasks.';
+            actionBtnHtml = `<button type="button" onclick="window.switchBookingTab('tasks', document.querySelector('.mtab-btn-pro[onclick*=\\'tasks\\']'))" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#10b981; color:#047857; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-tasks"></i> Manage Checklist</button>`;
+        }
+    } else if (data.status === 'preparing') {
+        if (data.venue === 'PICKUP') nextStepMsg = 'Mark items as ready for pickup.';
+        else if (isFoodOrder) nextStepMsg = 'Dispatch order for delivery.';
+        else nextStepMsg = 'Mark items as ready for delivery.';
+    } else if (data.status === 'ready_for_pickup') {
+        nextStepMsg = 'Waiting for customer to pick up the items.';
+    } else if (data.status === 'ready_for_delivery') {
+        nextStepMsg = 'Mark as out for delivery.';
+    } else if (data.status === 'on_the_way') {
+        nextStepMsg = isPackage ? 'Arrive at the venue location.' : 'Deliver items to customer.';
+    } else if (data.status === 'arrived') {
+        nextStepMsg = isPackage ? 'Setup the event and start serving.' : 'Complete the delivery/order.';
+    } else if (data.status === 'setup_ongoing' || data.status === 'in_progress') {
+        if (balance <= 0) {
+            nextStepMsg = 'Event in progress. Mark as completed when done.';
+        } else {
+            if (data.paymentStatus === 'balance_proof_submitted') nextStepMsg = 'Verify final balance proof.';
+            else nextStepMsg = 'Event in progress. Waiting for final bill settlement.';
+        }
+    }
+    var unifiedNST = document.getElementById('unifiedNextStepText');
+    if (unifiedNST) unifiedNST.innerText = nextStepMsg;
+
+    var primaryActionEl = document.getElementById('unifiedNextStepActionContainer');
+    if (primaryActionEl) {
+        primaryActionEl.innerHTML = '';
+        primaryActionEl.style.display = 'none';
+        if (actionBtnHtml) {
+            primaryActionEl.innerHTML = actionBtnHtml;
+            primaryActionEl.style.display = 'block';
+        }
+    }
+    
+    var mobileCST = document.getElementById('mobileCompactStatusText');
+    var mobileCNST = document.getElementById('mobileCompactNextStatusText');
+    if (mobileCST) mobileCST.innerText = data.displayStatus || data.status.replace(/_/g, ' ').toUpperCase();
+    if (mobileCNST) mobileCNST.innerText = nextStepMsg;
+
+    if (actionsEl) {
+        actionsEl.style.display = 'flex';
+        actionsEl.innerHTML = '';
+        
+        // --- KYC WARNING BANNER ---
+        var kycStatusEl = document.getElementById('modalKycStatus');
+        if (kycStatusEl) {
+            if (isWalkin) {
+                kycStatusEl.innerHTML = `<div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;"><strong>No website account</strong> &bull; Platform KYC: N/A</div>`;
+            } else if (!isVerified) {
+                kycStatusEl.innerHTML = `<span style="color: #c2410c; background: #ffedd5; padding: 2px 6px; border-radius: 4px; font-weight: 700;"><i class="fas fa-clock"></i> Verification Pending by Admin</span>`;
+            } else {
+                kycStatusEl.innerHTML = `<span style="color: #15803d; background: #dcfce7; paddi

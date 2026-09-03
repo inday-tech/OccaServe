@@ -175,7 +175,7 @@
                         <span class="nav-label">My Profile</span>
                     </a>
                 </li>
-                {% if user and user.role == 'customer' and not user.platform_feedback %}
+                {% if user and user.role == 'customer' and not user.platform_feedback and completed_b >= 1 %}
                 <li>
                     <a href="#" class="nav-item" onclick="event.preventDefault(); openPlatformFeedbackModal(); closeSidebar();">
                         <div class="nav-icon"><i class="fas fa-comment-dots" style="color: var(--primary-color);"></i></div>

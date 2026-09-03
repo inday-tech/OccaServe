@@ -1,0 +1,35 @@
+@router.get("/api/bookings/{booking_id}/details")
+async def get_booking_details_api(
+    booking_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    # Fetch commission settings
+    config = db.query(models.WebsiteConfig).first()
+    comm_rate = config.commission_rate if config else 10.0
+    comm_fixed = config.commission_fixed_amount if config else 20.0
+    
+    total = float(booking.total_amount or 0)
+    commission = (total * (comm_rate / 100.0)) + comm_fixed
+    net_amount = total - commission
+
+    return {
+        "id": booking.id,
+        "event_name": booking.event_name,
+        "event_type": booking.event_type,
+        "total_amount": total,
+        "commission": round(commission, 2),
+        "net_amount": round(net_amount, 2),
+        "commission_rate": comm_rate,
+        "payment_status": booking.payment_status,
+        "payment_method": booking.payment_method,
+        "payment_proof_url": booking.payment_proof_url,
+        "balance_proof_url": booking.balance_proof_url,
+        "payment_verification_data": booking.payment_verification_data,
+        "quotation_id": booking.quotation.id if booking.quotation else None,
+        "contract_url": booking.quotation.contract_url if booking.quotation else None,
+        "user": {

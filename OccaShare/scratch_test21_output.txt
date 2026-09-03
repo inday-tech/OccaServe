@@ -1,0 +1,37 @@
+id="addScheduleModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-sm occ-content-pop">
+        <div class="occ-modal-header glass-header">
+            <h3 class="occ-modal-title"><i class="fas fa-calendar-plus" style="margin-right: 8px;"></i> Add Internal Schedule</h3>
+            <button class="occ-modal-close" onclick="closeModal('addScheduleModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="occ-modal-body" style="padding: 1.5rem;">
+            <form id="addScheduleForm" class="cal-form-stack">
+                <div class="form-group-pro">
+                    <label class="cal-label">Schedule Type</label>
+                    <select id="schedType" class="control-pro" required onchange="if(this.value === 'other') { document.getElementById('schedOtherContainer').style.display = 'block'; } else { document.getElementById('schedOtherContainer').style.display = 'none'; }">
+                        <option value="task">Internal Task</option>
+                        <option value="preparation">Preparation / Setup</option>
+                        <option value="meeting">Supplier / Customer Meeting</option>
+                        <option value="personal">Personal / Business</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group-pro" id="schedOtherContainer" style="display: none;">
+                    <label class="cal-label">Specific Schedule Type</label>
+                    <input type="text" id="schedOtherType" class="control-pro" placeholder="e.g. Delivery Run">
+                </div>
+                <div class="form-group-pro">
+                    <label class="cal-label">Title</label>
+                    <input type="text" id="schedTitle" class="control-pro" placeholder="e.g. Staff briefing" required>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <div class="form-group-pro" style="flex: 1;">
+                        <label class="cal-label">Date</label>
+                        <input type="date" id="schedDate" class="control-pro" required>
+                    </div>
+                    <div class="form-group-pro" style="flex: 1;">
+                        <label class="cal-label">Time</label>
+                        <input type="time" id="schedTime" class="control-pro">
+                    </div>
+                </div>
+                <div class="form-group-p

@@ -193,7 +193,7 @@ def unified_search_api(request: Request, q: str = "", lat: Optional[float] = Non
         price_sq, models.CatererProfile.id == price_sq.c.caterer_id
     ).filter(
         models.CatererProfile.status == 'Published',
-        models.CatererProfile.is_verified == True,
+        models.CatererProfile.verification_status == 'Verified',
         models.CatererProfile.account_status == 'Active'
     )
 

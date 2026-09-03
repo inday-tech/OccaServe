@@ -158,6 +158,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 if (info.event.extendedProps.type === 'BLOCKED') {
                     showBlockedDetails(info.event);
+                } else if (info.event.extendedProps.customer === 'Internal') {
+                    window.showInternalScheduleDetails(info.event);
                 } else {
                     showEventDetails(info.event);
                 }
@@ -217,10 +219,29 @@ document.addEventListener('DOMContentLoaded', function () {
                     mobileContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 } else {
                     // Desktop View: Standard manual booking modal
-                    openManualBookingModal();
+                    openExternalBookingModal();
                 }
             },
             eventDidMount: function (info) {
+                // Filter logic
+                let eType = (info.event.extendedProps.eventType || info.event.extendedProps.type || '').toLowerCase();
+                let fType = 'booking';
+                if (eType === 'reminder') fType = 'reminder';
+                else if (eType === 'preparation') fType = 'preparation';
+                else if (['task', 'meeting', 'other'].includes(eType)) fType = 'task';
+                else if (eType === 'blocked' || info.event.title === 'BLOCKED') fType = 'blocked';
+                
+                let isChecked = true;
+                const cbs = document.querySelectorAll('.cal-filter-cb');
+                if (cbs.length > 0) {
+                    cbs.forEach(cb => {
+                        if (cb.value === fType) isChecked = cb.checked;
+                    });
+                    if (!isChecked) {
+                        info.el.style.display = 'none';
+                    }
+                }
+
                 info.el.setAttribute('role', 'button');
                 info.el.setAttribute('tabindex', '0');
                 
@@ -244,12 +265,24 @@ document.addEventListener('DOMContentLoaded', function () {
         calendar.render();
         window.fullCalendarInstance = calendar;
 
+    // Calendar Filters
+    document.querySelectorAll('.cal-filter-cb').forEach(cb => {
+        cb.addEventListener('change', () => {
+            if (window.fullCalendarInstance) {
+                window.fullCalendarInstance.refetchEvents();
+            }
+        });
+    });
+
+
         // Helper for mobile cards
         window.showEventDetailsById = function(id) {
             const event = window.fullCalendarInstance.getEventById(id);
             if (event) {
                 if (event.title === 'BLOCKED') {
                     showBlockedDetails(event);
+                } else if (event.extendedProps.customer === 'Internal') {
+                    window.showInternalScheduleDetails(event);
                 } else {
                     showEventDetails(event);
                 }
@@ -1545,9 +1578,381 @@ window.checkAvailabilityStatus = checkAvailabilityStatus;
 window.openManualBookingModal = openManualBookingModal;
 window.submitManualEvent = submitManualEvent;
 window.unblockSelectedDate = unblockSelectedDate;
-window.getQuickQuotation = getQuickQuotation;
-window.closeRoiBreakdown = closeRoiBreakdown;
+// window.getQuickQuotation = getQuickQuotation;
+// window.closeRoiBreakdown = closeRoiBreakdown;
 window.toggleOtherEventType = toggleOtherEventType;
 window.updateCapacitySettings = updateCapacitySettings;
 window.setReminder = setReminder;
 
+
+window.openAddScheduleModal = function() {
+    document.getElementById('addScheduleForm').reset();
+    document.getElementById('schedId').value = '';
+    
+    const titleEl = document.querySelector('#addScheduleModal .occ-modal-title');
+    if (titleEl) titleEl.innerHTML = '<i class="fas fa-calendar-plus" style="margin-right: 8px;"></i> Add Internal Schedule';
+    
+    document.getElementById('schedOtherContainer').style.display = 'none';
+    
+    const modal = document.getElementById('addScheduleModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        setTimeout(() => modal.classList.add('active'), 10);
+    }
+};
+
+window.submitAddSchedule = async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitSchedule');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    }
+    
+    let schedType = document.getElementById('schedType').value;
+    if (schedType === 'other') {
+        schedType = document.getElementById('schedOtherType').value || 'Other';
+    }
+    
+    const data = {
+        id: document.getElementById('schedId') ? document.getElementById('schedId').value : '',
+        type: schedType,
+        title: document.getElementById('schedTitle').value,
+        date: document.getElementById('schedDate').value,
+        time: document.getElementById('schedTime').value,
+        pin: document.getElementById('schedPin') ? document.getElementById('schedPin').checked : false
+    };
+    
+    try {
+        const res = await fetch('/caterer/api/schedule/add', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        
+        if (res.ok) {
+            if (window.showToast) {
+                window.showToast(result.message || 'Schedule saved successfully.', 'success');
+            } else {
+                alert(result.message || 'Schedule saved successfully.');
+            }
+            closeModal('addScheduleModal');
+            closeModal('internalScheduleViewModal');
+            if (window.fullCalendarInstance) {
+                window.fullCalendarInstance.refetchEvents();
+            }
+            if (typeof refreshUpcomingBookings === 'function') refreshUpcomingBookings();
+        } else {
+            if (window.showToast) {
+                window.showToast(result.detail || 'Error saving schedule', 'error');
+            } else {
+                alert(result.detail || 'Error saving schedule');
+            }
+        }
+    } catch(err) {
+        alert("Connection error: " + err);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Save Schedule';
+        }
+    }
+};
+
+window.showInternalScheduleDetails = function(event) {
+    const modal = document.getElementById('internalScheduleViewModal');
+    if (!modal) return;
+    
+    document.getElementById('viewSchedTitle').innerText = event.title;
+    document.getElementById('viewSchedDate').innerText = event.start.toLocaleDateString('en-US', {weekday:'short', year:'numeric', month:'short', day:'numeric'});
+    if (event.start.getHours() || event.start.getMinutes()) {
+        document.getElementById('viewSchedTime').innerText = event.start.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
+        document.getElementById('viewSchedTime').parentElement.style.display = 'block';
+    } else {
+        document.getElementById('viewSchedTime').parentElement.style.display = 'none';
+    }
+    document.getElementById('viewSchedType').innerText = event.extendedProps.eventType || event.extendedProps.type;
+    document.getElementById('viewSchedPin').innerText = event.extendedProps.isPinned ? "Pinned to Dashboard" : "Not Pinned";
+    
+    // Store data for editing
+    document.getElementById('editScheduleBtn').onclick = function() {
+        if (document.getElementById('schedId')) document.getElementById('schedId').value = event.extendedProps.internalId;
+        
+        // Try to match dropdown type
+        const sType = event.extendedProps.eventType;
+        const select = document.getElementById('schedType');
+        let matched = false;
+        if (select) {
+            for (let i = 0; i < select.options.length; i++) {
+                if (select.options[i].value === sType) {
+                    select.value = sType;
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) {
+                select.value = 'other';
+                document.getElementById('schedOtherContainer').style.display = 'block';
+                document.getElementById('schedOtherType').value = sType;
+            } else {
+                document.getElementById('schedOtherContainer').style.display = 'none';
+            }
+        }
+        
+        let titleOnly = event.title;
+        if (titleOnly.includes(' (')) titleOnly = titleOnly.substring(0, titleOnly.lastIndexOf(' ('));
+        document.getElementById('schedTitle').value = titleOnly;
+        
+        const offsetDate = new Date(event.start.getTime() - (event.start.getTimezoneOffset() * 60000));
+        document.getElementById('schedDate').value = offsetDate.toISOString().split('T')[0];
+        
+        if (event.start.getHours() || event.start.getMinutes()) {
+            document.getElementById('schedTime').value = event.start.toTimeString().substring(0,5);
+        } else {
+            document.getElementById('schedTime').value = '';
+        }
+        
+        if (document.getElementById('schedPin')) document.getElementById('schedPin').checked = event.extendedProps.isPinned;
+        
+        const titleEl = document.querySelector('#addScheduleModal .occ-modal-title');
+        if (titleEl) titleEl.innerHTML = '<i class="fas fa-edit" style="margin-right: 8px;"></i> Edit Internal Schedule';
+        
+        closeModal('internalScheduleViewModal');
+        const m = document.getElementById('addScheduleModal');
+        if (m) {
+            m.style.display = 'flex';
+            setTimeout(() => m.classList.add('active'), 10);
+        }
+    };
+    
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('active'), 10);
+};
+
+// --- Walk-in / External Booking Wizard Logic ---
+let currentExtStep = 1;
+const totalExtSteps = 4;
+
+window.openExternalBookingModal = function() {
+    currentExtStep = 1;
+    document.getElementById('externalBookingForm').reset();
+    document.getElementById('extBookingFormError').style.display = 'none';
+    
+    // Reset quotation rows to just 1
+    const tbody = document.getElementById('extQuotationItems');
+    if (tbody) {
+        tbody.innerHTML = `
+            <tr>
+                <td style="padding: 12px;"><input type="text" class="control-pro ext-item-name" value="Base Package / Food" placeholder="Item Name"></td>
+                <td style="padding: 12px;"><input type="number" class="control-pro ext-item-price" value="0" min="0" oninput="calcExtTotal()"></td>
+                <td style="padding: 12px; text-align: center;"></td>
+            </tr>
+        `;
+    }
+    calcExtTotal();
+    updateExtStepperUI();
+    
+    const modal = document.getElementById('externalBookingModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        setTimeout(() => modal.classList.add('active'), 10);
+    }
+};
+
+window.changeExtStep = function(direction) {
+    // Validate current step before moving next
+    if (direction === 1) {
+        if (currentExtStep === 1) {
+            const form = document.getElementById('externalBookingForm');
+            if (!document.getElementById('extCustomerName').value || !document.getElementById('extCustomerContact').value) {
+                document.getElementById('extBookingFormError').innerText = "Please fill in all required fields (Name & Contact).";
+                document.getElementById('extBookingFormError').style.display = 'block';
+                return;
+            }
+        } else if (currentExtStep === 2) {
+            if (!document.getElementById('extEventName').value || !document.getElementById('extEventDate').value || !document.getElementById('extEventTime').value || !document.getElementById('extGuests').value) {
+                document.getElementById('extBookingFormError').innerText = "Please fill in all required event details.";
+                document.getElementById('extBookingFormError').style.display = 'block';
+                return;
+            }
+        }
+        document.getElementById('extBookingFormError').style.display = 'none';
+    }
+    
+    currentExtStep += direction;
+    if (currentExtStep < 1) currentExtStep = 1;
+    if (currentExtStep > totalExtSteps) currentExtStep = totalExtSteps;
+    
+    updateExtStepperUI();
+};
+
+window.updateExtStepperUI = function() {
+    // Update progress bar
+    const progress = ((currentExtStep - 1) / (totalExtSteps - 1)) * 100;
+    const bar = document.getElementById('extStepProgress');
+    if (bar) bar.style.width = progress + '%';
+    
+    // Update steps
+    for (let i = 1; i <= totalExtSteps; i++) {
+        const nav = document.getElementById('ext-nav-' + i);
+        if (nav) {
+            nav.classList.remove('active', 'completed');
+            if (i < currentExtStep) nav.classList.add('completed');
+            if (i === currentExtStep) nav.classList.add('active');
+        }
+        
+        const content = document.getElementById('ext-step-' + i);
+        if (content) {
+            if (i === currentExtStep) {
+                content.classList.add('active');
+            } else {
+                content.classList.remove('active');
+            }
+        }
+    }
+    
+    // Buttons
+    const btnPrev = document.getElementById('extBtnPrev');
+    const btnNext = document.getElementById('extBtnNext');
+    const btnSubmit = document.getElementById('extBtnSubmit');
+    
+    if (btnPrev) btnPrev.style.display = currentExtStep === 1 ? 'none' : 'block';
+    
+    if (currentExtStep === totalExtSteps) {
+        if (btnNext) btnNext.style.display = 'none';
+        if (btnSubmit) btnSubmit.style.display = 'block';
+        
+        // Populate summary
+        document.getElementById('summarySource').innerText = document.getElementById('extSource').value;
+        document.getElementById('summaryCustomer').innerText = document.getElementById('extCustomerName').value + ' (' + document.getElementById('extCustomerContact').value + ')';
+        
+        const dt = document.getElementById('extEventDate').value;
+        const tm = document.getElementById('extEventTime').value;
+        document.getElementById('summaryEvent').innerText = document.getElementById('extEventName').value + ' (' + document.getElementById('extEventType').value + ')';
+        document.getElementById('summaryDateTime').innerText = dt + ' ' + tm;
+        document.getElementById('summaryGuests').innerText = document.getElementById('extGuests').value + ' Pax';
+        
+        const mode = document.getElementById('extPackageMode');
+        document.getElementById('summaryPackage').innerText = mode.options[mode.selectedIndex].text;
+        document.getElementById('summaryTotal').innerText = 'PHP ' + document.getElementById('extTotalAmount').innerText;
+    } else {
+        if (btnNext) btnNext.style.display = 'block';
+        if (btnSubmit) btnSubmit.style.display = 'none';
+    }
+};
+
+window.addExtRow = function() {
+    const tbody = document.getElementById('extQuotationItems');
+    if (!tbody) return;
+    
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td style="padding: 12px;"><input type="text" class="control-pro ext-item-name" placeholder="Item Name"></td>
+        <td style="padding: 12px;"><input type="number" class="control-pro ext-item-price" value="0" min="0" oninput="calcExtTotal()"></td>
+        <td style="padding: 12px; text-align: center;"><button type="button" onclick="this.closest('tr').remove(); calcExtTotal();" style="background:none; border:none; color:#ef4444; cursor:pointer;"><i class="fas fa-trash"></i></button></td>
+    `;
+    tbody.appendChild(tr);
+};
+
+window.calcExtTotal = function() {
+    let total = 0;
+    
+    // Check package base price if selected
+    const mode = document.getElementById('extPackageMode');
+    if (mode && mode.value !== 'custom') {
+        const basePrice = parseFloat(mode.options[mode.selectedIndex].dataset.price || 0);
+        total += basePrice;
+    }
+    
+    // Add custom rows
+    const prices = document.querySelectorAll('.ext-item-price');
+    prices.forEach(p => {
+        total += parseFloat(p.value || 0);
+    });
+    
+    const totalEl = document.getElementById('extTotalAmount');
+    if (totalEl) totalEl.innerText = total.toFixed(2);
+};
+
+window.submitExternalBooking = async function(e) {
+    e.preventDefault();
+    
+    const btn = document.getElementById('extBtnSubmit');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    }
+    
+    const err = document.getElementById('extBookingFormError');
+    if (err) err.style.display = 'none';
+    
+    // Collect rows
+    const rows = [];
+    document.querySelectorAll('#extQuotationItems tr').forEach(tr => {
+        const nameInput = tr.querySelector('.ext-item-name');
+        const priceInput = tr.querySelector('.ext-item-price');
+        if (nameInput && priceInput && nameInput.value.trim() !== '') {
+            rows.push({
+                name: nameInput.value.trim(),
+                price: parseFloat(priceInput.value || 0)
+            });
+        }
+    });
+    
+    const payload = {
+        booking_source: document.getElementById('extSource').value,
+        customer_name: document.getElementById('extCustomerName').value,
+        customer_contact: document.getElementById('extCustomerContact').value,
+        customer_email: document.getElementById('extCustomerEmail').value,
+        event_type: document.getElementById('extEventType').value,
+        event_name: document.getElementById('extEventName').value,
+        event_date: document.getElementById('extEventDate').value,
+        event_time: document.getElementById('extEventTime').value,
+        guest_count: parseInt(document.getElementById('extGuests').value || 1),
+        venue_address: document.getElementById('extVenue').value,
+        package_id: document.getElementById('extPackageMode').value === 'custom' ? null : document.getElementById('extPackageMode').value,
+        custom_quotation: rows,
+        total_price: parseFloat(document.getElementById('extTotalAmount').innerText || 0)
+    };
+    
+    try {
+        const response = await fetch('/caterer/api/bookings/manual', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showNotification('Success', 'External booking recorded successfully!', 'success');
+            closeModal('externalBookingModal');
+            if (window.fullCalendarInstance) window.fullCalendarInstance.refetchEvents();
+        } else {
+            if (err) {
+                err.innerText = result.detail || 'Failed to record booking.';
+                err.style.display = 'block';
+            }
+        }
+    } catch (error) {
+        if (err) {
+            err.innerText = 'Connection error: ' + error.message;
+            err.style.display = 'block';
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = 'Save External Booking <i class="fas fa-check"></i>';
+        }
+    }
+};
+
+
+window.openAvailabilitySettings = function() {
+    const m = document.getElementById('availabilityModal');
+    if (m) {
+        m.style.display = 'flex';
+        setTimeout(() => m.classList.add('active'), 10);
+    }
+};

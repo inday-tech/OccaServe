@@ -1,36 +1,21 @@
-import os
-import psycopg2
-from dotenv import load_dotenv
+from app.db.database import SessionLocal
+from app.db.models import Booking, InternalSchedule
 
-load_dotenv()
-hostname = os.getenv("DB_HOST", "localhost")
-database = os.getenv("DB_NAME", "occashare")
-username = os.getenv("DB_USER", "postgres")
-pwd = os.getenv("DB_PASSWORD", "2004")
-port_id = os.getenv("DB_PORT", "5432")
+db = SessionLocal()
+internal_bookings = db.query(Booking).filter(Booking.booking_source == 'Internal').all()
+for b in internal_bookings:
+    # Migrate to InternalSchedule
+    s = InternalSchedule(
+        caterer_id=b.caterer_id,
+        title=b.event_name,
+        schedule_type=b.event_type,
+        date=b.event_date,
+        time=b.event_time,
+        is_pinned=False
+    )
+    db.add(s)
+    db.delete(b)
 
-conn = psycopg2.connect(
-    host=hostname,
-    database=database,
-    user=username,
-    password=pwd,
-    port=port_id
-)
-cur = conn.cursor()
-try:
-    cur.execute("ALTER TABLE equipment ADD COLUMN usage_type VARCHAR DEFAULT 'both';")
-    print("Added usage_type to equipment")
-except Exception as e:
-    print(e)
-    conn.rollback()
-
-try:
-    cur.execute("ALTER TABLE services ADD COLUMN usage_type VARCHAR DEFAULT 'both';")
-    print("Added usage_type to services")
-except Exception as e:
-    print(e)
-    conn.rollback()
-
-conn.commit()
-cur.close()
-conn.close()
+db.commit()
+print(f"Migrated and deleted {len(internal_bookings)} legacy Internal Bookings.")
+db.close()

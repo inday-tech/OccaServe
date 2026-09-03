@@ -1,0 +1,49 @@
+def _get_caterer_stats(profile, bookings, timeframe='month', start_date=None, end_date=None):
+    from datetime import datetime, date, timedelta
+    from dateutil.relativedelta import relativedelta
+    
+    today = date.today()
+    
+    # 1. Define Timeframe Bounds for TOP STATS
+    if timeframe == 'custom' and start_date and end_date:
+        try:
+            stats_start = datetime.strptime(start_date, "%Y-%m-%d").date()
+            stats_end = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except ValueError:
+            stats_start = today.replace(day=1)
+            stats_end = today
+            
+        days_diff = (stats_end - stats_start).days
+        if days_diff < 0: # Validation fallback
+            stats_start, stats_end = stats_end, stats_start
+            days_diff = abs(days_diff)
+            
+        if days_diff <= 31:
+            chart_points = [stats_start + timedelta(days=i) for i in range(days_diff + 1)]
+            date_format = "%Y-%m-%d"
+        else:
+            months_diff = (stats_end.year - stats_start.year) * 12 + stats_end.month - stats_start.month + 1
+            chart_points = [stats_start.replace(day=1) + relativedelta(months=i) for i in range(months_diff)]
+            date_format = "%Y-%m"
+    elif timeframe == 'day':
+        stats_start = today
+        stats_end = today
+        chart_points = [(today - timedelta(days=i)) for i in range(6, -1, -1)] # Last 7 days for trend
+        date_format = "%Y-%m-%d"
+    elif timeframe == 'week':
+        stats_start = today - timedelta(days=today.weekday()) # Current Week start (Monday)
+        stats_end = stats_start + timedelta(days=6) # Current Week end (Sunday)
+        chart_points = [(today - timedelta(days=i)) for i in range(13, -1, -1)] # Last 14 days for trend
+        date_format = "%Y-%m-%d"
+    elif timeframe == 'year':
+        stats_start = today.replace(month=1, day=1) # Current Year start
+        stats_end = today.replace(month=12, day=31) # Current Year end
+        chart_points = [today.replace(month=1, day=1) + relativedelta(months=i) for i in range(12)] # All months of the year
+        date_format = "%Y-%m"
+    else: # Default: Monthly
+        stats_start = today.replace(day=1) # Current Month start
+        stats_end = (stats_start + relativedelta(months=1)) - timedelta(days=1) # Current Month end
+        chart_points = [(today - relativedelta(months=5)).replace(day=1) + relativedelta(months=i) for i in range(6)]
+        date_format = "%Y-%m"
+
+    chart_keys = [d.s

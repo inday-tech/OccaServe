@@ -7,7 +7,7 @@ def get_packages(db: Session):
 def get_caterers(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.CatererProfile).filter(
         models.CatererProfile.status == 'Published',
-        models.CatererProfile.is_verified == True,
+        models.CatererProfile.verification_status == 'Verified',
         models.CatererProfile.account_status == 'Active'
     ).offset(skip).limit(limit).all()
 

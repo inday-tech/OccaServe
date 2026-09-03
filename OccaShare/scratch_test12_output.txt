@@ -1,0 +1,27 @@
+indow.showSuccess('Booking updated successfully.');
+            // Refresh modal
+            window.openBookingDetailModal(id);
+        }
+    } catch(err) {
+        alert("Error saving booking: " + err);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Save Changes';
+    }
+};
+
+window.setPreparationDate = async function(bookingId) {
+    const dateInput = document.getElementById(`prepDateInput_${bookingId}`);
+    if (!dateInput || !dateInput.value) {
+        alert("Please select a preparation date first.");
+        return;
+    }
+    
+    try {
+        const res = await window.apiAction(`/caterer/api/bookings/${bookingId}/prep-date`, {
+            method: 'POST',
+            body: JSON.stringify({ preparation_date: dateInput.value })
+        });
+        if (res) {
+            if (window.showSuccess) window.showSuccess('Preparation lead time scheduled.');
+            wi

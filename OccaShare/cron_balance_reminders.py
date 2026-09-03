@@ -58,12 +58,15 @@ async def run_reminders():
                 # Overdue
                 title = "CRITICAL: Payment Overdue"
                 msg = f"Your payment for '{booking.event_name}' is OVERDUE by {abs(days_left)} days. Please settle your account immediately to prevent cancellation."
+                if booking.payment_status != 'overdue':
+                    booking.payment_status = 'overdue'
+                    db.commit()
             
             if title and msg:
                 # Calculate balance
-                total = booking.total_amount or 0.0
-                fee = booking.reservation_fee or 0.0
-                balance = total - fee
+                total = booking.total_price or booking.total_amount or 0.0
+                paid = booking.amount_paid or 0.0
+                balance = total - paid
                 
                 if balance > 0:
                     link = f"/customer/bookings/manage/{booking.id}"

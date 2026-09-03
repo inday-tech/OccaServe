@@ -1,0 +1,24 @@
+upcoming_events = sorted([b for b in bookings if b.status in active_op_statuses and b.event_date and b.event_date >= today], key=lambda x: x.event_date)[:4]
+    
+    popular_packages = []
+    for pkg in profile.packages:
+        if pkg.id in package_stats:
+            stats = package_stats[pkg.id]
+            pkg_roi = ((stats['revenue'] - stats['expenses']) / stats['expenses'] * 100) if stats['expenses'] > 0 else 0
+            popular_packages.append({
+                "id": pkg.id, "name": pkg.name, "price": float(pkg.price_per_head or pkg.price or 0), 
+                "orders": stats['orders'], "roi": round(pkg_roi, 1)
+            })
+    popular_packages.sort(key=lambda x: x['orders'], reverse=True)
+
+    top_spenders = sorted([v for k,v in customer_stats.items()], key=lambda x: x['spent'], reverse=True)[:5]
+    revenue_by_event_list = sorted([{"event_type": k, "revenue": v} for k,v in revenue_by_event.items()], key=lambda x: x['revenue'], reverse=True)
+
+    
+    # Calculate Pending Actions
+    pending_approvals = sum(1 for b in bookings if b.status in ['pending_quotation', 'pending_review'])
+    pending_payments = sum(1 for b in bookings if b.payment_status == 'pending_verification')
+    identity_requests = 0
+    pending_contracts = sum(1 for b in bookings if getattr(b, 'contract_status', '') == 'awaiting_signature')
+    
+    # Count unread messages (assuming message relation exists, or we just mock/query it, here we mock it to 0 as we don't have direct access in bookings l

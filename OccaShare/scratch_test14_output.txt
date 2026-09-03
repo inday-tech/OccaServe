@@ -1,0 +1,46 @@
+@router.post("/api/schedule/add")
+async def add_internal_schedule(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    data = await request.json()
+    schedule_type = data.get("type", "task")
+    title = data.get("title")
+    date_str = data.get("date")
+    time_str = data.get("time")
+    pin = data.get("pin", False)
+    
+    if not title or not date_str:
+        raise HTTPException(status_code=400, detail="Title and Date are required")
+        
+    from datetime import datetime
+    event_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    event_time = datetime.strptime(time_str, "%H:%M").time() if time_str else None
+    
+    booking = models.Booking(
+        caterer_id=user.caterer_profile.id,
+        event_name=title,
+        event_type=schedule_type,
+        event_date=event_date,
+        event_time=event_time,
+        status="confirmed",
+        booking_source="Internal",
+        special_requests="pinned" if pin else "",
+        total_amount=0,
+        amount_paid=0,
+        guest_count=0
+    )
+    db.add(booking)
+    db.commit()
+    
+    return {"status": "success", "message": "Internal schedule added successfully"}
+
+
+@router.get("/api/events")
+async def get_calendar_events(
+    caterer_id: Optional[int] = None,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(auth.get_current_user_optional)
+):
+    # Use provided caterer_id (for customers) or user's caterer profile (for ca

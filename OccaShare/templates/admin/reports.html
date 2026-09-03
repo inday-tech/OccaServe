@@ -4,12 +4,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
-<style>
     /* Dashboard Specific Intelligence Extensions */
-    .chart-container-flex { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 2rem; }
-    .chart-box { flex: 1; min-width: 300px; background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 1.5rem; position: relative; }
-    .table-box { background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 1.5rem; overflow-x: auto; }
-</style>
 {% endblock %}
 
 {% block content %}
@@ -71,11 +66,22 @@
             </span>
         </div>
     </div>
+
+    <!-- Commissions Card -->
+    <div class="kpi-card-clean" style="border: 1px solid var(--adm-primary-soft); background: #f8fafc;">
+        <div class="kpi-info">
+            <h4>Total Platform Commissions</h4>
+            <span class="kpi-value" style="color: var(--adm-primary);">₱{{ "{:,.2f}".format(total_commission if total_commission is defined else 0) }}</span>
+            <span class="trend-badge trend-up">
+                <i class="fas fa-piggy-bank"></i> Earnings
+            </span>
+        </div>
+    </div>
 </div>
 
 <!-- Analytics Split (MIDDLE) -->
-<div class="chart-container-flex">
-    <div class="chart-box" style="flex: 2;">
+<div class="analytics-split-clean">
+    <div class="card-clean" style="flex: 2;">
         <div class="card-title-clean" style="margin-bottom:1rem; display: flex; align-items: center; gap: 8px;">
             <i class="fas fa-chart-bar" style="color: var(--adm-primary);"></i> 6-Month Booking Trend
         </div>
@@ -84,7 +90,7 @@
         </div>
     </div>
 
-    <div class="chart-box table-box" style="flex: 1.2;">
+    <div class="card-clean" style="flex: 1.2;">
         <div class="card-title-clean" style="margin-bottom:1rem; display: flex; align-items: center; gap: 8px;">
             <i class="fas fa-trophy" style="color: #f59e0b;"></i> Top Performing Caterers
         </div>

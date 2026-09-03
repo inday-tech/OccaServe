@@ -306,17 +306,17 @@
         <form id="form-personal" onsubmit="submitForm(event, '/customer/profile/update-personal')" novalidate>
             <div class="form-grid">
                 <div class="form-group">
-                    <label>First Name</label>
+                    <label>First Name <span style="text-transform:none; font-weight:500; color: #ef4444;">*</span></label>
                     <input type="text" name="first_name" class="form-input" value="{{ user.first_name or '' }}" required maxlength="50" pattern="[A-Za-z\s\-]+">
                     <span class="error-msg">Please enter a valid first name (letters only).</span>
                 </div>
                 <div class="form-group">
-                    <label>Middle Name <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
-                    <input type="text" name="middle_name" class="form-input" value="{{ user.middle_name or '' }}" maxlength="50" pattern="[A-Za-z\s\-]*">
+                    <label>Middle Name <span style="text-transform:none; font-weight:500; color: #ef4444;">*</span></label>
+                    <input type="text" name="middle_name" class="form-input" value="{{ user.middle_name or '' }}" required maxlength="50" pattern="[A-Za-z\s\-]*">
                     <span class="error-msg">Please enter a valid middle name (letters only).</span>
                 </div>
                 <div class="form-group">
-                    <label>Last Name</label>
+                    <label>Last Name <span style="text-transform:none; font-weight:500; color: #ef4444;">*</span></label>
                     <input type="text" name="last_name" class="form-input" value="{{ user.last_name or '' }}" required maxlength="50" pattern="[A-Za-z\s\-]+">
                     <span class="error-msg">Please enter a valid last name (letters only).</span>
                 </div>
@@ -324,7 +324,7 @@
 
             <div class="form-grid">
                 <div class="form-group">
-                    <label>Email Address</label>
+                    <label>Email Address <span style="text-transform:none; font-weight:500; color: #ef4444;">*</span></label>
                     <input type="email" value="{{ user.email }}" class="form-input" disabled style="background:var(--dm-slate-50); cursor:not-allowed;">
                     <small style="color:var(--dm-slate-400); margin-top:4px;">Email cannot be changed.</small>
                 </div>

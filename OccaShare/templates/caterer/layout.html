@@ -25,10 +25,10 @@
     <!-- Design System Base -->
     <link rel="stylesheet"
         href="{{ url_for('static', path='/css/caterer/layout.css') }}?v={{ range(10000000, 99999999) | random }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/dashboard_premium.css') }}?v=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=1.5">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=1.4">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v=5.0">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/dashboard_premium.css') }}?v=12.9">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=12.9">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=12.9">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v=12.9">
     <!-- Google Maps API -->
     <script>
         window.gm_authFailure = function() {
@@ -2326,7 +2326,7 @@
     </script>
 
     <!-- Chat JS must load before floating_chat.html on all pages -->
-    <script src="{{ url_for('static', path='/js/chat.js') }}?v=1.1"></script>
+    <script src="{{ url_for('static', path='/js/chat.js') }}?v=12.9"></script>
 
     {% if active_page != 'messages' %}
     {# Removed floating chat as requested by user #}

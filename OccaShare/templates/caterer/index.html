@@ -1,362 +1,356 @@
+
 {% extends "caterer/layout.html" %}
 
 {% block title %}Operations Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/index.css') }}?v=10.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/index.css') }}?v=13.1">
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet" />
+<style>
+    /* Dashboard Stack Layout */
+    .dash-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+    }
+    .kpi-grid-clean {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+    }
+    
+    /* Ensure cards take full height where applicable */
+    .dash-card {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+        overflow: hidden;
+    }
+    .dash-card .action-list {
+        flex: 1;
+    }
+    
+    /* Mini Calendar — compact sneak-peek widget */
+    #miniCalendarCard { height: auto !important; min-height: 350px; overflow: visible; }
+    #miniCalendar .fc-header-toolbar { padding: 0.4rem 0.5rem; margin-bottom: 0; }
+    #miniCalendar .fc-toolbar-title { font-size: 0.85rem !important; font-weight: 700; color: #1e293b; }
+    #miniCalendar .fc-col-header-cell-cushion { font-size: 0.65rem; padding: 2px; color: #94a3b8; text-transform: uppercase; }
+    #miniCalendar .fc-daygrid-day-number { font-size: 0.65rem; color: #475569; padding: 1px 3px !important; font-weight: 500; line-height: 1.2; }
+    #miniCalendar .fc-daygrid-day-frame { min-height: 40px !important; }
+    #miniCalendar .fc-day-today { background: #f0fdf4 !important; }
+    #miniCalendar .fc-day-today .fc-daygrid-day-number { color: #10b981; font-weight: 800; }
+    #miniCalendar .fc-prev-button, #miniCalendar .fc-next-button { padding: 0.15rem 0.4rem !important; font-size: 0.7rem !important; }
+    
+    
+    /* Style the dots */
+    #miniCalendar .fc-daygrid-event-harness { display: inline-block; margin: 0 1px; }
+    #miniCalendar .fc-daygrid-event { 
+        display: inline-block; 
+        background: transparent !important; 
+        border: none !important; 
+        padding: 0; 
+        margin: 0; 
+    }
+    #miniCalendar .fc-daygrid-event .fc-event-main {
+        width: 8px; height: 8px; 
+        border-radius: 50%; 
+        background-color: var(--primary-color); /* Fallback */
+        display: block;
+        margin: 0 auto;
+    }
+    #miniCalendar .fc-daygrid-day-events { 
+        display: flex; 
+        flex-wrap: wrap; 
+        gap: 2px; 
+        justify-content: center; 
+        margin-top: 2px; 
+    }
+    #miniCalendar .fc-event-title, #miniCalendar .fc-event-time { display: none !important; }
+</style>
 {% endblock %}
 
 {% block content %}
 <!-- Page Header -->
-<div class="dash-header">
-    <div class="dash-title">
+<div class="page-header">
+    <div class="header-title-group">
         <h1>Overview</h1>
-        <p>Welcome back, {{ user.first_name }}. Here's what's happening with your business today.</p>
+        <p>Good afternoon, {{ user.first_name }}. Here's what needs your attention today.</p>
     </div>
-    <div class="dash-actions">
-        <a href="/caterer/bookings?new=walkin" class="btn-secondary-action">
-            <i class="fas fa-user-plus"></i> Walk-in Booking
+    <div class="header-actions">
+        <a href="/caterer/calendar" class="btn-secondary-pro">
+            <i class="fas fa-calendar-plus"></i> Add Schedule
         </a>
-        <a href="/caterer/packages" class="btn-primary-action">
-            <i class="fas fa-plus"></i> Create Package
+        <a href="/caterer/bookings?new=walkin" class="btn-primary-pro">
+            <i class="fas fa-user-plus"></i> Walk-in Booking
         </a>
     </div>
 </div>
 
 <div class="dash-grid">
-    <!-- KPI Section (Matches Bookings UI) -->
-    <div class="kpi-grid-clean" style="grid-column: span 12; margin-bottom: 0;">
+    <!-- KPI Section -->
+    <div class="kpi-grid-clean" style="">
         <div class="kpi-card-clean">
             <div class="kpi-info">
-                <h4>Total Revenue</h4>
-                <span class="kpi-value">₱{{ "{:,.2f}".format(total_revenue) }}</span>
-                <span class="trend-badge">Year to date</span>
-            </div>
-        </div>
-        <div class="kpi-card-clean">
-            <div class="kpi-info">
-                <h4>Net Earnings</h4>
-                <span class="kpi-value">₱{{ "{:,.2f}".format(net_profit) }}</span>
-                <span class="trend-badge">Estimated profit</span>
-            </div>
-        </div>
-        <div class="kpi-card-clean">
-            <div class="kpi-info">
-                <h4>Active Bookings</h4>
-                <span class="kpi-value">{{ active_bookings }}</span>
-                <span class="trend-badge">Currently managed</span>
+                <h4>Today's Events</h4>
+                <span class="kpi-value" style="color: var(--primary-color);">{{ today_events_count }}</span>
+                <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Today</span>
             </div>
         </div>
         <div class="kpi-card-clean">
             <div class="kpi-info">
                 <h4>Upcoming Events</h4>
-                <span class="kpi-value">{{ upcoming_events_count }}</span>
-                <span class="trend-badge">Next 7 days</span>
+                <span class="kpi-value" style="color: var(--accent-color);">{{ upcoming_events_count }}</span>
+                <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Next 30 days</span>
+            </div>
+        </div>
+        <div class="kpi-card-clean">
+            <div class="kpi-info">
+                <h4>Outstanding Balance</h4>
+                <span class="kpi-value" style="color: #f59e0b;">&#8369;{{ "{:,.2f}".format(outstanding_balance) }}</span>
+                <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">{{ outstanding_count }} booking(s) with balance</span>
+            </div>
+        </div>
+        <div class="kpi-card-clean">
+            <div class="kpi-info">
+                <h4>Action Required</h4>
+                <span class="kpi-value" style="color: #ef4444;">{{ action_required_count }}</span>
+                <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Needs attention</span>
             </div>
         </div>
     </div>
 
-    <!-- Main Content Left -->
-    <div class="col-main">
-        
-        <!-- Performance Charts -->
-        <div class="dash-card">
-            <div class="card-header">
-                <h3 class="card-title">Revenue & Bookings Trend</h3>
-            </div>
-            <div class="card-body" style="padding-top: 1rem;">
-                <div class="charts-wrapper">
-                    <div class="chart-box">
-                        <canvas id="revenueChart"></canvas>
+    <!-- ACTION CENTER -->
+    <div class="dash-card" style="">
+        <div class="card-header" style="background: #fffbeb; border-bottom: 1px solid #fef3c7;">
+            <h3 class="card-title" style="color: #b45309;"><i class="fas fa-bolt" style="margin-right:8px;"></i> Action Center</h3>
+        </div>
+                <div class="action-list" style="padding: 0.5rem 0;">
+            {% if action_center_items %}
+                {% for item in action_center_items %}
+                <div class="list-item" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9; gap: 1rem;">
+                    <div style="display: flex; align-items: flex-start; gap: 1rem; flex: 1; min-width: 250px;">
+                        <div style="font-size: 1.2rem; margin-top: 2px;">
+                            {{ '🔴' if item.type == 'urgent' else '🟡' }}
+                        </div>
+                        <div>
+                            <h4 style="font-weight: 700; color: #1e293b; margin: 0 0 0.25rem 0; font-size: 0.95rem;">{{ item.title }}</h4>
+                            <p style="color: #475569; margin: 0; font-size: 0.85rem;">{{ item.desc }}</p>
+                        </div>
                     </div>
-                    <div class="chart-box">
-                        <canvas id="bookingsChart"></canvas>
+                    <div>
+                        <a href="/caterer/bookings" class="btn-secondary-pro" style="padding: 0.35rem 0.85rem; font-size: 0.8rem; white-space: nowrap;">View Details &rarr;</a>
                     </div>
                 </div>
-            </div>
-        </div>
-        
-        <!-- Recent Bookings Table (Matches Bookings UI) -->
-        <div class="dash-card">
-            <div class="card-header" style="border-bottom: none; padding-bottom: 0.5rem;">
-                <h3 class="card-title">Recent Transactions</h3>
-                <a href="/caterer/bookings" class="btn-secondary-action" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;">View All</a>
-            </div>
-            <div class="table-container">
-                <table class="bookings-list-table">
-                    <thead>
-                        <tr>
-                            <th>Customer</th>
-                            <th>Package / Event</th>
-                            <th>Date</th>
-                            <th>Status</th>
-                            <th style="text-align: right;">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for b in recent_orders %}
-                        <tr class="booking-row-item" onclick="window.location.href='/caterer/bookings'" style="cursor: pointer;">
-                            <td class="booking-cell-first" data-label="Customer">
-                                <span style="font-weight: 700; color: #0f172a; font-size: 0.88rem;">{{ b.user.first_name ~ ' ' ~ b.user.last_name if b.user else 'Walk-in' }}</span>
-                            </td>
-                            <td data-label="Package">
-                                <span style="font-weight: 600; color: #334155; font-size: 0.85rem;">{{ b.package.name if b.package else b.event_type }}</span>
-                            </td>
-                            <td data-label="Date">
-                                <span style="font-weight: 700; color: #0f172a; font-size: 0.88rem;">{{ b.event_date.strftime('%b %d, %Y') if b.event_date else 'TBD' }}</span>
-                            </td>
-                            <td data-label="Status">
-                                {% set stat_cls = 'ps-badge-draft' %}
-                                {% if b.status in ['confirmed', 'completed'] %}{% set stat_cls = 'ps-badge-confirmed' %}{% endif %}
-                                {% if b.status in ['pending', 'awaiting_payment'] %}{% set stat_cls = 'ps-badge-pending' %}{% endif %}
-                                {% if b.status == 'cancelled' %}{% set stat_cls = 'ps-badge-cancelled' %}{% endif %}
-                                <span class="premium-status-badge {{ stat_cls }}">
-                                    {% if stat_cls == 'ps-badge-confirmed' %}<i class="fas fa-check-circle"></i>{% endif %}
-                                    {% if stat_cls == 'ps-badge-pending' %}<i class="fas fa-clock"></i>{% endif %}
-                                    {% if stat_cls == 'ps-badge-cancelled' %}<i class="fas fa-times-circle"></i>{% endif %}
-                                    {{ b.status|title|replace('_', ' ') }}
-                                </span>
-                            </td>
-                            <td class="booking-cell-last" data-label="Amount">
-                                <span style="font-weight: 700; color: #0f172a; font-size: 0.92rem;">₱{{ "{:,.2f}".format(b.total_amount or 0) }}</span>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="5" class="empty-state">No recent transactions to display.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Main Content Right -->
-    <div class="col-side">
-        
-        <!-- Needs Attention -->
-        <div class="dash-card">
-            <div class="card-header">
-                <h3 class="card-title">Tasks</h3>
-            </div>
-            
-            {% if pending_actions.total > 0 %}
-                <div class="action-list">
-                    {% if pending_actions.approvals > 0 %}
-                    <a href="/caterer/bookings" class="list-item">
-                        <div class="list-item-content">
-                            <h4>Review Approvals</h4>
-                            <p>New booking requests waiting.</p>
-                        </div>
-                        <span class="count-badge">{{ pending_actions.approvals }}</span>
-                    </a>
-                    {% endif %}
-                    
-                    {% if pending_actions.payments > 0 %}
-                    <a href="/caterer/bookings" class="list-item">
-                        <div class="list-item-content">
-                            <h4>Verify Payments</h4>
-                            <p>Receipts uploaded by customers.</p>
-                        </div>
-                        <span class="count-badge">{{ pending_actions.payments }}</span>
-                    </a>
-                    {% endif %}
-                    
-                    {% if pending_actions.identity > 0 %}
-                    <a href="/caterer/bookings" class="list-item">
-                        <div class="list-item-content">
-                            <h4>Verify IDs</h4>
-                            <p>Customer KYC submissions.</p>
-                        </div>
-                        <span class="count-badge">{{ pending_actions.identity }}</span>
-                    </a>
-                    {% endif %}
-                    
-                    {% if pending_actions.contracts > 0 %}
-                    <a href="/caterer/bookings" class="list-item">
-                        <div class="list-item-content">
-                            <h4>Sign Contracts</h4>
-                            <p>Contracts awaiting your signature.</p>
-                        </div>
-                        <span class="count-badge">{{ pending_actions.contracts }}</span>
-                    </a>
-                    {% endif %}
-                    
-                    {% if pending_actions.messages > 0 %}
-                    <a href="/caterer/bookings" class="list-item">
-                        <div class="list-item-content">
-                            <h4>Unread Messages</h4>
-                            <p>Customer inquiries and updates.</p>
-                        </div>
-                        <span class="count-badge">{{ pending_actions.messages }}</span>
-                    </a>
-                    {% endif %}
-                </div>
+                {% endfor %}
             {% else %}
-                <div class="empty-state">You're all caught up!</div>
+                <div class="empty-state" style="padding: 2.5rem; text-align: center;">
+                    <i class="fas fa-check-circle" style="font-size:2.5rem; color:#10b981; margin-bottom:1rem;"></i><br>
+                    <span style="color: #64748b; font-size: 0.95rem;">You're all caught up! No urgent actions required.</span>
+                </div>
             {% endif %}
         </div>
+    </div>
 
+    <!-- TODAY'S OPERATIONS -->
+    <h3 style="font-size: 1.1rem; color: #1e293b; margin-bottom: 1rem; font-weight: 700;">Today's Operations</h3>
+    <div class="dash-layout-2-1">
+        
         <!-- Today's Schedule -->
         <div class="dash-card">
             <div class="card-header">
-                <h3 class="card-title">Today's Schedule</h3>
+                <h3 class="card-title"><i class="fas fa-clock" style="color:#64748b; margin-right:6px;"></i> Today's Schedule</h3>
             </div>
-            
-            <div class="action-list">
-                {% for b in today_schedule %}
-                <a href="/caterer/calendar" class="list-item">
-                    <div class="list-item-content" style="display: flex; gap: 1rem; align-items: flex-start;">
-                        <span style="font-weight: 600; color: var(--brand-primary); font-size: 0.875rem;">
-                            {{ b.event_time.strftime('%I:%M %p') if b.event_time else 'TBD' }}
-                        </span>
-                        <div>
-                            <h4>{{ b.event_type }}</h4>
-                            <p>{{ b.user.first_name ~ ' ' ~ b.user.last_name if b.user else 'Walk-in' }}</p>
+            <div class="action-list" style="padding: 0.5rem 0; min-height: 280px;">
+                {% if today_schedule %}
+                    {% for event in today_schedule %}
+                    <div class="list-item" style="align-items: flex-start; cursor: default;">
+                        <div style="min-width: 70px; text-align: right; margin-right: 1rem; color: #0f172a; font-weight: 700; font-size: 0.85rem; margin-top: 2px;">
+                            {{ event.event_time.strftime('%I:%M %p') if event.event_time else 'TBD' }}
+                        </div>
+                        <div class="list-item-content">
+                            <h4 style="font-size: 0.95rem;">{{ event.package.name if event.package else event.event_type }}</h4>
+                            <p style="font-size: 0.8rem; color: #475569;">{{ event.user.first_name ~ ' ' ~ event.user.last_name if event.user else 'Walk-in' }} &bull; {{ event.guest_count }} pax</p>
                         </div>
                     </div>
-                </a>
+                    {% endfor %}
                 {% else %}
-                <div class="empty-state">No events scheduled today.</div>
-                {% endfor %}
+                    <div class="empty-state" style="padding: 4rem 1rem;">No events scheduled for today.</div>
+                {% endif %}
+            </div>
+            <div class="card-footer" style="padding: 1rem; border-top: 1px solid #f1f5f9; text-align: center;">
+                <a href="/caterer/calendar" style="color: var(--primary-color); font-weight: 600; font-size: 0.85rem; text-decoration: none;">View Full Schedule &rarr;</a>
             </div>
         </div>
 
+        <!-- Quick Calendar -->
+        <div class="dash-card" id="miniCalendarCard" style="height: auto !important; max-height: none;">
+            <div style="padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 0.85rem; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.04em;">Quick Calendar</span>
+            </div>
+            <div style="padding: 0.5rem;">
+                <div id="miniCalendar"></div>
+                <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; font-size: 0.65rem; color: #64748b;">
+                    <div style="display: flex; align-items: center; gap: 4px;"><span style="width:6px; height:6px; border-radius:50%; background:#10b981;"></span> Bookings</div>
+                    <div style="display: flex; align-items: center; gap: 4px;"><span style="width:6px; height:6px; border-radius:50%; background:#0ea5e9;"></span> Preps</div>
+                    <div style="display: flex; align-items: center; gap: 4px;"><span style="width:6px; height:6px; border-radius:50%; background:#8b5cf6;"></span> Tasks</div>
+                    <div style="display: flex; align-items: center; gap: 4px;"><span style="width:6px; height:6px; border-radius:50%; background:#f59e0b;"></span> Reminder</div>
+                </div>
+            </div>
+            <div class="card-footer" style="padding: 0.75rem; border-top: 1px solid #f1f5f9; text-align: center;">
+                <a href="/caterer/calendar" style="color: var(--primary-color); font-weight: 600; font-size: 0.8rem; text-decoration: none;">Open Calendar &rarr;</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- UPCOMING DEADLINES / EVENTS -->
+    <h3 style="font-size: 1.1rem; color: #1e293b; margin-bottom: 1rem; font-weight: 700;">Upcoming Deadlines</h3>
+    <div class="dash-card" style="">
+                <div class="action-list" style="padding: 0.5rem 0;">
+            {% if action_center_items %}
+                {% for item in action_center_items %}
+                <div class="list-item" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9; gap: 1rem;">
+                    <div style="display: flex; align-items: flex-start; gap: 1rem; flex: 1; min-width: 250px;">
+                        <div style="font-size: 1.2rem; margin-top: 2px;">
+                            {{ '🔴' if item.type == 'urgent' else '🟡' }}
+                        </div>
+                        <div>
+                            <h4 style="font-weight: 700; color: #1e293b; margin: 0 0 0.25rem 0; font-size: 0.95rem;">{{ item.title }}</h4>
+                            <p style="color: #475569; margin: 0; font-size: 0.85rem;">{{ item.desc }}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="/caterer/bookings" class="btn-secondary-pro" style="padding: 0.35rem 0.85rem; font-size: 0.8rem; white-space: nowrap;">View Details &rarr;</a>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state" style="padding: 2.5rem; text-align: center;">
+                    <i class="fas fa-check-circle" style="font-size:2.5rem; color:#10b981; margin-bottom:1rem;"></i><br>
+                    <span style="color: #64748b; font-size: 0.95rem;">You're all caught up! No urgent actions required.</span>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- BUSINESS PERFORMANCE -->
+    <h3 style="font-size: 1.1rem; color: #1e293b; margin-bottom: 1rem; font-weight: 700;">Business Performance</h3>
+    <div class="dash-card">
+        <!-- Side-by-side metrics -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; padding: 1.5rem 1.5rem 0.5rem 1.5rem;">
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <p style="margin-bottom: 4px; font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Total Revenue</p>
+                <h4 style="font-size: 1.5rem; color: #0f172a; margin: 0;">&#8369;{{ "{:,.2f}".format(total_revenue) }}</h4>
+            </div>
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <p style="margin-bottom: 4px; font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Active Bookings</p>
+                <h4 style="font-size: 1.5rem; color: var(--accent-color); margin: 0;">{{ active_bookings }}</h4>
+            </div>
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <p style="margin-bottom: 4px; font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Completed Events</p>
+                <h4 style="font-size: 1.5rem; color: #10b981; margin: 0;">{{ bookings_chart_data | sum(attribute='completed') }}</h4>
+            </div>
+        </div>
+        
+        <div class="card-body" style="padding: 1.5rem;">
+            <h5 style="margin-bottom: 1rem; font-size: 0.85rem; color: #475569; font-weight: 700;">Workload Trend (Events)</h5>
+            <div class="chart-box" style="height: 300px; width: 100%;">
+                <canvas id="bookingsChart"></canvas>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const chartDataRaw = {{ chart_data | tojson | safe }};
-        const bookingsChartRaw = {{ bookings_chart_data | tojson | safe }};
-        
-        const labels = chartDataRaw.map(d => d.label);
-        const revenue = chartDataRaw.map(d => d.revenue);
-        
-        Chart.defaults.font.family = "'Inter', sans-serif";
-        Chart.defaults.color = '#9ca3af';
-
-        // Revenue Chart
-        new Chart(document.getElementById('revenueChart').getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Revenue',
-                    data: revenue,
-                    borderColor: '#2563eb',
-                    backgroundColor: 'rgba(37, 99, 235, 0.05)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.3,
-                    pointBackgroundColor: '#ffffff',
-                    pointBorderColor: '#2563eb',
-                    pointBorderWidth: 2,
-                    pointRadius: 3,
-                    pointHoverRadius: 5
-                }]
+    const chartDataRaw = {{ chart_data | tojson | safe }};
+    const bookingsDataRaw = {{ bookings_chart_data | tojson | safe }};
+    
+    // Mini Calendar Init
+    document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('miniCalendar');
+        if (calendarEl) {
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'title',
+                    right: 'prev,next'
+                },
+                height: 'auto',
+                contentHeight: 190,
+                fixedWeekCount: false,
+                showNonCurrentDates: false,
+                selectable: true,
+                events: '/caterer/api/events',
+            eventDidMount: function(info) {
+                // Ensure the main element acts as a dot and inherits the background color
+                if (info.el.querySelector('.fc-event-main')) {
+                    info.el.querySelector('.fc-event-main').style.backgroundColor = info.event.backgroundColor || 'var(--primary-color)';
+                }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { 
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#111827',
-                        padding: 10,
-                        titleFont: { size: 12, weight: 'normal' },
-                        bodyFont: { size: 14, weight: 'bold' },
-                        displayColors: false,
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) { label += ': '; }
-                                if (context.parsed.y !== null) {
-                                    label += '₱' + context.parsed.y.toLocaleString();
-                                }
-                                return label;
+            dateClick: function(info) {
+                    window.location.href = '/caterer/calendar?date=' + info.dateStr;
+                }
+            });
+            calendar.render();
+        }
+        
+        // Render Bookings Chart (Workload representation)
+        const bCtx = document.getElementById('bookingsChart');
+        if (bCtx && bookingsDataRaw && bookingsDataRaw.length > 0) {
+            new Chart(bCtx, {
+                type: 'bar', // Better chart for events workload
+                data: {
+                    labels: bookingsDataRaw.map(d => d.label),
+                    datasets: [
+                        {
+                            label: 'Completed Events',
+                            data: bookingsDataRaw.map(d => d.completed),
+                            backgroundColor: '#10b981',
+                            borderRadius: 4,
+                            barPercentage: 0.6
+                        },
+                        {
+                            label: 'Active/Pending',
+                            data: bookingsDataRaw.map(d => d.pending),
+                            backgroundColor: '#3b82f6',
+                            borderRadius: 4,
+                            barPercentage: 0.6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                boxWidth: 8
                             }
                         }
-                    }
-                },
-                scales: {
-                    y: { 
-                        beginAtZero: true, 
-                        grid: { borderDash: [4, 4], color: '#f3f4f6' },
-                        border: { display: false },
-                        ticks: {
-                            callback: function(value) {
-                                return '₱' + (value / 1000) + 'k';
-                            }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1, precision: 0 },
+                            grid: { color: '#f1f5f9' }
+                        },
+                        x: {
+                            grid: { display: false }
                         }
-                    },
-                    x: { 
-                        grid: { display: false },
-                        border: { display: false }
                     }
                 }
-            }
-        });
-
-        // Bookings Chart
-        const completedBookings = bookingsChartRaw.map(d => d.completed);
-        const pendingBookings = bookingsChartRaw.map(d => d.pending);
-        
-        new Chart(document.getElementById('bookingsChart').getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Completed',
-                        data: completedBookings,
-                        backgroundColor: '#10b981',
-                        borderRadius: 2,
-                        barPercentage: 0.5
-                    },
-                    {
-                        label: 'Pending',
-                        data: pendingBookings,
-                        backgroundColor: '#f59e0b',
-                        borderRadius: 2,
-                        barPercentage: 0.5
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { 
-                    legend: { 
-                        position: 'top', 
-                        labels: { boxWidth: 8, usePointStyle: true, pointStyle: 'circle' } 
-                    },
-                    tooltip: {
-                        backgroundColor: '#111827',
-                        padding: 10
-                    }
-                },
-                scales: {
-                    y: { 
-                        beginAtZero: true, 
-                        stacked: true,
-                        grid: { borderDash: [4, 4], color: '#f3f4f6' },
-                        border: { display: false },
-                        ticks: { stepSize: 1 }
-                    },
-                    x: { 
-                        stacked: true, 
-                        grid: { display: false },
-                        border: { display: false }
-                    }
-                }
-            }
-        });
+            });
+        }
     });
 </script>
 {% endblock %}

@@ -3,12 +3,12 @@
 {% block title %}Settings - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/profile_edit.css') }}?v=4.1">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/profile_edit.css') }}?v=12.9">
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/node-vibrant/3.1.6/vibrant.min.js"></script>
-<script src="{{ url_for('static', path='/js/caterer/profile_edit.js') }}?v=4.0"></script>
+<script src="{{ url_for('static', path='/js/caterer/profile_edit.js') }}?v=12.9"></script>
 {% endblock %}
 
 {% block content %}
@@ -341,10 +341,17 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label><i class="fas fa-envelope"></i> Registered Email</label>
-                        <input type="email" value="{{ user.email }}" disabled style="background-color: #f1f5f9; cursor: not-allowed; opacity: 0.7;">
-                        <span class="field-hint"><i class="fas fa-lock"></i> Email cannot be changed for security.</span>
+                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div class="form-group">
+                            <label><i class="fas fa-calendar-alt"></i> Date of Birth</label>
+                            <input type="date" name="dob" value="{{ user.dob or '' }}" required>
+                            <span class="field-hint">Required for KYC and Admin Verification.</span>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-envelope"></i> Registered Email</label>
+                            <input type="email" value="{{ user.email }}" disabled style="background-color: #f1f5f9; cursor: not-allowed; opacity: 0.7;">
+                            <span class="field-hint"><i class="fas fa-lock"></i> Email cannot be changed for security.</span>
+                        </div>
                     </div>
 
                     <!-- Business Permit upload moved to Verification Center -->

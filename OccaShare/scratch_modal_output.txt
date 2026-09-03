@@ -1,0 +1,169 @@
+id="eventModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-md occ-content-pop">
+        <div class="occ-modal-header glass-header">
+            <div>
+                <h3 id="calModalTitle" class="occ-modal-title">Booking Details</h3>
+                <div class="occ-modal-subtitle">Review service logistics and customer information</div>
+            </div>
+            <button onclick="closeModal('eventModal')" class="occ-modal-close" title="Close" aria-label="Close modal"><i
+                    class="fas fa-times"></i></button>
+        </div>
+        <div class="compact-body">
+            <div class="calendar-detail-list">
+                <div class="calendar-detail-item">
+                    <i class="fas fa-user"></i>
+                    <div>
+                        <div class="calendar-detail-label">Client Name</div>
+                        <div id="detCustomer" class="calendar-detail-value">---</div>
+                    </div>
+                </div>
+                <div class="calendar-detail-item">
+                    <i class="fas fa-heart"></i>
+                    <div>
+                        <div class="calendar-detail-label">Event Type</div>
+                        <div id="detType" class="calendar-detail-value">---</div>
+                    </div>
+                </div>
+                <div class="calendar-detail-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <div>
+                        <div class="calendar-detail-label">Date & Time</div>
+                        <div id="detDateTime" class="calendar-detail-value">---</div>
+                    </div>
+                </div>
+                <div class="calendar-detail-item">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <div>
+                        <div class="calendar-detail-label">Venue Location</div>
+                        <div id="detVenue" class="calendar-detail-value">---</div>
+                    </div>
+                </div>
+                <div class="calendar-detail-item">
+                    <i class="fas fa-users"></i>
+                    <div>
+                        <div class="calendar-detail-label">Guest Count & Package</div>
+                        <div id="detPackage" class="calendar-detail-value">---</div>
+                    </div>
+                </div>
+                <div class="calendar-detail-item">
+                    <i class="fas fa-credit-card"></i>
+                    <div>
+                        <div class="calendar-detail-label">Payment Status</div>
+                        <div id="detPayment" class="calendar-detail-value">---</div>
+                    </div>
+                </div>
+                <div class="calendar-detail-item">
+                    <i class="fas fa-clipboard"></i>
+                    <div>
+                        <div class="calendar-detail-label">Special Requests</div>
+                        <div id="detSpecial" class="calendar-detail-value">---</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="occ-modal-footer" style="display: block;">
+            <input type="hidden" id="evModalBookingId">
+            <button onclick="window.location.href='/caterer/dashboard?page=bookings'" class="btn-secondary-pro" style="width: 100%;">
+                <i class="fas fa-edit"></i> Edit Full Booking
+            </button>
+            <div class="cal-modal-actions">
+                <button onclick="copyInvoiceLink()" class="btn-secondary-pro"><i class="fas fa-link"></i> Copy Invoice Link</button>
+                <button onclick="setReminder()" class="btn-primary-pro"><i class="fas fa-bell"></i> Set Reminder</button>
+                <button onclick="closeModal('eventModal')" class="btn-secondary-pro btn-full">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Manage Availability Modal -->
+<div id="availabilityModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-sm occ-content-pop">
+        <div class="occ-modal-header glass-header">
+            <h3 class="occ-modal-title"><i class="fas fa-cog" style="margin-right: 8px;"></i> Availability Settings</h3>
+            <button class="occ-modal-close" onclick="closeModal('availabilityModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="occ-modal-body" style="padding: 1.5rem;">
+            <div class="cal-form-stack">
+                <div class="form-group-pro">
+                    <label class="cal-label">Selected Date</label>
+                    <input type="date" id="blockDate" class="control-pro" readonly>
+                </div>
+                
+                <h4 style="font-size: 0.95rem; font-weight: 700; margin: 1rem 0 0.5rem 0; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Block / Unblock Date</h4>
+                <div class="form-group-pro">
+                    <label class="cal-label">Reason (if blocking)</label>
+                    <input type="text" id="blockReason" class="control-pro" placeholder="e.g. Venue maintenance">
+                </div>
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+                    <button onclick="toggleDateAvailability(false)" class="btn-primary-pro" style="flex:1; background: #ef4444; border-color: #ef4444; justify-content:center;">Block Date</button>
+                    <button onclick="toggleDateAvailability(true)" class="btn-secondary-pro" style="flex:1; justify-content:center;">Unblock Date</button>
+                </div>
+
+                <h4 style="font-size: 0.95rem; font-weight: 700; margin: 1rem 0 0.5rem 0; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Global Capacity Settings</h4>
+                <div class="form-group-pro">
+                    <label class="cal-label">Max Bookings Per Day</label>
+                    <input type="number" id="capMaxBookings" class="control-pro" value="5" min="1">
+                </div>
+                <div class="form-group-pro" style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="capAutoBlock" style="width: 18px; height: 18px; cursor: pointer;" checked>
+                    <label for="capAutoBlock" class="cal-label" style="margin-bottom: 0;">Auto-block when capacity reached</label>
+                </div>
+                <button onclick="updateCapacitySettings()" class="btn-primary-pro" style="width: 100%; justify-content:center; margin-top: 0.5rem;">Save Capacity Limits</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Schedule Modal -->
+<div id="addScheduleModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-sm occ-content-pop">
+        <div class="occ-modal-header glass-header">
+            <h3 class="occ-modal-title"><i class="fas fa-calendar-plus" style="margin-right: 8px;"></i> Add Internal Schedule</h3>
+            <button class="occ-modal-close" onclick="closeModal('addScheduleModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="occ-modal-body" style="padding: 1.5rem;">
+            <form id="addScheduleForm" class="cal-form-stack">
+                <div class="form-group-pro">
+                    <label class="cal-label">Schedule Type</label>
+                    <select id="schedType" class="control-pro" required onchange="if(this.value === 'other') { document.getElementById('schedOtherContainer').style.display = 'block'; } else { document.getElementById('schedOtherContainer').style.display = 'none'; }">
+                        <option value="task">Internal Task</option>
+                        <option value="preparation">Preparation / Setup</option>
+                        <option value="meeting">Supplier / Customer Meeting</option>
+                        <option value="personal">Personal / Business</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group-pro" id="schedOtherContainer" style="display: none;">
+                    <label class="cal-label">Specific Schedule Type</label>
+                    <input type="text" id="schedOtherType" class="control-pro" placeholder="e.g. Delivery Run">
+                </div>
+                <div class="form-group-pro">
+                    <label class="cal-label">Title</label>
+                    <input type="text" id="schedTitle" class="control-pro" placeholder="e.g. Staff briefing" required>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <div class="form-group-pro" style="flex: 1;">
+                        <label class="cal-label">Date</label>
+                        <input type="date" id="schedDate" class="control-pro" required>
+                    </div>
+                    <div class="form-group-pro" style="flex: 1;">
+                        <label class="cal-label">Time</label>
+                        <input type="time" id="schedTime" class="control-pro">
+                    </div>
+                </div>
+                <div class="form-group-pro" style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="schedPin" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="schedPin" class="cal-label" style="margin-bottom: 0;">📌 Pin to Dashboard (Important)</label>
+                </div>
+                <button type="button" onclick="saveSchedule()" class="btn-primary-pro" id="btnSaveSchedule" style="width: 100%; justify-content: center; margin-top: 1rem;">
+                    Save Schedule
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- View Internal Schedule Modal -->
+<div 

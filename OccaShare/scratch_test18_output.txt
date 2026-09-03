@@ -1,0 +1,93 @@
+trftime(date_format) for d in chart_points]
+    
+    # Stats Counters (FOR TOP CARDS - FILTERED)
+    total_realized_revenue = 0
+    total_projected_revenue = 0
+    total_actual_expenses = 0
+    total_projected_expenses = 0
+    unique_customers = set()
+    active_bookings = 0
+    
+    # Chart Data Pools (FOR TREND)
+    period_revenue = {k: 0.0 for k in chart_keys}
+    period_expenses = {k: 0.0 for k in chart_keys}
+    period_bookings = {k: {'completed': 0, 'pending': 0} for k in chart_keys}
+    
+    package_stats = {} # {id: {revenue: 0, expenses: 0, orders: 0}}
+    customer_stats = {} # {user_id: {...}}
+    revenue_by_event = {} # {event_type: revenue}
+    
+    for b in bookings:
+        if not b.event_date: continue
+        
+        amount = float(b.total_amount or b.total_price or 0)
+        
+        # Determine Cost Baseline
+        base_cost_price = 0
+        if b.package and b.package.cost_price:
+            if b.package.price_unit == "per_guest":
+                base_cost_price = (b.package.cost_price) * (b.guest_count or 1)
+            else:
+                base_cost_price = b.package.cost_price
+        else:
+            base_cost_price = amount * 0.60 # Standard 60% fallback
+        
+        actual_cost = b.actual_cost if b.actual_cost and b.actual_cost > 0 else base_cost_price
+        
+        # --- A. TOP STATS FILTERING ---
+        if b.event_date >= stats_start and b.event_date <= stats_end:
+            unique_customers.add(b.user_id)
+            
+            if b.status in ['confirmed', 'preparing', 'on_the_way', 'in_progress', 'completed']:
+                total_projected_revenue += amount
+                total_projected_expenses += actual_cost
+                if b.status != 'completed': active_bookings += 1
+
+            # Realized Revenue Computation
+            cleared_amount = 0
+            if b.payment_status == 'paid':
+                cleared_amount = amount
+            elif b.payment_status == 'deposit_paid':
+                dep_pct = 20
+                if b.quotation: dep_pct = b.quotation.downpayment_percent
+                cleared_amount = amount * (dep_pct / 100)
+            
+            total_realized_revenue += cleared_amount
+            total_actual_expenses += actual_cost if b.status in ['confirmed', 'completed', 'in_progress'] else 0
+
+            # Loyalty & Spenders Tracking
+            if b.user_id:
+                if b.user_id not in customer_stats:
+                    c_first = b.user.first_name if b.user and b.user.first_name else ""
+                    c_last = b.user.last_name if b.user and b.user.last_name else ""
+                    c_init = (c_first[0].upper() if c_first else "") + (c_last[0].upper() if c_last else "")
+                    customer_stats[b.user_id] = {
+                        "id": b.user_id,
+                        "name": f"{c_first} {c_last}".strip() if b.user else "Walk-in",
+                        "initials": c_init if c_init else "WI",
+                        "spent": 0,
+                        "orders": 0
+                    }
+                customer_stats[b.user_id]['orders'] += 1
+                customer_stats[b.user_id]['spent'] += cleared_amount
+
+            # Event Type Revenue Mapping
+            evt_type = b.event_type or 'Other'
+            if evt_type not in revenue_by_event:
+                revenue_by_event[evt_type] = 0
+            revenue_by_event[evt_type] += cleared_amount
+
+        # --- B. TREND CHART AGGREGATION ---
+        date_key = b.event_date.strftime(date_format)
+        if date_key in period_revenue:
+            cleared_chart = 0
+            if b.payment_status == 'paid': cleared_chart = amount
+            elif b.payment_status == 'deposit_paid':
+                dep_pct = 20
+                if b.quotation: dep_pct = b.quotation.downpayment_percent
+                cleared_chart = amount * (dep_pct / 100)
+                
+            period_revenue[date_key] += cleared_chart
+            period_expenses[date_key] += actual_cost
+            
+    

@@ -22,30 +22,38 @@
 
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-top: 1.5rem; margin-bottom: 1rem; position: relative; z-index: 1;">
             <div class="form-group">
-                <label for="last_name">Last Name</label>
+                <label for="last_name">Last Name <span style="color:#ef4444;">*</span></label>
                 <div class="input-wrapper" id="lastNameWrapper">
                     <input type="text" id="last_name" name="last_name" class="minimal-input" required>
                     <div id="lastNameError" class="error-drawer"></div>
                 </div>
             </div>
             <div class="form-group">
-                <label for="first_name">First Name</label>
+                <label for="first_name">First Name <span style="color:#ef4444;">*</span></label>
                 <div class="input-wrapper" id="firstNameWrapper">
                     <input type="text" id="first_name" name="first_name" class="minimal-input" required>
                     <div id="firstNameError" class="error-drawer"></div>
                 </div>
             </div>
             <div class="form-group">
-                <label for="middle_name">Middle Name</label>
+                <label for="middle_name">Middle Name <span style="color:#ef4444;">*</span></label>
                 <div class="input-wrapper" id="middleNameWrapper">
-                    <input type="text" id="middle_name" name="middle_name" class="minimal-input">
-                    <div id="middleNameError" class="error-drawer"></div>
+                    <input type="text" id="middle_name" name="middle_name" class="minimal-input" required>
+                    <div id="middleNameError" class="error-drawer">Required</div>
                 </div>
             </div>
         </div>
 
         <div class="form-group">
-            <label for="email">Email Address</label>
+            <label for="dob">Date of Birth <span style="color:#ef4444;">*</span></label>
+            <div class="input-wrapper" id="dobWrapper">
+                <input type="date" id="dob" name="dob" class="minimal-input" required max="2008-12-31">
+                <div id="dobError" class="error-drawer">Must be at least 18 years old</div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email Address <span style="color:#ef4444;">*</span></label>
             <div class="input-wrapper" id="emailWrapper">
                 <input type="email" id="email" name="email" class="minimal-input" required
                     autocomplete="off"
@@ -55,7 +63,7 @@
         </div>
 
         <div class="form-group">
-            <label for="mobile_number">Mobile Number</label>
+            <label for="mobile_number">Mobile Number <span style="color:#ef4444;">*</span></label>
             <div class="input-wrapper" id="mobileWrapper">
                 <input type="tel" id="mobile_number" name="mobile_number" class="minimal-input" required
                     maxlength="11"
@@ -67,9 +75,9 @@
         <!-- Address Fields -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; position: relative; z-index: 1;">
             <div class="form-group">
-                <label for="province_cust">Province</label>
+                <label for="province_cust">Province <span style="color:#ef4444;">*</span></label>
                 <div class="input-wrapper" id="provinceCustWrapper">
-                    <select id="province_cust" class="minimal-input" required>
+                    <select id="province_cust" name="province" class="minimal-input" required>
                         <option value="" disabled selected hidden>-- Province --</option>
                         <option value="Laguna">Laguna</option>
                     </select>
@@ -77,9 +85,9 @@
                 </div>
             </div>
             <div class="form-group">
-                <label for="city_cust">City / Municipality</label>
+                <label for="city_cust">City / Municipality <span style="color:#ef4444;">*</span></label>
                 <div class="input-wrapper" id="cityCustWrapper">
-                    <select id="city_cust" class="minimal-input" required disabled>
+                    <select id="city_cust" name="city_municipality" class="minimal-input" required disabled>
                         <option value="" disabled selected hidden>-- City --</option>
                     </select>
                     <div id="cityCustError" class="error-drawer">Required</div>
@@ -88,18 +96,18 @@
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; position: relative; z-index: 1;">
             <div class="form-group">
-                <label for="barangay_cust">Barangay</label>
+                <label for="barangay_cust">Barangay <span style="color:#ef4444;">*</span></label>
                 <div class="input-wrapper" id="barangayCustWrapper">
-                    <select id="barangay_cust" class="minimal-input" required disabled>
+                    <select id="barangay_cust" name="barangay" class="minimal-input" required disabled>
                         <option value="" disabled selected hidden>-- Barangay --</option>
                     </select>
                     <div id="barangayCustError" class="error-drawer">Required</div>
                 </div>
             </div>
             <div class="form-group">
-                <label for="street_cust">Street / Landmark</label>
+                <label for="street_cust">Street / Landmark <span style="color:#ef4444;">*</span></label>
                 <div class="input-wrapper" id="streetCustWrapper">
-                    <input type="text" id="street_cust" class="minimal-input" required>
+                    <input type="text" id="street_cust" name="street_address" class="minimal-input" required>
                     <div id="streetCustError" class="error-drawer">Required</div>
                 </div>
             </div>
@@ -108,7 +116,7 @@
 
         <div class="grid-2" style="position: relative; z-index: 1;">
             <div class="form-group">
-                <label for="password">Password</label>
+                <label for="password">Password <span style="color:#ef4444;">*</span></label>
                 <div class="input-wrapper" id="passwordWrapper">
                     <div class="password-field-wrapper">
                         <input type="password" id="password" name="password" class="minimal-input has-toggle" required
@@ -122,7 +130,7 @@
             </div>
 
             <div class="form-group">
-                <label for="confirm_password">Confirm</label>
+                <label for="confirm_password">Confirm <span style="color:#ef4444;">*</span></label>
                 <div class="input-wrapper" id="confirmWrapper">
                     <div class="password-field-wrapper">
                         <input type="password" id="confirm_password" name="confirm_password" class="minimal-input has-toggle" required

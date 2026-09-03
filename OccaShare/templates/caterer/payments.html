@@ -4,7 +4,7 @@
 {% block title %}Payments & Earnings - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/payments.css') }}?v=3.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/payments.css') }}?v=12.9">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/index.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/dashboard_premium.css') }}">
 <style>
@@ -61,8 +61,8 @@
 {% block content %}
 
 <!-- Page Header -->
-<div class="pay-page-header">
-    <div>
+<div class="page-header">
+    <div class="header-title-group">
         <h1>Payments & Earnings</h1>
         <p>Monitor your revenue, collected deposits, and pending payout schedules.</p>
     </div>
@@ -548,7 +548,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="{{ url_for('static', path='/js/caterer/payments.js') }}?v=3.0"></script>
+<script src="{{ url_for('static', path='/js/caterer/payments.js') }}?v=12.9"></script>
 <script>
     // Listen to global header search
     window.addEventListener('globalSearch', function(e) {

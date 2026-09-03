@@ -29,7 +29,7 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
     packages = db.query(models.CateringPackage).filter(models.CateringPackage.is_active == True).limit(3).all()
     caterers = db.query(models.CatererProfile).filter(
         models.CatererProfile.status == 'Published',
-        models.CatererProfile.is_verified == True,
+        models.CatererProfile.verification_status == 'Verified',
         models.CatererProfile.account_status == 'Active'
     ).order_by(models.CatererProfile.rating.desc()).limit(5).all()
 
@@ -47,7 +47,7 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
     try:
         total_caterers = db.query(func.count(models.CatererProfile.id)).filter(
             models.CatererProfile.status == 'Published',
-            models.CatererProfile.is_verified == True,
+            models.CatererProfile.verification_status == 'Verified',
             models.CatererProfile.account_status == 'Active'
         ).scalar() or 0
 

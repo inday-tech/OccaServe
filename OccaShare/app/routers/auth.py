@@ -141,31 +141,17 @@ async def scan_document(
 
 @router.get("/register", response_class=HTMLResponse)
 def register_page(request: Request, next: Optional[str] = None, db: Session = Depends(database.get_db)):
-    user = None
-    token = request.cookies.get("access_token")
-    if token and token.startswith("Bearer "):
-        token = token.split(" ")[1]
-        user = security_auth.verify_token(token, db)
-        
-    return templates.TemplateResponse("auth/register.html", {
-        "request": request, 
-        "next_url": next,
-        "user": user
-    })
+    url = "/?auth_modal=signup"
+    if next:
+        url += f"&next={next}"
+    return RedirectResponse(url=url)
 
 @router.get("/register/caterer", response_class=HTMLResponse)
 def register_caterer_page(request: Request, next: Optional[str] = None, db: Session = Depends(database.get_db)):
-    user = None
-    token = request.cookies.get("access_token")
-    if token and token.startswith("Bearer "):
-        token = token.split(" ")[1]
-        user = security_auth.verify_token(token, db)
-    
-    return templates.TemplateResponse("auth/register_caterer.html", {
-        "request": request, 
-        "next_url": next,
-        "user": user
-    })
+    url = "/?auth_modal=caterer-signup"
+    if next:
+        url += f"&next={next}"
+    return RedirectResponse(url=url)
 
 from fastapi import APIRouter, Depends, HTTPException, status, Form, Request, File, UploadFile, BackgroundTasks
 
@@ -178,6 +164,11 @@ async def register(
     email: str = Form(...),
     mobile_number: str = Form(...),
     address: Optional[str] = Form(""),
+    province: Optional[str] = Form(None),
+    city_municipality: Optional[str] = Form(None),
+    barangay: Optional[str] = Form(None),
+    street_address: Optional[str] = Form(None),
+    dob: Optional[str] = Form(None),
     password: str = Form(...),
     confirm_password: str = Form(...),
     # Separate name fields (caterer form)
@@ -253,6 +244,16 @@ async def register(
             user.phone_number = mobile_number.strip().replace(" ", "")
         if address:
             user.address = address.strip()
+        if province: user.province = province.strip()
+        if city_municipality: user.city_municipality = city_municipality.strip()
+        if barangay: user.barangay = barangay.strip()
+        if street_address: user.street_address = street_address.strip()
+        if dob:
+            from datetime import datetime
+            try:
+                user.dob = datetime.strptime(dob.strip(), "%Y-%m-%d").date()
+            except ValueError:
+                pass
             
         if role == "caterer":
             profile = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == user.id).first()
@@ -265,8 +266,9 @@ async def register(
                     profile.contact_address = address.strip()
                 if min_pax:
                     profile.min_pax = min_pax
-                if city:
-                    profile.city = city
+                actual_city = city or city_municipality
+                if actual_city:
+                    profile.city = actual_city
                 if coverage_area:
                     profile.coverage_area = coverage_area
         
@@ -382,14 +384,11 @@ async def register(
     if errors:
         if is_ajax:
             return JSONResponse(status_code=400, content={"success": False, "message": "Please correct the highlighted fields.", "field_errors": errors})
-        template = "auth/register_caterer.html" if role == "caterer" else "auth/register.html"
-        return templates.TemplateResponse(template, {
-            "request": request,
-            "error": "Please correct the highlighted fields.",
-            "field_errors": errors,
-            "next_url": next_url,
-            "role": role
-        })
+        modal = "caterer-signup" if role == "caterer" else "signup"
+        url = f"/?auth_modal={modal}&error=Please correct the highlighted fields."
+        if next_url:
+            url += f"&next={next_url}"
+        return RedirectResponse(url=url, status_code=status.HTTP_303_SEE_OTHER)
 
     user = db.query(models.User).filter(models.User.email == email).first()
     
@@ -418,13 +417,11 @@ async def register(
         if user.is_email_verified:
             if is_ajax:
                 return JSONResponse(status_code=400, content={"success": False, "message": "Email already registered and verified. Please login."})
-            template = "auth/register_caterer.html" if role == "caterer" else "auth/register.html"
-            return templates.TemplateResponse(template, {
-                "request": request,
-                "error": "Email already registered and verified. Please login.",
-                "next_url": next_url,
-                "role": role
-            })
+            modal = "caterer-signup" if role == "caterer" else "signup"
+            url = f"/?auth_modal={modal}&error=Email already registered and verified. Please login."
+            if next_url:
+                url += f"&next={next_url}"
+            return RedirectResponse(url=url, status_code=status.HTTP_303_SEE_OTHER)
     
     if is_upgrade:
         # Update existing social user
@@ -433,6 +430,10 @@ async def register(
         user.last_name = last_name
         user.phone_number = mobile_number
         user.address = address
+        user.province = province
+        user.city_municipality = city_municipality
+        user.barangay = barangay
+        user.street_address = street_address
         user.role = role
         user.status = "pending_approval" if role == "caterer" else "active"
         db.commit()
@@ -450,9 +451,10 @@ async def register(
         if role == "caterer":
             # --- ENHANCED SECURITY: Check if registration is from a blocked dummy ---
             if is_gibberish(full_name) or is_dummy_name(full_name):
-                return templates.TemplateResponse("auth/register_caterer.html", {
-                    "request": request, "error": "Please provide a valid legal name."
-                })
+                if is_ajax:
+                    return JSONResponse(status_code=400, content={"success": False, "message": "Please provide a valid legal name."})
+                url = f"/?auth_modal=caterer-signup&error=Please provide a valid legal name."
+                return RedirectResponse(url=url, status_code=status.HTTP_303_SEE_OTHER)
 
             from app.services.storage import upload_file_to_cloudinary
 
@@ -474,18 +476,20 @@ async def register(
                 content = await permit.read()
                 file_error = validate_file_type_and_size(content, permit.filename)
                 if file_error:
-                    return templates.TemplateResponse("auth/register_caterer.html", {
-                        "request": request, "error": f"Permit File: {file_error}", "role": role
-                    })
+                    if is_ajax:
+                        return JSONResponse(status_code=400, content={"success": False, "message": f"Permit File: {file_error}"})
+                    url = f"/?auth_modal=caterer-signup&error=Permit File: {file_error}"
+                    return RedirectResponse(url=url, status_code=status.HTTP_303_SEE_OTHER)
                 permit_url = upload_file_to_cloudinary(content, folder="verification")
 
             if sample_menu and sample_menu.filename:
                 content = await sample_menu.read()
                 file_error = validate_file_type_and_size(content, sample_menu.filename, max_size_mb=10)
                 if file_error:
-                    return templates.TemplateResponse("auth/register_caterer.html", {
-                        "request": request, "error": f"Menu File: {file_error}", "role": role
-                    })
+                    if is_ajax:
+                        return JSONResponse(status_code=400, content={"success": False, "message": f"Menu File: {file_error}"})
+                    url = f"/?auth_modal=caterer-signup&error=Menu File: {file_error}"
+                    return RedirectResponse(url=url, status_code=status.HTTP_303_SEE_OTHER)
                 sample_menu_url = upload_file_to_cloudinary(content, folder="menu_images")
 
 
@@ -495,6 +499,15 @@ async def register(
 
         from datetime import datetime, timedelta, timezone
         
+        # Parse DOB if provided
+        parsed_dob = None
+        if dob:
+            from datetime import datetime
+            try:
+                parsed_dob = datetime.strptime(dob.strip(), "%Y-%m-%d").date()
+            except ValueError:
+                pass
+                
         new_user = models.User(
             email=email, 
             password_hash=hashed_password,
@@ -502,8 +515,13 @@ async def register(
             first_name=first_name,
             middle_name=mn,
             last_name=last_name,
+            dob=parsed_dob,
             phone_number=mobile_number,
             address=address,
+            province=province,
+            city_municipality=city_municipality,
+            barangay=barangay,
+            street_address=street_address,
             status="pending_verification",
             is_verified=False,
             is_email_verified=False,

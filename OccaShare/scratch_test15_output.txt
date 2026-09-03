@@ -1,0 +1,19 @@
+eventClick: function (info) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (info.event.start < today) {
+                    showNotification('Archive Notice', 'Past event details are not editable', 'info');
+                    return;
+                }
+                if (info.event.extendedProps.type === 'BLOCKED') {
+                    showBlockedDetails(info.event);
+                } else if (info.event.extendedProps.customer === 'Internal') {
+                    window.showInternalScheduleDetails(info.event);
+                } else {
+                    showEventDetails(info.event);
+                }
+            },
+            
+        dateClick: function (info) {
+            updateSidebarForDate(info.dateStr);
+            con

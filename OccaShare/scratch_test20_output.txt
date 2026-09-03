@@ -1,0 +1,48 @@
+@router.get("/dashboard", response_class=HTMLResponse)
+async def caterer_dashboard(
+    request: Request, 
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    bookings = [b for b in profile.bookings if b.status not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted'] and not b.is_archived]
+    
+    timeframe = request.query_params.get('timeframe', 'month')
+    stats = _get_caterer_stats(profile, bookings, timeframe=timeframe)
+
+    from datetime import date, timedelta
+    today = date.today()
+    
+    # 1. Operational Dashboard Metrics
+    all_bookings = profile.bookings
+    today_events_count = len([b for b in all_bookings if b.event_date == today and b.status not in ['cancelled', 'draft']])
+    upcoming_events_count = len([b for b in all_bookings if b.event_date and today < b.event_date <= today + timedelta(days=30) and b.status not in ['cancelled', 'draft']])
+    
+    outstanding_balance = 0
+    outstanding_count = 0
+    action_center_items = []
+    
+    for b in all_bookings:
+        if b.status in ['cancelled', 'draft', 'completed']:
+            continue
+            
+        if b.booking_source == 'Internal':
+            if b.special_requests == 'pinned':
+                action_center_items.append({'type': 'warning', 'title': 'Pinned Schedule', 'desc': f'{b.event_name} on {b.event_date.strftime("%b %d")}', 'icon': 'fa-thumbtack'})
+            continue
+            
+        amount = float(b.total_amount or b.total_price or 0)
+        paid = float(b.amount_paid or 0)
+        
+        # Balance computation
+        if amount > paid and b.status not in ['pending_quotation', 'pending_review']:
+            outstanding_balance += (amount - paid)
+            outstanding_count += 1
+            if b.event_date and b.event_date <= today + timedelta(days=3):
+                action_center_items.append({'type': 'urgent', 'title': 'Payment Overdue', 'desc': f'Booking #{b.id}', 'icon': 'fa-money-bill-wave'})
+            elif b.event_date and b.event_date <= today + timedelta(days=14) and b.status == 'confirmed':
+                action_center_items.append({'type': 'warning', 'title': 'Final Balance Due', 'desc': f'Booking #{b.id}', 'icon': 'fa-coins'})
+                
+        # Prep / Deadline computation
+        if b.event_date and today < b.event_date <= today + timedelta(days=7):
+            action_center_items.append({'type': 'warning', 'title': 'Event 

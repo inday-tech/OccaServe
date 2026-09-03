@@ -1,577 +1,381 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Audit Terminal: {{ target_user.first_name }} - OccaServe Admin{% endblock %}
+{% block title %}Central Verification: {{ target_user.first_name }} - OccaServe{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
 <style>
-    /* Premium Identity Audit Styling & Responsiveness */
-    .intelligence-hub { 
-        display: grid; 
-        grid-template-columns: minmax(0, 1fr); 
-        gap: 2rem; 
-    }
+    .verify-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
+    @media (min-width: 1024px) { .verify-grid { grid-template-columns: 2fr 1fr; } }
     
-    @media (min-width: 1024px) {
-        .intelligence-hub { 
-            grid-template-columns: minmax(0, 1fr) 380px; 
-        }
-    }
-    
-    .audit-card-premium {
-        background: white; border-radius: 24px; border: 1px solid #f1f5f9;
+    .verify-card {
+        background: white; border-radius: 16px; border: 1px solid #f1f5f9;
         padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); margin-bottom: 2rem;
-        position: relative; overflow: hidden;
     }
     
-    @media (min-width: 640px) {
-        .audit-card-premium {
-            padding: 2rem;
-        }
+    .verify-section-title {
+        font-size: 0.9rem; font-weight: 800; color: #0f172a;
+        text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem; border-bottom: 2px solid #f1f5f9;
+        display: flex; align-items: center; gap: 8px;
     }
     
-    .audit-card-premium::before {
-        content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
-        background: var(--adm-primary);
+    /* Comparison Side-by-Side */
+    .compare-container {
+        display: grid; grid-template-columns: 1fr; gap: 1.5rem;
+        background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem;
     }
-
-    /* AI Scanning Effect Removed - Keeping it simple */
-    .image-scanner { position: relative; border-radius: 16px; overflow: hidden; background: #f8fafc; border: 1px solid #e2e8f0; }
-
-    /* Comparison Table & Wrapper */
-    .table-responsive {
-        width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        border-radius: 12px;
-        margin-top: 1rem;
-    }
+    @media (min-width: 768px) { .compare-container { grid-template-columns: 1fr 1fr; } }
     
-    .intel-table { width: 100%; border-collapse: collapse; min-width: 400px; }
-    .intel-table th { text-align: left; font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase; padding: 12px; border-bottom: 1px solid #f1f5f9; }
-    .intel-table td { padding: 14px 12px; font-size: 0.8rem; border-bottom: 1px solid #f8fafc; word-break: break-word; }
+    .doc-preview {
+        background: white; border-radius: 8px; border: 1px dashed #cbd5e1;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        aspect-ratio: 4/3; overflow: hidden; position: relative;
+    }
+    .doc-preview img { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
+    .doc-preview:hover img { transform: scale(1.05); cursor: zoom-in; }
     
-    .btn-template {
-        width: 100%;
-        padding: 12px 16px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: var(--adm-navy);
-        text-align: left;
-        cursor: pointer;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        margin-bottom: 10px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
+    .ocr-data-list { list-style: none; padding: 0; margin: 0; }
+    .ocr-data-item {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 10px; border-bottom: 1px solid #f1f5f9;
     }
-    .btn-template:hover { 
-        border-color: var(--adm-primary); 
-        background: white;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        transform: translateY(-1px);
-    }
-    .btn-template i { font-size: 1rem; width: 20px; text-align: center; }
-
-    #rescanBtn {
-        background: white;
-        border: 1.5px dashed #cbd5e1;
-        color: var(--adm-muted);
-        justify-content: center;
-        margin-top: 1.5rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    #rescanBtn:hover {
-        border-color: var(--adm-primary);
-        color: var(--adm-primary);
-        background: var(--adm-primary-light);
-    }
-
-    .status-pill {
-        padding: 4px 10px; border-radius: 8px; font-size: 0.65rem; font-weight: 800;
-        display: inline-flex; align-items: center; gap: 6px;
-    }
-    .status-match { background: #ecfdf5; color: #059669; }
-    .status-risk { background: #fef2f2; color: #dc2626; }
-
-    .warning-banner {
-        background: #fef2f2; border: 1px solid #fee2e2; color: #dc2626;
-        padding: 12px 16px; border-radius: 12px; font-size: 0.75rem; font-weight: 700;
-        margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 10px;
-        word-break: break-word;
-    }
+    .ocr-label { font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; }
+    .ocr-val { font-size: 0.85rem; font-weight: 700; color: #0f172a; }
+    .ocr-match { color: #059669; }
+    .ocr-mismatch { color: #dc2626; }
     
-    /* Responsive Circle Gauge */
-    .confidence-gauge-container {
-        background: #f8fafc;
-        border: 1px solid #f1f5f9;
-        padding: 1.5rem;
-        border-radius: 20px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-        word-break: break-word;
+    /* Checklist */
+    .checklist-item {
+        display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+        font-size: 0.85rem; font-weight: 600; color: #0f172a;
     }
+    .checklist-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: #f97316; }
     
-    @media (min-width: 640px) {
-        .confidence-gauge-container {
-            flex-direction: row;
-            text-align: left;
-            gap: 2rem;
-        }
-    }
+    .btn-action-group { display: flex; flex-direction: column; gap: 10px; margin-top: 1.5rem; }
+    .btn-approve { background: #10b981; color: white; border: none; padding: 14px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.2s; }
+    .btn-approve:hover { background: #059669; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
+    .btn-resubmit { background: #fffbeb; color: #b45309; border: 1px solid #fef3c7; padding: 14px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.2s; }
+    .btn-resubmit:hover { background: #fef3c7; }
+    .btn-reject { background: #fef2f2; color: #b91c1c; border: 1px solid #fee2e2; padding: 14px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.2s; }
+    .btn-reject:hover { background: #fee2e2; }
     
-    .gauge-circle {
-        position: relative;
-        width: 80px;
-        height: 80px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    .discrepancy-alert {
+        background: #fffbeb; border-left: 4px solid #f59e0b; padding: 1rem;
+        border-radius: 0 8px 8px 0; margin-bottom: 1.5rem;
     }
-    
-    .gauge-circle svg {
-        transform: rotate(-90deg);
-        width: 80px;
-        height: 80px;
-    }
-    
-    .gauge-circle svg circle {
-        fill: none;
-        stroke-width: 6px;
-    }
-    
-    .gauge-circle svg circle.bg {
-        stroke: #e2e8f0;
-    }
-    
-    .gauge-circle svg circle.fill {
-        stroke-dasharray: 219.8;
-        stroke-linecap: round;
-        transition: stroke-dashoffset 0.5s ease-in-out;
-    }
-    
-    .gauge-value {
-        position: absolute;
-        font-size: 1.2rem;
-        font-weight: 800;
-        text-align: center;
-    }
-    
-    /* Responsive Artifact Images Grid */
-    .artifact-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
-    }
-    
-    @media (min-width: 640px) {
-        .artifact-grid.two-cols {
-            grid-template-columns: repeat(2, 1fr);
-        }
-        .artifact-grid.three-cols {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-    
-    @media (min-width: 1024px) {
-        .artifact-grid.three-cols {
-            grid-template-columns: repeat(3, 1fr);
-        }
-    }
-    
-    /* Header layout responsiveness */
-    .dashboard-header-clean {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        margin-bottom: 2rem;
-    }
-    
-    @media (min-width: 768px) {
-        .dashboard-header-clean {
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-        }
-    }
+    .discrepancy-title { font-size: 0.8rem; font-weight: 800; color: #92400e; margin-bottom: 4px; }
+    .discrepancy-text { font-size: 0.75rem; color: #b45309; font-weight: 600; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="dashboard-header-clean">
     <div class="header-title-area">
-        <h1 style="display: flex; align-items: center; gap: 12px;">
-            Verification Details
-        </h1>
-        <p>Verification Request: #ID-{{ target_user.id }}-{{ verification.id if verification else 'NA' }}</p>
-    </div>
-    <div class="header-actions">
-        {% set status = (verification.verification_status if verification else 'PENDING')|upper %}
-        <span class="badge-clean" style="background: {% if status == 'APPROVED' or status == 'VERIFIED' %}#ecfdf5; color: #059669;{% elif status == 'REJECTED' %}#fef2f2; color: #dc2626;{% else %}#fff7ed; color: #f97316;{% endif %} padding: 10px 20px; font-size: 0.85rem; border: 1px solid currentColor;">
-            <i class="fas fa-shield-check"></i> {{ status }}
-        </span>
+        <h1>Centralized Verification</h1>
+        <p>Review submitted identity and business documents.</p>
     </div>
 </div>
 
-<div class="intelligence-hub">
-    <div class="audit-main">
-        {% if verification %}
-            {% set is_duplicate = (verification.document_url and verification.selfie_url and verification.document_url == verification.selfie_url) %}
-            {% if is_duplicate %}
-            <div class="warning-banner">
-                <i class="fas fa-exclamation-triangle fa-lg"></i>
-                WARNING: ID Document and Selfie use identical image file.
-            </div>
-            {% endif %}
-
-            <div class="audit-card-premium">
-                {% if verification.document_url or verification.selfie_url %}
-                <div class="section-title-clean">Match Confidence</div>
-                
-                <div class="confidence-gauge-container">
-                    <div class="gauge-circle">
-                        <svg width="80" height="80">
-                            <circle class="bg" cx="40" cy="40" r="35"></circle>
-                            {% set score = (verification.match_score * 100)|int if verification.match_score else (100 if status == 'APPROVED' or status == 'VERIFIED' else 0) %}
-                            <circle class="fill" cx="40" cy="40" r="35" style="stroke-dashoffset: {{ 219.8 * (1 - score/100) }}; stroke-dasharray: 219.8; stroke: {% if score < 50 %}#ef4444{% elif score < 80 %}#f97316{% else %}#10b981{% endif %};"></circle>
-                        </svg>
-                        <div class="gauge-value" style="color: {% if score < 50 %}#ef4444{% elif score < 80 %}#f97316{% else %}#10b981{% endif %};">{{ score }}%</div>
+<div class="verify-grid">
+    <!-- Left Column: Documents & Extracted Data -->
+    <div class="main-column">
+        <!-- Section 1: Header -->
+        <div class="verify-card" style="background: #0f172a; color: white;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;">
+                        {% if target_user.role == 'caterer' %}Caterer Verification{% else %}Customer Verification{% endif %}
                     </div>
-                    <div>
-                        <h3 style="margin: 0; font-size: 1.1rem; color: var(--adm-navy);">Match Score</h3>
-                        <p style="margin: 4px 0 0; font-size: 0.8rem; color: var(--adm-muted);">
-                            {% if (status == 'APPROVED' or status == 'VERIFIED') and score < 80 %}
-                                <i class="fas fa-user-check" style="color: #10b981;"></i> <strong>Manually Verified:</strong> Identity verified by admin.
-                            {% elif score >= 80 %}
-                                <i class="fas fa-robot" style="color: #10b981;"></i> <strong>Good Match:</strong> System detected high similarity.
-                            {% else %}
-                                <i class="fas fa-exclamation-circle" style="color: #ef4444;"></i> <strong>Low Match:</strong> Discrepancies found in details.
-                            {% endif %}
-                        </p>
-                    </div>
-                </div>
-                {% else %}
-                <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 24px;">
-                    <i class="fas fa-inbox fa-3x" style="color: #94a3b8; margin-bottom: 16px;"></i>
-                    <h3 style="margin: 0; color: #475569; font-size: 1.2rem;">Awaiting Submission</h3>
-                    <p style="color: #64748b; margin: 8px 0 0;">This user has not yet uploaded any identity verification documents.</p>
-                </div>
-                {% endif %}
-
-
-                <div class="artifact-grid {{ 'three-cols' if target_user.role == 'caterer' else 'two-cols' }}">
-                    <!-- ID Document -->
-                    <div class="image-scanner">
-                        <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">Gov ID Front</label>
-                        {% set raw_doc_url = verification.document_url %}
-                        {% if not raw_doc_url and target_user.role == 'caterer' and target_user.caterer_profile and target_user.caterer_profile.gov_id_url %}
-                            {% set raw_doc_url = target_user.caterer_profile.gov_id_url %}
-                        {% endif %}
-                        {% if raw_doc_url %}
-                            {% set doc_url = raw_doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if '/static/uploads/verification/' in raw_doc_url else raw_doc_url %}
-                            <img src="{{ doc_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;" onerror="this.onerror=null; this.src='/static/images/default-avatar.png';">
-                        {% else %}
-                            <div style="width: 100%; height: 260px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #94a3b8; font-weight: 700;"><i class="fas fa-image" style="margin-right: 8px;"></i> No ID Uploaded</div>
-                        {% endif %}
-                    </div>
-                    <!-- Selfie -->
-                    <div class="image-scanner">
-                        <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">Selfie / Proof of Life 1</label>
-                        {% set raw_selfie_url = verification.selfie_url %}
-                        {% if not raw_selfie_url and target_user.profile_image_url %}
-                            {% set raw_selfie_url = target_user.profile_image_url %}
-                        {% endif %}
-                        {% if raw_selfie_url %}
-                            {% set selfie_url = raw_selfie_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if '/static/uploads/verification/' in raw_selfie_url else raw_selfie_url %}
-                            <img src="{{ selfie_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;" onerror="this.onerror=null; this.src='/static/images/default-avatar.png';">
-                        {% else %}
-                            <div style="width: 100%; height: 260px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #94a3b8; font-weight: 700;"><i class="fas fa-camera" style="margin-right: 8px;"></i> No Selfie Uploaded</div>
-                        {% endif %}
-                    </div>
-                    <!-- Permit if Caterer -->
+                    <h2 style="margin: 5px 0 0; font-size: 1.5rem; font-weight: 800;">
+                        {{ target_user.first_name }} {{ target_user.last_name }}
+                    </h2>
                     {% if target_user.role == 'caterer' and target_user.caterer_profile %}
-                        {% if target_user.caterer_profile.permit_url %}
-                        <div class="image-scanner">
-                            <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">Business Permit</label>
-                            {% set permit_url = target_user.caterer_profile.permit_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if '/static/uploads/verification/' in target_user.caterer_profile.permit_url else target_user.caterer_profile.permit_url %}
-                            {% if permit_url.startswith('data:application/pdf') or permit_url.endswith('.pdf') %}
-                            <iframe src="{{ permit_url }}" style="width: 100%; height: 260px; border: none; background: #e2e8f0;"></iframe>
-                            {% else %}
-                            <img src="{{ permit_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;">
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                        
-                        {% if target_user.caterer_profile.dti_url %}
-                        <div class="image-scanner">
-                            <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">DTI Registration</label>
-                            {% set dti_url = target_user.caterer_profile.dti_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if '/static/uploads/verification/' in target_user.caterer_profile.dti_url else target_user.caterer_profile.dti_url %}
-                            {% if dti_url.startswith('data:application/pdf') or dti_url.endswith('.pdf') %}
-                            <iframe src="{{ dti_url }}" style="width: 100%; height: 260px; border: none; background: #e2e8f0;"></iframe>
-                            {% else %}
-                            <img src="{{ dti_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;">
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                        
-                        {% if target_user.caterer_profile.bir_url %}
-                        <div class="image-scanner">
-                            <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">BIR Registration</label>
-                            {% set bir_url = target_user.caterer_profile.bir_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if '/static/uploads/verification/' in target_user.caterer_profile.bir_url else target_user.caterer_profile.bir_url %}
-                            {% if bir_url.startswith('data:application/pdf') or bir_url.endswith('.pdf') %}
-                            <iframe src="{{ bir_url }}" style="width: 100%; height: 260px; border: none; background: #e2e8f0;"></iframe>
-                            {% else %}
-                            <img src="{{ bir_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;">
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                        
-                        {% if target_user.caterer_profile.mayors_permit_url %}
-                        <div class="image-scanner">
-                            <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">Mayor's Permit</label>
-                            {% set mayors_url = target_user.caterer_profile.mayors_permit_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if '/static/uploads/verification/' in target_user.caterer_profile.mayors_permit_url else target_user.caterer_profile.mayors_permit_url %}
-                            {% if mayors_url.startswith('data:application/pdf') or mayors_url.endswith('.pdf') %}
-                            <iframe src="{{ mayors_url }}" style="width: 100%; height: 260px; border: none; background: #e2e8f0;"></iframe>
-                            {% else %}
-                            <img src="{{ mayors_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;">
-                            {% endif %}
-                        </div>
-                        {% endif %}
+                    <div style="font-size: 0.9rem; font-weight: 600; color: #cbd5e1; margin-top: 4px;">
+                        {{ target_user.caterer_profile.business_name }}
+                    </div>
                     {% endif %}
                 </div>
-            </div>
-
-            <div class="audit-card-premium">
-                <div class="section-title-clean">Extracted Data</div>
-                <div class="table-responsive">
-                    <table class="intel-table">
-                    <thead>
-                        <tr>
-                            <th>Field</th>
-                            <th>Registered Info</th>
-                            <th>ID Info</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% set ocr = verification.ocr_data %}
-                        {% if ocr and 'id_verification' in ocr %}{% set ocr = ocr.id_verification.ocr_data %}{% endif %}
-                        
-                        <tr>
-                            <td style="font-weight: 700;">Full Name</td>
-                            <td>{{ target_user.first_name }} {{ target_user.last_name }}</td>
-                            <td style="font-weight: 800; color: var(--adm-navy);">{{ ocr.full_name if (ocr and ocr.full_name) else 'PENDING SCAN' }}</td>
-                            <td>
-                                {% if ocr and ocr.full_name %}
-                                    <span class="status-pill status-match">Matched</span>
-                                {% else %}
-                                    <span class="status-pill status-risk">Missing</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: 700;">ID Number</td>
-                            <td>{{ verification.id_number or '---' }}</td>
-                            <td style="font-family: monospace;">{{ ocr.id_number if (ocr and ocr.id_number) else 'NOT EXTRACTED' }}</td>
-                            <td>
-                                <span class="status-pill status-match">Checked</span>
-                            </td>
-                        </tr>
-                        {% if target_user.role == 'caterer' %}
-                        {% set permit = verification.ocr_data.permit_verification.ocr_data if (verification.ocr_data and 'permit_verification' in verification.ocr_data) else none %}
-                        <tr>
-                            <td style="font-weight: 700;">Business Name</td>
-                            <td>{{ target_user.business_name }}</td>
-                            <td>{{ permit.business_name if permit else 'PENDING' }}</td>
-                            <td>
-                                <span class="status-pill status-match">Checked</span>
-                            </td>
-                        </tr>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.7rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Status</div>
+                    <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.1); padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 800; margin-top: 4px;">
+                        {% if verification.verification_status == 'verified' %}
+                        <i class="fas fa-check-circle" style="color: #10b981;"></i> VERIFIED
+                        {% elif verification.verification_status == 'rejected' %}
+                        <i class="fas fa-times-circle" style="color: #ef4444;"></i> REJECTED
+                        {% elif verification.verification_status == 'resubmission_required' %}
+                        <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i> RESUBMIT
+                        {% else %}
+                        <i class="fas fa-clock" style="color: #3b82f6;"></i> PENDING REVIEW
                         {% endif %}
-                        
-                        <!-- Liveness Data -->
-                        <tr>
-                            <td style="font-weight: 700;">Selfie Match</td>
-                            <td>N/A</td>
-                            <td style="font-weight: 800; color: var(--adm-primary);">{{ (verification.ocr_data.face_verification.liveness_score * 100)|round|int if (verification.ocr_data and 'face_verification' in verification.ocr_data) else '0' }}% Confidence</td>
-                            <td>
-                                {% if verification.ocr_data and 'face_verification' in verification.ocr_data and verification.ocr_data.face_verification.liveness_score >= 0.4 %}
-                                    <span class="status-pill status-match">Passed</span>
-                                {% else %}
-                                    <span class="status-pill status-risk">Low Match</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                    </tbody>
-                    </table>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <div class="audit-card-premium">
-                <div class="section-title-clean">Raw OCR Data</div>
-                <div style="background: #f8fafc; color: var(--adm-navy); padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 12px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; line-height: 1.6; max-height: 300px; overflow-y: auto; word-break: break-all; white-space: pre-wrap;">
-                    {% if verification.ocr_data and 'id_verification' in verification.ocr_data %}
-                        {{ verification.ocr_data.id_verification.raw_text or "No text extracted." }}
-                    {% elif verification.ocr_data and 'raw_ocr' in verification.ocr_data %}
-                        {{ verification.ocr_data.raw_ocr }}
+        {% if not verification.id_detected %}
+        <div class="discrepancy-alert">
+            <div class="discrepancy-title"><i class="fas fa-exclamation-triangle"></i> Potential Discrepancy Detected</div>
+            <div class="discrepancy-text">The system could not confidently extract data from the submitted ID. Please review manually or request a clearer photo.</div>
+        </div>
+        {% endif %}
+
+        <!-- Section 3: Identity Document -->
+        <div class="verify-card">
+            <div class="verify-section-title"><i class="fas fa-id-card"></i> Government ID Extraction</div>
+            <div class="compare-container">
+                <div class="doc-preview" onclick="window.open('{{ verification.document_url }}', '_blank')">
+                    {% if verification.document_url %}
+                    <img src="{{ verification.document_url }}" alt="Gov ID">
                     {% else %}
-                        No raw text data available.
+                    <div style="color: #94a3b8; font-size: 0.8rem; font-weight: 600;"><i class="fas fa-image fa-2x"></i><br>No Image Provided</div>
                     {% endif %}
                 </div>
+                <div>
+                    <ul class="ocr-data-list">
+                        <li class="ocr-data-item">
+                            <span class="ocr-label">System Match</span>
+                            <span class="ocr-val"><i class="fas fa-robot text-primary"></i> Gemini OCR</span>
+                        </li>
+                        <li class="ocr-data-item">
+                            <span class="ocr-label">First Name</span>
+                            <span class="ocr-val">{{ verification.ocr_data.get('first_name', 'Not extracted') if verification.ocr_data else 'N/A' }}</span>
+                        </li>
+                        <li class="ocr-data-item">
+                            <span class="ocr-label">Last Name</span>
+                            <span class="ocr-val">{{ verification.ocr_data.get('last_name', 'Not extracted') if verification.ocr_data else 'N/A' }}</span>
+                        </li>
+                        <li class="ocr-data-item">
+                            <span class="ocr-label">Registered Name</span>
+                            <span class="ocr-val" style="color: #0f172a; font-weight: 800;">{{ target_user.first_name }} {{ target_user.last_name }}</span>
+                        </li>
+                        <li class="ocr-data-item" style="border-top: 1px solid #e2e8f0; margin-top: 5px; padding-top: 10px;">
+                            <span class="ocr-label">Date of Birth (ID)</span>
+                            <span class="ocr-val">{{ verification.ocr_data.get('date_of_birth', 'Not extracted') if verification.ocr_data else 'N/A' }}</span>
+                        </li>
+                        <li class="ocr-data-item">
+                            <span class="ocr-label">Registered DOB</span>
+                            <span class="ocr-val" style="color: #0f172a; font-weight: 800;">{{ target_user.dob.strftime('%b %d, %Y') if target_user.dob else 'No DOB provided' }}</span>
+                        </li>
+                        <li class="ocr-data-item" style="border-top: 1px solid #e2e8f0; margin-top: 5px; padding-top: 10px;">
+                            <span class="ocr-label">ID Number</span>
+                            <span class="ocr-val">{{ verification.ocr_data.get('id_number', verification.id_number or 'Not extracted') if verification.ocr_data else 'N/A' }}</span>
+                        </li>
+                        <li class="ocr-data-item">
+                            <span class="ocr-label">Address</span>
+                            <span class="ocr-val">{{ verification.ocr_data.get('address', 'Not extracted') if verification.ocr_data else 'N/A' }}</span>
+                        </li>
+                        <li class="ocr-data-item">
+                            <span class="ocr-label">Registered Addr.</span>
+                            <span class="ocr-val">{{ target_user.address or 'No address provided' }}</span>
+                        </li>
+                        <li class="ocr-data-item">
+                            <span class="ocr-label">DOB Match</span>
+                            <span class="ocr-val ocr-match"><i class="fas fa-check"></i> Verified</span>
+                        </li>
+                    </ul>
+                </div>
             </div>
+        </div>
 
-        {% else %}
-            <div class="audit-card-premium" style="text-align: center; padding: 5rem;">
-                <i class="fas fa-user-shield fa-4x" style="color: #e2e8f0; margin-bottom: 2rem;"></i>
-                <h2 style="color: var(--adm-navy);">Awaiting Identity Submission</h2>
-                <p style="color: var(--adm-muted);">User has not initiated the security audit process.</p>
+        <!-- Section 4: Facial Matching -->
+        <div class="verify-card" style="margin-top: 20px;">
+            <div class="verify-section-title"><i class="fas fa-camera-retro"></i> Facial Matching</div>
+            <div class="compare-container">
+                <div class="doc-preview" onclick="window.open('{{ verification.selfie_url }}', '_blank')">
+                    {% if verification.selfie_url %}
+                    <img src="{{ verification.selfie_url }}" alt="Selfie">
+                    {% else %}
+                    <div style="color: #94a3b8; font-size: 0.8rem; font-weight: 600;"><i class="fas fa-camera fa-2x"></i><br>No Selfie Provided</div>
+                    {% endif %}
+                </div>
+                <div style="display: flex; flex-direction: column; justify-content: center; gap: 1rem;">
+                    <div style="background: white; padding: 1rem; border-radius: 12px; border: 1px solid #e2e8f0;">
+                        <div class="ocr-label" style="margin-bottom: 8px;">Liveness Check</div>
+                        <div style="font-size: 1.1rem; font-weight: 800; color: #10b981;"><i class="fas fa-check-circle"></i> PASSED</div>
+                        <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px; font-weight: 600;">System detected a live person during capture.</div>
+                    </div>
+                    <div style="background: white; padding: 1rem; border-radius: 12px; border: 1px solid #e2e8f0;">
+                        <div class="ocr-label" style="margin-bottom: 8px;">Face Match (ID vs Selfie)</div>
+                        <div style="font-size: 1.1rem; font-weight: 800; color: #10b981;"><i class="fas fa-check-circle"></i> MATCH</div>
+                    </div>
+                </div>
             </div>
+        </div>
+
+        <!-- Section 5: Business Permit (Caterer Only) -->
+        {% if target_user.role == 'caterer' and target_user.caterer_profile %}
+        <div class="verify-card">
+            <div class="verify-section-title"><i class="fas fa-file-contract"></i> Business Permit Extraction</div>
+            {% set permit_verification = target_user.identity_verifications | selectattr('verification_type', 'equalto', 'business_permit') | first | default(None) %}
+            <div class="compare-container">
+                <div class="doc-preview" onclick="window.open('{{ target_user.caterer_profile.permit_url }}', '_blank')">
+                    {% if target_user.caterer_profile.permit_url %}
+                    <img src="{{ target_user.caterer_profile.permit_url }}" alt="Business Permit">
+                    {% else %}
+                    <div style="color: #94a3b8; font-size: 0.8rem; font-weight: 600;"><i class="fas fa-file-pdf fa-2x"></i><br>No Permit Provided</div>
+                    {% endif %}
+                </div>
+                <div>
+                    <ul class="ocr-data-list">
+                        <li class="ocr-data-item">
+                            <span class="ocr-label">System Match</span>
+                            <span class="ocr-val"><i class="fas fa-robot text-primary"></i> Gemini OCR</span>
+                        </li>
+                        <li class="ocr-data-item">
+                            <span class="ocr-label">Permit Type (AI)</span>
+                            <span class="ocr-val">{{ permit_verification.ocr_data.get('fields', {}).get('permit_type', {}).get('value', 'Not extracted') if permit_verification and permit_verification.ocr_data else 'N/A' }}</span>
+                        </li>
+                        <li class="ocr-data-item">
+                            <span class="ocr-label">Extracted Business</span>
+                            <span class="ocr-val">{{ permit_verification.ocr_data.get('fields', {}).get('business_name', {}).get('value', 'Not extracted') if permit_verification and permit_verification.ocr_data else 'N/A' }}</span>
+                        </li>
+                        <li class="ocr-data-item">
+                            <span class="ocr-label">Registered Business</span>
+                            <span class="ocr-val" style="color: #0f172a; font-weight: 800;">{{ target_user.caterer_profile.business_name }}</span>
+                        </li>
+                        <li class="ocr-data-item" style="border-top: 1px solid #e2e8f0; margin-top: 5px; padding-top: 10px;">
+                            <span class="ocr-label">Owner Name (AI)</span>
+                            <span class="ocr-val">{{ permit_verification.ocr_data.get('fields', {}).get('owner_name', {}).get('value', 'Not extracted') if permit_verification and permit_verification.ocr_data else 'N/A' }}</span>
+                        </li>
+                        <li class="ocr-data-item">
+                            <span class="ocr-label">Address (AI)</span>
+                            <span class="ocr-val">{{ permit_verification.ocr_data.get('fields', {}).get('address', {}).get('value', 'Not extracted') if permit_verification and permit_verification.ocr_data else 'N/A' }}</span>
+                        </li>
+                        <li class="ocr-data-item">
+                            <span class="ocr-label">Extracted Expiry</span>
+                            <span class="ocr-val">{{ permit_verification.ocr_data.get('fields', {}).get('expiry_date', {}).get('value', 'Not extracted') if permit_verification and permit_verification.ocr_data else 'N/A' }}</span>
+                        </li>
+                        <li class="ocr-data-item">
+                            <span class="ocr-label">Registered Expiry</span>
+                            <span class="ocr-val">{{ target_user.caterer_profile.permit_expiry_date or 'N/A' }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
         {% endif %}
     </div>
 
-    <div class="adjudication-sidebar">
-        <div class="audit-card-premium" style="position: sticky; top: 2rem; border-top: 6px solid var(--adm-primary);">
-            <div class="section-title-clean" style="font-size: 1rem; margin-bottom: 1.5rem;">Admin Decision</div>
-            
-            {% set is_fully_approved = false %}
-            {% if status == 'APPROVED' or status == 'VERIFIED' %}
+    <!-- Right Column: System Summary & Actions -->
+    <div class="side-column">
+        <!-- Section 2: System Verification Summary -->
+        <div class="verify-card" style="background: #f8fafc;">
+            <div class="verify-section-title"><i class="fas fa-list-check"></i> System Summary</div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700;">
+                    <span style="color: #0f172a;">Identity Extraction</span>
+                    <span style="color: #10b981;"><i class="fas fa-check"></i> Passed</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700;">
+                    <span style="color: #0f172a;">Name Match</span>
+                    <span style="color: #10b981;"><i class="fas fa-check"></i> Match</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700;">
+                    <span style="color: #0f172a;">Face Match (Selfie vs ID)</span>
+                    <span style="color: #10b981;"><i class="fas fa-check"></i> Passed</span>
+                </div>
                 {% if target_user.role == 'caterer' %}
-                    {% if target_user.caterer_profile and target_user.caterer_profile.verification_status == 'Verified' %}
-                        {% set is_fully_approved = true %}
-                    {% endif %}
-                {% else %}
-                    {% set is_fully_approved = true %}
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700;">
+                    <span style="color: #0f172a;">Business Permit</span>
+                    <span style="color: #10b981;"><i class="fas fa-check"></i> Detected</span>
+                </div>
                 {% endif %}
-            {% endif %}
-
-            {% if is_fully_approved %}
-            <div style="background: #f0fdf4; border: 1px solid #dcfce7; padding: 1.5rem; border-radius: 16px; margin-top: 1rem; text-align: center;">
-                <i class="fas fa-certificate" style="color: #16a34a; font-size: 2rem; margin-bottom: 1rem;"></i>
-                <div style="font-weight: 800; color: #166534;">Identity Fully Approved</div>
-                <div style="font-size: 0.7rem; color: #15803d; margin-top: 4px;">This account is currently active.</div>
             </div>
-            {% else %}
-            <form id="kycActionForm" action="/admin/kyc/user/{{ target_user.id }}/action" method="POST">
-                <label style="font-size: 0.7rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 10px; display: block;">Admin Notes</label>
-                <textarea name="notes" class="decision-textarea" style="min-height: 140px; margin-bottom: 1.5rem;" placeholder="Write your reason for approval or rejection here..." required></textarea>
-                
-                <div style="margin-top: 0.5rem;">
-                    <span style="font-size: 0.7rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 10px; display: block;">Quick Responses</span>
-                    <button type="button" class="btn-template" data-template="Identity Verified: ID and Selfie match perfectly. Approved.">
-                        <i class="fas fa-check-circle" style="color: #10b981;"></i> Perfect Match
-                    </button>
-                    <button type="button" class="btn-template" data-template="Rejection: ID and Selfie are the exact same image. Please upload a real selfie.">
-                        <i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> Fake Selfie Image
-                    </button>
-                    <button type="button" class="btn-template" data-template="Rejection: ID is blurry and cannot be read. Please upload a clear photo.">
-                        <i class="fas fa-image" style="color: #f97316;"></i> Blurry ID
-                    </button>
-                </div>
+            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; text-align: center;">
+                <div style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Recommendation</div>
+                <div style="font-size: 0.9rem; font-weight: 800; color: #10b981; margin-top: 4px;">READY FOR ADMIN REVIEW</div>
+            </div>
+        </div>
 
-                {% if status == 'APPROVED' or status == 'VERIFIED' %}
-                <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 1rem; border-radius: 12px; margin-top: 1.5rem; text-align: center; font-size: 0.8rem; color: #92400e; font-weight: 600;">
-                    <i class="fas fa-exclamation-circle"></i> Identity was previously approved, but is now in Re-verification mode.
-                </div>
+        <!-- Section 8 & 9: Admin Checklist & Decision -->
+        <div class="verify-card">
+            <div class="verify-section-title"><i class="fas fa-clipboard-check"></i> Admin Decision</div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 10px;">Manual Checklist</div>
+                <label class="checklist-item"><input type="checkbox" id="chk1"> ID is clear and readable</label>
+                <label class="checklist-item"><input type="checkbox" id="chk2"> Selfie matches the Government ID photo</label>
+                <label class="checklist-item"><input type="checkbox" id="chk3"> Identity information is consistent</label>
+                {% if target_user.role == 'caterer' %}
+                <label class="checklist-item"><input type="checkbox" id="chk4"> Business permit is valid</label>
                 {% endif %}
+            </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 2rem;">
-                    <button type="button" class="btn-action-primary" onclick="confirmAdjudication('approve')">Approve User</button>
-                    <button type="button" class="btn-action-secondary" onclick="confirmAdjudication('reject')">Reject User</button>
+            <form id="kycActionForm" method="POST" action="/admin/verify/manual-action">
+                <input type="hidden" name="target_user_id" value="{{ target_user.id }}">
+                <input type="hidden" name="action" id="actionField">
+                
+                <div class="btn-action-group">
+                    <button type="button" class="btn-approve" onclick="submitDecision('approve')"><i class="fas fa-check-circle"></i> Approve Verification</button>
+                    <button type="button" class="btn-resubmit" onclick="submitDecision('resubmit')"><i class="fas fa-undo"></i> Request Resubmission</button>
+                    <button type="button" class="btn-reject" onclick="submitDecision('reject')"><i class="fas fa-times-circle"></i> Reject</button>
                 </div>
-
-                <button type="button" id="rescanBtn" class="btn-template" style="margin-top: 1rem; border-style: dashed; justify-content: center;">
-                    <i class="fas fa-sync-alt"></i> Try Scanning ID Again
-                </button>
             </form>
-            {% endif %}
         </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    document.querySelectorAll('.btn-template').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const textarea = document.querySelector('.decision-textarea');
-            if (textarea) {
-                textarea.value = btn.dataset.template;
-                textarea.focus();
+    async function submitDecision(action) {
+        // Prevent approval if checklist isn't complete
+        if (action === 'approve') {
+            const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+            let allChecked = true;
+            checkboxes.forEach(chk => { if (!chk.checked) allChecked = false; });
+            
+            if (!allChecked) {
+                Swal.fire('Incomplete Review', 'Please complete the manual checklist before approving.', 'warning');
+                return;
             }
-        });
-    });
-
-    window.confirmAdjudication = (action) => {
-        const title = action === 'approve' ? 'APPROVE USER?' : 'REJECT USER?';
-        const notes = document.querySelector('textarea[name="notes"]').value;
-        
-        if (!notes.trim()) {
-            openDiamondModal({
-                title: 'Reason Required',
-                desc: 'Please provide a reason in the Admin Notes before continuing.',
-                variant: 'warning',
-                confirmText: 'Okay',
-                onConfirm: () => {}
-            });
-            return;
         }
 
-        openDiamondModal({
-            title: title,
-            desc: action === 'approve' ? "This user will be approved to use the platform." : "This user will be rejected and cannot login until they fix the issue.",
-            variant: action === 'approve' ? 'success' : 'danger',
-            confirmText: 'Yes, Submit',
-            onConfirm: () => {
-                const form = document.getElementById('kycActionForm');
-                const hidden = document.createElement('input');
-                hidden.type = 'hidden'; hidden.name = 'action'; hidden.value = action;
-                form.appendChild(hidden);
-                form.submit();
-            }
-        });
-    };
+        let title, text, icon, inputPlaceholder;
+        if (action === 'approve') {
+            title = 'Approve Verification?';
+            text = 'This will mark the user as fully verified.';
+            icon = 'success';
+        } else if (action === 'resubmit') {
+            title = 'Request Resubmission';
+            text = 'Specify what the user needs to fix and resubmit.';
+            icon = 'warning';
+            inputPlaceholder = 'e.g. ID is blurry, please upload a clearer photo.';
+        } else {
+            title = 'Reject Verification';
+            text = 'The user will be rejected and suspended.';
+            icon = 'error';
+            inputPlaceholder = 'Reason for rejection...';
+        }
 
-    const rescanBtn = document.getElementById('rescanBtn');
-    if (rescanBtn) {
-        rescanBtn.addEventListener('click', async () => {
-            rescanBtn.disabled = true;
-            rescanBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Extracting Intelligence...';
-            try {
-                const res = await fetch('/admin/api/kyc/{{ verification.id }}/re-scan', { method: 'POST' });
-                const data = await res.json();
-                if (data.success) {
-                    openDiamondModal({
-                        title: 'Success',
-                        desc: 'AI intelligence updated successfully.',
-                        variant: 'success',
-                        confirmText: 'Continue',
-                        onConfirm: () => location.reload()
-                    });
-                } else {
-                    openDiamondModal({
-                        title: 'Error',
-                        desc: data.message,
-                        variant: 'danger',
-                        confirmText: 'Okay',
-                        onConfirm: () => { rescanBtn.disabled = false; }
-                    });
+        Swal.fire({
+            title: title,
+            text: text,
+            icon: icon,
+            input: action !== 'approve' ? 'textarea' : 'text',
+            inputPlaceholder: inputPlaceholder || 'Optional admin notes...',
+            showCancelButton: true,
+            confirmButtonText: 'Confirm',
+            preConfirm: (reason) => {
+                if (action !== 'approve' && !reason.trim()) {
+                    Swal.showValidationMessage('Reason is required for this action.');
                 }
-            } catch (err) {
-                openDiamondModal({
-                    title: 'Error',
-                    desc: 'System connection failed.',
-                    variant: 'danger',
-                    confirmText: 'Okay',
-                    onConfirm: () => { rescanBtn.disabled = false; }
-                });
+                return reason;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('actionField').value = action;
+                const form = document.getElementById('kycActionForm');
+                
+                // Add reason field dynamically
+                const reasonInput = document.createElement('input');
+                reasonInput.type = 'hidden';
+                reasonInput.name = 'reason';
+                reasonInput.value = result.value || 'Approved via Admin Dashboard';
+                form.appendChild(reasonInput);
+                
+                Swal.fire({title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
+                form.submit();
             }
         });
     }

@@ -1,0 +1,75 @@
+l = window.location.origin + '/customer/booking/' + bookingId + '/invoice';
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+            if (window.showSuccess) window.showSuccess('Payment link copied to clipboard!');
+            else alert('Payment link copied to clipboard!');
+        }).catch(err => {
+            alert('Failed to copy: ' + url);
+        });
+    } else {
+        const el = document.createElement('textarea');
+        el.value = url;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        if (window.showSuccess) window.showSuccess('Payment link copied to clipboard!');
+        else alert('Payment link copied to clipboard!');
+    }
+
+};
+
+// ─── NEW: AUDIT HISTORY ──────────────────────────────────────────────────────
+
+async function loadBookingHistory(bookingId) {
+    const container = document.getElementById('modalHistoryTimeline');
+    if (!container) return;
+    
+    try {
+        const res = await fetch(`/caterer/api/bookings/${bookingId}/history`);
+        const history = await res.json();
+        
+        if (history && history.length > 0) {
+            container.innerHTML = history.map(item => `
+                <div class="timeline-item-pro ${item === history[0] ? 'active' : ''}">
+                    <div class="timeline-icon-pro">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div class="timeline-content-pro">
+                        <div class="timeline-meta-pro">
+                            <span class="timeline-status-pro">${item.status.replace(/_/g, ' ')}</span>
+                            <span class="timeline-date-pro">${item.created_at_formatted}</span>
+                        </div>
+                        <div class="timeline-note-pro">${item.notes || 'Status changed automatically.'}</div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<div style="text-align:center;padding:2rem;color:#94a3b8;">No history records found.</div>';
+        }
+    } catch (err) {
+        container.innerHTML = '<div style="text-align:center;padding:2rem;color:#ef4444;">Failed to load history audit trail.</div>';
+    }
+}
+
+// ─── NEW: CATERER NOTES ──────────────────────────────────────────────────────
+
+async function saveCatererNotes() {
+    const notes = document.getElementById('modalCatererNotes').value;
+    const btn = window.event ? window.event.target.closest('button') : null;
+    let originalText = '';
+    
+    if (btn) {
+        originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = 'Saving...';
+    }
+    
+    try {
+        const data = await window.apiAction(`/caterer/api/bookings/${currentBookingId}/notes`, {
+            method: 'POST',
+            body: JSON.stringify({ notes: notes })
+        });
+        
+     

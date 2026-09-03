@@ -1324,7 +1324,7 @@
         <p class="wizard-subtitle">Please verify your ID for secure equipment rental</p>
         {% else %}
         <h1 class="wizard-title">Verify Your Identity</h1>
-        <p class="wizard-subtitle">Please verify your ID for a safe and secure booking</p>
+        <p class="wizard-subtitle">Verify your identity to help protect your booking and prevent fraudulent bookings.</p>
         {% endif %}
 
         {% if request.query_params.get('auth_needed') %}
@@ -1474,7 +1474,7 @@
             <div class="step-node {% if kyc_status in ['processing', 'pending_manual_review', 'manual_review'] %}active{% elif kyc_status in ['verified', 'approved'] %}completed{% endif %}"
                 id="node-4">
                 <div class="node-icon"><i class="fas fa-clipboard-check"></i></div>
-                <span class="node-label">Review</span>
+                <span class="node-label">Identity Check</span>
             </div>
         </div>
 
@@ -1611,7 +1611,7 @@
                                 Fast & Secure Identity Verification
                             </h4>
                             <p style="margin: 0 0 0.85rem 0; font-size: 0.82rem; color: #047857; font-weight: 600; line-height: 1.5;">
-                                To protect your booking and prevent fraud, please verify your government ID. This process takes less than 60 seconds.
+                                To protect your booking and prevent fraud, please verify your government ID. This process usually takes less than a minute.
                             </p>
                             <div style="display: flex; flex-wrap: wrap; gap: 0.6rem;">
                                 <span style="background: #ffffff; color: #065f46; font-size: 0.72rem; font-weight: 800; padding: 0.35rem 0.75rem; border-radius: 2rem; border: 1px solid #a7f3d0; display: inline-flex; align-items: center; gap: 0.35rem; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
@@ -1888,27 +1888,30 @@
                     <div class="compliance-icon-wrap">
                         <i class="fas fa-clipboard-check"></i>
                     </div>
-                    <h2 style="font-weight: 800; font-size: 1.4rem; color: #1e293b; margin-bottom: 0.5rem;">Checking
-                        Caterer Compliance</h2>
+                    <h2 style="font-weight: 800; font-size: 1.4rem; color: #1e293b; margin-bottom: 0.5rem;">Checking Your Identity</h2>
                     <p style="color: #94a3b8; font-weight: 600; font-size: 0.9rem; max-width: 380px; margin: 0 auto;">
-                        We're verifying your identity data against caterer requirements</p>
+                        We're securely checking the information from your ID and selfie.</p>
 
                     <div class="compliance-checklist" id="compliance-checklist">
                         <div class="compliance-check-item" id="comp-check-1">
                             <div class="check-icon"><i class="fas fa-spinner fa-spin"></i></div>
-                            <span>Validating ID document authenticity</span>
+                            <span>Validating ID document</span>
                         </div>
                         <div class="compliance-check-item" id="comp-check-2">
                             <div class="check-icon"><i class="fas fa-circle" style="font-size:0.4rem;"></i></div>
-                            <span>Cross-referencing caterer requirements</span>
+                            <span>Extracting identity information</span>
                         </div>
                         <div class="compliance-check-item" id="comp-check-3">
                             <div class="check-icon"><i class="fas fa-circle" style="font-size:0.4rem;"></i></div>
-                            <span>Checking booking eligibility</span>
+                            <span>Checking biometric match</span>
                         </div>
                         <div class="compliance-check-item" id="comp-check-4">
                             <div class="check-icon"><i class="fas fa-circle" style="font-size:0.4rem;"></i></div>
-                            <span>Preparing biometric verification</span>
+                            <span>Comparing submitted information</span>
+                        </div>
+                        <div class="compliance-check-item" id="comp-check-5">
+                            <div class="check-icon"><i class="fas fa-circle" style="font-size:0.4rem;"></i></div>
+                            <span>Finalizing verification</span>
                         </div>
                     </div>
                 </div>
@@ -2049,9 +2052,9 @@
                     <div class="spinner-ring spinner-ring-inner"></div>
                     <div class="scanner-center-icon"><i class="fas fa-user-check"></i></div>
                 </div>
-                <h2 class="processing-title">Waiting for Caterer Approval</h2>
+                <h2 class="processing-title">Verification Under Review</h2>
                 <p class="processing-subtitle">
-                    The caterer is currently reviewing your identity verification to protect and secure your transaction.
+                    Your submitted documents require additional verification. You will be notified once the review is completed.
                 </p>
                 <div
                     style="background: #eff6ff; color: #1d4ed8; padding: 1rem; border-radius: 1rem; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
@@ -2080,7 +2083,7 @@
 
     <div class="security-notice">
         <i class="fas fa-lock-alt"></i>
-        <span>Your data is encrypted and securely processed. We comply with GDPR and industry standards.</span>
+        <span>Your personal data is processed in accordance with the Philippine Data Privacy Act of 2012 (RA 10173).</span>
     </div>
 
     <!-- Professional Guide Section -->
@@ -2121,10 +2124,9 @@
             <div class="guide-item" style="display: flex; gap: 1rem; align-items: flex-start;">
                 <div style="width: 36px; height: 36px; background: #dcfce7; color: #15803d; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1rem; border: 1px solid #bbf7d0;"><i class="fas fa-check"></i></div>
                 <div>
-                    <strong style="display: block; font-size: 0.9rem; color: var(--kyc-slate-700); margin-bottom: 0.15rem;">Original
+                    <strong style="display: block; font-size: 0.9rem; color: var(--kyc-slate-700); margin-bottom: 0.15rem;">Valid
                         Document</strong>
-                    <span style="font-size: 0.8rem; color: #64748b; line-height: 1.4; display: block;">Use your original physical ID, not a
-                        photocopy or screen photo.</span>
+                    <span style="font-size: 0.8rem; color: #64748b; line-height: 1.4; display: block;">Use a clear photo of your valid government-issued ID.</span>
                 </div>
             </div>
         </div>

@@ -332,6 +332,7 @@
                                     data-regdate="{{ caterer.created_at.strftime('%Y-%m-%d') if caterer.created_at else 'N/A' }}"
                                     data-verdate="{{ caterer.verified_at.strftime('%Y-%m-%d') if caterer.verified_at else 'N/A' }}"
                                     data-services="{{ caterer.services_offered or 'Not specified' }}"
+                                    data-user-id="{{ caterer.user_id }}"
                                     onclick="viewCatererDetails(this)">
                                     <i class="fas fa-eye" style="color: #64748b;"></i> View Details
                                 </button>
@@ -706,8 +707,14 @@
             </div>
 
             <div id="vd_documents" class="vd-tab-content" style="display: none;">
-                <p style="color: var(--adm-muted); font-size: 0.85rem;">Document review module is handled via KYC
-                    system.</p>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; text-align: center;">
+                    <i class="fas fa-shield-alt fa-2x" style="color: var(--adm-primary); margin-bottom: 10px;"></i>
+                    <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 5px;">Identity & Compliance Center</h4>
+                    <p style="color: var(--adm-muted); font-size: 0.75rem; margin-bottom: 15px;">Document reviews, liveness checks, and business permits are managed securely in the Central Verification Terminal.</p>
+                    <a href="#" id="vc_verify_link" class="btn-clean" style="background: var(--adm-primary); color: white; padding: 10px 20px; text-decoration: none; display: inline-block;">
+                        Access Central Verification <i class="fas fa-arrow-right" style="margin-left: 5px;"></i>
+                    </a>
+                </div>
                 <div style="margin-top: 15px;">
                     <label
                         style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Verification
@@ -1198,6 +1205,11 @@
         if (status === 'Verified') badgeHtml = `<span class="badge-clean badge-active">VERIFIED</span>`;
         if (status === 'Pending' || status === 'Pending Review' || status === 'Requires Revision') badgeHtml = `<span class="badge-clean badge-pending">REVIEW</span>`;
         document.getElementById('vc_status').innerHTML = badgeHtml;
+
+        const userId = btn.getAttribute('data-user-id');
+        if (userId) {
+            document.getElementById('vc_verify_link').href = '/admin/verify/' + userId;
+        }
 
         // Reset tabs
         const firstTab = document.querySelector('.vd-tab');

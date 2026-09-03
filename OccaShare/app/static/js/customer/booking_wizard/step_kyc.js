@@ -1229,7 +1229,8 @@ const initKyc = () => {
             { id: 'comp-check-1', delay: 1200 },
             { id: 'comp-check-2', delay: 1000 },
             { id: 'comp-check-3', delay: 800 },
-            { id: 'comp-check-4', delay: 600 }
+            { id: 'comp-check-4', delay: 600 },
+            { id: 'comp-check-5', delay: 600 }
         ];
 
         for (const check of checks) {

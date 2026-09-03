@@ -1,0 +1,10 @@
+with open('templates/caterer/calendar.html', 'r', encoding='utf-8') as f:
+    c = f.read()
+print('changeStep in HTML:', 'function changeStep' in c)
+print('addQuotationRow in HTML:', 'function addQuotationRow' in c)
+print('Walk-in modal count:', c.count('manualBookingModal'))
+print('Add Schedule modal count:', c.count('addScheduleModal'))
+print('Calendar div:', "id='calendar'" in c)
+print('Filter bar:', 'filter-btn' in c)
+print('Sidebar day events:', 'sidebarDayEvents' in c)
+print('FullCalendar CSS:', 'fullcalendar' in c)

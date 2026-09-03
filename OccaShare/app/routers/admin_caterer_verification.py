@@ -17,9 +17,9 @@ async def view_caterer_verifications(
     db: Session = Depends(database.get_db), 
     admin: models.User = Depends(admin_only)
 ):
-    # Auto-sync any caterers who uploaded documents but don't have a CatererVerification record
+    from sqlalchemy import func
     pending_profiles = db.query(models.CatererProfile).filter(
-        models.CatererProfile.verification_status.in_(["Pending Review", "Pending", "PENDING_REVIEW"])
+        func.lower(models.CatererProfile.verification_status).in_(["pending review", "pending", "pending_review"])
     ).all()
     
     for p in pending_profiles:
@@ -90,6 +90,16 @@ async def api_get_verification_details(
     caterer = verification.caterer
     docs = {doc.document_type: {"path": doc.secure_file_path, "expires_at": doc.expires_at.isoformat() if doc.expires_at else None} for doc in verification.documents}
     
+    # Fallback/Auto-inject Government ID from IdentityVerification if missing in docs
+    ident = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == caterer.user_id).order_by(desc(models.IdentityVerification.created_at)).first()
+    if ident:
+        if "GOVERNMENT_ID_FRONT" not in docs and getattr(ident, 'document_url', None):
+            docs["GOVERNMENT_ID_FRONT"] = {"path": ident.document_url, "expires_at": None}
+        if "GOVERNMENT_ID_BACK" not in docs and getattr(ident, 'document_back_url', None):
+            docs["GOVERNMENT_ID_BACK"] = {"path": ident.document_back_url, "expires_at": None}
+        if "SELFIE" not in docs and getattr(ident, 'selfie_url', None):
+            docs["SELFIE"] = {"path": ident.selfie_url, "expires_at": None}
+
     return {
         "success": True,
         "data": {

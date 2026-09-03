@@ -124,7 +124,7 @@ class VerificationService:
 
     MENU_KEYWORDS = [
         "MENU", "PRICE LIST", "PACKAGE", "DISH", "FOOD", "CATERING", "DRINKS", "DESSERT", "MAIN COURSE", "APPETIZER",
-        "PAX", "SERVES", "PER HEAD", "PHP", "₱", "ORDER", "MEAL", "BUFFET", "SET MENU"
+        "PAX", "SERVES", "PER HEAD", "PHP", "â‚±", "ORDER", "MEAL", "BUFFET", "SET MENU"
     ]
 
     def __init__(self):
@@ -582,9 +582,9 @@ class VerificationService:
         if frames_with_face >= min_required_frames and not occlusion_detected:
             liveness_score += 0.4
             # Lowered EAR variance threshold: 0.0001 is achievable with a real blink across 3 frames
-            # (open→closed→open). Old threshold 0.0003 was too strict.
+            # (openâ†’closedâ†’open). Old threshold 0.0003 was too strict.
             if ear_variance > 0.0001:
-                liveness_score += 0.6  # Blink detected → full liveness credit (total = 1.0)
+                liveness_score += 0.6  # Blink detected â†’ full liveness credit (total = 1.0)
                 print(f"[KYC LOCAL LIVENESS] Blink DETECTED (ear_variance={ear_variance:.6f} > 0.0001). Score=1.0")
             elif movement > 0.005:  # Relaxed from 0.01
                 liveness_score += 0.3  # Natural head movement credit
@@ -1613,7 +1613,7 @@ class VerificationService:
         text, _parsed, _word_data = self._run_tesseract_advanced(image, id_type)
         return text
 
-    # ── EasyOCR Methods ──────────────────────────────────────────────────────────
+    # â”€â”€ EasyOCR Methods â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _group_ocr_results_into_lines(self, results: List[tuple], y_tolerance: int = 15) -> str:
         """Groups EasyOCR bounding boxes into lines based on vertical position."""
@@ -1929,7 +1929,7 @@ class VerificationService:
                             response = res
                             break
                         elif res.status_code == 429:
-                            # Rate limited — wait briefly and retry once with this model
+                            # Rate limited â€” wait briefly and retry once with this model
                             retry_delay = 5
                             debug_logs.append(f"Model {model} rate limited (429). Retrying in {retry_delay}s...")
                             print(f"[KYC WARNING] Model {model} rate limited. Retrying in {retry_delay}s...")
@@ -2007,7 +2007,7 @@ class VerificationService:
         "REPUBLIKA NG PILIPINAS", "PAMBANSANG", "PAGKAKAKILANLAN"
     ]
 
-    # ── ID-Type-Specific OCR Prompt Engineering ──────────────────────────────
+    # â”€â”€ ID-Type-Specific OCR Prompt Engineering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ID_TYPE_OCR_PROMPTS = {
         "PhilSys / PhilID": {
             "fields": ["id_number", "last_name", "first_name", "middle_name", "date_of_birth", "sex", "address", "nationality"],
@@ -2564,7 +2564,7 @@ class VerificationService:
                             return {
                                 "status": "rejected",
                                 "ocr_match": False,
-                                "failure_reason": "❌ Unable to read the ID. Please upload a clearer image."
+                                "failure_reason": "âŒ Unable to read the ID. Please upload a clearer image."
                             }
                     
                     clean_ocr_upper = ocr_text.upper()
@@ -2630,7 +2630,7 @@ class VerificationService:
                         mrz = self._extract_mrz_from_text(ocr_text)
                         fields.update(mrz)
                     
-                    # For PhilID / UMID — strip Tagalog label noise from name fields (EasyOCR picks up labels)
+                    # For PhilID / UMID â€” strip Tagalog label noise from name fields (EasyOCR picks up labels)
                     if id_type in ("PhilSys / PhilID", "UMID"):
                         for name_field in ("last_name", "given_names", "middle_name", "first_name", "full_name"):
                             if fields.get(name_field) and isinstance(fields[name_field], str):
@@ -2750,7 +2750,7 @@ class VerificationService:
                     id_number_matched = True
                 elif id_number.upper() in clean_ocr_upper:
                     id_number_matched = True
-                # Even more lenient: check if most digits match (for OCR misreads like 0→O, 1→I)
+                # Even more lenient: check if most digits match (for OCR misreads like 0â†’O, 1â†’I)
                 elif not id_number_matched:
                     # Check if 80% of digits match in sequence
                     digit_ratio = difflib.SequenceMatcher(None, norm_id_input, norm_id_ocr).ratio()
@@ -2896,6 +2896,50 @@ class VerificationService:
         except Exception as e:
             traceback.print_exc()
             return {"status": "error", "failure_reason": f"System Error during ID scan: {str(e)}"}
+
+    def _get_permit_ocr_prompt(self) -> str:
+        return (
+            "You are an expert OCR bot extracting details from a Philippine Business Permit (Mayor's Permit, DTI, SEC, or BIR).\n"
+            "CRITICAL RULES:\n"
+            "1. Detect the type of permit and set 'permit_type' (e.g., 'Mayor\\'s Permit', 'DTI', 'BIR', 'SEC').\n"
+            "2. Extract the 'business_name' exactly as printed.\n"
+            "3. Extract the 'owner_name' or 'proprietor' if present.\n"
+            "4. Extract the 'address' of the business.\n"
+            "5. Extract the 'expiry_date' (often December 31 of the current year for Mayor's Permit).\n"
+            "6. Estimate confidence (0-100) per field.\n\n"
+            "Return a FLAT JSON object with EXACTLY this structure:\n"
+            "{\n"
+            "  \"document_type_detected\": \"Business Permit\",\n"
+            "  \"fields\": {\n"
+            "    \"permit_type\": { \"value\": \"Mayor's Permit\", \"confidence\": 98 },\n"
+            "    \"business_name\": { \"value\": \"ABC Catering\", \"confidence\": 99 },\n"
+            "    \"owner_name\": { \"value\": \"JUAN CRUZ\", \"confidence\": 95 },\n"
+            "    \"address\": { \"value\": \"123 ST.\", \"confidence\": 95 },\n"
+            "    \"expiry_date\": { \"value\": \"YYYY-MM-DD\", \"confidence\": 97 }\n"
+            "  },\n"
+            "  \"confidence_score\": 0.95\n"
+            "}\n"
+            "If a field is not found, set its 'value' to \"\" and 'confidence' to 0. Return ONLY the raw JSON object, no other text."
+        )
+
+    async def extract_permit_data(self, permit_path: str) -> Dict[str, Any]:
+        """Extracts text from Business Permit using Gemini API."""
+        try:
+            gemini_data = None
+            if os.getenv("GEMINI_API_KEY"):
+                print("[KYC DEBUG] Calling Gemini API for Business Permit extraction...")
+                gemini_prompt = self._get_permit_ocr_prompt()
+                gemini_data = await self._call_gemini_ocr(permit_path, gemini_prompt)
+                
+            if gemini_data and isinstance(gemini_data, dict):
+                return {
+                    "success": True, 
+                    "data": gemini_data
+                }
+            return {"success": False, "error": "Could not extract permit data via Gemini."}
+        except Exception as e:
+            traceback.print_exc()
+            return {"success": False, "error": str(e)}
 
     async def extract_id_data(self, id_path: str, id_type: str) -> Dict[str, Any]:
         """Extracts text from ID using Gemini API (with EasyOCR + Tesseract fallback)."""
@@ -3152,7 +3196,7 @@ class VerificationService:
             if not liveness_failure and vps_url:
                 vps_reachable = await self.is_vps_reachable_async()
                 if not vps_reachable:
-                    print("[KYC WARNING] Skipping VPS — server unreachable. Using local pipeline.")
+                    print("[KYC WARNING] Skipping VPS â€” server unreachable. Using local pipeline.")
                 else:
                     print(f"[KYC DEBUG] Delegating Face Verification and Liveness to VPS: {vps_url}/verify")
 
@@ -3295,7 +3339,7 @@ class VerificationService:
             # APPROVAL THRESHOLDS
             # VPS mode (DeepFace + real liveness engine): strict 95/95
             # Local fallback (MediaPipe only, 3-frame EAR variance): lenient 70/50
-            # The local pipeline is NOT a production anti-spoof engine — its
+            # The local pipeline is NOT a production anti-spoof engine â€” its
             # anti_spoof_score is hardcoded to 98 or 0, so we only gate on
             # liveness_score when VPS is unavailable.
             # ------------------------------------------------------------------
@@ -3309,7 +3353,7 @@ class VerificationService:
                 min_liveness_label = "70% (VPS mode)"
             else:
                 # Local fallback: MediaPipe 3-frame EAR check only
-                # anti_spoof_score is hardcoded 98 (pass) or 0 (fail) — not a real engine
+                # anti_spoof_score is hardcoded 98 (pass) or 0 (fail) â€” not a real engine
                 liveness_passed = (
                     liveness_score >= 40  # At minimum, face was detected in all frames
                     and challenge_completion_score >= 100
@@ -3343,11 +3387,11 @@ class VerificationService:
                     failure_reason = "Blink Verification Failed | Blink not detected. Please look directly at the camera and blink naturally."
             else:
                 # Liveness passed. Check face match score.
-                # Thresholds: >= 90 VERIFIED, 85-89 pending_manual_review, < 85 rejected
-                if face_match_score >= 90:
+                # Thresholds: >= 80 VERIFIED, 70-79 pending_manual_review, < 70 rejected
+                if face_match_score >= 80:
                     status = "verified"
                     failure_reason = None
-                elif face_match_score >= 85:
+                elif face_match_score >= 70:
                     status = "pending_manual_review"
                     failure_reason = "Face Match Review | Face match score is slightly low. Your ID verification will be manually reviewed."
                 else:
@@ -3483,7 +3527,7 @@ class VerificationService:
                 if gemini_data and gemini_data.get("business_name"):
                     ocr_text = f"{gemini_data.get('business_name')} {gemini_data.get('permit_number')} {gemini_data.get('owner_name')} {gemini_data.get('expiration_date')}"
                 else:
-                    return {"status": "rejected", "ocr_match": False, "failure_reason": "❌ Unable to read the Permit. Ensure high clarity."}
+                    return {"status": "rejected", "ocr_match": False, "failure_reason": "âŒ Unable to read the Permit. Ensure high clarity."}
 
             clean_ocr_upper = ocr_text.upper()
             target_name = " ".join(business_name.lower().split())
@@ -3722,7 +3766,7 @@ class VerificationService:
                         "extracted_text_preview": gemini_data.get("extracted_text_preview", "")[:300]
                     }
                 else:
-                    return {"status": "rejected", "ocr_match": False, "failure_reason": "❌ Document does not appear to be a valid menu/price list."}
+                    return {"status": "rejected", "ocr_match": False, "failure_reason": "âŒ Document does not appear to be a valid menu/price list."}
             else:
                 return {
                     "status": "approved",

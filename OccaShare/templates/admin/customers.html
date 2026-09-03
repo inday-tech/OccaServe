@@ -347,6 +347,11 @@
                                     <i class="fas fa-check-circle"></i> Clear Flag
                                 </button>
                                 {% else %}
+                                {% if not customer.is_verified %}
+                                <button class="dropdown-item-dm" style="color: #10b981;" onclick="window.location.href='/admin/verify/{{ customer.id }}'">
+                                    <i class="fas fa-user-shield"></i> Review KYC
+                                </button>
+                                {% endif %}
                                 <button class="dropdown-item-dm danger" onclick="suspendAccount('{{ customer.id }}')">
                                     <i class="fas fa-ban"></i> Suspend Account
                                 </button>
