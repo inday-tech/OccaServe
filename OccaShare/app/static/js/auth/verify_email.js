@@ -5,7 +5,7 @@ const resendBtn = document.getElementById('resendBtn');
 let timerId;
 
 function startTimer() {
-    timeLeft = 300; // 5 minutes
+    timeLeft = 300;
     if (resendBtn) {
         resendBtn.classList.add('disabled');
         resendBtn.textContent = "Resend Code";
@@ -83,7 +83,10 @@ async function resendCode(e) {
     if (!resendBtn || resendBtn.classList.contains('disabled')) return;
 
     const email = document.getElementById('emailField')?.value;
-    if (!email) return;
+    if (!email) {
+        if (window.Swal) Swal.fire({ icon: 'error', title: 'Error', text: 'Email not found. Please register again.', confirmButtonColor: '#FF7B54' });
+        return;
+    }
 
     resendBtn.textContent = "Sending...";
     resendBtn.classList.add('disabled');
@@ -97,7 +100,13 @@ async function resendCode(e) {
             body: formData
         });
 
-        const result = await response.json();
+        let result;
+        try {
+            result = await response.json();
+        } catch (_) {
+            // Server returned a non-JSON response (e.g. 500 HTML page)
+            throw new Error(`Server error (${response.status}). Please restart the server and try again.`);
+        }
 
         if (result.success) {
             if (window.Swal) {
@@ -115,8 +124,8 @@ async function resendCode(e) {
             if (window.Swal) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'Oops...',
-                    text: result.message || 'Failed to resend code.',
+                    title: 'Failed to Send',
+                    text: result.message || 'Failed to resend code. Please try again.',
                     confirmButtonColor: '#FF7B54'
                 });
             }
@@ -124,7 +133,15 @@ async function resendCode(e) {
             resendBtn.textContent = "Resend Code";
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Resend error:', error);
+        if (window.Swal) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Connection Error',
+                text: error.message || 'Could not reach the server. Please check your connection and try again.',
+                confirmButtonColor: '#FF7B54'
+            });
+        }
         if (resendBtn) {
             resendBtn.classList.remove('disabled');
             resendBtn.textContent = "Resend Code";

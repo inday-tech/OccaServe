@@ -8,14 +8,38 @@ class Settings:
     SECRET_KEY = os.getenv("SECRET_KEY", "")
     SITE_URL = os.getenv("SITE_URL", "http://127.0.0.1:8000")
     
-    # EMAIL CONFIGURATION
-    MAIL_USERNAME = os.getenv("MAIL_USERNAME", "")
-    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
-    MAIL_FROM = os.getenv("MAIL_FROM", "")
-    MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
-    MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com")
-    MAIL_TLS = os.getenv("MAIL_TLS", "True") == "True"
-    MAIL_SSL = os.getenv("MAIL_SSL", "False") == "True"
+    # EMAIL CONFIGURATION — read fresh from env each time so .env changes
+    # are picked up without needing a full server restart
+    @property
+    def MAIL_USERNAME(self):
+        load_dotenv(override=True)
+        return os.getenv("MAIL_USERNAME", "")
+
+    @property
+    def MAIL_PASSWORD(self):
+        load_dotenv(override=True)
+        return os.getenv("MAIL_PASSWORD", "")
+
+    @property
+    def MAIL_FROM(self):
+        load_dotenv(override=True)
+        return os.getenv("MAIL_FROM", "")
+
+    @property
+    def MAIL_PORT(self):
+        return int(os.getenv("MAIL_PORT", 587))
+
+    @property
+    def MAIL_SERVER(self):
+        return os.getenv("MAIL_SERVER", "smtp.gmail.com")
+
+    @property
+    def MAIL_TLS(self):
+        return os.getenv("MAIL_TLS", "True") == "True"
+
+    @property
+    def MAIL_SSL(self):
+        return os.getenv("MAIL_SSL", "False") == "True"
 
     # SOCIAL LOGIN CONFIGURATION
     FACEBOOK_CLIENT_ID = os.getenv("FACEBOOK_CLIENT_ID", "")
@@ -50,4 +74,3 @@ class Settings:
 
 settings = Settings()
 # Env reload trigger
-
