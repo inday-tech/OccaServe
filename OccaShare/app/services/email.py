@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 class EmailService:
     @staticmethod
     def _send_email(to_email: str, subject: str, body: str, html_body: str = None):
+        print(f"[EMAIL SERVICE] Preparing to send email to {to_email} | subject: '{subject}'")
         logger.info(f"[EMAIL SERVICE] Preparing to send email to {to_email} | subject: '{subject}'")
         from_email = settings.MAIL_FROM if settings.MAIL_FROM else settings.MAIL_USERNAME
         
@@ -27,20 +28,25 @@ class EmailService:
             if html_body:
                 msg.attach(MIMEText(html_body, 'html'))
 
-            logger.info(f"[EMAIL SERVICE] Connecting to SMTP server {settings.MAIL_SERVER}:{settings.MAIL_PORT}")
+            clean_password = settings.MAIL_PASSWORD.replace(" ", "").strip() if settings.MAIL_PASSWORD else ""
+            print(f"[EMAIL SERVICE] Connecting to {settings.MAIL_SERVER}:{settings.MAIL_PORT} as {settings.MAIL_USERNAME} (password len={len(clean_password)})...")
+            
             if settings.MAIL_PORT == 465:
-                server = smtplib.SMTP_SSL(settings.MAIL_SERVER, settings.MAIL_PORT)
+                server = smtplib.SMTP_SSL(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=15)
             else:
-                server = smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT)
+                server = smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=15)
                 server.starttls()
             
-            clean_password = settings.MAIL_PASSWORD.replace(" ", "").strip() if settings.MAIL_PASSWORD else ""
             server.login(settings.MAIL_USERNAME, clean_password)
+            print(f"[EMAIL SERVICE] Logged in successfully. Sending message to {to_email}...")
             server.sendmail(from_email, to_email, msg.as_string())
             server.quit()
+            print(f"[EMAIL SERVICE SUCCESS] Email delivered to {to_email}!")
             logger.info(f"[EMAIL SERVICE] Email successfully sent to {to_email}")
             return True
         except Exception as e:
+            print(f"[EMAIL SERVICE ERROR] Failed to send email to {to_email}: {e}")
+            traceback.print_exc()
             logger.error(f"[EMAIL SERVICE ERROR] Failed to send email to {to_email}: {e}")
             return False
 

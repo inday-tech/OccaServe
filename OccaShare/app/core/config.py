@@ -1,7 +1,18 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv(override=True)
+# Explicitly find and load .env in OccaShare project root
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+ENV_PATH = BASE_DIR / ".env"
+
+def reload_env():
+    if ENV_PATH.exists():
+        load_dotenv(dotenv_path=ENV_PATH, override=True)
+    else:
+        load_dotenv(override=True)
+
+reload_env()
 
 class Settings:
     # CORE CONFIG
@@ -12,17 +23,17 @@ class Settings:
     # are picked up without needing a full server restart
     @property
     def MAIL_USERNAME(self):
-        load_dotenv(override=True)
+        reload_env()
         return os.getenv("MAIL_USERNAME", "")
 
     @property
     def MAIL_PASSWORD(self):
-        load_dotenv(override=True)
+        reload_env()
         return os.getenv("MAIL_PASSWORD", "")
 
     @property
     def MAIL_FROM(self):
-        load_dotenv(override=True)
+        reload_env()
         return os.getenv("MAIL_FROM", "")
 
     @property
@@ -73,4 +84,3 @@ class Settings:
     CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "")
 
 settings = Settings()
-# Env reload trigger

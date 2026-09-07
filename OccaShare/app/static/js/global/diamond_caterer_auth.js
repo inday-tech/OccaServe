@@ -398,15 +398,35 @@
             });
 
             if (response.redirected) {
-                window.location.href = response.url;
+                const isVerify = response.url.includes('/auth/verify');
+                if (isVerify && window.openAuthModal && document.getElementById('authModalOverlay')) {
+                    try {
+                        const urlObj = new URL(response.url);
+                        const emailParam = urlObj.searchParams.get('email') || document.getElementById('email_cat')?.value || '';
+                        const emailDisplay = document.getElementById('email-display');
+                        const emailField = document.getElementById('emailField');
+                        if (emailDisplay) emailDisplay.innerText = emailParam;
+                        if (emailField) emailField.value = emailParam;
+
+                        openAuthModal('verify');
+                        if (typeof window.initVerifyPolling === 'function') window.initVerifyPolling();
+                        if (typeof window.startTimer === 'function') window.startTimer();
+                        if (typeof window.setupOtpInputListeners === 'function') window.setupOtpInputListeners();
+                    } catch (_) {
+                        window.location.href = response.url;
+                    }
+                } else {
+                    window.location.href = response.url;
+                }
             } else {
                 const result = await response.json();
-                if (result.status === 'success') {
+                if (result.status === 'success' || (response.ok && result.redirect && result.redirect.includes('/auth/verify'))) {
+                    const targetEmail = result.email || document.getElementById('email_cat')?.value || '';
                     if (window.openAuthModal && document.getElementById('authModalOverlay')) {
                         const emailDisplay = document.getElementById('email-display');
                         const emailField = document.getElementById('emailField');
-                        if (emailDisplay) emailDisplay.innerText = result.email;
-                        if (emailField) emailField.value = result.email;
+                        if (emailDisplay) emailDisplay.innerText = targetEmail;
+                        if (emailField) emailField.value = targetEmail;
 
                         openAuthModal('verify');
                         if (typeof window.initVerifyPolling === 'function') {
@@ -415,8 +435,11 @@
                         if (typeof window.startTimer === 'function') {
                             window.startTimer();
                         }
+                        if (typeof window.setupOtpInputListeners === 'function') {
+                            window.setupOtpInputListeners();
+                        }
                     } else {
-                        window.location.href = `/auth/verify?email=${encodeURIComponent(result.email)}`;
+                        window.location.href = `/auth/verify?email=${encodeURIComponent(targetEmail)}`;
                     }
 
                     if (window.Swal) {
@@ -432,7 +455,12 @@
                         });
                     }
                 } else if (window.Swal) {
-                    Swal.fire({ icon: 'error', title: 'Registration Failed', text: result.message || 'Please check your information.' });
+                    let errMsg = result.message || 'Please check your information.';
+                    if (result.field_errors && typeof result.field_errors === 'object') {
+                        const errList = Object.values(result.field_errors).filter(Boolean);
+                        if (errList.length > 0) errMsg = errList.join('\n');
+                    }
+                    Swal.fire({ icon: 'error', title: 'Registration Failed', text: errMsg, confirmButtonColor: '#FF7B54' });
                 }
             }
         } catch (error) {

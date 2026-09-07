@@ -2,7 +2,7 @@
  * Auth Modal Controller
  */
 
-function openAuthModal(type) {
+function openAuthModal(type, targetEmail = null) {
     const overlay = document.getElementById('authModalOverlay');
     const container = overlay ? overlay.querySelector('.auth-modal-container') : null;
     const loginContent = document.getElementById('authModalLogin');
@@ -33,6 +33,15 @@ function openAuthModal(type) {
         if (forgotSucc) forgotSucc.style.display = 'none';
     } else if (type === 'verify') {
         verifyContent.classList.add('active');
+        if (targetEmail) {
+            const emailDisplay = document.getElementById('email-display');
+            const emailHidden = document.getElementById('emailField');
+            if (emailDisplay) emailDisplay.innerText = targetEmail;
+            if (emailHidden) emailHidden.value = targetEmail;
+        }
+        if (typeof window.startTimer === 'function') window.startTimer();
+        if (typeof window.setupOtpInputListeners === 'function') window.setupOtpInputListeners();
+        if (typeof window.initVerifyPolling === 'function') window.initVerifyPolling();
     } else if (type === 'caterer-signup' && catererContent) {
         catererContent.classList.add('active');
         if (container) container.classList.add('wide');
@@ -329,7 +338,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const authModalParam = urlParams.get('auth_modal');
     if (authModalParam) {
-        openAuthModal(authModalParam);
+        const emailParam = urlParams.get('email');
+        openAuthModal(authModalParam, emailParam);
 
         if (authModalParam === 'forgot') {
             if (urlParams.get('success')) {

@@ -33,7 +33,7 @@ async def check_phone(phone: str, db: Session = Depends(database.get_db)):
     """Check if phone number is already registered."""
     phone = phone.strip().replace(" ", "")
     existing = db.query(models.User).filter(models.User.phone_number == phone).first()
-    if existing:
+    if existing and existing.is_email_verified:
         return {"available": False, "message": "This mobile number is already registered to another account."}
     return {"available": True}
 
@@ -44,7 +44,11 @@ async def check_business_name(name: str, db: Session = Depends(database.get_db))
     existing = db.query(models.CatererProfile).filter(
         func.lower(models.CatererProfile.business_name) == func.lower(stripped_name)
     ).first()
-    return {"available": existing is None}
+    if existing:
+        owner = db.query(models.User).filter(models.User.id == existing.user_id).first()
+        if owner and owner.is_email_verified:
+            return {"available": False, "message": "This business name is already registered."}
+    return {"available": True}
 
 @router.post("/scan-document")
 async def scan_document(
@@ -323,7 +327,7 @@ async def register(
         else:
             # Uniqueness Check
             existing_phone = db.query(models.User).filter(models.User.phone_number == mobile_number).first()
-            if existing_phone:
+            if existing_phone and existing_phone.is_email_verified and existing_phone.email.lower() != email.lower().strip():
                 errors["mobile_number"] = "This mobile number is already registered."
 
     password_msgs = []
@@ -369,7 +373,9 @@ async def register(
                 func.lower(models.CatererProfile.business_name) == func.lower(business_name.strip())
             ).first()
             if existing_biz:
-                errors["business_name"] = "This business name is already registered."
+                biz_owner = db.query(models.User).filter(models.User.id == existing_biz.user_id).first()
+                if biz_owner and biz_owner.is_email_verified and biz_owner.email.lower() != email.lower().strip():
+                    errors["business_name"] = "This business name is already registered."
 
         if years_of_operation is not None and (years_of_operation < 0 or years_of_operation > 100):
             errors["years_of_operation"] = "Years of operation must be between 0 and 100"
@@ -1098,7 +1104,9 @@ def check_email_availability(email: str, db: Session = Depends(database.get_db))
     if dummy_error:
         return {"available": False, "message": dummy_error}
     user = db.query(models.User).filter(func.lower(models.User.email) == email.lower().strip()).first()
-    return {"available": user is None}
+    if user and user.is_email_verified:
+        return {"available": False, "message": "This email is already registered. Please log in."}
+    return {"available": True}
 
 # --- Onboarding / Profile Completion ---
 

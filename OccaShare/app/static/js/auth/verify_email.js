@@ -1,28 +1,33 @@
 // Countdown Timer Logic
 let timeLeft = 300; // 5 minutes
-const timerElement = document.getElementById('timer');
-const resendBtn = document.getElementById('resendBtn');
 let timerId;
 
 function startTimer() {
     timeLeft = 300;
-    if (resendBtn) {
-        resendBtn.classList.add('disabled');
-        resendBtn.textContent = "Resend Code";
+    const btn = document.getElementById('resendBtn');
+    const timer = document.getElementById('timer');
+    if (btn) {
+        btn.classList.add('disabled');
+        btn.textContent = "Resend Code";
+    }
+    if (timer) {
+        timer.textContent = "05:00";
     }
 
     clearInterval(timerId);
     timerId = setInterval(() => {
+        const curTimer = document.getElementById('timer');
+        const curBtn = document.getElementById('resendBtn');
         if (timeLeft <= 0) {
             clearInterval(timerId);
-            if (timerElement) timerElement.textContent = "00:00";
-            if (resendBtn) resendBtn.classList.remove('disabled');
+            if (curTimer) curTimer.textContent = "00:00";
+            if (curBtn) curBtn.classList.remove('disabled');
         } else {
             timeLeft--;
             const minutes = Math.floor(timeLeft / 60);
             const seconds = timeLeft % 60;
-            if (timerElement) {
-                timerElement.textContent = `${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            if (curTimer) {
+                curTimer.textContent = `${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
             }
         }
     }, 1000);
@@ -80,7 +85,8 @@ async function initVerifyPolling() {
 // Resend Code Logic
 async function resendCode(e) {
     if (e) e.preventDefault();
-    if (!resendBtn || resendBtn.classList.contains('disabled')) return;
+    const btn = document.getElementById('resendBtn');
+    if (!btn || btn.classList.contains('disabled')) return;
 
     const email = document.getElementById('emailField')?.value;
     if (!email) {
@@ -88,8 +94,8 @@ async function resendCode(e) {
         return;
     }
 
-    resendBtn.textContent = "Sending...";
-    resendBtn.classList.add('disabled');
+    btn.textContent = "Sending...";
+    btn.classList.add('disabled');
 
     try {
         const formData = new FormData();
@@ -129,8 +135,8 @@ async function resendCode(e) {
                     confirmButtonColor: '#FF7B54'
                 });
             }
-            resendBtn.classList.remove('disabled');
-            resendBtn.textContent = "Resend Code";
+            btn.classList.remove('disabled');
+            btn.textContent = "Resend Code";
         }
     } catch (error) {
         console.error('Resend error:', error);
@@ -142,9 +148,9 @@ async function resendCode(e) {
                 confirmButtonColor: '#FF7B54'
             });
         }
-        if (resendBtn) {
-            resendBtn.classList.remove('disabled');
-            resendBtn.textContent = "Resend Code";
+        if (btn) {
+            btn.classList.remove('disabled');
+            btn.textContent = "Resend Code";
         }
     }
 }

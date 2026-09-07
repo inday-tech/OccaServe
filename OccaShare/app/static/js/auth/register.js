@@ -269,15 +269,20 @@
                         } else {
                             submitBtn.disabled = false;
                             submitBtn.innerHTML = originalBtnText;
+                            let errMsg = result.message || "Please check your information and try again.";
+                            if (result.field_errors && typeof result.field_errors === 'object') {
+                                const errList = Object.values(result.field_errors).filter(Boolean);
+                                if (errList.length > 0) errMsg = errList.join('\n');
+                            }
                             if (window.Swal) {
                                 Swal.fire({
                                     icon: 'error',
                                     title: 'Registration Failed',
-                                    text: result.message || "Please check your information and try again.",
+                                    text: errMsg,
                                     confirmButtonColor: '#FF7B54'
                                 });
                             } else {
-                                alert(result.message || "Registration failed.");
+                                alert(errMsg);
                             }
                         }
                     } else {
