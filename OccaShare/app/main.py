@@ -49,6 +49,18 @@ async def lifespan(app: FastAPI):
         db.execute(text("UPDATE caterer_profiles SET is_verified = TRUE WHERE verification_status = 'Verified'"))
         db.execute(text("UPDATE users SET is_verified = TRUE WHERE id IN (SELECT user_id FROM caterer_profiles WHERE verification_status = 'Verified')"))
         db.execute(text("UPDATE caterer_profiles SET account_status = 'Active' WHERE account_status = 'Approved'"))
+        
+        # Website Config missing columns sync
+        db.execute(text("ALTER TABLE website_config ADD COLUMN IF NOT EXISTS admin_gcash_name VARCHAR"))
+        db.execute(text("ALTER TABLE website_config ADD COLUMN IF NOT EXISTS admin_gcash_number VARCHAR"))
+        db.execute(text("ALTER TABLE website_config ADD COLUMN IF NOT EXISTS admin_gcash_qr_url VARCHAR"))
+        db.execute(text("ALTER TABLE website_config ADD COLUMN IF NOT EXISTS max_file_size_mb INTEGER DEFAULT 5"))
+        db.execute(text("ALTER TABLE website_config ADD COLUMN IF NOT EXISTS commission_rate FLOAT DEFAULT 10.0"))
+        db.execute(text("ALTER TABLE website_config ADD COLUMN IF NOT EXISTS commission_fixed_amount FLOAT DEFAULT 20.0"))
+        db.execute(text("ALTER TABLE website_config ADD COLUMN IF NOT EXISTS maintenance_mode BOOLEAN DEFAULT FALSE"))
+        db.execute(text("ALTER TABLE website_config ADD COLUMN IF NOT EXISTS maintenance_message TEXT DEFAULT 'OccaServe is currently undergoing scheduled maintenance. We''ll be back online shortly!'"))
+        db.execute(text("ALTER TABLE website_config ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE"))
+        
         db.commit()
         print("[STARTUP] Schema sync completed successfully.")
     except Exception as e:
@@ -129,6 +141,8 @@ async def maintenance_middleware(request: Request, call_next):
                         status_code=503,
                         content={"success": False, "message": config.maintenance_message}
                     )
+    except Exception as e:
+        print(f"[MAINTENANCE CHECK ERROR] Non-fatal config query error: {e}")
     finally:
         db.close()
 

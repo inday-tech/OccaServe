@@ -243,16 +243,25 @@
                                 }
 
                                 if (window.Swal) {
-                                    Swal.fire({
-                                        icon: 'success',
-                                        title: 'Almost There!',
-                                        text: 'Please check your email for the 6-digit verification code.',
-                                        timer: 4500,
-                                        showConfirmButton: false,
-                                        toast: true,
-                                        position: 'top-end',
-                                        timerProgressBar: true
-                                    });
+                                    if (result.email_sent === false) {
+                                        Swal.fire({
+                                            icon: 'warning',
+                                            title: 'Account Created',
+                                            text: result.email_error ? `Account created, but email could not be sent: ${result.email_error}` : 'Account created, but verification email failed to send. Please click Resend Code.',
+                                            confirmButtonColor: '#FF7B54'
+                                        });
+                                    } else {
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: 'Almost There!',
+                                            text: 'Please check your email for the 6-digit verification code.',
+                                            timer: 4500,
+                                            showConfirmButton: false,
+                                            toast: true,
+                                            position: 'top-end',
+                                            timerProgressBar: true
+                                        });
+                                    }
                                 }
                             } else {
                                 if (window.Swal) {

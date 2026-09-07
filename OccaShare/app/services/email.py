@@ -1,51 +1,123 @@
 import smtplib
+import ssl
 import logging
 import traceback
 import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formatdate, make_msgid
 from ..core.config import settings
 
 logger = logging.getLogger(__name__)
 
 class EmailService:
+    _last_error = None
+
+    @classmethod
+    def get_last_error(cls):
+        return cls._last_error
+
     @staticmethod
     def _send_email(to_email: str, subject: str, body: str, html_body: str = None):
-        print(f"[EMAIL SERVICE] Preparing to send email to {to_email} | subject: '{subject}'")
-        logger.info(f"[EMAIL SERVICE] Preparing to send email to {to_email} | subject: '{subject}'")
-        from_email = settings.MAIL_FROM if settings.MAIL_FROM else settings.MAIL_USERNAME
+        to_email = to_email.strip()
+        from_email = (settings.MAIL_FROM if settings.MAIL_FROM else settings.MAIL_USERNAME).strip()
+        clean_password = settings.MAIL_PASSWORD.replace(" ", "").strip() if settings.MAIL_PASSWORD else ""
         
+        print(f"[EMAIL SERVICE] Preparing email to: {to_email}")
+        print(f"[EMAIL SERVICE] Sender: {from_email} | User: {settings.MAIL_USERNAME} | Server: {settings.MAIL_SERVER}:{settings.MAIL_PORT} | Pass len: {len(clean_password)}")
+        logger.info(f"[EMAIL SERVICE] Preparing to send email to {to_email} | subject: '{subject}'")
+        
+        if not clean_password:
+            error_msg = "MAIL_PASSWORD is not set or empty in .env"
+            print(f"[EMAIL SERVICE CONFIG ERROR] {error_msg}")
+            EmailService._last_error = error_msg
+            return False
+
         try:
             msg = MIMEMultipart('alternative')
-            msg['From'] = from_email
+            msg['From'] = f"OccaServe <{from_email}>"
             msg['To'] = to_email
             msg['Subject'] = subject
+            msg['Date'] = formatdate(localtime=True)
+            msg['Message-ID'] = make_msgid(domain="occaserve.com")
 
             # Attach plain text version
-            msg.attach(MIMEText(body, 'plain'))
+            msg.attach(MIMEText(body, 'plain', 'utf-8'))
             
             # Attach HTML version if provided
             if html_body:
-                msg.attach(MIMEText(html_body, 'html'))
+                msg.attach(MIMEText(html_body, 'html', 'utf-8'))
 
-            clean_password = settings.MAIL_PASSWORD.replace(" ", "").strip() if settings.MAIL_PASSWORD else ""
-            print(f"[EMAIL SERVICE] Connecting to {settings.MAIL_SERVER}:{settings.MAIL_PORT} as {settings.MAIL_USERNAME} (password len={len(clean_password)})...")
-            
-            if settings.MAIL_PORT == 465:
-                server = smtplib.SMTP_SSL(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=15)
-            else:
-                server = smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=15)
-                server.starttls()
-            
-            server.login(settings.MAIL_USERNAME, clean_password)
-            print(f"[EMAIL SERVICE] Logged in successfully. Sending message to {to_email}...")
-            server.sendmail(from_email, to_email, msg.as_string())
-            server.quit()
-            print(f"[EMAIL SERVICE SUCCESS] Email delivered to {to_email}!")
-            logger.info(f"[EMAIL SERVICE] Email successfully sent to {to_email}")
-            return True
+            server = None
+            primary_port = settings.MAIL_PORT
+            # Determine ports to try: primary first, then fallback
+            ports_to_try = [primary_port]
+            if primary_port == 587 and 465 not in ports_to_try:
+                ports_to_try.append(465)
+            elif primary_port == 465 and 587 not in ports_to_try:
+                ports_to_try.append(587)
+
+            last_conn_err = None
+            connected = False
+
+            for port in ports_to_try:
+                try:
+                    print(f"[EMAIL SERVICE] Attempting SMTP connection via port {port}...")
+                    if port == 465:
+                        ssl_context = ssl.create_default_context()
+                        server = smtplib.SMTP_SSL(settings.MAIL_SERVER, port, context=ssl_context, timeout=15)
+                        server.ehlo()
+                    else:
+                        server = smtplib.SMTP(settings.MAIL_SERVER, port, timeout=15)
+                        server.ehlo()
+                        server.starttls()
+                        server.ehlo()
+
+                    print(f"[EMAIL SERVICE] Connected on port {port}. Authenticating...")
+                    server.login(settings.MAIL_USERNAME, clean_password)
+                    print(f"[EMAIL SERVICE] Authenticated! Sending message...")
+                    server.sendmail(from_email, [to_email], msg.as_string())
+                    server.quit()
+                    connected = True
+                    print(f"[EMAIL SERVICE SUCCESS] Verification email delivered to {to_email} via port {port}!")
+                    EmailService._last_error = None
+                    return True
+                except (smtplib.SMTPConnectError, smtplib.SMTPServerDisconnected, TimeoutError, OSError) as net_err:
+                    print(f"[EMAIL SERVICE WARNING] Connection on port {port} failed: {net_err}. Trying fallback...")
+                    last_conn_err = net_err
+                    if server:
+                        try:
+                            server.close()
+                        except Exception:
+                            pass
+                except smtplib.SMTPAuthenticationError as auth_err:
+                    error_msg = f"Gmail Authentication Error: Invalid App Password or username ({auth_err.smtp_code}: {auth_err.smtp_error.decode() if isinstance(auth_err.smtp_error, bytes) else auth_err.smtp_error})"
+                    print(f"[EMAIL SERVICE AUTH ERROR] {error_msg}")
+                    EmailService._last_error = error_msg
+                    if server:
+                        try:
+                            server.close()
+                        except Exception:
+                            pass
+                    return False
+                except Exception as e:
+                    print(f"[EMAIL SERVICE ERROR on port {port}] {e}")
+                    last_conn_err = e
+                    if server:
+                        try:
+                            server.close()
+                        except Exception:
+                            pass
+
+            if not connected:
+                error_msg = f"Could not connect to SMTP server on ports {ports_to_try}: {last_conn_err}"
+                print(f"[EMAIL SERVICE FAILED] {error_msg}")
+                EmailService._last_error = error_msg
+                return False
+
         except Exception as e:
-            print(f"[EMAIL SERVICE ERROR] Failed to send email to {to_email}: {e}")
+            EmailService._last_error = str(e)
+            print(f"[EMAIL SERVICE UNEXPECTED ERROR] {e}")
             traceback.print_exc()
             logger.error(f"[EMAIL SERVICE ERROR] Failed to send email to {to_email}: {e}")
             return False

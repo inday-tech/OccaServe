@@ -278,8 +278,9 @@ async def register(
         
         db.commit()
         
+        email_sent = False
         try:
-            EmailService.send_verification_email(user.email, otp)
+            email_sent = EmailService.send_verification_email(user.email, otp)
         except Exception as e:
             print(f"[AUTH ERROR] Failed to send verification email: {e}")
             
@@ -287,7 +288,13 @@ async def register(
             verify_url = f"/auth/verify?email={user.email}"
             if next_url:
                 verify_url += f"&next={next_url}"
-            return JSONResponse(content={"status": "success", "email": user.email, "redirect": verify_url})
+            return JSONResponse(content={
+                "status": "success",
+                "email": user.email,
+                "redirect": verify_url,
+                "email_sent": email_sent,
+                "email_error": EmailService.get_last_error() if not email_sent else None
+            })
         else:
             verify_url = f"/auth/verify?email={user.email}"
             if next_url:
@@ -608,16 +615,18 @@ async def register(
     
     # Only send verification email if it's a new email/password user
 
+    email_sent = False
     if not is_upgrade:
         db.commit() # Commit all changes so user record with OTP is saved
         print(f"[OTP DEBUG] Generated OTP for {email}: {otp}")
         try:
-            if EmailService.send_verification_email(email, otp):
+            email_sent = EmailService.send_verification_email(email, otp)
+            if email_sent:
                 print(f"[AUTH] Registration buffered for {email}. Verification email sent.")
                 if role == "caterer":
                     background_tasks.add_task(utils.background_geocode, new_profile.id)
             else:
-                print(f"[AUTH WARNING] Verification email delivery failed for {email}, but user account with OTP {otp} was saved.")
+                print(f"[AUTH WARNING] Verification email delivery failed for {email}: {EmailService.get_last_error()}")
         except Exception as e:
             print(f"[AUTH ERROR] Failed to send verification email to {email}: {e}")
     else:
@@ -639,7 +648,13 @@ async def register(
         verify_url = f"/auth/verify?email={email}"
         if next_url:
             verify_url += f"&next={next_url}"
-        return JSONResponse(content={"status": "success", "email": email, "redirect": verify_url})
+        return JSONResponse(content={
+            "status": "success",
+            "email": email,
+            "redirect": verify_url,
+            "email_sent": email_sent,
+            "email_error": EmailService.get_last_error() if not email_sent else None
+        })
 
     verify_url = f"/auth/verify?email={email}"
     if next_url:
@@ -796,7 +811,9 @@ def resend_verification_code(
     if EmailService.send_verification_email(email, otp):
         return {"success": True, "message": "Verification code resent"}
     else:
-        return {"success": False, "message": "Failed to send email. Please check your email address or try again later."}
+        last_err = EmailService.get_last_error()
+        err_detail = f": {last_err}" if last_err else ". Please check email credentials or try again."
+        return {"success": False, "message": f"Failed to send email{err_detail}"}
 
 @router.get("/verify-status")
 def check_verify_status(email: str, db: Session = Depends(database.get_db)):
