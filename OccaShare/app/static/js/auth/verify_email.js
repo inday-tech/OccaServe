@@ -292,4 +292,5 @@ window.startTimer = startTimer;
 window.resendCode = resendCode;
 window.initVerifyPolling = initVerifyPolling;
 window.submitOtpForm = submitOtpForm;
+window.setupOtpInputListeners = setupOtpInputListeners;
 

@@ -215,16 +215,57 @@
                     if (contentType && contentType.indexOf("application/json") !== -1) {
                         const result = await response.json();
                         if (response.ok) {
-                            if (window.Swal) {
-                                await Swal.fire({
-                                    icon: 'success',
-                                    title: 'Success!',
-                                    text: 'Registration successful.',
-                                    timer: 1500,
-                                    showConfirmButton: false
-                                });
+                            const verifyTarget = (result.redirect && result.redirect.includes('/auth/verify')) || result.status === 'success';
+                            const targetEmail = result.email || (emailEl ? emailEl.value.trim() : "");
+
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalBtnText;
+
+                            if (verifyTarget) {
+                                if (window.openAuthModal && document.getElementById('authModalOverlay')) {
+                                    const emailDisplay = document.getElementById('email-display');
+                                    const emailHidden = document.getElementById('emailField');
+                                    if (emailDisplay) emailDisplay.innerText = targetEmail;
+                                    if (emailHidden) emailHidden.value = targetEmail;
+
+                                    window.openAuthModal('verify');
+                                    if (typeof window.initVerifyPolling === 'function') {
+                                        window.initVerifyPolling();
+                                    }
+                                    if (typeof window.startTimer === 'function') {
+                                        window.startTimer();
+                                    }
+                                    if (typeof window.setupOtpInputListeners === 'function') {
+                                        window.setupOtpInputListeners();
+                                    }
+                                } else {
+                                    window.location.href = result.redirect || `/auth/verify?email=${encodeURIComponent(targetEmail)}`;
+                                }
+
+                                if (window.Swal) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Almost There!',
+                                        text: 'Please check your email for the 6-digit verification code.',
+                                        timer: 4500,
+                                        showConfirmButton: false,
+                                        toast: true,
+                                        position: 'top-end',
+                                        timerProgressBar: true
+                                    });
+                                }
+                            } else {
+                                if (window.Swal) {
+                                    await Swal.fire({
+                                        icon: 'success',
+                                        title: 'Success!',
+                                        text: 'Registration successful.',
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    });
+                                }
+                                window.location.href = result.redirect || "/customer/dashboard";
                             }
-                            window.location.href = result.redirect || "/customer/dashboard";
                         } else {
                             submitBtn.disabled = false;
                             submitBtn.innerHTML = originalBtnText;
