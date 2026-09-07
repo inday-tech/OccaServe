@@ -628,7 +628,7 @@ async def register(
             else:
                 print(f"[AUTH WARNING] Verification email delivery failed for {email}: {EmailService.get_last_error()}")
         except Exception as e:
-            print(f"[AUTH ERROR] Failed to send verification email to {email}: {e}")
+            print(f"OTP EMAIL FAILED: {type(e).__name__}: {e}")
     else:
         db.commit() # Upgrade users don't need email OTP at this stage
             
@@ -808,12 +808,22 @@ def resend_verification_code(
     db.commit()
     
     # Resend Email
-    if EmailService.send_verification_email(email, otp):
+    try:
+        EmailService.send_verification_email(email, otp)
         return {"success": True, "message": "Verification code resent"}
-    else:
-        last_err = EmailService.get_last_error()
-        err_detail = f": {last_err}" if last_err else ". Please check email credentials or try again."
-        return {"success": False, "message": f"Failed to send email{err_detail}"}
+    except Exception as e:
+        print(f"OTP RESEND FAILED: {type(e).__name__}: {e}")
+        return {"success": False, "message": f"Failed to send email: {type(e).__name__}: {str(e)}"}
+
+@router.get("/test-email")
+def test_email_endpoint(to: str = "occaserveplatform@gmail.com"):
+    """Standalone diagnostic to test Gmail SMTP independently."""
+    try:
+        EmailService.send_verification_email(to, "123456")
+        return {"success": True, "message": f"Test verification email dispatched to {to}."}
+    except Exception as e:
+        print(f"[STANDALONE TEST EMAIL FAILED]: {type(e).__name__}: {e}")
+        return {"success": False, "error": f"{type(e).__name__}: {str(e)}"}
 
 @router.get("/verify-status")
 def check_verify_status(email: str, db: Session = Depends(database.get_db)):
