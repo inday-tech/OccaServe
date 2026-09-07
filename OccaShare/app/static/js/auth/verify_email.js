@@ -1,11 +1,11 @@
 // Countdown Timer Logic
-let timeLeft = 180; // 3 minutes
+let timeLeft = 300; // 5 minutes
 const timerElement = document.getElementById('timer');
 const resendBtn = document.getElementById('resendBtn');
 let timerId;
 
 function startTimer() {
-    timeLeft = 60;
+    timeLeft = 300; // 5 minutes
     if (resendBtn) {
         resendBtn.classList.add('disabled');
         resendBtn.textContent = "Resend Code";
@@ -29,7 +29,7 @@ function startTimer() {
 }
 
 function resetTimer() {
-    timeLeft = 180;
+    timeLeft = 300;
     startTimer();
 }
 
