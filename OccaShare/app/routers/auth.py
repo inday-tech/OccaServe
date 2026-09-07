@@ -1011,7 +1011,7 @@ async def refresh_token(request: Request, db: Session = Depends(database.get_db)
 
 @router.get("/forgot-password", response_class=HTMLResponse)
 def forgot_password_page(request: Request):
-    return templates.TemplateResponse("auth/forgot_password.html", {"request": request})
+    return RedirectResponse(url="/?auth_modal=forgot")
 
 @router.post("/forgot-password")
 async def forgot_password(
@@ -1019,7 +1019,16 @@ async def forgot_password(
     email: str = Form(...),
     db: Session = Depends(database.get_db)
 ):
-    user = db.query(models.User).filter(models.User.email == email).first()
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or \
+              "application/json" in request.headers.get("Accept", "")
+
+    email_clean = email.strip()
+    if not email_clean or "@" not in email_clean:
+        if is_ajax:
+            return JSONResponse(status_code=400, content={"success": False, "error": "Please enter a valid email address."})
+        return RedirectResponse(url="/?auth_modal=forgot&error=invalid_email", status_code=status.HTTP_303_SEE_OTHER)
+
+    user = db.query(models.User).filter(models.User.email == email_clean).first()
     if user:
         token = str(uuid.uuid4())
         user.reset_token = token
@@ -1027,14 +1036,17 @@ async def forgot_password(
         db.commit()
         
         # Send Email
-        from ..services.email import EmailService
-        EmailService.send_password_reset_email(email, token)
+        try:
+            from ..services.email import EmailService
+            EmailService.send_password_reset_email(email_clean, token)
+        except Exception as e:
+            print(f"Error sending password reset email: {e}")
         
-    # Always return success message for security (don't reveal if email exists)
-    return templates.TemplateResponse("auth/forgot_password.html", {
-        "request": request,
-        "success": "If your email is registered, you will receive a reset link shortly."
-    })
+    success_msg = "If your email is registered, you will receive a reset link shortly."
+    if is_ajax:
+        return JSONResponse(content={"success": True, "message": success_msg})
+
+    return RedirectResponse(url="/?auth_modal=forgot&success=1", status_code=status.HTTP_303_SEE_OTHER)
 
 @router.get("/reset-password", response_class=HTMLResponse)
 def reset_password_page(request: Request, token: str):
@@ -1053,8 +1065,9 @@ async def reset_password(
     ).first()
     
     if not user:
-        return templates.TemplateResponse("auth/forgot_password.html", {
+        return templates.TemplateResponse("auth/reset_password.html", {
             "request": request,
+            "token": token,
             "error": "Invalid or expired reset token. Please request a new one."
         })
         

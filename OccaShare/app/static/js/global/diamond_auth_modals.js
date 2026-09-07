@@ -27,6 +27,10 @@ function openAuthModal(type) {
         signupContent.classList.add('active');
     } else if (type === 'forgot') {
         forgotContent.classList.add('active');
+        const forgotErr = document.getElementById('forgotErrorContainer');
+        const forgotSucc = document.getElementById('forgotSuccessContainer');
+        if (forgotErr) forgotErr.style.display = 'none';
+        if (forgotSucc) forgotSucc.style.display = 'none';
     } else if (type === 'verify') {
         verifyContent.classList.add('active');
     } else if (type === 'caterer-signup' && catererContent) {
@@ -141,6 +145,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (href === '/auth/register/caterer') {
                         e.preventDefault();
                         openAuthModal('caterer-signup');
+                    } else if (href === '/auth/forgot-password') {
+                        e.preventDefault();
+                        openAuthModal('forgot');
                     }
                 });
             });
@@ -220,6 +227,100 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- AJAX FORGOT PASSWORD HANDLER (Event Delegation) ---
+    document.addEventListener('submit', async (e) => {
+        const forgotForm = e.target.closest('#forgotForm');
+        if (!forgotForm) return;
+
+        e.preventDefault();
+
+        const submitBtn = forgotForm.querySelector('button[type="submit"]');
+        const successContainer = document.getElementById('forgotSuccessContainer');
+        const successText = successContainer ? successContainer.querySelector('.success-message') : null;
+        const errorContainer = document.getElementById('forgotErrorContainer');
+        const errorText = errorContainer ? errorContainer.querySelector('.error-message') : null;
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.dataset.originalContent = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> <span>Sending link...</span>';
+        }
+
+        if (successContainer) successContainer.style.display = 'none';
+        if (errorContainer) errorContainer.style.display = 'none';
+
+        const formData = new FormData(forgotForm);
+
+        try {
+            const response = await fetch('/auth/forgot-password', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            });
+
+            const contentType = response.headers.get("content-type");
+            let result = {};
+            if (contentType && contentType.includes("application/json")) {
+                result = await response.json();
+            } else {
+                result = { success: response.ok, message: "If your email is registered, you will receive a reset link shortly." };
+            }
+
+            if (response.ok && result.success) {
+                const message = result.message || 'If your email is registered, you will receive a reset link shortly.';
+                if (successContainer && successText) {
+                    successText.textContent = message;
+                    successContainer.style.display = 'flex';
+                    successContainer.style.animation = 'none';
+                    successContainer.offsetHeight; // trigger reflow
+                    successContainer.style.animation = 'fadeInError 0.3s ease';
+                }
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Email Sent!',
+                        text: message,
+                        confirmButtonColor: '#FF7B54'
+                    });
+                }
+                const emailInput = forgotForm.querySelector('input[name="email"]');
+                if (emailInput) emailInput.value = '';
+            } else {
+                const errMsg = result.error || result.message || 'Failed to send reset link. Please check your email.';
+                if (errorContainer && errorText) {
+                    errorText.textContent = errMsg;
+                    errorContainer.style.display = 'flex';
+                    errorContainer.style.animation = 'none';
+                    errorContainer.offsetHeight; // trigger reflow
+                    errorContainer.style.animation = 'fadeInError 0.3s ease';
+                } else if (window.Swal) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: errMsg,
+                        confirmButtonColor: '#FF7B54'
+                    });
+                } else {
+                    alert(errMsg);
+                }
+            }
+        } catch (err) {
+            console.error('Forgot password error:', err);
+            if (errorContainer && errorText) {
+                errorText.textContent = 'Connection error or server issue. Please try again.';
+                errorContainer.style.display = 'flex';
+            }
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = submitBtn.dataset.originalContent || '<span>Send Reset Link</span> <i class="fas fa-paper-plane"></i>';
+            }
+        }
+    });
+
     // Initialize Global interceptors
     attachGlobalAuthInterceptors();
     attachModalInternalInterceptors();
@@ -229,6 +330,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const authModalParam = urlParams.get('auth_modal');
     if (authModalParam) {
         openAuthModal(authModalParam);
+
+        if (authModalParam === 'forgot') {
+            if (urlParams.get('success')) {
+                const sc = document.getElementById('forgotSuccessContainer');
+                const st = sc ? sc.querySelector('.success-message') : null;
+                if (sc && st) {
+                    st.textContent = 'If your email is registered, you will receive a reset link shortly.';
+                    sc.style.display = 'flex';
+                }
+            }
+            if (urlParams.get('error')) {
+                const ec = document.getElementById('forgotErrorContainer');
+                const et = ec ? ec.querySelector('.error-message') : null;
+                if (ec && et) {
+                    et.textContent = 'Unable to send reset link. Please check your email address.';
+                    ec.style.display = 'flex';
+                }
+            }
+        }
+
         // Clear param from URL without refreshing to keep it clean
         const newUrl = window.location.pathname + window.location.hash;
         window.history.replaceState({}, document.title, newUrl);
