@@ -1,55 +1,48 @@
-// Countdown Timer & Resend Cooldown Logic
+// Countdown Timer Logic (5 Minutes = 300 Seconds)
 let timerId;
-let resendTimerId;
+let timeLeft = 300;
 
 function startTimer() {
-    let resendLeft = 30; // 30 seconds cooldown for resend button
-    let totalValidityLeft = 300; // 5 minutes (300s) code validity
-
+    timeLeft = 300; // 5 minutes
     const btn = document.getElementById('resendBtn');
     const timer = document.getElementById('timer');
+    const timerContainer = document.getElementById('timerContainer');
 
+    // Hide the resend button while the countdown is running
     if (btn) {
+        btn.style.display = 'none';
         btn.classList.add('disabled');
-        btn.style.opacity = '0.6';
-        btn.style.cursor = 'not-allowed';
-        btn.textContent = `Resend Code (${resendLeft}s)`;
     }
     if (timer) {
         timer.textContent = "05:00";
     }
+    if (timerContainer) {
+        timerContainer.style.display = 'block';
+    }
 
     clearInterval(timerId);
     timerId = setInterval(() => {
-        totalValidityLeft--;
+        timeLeft--;
         const curTimer = document.getElementById('timer');
-        if (totalValidityLeft <= 0) {
-            clearInterval(timerId);
-            if (curTimer) curTimer.textContent = "00:00 (Expired)";
-        } else {
-            const minutes = Math.floor(totalValidityLeft / 60);
-            const seconds = totalValidityLeft % 60;
-            if (curTimer) {
-                curTimer.textContent = `${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-            }
-        }
-    }, 1000);
-
-    clearInterval(resendTimerId);
-    resendTimerId = setInterval(() => {
-        resendLeft--;
         const curBtn = document.getElementById('resendBtn');
-        if (resendLeft <= 0) {
-            clearInterval(resendTimerId);
+        const curTimerContainer = document.getElementById('timerContainer');
+
+        if (timeLeft <= 0) {
+            clearInterval(timerId);
+            // Time is up: hide countdown text and show clickable resend button
+            if (curTimerContainer) {
+                curTimerContainer.style.display = 'none';
+            }
             if (curBtn) {
+                curBtn.style.display = 'inline-block';
                 curBtn.classList.remove('disabled');
-                curBtn.style.opacity = '1';
-                curBtn.style.cursor = 'pointer';
                 curBtn.textContent = "Resend Code";
             }
         } else {
-            if (curBtn && curBtn.classList.contains('disabled')) {
-                curBtn.textContent = `Resend Code (${resendLeft}s)`;
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            if (curTimer) {
+                curTimer.textContent = `${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
             }
         }
     }, 1000);
