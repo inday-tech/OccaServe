@@ -5,7 +5,7 @@
 
 (function () {
     let currentStepCat = 1;
-    const totalStepsCat = 3;
+    const totalStepsCat = 2;
 
     // Compose hidden full_name from separate fields (called by diamond_validation.js crossCheckNames)
     window.composeFullNameCat = function () {
@@ -65,11 +65,16 @@
         if (prevBtn) prevBtn.style.display = currentStepCat === 1 ? 'none' : 'inline-block';
 
         if (nextBtn) {
-            const btnText = nextBtn.querySelector('span') || nextBtn;
-            if (btnText === nextBtn) {
-                nextBtn.innerText = currentStepCat === totalStepsCat ? 'Complete Registration' : 'Next Step';
+            const btnText = nextBtn.querySelector('span');
+            const btnIcon = nextBtn.querySelector('i');
+            if (currentStepCat >= totalStepsCat) {
+                if (btnText) btnText.innerText = 'Create Account';
+                else nextBtn.innerHTML = '<span>Create Account</span> <i class="fas fa-user-plus" style="margin-left: 6px;"></i>';
+                if (btnIcon) btnIcon.className = 'fas fa-user-plus';
             } else {
-                btnText.innerText = currentStepCat === totalStepsCat ? 'Complete Registration' : 'Next Step';
+                if (btnText) btnText.innerText = 'Next Step';
+                else nextBtn.innerHTML = '<span>Next Step</span> <i class="fas fa-chevron-right" style="margin-left: 6px;"></i>';
+                if (btnIcon) btnIcon.className = 'fas fa-chevron-right';
             }
         }
     };
@@ -359,9 +364,11 @@
         const formData = new FormData(form);
         const submitBtn = document.getElementById('nextBtnCat');
 
-        if (submitBtn) submitBtn.disabled = true;
-        const originalText = submitBtn ? submitBtn.innerText : 'Submit';
-        if (submitBtn) submitBtn.innerText = 'Creating Account...';
+        const originalHtml = submitBtn ? submitBtn.innerHTML : '<span>Create Account</span> <i class="fas fa-user-plus" style="margin-left: 6px;"></i>';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 6px;"></i> Creating Account...';
+        }
 
         try {
             updateAddressCat();
@@ -481,7 +488,7 @@
         } finally {
             if (submitBtn) {
                 submitBtn.disabled = false;
-                submitBtn.innerText = originalText;
+                submitBtn.innerHTML = originalHtml;
             }
         }
     }
