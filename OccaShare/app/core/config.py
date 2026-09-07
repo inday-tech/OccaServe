@@ -46,11 +46,13 @@ class Settings:
 
     @property
     def MAIL_TLS(self):
-        return os.getenv("MAIL_TLS", "True") == "True"
+        val = str(os.getenv("MAIL_TLS", "True")).strip().lower()
+        return val in ("true", "1", "yes", "t")
 
     @property
     def MAIL_SSL(self):
-        return os.getenv("MAIL_SSL", "False") == "True"
+        val = str(os.getenv("MAIL_SSL", "False")).strip().lower()
+        return val in ("true", "1", "yes", "t")
 
     # SOCIAL LOGIN CONFIGURATION
     FACEBOOK_CLIENT_ID = os.getenv("FACEBOOK_CLIENT_ID", "")

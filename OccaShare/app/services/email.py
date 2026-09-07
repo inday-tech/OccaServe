@@ -78,8 +78,9 @@ class EmailService:
                     settings.MAIL_PORT,
                     timeout=15
                 )
-                server.ehlo()
-                if settings.MAIL_TLS:
+                # Port 587 is the STARTTLS submission port by standard — always enable TLS
+                if settings.MAIL_TLS or settings.MAIL_PORT == 587:
+                    print("[EMAIL] Upgrading connection with STARTTLS...")
                     server.starttls()
                     server.ehlo()
 
