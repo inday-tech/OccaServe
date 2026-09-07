@@ -200,9 +200,7 @@
 
             <form action="/auth/verify" method="post" id="verifyForm">
                 <input type="hidden" name="email" value="{{ email }}" id="emailField">
-                {% if next_url %}
-                <input type="hidden" name="next_url" value="{{ next_url }}">
-                {% endif %}
+                <input type="hidden" name="next_url" value="{{ next_url if next_url else '' }}" id="nextUrlField">
                 <div class="form-group" style="margin: 2rem 0;">
                     <div class="otp-input-container" style="display: flex; justify-content: center; gap: 0.5rem;">
                         <input type="text" class="otp-box" maxlength="1" inputmode="numeric" autocomplete="one-time-code" style="width: 3.5rem; height: 4rem; text-align: center; font-size: 1.5rem; font-weight: 700; border: 2px solid var(--slate-200); border-radius: 0.75rem; background: var(--slate-50); color: var(--slate-900); transition: all 0.2s ease; outline: none;">

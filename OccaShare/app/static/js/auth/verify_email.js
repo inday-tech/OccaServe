@@ -87,7 +87,8 @@ async function initVerifyPolling() {
                         confirmButtonColor: '#FF7B54'
                     });
                 }
-                const nextUrl = document.querySelector('input[name="next_url"]')?.value || '/customer/dashboard';
+                const roleBasedFallback = (result && result.role === 'caterer') ? '/caterer/dashboard' : '/customer/dashboard';
+                const nextUrl = (result && result.redirect) || document.querySelector('input[name="next_url"]')?.value || roleBasedFallback;
                 window.location.href = nextUrl;
             }
         } catch (error) {
@@ -277,10 +278,13 @@ async function submitOtpForm() {
                     confirmButtonColor: '#FF7B54'
                 });
             }
-            window.location.href = data.redirect || '/customer/dashboard';
+            const roleBasedFallback = (data && data.role === 'caterer') ? '/caterer/dashboard' : '/customer/dashboard';
+            const targetUrl = (data && data.redirect) || document.querySelector('input[name="next_url"]')?.value || roleBasedFallback;
+            window.location.href = targetUrl;
         } else {
             verifyForm.dataset.submitting = 'false';
-            const errMsg = (data && (data.message || data.detail)) || 'Invalid verification code. Please check and try again.';
+            const defaultErr = (!response.ok && response.status >= 500) ? 'Server error occurred during verification. Please try again.' : 'Invalid verification code. Please check and try again.';
+            const errMsg = (data && (data.message || data.detail)) || defaultErr;
             if (window.Swal) {
                 Swal.fire({
                     icon: 'error',

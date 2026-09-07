@@ -405,8 +405,10 @@
                         const emailParam = urlObj.searchParams.get('email') || document.getElementById('email_cat')?.value || '';
                         const emailDisplay = document.getElementById('email-display');
                         const emailField = document.getElementById('emailField');
+                        const nextField = document.getElementById('nextUrlField') || document.querySelector('input[name="next_url"]');
                         if (emailDisplay) emailDisplay.innerText = emailParam;
                         if (emailField) emailField.value = emailParam;
+                        if (nextField) nextField.value = '/caterer/dashboard';
 
                         openAuthModal('verify');
                         if (typeof window.initVerifyPolling === 'function') window.initVerifyPolling();
@@ -425,8 +427,10 @@
                     if (window.openAuthModal && document.getElementById('authModalOverlay')) {
                         const emailDisplay = document.getElementById('email-display');
                         const emailField = document.getElementById('emailField');
+                        const nextField = document.getElementById('nextUrlField') || document.querySelector('input[name="next_url"]');
                         if (emailDisplay) emailDisplay.innerText = targetEmail;
                         if (emailField) emailField.value = targetEmail;
+                        if (nextField) nextField.value = '/caterer/dashboard';
 
                         openAuthModal('verify');
                         if (typeof window.initVerifyPolling === 'function') {
@@ -439,7 +443,7 @@
                             window.setupOtpInputListeners();
                         }
                     } else {
-                        window.location.href = `/auth/verify?email=${encodeURIComponent(targetEmail)}`;
+                        window.location.href = `/auth/verify?email=${encodeURIComponent(targetEmail)}&next=/caterer/dashboard`;
                     }
 
                     if (window.Swal) {

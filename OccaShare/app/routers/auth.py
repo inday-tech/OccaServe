@@ -663,8 +663,16 @@ async def register(
     return RedirectResponse(url=verify_url, status_code=status.HTTP_303_SEE_OTHER)
 
 @router.get("/verify", response_class=HTMLResponse)
-def verify_email_page(request: Request, email: str = "", next: Optional[str] = None):
-    return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "next_url": next})
+def verify_email_page(request: Request, email: str = "", next: Optional[str] = None, db: Session = Depends(database.get_db)):
+    clean_email = (email or "").strip().lower()
+    user_role = "customer"
+    if clean_email:
+        user = db.query(models.User).filter(func.lower(models.User.email) == clean_email).first()
+        if user and user.role:
+            user_role = user.role
+            if not next:
+                next = utils.get_dashboard_url(user.role)
+    return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": clean_email, "next_url": next, "user_role": user_role})
 
 @router.get("/pending", response_class=HTMLResponse)
 def pending_approval_page(request: Request, email: str = "", uid: Optional[int] = None):
@@ -681,111 +689,117 @@ def verify_email_submit(
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or \
               "application/json" in request.headers.get("Accept", "")
               
-    user = db.query(models.User).filter(models.User.email == email).first()
+    clean_email = (email or "").strip().lower()
+    clean_code = (code or "").strip()
     
-    if user:
-        if user.is_email_verified:
-            redirect_url = next_url if next_url else utils.get_dashboard_url(user.role)
-            access_token_expires = timedelta(minutes=security_auth.ACCESS_TOKEN_EXPIRE_MINUTES)
-            access_token = security_auth.create_access_token(
-                data={"sub": user.email, "role": user.role},
-                expires_delta=access_token_expires
-            )
-            if is_ajax:
-                response = JSONResponse(content={"success": True, "message": "Already verified", "redirect": redirect_url})
-                response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
+    try:
+        user = db.query(models.User).filter(func.lower(models.User.email) == clean_email).first()
+        
+        if user:
+            if user.is_email_verified:
+                redirect_url = next_url if next_url else utils.get_dashboard_url(user.role)
+                access_token_expires = timedelta(minutes=security_auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+                access_token = security_auth.create_access_token(
+                    data={"sub": user.email, "role": user.role},
+                    expires_delta=access_token_expires
+                )
+                if is_ajax:
+                    response = JSONResponse(content={"success": True, "message": "Already verified", "redirect": redirect_url, "role": user.role})
+                    response.set_cookie(key="access_token", value=f"Bearer {access_token}", path="/", httponly=True, samesite="lax")
+                    return response
+                response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+                response.set_cookie(key="access_token", value=f"Bearer {access_token}", path="/", httponly=True, samesite="lax")
                 return response
-            response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
-            response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
-            return response
 
-        if user.verification_code == code.strip():
-            from datetime import datetime, timezone
-            if user.otp_expires_at:
-                now_time = datetime.now(timezone.utc)
-                expire_time = user.otp_expires_at
-                if expire_time.tzinfo is None:
-                    expire_time = expire_time.replace(tzinfo=timezone.utc)
-                
-                if now_time > expire_time:
-                    if is_ajax:
-                        return JSONResponse(status_code=400, content={"success": False, "message": "Verification code expired. Please request a new one."})
-                    return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "Verification code expired. Please request a new one."})
-
-            user.is_email_verified = True
-            user.verification_code = None
-            user.otp_expires_at = None
-            if user.role == "caterer" and user.status == "pending_verification":
-                user.status = "pending_approval"
-            elif user.status == "pending_verification":
-                user.status = "active"
-                
-            from sqlalchemy.sql import func
-            user.last_login = func.now()
-            db.commit()
-            
-            # Phase 1: Notify Admins of New Verified Customer
-            if user.role == "customer":
-                from ..services.realtime import manager
-                import asyncio
-                admins = db.query(models.User).filter(models.User.role == "admin").all()
-                for admin in admins:
-                    new_notif = models.Notification(
-                        user_id=admin.id,
-                        title="New Customer Registration",
-                        message=f"Customer {user.first_name} {user.last_name} has registered and verified their email.",
-                        link="/admin/customers",
-                        type="info"
-                    )
-                    db.add(new_notif)
-                    db.commit()
+            db_code = str(user.verification_code or "").strip()
+            if db_code and db_code == clean_code:
+                from datetime import datetime, timezone
+                if user.otp_expires_at:
+                    now_time = datetime.now(timezone.utc)
+                    expire_time = user.otp_expires_at
+                    if expire_time.tzinfo is None:
+                        expire_time = expire_time.replace(tzinfo=timezone.utc)
                     
-                    count = db.query(models.Notification).filter(models.Notification.user_id == admin.id, models.Notification.is_read == False).count()
-                    asyncio.create_task(manager.broadcast_to_user(admin.id, {
-                        "type": "new_notification",
-                        "message": f"New Customer: {user.first_name}",
-                        "count": count
-                    }))
+                    if now_time > expire_time:
+                        if is_ajax:
+                            return JSONResponse(status_code=400, content={"success": False, "message": "Verification code expired. Please request a new one."})
+                        return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "Verification code expired. Please request a new one."})
+
+                user.is_email_verified = True
+                user.verification_code = None
+                user.otp_expires_at = None
+                if user.role == "caterer" and user.status in ["pending_verification", "draft"]:
+                    user.status = "pending_approval"
+                else:
+                    user.status = "active"
+                    
+                user.last_login = func.now()
+                db.commit()
+                
+                # Safe Admin Notifications (won't interrupt user verification if failure occurs)
+                if user.role == "customer":
+                    try:
+                        from ..services.realtime import manager
+                        import asyncio
+                        admins = db.query(models.User).filter(models.User.role == "admin").all()
+                        for admin in admins:
+                            new_notif = models.Notification(
+                                user_id=admin.id,
+                                title="New Customer Registration",
+                                message=f"Customer {user.first_name} {user.last_name} has registered and verified their email.",
+                                link="/admin/customers",
+                                type="info"
+                            )
+                            db.add(new_notif)
+                        db.commit()
+                        
+                        for admin in admins:
+                            count = db.query(models.Notification).filter(models.Notification.user_id == admin.id, models.Notification.is_read == False).count()
+                            asyncio.create_task(manager.broadcast_to_user(admin.id, {
+                                "type": "new_notification",
+                                "message": f"New Customer: {user.first_name}",
+                                "count": count
+                            }))
+                    except Exception as notif_err:
+                        print(f"[AUTH NOTIFICATION ERROR] Non-fatal notification error: {notif_err}")
+
+            else:
+                if is_ajax:
+                    return JSONResponse(status_code=400, content={"success": False, "message": "Invalid verification code. Please check and try again."})
+                return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "Invalid verification code. Please check and try again."})
         else:
             if is_ajax:
-                return JSONResponse(status_code=400, content={"success": False, "message": "Invalid verification code"})
-            return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "Invalid verification code"})
-    else:
-        if is_ajax:
-            return JSONResponse(status_code=404, content={"success": False, "message": "User not found or registration expired"})
-        return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "User not found or registration expired"})
-        
-    access_token_expires = timedelta(minutes=security_auth.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = security_auth.create_access_token(
-        data={"sub": user.email, "role": user.role},
-        expires_delta=access_token_expires
-    )
+                return JSONResponse(status_code=404, content={"success": False, "message": "User not found or registration expired"})
+            return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "User not found or registration expired"})
+            
+        access_token_expires = timedelta(minutes=security_auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = security_auth.create_access_token(
+            data={"sub": user.email, "role": user.role},
+            expires_delta=access_token_expires
+        )
 
-    # Check if this is a caterer that needs admin approval
-    if user.role == "caterer" and user.status == "pending_approval":
-        pending_url = f"/auth/pending?email={user.email}&uid={user.id}"
+        redirect_url = next_url if next_url else utils.get_dashboard_url(user.role)
+        if "?" in redirect_url:
+            redirect_url += "&verified=success"
+        else:
+            redirect_url += "?verified=success"
+            
         if is_ajax:
-            response = JSONResponse(content={"success": True, "message": "Identity verified! Account pending caterer approval.", "redirect": pending_url})
-            response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
+            response = JSONResponse(content={"success": True, "message": "Email verified successfully!", "redirect": redirect_url, "role": user.role})
+            response.set_cookie(key="access_token", value=f"Bearer {access_token}", path="/", httponly=True, samesite="lax")
             return response
-        response = RedirectResponse(url=pending_url, status_code=status.HTTP_303_SEE_OTHER)
-        response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
-        return response
-    
-    redirect_url = next_url if next_url else utils.get_dashboard_url(user.role)
-    if "?" in redirect_url:
-        redirect_url += "&verified=success"
-    else:
-        redirect_url += "?verified=success"
-        
-    if is_ajax:
-        response = JSONResponse(content={"success": True, "message": "Email verified successfully!", "redirect": redirect_url})
-        response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
+
+        response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+        response.set_cookie(key="access_token", value=f"Bearer {access_token}", path="/", httponly=True, samesite="lax")
         return response
 
-    response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
-    response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
-    return response
+    except Exception as e:
+        print(f"[AUTH VERIFY ERROR] {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        if is_ajax:
+            return JSONResponse(status_code=500, content={"success": False, "message": f"Server verification error: {str(e)}"})
+        return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "A server error occurred during verification. Please try again."})
 
 @router.post("/resend-code")
 def resend_verification_code(
@@ -793,7 +807,8 @@ def resend_verification_code(
     email: str = Form(...),
     db: Session = Depends(database.get_db)
 ):
-    user = db.query(models.User).filter(models.User.email == email).first()
+    clean_email = (email or "").strip().lower()
+    user = db.query(models.User).filter(func.lower(models.User.email) == clean_email).first()
     if not user:
         return {"success": False, "message": "User not found"}
         
@@ -809,7 +824,7 @@ def resend_verification_code(
     
     # Resend Email
     try:
-        EmailService.send_verification_email(email, otp)
+        EmailService.send_verification_email(user.email, otp)
         return {"success": True, "message": "Verification code resent"}
     except Exception as e:
         print(f"OTP RESEND FAILED: {type(e).__name__}: {e}")
@@ -827,10 +842,16 @@ def test_email_endpoint(to: str = "occaserveplatform@gmail.com"):
 
 @router.get("/verify-status")
 def check_verify_status(email: str, db: Session = Depends(database.get_db)):
-    user = db.query(models.User).filter(models.User.email == email).first()
+    clean_email = (email or "").strip().lower()
+    user = db.query(models.User).filter(func.lower(models.User.email) == clean_email).first()
     if not user:
         return {"verified": False}
-    return {"verified": user.is_email_verified}
+    redirect_url = utils.get_dashboard_url(user.role)
+    return {
+        "verified": user.is_email_verified,
+        "role": user.role,
+        "redirect": redirect_url
+    }
 
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request, next: Optional[str] = None, db: Session = Depends(database.get_db)):

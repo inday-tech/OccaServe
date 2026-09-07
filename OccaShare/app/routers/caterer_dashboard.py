@@ -1203,8 +1203,15 @@ async def check_urgent_bookings(
 async def caterer_dashboard(
     request: Request, 
     db: Session = Depends(database.get_db),
-    user: models.User = Depends(caterer_only)
+    user: models.User = Depends(auth.get_current_user)
 ):
+    if user.role == "customer":
+        return RedirectResponse(url="/customer/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    if user.role == "admin":
+        return RedirectResponse(url="/admin/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    if user.role != "caterer":
+        return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
     profile = user.caterer_profile
     bookings = [b for b in profile.bookings if b.status not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted'] and not b.is_archived]
     

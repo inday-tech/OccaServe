@@ -53,11 +53,12 @@ def create_refresh_token(user_id: int, db: Session):
 def verify_token(token: str, db: Session):
     """Helper to verify a raw JWT string and return the user."""
     try:
+        from sqlalchemy import func
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
             return None
-        user = db.query(models.User).filter(models.User.email == email).first()
+        user = db.query(models.User).filter(func.lower(models.User.email) == email.lower().strip()).first()
         return user
     except JWTError:
         return None
@@ -86,7 +87,8 @@ async def get_current_user(request: Request, db: Session = Depends(database.get_
     except JWTError:
         raise credentials_exception
     
-    user = db.query(models.User).filter(models.User.email == email).first()
+    from sqlalchemy import func
+    user = db.query(models.User).filter(func.lower(models.User.email) == email.lower().strip()).first()
     if user is None:
         raise credentials_exception
     return user

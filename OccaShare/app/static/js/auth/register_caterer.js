@@ -389,8 +389,10 @@
                 if (window.openAuthModal) {
                     const emailDisplay = document.getElementById('email-display');
                     const emailField = document.getElementById('emailField');
+                    const nextField = document.getElementById('nextUrlField') || document.querySelector('input[name="next_url"]');
                     if (emailDisplay) emailDisplay.innerText = email;
                     if (emailField) emailField.value = email;
+                    if (nextField) nextField.value = '/caterer/dashboard';
 
                     openAuthModal('verify');
 
@@ -408,7 +410,7 @@
                     }
                 } else {
                     // Fallback: navigate to verify page
-                    window.location.href = result.redirect || `/auth/verify?email=${encodeURIComponent(email)}`;
+                    window.location.href = result.redirect || `/auth/verify?email=${encodeURIComponent(email)}&next=/caterer/dashboard`;
                 }
             } else {
                 // Server returned an error — show specific fields that failed
