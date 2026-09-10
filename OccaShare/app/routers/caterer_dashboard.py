@@ -306,6 +306,11 @@ async def create_external_booking(
 ):
     try:
         data = await request.json()
+        # DEBUG: Log incoming manual booking attempts for troubleshooting
+        try:
+            print(f"[DEBUG manual booking] caterer_id={getattr(user, 'id', None)} payload_keys={list(data.keys())}")
+        except Exception:
+            pass
         caterer = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == user.id).first()
         if not caterer:
             raise HTTPException(status_code=403, detail="Caterer profile not found")
@@ -397,21 +402,17 @@ async def create_manual_booking(
         if customer_email.lower() == user.email.lower() or (customer_contact and customer_contact == user.phone_number):
             raise HTTPException(status_code=400, detail="manCustEmail|Security Violation: You cannot create a booking using your own caterer email or contact number.")
         
-        first_name = data.get("first_name", "").strip()
-        last_name = data.get("last_name", "").strip()
-        middle_name = data.get("middle_name", "").strip()
-        
-        if not first_name or not last_name or not middle_name:
-            raise HTTPException(status_code=400, detail="manFirstName|First name, Middle name, and Last name are required for data integrity")
-            
-        # Enterprise-Grade Name Validation (No John John John)
-        fname_lower = first_name.lower()
-        lname_lower = last_name.lower()
-        mname_lower = middle_name.lower()
-        if fname_lower == lname_lower or (middle_name and fname_lower == mname_lower):
-            raise HTTPException(status_code=400, detail="manLastName|Invalid name format: First, middle, and last names cannot be identical.")
-
-        customer_name = f"{first_name} {middle_name} {last_name}".replace("  ", " ").strip()
+        # Accept either `full_name` or first/middle/last for compatibility
+        full_name = data.get("full_name", "").strip()
+        if not full_name:
+            first_name = data.get("first_name", "").strip()
+            last_name = data.get("last_name", "").strip()
+            middle_name = data.get("middle_name", "").strip()
+            if not first_name or not last_name:
+                raise HTTPException(status_code=400, detail="manFullName|Customer full name (or first+last) is required")
+            customer_name = f"{first_name} {middle_name or ''} {last_name}".replace("  ", " ").strip()
+        else:
+            customer_name = full_name
         
         province = data.get("province", "").strip()
         municipality = data.get("municipality", "").strip()
@@ -442,7 +443,10 @@ async def create_manual_booking(
             if len(set(clean_contact[2:])) <= 2:
                  raise HTTPException(status_code=400, detail="manCustContact|Invalid contact number pattern detected. Please use a real mobile number.")
 
-        if not target_user:
+        if target_user:
+            is_existing_user = True
+        else:
+            is_existing_user = False
             # Create a shadow/guest user
             temp_pass = auth.pwd_context.hash(str(uuid.uuid4()))
             target_user = models.User(
@@ -527,16 +531,22 @@ async def create_manual_booking(
 
         # Build special requests from notes
         special_notes = data.get("special_notes", "").strip()
-        special_requests = f"Walk-in Booking{(' — ' + special_notes) if special_notes else ''}"
+        special_requests = f"Manual Booking{(' — ' + special_notes) if special_notes else ''}"
         
         # Payment handling
         payment_method = data.get("payment_method", "Cash")
-        payment_status = data.get("payment_status", "paid")
+        requested_status = data.get("status", "inquiry")
+        override_kyc = data.get("override_kyc", False)
+        
+        # Enforce Digital Contract & KYC rule for existing users
+        if is_existing_user and requested_status == "confirmed" and not override_kyc:
+            requested_status = "awaiting_customer"
+            special_requests = special_requests + " [Awaiting Customer Digital Signature & KYC]"
         
         # Build quotation data
         quotation_items = data.get("quotation_items", [])
         discount_amount = data.get("discount_amount", 0)
-        amount_paid = data.get("amount_paid", 0)
+        amount_paid = float(data.get("amount_paid", 0) or 0)
         
         custom_reqs = {
             "is_walk_in": True,
@@ -544,7 +554,26 @@ async def create_manual_booking(
             "discount_amount": discount_amount,
             "amount_paid": amount_paid
         }
+        # Record entry method in custom requirements (avoid adding DB column)
+        custom_reqs["entry_method"] = "manual"
         
+        # Determine payment_status based on rules:
+        # Total = 0 & Paid = 0 -> No Payment
+        # Total > 0 & Paid = 0 -> Unpaid
+        # Paid > 0 but Paid < Total -> Partial
+        # Paid >= Total -> Fully Paid (but not for 0/0)
+        total_amt = float(data.get("total_amount", 0) or 0)
+        if total_amt == 0 and amount_paid == 0:
+            computed_payment_status = 'no_payment'
+        elif total_amt > 0 and amount_paid == 0:
+            computed_payment_status = 'unpaid'
+        elif amount_paid > 0 and amount_paid < total_amt:
+            computed_payment_status = 'partial'
+        elif amount_paid >= total_amt and total_amt > 0:
+            computed_payment_status = 'fully_paid'
+        else:
+            computed_payment_status = 'unpaid'
+
         new_booking = models.Booking(
             user_id=target_user.id,
             caterer_id=user.caterer_profile.id,
@@ -557,8 +586,8 @@ async def create_manual_booking(
             total_amount=data.get("total_amount", 0),
             total_price=data.get("total_amount", 0),
             venue_address=venue_address,
-            status="confirmed" if (amount_paid > 0 or payment_status == "paid") else "pending",
-payment_status=payment_status,
+            status=requested_status,
+            payment_status=computed_payment_status,
             payment_method=payment_method,
             amount_paid=amount_paid,
             special_requests=special_requests,
@@ -608,8 +637,8 @@ payment_status=payment_status,
         # 4. Add History
         history = models.BookingHistory(
             booking_id=new_booking.id,
-            status="confirmed",
-            notes="Manual walk-in booking created by caterer."
+            status=new_booking.status,
+            notes=f"{new_booking.status.upper()} CREATED\nManual booking ({data.get('booking_source', 'Walk-in')}) created by caterer."
         )
         db.add(history)
         
@@ -1306,6 +1335,12 @@ async def caterer_dashboard(
         next_action = {"title": "Publish Listing", "desc": "You're all set! Publish your listing to start receiving bookings.", "url": "#", "btn": "Publish Now", "onclick": "togglePublish(this)"}
 
     total_bookings = len([b for b in profile.bookings if b.status not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted', 'cancelled'] and not b.is_archived])
+    
+    pinned_schedules = db.query(models.InternalSchedule).filter(
+        models.InternalSchedule.caterer_id == profile.id,
+        models.InternalSchedule.is_pinned == True,
+        models.InternalSchedule.date >= today
+    ).order_by(models.InternalSchedule.date, models.InternalSchedule.time).all()
 
     return templates.TemplateResponse("caterer/index.html", {
         "request": request,
@@ -1325,7 +1360,8 @@ async def caterer_dashboard(
         "can_publish": can_publish,
         "is_identity_verified": is_identity_verified,
         "next_action": next_action,
-        "total_bookings": total_bookings
+        "total_bookings": total_bookings,
+        "pinned_schedules": pinned_schedules
     })
 
 @router.post("/toggle-publish")
@@ -1569,19 +1605,112 @@ async def dashboard_overview_api(
 async def redirect_booking_details(booking_id: int):
     return RedirectResponse(url=f"/caterer/bookings?focus={booking_id}", status_code=303)
 
-@router.get("/bookings", response_class=HTMLResponse)
+def build_booking_list_projection(booking, today):
+    item_categories = set()
+    item_names = []
+    for item in booking.selected_items or []:
+        related = item.menu_item or item.equipment or item.service
+        if item.menu_item or booking.package_id:
+            item_categories.add("catering")
+        if item.equipment:
+            item_categories.add("rental")
+        if item.service:
+            item_categories.add("service")
+        if related:
+            item_names.append(f"{item.quantity or 1}x {related.name}")
 
+    if booking.package_id:
+        item_categories.add("catering")
+    event_type = (booking.event_type or "").lower()
+    if "rental" in event_type or "equipment" in event_type:
+        item_categories.add("rental")
+    if "service" in event_type or "decoration" in event_type:
+        item_categories.add("service")
+    if booking.document_type == "invoice" or "ala carte" in event_type:
+        item_categories.add("catering")
+
+    if len(item_categories) > 1:
+        booking_kind, type_label, type_icon = "mixed", "Mixed", "fa-layer-group"
+    elif "rental" in item_categories:
+        booking_kind, type_label, type_icon = "rental", "Rental", "fa-chair"
+    elif "service" in item_categories:
+        booking_kind, type_label, type_icon = "service", "Service", "fa-concierge-bell"
+    else:
+        booking_kind, type_label, type_icon = "catering", "Catering", "fa-utensils"
+
+    total = float(booking.total_price or booking.total_amount or 0)
+    paid = min(max(float(booking.amount_paid or 0), 0), max(total, 0))
+    payment_status = booking.payment_status or "no_payment"
+    has_quote = bool(booking.quotation or total > 0)
+    if not has_quote:
+        payment_label = "Not quoted"
+    elif paid >= total and total > 0:
+        payment_label = "Paid"
+    elif paid > 0:
+        payment_label = f"Paid {paid:,.2f} • Balance {max(total - paid, 0):,.2f}"
+    else:
+        payment_label = f"₱{total:,.2f} • Unpaid"
+
+    status_labels = {
+        "inquiry": "Inquiry", "pending_quotation": "Quotation Sent", "awaiting_customer": "Awaiting Customer",
+        "awaiting_caterer": "For Caterer Action", "pending": "Payment Pending", "confirmed": "Confirmed",
+        "preparing": "Preparing", "ready_for_delivery": "Ready for Delivery", "ready_for_pickup": "Ready for Pickup",
+        "on_the_way": "Out for Delivery", "arrived": "Arrived", "setup_ongoing": "Setup", "in_progress": "Ongoing",
+        "completed": "Completed", "cancelled": "Cancelled", "expired": "Expired"
+    }
+    status_label = status_labels.get(booking.status, (booking.status or "Unknown").replace("_", " ").title())
+    attention = ""
+    next_action = "No operational action"
+    needs_action = False
+    if booking.status == "inquiry" and not has_quote:
+        attention, next_action, needs_action = "Quotation needed", "Prepare Quotation", True
+    elif booking.status in ["pending_quotation", "awaiting_customer"]:
+        attention, next_action, needs_action = "Waiting for customer", "Wait for Customer", False
+    elif booking.status in ["pending", "awaiting_payment"] and payment_status not in ["paid", "fully_paid"]:
+        attention, next_action, needs_action = "Payment pending", "Verify Payment", True
+    elif booking.status == "confirmed" and (booking.event_address or booking.venue_address or booking.event_location) is None:
+        attention, next_action, needs_action = "Venue details needed", "Request Venue", True
+    elif booking.status == "preparing":
+        attention, next_action, needs_action = "Ready for setup", "Mark Ready for Setup", True
+    elif booking.status == "setup_ongoing":
+        attention, next_action, needs_action = "Ready to start event", "Start Event", True
+    elif booking.status == "in_progress":
+        attention, next_action, needs_action = "Event is ongoing", "Mark Completed", True
+
+    source = booking.booking_source or ("Website" if booking.user_id else "Walk-in")
+    customer = booking.user
+    customer_name = f"{customer.first_name} {customer.last_name}" if customer else (booking.customer_name or "Walk-in Customer")
+    display_item = booking.package.name if booking.package else (item_names[0] if item_names else (booking.event_name or "Custom booking"))
+    return {
+        "id": booking.id, "kind": booking_kind, "type_label": type_label, "type_icon": type_icon,
+        "status": booking.status or "unknown", "status_label": status_label, "payment_label": payment_label,
+        "attention": attention, "next_action": next_action, "needs_action": needs_action,
+        "customer_name": customer_name, "customer_email": customer.email if customer else (booking.customer_email or ""),
+        "event_type": booking.event_type or "Event", "item_name": display_item,
+        "item_count": len(item_names), "item_names": item_names[:4], "source": source,
+        "source_kind": "walkin" if not booking.user_id else "online", "show_guests": booking_kind == "catering" or bool(booking.guest_count),
+        "guest_count": booking.guest_count, "event_date": booking.event_date,
+        "event_time": booking.event_time, "is_urgent": bool(booking.event_date and 0 <= (booking.event_date - today).days <= 2 and needs_action),
+        "amount": total, "has_quote": has_quote, "payment_filter": "paid" if paid >= total and total > 0 else ("partial" if paid > 0 else "pending"),
+        "document_type": booking.document_type or "booking"
+    }
+
+@router.get("/bookings", response_class=HTMLResponse)
 async def manage_bookings(
     request: Request, 
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    all_bookings = [b for b in user.caterer_profile.bookings if b.status not in ['draft', 'pending_quotation'] and not b.is_archived and b.document_type != 'invoice']
+    all_bookings = [b for b in user.caterer_profile.bookings if b.status != 'draft' and not b.is_archived]
     all_bookings.sort(key=lambda x: x.id, reverse=True)
     
+    booking_list = [build_booking_list_projection(b, today=date.today()) for b in all_bookings]
     total_bookings = len(all_bookings)
+    needs_action_count = sum(1 for item in booking_list if item["needs_action"])
+    upcoming_count = sum(1 for item in booking_list if item["event_date"] and item["event_date"] >= date.today() and item["status"] not in ["cancelled", "completed"])
+    inquiry_count = sum(1 for item in booking_list if item["status"] in ["inquiry", "pending_review"])
     confirmed_count = sum(1 for b in all_bookings if b.status in ['confirmed', 'completed'])
-    pending_count = sum(1 for b in all_bookings if b.status in ['pending', 'awaiting_caterer', 'awaiting_payment', 'pending_review'])
+    pending_count = sum(1 for b in all_bookings if b.status in ['pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_customer', 'awaiting_payment', 'pending_review'])
     cancelled_count = sum(1 for b in all_bookings if b.status == 'cancelled')
     
     packages = db.query(models.CateringPackage).filter(
@@ -1609,9 +1738,13 @@ async def manage_bookings(
         "confirmed_count": confirmed_count,
         "pending_count": pending_count,
         "cancelled_count": cancelled_count,
+        "needs_action_count": needs_action_count,
+        "upcoming_count": upcoming_count,
+        "inquiry_count": inquiry_count,
         "active_page": "bookings",
         "today": today,
         "unread_chat_map": unread_chat_map
+        ,"booking_list": booking_list
     })
 
 @router.get("/orders", response_class=HTMLResponse)
@@ -2180,31 +2313,95 @@ async def get_booking_details_api(
     comm_rate = config.commission_rate if config else 10.0
     comm_fixed = config.commission_fixed_amount if config else 20.0
     
-    total = float(booking.total_amount or 0)
+    total = float(booking.total_price or booking.total_amount or 0)
     commission = (total * (comm_rate / 100.0)) + comm_fixed
     net_amount = total - commission
+    # derive entry method from booking_source for UI convenience
+    try:
+        from app.constants.booking_constants import entry_method_from_source
+        entry_method = entry_method_from_source(booking.booking_source)
+    except Exception:
+        entry_method = 'online'
+
+    total_price = float(booking.total_price or booking.total_amount or 0)
+    payment_records = sorted(booking.payment_records or [], key=lambda record: record.payment_date.isoformat() if record.payment_date else "")
+    selected_items = []
+    for item in booking.selected_items or []:
+        related_item = item.menu_item or item.equipment or item.service
+        selected_items.append({
+            "id": item.id,
+            "name": item.custom_name or (related_item.name if related_item else "Unspecified item"),
+            "quantity": item.quantity or 1,
+            "price": float(item.price or 0),
+            "is_add_on": bool(item.is_add_on),
+            "choices": item.choices or []
+        })
 
     return {
         "id": booking.id,
+        "user_id": booking.user_id,
+        "status": booking.status,
         "event_name": booking.event_name,
         "event_type": booking.event_type,
-        "total_amount": total,
+        "event_date": booking.event_date.isoformat() if booking.event_date else None,
+        "event_time": booking.event_time.strftime("%I:%M %p") if booking.event_time else None,
+        "event_end_time": booking.event_end_time.strftime("%I:%M %p") if booking.event_end_time else None,
+        "guest_count": booking.guest_count or 0,
+        "venue": booking.event_address or booking.venue_address or booking.event_location,
+        "special_requests": booking.special_requests,
+        "booking_source": booking.booking_source,
+        "entry_method": entry_method,
+        "total_amount": total_price,
+        "total_price": total_price,
+        "amount_paid": float(booking.amount_paid or 0),
+        "balance_amount": max(total_price - float(booking.amount_paid or 0), 0),
         "commission": round(commission, 2),
         "net_amount": round(net_amount, 2),
         "commission_rate": comm_rate,
         "payment_status": booking.payment_status,
         "payment_method": booking.payment_method,
+        "payment_plan": booking.payment_plan,
+        "payment_reference": booking.payment_reference,
+        "balance_due_date": booking.balance_due_date.isoformat() if booking.balance_due_date else None,
         "payment_proof_url": booking.payment_proof_url,
         "balance_proof_url": booking.balance_proof_url,
         "payment_verification_data": booking.payment_verification_data,
+        "preparation_status": booking.preparation_status,
+        "preparation_date": booking.preparation_date.isoformat() if booking.preparation_date else None,
+        "actual_cost": float(booking.actual_cost or 0),
+        "created_at": booking.created_at.isoformat() if booking.created_at else None,
+        "updated_at": booking.updated_at.isoformat() if booking.updated_at else None,
+        "document_type": booking.document_type,
+        "package": {
+            "id": booking.package.id,
+            "name": booking.package.name,
+            "price": float(booking.package.price or 0) if getattr(booking.package, "price", None) is not None else None
+        } if booking.package else None,
+        "selected_items": selected_items,
+        "payment_records": [{
+            "id": record.id,
+            "amount": float(record.amount or 0),
+            "payment_date": record.payment_date.isoformat() if record.payment_date else None,
+            "payment_method": record.payment_method,
+            "payment_type": record.payment_type,
+            "reference_notes": record.reference_notes,
+            "recorded_by": record.recorded_by
+        } for record in payment_records],
         "quotation_id": booking.quotation.id if booking.quotation else None,
         "contract_url": booking.quotation.contract_url if booking.quotation else None,
+        "contract_status": booking.contract.status if booking.contract else None,
         "user": {
             "first_name": booking.user.first_name if booking.user else "Walk-in",
             "last_name": booking.user.last_name if booking.user else "Customer",
-            "email": booking.user.email if booking.user else "N/A"
+            "email": booking.user.email if booking.user else booking.customer_email,
+            "phone_number": booking.user.phone_number if booking.user else booking.customer_contact,
+            "is_verified": bool(booking.user and booking.user.is_verified)
         },
-        "is_package": booking.package_id is not None
+        "customer_name": booking.customer_name,
+        "customer_email": booking.customer_email,
+        "customer_contact": booking.customer_contact,
+        "is_package": booking.package_id is not None,
+        "caterer_notes": booking.caterer_notes
     }
 
 @router.get("/api/bookings/{booking_id}/history")
@@ -2922,10 +3119,49 @@ async def caterer_calendar(
         models.CateringPackage.status != 'archived'
     ).all()
     
+    import json
+    package_map = {}
+    for p in packages:
+        # Get menu items
+        menu_items_list = []
+        if hasattr(p, 'menu_items') and p.menu_items:
+            for m in p.menu_items:
+                menu_items_list.append({"name": m.name, "category": m.category})
+        
+        # Get inclusions
+        incs = p.inclusions if hasattr(p, 'inclusions') and p.inclusions else {}
+        
+        package_map[p.id] = {
+            "name": p.name,
+            "price": float(p.price) if p.price else 0,
+            "min_guests": p.min_guests or 1,
+            "menu": menu_items_list,
+            "inclusions": incs
+        }
+    
+    package_map_json = json.dumps(package_map)
+    
     menu_items = db.query(models.MenuItem).filter(
         models.MenuItem.caterer_id == user.caterer_profile.id,
         models.MenuItem.is_archived == False
     ).all()
+    
+    service_items = db.query(models.Service).filter(
+        models.Service.caterer_id == user.caterer_profile.id,
+        models.Service.is_archived == False
+    ).all()
+    
+    equipment_items = db.query(models.Equipment).filter(
+        models.Equipment.caterer_id == user.caterer_profile.id,
+        models.Equipment.is_archived == False
+    ).all()
+    
+    catalog = {
+        "menu": [{"id": m.id, "name": m.name, "price": m.price, "category": m.category} for m in menu_items],
+        "services": [{"id": s.id, "name": s.name, "price": s.selling_price, "category": s.category} for s in service_items],
+        "equipment": [{"id": e.id, "name": e.name, "price": e.rental_price, "category": getattr(e, 'category', None)} for e in equipment_items]
+    }
+    catalog_json = json.dumps(catalog)
     
     return templates.TemplateResponse("caterer/calendar.html", {
         "request": request,
@@ -2933,7 +3169,8 @@ async def caterer_calendar(
         "bookings": tracker_bookings,
         "current_date": current_date,
         "packages": packages,
-        "menu_items": menu_items,
+        "package_map_json": package_map_json,
+        "catalog_json": catalog_json,
         "max_bookings_per_day": user.caterer_profile.max_bookings_per_day or 1,
         "auto_block_enabled": user.caterer_profile.auto_block_enabled if user.caterer_profile.auto_block_enabled is not None else True,
         "primary_color": user.caterer_profile.primary_color or "#3b82f6",
@@ -5096,6 +5333,11 @@ async def add_internal_schedule(
             models.InternalSchedule.caterer_id == user.caterer_profile.id
         ).first()
         if schedule:
+            # Prevent editing schedules that are in the past
+            from datetime import date
+            if schedule.date and schedule.date < date.today():
+                raise HTTPException(status_code=400, detail="Cannot modify past schedules")
+
             schedule.title = title
             schedule.schedule_type = schedule_type
             schedule.date = event_date
@@ -5134,7 +5376,7 @@ async def get_calendar_events(
 
     bookings = db.query(models.Booking).filter(
         models.Booking.caterer_id == target_caterer_id,
-        models.Booking.status.in_(['confirmed', 'preparing', 'ready_for_delivery', 'on_the_way', 'arrived', 'setup_ongoing', 'completed']),
+        models.Booking.status.in_(['inquiry', 'pending_quotation', 'awaiting_customer', 'confirmed', 'preparing', 'ready_for_delivery', 'on_the_way', 'arrived', 'setup_ongoing', 'completed']),
         models.Booking.is_archived == False
     ).all()
     
@@ -5218,7 +5460,7 @@ async def get_calendar_events(
 
         # All bookings are strictly GREEN based on the calendar legend.
         # Preparations, reminders, and tasks are generated later with their specific colors.
-        mapped_color = '#10b981' # Green for Booking
+        mapped_color = '#94a3b8' if b.status in ['inquiry', 'pending_quotation', 'awaiting_customer'] else '#10b981'
             
         event_data = {
             "id": str(b.id),
@@ -5231,13 +5473,29 @@ async def get_calendar_events(
             customer_name = f"{b.user.first_name} {b.user.last_name}" if b.user else "Unknown Customer"
             customer_first_name = b.user.first_name if b.user else "Customer"
             event_data["title"] = f"{b.event_type or 'Event'} - {b.event_name or customer_first_name}"
+            
+            # Serialize selected items for package inclusions
+            inclusions = []
+            if b.package_id:
+                for item in b.selected_items:
+                    if getattr(item, 'menu_item', None):
+                        inclusions.append(item.menu_item.name)
+            else:
+                for q_item in b.quotation_items:
+                    inclusions.append(f"{q_item.qty}x {q_item.item_name} (₱{q_item.unit_price:,.2f})")
+            
             event_data["extendedProps"] = {
                 "recordType": "booking",
+                "booking_kind": build_booking_list_projection(b, date.today())["kind"],
+                "booking_source": b.booking_source or ("Website" if b.user_id else "Walk-in"),
+                "document_type": b.document_type or "booking",
                 "customer": customer_name,
                 "type": b.event_type or "N/A",
                 "guests": b.guest_count,
                 "venue": b.venue_address or "TBD",
                 "package": b.package.name if b.package else "Custom",
+                "inclusions": inclusions,
+                "custom_requirements": b.custom_requirements or {},
                 "time": str(b.event_time) if b.event_time else "TBD",
                 "status": b.status,
                 "payment_status": b.payment_status or "pending",
@@ -5384,25 +5642,40 @@ async def set_booking_reminder(
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
     
-    # Simple logic: create a notification for the caterer
+    # 1. Create a notification for the caterer in DB
     new_notif = models.Notification(
         user_id=user.id,
-        title=f"Reminder: {booking.event_name or 'Event'}",
-        message=f"Preparation reminder for {booking.event_name} on {booking.event_date}.",
+        title=f"Reminder Set: {booking.event_name or 'Event'}",
+        message=f"You will be reminded about this event scheduled on {booking.event_date}.",
         type="reminder"
     )
     db.add(new_notif)
     db.commit()
 
-    # Real-time WebSocket Alert to Caterer
+    # 2. Send Automated Email Reminder to the Caterer
+    from app.services.email import send_event_reminder_email
     import asyncio
+    
+    customer_name = f"{booking.user.first_name} {booking.user.last_name}" if booking.user else booking.customer_name
+    asyncio.create_task(send_event_reminder_email(
+        email=user.email,
+        event_name=booking.event_name or booking.event_type or "Event",
+        event_date=str(booking.event_date) if booking.event_date else "TBD",
+        event_time=str(booking.event_time) if booking.event_time else "TBD",
+        venue=booking.venue_address or "TBD",
+        customer_name=customer_name or "Client"
+    ))
+
+    # 3. Real-time WebSocket Alert to Caterer (triggers Web Push API on frontend)
     asyncio.create_task(manager.broadcast_to_user(user.id, {
-        "type": "new_notification",
-        "message": f"Reminder set: {booking.event_name}",
+        "type": "push_reminder",
+        "title": f"Upcoming Event: {booking.event_name}",
+        "message": f"Setup at {booking.venue_address} by {booking.event_time or 'TBD'}",
+        "booking_id": booking.id,
         "count": db.query(models.Notification).filter(models.Notification.user_id == user.id, models.Notification.is_read == False).count()
     }))
 
-    return {"status": "success", "message": "Reminder set successfully"}
+    return {"status": "success", "message": "Email reminder sent and push notification scheduled."}
 
 
 @router.get("/api/bookings/{booking_id}/tasks")
@@ -7202,3 +7475,28 @@ async def record_manual_payment(
     db.commit()
     
     return {"success": True}
+
+
+@router.post('/api/schedule/{schedule_id}/reminders')
+async def set_schedule_reminder(schedule_id: int, db: Session = Depends(database.get_db), user: models.User = Depends(caterer_only)):
+    schedule = db.query(models.InternalSchedule).get(schedule_id)
+    if not schedule or schedule.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail='Schedule not found')
+    
+    new_notif = models.Notification(
+        user_id=user.id,
+        title=f'Reminder Set: {schedule.title}',
+        message=f'You will be reminded about your internal schedule on {schedule.date}.',
+        type='reminder'
+    )
+    db.add(new_notif)
+    db.commit()
+    
+    await manager.broadcast_to_user(user.id, {
+        'type': 'push_reminder',
+        'title': f'Reminder Set: {schedule.title}',
+        'message': f'Your reminder for {schedule.date} has been scheduled.',
+        'booking_id': schedule.id,
+        'count': db.query(models.Notification).filter(models.Notification.user_id == user.id, models.Notification.is_read == False).count()
+    })
+    return {'status': 'success'}

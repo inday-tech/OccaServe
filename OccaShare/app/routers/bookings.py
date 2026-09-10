@@ -1284,6 +1284,11 @@ async def step_details_submit(
         booking = db.query(models.Booking).get(booking_id)
     
     if booking and booking.user_id == user.id:
+        # Prevent editing bookings for past event dates
+        from datetime import date
+        if booking.event_date and booking.event_date < date.today():
+            return RedirectResponse(url=f"{redirect_base}?booking_error=Cannot+edit+past+bookings", status_code=303)
+
         # Update existing
         booking.event_name = event_name
         booking.event_type = final_event_type

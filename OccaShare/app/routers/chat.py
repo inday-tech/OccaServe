@@ -314,12 +314,19 @@ async def get_chat_context(
         ).order_by(models.Booking.created_at.desc()).first()
 
         if booking:
+            try:
+                from app.constants.booking_constants import entry_method_from_source
+                entry_method = entry_method_from_source(booking.booking_source)
+            except Exception:
+                entry_method = 'online'
+
             return {
                 "has_context": True,
                 "booking_id": booking.id,
                 "status": booking.status,
                 "event_name": booking.event_name or "Event",
-                "type": "package" if booking.package_id else "alacarte"
+                "type": "package" if booking.package_id else "alacarte",
+                "entry_method": entry_method
             }
 
     return {"has_context": False}

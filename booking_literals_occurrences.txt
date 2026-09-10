@@ -1,0 +1,65 @@
+Booking literals occurrences report
+Generated: 2026-09-08
+
+SECTION 1: `payment_status` occurrences (file : line -> snippet)
+
+.c\OccaServe\OccaShare\.gemini\antigravity\brain\30445aec-4439-4b35-a7c2-56b789419113\scratch\verify_logic.py :9 -> b1 = db.query(models.Booking).filter(models.Booking.payment_status == 'proof_submitted').first()
+.c\OccaServe\OccaShare\.gemini\antigravity\brain\30445aec-4439-4b35-a7c2-56b789419113\scratch\verify_logic.py :13 -> b1.payment_status = 'reupload_requested'
+.c\OccaServe\OccaShare\.gemini\antigravity\brain\30445aec-4439-4b35-a7c2-56b789419113\scratch\verify_logic.py :27 -> b2 = db.query(models.Booking).filter(models.Booking.payment_status == 'balance_proof_submitted').first()
+.c\OccaServe\OccaShare\app\services\reminders.py :56 -> if booking.payment_status == 'pending' and booking.status == 'confirmed':
+.c\OccaServe\OccaShare\app\routers\caterer_dashboard.py :537 -> payment_status = data.get("payment_status", "unpaid")
+.c\OccaServe\OccaShare\app\routers\caterer_dashboard.py :571 -> payment_status=payment_status,
+.c\OccaServe\OccaShare\app\routers\caterer_dashboard.py :799 -> booking.payment_status = "paid"
+.c\OccaServe\OccaShare\app\routers\caterer_dashboard.py :1129 -> pending_payments = sum(1 for b in bookings if b.payment_status == 'pending_verification')
+.c\OccaServe\OccaShare\app\routers\caterer_dashboard.py :1198 -> if b.payment_status in ['reupload_requested', 'balance_reupload_requested']:
+.c\OccaServe\OccaShare\app\routers\caterer_dashboard.py :1202 -> if b.payment_status == 'proof_submitted' and is_early_stage:
+.c\OccaServe\OccaShare\app\routers\caterer_dashboard.py :1826 -> if booking.payment_status in ['proof_submitted', 'reupload_requested', 'pending'] or booking.status == 'pending':
+.c\OccaServe\OccaShare\app\routers\caterer_dashboard.py :1867 -> elif booking.payment_status in ['balance_proof_submitted', 'balance_reupload_requested']:
+.c\OccaServe\OccaShare\app\routers\caterer_dashboard.py :2031 -> if booking.payment_status == 'proof_submitted':
+.c\OccaServe\OccaShare\app\routers\bookings.py :437 -> payment_status = "pending"
+.c\OccaServe\OccaShare\app\routers\bookings.py :441 -> payment_status = "proof_submitted"
+.c\OccaServe\OccaShare\app\routers\bookings.py :1784 -> booking.payment_status = "balance_proof_submitted"
+.c\OccaServe\OccaShare\app\db\models.py :599 -> payment_status = Column(String, default="pending") # unpaid, partially_paid, fully_paid, overdue
+.c\OccaServe\OccaShare\app\routers\admin.py :431 -> paid_bookings = [b for b in all_bookings if b.payment_status == 'paid']
+.c\OccaServe\OccaShare\cron_balance_reminders.py :24 -> # Not fully paid means payment_status not in ('paid', 'proof_submitted', 'balance_reupload_requested')
+.c\OccaServe\OccaShare\app\routers\payments.py :110 -> booking.payment_status = "deposit_paid"
+.c\OccaServe\OccaShare\app\routers\payments.py :113 -> booking.payment_status = "paid"
+.c\OccaServe\OccaShare\templates\caterer\bookings.html :455 -> {% set caterer_action_needed = b.status in ['pending', 'awaiting_caterer', 'pending_review'] or (b.payment_status == 'proof_submitted' and is_early_stage) %}
+.c\OccaServe\OccaShare\templates\caterer\bookings.html :464 -> {% if b.payment_status == 'balance_proof_submitted' or (b.payment_status == 'proof_submitted' and is_early_stage) %}
+.c\OccaServe\OccaShare\templates\caterer\payments.html :203 -> {% if b.payment_status == 'paid' %}completed
+.c\OccaServe\OccaShare\templates\customer\booking_manage.html :116 -> {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+... (many more occurrences in templates, routers, cron jobs)
+
+SECTION 2: `booking_source` occurrences (file : line -> snippet)
+
+.c\OccaServe\OccaShare\app\routers\caterer_dashboard.py :326 -> booking_source=data.get("booking_source", "Walk-in")
+.c\OccaServe\OccaShare\app\routers\caterer_dashboard.py :369 -> communication_channel=new_booking.booking_source
+.c\OccaServe\OccaShare\app\routers\caterer_dashboard.py :623 -> notes=f"{new_booking.status.upper()} CREATED\nManual booking ({data.get('booking_source', 'Walk-in')}) created by caterer."
+.c\OccaServe\OccaShare\app\db\migrate_expenses_v2.py :22 -> ALTER TABLE bookings ADD COLUMN booking_source VARCHAR DEFAULT 'OccaServe';
+.c\OccaServe\OccaShare\app\db\models.py :622 -> booking_source = Column(String, default="OccaServe") # OccaServe, Facebook, Walk-in, Other
+.c\OccaServe\OccaShare\app\static\js\caterer\calendar.js :967 -> booking_source: document.getElementById('manBookingSource') ? document.getElementById('manBookingSource').value : "Walk-in",
+.c\OccaServe\OccaShare\templates\caterer\bookings.html :642 -> data-source="{{ booking.booking_source or ('OccaServe Platform' if booking.user_id else 'Walk-in') }}"
+.c\OccaServe\OccaShare\templates\caterer\calendar.html :405 -> data-booking-source="{{ booking.booking_source or '' }}"
+.c\OccaServe\OccaShare\templates\caterer\orders.html :562 -> data-booking-source="{{ booking.booking_source or '' }}"
+.c\OccaServe\OccaShare\migrate.py :5 -> internal_bookings = db.query(Booking).filter(Booking.booking_source == 'Internal').all()
+... (additional modal/template/js occurrences)
+
+SECTION 3: `status ==` occurrences (file : line -> snippet)
+
+.c\OccaServe\OccaShare\cron_balance_reminders.py :26 -> models.Booking.status == 'confirmed',
+.c\OccaServe\OccaShare\app\routers\admin.py :486 -> models.Booking.status == 'confirmed'
+.c\OccaServe\OccaShare\app\routers\admin.py :494 -> models.Booking.status == 'completed'
+.c\OccaServe\OccaShare\app\routers\admin.py :498 -> models.Booking.status == 'cancelled'
+.c\OccaServe\OccaShare\app\routers\bookings.py :905 -> if booking.status == 'draft':
+.c\OccaServe\OccaShare\app\routers\bookings.py :1797 -> booking.status = "pending"
+.c\OccaServe\OccaShare\app\routers\caterer_dashboard.py :2544 -> if booking.status == 'cancelled':
+.c\OccaServe\OccaShare\app\routers\caterer_dashboard.py :2591 -> completed_bookings = [b for b in profile.bookings if b.status == 'completed' and not getattr(b, 'is_archived', False)]
+.c\OccaServe\OccaShare\app\routers\caterer_dashboard.py :7277 -> if booking.status == "inquiry":
+.c\OccaServe\OccaShare\app\routers\customer_dashboard.py :309 -> if b.status == 'draft':
+.c\OccaServe\OccaShare\app\routers\payments.py :186 -> if booking.status == "draft" or booking.status == "pending":
+.c\OccaServe\OccaShare\app\routers\admin.py :1804 -> completed_bookings = [b for b in bookings if b.status == "completed"]
+.c\OccaServe\OccaShare\app\routers\admin.py :1805 -> cancelled_bookings = [b for b in bookings if b.status == "cancelled"]
+... (many more occurrences across routers/templates/services)
+
+--- End of report (partial) ---
+Note: The report above is a condensed extract — the repository contains many more occurrences across templates and helper scripts. If you want the complete unabridged list (every match line for each file), I can write the full expanded dump into this same file or another file now. Also ready to proceed to step 2 (drafting `booking_constants.py`).

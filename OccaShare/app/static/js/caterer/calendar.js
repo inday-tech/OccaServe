@@ -152,10 +152,7 @@ document.addEventListener('DOMContentLoaded', function () {
             eventClick: function (info) {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                if (info.event.start < today) {
-                    showNotification('Archive Notice', 'Past event details are not editable', 'info');
-                    return;
-                }
+                // Always open details on click; past events will be shown read-only by the modal logic
                 if (info.event.extendedProps.type === 'BLOCKED') {
                     showBlockedDetails(info.event);
                 } else if (info.event.extendedProps.customer === 'Internal') {
@@ -169,11 +166,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 today.setHours(0, 0, 0, 0);
                 const clickedDate = new Date(info.dateStr);
 
-                if (clickedDate < today) {
-                    showNotification('Error', 'Cannot manage past dates', 'error');
-                    return;
-                }
-
                 const blockInput = document.getElementById('blockDate');
                 const manInput = document.getElementById('manDate');
                 if (blockInput) blockInput.value = info.dateStr;
@@ -181,12 +173,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     manInput.value = info.dateStr;
                     checkDateConflict(info.dateStr);
                 }
+
+                const clickedEvents = window.fullCalendarInstance.getEvents().filter(e => {
+                    return e.startStr.split('T')[0] === info.dateStr;
+                });
+
                 if (window.innerWidth <= 768) {
                     // Mobile View: Populate bottom list instead of opening modal
-                    const clickedEvents = window.fullCalendarInstance.getEvents().filter(e => {
-                        return e.startStr.split('T')[0] === info.dateStr;
-                    });
-                    
                     const listContainer = document.getElementById('mobileDayList');
                     const titleEl = document.getElementById('mobileDayTitle');
                     const mobileContainer = document.getElementById('mobileDayEvents');
@@ -218,8 +211,35 @@ document.addEventListener('DOMContentLoaded', function () {
                     // Scroll to it smoothly
                     mobileContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 } else {
-                    // Desktop View: Standard manual booking modal
-                    openExternalBookingModal();
+                    // Desktop View: If clicking a past date, show schedule in sidebar (view-only). Otherwise, open manual booking modal.
+                    if (clickedDate < today) {
+                        const sidebar = document.getElementById('sidebarDayEvents');
+                        const selectedStr = document.getElementById('sidebarSelectedDateStr');
+                        selectedStr.innerText = new Date(info.dateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                        sidebar.innerHTML = '';
+                        if (clickedEvents.length === 0) {
+                            sidebar.innerHTML = '<div class="empty-state" style="padding: 1rem; font-size: 0.85rem; color: #64748b; background: #f8fafc; border-radius: 6px;">No events on this date</div>';
+                        } else {
+                            clickedEvents.forEach(e => {
+                                let status = e.extendedProps.status || 'pending';
+                                let statusColor = status === 'confirmed' ? '#10b981' : (status === 'ongoing' ? '#3b82f6' : (status === 'cancelled' ? '#ef4444' : '#f59e0b'));
+                                const card = document.createElement('div');
+                                card.className = 'calendar-detail-item';
+                                card.style.cursor = 'pointer';
+                                card.innerHTML = `
+                                    <i class="fas fa-calendar-alt"></i>
+                                    <div>
+                                        <div class="calendar-detail-label">${e.title}</div>
+                                        <div class="calendar-detail-value">${e.extendedProps.customer || '---'} <span style="float:right; color:${statusColor};">${status}</span></div>
+                                    </div>
+                                `;
+                                card.onclick = function() { showEventDetailsById(e.id); };
+                                sidebar.appendChild(card);
+                            });
+                        }
+                    } else {
+                        openExternalBookingModal();
+                    }
                 }
             },
             eventDidMount: function (info) {
@@ -343,6 +363,45 @@ document.addEventListener('DOMContentLoaded', function () {
     initCustomerDetection();
     attachPricingListeners();
     attachInputRestrictions();
+});
+
+// --- Modal step UX helpers: ensure Previous hidden on Step 1 and disable submit until all steps valid ---
+function validateAllSteps() {
+    const total = 4; // mirrors modal steps
+    for (let s = 1; s <= total; s++) {
+        const stepDiv = document.getElementById(`step-${s}`);
+        if (!stepDiv) continue;
+        const inputs = stepDiv.querySelectorAll('input[required], select[required], textarea[required]');
+        for (let input of inputs) {
+            // If element is not visible (display:none), skip
+            const style = window.getComputedStyle(input);
+            if (style.display === 'none' || style.visibility === 'hidden') continue;
+            if (!input.checkValidity()) return false;
+        }
+    }
+    return true;
+}
+
+function updateSubmitButtonState() {
+    const submitBtn = document.getElementById('btnSubmitManual');
+    if (!submitBtn) return;
+    const valid = validateAllSteps();
+    submitBtn.disabled = !valid;
+    submitBtn.setAttribute('aria-disabled', (!valid).toString());
+}
+
+// Hide previous button initially and wire input listeners to toggle submit enabled state
+document.addEventListener('DOMContentLoaded', function () {
+    const prev = document.getElementById('btnPrevStep');
+    if (prev) prev.style.display = 'none';
+
+    const form = document.getElementById('manualBookingForm');
+    if (form) {
+        form.addEventListener('input', updateSubmitButtonState);
+        form.addEventListener('change', updateSubmitButtonState);
+        // Initialize state
+        updateSubmitButtonState();
+    }
 });
 
 window.updateVisibleCapacity = function (start, end) {
@@ -1316,6 +1375,17 @@ function showEventDetails(event) {
     if (specialEl) specialEl.textContent = props.special_requests || 'None';
 
     document.getElementById('evModalBookingId').value = event.id;
+    // If this is a past event, hide the Edit button to make the modal view-only
+    try {
+        const editBtn = document.getElementById('evModalEditFullBtn');
+        const today = new Date(); today.setHours(0,0,0,0);
+        if (event.start < today) {
+            if (editBtn) editBtn.style.display = 'none';
+        } else {
+            if (editBtn) editBtn.style.display = '';
+        }
+    } catch (err) { /* ignore DOM errors */ }
+
     if (window.openModal) window.openModal('eventModal');
     else document.getElementById('eventModal').style.display = 'flex';
 }
@@ -1328,17 +1398,41 @@ function showBlockedDetails(event) {
 window.showEventDetails = showEventDetails;
 window.showBlockedDetails = showBlockedDetails;
 
-window.copyInvoiceLink = function() {
-    const bookingId = document.getElementById('evModalBookingId').value;
-    if (!bookingId) {
-        showNotification('Error', 'Booking ID not found', 'error');
+window.openShareDocumentModal = function(bookingId = null, customerName = null) {
+    const bId = bookingId || document.getElementById('evModalBookingId').value;
+    const cName = customerName || (document.getElementById('evModalTitle') ? document.getElementById('evModalTitle').innerText : 'Customer');
+    
+    if (!bId || bId === "None" || bId === "null" || bId === "undefined" || String(bId).startsWith('sched-') || String(bId).startsWith('prep-') || String(bId).startsWith('internal-')) {
+        showNotification('Error', 'Invalid Booking ID or this event does not have a booking document.', 'error');
         return;
     }
-    const url = window.location.origin + '/customer/booking/' + bookingId + '/invoice';
+    
+    // Store id for the copy function
+    window.currentShareBookingId = bId;
+    
+    document.getElementById('shareDocCustomer').innerText = cName;
+    document.getElementById('shareDocTitle').innerText = 'Quotation/Document for Booking #' + bId;
+    
+    const modal = document.getElementById('shareDocumentModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        setTimeout(() => modal.classList.add('active'), 10);
+    }
+};
+
+window.copySecureDocumentLink = function() {
+    const bookingId = window.currentShareBookingId;
+    if (!bookingId || bookingId === "None" || bookingId === "null") return;
+    
+    // Generate a secure access link placeholder (Ideally this will use a secure hashed token from backend)
+    // For now, we route it to a generic document link that will require auth/verification
+    const url = window.location.origin + '/customer/document/' + bookingId;
+    
     navigator.clipboard.writeText(url).then(() => {
-        showNotification('Invoice Link Copied!', 'You can now send this payment link/invoice to the customer via FB.', 'success');
+        showNotification('Secure Link Copied!', 'You can now share this secure document link with the customer.', 'success');
+        closeModal('shareDocumentModal');
     }).catch(err => {
-        showNotification('Error', 'Failed to copy invoice link', 'error');
+        showNotification('Error', 'Failed to copy secure link', 'error');
     });
 };
 /* ==========================================================================
@@ -1734,22 +1828,58 @@ window.showInternalScheduleDetails = function(event) {
 let currentExtStep = 1;
 const totalExtSteps = 4;
 
+let duplicateCheckTimeout = null;
+window.checkExtDuplicateUser = function() {
+    clearTimeout(duplicateCheckTimeout);
+    duplicateCheckTimeout = setTimeout(async () => {
+        const email = document.getElementById('extCustomerEmail').value.trim();
+        const contact = document.getElementById('extCustomerContact').value.trim();
+        const alertBox = document.getElementById('extDuplicateAlert');
+        const btnNext = document.getElementById('extBtnNext');
+        
+        if (!email && contact.length < 10) {
+            alertBox.style.display = 'none';
+            btnNext.disabled = false;
+            btnNext.style.opacity = '1';
+            btnNext.style.cursor = 'pointer';
+            return;
+        }
+        
+        try {
+            const query = new URLSearchParams();
+            if (email) query.append('email', email);
+            if (contact) query.append('contact', contact);
+            
+            const res = await fetch('/caterer/api/customers/check_duplicate?' + query.toString());
+            const data = await res.json();
+            
+            if (data.exists) {
+                alertBox.style.display = 'flex';
+                btnNext.disabled = true;
+                btnNext.style.opacity = '0.5';
+                btnNext.style.cursor = 'not-allowed';
+            } else {
+                alertBox.style.display = 'none';
+                btnNext.disabled = false;
+                btnNext.style.opacity = '1';
+                btnNext.style.cursor = 'pointer';
+            }
+        } catch (e) {
+            console.error('Error checking duplicate:', e);
+        }
+    }, 500);
+};
+
 window.openExternalBookingModal = function() {
     currentExtStep = 1;
     document.getElementById('externalBookingForm').reset();
     document.getElementById('extBookingFormError').style.display = 'none';
     
-    // Reset quotation rows to just 1
-    const tbody = document.getElementById('extQuotationItems');
-    if (tbody) {
-        tbody.innerHTML = `
-            <tr>
-                <td style="padding: 12px;"><input type="text" class="control-pro ext-item-name" value="Base Package / Food" placeholder="Item Name"></td>
-                <td style="padding: 12px;"><input type="number" class="control-pro ext-item-price" value="0" min="0" oninput="calcExtTotal()"></td>
-                <td style="padding: 12px; text-align: center;"></td>
-            </tr>
-        `;
-    }
+    // Reset selected items and render catalog
+    window.selectedCatalogItems = {};
+    if (window.renderCatalogItems) window.renderCatalogItems();
+    if (window.updateExtPackageSummary) window.updateExtPackageSummary();
+    
     calcExtTotal();
     updateExtStepperUI();
     
@@ -1762,11 +1892,13 @@ window.openExternalBookingModal = function() {
 
 window.changeExtStep = function(direction) {
     // Validate current step before moving next
-    if (direction === 1) {
+        if (direction === 1) {
         if (currentExtStep === 1) {
             const form = document.getElementById('externalBookingForm');
-            if (!document.getElementById('extCustomerName').value || !document.getElementById('extCustomerContact').value) {
-                document.getElementById('extBookingFormError').innerText = "Please fill in all required fields (Name & Contact).";
+            const fullName = document.getElementById('extFullName') ? document.getElementById('extFullName').value.trim() : '';
+            const contact = document.getElementById('extCustomerContact') ? document.getElementById('extCustomerContact').value.trim() : '';
+            if (!fullName || !contact) {
+                document.getElementById('extBookingFormError').innerText = "Please fill in all required fields (Customer Full Name & Contact).";
                 document.getElementById('extBookingFormError').style.display = 'block';
                 return;
             }
@@ -1825,7 +1957,8 @@ window.updateExtStepperUI = function() {
         
         // Populate summary
         document.getElementById('summarySource').innerText = document.getElementById('extSource').value;
-        document.getElementById('summaryCustomer').innerText = document.getElementById('extCustomerName').value + ' (' + document.getElementById('extCustomerContact').value + ')';
+        const sName = document.getElementById('extFullName') ? document.getElementById('extFullName').value : (document.getElementById('extFirstName') ? (document.getElementById('extFirstName').value + ' ' + document.getElementById('extLastName').value) : '');
+        document.getElementById('summaryCustomer').innerText = sName + ' (' + document.getElementById('extCustomerContact').value + ')';
         
         const dt = document.getElementById('extEventDate').value;
         const tm = document.getElementById('extEventTime').value;
@@ -1842,17 +1975,114 @@ window.updateExtStepperUI = function() {
     }
 };
 
-window.addExtRow = function() {
-    const tbody = document.getElementById('extQuotationItems');
-    if (!tbody) return;
+window.selectedCatalogItems = {};
+
+window.updateExtPackageSummary = function() {
+    const mode = document.getElementById('extPackageMode');
+    if (!mode) return;
+    const isCustom = mode.value === 'custom';
     
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-        <td style="padding: 12px;"><input type="text" class="control-pro ext-item-name" placeholder="Item Name"></td>
-        <td style="padding: 12px;"><input type="number" class="control-pro ext-item-price" value="0" min="0" oninput="calcExtTotal()"></td>
-        <td style="padding: 12px; text-align: center;"><button type="button" onclick="this.closest('tr').remove(); calcExtTotal();" style="background:none; border:none; color:#ef4444; cursor:pointer;"><i class="fas fa-trash"></i></button></td>
-    `;
-    tbody.appendChild(tr);
+    const summary = document.getElementById('extPackageSummary');
+    if (summary) summary.style.display = isCustom ? 'none' : 'block';
+    
+    if (!isCustom) {
+        const pkgId = mode.value;
+        const pkgMap = window.packageMap || {};
+        const pkgData = pkgMap[pkgId];
+        const basePrice = parseFloat(mode.options[mode.selectedIndex].dataset.price || 0);
+        
+        document.getElementById('extPackageBasePrice').innerText = '₱' + basePrice.toLocaleString('en-US', {minimumFractionDigits: 2});
+        
+        let html = '';
+        if (pkgData && pkgData.inclusions && pkgData.inclusions.length > 0) {
+            pkgData.inclusions.forEach(inc => {
+                html += `<div style="display: flex; align-items: flex-start; gap: 8px;">
+                    <i class="fas fa-check-circle" style="color: #10b981; margin-top: 3px;"></i>
+                    <span>${inc}</span>
+                </div>`;
+            });
+        } else {
+            html = `<i>No inclusions specified for this package.</i>`;
+        }
+        document.getElementById('extPackageSummaryContent').innerHTML = html;
+        
+        document.getElementById('extBuilderTitle').innerText = 'Select Extra Add-ons';
+    } else {
+        document.getElementById('extBuilderTitle').innerText = 'Select Custom Items';
+    }
+    
+    calcExtTotal();
+};
+
+window.renderCatalogItems = function() {
+    const container = document.getElementById('extCatalogContainer');
+    if (!container) return;
+    
+    const filter = document.getElementById('extCatalogFilter').value;
+    const search = document.getElementById('extCatalogSearch').value.toLowerCase();
+    const catalog = window.catalogItems || {menu: [], services: [], equipment: []};
+    
+    let itemsToRender = [];
+    if (filter === 'all' || filter === 'menu') itemsToRender = itemsToRender.concat(catalog.menu.map(i => ({...i, type: 'menu'})));
+    if (filter === 'all' || filter === 'services') itemsToRender = itemsToRender.concat(catalog.services.map(i => ({...i, type: 'services'})));
+    if (filter === 'all' || filter === 'equipment') itemsToRender = itemsToRender.concat(catalog.equipment.map(i => ({...i, type: 'equipment'})));
+    
+    if (search) {
+        itemsToRender = itemsToRender.filter(i => i.name.toLowerCase().includes(search));
+    }
+    
+    let html = '';
+    if (itemsToRender.length === 0) {
+        html = `<div style="text-align: center; color: #94a3b8; padding: 20px;">No items found.</div>`;
+    } else {
+        itemsToRender.forEach(item => {
+            const key = `${item.type}_${item.id}`;
+            const isSelected = window.selectedCatalogItems[key] ? true : false;
+            const qty = isSelected ? window.selectedCatalogItems[key].qty : 1;
+            
+            html += `
+            <div style="background: white; border: 1px solid ${isSelected ? '#3b82f6' : '#e2e8f0'}; border-radius: 8px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s;">
+                <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                    <input type="checkbox" id="cb_${key}" onchange="window.toggleCatalogItem('${item.type}', ${item.id}, '${item.name.replace(/'/g, "\\'")}', ${item.price}, this.checked)" ${isSelected ? 'checked' : ''} style="width: 18px; height: 18px; cursor: pointer;">
+                    <div>
+                        <label for="cb_${key}" style="font-weight: 700; color: #1e293b; cursor: pointer; margin: 0;">${item.name}</label>
+                        <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">
+                            ${item.type === 'menu' ? '<i class="fas fa-utensils"></i> Menu' : item.type === 'services' ? '<i class="fas fa-concierge-bell"></i> Service' : '<i class="fas fa-chair"></i> Equipment'}
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="font-weight: 700; color: #10b981;">₱${parseFloat(item.price || 0).toLocaleString('en-US', {minimumFractionDigits:2})}</div>
+                    <div style="display: ${isSelected ? 'flex' : 'none'}; align-items: center; gap: 8px; background: #f1f5f9; padding: 4px 8px; border-radius: 20px;">
+                        <button type="button" onclick="window.updateCatalogQty('${key}', -1)" style="background: none; border: none; cursor: pointer; color: #64748b;"><i class="fas fa-minus-circle"></i></button>
+                        <span style="font-weight: 700; width: 20px; text-align: center; font-size: 0.85rem;" id="qty_${key}">${qty}</span>
+                        <button type="button" onclick="window.updateCatalogQty('${key}', 1)" style="background: none; border: none; cursor: pointer; color: #64748b;"><i class="fas fa-plus-circle"></i></button>
+                    </div>
+                </div>
+            </div>`;
+        });
+    }
+    container.innerHTML = html;
+};
+
+window.toggleCatalogItem = function(type, id, name, price, isChecked) {
+    const key = `${type}_${id}`;
+    if (isChecked) {
+        window.selectedCatalogItems[key] = { type, id, name, price, qty: 1 };
+    } else {
+        delete window.selectedCatalogItems[key];
+    }
+    window.renderCatalogItems(); // Re-render to show/hide qty controls
+    window.calcExtTotal();
+};
+
+window.updateCatalogQty = function(key, delta) {
+    if (window.selectedCatalogItems[key]) {
+        window.selectedCatalogItems[key].qty += delta;
+        if (window.selectedCatalogItems[key].qty < 1) window.selectedCatalogItems[key].qty = 1;
+        document.getElementById(`qty_${key}`).innerText = window.selectedCatalogItems[key].qty;
+        window.calcExtTotal();
+    }
 };
 
 window.calcExtTotal = function() {
@@ -1865,18 +2095,30 @@ window.calcExtTotal = function() {
         total += basePrice;
     }
     
-    // Add custom rows
-    const prices = document.querySelectorAll('.ext-item-price');
-    prices.forEach(p => {
-        total += parseFloat(p.value || 0);
-    });
+    // Add custom/add-on items
+    let count = 0;
+    for (const key in window.selectedCatalogItems) {
+        const item = window.selectedCatalogItems[key];
+        total += (parseFloat(item.price) || 0) * item.qty;
+        count++;
+    }
     
     const totalEl = document.getElementById('extTotalAmount');
-    if (totalEl) totalEl.innerText = total.toFixed(2);
+    if (totalEl) totalEl.value = total;
+    const totalDisp = document.getElementById('extQuoteTotal');
+    if (totalDisp) totalDisp.innerText = '₱' + total.toLocaleString('en-US', {minimumFractionDigits: 2});
+    const countDisp = document.getElementById('extSelectedCount');
+    if (countDisp) countDisp.innerText = count;
 };
 
 window.submitExternalBooking = async function(e) {
     e.preventDefault();
+    
+    // Prevent submission if not on the final step (e.g., user pressed Enter on an early step)
+    if (currentExtStep < totalExtSteps) {
+        window.changeExtStep(1);
+        return;
+    }
     
     const btn = document.getElementById('extBtnSubmit');
     if (btn) {
@@ -1887,22 +2129,22 @@ window.submitExternalBooking = async function(e) {
     const err = document.getElementById('extBookingFormError');
     if (err) err.style.display = 'none';
     
-    // Collect rows
+    // Collect rows from selectedCatalogItems
     const rows = [];
-    document.querySelectorAll('#extQuotationItems tr').forEach(tr => {
-        const nameInput = tr.querySelector('.ext-item-name');
-        const priceInput = tr.querySelector('.ext-item-price');
-        if (nameInput && priceInput && nameInput.value.trim() !== '') {
-            rows.push({
-                name: nameInput.value.trim(),
-                price: parseFloat(priceInput.value || 0)
-            });
-        }
-    });
+    for (const key in window.selectedCatalogItems) {
+        const item = window.selectedCatalogItems[key];
+        rows.push({
+            name: `${item.qty}x ${item.name}`,
+            price: parseFloat(item.price) * item.qty,
+            item_type: item.type,
+            item_id: item.id,
+            qty: item.qty
+        });
+    }
     
     const payload = {
         booking_source: document.getElementById('extSource').value,
-        customer_name: document.getElementById('extCustomerName').value,
+        full_name: document.getElementById('extFullName') ? document.getElementById('extFullName').value : (document.getElementById('extFirstName') ? (document.getElementById('extFirstName').value + ' ' + document.getElementById('extLastName').value) : ''),
         customer_contact: document.getElementById('extCustomerContact').value,
         customer_email: document.getElementById('extCustomerEmail').value,
         event_type: document.getElementById('extEventType').value,
@@ -1910,10 +2152,17 @@ window.submitExternalBooking = async function(e) {
         event_date: document.getElementById('extEventDate').value,
         event_time: document.getElementById('extEventTime').value,
         guest_count: parseInt(document.getElementById('extGuests').value || 1),
-        venue_address: document.getElementById('extVenue').value,
+        province: document.getElementById('extProvince') ? document.getElementById('extProvince').value : '',
+        municipality: document.getElementById('extMunicipality') ? document.getElementById('extMunicipality').value : '',
+        barangay: document.getElementById('extBarangay') ? document.getElementById('extBarangay').value : '',
+        landmark: document.getElementById('extLandmark') ? document.getElementById('extLandmark').value : '',
         package_id: document.getElementById('extPackageMode').value === 'custom' ? null : document.getElementById('extPackageMode').value,
-        custom_quotation: rows,
-        total_price: parseFloat(document.getElementById('extTotalAmount').innerText || 0)
+        quotation_items: rows,
+        total_amount: parseFloat(document.getElementById('extTotalAmount').innerText || 0),
+        status: document.getElementById('extSaveStatus') ? document.getElementById('extSaveStatus').value : 'inquiry',
+        amount_paid: parseFloat(document.getElementById('extInitialPayment') ? document.getElementById('extInitialPayment').value : 0) || 0,
+        force_override: document.getElementById('extOverrideKyc') ? document.getElementById('extOverrideKyc').checked : false,
+        special_notes: document.getElementById('extCommNote') ? document.getElementById('extCommNote').value : ''
     };
     
     try {
@@ -1926,9 +2175,19 @@ window.submitExternalBooking = async function(e) {
         const result = await response.json();
         
         if (response.ok) {
-            showNotification('Success', 'External booking recorded successfully!', 'success');
             closeModal('externalBookingModal');
             if (window.fullCalendarInstance) window.fullCalendarInstance.refetchEvents();
+            
+            if (result.booking_id) {
+                if (confirm(`Booking recorded successfully!\n\nWould you like to share the Secure Customer Document with the client now?`)) {
+                    const cName = document.getElementById('extFirstName').value + ' ' + document.getElementById('extLastName').value;
+                    window.openShareDocumentModal(result.booking_id, cName);
+                } else {
+                    showNotification('Success', 'External booking recorded successfully!', 'success');
+                }
+            } else {
+                showNotification('Success', 'External booking recorded successfully!', 'success');
+            }
         } else {
             if (err) {
                 err.innerText = result.detail || 'Failed to record booking.';

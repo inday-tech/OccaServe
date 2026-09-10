@@ -528,14 +528,14 @@ async def view_contract_customer(
         "active_page": "bookings"
     })
 
-@router.get("/booking/{booking_id}/invoice", response_class=HTMLResponse)
-async def view_public_invoice(
+@router.get("/document/{booking_id}", response_class=HTMLResponse)
+async def view_secure_document(
     booking_id: int,
     request: Request,
     db: Session = Depends(database.get_db),
     user: Optional[models.User] = Depends(auth.get_current_user_optional)
 ):
-    """Public route for a customer to view their auto-generated invoice via a shareable link."""
+    """Route for a customer to view their secure quotation/booking document."""
     booking = db.query(models.Booking).get(booking_id)
     if not booking:
         return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
@@ -620,7 +620,7 @@ async def upload_public_proof_of_payment(
         error_text = flags[0] if flags else "Invalid receipt image."
         import urllib.parse
         encoded_err = urllib.parse.quote(error_text)
-        return RedirectResponse(url=f"/customer/booking/{booking_id}/invoice?error={encoded_err}", status_code=303)
+        return RedirectResponse(url=f"/customer/document/{booking_id}?error={encoded_err}", status_code=303)
 
     booking.payment_proof_url = c_url
 
@@ -655,8 +655,8 @@ async def upload_public_proof_of_payment(
         "url": notif.link
     }))
     
-    # Redirect back to the public invoice
-    return RedirectResponse(url=f"/customer/booking/{booking_id}/invoice?success=1", status_code=303)
+    # Redirect back to the secure document
+    return RedirectResponse(url=f"/customer/document/{booking_id}?success=1", status_code=303)
 
 @router.post("/bookings/manage/{booking_id}/cancel")
 async def cancel_booking(

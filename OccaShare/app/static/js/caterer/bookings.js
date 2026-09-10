@@ -38,6 +38,13 @@ if (typeof window.showError === 'undefined') {
     window.calculateActualExpenses = calculateActualExpenses;
     window.submitExpenses = submitExpenses;
     window.showBookingDetails = showBookingDetails;
+    window.refreshOpenBookingWorkspace = function(bookingId) {
+        if (!currentBookingId || String(currentBookingId) !== String(bookingId)) return;
+        const viewButton = document.querySelector(`button.view-details[data-id="${bookingId}"]`);
+        if (!viewButton) return;
+        viewButton.dataset.workspaceHydrated = '';
+        showBookingDetails(viewButton);
+    };
     window.switchBookingTab = switchBookingTab;
     window.resetBookingTabs = resetBookingTabs;
     window.bk_closeBookingDetailModal = bk_closeBookingDetailModal;
@@ -62,6 +69,20 @@ if (typeof window.showError === 'undefined') {
             const parser = new DOMParser();
             const doc = parser.parseFromString(text, 'text/html');
             const newTbody = doc.querySelector('.bookings-list-table tbody');
+            const newBanner = doc.getElementById('alertBanner');
+            const currentBanner = document.getElementById('alertBanner');
+            
+            if (currentBanner && newBanner) {
+                currentBanner.outerHTML = newBanner.outerHTML;
+            } else if (!currentBanner && newBanner) {
+                const kpiGrid = document.querySelector('.kpi-grid-clean');
+                if (kpiGrid) {
+                    kpiGrid.insertAdjacentHTML('afterend', newBanner.outerHTML);
+                }
+            } else if (currentBanner && !newBanner) {
+                currentBanner.remove();
+            }
+
             if (newTbody) {
                 document.querySelector('.bookings-list-table tbody').innerHTML = newTbody.innerHTML;
                 const allRows = Array.from(document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item'));
@@ -69,7 +90,6 @@ if (typeof window.showError === 'undefined') {
                 initDetailListeners();
                 filterBookings();
             }
-            if (typeof refreshActionAlerts === 'function') refreshActionAlerts();
         } catch(e) {
             console.error('Failed to refresh bookings table', e);
             setTimeout(() => window.location.reload(), 1500); // Fallback
@@ -139,7 +159,71 @@ function toggleActionMenuBookings(id, event) {
         if (m !== target) m.style.display = 'none';
     });
     if (!target) return;
-    target.style.display = (target.style.display === 'none' || target.style.display === '') ? 'block' : 'none';
+    var shouldShow = (target.style.display === 'none' || target.style.display === '');
+    target.style.display = shouldShow ? 'block' : 'none';
+
+    // If opening, populate dynamic actions based on booking data attributes
+    if (shouldShow) {
+        try {
+            const bid = target.getAttribute('data-booking-id') || id;
+            const status = (target.getAttribute('data-status') || '').toLowerCase();
+            const payment = (target.getAttribute('data-payment-status') || '').toLowerCase();
+            const isPackage = (target.getAttribute('data-is-package') || 'false') === 'true';
+            const isVerified = (target.getAttribute('data-is-verified') || 'false') === 'true';
+            const userId = target.getAttribute('data-user-id') || '';
+
+            const container = target.querySelector('.dynamic-actions');
+            if (!container) return;
+            container.innerHTML = '';
+
+            // Helper to append action
+            const addActionLink = (label, icon, href) => {
+                const a = document.createElement('a');
+                a.href = href;
+                a.style = 'display:flex; align-items:center; gap:0.6rem; padding:0.75rem 1rem; text-decoration:none; font-size:0.85rem; color:#475569;';
+                a.innerHTML = `<i class="fas ${icon}" style="width:18px;color:#64748b;"></i> ${label}`;
+                container.appendChild(a);
+            };
+
+            const addActionBtn = (label, icon, onClick) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.style = 'width:100%; text-align:left; padding:0.75rem 1rem; background:none; border:none; font-size:0.85rem; color:#475569; cursor:pointer; display:flex; align-items:center; gap:0.6rem;';
+                b.innerHTML = `<i class="fas ${icon}" style="width:18px;color:#64748b;"></i> ${label}`;
+                b.addEventListener('click', function(ev) { ev.stopPropagation(); onClick(); target.style.display='none'; });
+                container.appendChild(b);
+            };
+
+            // Context-specific actions
+            if (['pending_quotation','awaiting_caterer'].includes(status)) {
+                addActionLink('Sign Contract', 'fa-pen-nib', `/caterer/bookings/${bid}/sign`);
+            }
+
+            if (payment === 'proof_submitted' || payment === 'balance_proof_submitted' || payment === 'partial') {
+                addActionBtn('Verify Payment', 'fa-check-double', function(){ window.confirmAcceptBooking(bid, true, isVerified, isPackage); });
+            }
+
+            if (['pending','awaiting_payment','pending_payment','awaiting_caterer','pending_review','pending_quotation'].includes(status)) {
+                addActionBtn('Cancel Booking', 'fa-times-circle', function(){ window.confirmRejectBooking(bid); });
+            }
+
+            if (['in_progress','setup_ongoing','on_the_way','arrived','ready_for_pickup','ready_for_delivery'].includes(status)) {
+                addActionBtn('Complete Event', 'fa-check-circle', function(){ window.confirmCompleteBooking(bid); });
+            }
+
+            if (['completed','cancelled'].includes(status)) {
+                addActionBtn('Archive Record', 'fa-archive', function(){ window.confirmArchiveBooking(bid); });
+            }
+
+            if (userId) {
+                addActionBtn('Report Issue', 'fa-flag', function(){ window.openReportModal(bid); });
+            }
+
+            // Small separator and view details already exists as first button
+        } catch (e) {
+            console.error('Failed to build action menu', e);
+        }
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -235,6 +319,16 @@ document.addEventListener('DOMContentLoaded', function () {
         filteredRows = allRows;
         showPage(1);
 
+        // 5. Wire search input (visible) to filtering with debounce
+        const searchEl = document.getElementById('bookingSearchInput');
+        if (searchEl) {
+            let sTimer = null;
+            searchEl.addEventListener('input', function() {
+                clearTimeout(sTimer);
+                sTimer = setTimeout(() => { filterBookings(); }, 200);
+            });
+        }
+
         // 5. Global Click Listeners (Backups)
         document.addEventListener('click', function(e) {
             // Backup for "X" buttons that might lose their onclick
@@ -262,60 +356,12 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        // 7. Real-time Alerts Polling (Every 45 seconds)
-        setInterval(refreshActionAlerts, 45000);
-
+        // Polling removed in favor of accurate server-side rendering
         console.log('[BookingsJS] Manage Bookings JS Ready. [v2.0-english-standard]');
     } catch (err) {
         console.error('[BookingsJS] CRITICAL ERROR DURING INIT:', err);
     }
 });
-
-async function refreshActionAlerts() {
-    try {
-        const res = await fetch('/caterer/api/dashboard-overview');
-        if (!res.ok) return;
-        
-        // Count critical items across the whole table (even hidden ones)
-        const allRows = Array.from(document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item'));
-        let payAlerts = 0;
-        let contractAlerts = 0;
-        let urgentAlerts = 0;
-
-        allRows.forEach(row => {
-            const rawStatus = row.dataset.status || '';
-            const payStatus = row.dataset.paymentStatus || '';
-            const isUrgent = row.dataset.isUrgent === 'true';
-
-            const isEarlyStage = ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment'].includes(rawStatus);
-            if (payStatus === 'balance_proof_submitted' || (payStatus === 'proof_submitted' && isEarlyStage)) payAlerts++;
-            if (['awaiting_caterer'].includes(rawStatus)) contractAlerts++;
-            if (isUrgent && !['completed', 'cancelled'].includes(rawStatus)) urgentAlerts++;
-        });
-
-        const total = payAlerts + contractAlerts + urgentAlerts;
-        const banner = document.getElementById('alertBanner');
-        const countBadge = document.querySelector('.alert-count-badge');
-        const detailsSpan = document.getElementById('bannerTaskDetails');
-
-        if (total > 0) {
-            if (banner) {
-                banner.style.display = 'flex';
-                if (countBadge) countBadge.innerText = total + ' Alerts';
-                if (detailsSpan) {
-                    let parts = [];
-                    if (payAlerts > 0) parts.push(`<span style="color: #f59e0b; font-weight: 800;">${payAlerts}</span> payments`);
-                    if (contractAlerts > 0) parts.push(`<span style="color: #f59e0b; font-weight: 800;">${contractAlerts}</span> contracts`);
-                    if (urgentAlerts > 0) parts.push(`<span style="color: #fb7185; font-weight: 800;">${urgentAlerts}</span> urgent events`);
-                    
-                    detailsSpan.innerHTML = 'Pending: ' + parts.join(' &bull; ');
-                }
-            }
-        } else if (banner) {
-            banner.style.display = 'none';
-        }
-    } catch (err) { console.error('Alert polling failed:', err); }
-}
 
 function initDetailListeners() {
     document.querySelectorAll('.view-details').forEach(function(btn) {
@@ -360,19 +406,22 @@ function filterBookings() {
     const searchInput = document.getElementById('bookingSearchInput') ? document.getElementById('bookingSearchInput').value.toLowerCase() : '';
     const statusFilter = document.getElementById('statusFilter') ? document.getElementById('statusFilter').value : '';
     const sourceFilter = document.getElementById('sourceFilter') ? document.getElementById('sourceFilter').value : '';
+    const bookingTypeFilter = document.getElementById('bookingTypeFilter') ? document.getElementById('bookingTypeFilter').value : '';
     const paymentFilter = document.getElementById('paymentFilter') ? document.getElementById('paymentFilter').value : '';
     const dateFilter = document.getElementById('dateFilter') ? document.getElementById('dateFilter').value : '';
     
-    const allRows = Array.from(document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item'));
+    const allRows = Array.from(document.querySelectorAll('[data-booking-card="true"]'));
 
     filteredRows = allRows.filter(function(row) {
         const rawStatus = row.dataset.status || '';
         const payStatus = row.dataset.paymentStatus || '';
-        const rawSource = row.dataset.source || '';
+        const rawEntry = (row.dataset.entryMethod || row.dataset.source || '').toLowerCase();
+        const bookingKind = row.dataset.bookingKind || '';
         const rowDateMonth = row.dataset.eventMonth || '';
         const rowText = row.textContent.toLowerCase();
         
         const matchesSearch = rowText.indexOf(searchInput) > -1;
+        const matchesBookingType = !bookingTypeFilter || bookingKind === bookingTypeFilter;
         
         let matchesStatus = false;
         if (statusFilter === '') {
@@ -381,7 +430,8 @@ function filterBookings() {
             const needsSignature = ['pending_quotation', 'awaiting_caterer'].includes(rawStatus);
             const needsPaymentVerify = ['proof_submitted', 'balance_proof_submitted'].includes(payStatus);
             const isUrgent = row.dataset.isUrgent === 'true';
-            matchesStatus = needsSignature || needsPaymentVerify || isUrgent;
+            const needsAction = row.dataset.needsAction === 'true';
+            matchesStatus = needsSignature || needsPaymentVerify || isUrgent || needsAction;
         } else {
             matchesStatus = rawStatus === statusFilter;
         }
@@ -390,7 +440,7 @@ function filterBookings() {
         if (sourceFilter === '') {
             matchesSource = true;
         } else {
-            matchesSource = rawSource === sourceFilter;
+            matchesSource = rawEntry === sourceFilter.toLowerCase();
         }
 
         let matchesPayment = false;
@@ -411,7 +461,7 @@ function filterBookings() {
             matchesDate = rowDateMonth === dateFilter;
         }
         
-        return matchesSearch && matchesStatus && matchesSource && matchesPayment && matchesDate;
+        return matchesSearch && matchesStatus && matchesSource && matchesPayment && matchesDate && matchesBookingType;
     });
 
     currentPage = 1;
@@ -427,13 +477,15 @@ function showPage(page) {
     const startIdx = (page - 1) * ROWS_PER_PAGE;
     const endIdx = startIdx + ROWS_PER_PAGE;
 
-    document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item').forEach(function(r) { r.style.display = 'none'; });
+    document.querySelectorAll('[data-booking-card="true"]').forEach(function(r) { r.style.display = 'none'; });
     filteredRows.slice(startIdx, endIdx).forEach(function(r) { r.style.display = ''; });
 
     const searchEmpty = document.getElementById('searchEmptyState');
     if (searchEmpty) {
         searchEmpty.style.display = filteredRows.length === 0 ? '' : 'none';
     }
+    const smartEmpty = document.getElementById('smartSearchEmptyState');
+    if (smartEmpty) smartEmpty.style.display = filteredRows.length === 0 ? '' : 'none';
 
     renderPaginationControls(totalPages);
 
@@ -874,10 +926,83 @@ async function submitExpenses(e) {
 
 
 function showBookingDetails(btn) {
+    if (btn.dataset.workspaceHydrated !== 'true') {
+        if (btn.dataset.workspaceHydrated === 'loading') return;
+        btn.dataset.workspaceHydrated = 'loading';
+        bk_openModal('bookingDetailModal');
+        const loadingStatus = document.getElementById('modalStatus');
+        if (loadingStatus) loadingStatus.innerText = 'Loading booking...';
+        fetch(`/caterer/api/bookings/${btn.dataset.id}/details`, { headers: { 'Accept': 'application/json' } })
+            .then(response => {
+                if (!response.ok) throw new Error('Unable to load booking details');
+                return response.json();
+            })
+            .then(detail => {
+                const user = detail.user || {};
+                const fields = {
+                    status: detail.status || btn.dataset.status || '',
+                    paymentStatus: detail.payment_status || btn.dataset.paymentStatus || 'no_payment',
+                    source: detail.booking_source || btn.dataset.source || '',
+                    eventDate: detail.event_date || '',
+                    eventTime: detail.event_time || 'TBA',
+                    customer: detail.customer_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Walk-in Customer',
+                    email: user.email || detail.customer_email || '',
+                    contact: user.phone_number || detail.customer_contact || '',
+                    venue: detail.venue || 'Not specified',
+                    eventType: detail.event_type || 'Booking',
+                    specificName: (detail.package && detail.package.name) || detail.event_name || detail.event_type || 'Booking',
+                    guestCount: detail.guest_count || 0,
+                    totalRawAmount: detail.total_amount || 0,
+                    amountPaid: detail.amount_paid || 0,
+                    paymentMethod: detail.payment_method || 'Not specified',
+                    paymentPlan: detail.payment_plan || 'downpayment',
+                    paymentRef: detail.payment_reference || '',
+                    bookedOn: detail.created_at ? new Date(detail.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Not available',
+                    balanceDue: detail.balance_due_date ? detail.balance_due_date.slice(0, 10) : '',
+                    actualCost: detail.actual_cost || 0,
+                    targetUserId: detail.user_id || (detail.user ? detail.user.id : ''),
+                    isPackage: detail.is_package,
+                    isFoodOrder: detail.document_type === 'invoice' || detail.event_type === 'Ala Carte Order',
+                    isVerified: user.is_verified,
+                    preparationStatus: detail.preparation_status || 'not_started',
+                    requests: detail.special_requests || '',
+                    documentType: detail.document_type || '',
+                    proofUrl: detail.payment_proof_url || '',
+                    balanceProofUrl: detail.balance_proof_url || '',
+                    hasMenu: Boolean(detail.package || (detail.selected_items && detail.selected_items.length)),
+                    catererNotes: detail.caterer_notes || ''
+                };
+                Object.entries(fields).forEach(([key, value]) => {
+                    btn.dataset[key] = value == null ? '' : String(value);
+                });
+                btn.dataset.workspaceHydrated = 'true';
+                showBookingDetails(btn);
+            })
+            .catch(error => {
+                btn.dataset.workspaceHydrated = '';
+                const status = document.getElementById('modalStatus');
+                if (status) status.innerText = 'Unable to load';
+                if (window.showError) window.showError(error.message || 'Unable to load booking details.');
+            });
+        return;
+    }
     var data = btn.dataset;
+    var bookingStatus = data.status || '';
+    var totalAmountValue = Math.max(parseFloat(data.totalRawAmount) || 0, 0);
+    var paidAmountValue = Math.max(parseFloat(data.amountPaid) || 0, 0);
+    data.amount = '₱' + totalAmountValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    data.totalRawAmount = String(totalAmountValue);
+    resetBookingTabs();
     currentBookingId = data.id;
     window.currentBookingTargetUserId = data.targetUserId;
+    window.currentBookingStatus = data.status;
     currentEventDate = data.eventDate;
+
+    const resetModalTab = (id, fallback) => {
+        const element = document.getElementById(id);
+        if (element && !element.innerHTML.trim()) element.innerHTML = fallback;
+    };
+    resetModalTab('modalHistoryTimeline', '<div style="color:#64748b; text-align:center; padding:1rem;">No activity recorded for this booking.</div>');
     
     // Format the date and time properly
     let edate = new Date(data.eventDate);
@@ -896,13 +1021,16 @@ function showBookingDetails(btn) {
     const vVenue = document.getElementById('vVenue'); if(vVenue) vVenue.innerText = data.venue || 'N/A';
     const vGuestCount = document.getElementById('vGuestCount'); if(vGuestCount) vGuestCount.innerText = data.guestCount || 'N/A';
     
-    const vAmountPaid = document.getElementById('vAmountPaid'); if(vAmountPaid) vAmountPaid.innerText = data.amount || '0.00';
+    const vAmountPaid = document.getElementById('vAmountPaid'); if(vAmountPaid) vAmountPaid.innerText = '₱' + paidAmountValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const vRefNumber = document.getElementById('vRefNumber'); if(vRefNumber) vRefNumber.innerText = data.paymentRef || 'N/A';
     const vPaymentStatus = document.getElementById('vPaymentStatus'); 
     if(vPaymentStatus) {
         let pStatus = data.paymentStatus || 'pending';
         let pColor = '#d97706'; let pBg = '#fef3c7';
-        if (pStatus === 'paid' || pStatus === 'fully_paid') { pColor = '#16a34a'; pBg = '#dcfce3'; }
+        if (data.status === 'inquiry' || data.status === 'draft') {
+            pStatus = 'not requested yet';
+            pColor = '#64748b'; pBg = '#f1f5f9';
+        } else if (pStatus === 'paid' || pStatus === 'fully_paid') { pColor = '#16a34a'; pBg = '#dcfce3'; }
         else if (pStatus === 'expired') { pColor = '#991b1b'; pBg = '#fef2f2'; }
         vPaymentStatus.innerHTML = `<span class="badge" style="background: ${pBg}; color: ${pColor};">${pStatus.replace('_', ' ').toUpperCase()}</span>`;
     }
@@ -923,8 +1051,9 @@ function showBookingDetails(btn) {
 
     const modalSource = document.getElementById('modalBookingSource');
     const modalSourceMobile = document.getElementById('modalBookingSourceMobile');
-    const isWalkin = (data.bookingSource === 'Walk-in' || !data.targetUserId || data.targetUserId === 'None' || data.targetUserId === '');
-    const sourceText = isWalkin ? 'Walk-in Booking' : 'Online Booking';
+    const sourceValue = (data.source || '').trim();
+    const isWalkin = !data.targetUserId || ['walk-in', 'walkin', 'manual'].includes(sourceValue.toLowerCase());
+    const sourceText = isWalkin ? 'Manual / Walk-in' : 'Online Customer Booking';
     if (modalSource) modalSource.innerText = sourceText;
     if (modalSourceMobile) modalSourceMobile.innerText = sourceText;
 
@@ -934,7 +1063,8 @@ function showBookingDetails(btn) {
     const chatWalkinView = document.getElementById('chatWalkinView');
     if (tabBtnChat) {
         if (isWalkin) {
-            tabBtnChat.innerHTML = '<span>Communication</span>';
+            tabBtnChat.style.display = 'inline-flex';
+            tabBtnChat.innerHTML = '<span>Contact Customer</span>';
             if (chatOnlineView) chatOnlineView.style.display = 'none';
             if (chatWalkinView) chatWalkinView.style.display = 'flex';
             
@@ -944,11 +1074,14 @@ function showBookingDetails(btn) {
             if (smsLink && data.contact) smsLink.href = 'sms:' + data.contact;
             if (emailLink && data.email) emailLink.href = 'mailto:' + data.email;
         } else {
-            tabBtnChat.innerHTML = '<span>Consultation</span>';
+            tabBtnChat.style.display = 'inline-flex';
+            tabBtnChat.innerHTML = '<span>Communication</span>';
             if (chatOnlineView) chatOnlineView.style.display = 'flex';
             if (chatWalkinView) chatWalkinView.style.display = 'none';
         }
     }
+
+    configureBookingTabs(data, { isWalkin, isFoodOrder });
 
     document.getElementById('modalCustomer').innerText = data.customer;
     document.getElementById('modalEmail').innerText = data.email;
@@ -962,7 +1095,7 @@ function showBookingDetails(btn) {
     const reqEl = document.getElementById('modalRequests');
     if (reqEl) {
         if (!data.requests || data.requests.trim() === '' || data.requests === 'None') {
-            reqEl.innerHTML = '<div style="color: #64748b; font-style: normal; display: flex; align-items: center; gap: 8px;"><i class="fas fa-check-circle" style="color: #10b981;"></i> Standard Service — No special dietary warnings or setup requests specified by customer.</div>';
+            reqEl.innerHTML = '<div style="color: #64748b; font-style: normal; display: flex; align-items: center; gap: 8px;"><i class="fas fa-info-circle" style="color: #94a3b8;"></i> No special requests recorded for this booking.</div>';
             reqEl.style.background = '#f8fafc';
             reqEl.style.borderColor = '#e2e8f0';
             reqEl.style.color = '#64748b';
@@ -1027,7 +1160,16 @@ function showBookingDetails(btn) {
 
     var statusEl = document.getElementById('modalStatus');
     var statusElMobile = document.getElementById('modalStatusMobile');
-    var statusText = data.displayStatus || data.status.replace(/_/g, ' ').toUpperCase();
+    var statusLabels = {
+        inquiry: 'Inquiry', draft: 'Draft', pending: 'Pending Payment', pending_review: 'New Inquiry',
+        pending_quotation: 'Quotation Pending', awaiting_caterer: 'For Caterer Action',
+        awaiting_customer: 'For Customer Action', awaiting_payment: 'Awaiting Payment',
+        confirmed: 'Confirmed', preparing: 'Preparing', ready_for_pickup: 'Ready for Pickup',
+        ready_for_delivery: 'Ready for Delivery', on_the_way: 'Out for Delivery', arrived: 'Arrived',
+        setup_ongoing: 'Setup Ongoing', in_progress: 'In Progress', completed: 'Completed',
+        cancelled: 'Cancelled', tentative: 'Tentative'
+    };
+    var statusText = data.displayStatus || statusLabels[bookingStatus] || bookingStatus.replace(/_/g, ' ').toUpperCase() || 'Status unavailable';
     
     statusEl.innerText = statusText;
     statusEl.className = 'badge-status';
@@ -1038,7 +1180,10 @@ function showBookingDetails(btn) {
     }
     
     var statusMap = {
+        'inquiry': 'badge-draft',
+        'draft': 'badge-draft',
         'pending': 'badge-pending',
+        'pending_review': 'badge-pending',
         'pending_quotation': 'badge-draft',
         'pending_payment': 'badge-payment',
         'awaiting_caterer': 'badge-awaiting_caterer',
@@ -1057,6 +1202,7 @@ function showBookingDetails(btn) {
     var badgeClass = data.displayBadge || statusMap[data.status] || 'badge-draft';
     statusEl.classList.add(...badgeClass.trim().split(/\s+/));
     if (statusElMobile) statusElMobile.classList.add(...badgeClass.trim().split(/\s+/));
+    renderOverviewWorkspace(data, { isWalkin, isFoodOrder });
 
     var menuSource = document.getElementById('booking-items-' + data.id);
     var menuTarget = document.getElementById('modalMenuItems');
@@ -1065,10 +1211,14 @@ function showBookingDetails(btn) {
     
     let hasMenuData = data.hasMenu === 'true';
     if (hasMenuData && menuSource && menuSource.innerHTML.trim() !== '') {
+        var menuCard = document.getElementById('menuCard');
+        if (menuCard) menuCard.style.display = '';
         if (menuTarget) menuTarget.innerHTML = menuSource.innerHTML;
         if (menuSection) menuSection.style.display = 'block';
         if (menuDetailsBlock) menuDetailsBlock.style.display = 'block';
     } else {
+        var emptyMenuCard = document.getElementById('menuCard');
+        if (emptyMenuCard) emptyMenuCard.style.display = 'none';
         if (menuTarget) menuTarget.innerHTML = '<p style="color:#64748b;font-size:0.9rem;">No menu items or inclusions available.</p>';
         if (menuSection) menuSection.style.display = 'block';
         if (menuDetailsBlock) menuDetailsBlock.style.display = 'none';
@@ -1165,7 +1315,12 @@ var actionsEl = document.getElementById('bookingModalActionsTop') || document.ge
 
     
     const totalAmountRaw = parseFloat(data.totalRawAmount || '0');
-    const amountPaid = parseFloat(data.amountPaid || '0');
+    let amountPaid = 0;
+    if (data.paymentStatus === 'paid' || data.paymentStatus === 'fully_paid' || data.status === 'completed') {
+        amountPaid = totalAmountRaw;
+    } else if (data.status !== 'pending' && data.status !== 'awaiting_payment' && data.status !== 'pending_quotation' && data.status !== 'awaiting_caterer') {
+        amountPaid = totalAmountRaw * 0.5;
+    }
     const balance = totalAmountRaw - amountPaid;
     const prepStatus = data.preparationStatus || 'not_started';
 
@@ -1174,6 +1329,17 @@ var actionsEl = document.getElementById('bookingModalActionsTop') || document.ge
 
     if (data.status === 'cancelled' || data.status === 'completed') {
         nextStepMsg = 'No further action required.';
+    } else if (data.status === 'inquiry') {
+        nextStepMsg = 'Quotation needs to be prepared. The customer is waiting before deciding.';
+        actionBtnHtml = `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.openQuotationWorkspace(${data.id})"><i class="fas fa-file-invoice-dollar"></i> Prepare Quotation</button>`;
+    } else if (data.status === 'tentative') {
+        nextStepMsg = 'Follow up for contract signing and initial deposit to confirm booking.';
+    } else if (data.status === 'draft') {
+        nextStepMsg = 'Finish encoding booking details and convert to Inquiry or Tentative.';
+    } else if (data.status === 'pending_quotation') {
+        nextStepMsg = 'Waiting for customer to approve the quotation.';
+    } else if (data.status === 'awaiting_customer') {
+        nextStepMsg = 'Waiting for customer to sign the contract.';
     } else if (data.paymentStatus === 'expired') {
         nextStepMsg = 'Reservation expired. Please cancel or archive this booking.';
     } else if (data.status === 'pending') {
@@ -1230,7 +1396,7 @@ var actionsEl = document.getElementById('bookingModalActionsTop') || document.ge
     
     var mobileCST = document.getElementById('mobileCompactStatusText');
     var mobileCNST = document.getElementById('mobileCompactNextStatusText');
-    if (mobileCST) mobileCST.innerText = data.displayStatus || data.status.replace(/_/g, ' ').toUpperCase();
+    if (mobileCST) mobileCST.innerText = statusText;
     if (mobileCNST) mobileCNST.innerText = nextStepMsg;
 
     if (actionsEl) {
@@ -1238,7 +1404,30 @@ var actionsEl = document.getElementById('bookingModalActionsTop') || document.ge
         actionsEl.innerHTML = '';
 
         // Edit Booking Button
-        actionsEl.innerHTML += `<button onclick="window.openEditBookingModal()" class="btn-sm-outline" style="background:white; border:1px solid #cbd5e1; color:#475569; justify-content:flex-start; width:100%; margin-bottom: 8px;"><i class="fas fa-edit" style="width:16px;"></i> Edit Booking Details</button>`;
+        const canEditBooking = !['confirmed', 'preparing', 'setup_ongoing', 'in_progress', 'ready_for_pickup', 'ready_for_delivery', 'on_the_way', 'completed', 'cancelled'].includes(data.status) && !['paid', 'fully_paid', 'proof_submitted'].includes(data.paymentStatus);
+        
+        if (canEditBooking) {
+            actionsEl.innerHTML += `<button onclick="window.openEditBookingModal()" class="btn-sm-outline" style="background:white; border:1px solid #cbd5e1; color:#475569; justify-content:flex-start; width:100%; margin-bottom: 8px; text-align: left; transition: background 0.2s;"><i class="fas fa-edit" style="width:20px; text-align:center;"></i> Modify Booking Details</button>`;
+        } else {
+            actionsEl.innerHTML += `<button class="btn-sm-outline" disabled title="Modification locked. Booking is fully paid or completed." style="background:#f8fafc; border:1px solid #e2e8f0; color:#94a3b8; justify-content:flex-start; width:100%; margin-bottom: 8px; text-align: left; cursor:not-allowed;"><i class="fas fa-lock" style="width:20px; text-align:center;"></i> Modification Locked</button>`;
+        }
+
+        const btnModifyTab = document.getElementById('btnModifyBookingDetailsTab');
+        if (btnModifyTab) {
+            if (canEditBooking) {
+                btnModifyTab.disabled = false;
+                btnModifyTab.innerHTML = `<i class="fas fa-edit"></i> Modify Booking`;
+                btnModifyTab.style.cursor = 'pointer';
+                btnModifyTab.style.opacity = '1';
+                btnModifyTab.title = 'Edit booking details';
+            } else {
+                btnModifyTab.disabled = true;
+                btnModifyTab.innerHTML = `<i class="fas fa-lock"></i> Locked`;
+                btnModifyTab.style.cursor = 'not-allowed';
+                btnModifyTab.style.opacity = '0.6';
+                btnModifyTab.title = 'Modification locked. Booking is fully paid or completed.';
+            }
+        }
 
         
         // --- KYC WARNING BANNER ---
@@ -1339,6 +1528,18 @@ var actionsEl = document.getElementById('bookingModalActionsTop') || document.ge
                 <button type="button" class="btn-footer-action" onclick="window.confirmRejectBooking(${data.id})" style="background: white; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600;"><i class="fas fa-trash-alt"></i> Delete Draft</button>
             `;
             
+        } else if (data.status === 'inquiry') {
+            actionsEl.innerHTML = `
+                <button type="button" class="btn-footer-action btn-status-confirm" onclick="window.openQuotationWorkspace(${data.id})"><i class="fas fa-file-invoice-dollar"></i> Prepare Quotation</button>
+                <button type="button" class="btn-footer-action" onclick="window.openEditBookingModal()" style="background: white; color: #475569; border: 1px solid #cbd5e1; font-weight: 600;"><i class="fas fa-edit"></i> Edit Details</button>
+            `;
+            
+        } else if (data.status === 'tentative') {
+            actionsEl.innerHTML = `
+                <div style="padding: 0.65rem 1rem; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; font-size: 0.85rem; font-weight: 600; flex: 1; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-calendar-alt"></i> Tentative Reservation. Awaiting initial deposit.</div>
+                <button type="button" class="btn-footer-action" onclick="window.confirmRejectBooking(${data.id})" style="background: white; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600;"><i class="fas fa-times-circle"></i> Cancel Tentative</button>
+            `;
+            
         } else {
             // ─── CONSOLIDATED OPERATIONAL LIFECYCLE ───
             // Both Ala Carte (8 Steps) and Package (6 Steps) share these event milestones
@@ -1416,7 +1617,7 @@ var actionsEl = document.getElementById('bookingModalActionsTop') || document.ge
         }
         
         // Add Copy Payment Link Button (useful for sending to FB Walk-in customers)
-        const noLinkStatuses = ['draft', 'pending_quotation', 'awaiting_caterer', 'awaiting_customer', 'pending', 'cancelled', 'completed', 'expired'];
+        const noLinkStatuses = ['draft', 'inquiry', 'tentative', 'pending_quotation', 'awaiting_caterer', 'awaiting_customer', 'pending', 'cancelled', 'completed', 'expired'];
         if (!noLinkStatuses.includes(data.status) && data.paymentStatus !== 'paid' && data.paymentStatus !== 'expired' && data.amount !== "₱0.00") {
             actionsEl.innerHTML += `
                 <button type="button" class="btn-footer-action" onclick="window.copyInvoiceLink(${data.id})" style="background: white; color: #475569; border: 1px solid #cbd5e1; font-weight: 600;">
@@ -1454,7 +1655,19 @@ var actionsEl = document.getElementById('bookingModalActionsTop') || document.ge
         }
     }
 
-    document.getElementById('modalBookedOn').innerText = data.bookedOn;
+    const bookedOnEl = document.getElementById('modalBookedOn');
+    if (bookedOnEl) bookedOnEl.innerText = data.bookedOn || 'Not available';
+    const headerSummary = document.getElementById('modalHeaderSummary');
+    if (headerSummary) {
+        const eventDateLabel = data.eventDate ? new Date(data.eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date not set';
+        const bookingTypeLabel = isWalkin ? 'Walk-in' : 'Online';
+        headerSummary.innerHTML = [
+            `<span><i class="fas fa-user"></i>${data.customer || 'Customer not set'}</span>`,
+            `<span><i class="fas fa-calendar-day"></i>${data.eventType || 'Event not set'} · ${eventDateLabel}</span>`,
+            `<span><i class="fas fa-users"></i>${data.guestCount || 0} guests</span>`,
+            `<span><i class="fas fa-sign-in-alt"></i>${bookingTypeLabel}</span>`
+        ].join('');
+    }
     const displayPaymentPlan = (isFoodOrder || data.paymentPlan === 'full') ? 'FULL PAYMENT' : (data.paymentPlan || 'downpayment').toUpperCase();
     const paymentMethodEl = document.getElementById('modalPaymentMethod');
     if (paymentMethodEl) {
@@ -1475,29 +1688,52 @@ var actionsEl = document.getElementById('bookingModalActionsTop') || document.ge
     if (totalElMobile) totalElMobile.innerText = data.amount;
     
     // Overview Cards logic
-    let totalRaw = parseFloat(data.totalRawAmount) || 0;
-    let paidRaw = 0;
-    if (data.paymentStatus === 'paid' || data.paymentStatus === 'fully_paid' || data.status === 'completed') {
-        paidRaw = totalRaw;
-    } else if (data.status !== 'pending' && data.status !== 'awaiting_payment' && data.status !== 'pending_quotation' && data.status !== 'awaiting_caterer') {
-        paidRaw = totalRaw * 0.5;
+    let totalRaw = Math.max(parseFloat(data.totalRawAmount) || 0, 0);
+    let paidRaw = Math.max(parseFloat(data.amountPaid) || 0, 0);
+    if (data.paymentStatus === 'paid' || data.paymentStatus === 'fully_paid') {
+        paidRaw = Math.max(paidRaw, totalRaw);
     }
-    let balanceRaw = totalRaw - paidRaw;
+    paidRaw = Math.min(paidRaw, totalRaw);
+    let balanceRaw = Math.max(totalRaw - paidRaw, 0);
     const formatMoney = (val) => '₱' + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     
     let dtTotal = document.getElementById('modalTotalAmount');
     let dtPaid = document.getElementById('headerPaidAmount');
     let dtBalance = document.getElementById('headerBalanceAmount');
-    if (dtTotal) dtTotal.innerText = formatMoney(totalRaw);
-    if (dtPaid) dtPaid.innerHTML = formatMoney(paidRaw) + ' paid';
-    if (dtBalance) dtBalance.innerHTML = formatMoney(balanceRaw) + ' balance';
     
     let moTotal = document.getElementById('modalTotalAmountMobile');
     let moPaid = document.getElementById('headerPaidAmountMobile');
     let moBalance = document.getElementById('headerBalanceAmountMobile');
-    if (moTotal) moTotal.innerText = formatMoney(totalRaw);
-    if (moPaid) moPaid.innerHTML = formatMoney(paidRaw) + ' paid';
-    if (moBalance) moBalance.innerHTML = formatMoney(balanceRaw) + ' balance';
+
+    const quotationPending = ['inquiry', 'draft'].includes(data.status) && totalRaw <= 0;
+    const financialLabel = document.getElementById('modalFinancialLabel');
+    if (financialLabel) financialLabel.innerText = quotationPending ? 'Quotation' : 'Total';
+    if (dtTotal) dtTotal.innerText = quotationPending ? 'Not quoted yet' : formatMoney(totalRaw);
+    if (moTotal) moTotal.innerText = quotationPending ? 'Not quoted yet' : formatMoney(totalRaw);
+
+    if (data.status === 'inquiry' || data.status === 'draft') {
+        if (dtPaid) dtPaid.innerHTML = '₱0.00 paid';
+        if (dtBalance) dtBalance.innerHTML = '<span style="color:#94a3b8;">Not Applicable</span>';
+        if (moPaid) moPaid.innerHTML = '₱0.00 paid';
+        if (moBalance) moBalance.innerHTML = '<span style="color:#94a3b8;">N/A</span>';
+    } else {
+        if (dtPaid) dtPaid.innerHTML = formatMoney(paidRaw) + ' paid';
+        if (dtBalance) dtBalance.innerHTML = formatMoney(balanceRaw) + ' balance';
+        if (moPaid) moPaid.innerHTML = formatMoney(paidRaw) + ' paid';
+        if (moBalance) moBalance.innerHTML = formatMoney(balanceRaw) + ' balance';
+    }
+
+    const financeTotal = document.getElementById('financeTotalAmount');
+    const financePaid = document.getElementById('financePaidAmount');
+    const financeBalance = document.getElementById('financeBalanceAmount');
+    const financeStatus = document.getElementById('financePaymentStatus');
+    if (financeTotal) financeTotal.innerText = totalRaw > 0 ? formatMoney(totalRaw) : 'Not yet quoted';
+    if (financePaid) financePaid.innerText = formatMoney(paidRaw);
+    if (financeBalance) financeBalance.innerText = data.status === 'inquiry' || data.status === 'draft' ? 'Not applicable' : formatMoney(balanceRaw);
+    if (financeStatus) {
+        const financeLabels = { paid: 'Fully Paid', fully_paid: 'Fully Paid', deposit_paid: 'Downpayment Paid', proof_submitted: 'Proof Sent', balance_proof_submitted: 'Balance Proof Sent', pending: 'Payment Pending', unpaid: 'Unpaid', partial: 'Partial' };
+        financeStatus.innerText = data.status === 'inquiry' || data.status === 'draft' ? 'Not applicable' : (financeLabels[data.paymentStatus] || (data.paymentStatus || 'Payment status unavailable').replace(/_/g, ' '));
+    }
 
     // --- PROFIT SUMMARY INJECTION FOR COMPLETED BOOKINGS ---
     const profitSummary = document.getElementById('completedProfitSummary');
@@ -1593,7 +1829,8 @@ var actionsEl = document.getElementById('bookingModalActionsTop') || document.ge
         'expired': 'Overdue / Expired'
     };
     
-    var labelText = pLabels[data.paymentStatus] || data.paymentStatus.replace(/_/g, ' ').toUpperCase();
+    var paymentStatus = data.paymentStatus || 'pending';
+    var labelText = pLabels[paymentStatus] || paymentStatus.replace(/_/g, ' ').toUpperCase();
     if (pStatusEl) pStatusEl.innerText = labelText;
     if (pStatusElText) pStatusElText.innerText = labelText;
     if (pStatusBadge) pStatusBadge.innerText = labelText;
@@ -1773,13 +2010,122 @@ function switchBookingTab(tabId, targetEl) {
     }
 }
 
+function configureBookingTabs(data, context) {
+    const status = data.status || '';
+    const paymentStatus = data.paymentStatus || 'no_payment';
+    const total = Math.max(parseFloat(data.totalRawAmount) || 0, 0);
+    const hasPaymentData = total > 0 || paymentStatus !== 'no_payment' || Boolean(data.proofUrl || data.balanceProofUrl);
+    const contractStatuses = ['awaiting_caterer', 'awaiting_customer', 'confirmed', 'preparing', 'ready_for_pickup', 'ready_for_delivery', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress', 'completed'];
+    const showContract = !context.isWalkin && (contractStatuses.includes(status) || Boolean(data.documentType));
+    const showChat = context.isWalkin ? Boolean(data.contact || data.email) : Boolean(data.targetUserId);
+    const visibleTabs = {
+        overview: true,
+        details: true,
+        finance: hasPaymentData,
+        contract: showContract,
+        chat: showChat,
+        activity: true
+    };
+
+    Object.entries(visibleTabs).forEach(([tabId, isVisible]) => {
+        const button = document.querySelector(`#bookingDetailModal [data-tab="${tabId}"]`);
+        const pane = document.getElementById(`btab-${tabId}`);
+        if (button) button.style.display = isVisible ? 'flex' : 'none';
+        if (pane) pane.style.display = isVisible ? '' : 'none';
+    });
+
+    const checklistCard = document.getElementById('checklistCard');
+    const checklistStatuses = ['confirmed', 'preparing', 'ready_for_pickup', 'ready_for_delivery', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress'];
+    if (checklistCard) checklistCard.style.display = checklistStatuses.includes(status) ? '' : 'none';
+
+    const dueDateCard = document.getElementById('dueDateCardPremium');
+    if (dueDateCard) dueDateCard.style.display = hasPaymentData && !['inquiry', 'draft', 'pending_quotation', 'awaiting_caterer', 'awaiting_customer', 'awaiting_payment', 'pending_payment'].includes(status) ? '' : 'none';
+
+    const activeButton = document.querySelector('#bookingDetailModal .mtab-btn-pro.active');
+    const activeTab = activeButton?.dataset.tab;
+    if (!visibleTabs[activeTab]) {
+        const fallback = Object.keys(visibleTabs).find(tabId => visibleTabs[tabId]);
+        const fallbackButton = document.querySelector(`#bookingDetailModal [data-tab="${fallback}"]`);
+        switchBookingTab(fallback, fallbackButton);
+    }
+}
+
+window.openQuotationWorkspace = function(bookingId) {
+    window.location.href = `/caterer/bookings/${bookingId}/quotation`;
+};
+
+function renderOverviewWorkspace(data, context) {
+    const status = data.status || '';
+    const total = Math.max(parseFloat(data.totalRawAmount) || 0, 0);
+    const missing = [];
+    const openEdit = 'window.openEditBookingModal()';
+    const addAttention = (label, actionLabel = 'Edit details') => missing.push(`<div class="workspace-attention-item"><span><i class="fas fa-exclamation-circle"></i> ${label}</span><button type="button" onclick="${openEdit}">${actionLabel}</button></div>`);
+
+    if (!data.venue || data.venue === 'Not specified') addAttention('Venue not specified', 'Add venue');
+    if (!Number(data.guestCount)) addAttention('Guest count not set', 'Set guests');
+    if (!data.eventDate) addAttention('Event date not set', 'Set date');
+    if (status === 'inquiry' && total <= 0) addAttention('Quotation not prepared', 'Prepare quote');
+
+    const attention = document.getElementById('overviewAttention');
+    if (attention) attention.innerHTML = missing.length ? missing.join('') : '<div class="workspace-attention-ok"><i class="fas fa-check-circle"></i> Booking information is complete.</div>';
+
+    const eventDate = data.eventDate ? new Date(data.eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not set';
+    const summary = document.getElementById('overviewSummary');
+    if (summary) {
+        const packageName = data.specificName && data.specificName !== data.eventType ? data.specificName : 'Not selected';
+        summary.innerHTML = [
+            ['Customer', data.customer || 'Not set'],
+            ['Event', data.eventType || 'Not set'],
+            ['Date', eventDate],
+            ['Guests', Number(data.guestCount) ? `${data.guestCount} guests` : 'Not set'],
+            ['Venue', data.venue || 'Not specified'],
+            ['Source', context.isWalkin ? 'Walk-in' : 'Online'],
+            ['Package', packageName]
+        ].map(([label, value]) => `<div class="workspace-summary-item"><span>${label}</span><strong>${value}</strong></div>`).join('');
+    }
+
+    const primary = {
+        inquiry: ['Quotation needs to be prepared.', 'The customer is waiting for a quotation before deciding.', 'Prepare Quotation', `window.openQuotationWorkspace(${data.id})`],
+        pending_quotation: ['Quotation is awaiting customer decision.', 'Review the quotation or send a reminder when needed.', 'View Quotation', `window.location.href='/caterer/bookings/${data.id}/quotation'`],
+        awaiting_customer: ['Customer action is pending.', 'Send a reminder if the customer has not completed the next step.', 'Send Reminder', `window.sendPaymentReminder(${data.id})`],
+        confirmed: ['Booking is confirmed. Prepare the event.', 'Move the booking into preparation when requirements are ready.', 'Start Preparation', `window.updateBookingStage(${data.id}, 'preparing')`],
+        preparing: ['Preparation is in progress.', 'Advance the booking when the event is ready for delivery or setup.', data.venue === 'PICKUP' ? 'Mark Ready for Pickup' : 'Mark Ready for Delivery', data.venue === 'PICKUP' ? `window.validateAndProceed(${data.id}, 'ready_for_pickup')` : `window.validateAndProceed(${data.id}, 'ready_for_delivery')`],
+        ready_for_delivery: ['Booking is ready for delivery.', 'Start the delivery stage when the team is on the way.', 'Out for Delivery', `window.updateBookingStage(${data.id}, 'on_the_way')`],
+        ready_for_pickup: ['Order is ready for pickup.', 'Complete the booking after the customer receives it.', 'Mark Picked Up', `window.confirmCompleteBooking(${data.id})`],
+        on_the_way: ['The booking is in transit.', 'Mark arrival when the team reaches the venue.', 'Mark Arrived', `window.updateBookingStage(${data.id}, 'arrived')`],
+        arrived: ['The team has arrived.', 'Start setup or complete the delivery.', context.isFoodOrder ? 'Mark Completed' : 'Start Setup', context.isFoodOrder ? `window.confirmCompleteBooking(${data.id})` : `window.updateBookingStage(${data.id}, 'setup_ongoing')`],
+        setup_ongoing: ['Setup is ongoing.', 'Complete the booking when service is finished.', 'Mark Completed', `window.confirmCompleteBooking(${data.id})`],
+        in_progress: ['The event is ongoing.', 'Complete the booking when service is finished.', 'Mark Completed', `window.confirmCompleteBooking(${data.id})`],
+        completed: ['Booking completed.', 'No operational action is required.', '', ''],
+        cancelled: ['Booking cancelled.', 'This record is closed and available for reference.', '', '']
+    }[status] || ['Booking requires review.', 'Review the booking details and choose the next available action.', 'Review Details', `switchBookingTab('details', document.querySelector('[data-tab="details"]'))`];
+
+    const title = document.getElementById('overviewNextActionTitle');
+    const description = document.getElementById('overviewNextActionDescription');
+    const button = document.getElementById('overviewNextActionButton');
+    if (title) title.innerText = primary[0];
+    if (description) description.innerText = primary[1];
+    if (button) button.innerHTML = primary[2] ? `<button type="button" onclick="${primary[3]}"><i class="fas fa-arrow-right"></i> ${primary[2]}</button>` : '';
+
+    const lifecycle = document.getElementById('overviewLifecycle');
+    const early = ['inquiry', 'pending_quotation', 'awaiting_customer'];
+    const stages = early.includes(status) ? ['Inquiry', 'Quotation', 'Customer decision', 'Confirmed'] : ['Confirmed', 'Preparing', 'Setup', 'Ongoing', 'Completed'];
+    const stageKeys = early.includes(status) ? ['inquiry', 'pending_quotation', 'awaiting_customer', 'confirmed'] : ['confirmed', 'preparing', 'setup_ongoing', 'in_progress', 'completed'];
+    let currentIndex = stageKeys.indexOf(status);
+    if (currentIndex < 0 && ['ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'arrived'].includes(status)) currentIndex = 1;
+    if (currentIndex < 0 && status === 'cancelled') currentIndex = 0;
+    if (lifecycle) lifecycle.innerHTML = stages.map((stage, index) => `<div class="workspace-lifecycle-step ${index < currentIndex ? 'done' : ''} ${index === currentIndex ? 'current' : ''}"><span class="dot"></span>${stage}</div>`).join('');
+}
+
 function resetBookingTabs() {
     document.querySelectorAll('.mtab-pane-pro').forEach(function(p) { p.classList.remove('active'); });
     document.querySelectorAll('.mtab-btn-pro').forEach(function(b) { 
+        b.style.display = 'flex';
         b.classList.remove('active');
         b.style.borderBottomColor = 'transparent';
         b.style.color = '#64748b';
     });
+    document.querySelectorAll('.mtab-pane-pro').forEach(function(p) { p.style.display = ''; });
     var ovTab = document.getElementById('btab-overview') || document.getElementById('btab-summary');
     if (ovTab) ovTab.classList.add('active');
     var firstBtn = document.querySelector('.mtab-btn-pro');
@@ -1819,6 +2165,7 @@ window.copyInvoiceLink = function(bookingId) {
 async function loadBookingHistory(bookingId) {
     const container = document.getElementById('modalHistoryTimeline');
     if (!container) return;
+    container.innerHTML = '<div style="text-align:center;padding:2rem;color:#94a3b8;">Loading activity...</div>';
     
     try {
         const res = await fetch(`/caterer/api/bookings/${bookingId}/history`);
@@ -1882,6 +2229,13 @@ async function saveCatererNotes() {
 // ─── NEW: STEPPER LOGIC ──────────────────────────────────────────────────────
 
 function updateBookingStepper(status, isPackage, isFoodOrder) {
+    const stepper = document.querySelector('.booking-stepper-pro');
+    const preOperationalStatuses = ['inquiry', 'draft', 'pending_review', 'pending_quotation', 'awaiting_caterer', 'awaiting_customer', 'tentative'];
+    if (stepper) {
+        stepper.style.display = preOperationalStatuses.includes(status) ? 'none' : '';
+    }
+    if (preOperationalStatuses.includes(status)) return;
+
     let steps;
     if (isFoodOrder) {
         steps = ['pending', 'preparing', 'on_the_way', 'arrived', 'completed'];
@@ -2556,6 +2910,72 @@ async function loadBookingTasks(bookingId) {
     const progressBar = document.getElementById('checklistProgressBar');
     
     if (!listContainer) return;
+    
+    // Status-dependent checklist titles and static tasks
+    let status = window.currentBookingStatus || 'confirmed';
+    let checklistTitle = 'Checklist';
+    
+    const staticChecklists = {
+        'inquiry': {
+            title: 'Inquiry Checklist',
+            tasks: ['Customer details', 'Event details', 'Availability checked', 'Quoted Package', 'Follow-up sent']
+        },
+        'tentative': {
+            title: 'Confirmation Checklist',
+            tasks: ['Quote accepted', 'Contract signed', 'Deposit received', 'Hold expiration check']
+        },
+        'setup_ongoing': {
+            title: 'Setup Checklist',
+            tasks: ['Venue Arrival', 'Tables & Chairs', 'Equipment', 'Buffet Area', 'Food Setup']
+        },
+        'in_progress': {
+            title: 'Event Monitoring',
+            tasks: ['Event started', 'Issues monitored', 'Special requests handled', 'Completion confirmed']
+        },
+        'completed': {
+            title: 'Post-Event',
+            tasks: ['Final payment collected', 'Expenses recorded', 'Completion report', 'Customer feedback']
+        },
+        'cancelled': {
+            title: 'Cancellation',
+            tasks: ['Archived']
+        }
+    };
+
+    const sectionTitleContainer = document.getElementById('modalChecklistSection');
+    const titleEl = sectionTitleContainer ? sectionTitleContainer.previousElementSibling.querySelector('.exec-title') : null;
+
+    if (staticChecklists[status]) {
+        // Render static visual checklist
+        const cl = staticChecklists[status];
+        if (titleEl) titleEl.innerText = cl.title;
+        
+        let checkedCount = 0;
+        let html = '';
+        cl.tasks.forEach((t, i) => {
+            let isChecked = false;
+            // visually check everything for past/ongoing states, keep unchecked for tentative/inquiry
+            if (status === 'completed' || status === 'setup_ongoing' || status === 'in_progress' || status === 'cancelled') isChecked = true;
+            if (isChecked) checkedCount++;
+            html += `
+            <div class="task-item-pro ${isChecked ? 'completed' : ''}" style="cursor: default;">
+                <div class="task-checkbox-pro">
+                    ${isChecked ? '<i class="fas fa-check"></i>' : ''}
+                </div>
+                <div class="task-title" style="flex:1;">${t}</div>
+            </div>`;
+        });
+        
+        const progress = Math.round((checkedCount / cl.tasks.length) * 100);
+        if (progressText) progressText.innerText = progress + '%';
+        if (progressBar) progressBar.style.width = progress + '%';
+        
+        listContainer.innerHTML = html;
+        return;
+    }
+
+    // Default to dynamic API tasks for Confirmed/Preparing
+    if (titleEl) titleEl.innerText = (status === 'preparing') ? 'Preparation Checklist' : 'Pre-Event Checklist';
     listContainer.innerHTML = '<div style="text-align:center;padding:1rem;color:#94a3b8;"><i class="fas fa-circle-notch fa-spin"></i> Loading tasks...</div>';
 
     try {
@@ -3338,3 +3758,20 @@ window.submitManualPayment = async function(e) {
         btn.innerHTML = '<i class="fas fa-save"></i> Record Payment';
     }
 };
+
+window.toggleModalFullscreen = function(modalId, btn) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        const content = modal.querySelector('.modal-content-pro');
+        if (content) {
+            if (content.classList.contains('fullscreen-modal')) {
+                content.classList.remove('fullscreen-modal');
+                if (btn) btn.innerHTML = '<i class="fas fa-expand"></i>';
+            } else {
+                content.classList.add('fullscreen-modal');
+                if (btn) btn.innerHTML = '<i class="fas fa-compress"></i>';
+            }
+        }
+    }
+};
+

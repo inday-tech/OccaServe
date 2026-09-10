@@ -309,3 +309,27 @@ class EmailService:
         """
         return EmailService._send_email(email, subject, body, html_body)
 
+
+
+async def send_event_reminder_email(email: str, event_name: str, event_date: str, event_time: str, venue: str, customer_name: str):
+    subject = f"?? REMINDER: Upcoming Event - {event_name}"
+    body = f"Reminder for {event_name} on {event_date} at {event_time} located at {venue}. Client: {customer_name}"
+    html_body = f"""
+    <!DOCTYPE html>
+    <html>
+    <body style="font-family: Arial, sans-serif; padding: 20px;">
+        <h2>Event Reminder</h2>
+        <p>This is a reminder for an upcoming event:</p>
+        <ul>
+            <li><strong>Event:</strong> {event_name}</li>
+            <li><strong>Client:</strong> {customer_name}</li>
+            <li><strong>Date:</strong> {event_date}</li>
+            <li><strong>Time:</strong> {event_time}</li>
+            <li><strong>Venue:</strong> {venue}</li>
+        </ul>
+    </body>
+    </html>
+    """
+    # Use asyncio.to_thread to run the synchronous EmailService._send_email
+    import asyncio
+    await asyncio.to_thread(EmailService._send_email, email, subject, body, html_body)

@@ -165,6 +165,13 @@
         const dropdown = document.getElementById(dropdownId);
         if (!dropdown) return;
 
+        // Ask for Notification permission when they open notifications
+        if (dropdownId === 'notificationsDropdown' && "Notification" in window) {
+            if (Notification.permission === "default") {
+                Notification.requestPermission();
+            }
+        }
+
         const isActive = dropdown.classList.contains('active');
         
         // Close other dropdowns if any
@@ -269,11 +276,39 @@
             };
         }
 
+        function showNativeNotification(title, body, targetUrl) {
+            if (window.Notification && Notification.permission === "granted") {
+                const notif = new Notification(title, {
+                    body: body,
+                    icon: "/static/img/occashare_logo.png",
+                    tag: "notif-" + Date.now()
+                });
+                notif.onclick = function() {
+                    window.focus();
+                    if (targetUrl) window.location.href = targetUrl;
+                    notif.close();
+                };
+            }
+        }
+
         function handleRealTimeMessage(data) {
             console.log("Real-time update received:", data);
 
-            if (data.type === 'new_notification') {
+            if (data.type === 'push_reminder') {
                 updateNotificationBadge(data.count);
+                
+                showNativeNotification(data.title || "OccaServe Reminder", data.message, data.booking_id ? `/caterer/bookings?focus_id=${data.booking_id}` : null);
+                
+                if (window.showToast) {
+                    window.showToast("🔔 " + (data.title || "Reminder") + ": " + data.message, "info");
+                }
+                
+                if (window.fetchGlobalNotifications) window.fetchGlobalNotifications(true);
+            } else if (data.type === 'new_notification') {
+                updateNotificationBadge(data.count);
+                
+                showNativeNotification(data.title || "New Notification", data.message || "You have a new update.", "/caterer/bookings");
+                
                 if (window.showToast) {
                     window.showToast(data.message || "New notification received", "info");
                 }
@@ -281,6 +316,12 @@
                     window.fetchGlobalNotifications(true);
                 }
             } else if (data.type === 'booking_update') {
+                showNativeNotification("Booking Update", data.message || "A booking has been updated.", "/caterer/bookings");
+
+                if (data.booking_id && typeof window.refreshOpenBookingWorkspace === 'function') {
+                    window.refreshOpenBookingWorkspace(data.booking_id);
+                }
+                
                 // If on dashboard, refresh stats
                 if (typeof window.refreshDashboardData === 'function') {
                     window.refreshDashboardData();

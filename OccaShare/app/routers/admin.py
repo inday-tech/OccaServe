@@ -3130,7 +3130,13 @@ async def get_booking_details(
 
         # Cap risk score
         risk_score = min(risk_score, 100)
-        
+
+        try:
+            from app.constants.booking_constants import entry_method_from_source
+            entry_method = entry_method_from_source(booking.booking_source)
+        except Exception:
+            entry_method = 'online'
+
         return {
             "success": True,
             "booking": {
@@ -3159,6 +3165,7 @@ async def get_booking_details(
                         "created_at": h.created_at.strftime('%b %d, %Y %I:%M %p')
                     } for h in sorted(booking.history, key=lambda x: x.created_at, reverse=True)
                 ],
+                "entry_method": entry_method,
                 "package_name": booking.package.name if booking.package else "Custom Service",
                 "downpayment_amount": float(booking.total_amount or 0) * 0.5, # Assuming 50% for display
                 "risk_intelligence": {

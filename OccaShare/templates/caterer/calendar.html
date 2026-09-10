@@ -318,8 +318,8 @@
         <p>Manage bookings, preparation, availability, and your business schedule.</p>
     </div>
     <div style="display: flex; gap: 10px;">
-        <button onclick="openExternalBookingModal()" class="btn-secondary-pro" title="Add a new walk-in booking">
-            <i class="fas fa-user-plus"></i> Walk-in Booking
+        <button onclick="openExternalBookingModal()" class="btn-secondary-pro" title="Add a new manual booking">
+            <i class="fas fa-user-plus"></i> Manual Booking
         </button>
         <button onclick="openAddScheduleModal()" class="btn-primary-pro" title="Add Internal Schedule">
             <i class="fas fa-calendar-plus"></i> Add Schedule
@@ -693,11 +693,12 @@
         document.getElementById('stepProgress').style.width = `${progress}%`;
 
         // Buttons
-        document.getElementById('btnPrevStep').style.visibility = currentStep > 1 ? 'visible' : 'hidden';
-        
+        document.getElementById('btnPrevStep').style.display = currentStep > 1 ? 'inline-flex' : 'none';
+
         if (currentStep === totalSteps) {
             document.getElementById('btnNextStep').style.display = 'none';
             document.getElementById('btnSubmitManual').style.display = 'inline-flex';
+            try { if (typeof updateSubmitButtonState === 'function') updateSubmitButtonState(); } catch(e) {}
         } else {
             document.getElementById('btnNextStep').style.display = 'inline-flex';
             document.getElementById('btnSubmitManual').style.display = 'none';
@@ -742,77 +743,137 @@
 
 <div id="eventModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-md occ-content-pop">
+        <div class="occ-modal-header glass-header" style="background: linear-gradient(135deg, #1e293b, #0f172a); color: white; border-bottom: none;">
+            <div>
+                <h3 id="calModalTitle" class="occ-modal-title" style="color: white; font-size: 1.25rem;">Booking Details</h3>
+                <div class="occ-modal-subtitle" style="color: #cbd5e1; font-size: 0.85rem;">Review service logistics and customer information</div>
+            </div>
+            <button onclick="closeModal('eventModal')" class="occ-modal-close" style="color: white;" title="Close" aria-label="Close modal"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="compact-body" style="padding: 1.5rem; background: #f8fafc;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                <div style="background: white; padding: 1.25rem; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px;">Client Information</div>
+                    <div id="detCustomer" style="font-weight: 700; color: #0f172a; font-size: 1.1rem; margin-bottom: 4px;">---</div>
+                    <div id="detContactInfo" style="font-size: 0.85rem; color: #475569;">---</div>
+                </div>
+                <div style="background: white; padding: 1.25rem; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px;">Event Logistics</div>
+                    <div id="detType" style="font-weight: 700; color: #0f172a; font-size: 1.1rem; margin-bottom: 4px;">---</div>
+                    <div id="detDateTime" style="font-size: 0.85rem; color: #475569; margin-bottom: 2px;">---</div>
+                    <div id="detVenue" style="font-size: 0.85rem; color: #475569;">---</div>
+                </div>
+            </div>
+
+            <div style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; margin-bottom: 1.5rem;">
+                <div style="padding: 1rem 1.25rem; background: #f1f5f9; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-weight: 700; color: #1e293b;"><i class="fas fa-box-open" style="color: #6366f1; margin-right: 8px;"></i> Package & Pricing</div>
+                    <div id="detStatusBadge" style="padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">---</div>
+                </div>
+                <div style="padding: 1.25rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #e2e8f0;">
+                        <span style="color: #475569; font-size: 0.9rem;">Package</span>
+                        <span id="detPackage" style="font-weight: 600; color: #0f172a;">---</span>
+                    </div>
+                    
+                    <!-- New Inclusions Section -->
+                    <div id="detInclusionsContainer" style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #e2e8f0; display: none;">
+                        <span style="color: #475569; font-size: 0.9rem; display: block; margin-bottom: 8px;"><i class="fas fa-list-ul"></i> Inclusions / Quotation</span>
+                        <div id="detInclusions" style="background: #f8fafc; padding: 10px; border-radius: 6px; font-size: 0.85rem; color: #1e293b; max-height: 120px; overflow-y: auto; white-space: pre-wrap;"></div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #e2e8f0;">
+                        <span style="color: #475569; font-size: 0.9rem;">Payment Status</span>
+                        <span id="detPayment" style="font-weight: 700;">---</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: #475569; font-size: 0.9rem;">Total Amount</span>
+                        <span id="detTotal" style="font-weight: 600; color: #0f172a;">---</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: #475569; font-size: 0.9rem;">Amount Paid</span>
+                        <span id="detPaid" style="font-weight: 600; color: #10b981;">---</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 2px solid #f1f5f9;">
+                        <span style="color: #0f172a; font-weight: 700;">Remaining Balance</span>
+                        <span id="detBalance" style="font-weight: 800; color: #ea580c; font-size: 1.1rem;">---</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 1.25rem; border-radius: 12px;">
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: #d97706; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px;"><i class="fas fa-clipboard-list" style="margin-right: 6px;"></i> Special Requests & Remarks</div>
+                <div id="detSpecial" style="font-size: 0.9rem; color: #92400e; line-height: 1.5;">---</div>
+            </div>
+        </div>
+        <div class="occ-modal-footer" style="background: white; border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 10px;">
+            <input type="hidden" id="evModalBookingId">
+            
+            <!-- Primary Action Bar -->
+            <div style="display: flex; gap: 10px; width: 100%;">
+                <button onclick="window.location.href='/caterer/bookings?focus_id=' + document.getElementById('evModalBookingId').value" class="btn-primary-pro" style="flex: 1; justify-content: center;">
+                    <i class="fas fa-external-link-alt"></i> Full Details
+                </button>
+                <button id="calBtnEdit" onclick="openEditModal()" class="btn-secondary-pro" style="flex: 1; justify-content: center;">
+                    <i class="fas fa-edit"></i> Quick Edit
+                </button>
+                <button onclick="closeModal('eventModal')" class="btn-secondary-pro" style="padding: 0 1rem; background: #f1f5f9; border-color: #cbd5e1;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Secondary Tools Bar (Expandable) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%;">
+                <button id="calBtnInvoice" onclick="openShareDocumentModal()" class="btn-secondary-pro" style="font-size: 0.8rem; justify-content: center;"><i class="fas fa-share-nodes"></i> Share Document</button>
+                <button id="calBtnReminder" onclick="setReminder()" class="btn-secondary-pro" style="font-size: 0.8rem; justify-content: center;">
+                    <i class="fas fa-bell"></i> Set Reminder
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Booking Modal (Restricted) -->
+<div id="editBookingModal" class="occ-modal-overlay" style="display: none; z-index: 2000;">
+    <div class="occ-modal-box sz-md occ-content-pop">
         <div class="occ-modal-header glass-header">
             <div>
-                <h3 id="calModalTitle" class="occ-modal-title">Booking Details</h3>
-                <div class="occ-modal-subtitle">Review service logistics and customer information</div>
+                <h3 class="occ-modal-title">Quick Edit Booking</h3>
+                <div class="occ-modal-subtitle">Modify logistics (Date, Time, Venue, Guests)</div>
             </div>
-            <button onclick="closeModal('eventModal')" class="occ-modal-close" title="Close" aria-label="Close modal"><i
-                    class="fas fa-times"></i></button>
+            <button onclick="closeModal('editBookingModal')" class="occ-modal-close"><i class="fas fa-times"></i></button>
         </div>
-        <div class="compact-body">
-            <div class="calendar-detail-list">
-                <div class="calendar-detail-item">
-                    <i class="fas fa-user"></i>
-                    <div>
-                        <div class="calendar-detail-label">Client Name</div>
-                        <div id="detCustomer" class="calendar-detail-value">---</div>
+        <div class="occ-modal-body" style="padding: 1.5rem;">
+            <form id="editBookingForm">
+                <input type="hidden" id="editBookingId">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div class="form-group-pro">
+                        <label>Event Date</label>
+                        <input type="date" id="editEventDate" class="control-pro" required>
+                    </div>
+                    <div class="form-group-pro">
+                        <label>Event Time</label>
+                        <input type="time" id="editEventTime" class="control-pro" required>
                     </div>
                 </div>
-                <div class="calendar-detail-item">
-                    <i class="fas fa-heart"></i>
-                    <div>
-                        <div class="calendar-detail-label">Event Type</div>
-                        <div id="detType" class="calendar-detail-value">---</div>
-                    </div>
+                <div class="form-group-pro" style="margin-bottom: 1.5rem;">
+                    <label>Guest Count</label>
+                    <input type="number" id="editGuestCount" class="control-pro" min="1" required>
+                    <small style="color: #64748b; font-size: 0.8rem; margin-top: 4px; display: block;">Modifying guest count here will not automatically adjust the package price. Update the quotation in the full details page if a price change is required.</small>
                 </div>
-                <div class="calendar-detail-item">
-                    <i class="fas fa-calendar-alt"></i>
-                    <div>
-                        <div class="calendar-detail-label">Date & Time</div>
-                        <div id="detDateTime" class="calendar-detail-value">---</div>
-                    </div>
+                <div class="form-group-pro" style="margin-bottom: 1.5rem;">
+                    <label>Venue Address</label>
+                    <input type="text" id="editVenue" class="control-pro" required>
                 </div>
-                <div class="calendar-detail-item">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <div>
-                        <div class="calendar-detail-label">Venue Location</div>
-                        <div id="detVenue" class="calendar-detail-value">---</div>
-                    </div>
+                <div class="form-group-pro" style="margin-bottom: 1.5rem;">
+                    <label>Internal Remarks / Notes</label>
+                    <textarea id="editRemarks" class="control-pro" rows="3" placeholder="Enter reason for edit or new requests..."></textarea>
                 </div>
-                <div class="calendar-detail-item">
-                    <i class="fas fa-users"></i>
-                    <div>
-                        <div class="calendar-detail-label">Guest Count & Package</div>
-                        <div id="detPackage" class="calendar-detail-value">---</div>
-                    </div>
-                </div>
-                <div class="calendar-detail-item">
-                    <i class="fas fa-credit-card"></i>
-                    <div>
-                        <div class="calendar-detail-label">Payment Status</div>
-                        <div id="detPayment" class="calendar-detail-value">---</div>
-                    </div>
-                </div>
-                <div class="calendar-detail-item">
-                    <i class="fas fa-clipboard"></i>
-                    <div>
-                        <div class="calendar-detail-label">Special Requests</div>
-                        <div id="detSpecial" class="calendar-detail-value">---</div>
-                    </div>
-                </div>
-            </div>
+            </form>
         </div>
-        <div class="occ-modal-footer" style="display: block;">
-            <input type="hidden" id="evModalBookingId">
-            <button onclick="window.location.href='/caterer/bookings?focus_id=' + document.getElementById('evModalBookingId').value" class="btn-secondary-pro" style="width: 100%;">
-                <i class="fas fa-edit"></i> Edit Full Booking
-            </button>
-            <div class="cal-modal-actions">
-                <button onclick="copyInvoiceLink()" class="btn-secondary-pro"><i class="fas fa-link"></i> Copy Invoice Link</button>
-                <button onclick="setReminder()" class="btn-primary-pro"><i class="fas fa-bell"></i> Set Reminder</button>
-                <button onclick="closeModal('eventModal')" class="btn-secondary-pro btn-full">Close</button>
-            </div>
+        <div class="occ-modal-footer">
+            <button onclick="closeModal('editBookingModal')" class="btn-secondary-pro">Cancel</button>
+            <button onclick="submitEditBooking()" class="btn-primary-pro"><i class="fas fa-save"></i> Save Changes</button>
         </div>
     </div>
 </div>
@@ -900,7 +961,7 @@
                     <input type="checkbox" id="schedPin" style="width: 18px; height: 18px; cursor: pointer;">
                     <label for="schedPin" class="cal-label" style="margin-bottom: 0;">📌 Pin to Dashboard (Important)</label>
                 </div>
-                <button type="button" onclick="saveSchedule()" class="btn-primary-pro" id="btnSaveSchedule" style="width: 100%; justify-content: center; margin-top: 1rem;">
+                <button type="button" onclick="submitAddSchedule(event)" class="btn-primary-pro" id="btnSubmitSchedule" style="width: 100%; justify-content: center; margin-top: 1rem;">
                     Save Schedule
                 </button>
             </form>
@@ -941,6 +1002,10 @@
                 </div>
             </div>
             <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <input type="hidden" id="viewSchedId">
+                <button type="button" onclick="setScheduleReminder()" class="btn-secondary-pro" style="flex: 1; justify-content: center; background: #fffbeb; border-color: #fde68a; color: #d97706;">
+                    <i class="fas fa-bell"></i> Remind Me
+                </button>
                 <button type="button" id="editScheduleBtn" class="btn-primary-pro" style="flex: 1; justify-content: center;">
                     <i class="fas fa-edit"></i> Edit
                 </button>
@@ -953,12 +1018,73 @@
 </div>
 
 
+<div id="shareDocumentModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-md occ-content-pop">
+        <div class="occ-modal-header glass-header">
+            <div>
+                <h3 class="occ-modal-title"><i class="fas fa-share-nodes"></i> Share Customer Document</h3>
+                <div class="occ-modal-subtitle">Generate a secure link to share booking information with the customer</div>
+            </div>
+            <button type="button" onclick="closeModal('shareDocumentModal')" class="occ-modal-close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="occ-modal-body" style="padding: 24px;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <div style="margin-bottom: 12px;">
+                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Document</div>
+                    <div style="font-weight: 700; color: #1e293b; font-size: 1.05rem;" id="shareDocTitle">Customer Quotation</div>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Customer</div>
+                    <div style="font-weight: 600; color: #334155;" id="shareDocCustomer">Loading...</div>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Access Security</div>
+                    <div style="display: inline-flex; align-items: center; gap: 6px; background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; margin-top: 4px;">
+                        <i class="fas fa-lock"></i> Authorized Customer Only
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Link Expiration</div>
+                    <div style="margin-top: 4px;">
+                        <select class="control-pro" style="padding: 6px 12px; font-size: 0.9rem;" id="shareDocExpiry">
+                            <option value="3">Expires in 3 Days</option>
+                            <option value="7" selected>Expires in 7 Days</option>
+                            <option value="30">Expires in 30 Days</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button type="button" onclick="copySecureDocumentLink()" class="btn-primary-pro" style="justify-content: center; width: 100%; padding: 12px;">
+                    <i class="fas fa-link"></i> Copy Secure Link
+                </button>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button type="button" class="btn-secondary-pro" style="justify-content: center;" onclick="alert('Email integration coming soon.')">
+                        <i class="fas fa-envelope"></i> Send via Email
+                    </button>
+                    <button type="button" class="btn-secondary-pro" style="justify-content: center;" onclick="alert('SMS integration coming soon.')">
+                        <i class="fas fa-comment-sms"></i> Send via SMS
+                    </button>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; background: #fffbeb; border: 1px solid #fde68a; padding: 12px; border-radius: 8px; display: flex; gap: 10px; align-items: flex-start;">
+                <i class="fas fa-triangle-exclamation" style="color: #d97706; margin-top: 2px;"></i>
+                <div style="font-size: 0.85rem; color: #92400e;">
+                    <strong>Important:</strong> This secure document link is specific to this customer and booking. It will require verification upon opening to ensure privacy.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="externalBookingModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-lg occ-content-pop" style="display: flex; flex-direction: column; max-height: 90vh; overflow: hidden;">
-        <div class="occ-modal-header glass-header" style="flex-shrink: 0; z-index: 10;">
+                <div class="occ-modal-header glass-header" style="flex-shrink: 0; z-index: 10;">
             <div>
-                <h3 class="occ-modal-title"><i class="fas fa-calendar-plus"></i> Add External Booking</h3>
-                <div class="occ-modal-subtitle">Record an inquiry or booking from external sources (Facebook, Call, Walk-in)</div>
+                <h3 class="occ-modal-title"><i class="fas fa-calendar-plus"></i> Create Manual Booking</h3>
+                <div class="occ-modal-subtitle">Record a customer inquiry or booking arranged outside the system.</div>
             </div>
             <button type="button" onclick="closeModal('externalBookingModal')" class="occ-modal-close"><i class="fas fa-times"></i></button>
         </div>
@@ -1002,26 +1128,31 @@
                         <div class="form-group-pro" style="grid-column: span 2;">
                             <label>Booking Source <span style="color: #ef4444;">*</span></label>
                             <select id="extSource" name="booking_source" class="control-pro" required>
-                                <option value="Facebook Messenger">Facebook Messenger</option>
+                                <option value="Website">Website</option>
+                                <option value="Facebook Messenger">Facebook / Messenger</option>
                                 <option value="Phone Call">Phone Call</option>
                                 <option value="SMS/Text">SMS / Text</option>
-                                <option value="Walk-in" selected>Walk-in</option>
+                                <option value="Walk-in">Walk-in</option>
+                                <option value="Referral">Referral</option>
                                 <option value="Other">Other</option>
                             </select>
                         </div>
                         <div class="form-group-pro" style="grid-column: span 2;">
-                            <label>Customer Name <span style="color: #ef4444;">*</span></label>
-                            <input type="text" id="extCustomerName" name="customer_name" class="control-pro" placeholder="e.g. Juan Dela Cruz" required oninput="window.clearFieldError('extCustomerName')">
-                            <div class="field-error-msg" id="error-extCustomerName"></div>
+                            <label>Customer Full Name <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="extFullName" class="control-pro" required oninput="window.clearFieldError('extFullName')" placeholder="e.g. Juan Dela Cruz">
+                            <div class="field-error-msg" id="error-extFullName"></div>
                         </div>
                         <div class="form-group-pro">
                             <label>Contact Number <span style="color: #ef4444;">*</span></label>
-                            <input type="text" id="extCustomerContact" name="customer_contact" class="control-pro" placeholder="e.g. 09123456789" required oninput="window.clearFieldError('extCustomerContact')">
+                            <input type="text" id="extCustomerContact" name="customer_contact" class="control-pro" placeholder="e.g. 09123456789" required oninput="window.clearFieldError('extCustomerContact'); window.checkExtDuplicateUser();">
                             <div class="field-error-msg" id="error-extCustomerContact"></div>
                         </div>
                         <div class="form-group-pro">
                             <label>Email Address</label>
-                            <input type="email" id="extCustomerEmail" name="customer_email" class="control-pro" placeholder="Optional">
+                            <input type="email" id="extCustomerEmail" name="customer_email" class="control-pro" placeholder="Optional" oninput="window.checkExtDuplicateUser();">
+                        </div>
+                        <div id="extDuplicateAlert" style="display: none; grid-column: span 2; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 12px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; align-items: center; gap: 8px;">
+                            <i class="fas fa-exclamation-circle"></i> <span id="extDuplicateAlertMsg">Existing OccaServe Customer Account Detected. To avoid double booking, please ask the customer to book directly through their account. Walk-in encoding is disabled for this user.</span>
                         </div>
                     </div>
                 </div>
@@ -1059,8 +1190,23 @@
                             <input type="number" id="extGuests" name="guest_count" class="control-pro" required min="1">
                         </div>
                         <div class="form-group-pro">
-                            <label>Venue / Location</label>
-                            <input type="text" id="extVenue" name="venue_address" class="control-pro" placeholder="e.g. ABC Resort">
+                            <label>Province <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="extProvince" class="control-pro" required oninput="window.clearFieldError('extProvince')">
+                            <div class="field-error-msg" id="error-extProvince"></div>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Municipality <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="extMunicipality" class="control-pro" required oninput="window.clearFieldError('extMunicipality')">
+                            <div class="field-error-msg" id="error-extMunicipality"></div>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Barangay <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="extBarangay" class="control-pro" required oninput="window.clearFieldError('extBarangay')">
+                            <div class="field-error-msg" id="error-extBarangay"></div>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Landmark / Street</label>
+                            <input type="text" id="extLandmark" class="control-pro" placeholder="Optional">
                         </div>
                     </div>
                 </div>
@@ -1070,43 +1216,60 @@
                     <h4 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 1.5rem;">Step 3: Package & Quotation</h4>
                     <div class="form-group-pro" style="margin-bottom: 1.5rem;">
                         <label>Base Package / Pricing <span style="color: #ef4444;">*</span></label>
-                        <select id="extPackageMode" class="control-pro" onchange="calcExtTotal()">
-                            <option value="custom">Manual / Custom Quotation</option>
+                        <select id="extPackageMode" class="control-pro" onchange="window.updateExtPackageSummary();">
+                            <option value="custom" selected>Manual / Custom Quotation</option>
                             <optgroup label="System Packages">
                                 {% for pkg in packages %}
                                 <option value="{{ pkg.id }}" data-price="{{ pkg.price or 0 }}">{{ pkg.name }} (₱{{ pkg.price or 0 }})</option>
                                 {% endfor %}
                             </optgroup>
                         </select>
+                        <script>
+                            window.packageMap = {{ package_map_json|safe }};
+                            window.catalogItems = {{ catalog_json|safe }};
+                        </script>
                     </div>
 
-                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 1.5rem;">
-                        <table style="width: 100%; text-align: left; border-collapse: collapse;">
-                            <thead style="background: #f1f5f9; border-bottom: 2px solid #e2e8f0;">
-                                <tr>
-                                    <th style="padding: 12px; font-size: 0.75rem;">Description</th>
-                                    <th style="padding: 12px; font-size: 0.75rem; width: 150px;">Amount (₱)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="extQuotationItems">
-                                <tr>
-                                    <td style="padding: 12px;"><input type="text" class="control-pro ext-item-name" value="Base Package / Food" placeholder="Item Name"></td>
-                                    <td style="padding: 12px;"><input type="number" class="control-pro ext-item-price" value="0" min="0" oninput="calcExtTotal()"></td>
-                                </tr>
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <td colspan="2" style="padding: 12px; text-align: center;">
-                                        <button type="button" onclick="addExtRow()" style="background: none; border: 1px dashed #cbd5e1; width: 100%; padding: 10px; border-radius: 8px; color: var(--primary-color); cursor: pointer;"><i class="fas fa-plus"></i> Add Line Item / Add-on</button>
-                                    </td>
-                                </tr>
-                                <tr style="background: #f8fafc; font-weight: 800;">
-                                    <td style="padding: 12px; text-align: right;">Total Amount:</td>
-                                    <td style="padding: 12px;" id="extQuoteTotal">₱0.00</td>
-                                    <input type="hidden" id="extTotalAmount" value="0">
-                                </tr>
-                            </tfoot>
-                        </table>
+                    <!-- FIXED PACKAGE SUMMARY (Hidden if Custom) -->
+                    <div id="extPackageSummary" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 1.5rem;">
+                        <div style="background: #e2e8f0; padding: 10px 16px; font-weight: 700; font-size: 0.85rem; color: #334155; display: flex; justify-content: space-between;">
+                            <span>Package Summary & Inclusions</span>
+                            <span id="extPackageBasePrice" style="color: var(--primary-color);">₱0.00</span>
+                        </div>
+                        <div id="extPackageSummaryContent" style="padding: 16px; font-size: 0.85rem; color: #475569; display: flex; flex-direction: column; gap: 12px;">
+                        </div>
+                    </div>
+
+                    <!-- DYNAMIC QUOTATION BUILDER (Custom / Add-ons) -->
+                    <div id="extDynamicBuilder" style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 1.5rem;">
+                        <div style="background: #f1f5f9; padding: 12px 16px; font-weight: 700; font-size: 0.9rem; color: #1e293b; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                            <span id="extBuilderTitle">Select Custom Items</span>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="extCatalogSearch" placeholder="Search catalog..." class="control-pro" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 20px; border: 1px solid #cbd5e1; outline: none; width: 150px;" oninput="window.renderCatalogItems()">
+                                <select id="extCatalogFilter" class="control-pro" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 20px; border: 1px solid #cbd5e1; outline: none;" onchange="window.renderCatalogItems()">
+                                    <option value="all">All Items</option>
+                                    <option value="menu">Menu (Food)</option>
+                                    <option value="services">Services</option>
+                                    <option value="equipment">Equipment</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div id="extCatalogContainer" style="max-height: 250px; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; background: #fafafa;">
+                            <!-- Items injected here by JS -->
+                        </div>
+
+                        <!-- TOTALS BAR -->
+                        <div style="background: #0f172a; color: white; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Grand Total</div>
+                                <div id="extQuoteTotal" style="font-size: 1.5rem; font-weight: 800; color: #10b981;">₱0.00</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px;">Selected Items: <span id="extSelectedCount" style="color: white; font-weight: 700;">0</span></div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="extTotalAmount" value="0">
                     </div>
                 </div>
 
@@ -1115,12 +1278,28 @@
                     <h4 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 1.5rem;">Step 4: Save & Confirm</h4>
                     
                     <div class="form-group-pro" style="margin-bottom: 1.5rem;">
-                        <label>Save Booking As <span style="color: #ef4444;">*</span></label>
+                        <label>Initial Payment Received (PHP) <span style="color: #64748b; font-weight: 400;">(Optional)</span></label>
+                        <input type="number" id="extInitialPayment" name="amount_paid" class="control-pro" placeholder="0.00" value="0" min="0" step="0.01">
+                        <small style="color: #64748b; font-size: 0.8rem; margin-top: 5px; display: block;">Enter amount if customer left a deposit or paid in full today.</small>
+                    </div>
+
+                    <div class="form-group-pro" style="margin-bottom: 1.5rem;">
+                        <label>What is the current situation with this customer? <span style="color: #ef4444;">*</span></label>
                         <select id="extSaveStatus" name="status" class="control-pro" required>
-                            <option value="inquiry" selected>Inquiry (Just asking/discussing)</option>
-                            <option value="tentative">Tentative (Reserved but pending requirements)</option>
+                            <option value="inquiry" selected>The customer is still inquiring.</option>
+                            <option value="quotation_sent">I already sent the quotation.</option>
+                            <option value="awaiting_confirmation">We are waiting for confirmation.</option>
+                            <option value="confirmed">We already agreed and confirmed the booking.</option>
                         </select>
-                        <small style="color: #64748b; font-size: 0.8rem; margin-top: 5px; display: block;">Note: External bookings must start as Inquiry or Tentative before they can be officially Confirmed.</small>
+                        <small style="color: #64748b; font-size: 0.8rem; margin-top: 5px; display: block;">Choose 'Confirmed' only if payment/deposit is secured.</small>
+                    </div>
+
+                    <div class="form-group-pro" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; display: flex; gap: 12px; align-items: flex-start;">
+                        <input type="checkbox" id="extOverrideKyc" name="override_kyc" style="margin-top: 4px; width: 18px; height: 18px; cursor: pointer;">
+                        <div>
+                            <label for="extOverrideKyc" style="font-weight: 700; color: #0f172a; margin-bottom: 4px; cursor: pointer;">Physical Contract Secured (Bypass Platform KYC & Digital Signature)</label>
+                            <small style="color: #475569; font-size: 0.8rem; display: block; line-height: 1.4;">Check this if you have met the customer in person and secured a physical contract. If unchecked and the customer has an existing unverified account, the booking will be saved as <strong>"Awaiting Customer"</strong> instead.</small>
+                        </div>
                     </div>
 
                     <div class="form-group-pro" style="margin-bottom: 1.5rem;">
@@ -1130,16 +1309,20 @@
                 </div>
             </div>
 
-            <div class="occ-modal-footer" style="flex-shrink: 0; padding: 1.25rem 2rem; background: #fff; border-top: 1px solid #e2e8f0; display: flex; justify-content: center; gap: 1.5rem;">
-                <button type="button" id="extBtnPrev" class="btn-secondary-pro" style="visibility: hidden;" onclick="changeExtStep(-1)">
-                    <i class="fas fa-arrow-left"></i> Previous
-                </button>
-                <button type="button" id="extBtnNext" class="btn-primary-pro" onclick="changeExtStep(1)">
-                    Next Step <i class="fas fa-arrow-right"></i>
-                </button>
-                <button type="submit" id="extBtnSubmit" class="btn-primary-pro" style="display:none; background: #10b981; border-color: #10b981;">
-                    Save External Booking <i class="fas fa-check"></i>
-                </button>
+            <div class="occ-modal-footer" style="flex-shrink: 0; padding: 1.25rem 2rem; background: #fff; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; gap: 1.5rem; align-items: center;">
+                <div style="flex: 1; display: flex; justify-content: flex-start;">
+                    <button type="button" id="extBtnPrev" class="btn-secondary-pro" style="display: none;" onclick="changeExtStep(-1)">
+                        <i class="fas fa-arrow-left"></i> Previous
+                    </button>
+                </div>
+                <div style="flex: 1; display: flex; justify-content: flex-end;">
+                    <button type="button" id="extBtnNext" class="btn-primary-pro" onclick="changeExtStep(1)">
+                        Next Step <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <button type="submit" id="extBtnSubmit" class="btn-primary-pro" style="display:none; background: #10b981; border-color: #10b981;">
+                        Create Manual Booking <i class="fas fa-check"></i>
+                    </button>
+                </div>
             </div>
         </form>
     </div>
@@ -1163,5 +1346,6 @@
 
 
 {% endblock %}
+
 
 
