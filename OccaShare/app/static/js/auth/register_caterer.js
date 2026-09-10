@@ -1,6 +1,6 @@
 (function () {
     let currentStepCat = 1;
-    const totalStepsCat = 3;
+    const totalStepsCat = 2;
 
     function setError(fieldId, message, isError = true) {
         const wrapper = document.getElementById(fieldId + 'Wrapper');
@@ -207,11 +207,14 @@
         if (nextBtn) {
             const btnText = nextBtn.querySelector('span');
             const btnIcon = nextBtn.querySelector('i');
-            if (btnText) {
-                btnText.innerText = currentStepCat === totalStepsCat ? 'Complete Registration' : 'Next Step';
-            }
-            if (btnIcon) {
-                btnIcon.className = currentStepCat === totalStepsCat ? 'fas fa-check-circle' : 'fas fa-chevron-right';
+            if (currentStepCat >= totalStepsCat) {
+                if (btnText) btnText.innerText = 'Create Account';
+                else nextBtn.innerHTML = '<span>Create Account</span> <i class="fas fa-user-plus" style="margin-left: 6px;"></i>';
+                if (btnIcon) btnIcon.className = 'fas fa-user-plus';
+            } else {
+                if (btnText) btnText.innerText = 'Next Step';
+                else nextBtn.innerHTML = '<span>Next Step</span> <i class="fas fa-chevron-right" style="margin-left: 6px;"></i>';
+                if (btnIcon) btnIcon.className = 'fas fa-chevron-right';
             }
         }
     };
@@ -332,7 +335,7 @@
         const formData = new FormData(form);
         const submitBtn = document.getElementById('nextBtnCat');
         const btnText = submitBtn?.querySelector('span');
-        const originalText = btnText ? btnText.innerText : 'Complete Registration';
+        const originalText = btnText ? btnText.innerText : 'Create Account';
 
         if (submitBtn) submitBtn.disabled = true;
         if (btnText) btnText.innerText = 'Creating Account...';
@@ -389,8 +392,10 @@
                 if (window.openAuthModal) {
                     const emailDisplay = document.getElementById('email-display');
                     const emailField = document.getElementById('emailField');
+                    const nextField = document.getElementById('nextUrlField') || document.querySelector('input[name="next_url"]');
                     if (emailDisplay) emailDisplay.innerText = email;
                     if (emailField) emailField.value = email;
+                    if (nextField) nextField.value = '/caterer/dashboard';
 
                     openAuthModal('verify');
 
@@ -408,7 +413,7 @@
                     }
                 } else {
                     // Fallback: navigate to verify page
-                    window.location.href = result.redirect || `/auth/verify?email=${encodeURIComponent(email)}`;
+                    window.location.href = result.redirect || `/auth/verify?email=${encodeURIComponent(email)}&next=/caterer/dashboard`;
                 }
             } else {
                 // Server returned an error — show specific fields that failed

@@ -1232,8 +1232,15 @@ async def check_urgent_bookings(
 async def caterer_dashboard(
     request: Request, 
     db: Session = Depends(database.get_db),
-    user: models.User = Depends(caterer_only)
+    user: models.User = Depends(auth.get_current_user)
 ):
+    if user.role == "customer":
+        return RedirectResponse(url="/customer/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    if user.role == "admin":
+        return RedirectResponse(url="/admin/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    if user.role != "caterer":
+        return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
     profile = user.caterer_profile
     bookings = [b for b in profile.bookings if b.status not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted'] and not b.is_archived]
     
@@ -6784,7 +6791,10 @@ async def deactivate_account(
     profile.deactivated_at = datetime.now()
     
     db.commit()
-    return {"status": "success", "message": "Account deactivated. You will be logged out."}
+    response = JSONResponse(content={"status": "success", "message": "Account deactivated. You will be logged out."})
+    response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(key="refresh_token", path="/")
+    return response
 
 @router.post("/settings/reactivate")
 async def reactivate_account(
@@ -6797,6 +6807,78 @@ async def reactivate_account(
     profile.deactivated_at = None
     db.commit()
     return {"status": "success", "message": "Account reactivated successfully!"}
+
+# ──────────────────────────────────────────────────────
+# SETTINGS: Account Deletion
+# ──────────────────────────────────────────────────────
+@router.post("/settings/delete")
+async def delete_caterer_account(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    if not profile:
+        raise HTTPException(status_code=404, detail="Caterer profile not found.")
+
+    # Check for active or ongoing bookings
+    active_bookings = [
+        b for b in profile.bookings 
+        if b.status not in ['completed', 'cancelled', 'rejected', 'draft'] 
+        and not getattr(b, 'is_archived', False)
+    ]
+    if active_bookings:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot delete account with {len(active_bookings)} active or ongoing booking(s). Please fulfill or cancel them first."
+        )
+
+    try:
+        user_id = user.id
+
+        # Invalidate refresh tokens
+        db.query(models.RefreshToken).filter(models.RefreshToken.user_id == user_id).delete()
+
+        # Update caterer profile
+        profile.account_status = "Deactivated"
+        profile.status = "Unpublished"
+        profile.is_verified = False
+        profile.deactivation_reason = "Account deleted by caterer"
+        profile.deactivated_at = datetime.now()
+
+        # Soft delete the user to maintain integrity
+        user.status = "deleted"
+        user.is_archived = True
+        user.email = f"deleted_{user.id}_{user.email}"
+        user.first_name = "Deleted"
+        user.last_name = "Caterer"
+        user.phone_number = None
+        user.profile_image_url = None
+        user.address = None
+
+        db.commit()
+
+        # Real-time notification if WebSocket connection is active
+        try:
+            await manager.broadcast({
+                "type": "user_archived",
+                "user_id": user_id,
+                "role": "caterer"
+            })
+        except Exception:
+            pass
+
+        response = JSONResponse(
+            content={"status": "success", "message": "Account successfully deleted. You will now be logged out."}
+        )
+        response.delete_cookie(key="access_token", path="/")
+        response.delete_cookie(key="refresh_token", path="/")
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete account: {str(e)}")
 
 # ──────────────────────────────────────────────────────
 # SETTINGS: Reset Brand to Defaults

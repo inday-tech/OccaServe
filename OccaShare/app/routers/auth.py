@@ -33,7 +33,7 @@ async def check_phone(phone: str, db: Session = Depends(database.get_db)):
     """Check if phone number is already registered."""
     phone = phone.strip().replace(" ", "")
     existing = db.query(models.User).filter(models.User.phone_number == phone).first()
-    if existing:
+    if existing and existing.is_email_verified:
         return {"available": False, "message": "This mobile number is already registered to another account."}
     return {"available": True}
 
@@ -44,7 +44,11 @@ async def check_business_name(name: str, db: Session = Depends(database.get_db))
     existing = db.query(models.CatererProfile).filter(
         func.lower(models.CatererProfile.business_name) == func.lower(stripped_name)
     ).first()
-    return {"available": existing is None}
+    if existing:
+        owner = db.query(models.User).filter(models.User.id == existing.user_id).first()
+        if owner and owner.is_email_verified:
+            return {"available": False, "message": "This business name is already registered."}
+    return {"available": True}
 
 @router.post("/scan-document")
 async def scan_document(
@@ -274,8 +278,9 @@ async def register(
         
         db.commit()
         
+        email_sent = False
         try:
-            EmailService.send_verification_email(user.email, otp)
+            email_sent = EmailService.send_verification_email(user.email, otp)
         except Exception as e:
             print(f"[AUTH ERROR] Failed to send verification email: {e}")
             
@@ -283,7 +288,13 @@ async def register(
             verify_url = f"/auth/verify?email={user.email}"
             if next_url:
                 verify_url += f"&next={next_url}"
-            return JSONResponse(content={"status": "success", "email": user.email, "redirect": verify_url})
+            return JSONResponse(content={
+                "status": "success",
+                "email": user.email,
+                "redirect": verify_url,
+                "email_sent": email_sent,
+                "email_error": EmailService.get_last_error() if not email_sent else None
+            })
         else:
             verify_url = f"/auth/verify?email={user.email}"
             if next_url:
@@ -323,7 +334,7 @@ async def register(
         else:
             # Uniqueness Check
             existing_phone = db.query(models.User).filter(models.User.phone_number == mobile_number).first()
-            if existing_phone:
+            if existing_phone and existing_phone.is_email_verified and existing_phone.email.lower() != email.lower().strip():
                 errors["mobile_number"] = "This mobile number is already registered."
 
     password_msgs = []
@@ -369,7 +380,9 @@ async def register(
                 func.lower(models.CatererProfile.business_name) == func.lower(business_name.strip())
             ).first()
             if existing_biz:
-                errors["business_name"] = "This business name is already registered."
+                biz_owner = db.query(models.User).filter(models.User.id == existing_biz.user_id).first()
+                if biz_owner and biz_owner.is_email_verified and biz_owner.email.lower() != email.lower().strip():
+                    errors["business_name"] = "This business name is already registered."
 
         if years_of_operation is not None and (years_of_operation < 0 or years_of_operation > 100):
             errors["years_of_operation"] = "Years of operation must be between 0 and 100"
@@ -602,18 +615,20 @@ async def register(
     
     # Only send verification email if it's a new email/password user
 
+    email_sent = False
     if not is_upgrade:
         db.commit() # Commit all changes so user record with OTP is saved
         print(f"[OTP DEBUG] Generated OTP for {email}: {otp}")
         try:
-            if EmailService.send_verification_email(email, otp):
+            email_sent = EmailService.send_verification_email(email, otp)
+            if email_sent:
                 print(f"[AUTH] Registration buffered for {email}. Verification email sent.")
                 if role == "caterer":
                     background_tasks.add_task(utils.background_geocode, new_profile.id)
             else:
-                print(f"[AUTH WARNING] Verification email delivery failed for {email}, but user account with OTP {otp} was saved.")
+                print(f"[AUTH WARNING] Verification email delivery failed for {email}: {EmailService.get_last_error()}")
         except Exception as e:
-            print(f"[AUTH ERROR] Failed to send verification email to {email}: {e}")
+            print(f"OTP EMAIL FAILED: {type(e).__name__}: {e}")
     else:
         db.commit() # Upgrade users don't need email OTP at this stage
             
@@ -633,7 +648,13 @@ async def register(
         verify_url = f"/auth/verify?email={email}"
         if next_url:
             verify_url += f"&next={next_url}"
-        return JSONResponse(content={"status": "success", "email": email, "redirect": verify_url})
+        return JSONResponse(content={
+            "status": "success",
+            "email": email,
+            "redirect": verify_url,
+            "email_sent": email_sent,
+            "email_error": EmailService.get_last_error() if not email_sent else None
+        })
 
     verify_url = f"/auth/verify?email={email}"
     if next_url:
@@ -642,8 +663,16 @@ async def register(
     return RedirectResponse(url=verify_url, status_code=status.HTTP_303_SEE_OTHER)
 
 @router.get("/verify", response_class=HTMLResponse)
-def verify_email_page(request: Request, email: str = "", next: Optional[str] = None):
-    return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "next_url": next})
+def verify_email_page(request: Request, email: str = "", next: Optional[str] = None, db: Session = Depends(database.get_db)):
+    clean_email = (email or "").strip().lower()
+    user_role = "customer"
+    if clean_email:
+        user = db.query(models.User).filter(func.lower(models.User.email) == clean_email).first()
+        if user and user.role:
+            user_role = user.role
+            if not next:
+                next = utils.get_dashboard_url(user.role)
+    return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": clean_email, "next_url": next, "user_role": user_role})
 
 @router.get("/pending", response_class=HTMLResponse)
 def pending_approval_page(request: Request, email: str = "", uid: Optional[int] = None):
@@ -660,111 +689,117 @@ def verify_email_submit(
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or \
               "application/json" in request.headers.get("Accept", "")
               
-    user = db.query(models.User).filter(models.User.email == email).first()
+    clean_email = (email or "").strip().lower()
+    clean_code = (code or "").strip()
     
-    if user:
-        if user.is_email_verified:
-            redirect_url = next_url if next_url else utils.get_dashboard_url(user.role)
-            access_token_expires = timedelta(minutes=security_auth.ACCESS_TOKEN_EXPIRE_MINUTES)
-            access_token = security_auth.create_access_token(
-                data={"sub": user.email, "role": user.role},
-                expires_delta=access_token_expires
-            )
-            if is_ajax:
-                response = JSONResponse(content={"success": True, "message": "Already verified", "redirect": redirect_url})
-                response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
+    try:
+        user = db.query(models.User).filter(func.lower(models.User.email) == clean_email).first()
+        
+        if user:
+            if user.is_email_verified:
+                redirect_url = next_url if next_url else utils.get_dashboard_url(user.role)
+                access_token_expires = timedelta(minutes=security_auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+                access_token = security_auth.create_access_token(
+                    data={"sub": user.email, "role": user.role},
+                    expires_delta=access_token_expires
+                )
+                if is_ajax:
+                    response = JSONResponse(content={"success": True, "message": "Already verified", "redirect": redirect_url, "role": user.role})
+                    response.set_cookie(key="access_token", value=f"Bearer {access_token}", path="/", httponly=True, samesite="lax")
+                    return response
+                response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+                response.set_cookie(key="access_token", value=f"Bearer {access_token}", path="/", httponly=True, samesite="lax")
                 return response
-            response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
-            response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
-            return response
 
-        if user.verification_code == code.strip():
-            from datetime import datetime, timezone
-            if user.otp_expires_at:
-                now_time = datetime.now(timezone.utc)
-                expire_time = user.otp_expires_at
-                if expire_time.tzinfo is None:
-                    expire_time = expire_time.replace(tzinfo=timezone.utc)
-                
-                if now_time > expire_time:
-                    if is_ajax:
-                        return JSONResponse(status_code=400, content={"success": False, "message": "Verification code expired. Please request a new one."})
-                    return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "Verification code expired. Please request a new one."})
-
-            user.is_email_verified = True
-            user.verification_code = None
-            user.otp_expires_at = None
-            if user.role == "caterer" and user.status == "pending_verification":
-                user.status = "pending_approval"
-            elif user.status == "pending_verification":
-                user.status = "active"
-                
-            from sqlalchemy.sql import func
-            user.last_login = func.now()
-            db.commit()
-            
-            # Phase 1: Notify Admins of New Verified Customer
-            if user.role == "customer":
-                from ..services.realtime import manager
-                import asyncio
-                admins = db.query(models.User).filter(models.User.role == "admin").all()
-                for admin in admins:
-                    new_notif = models.Notification(
-                        user_id=admin.id,
-                        title="New Customer Registration",
-                        message=f"Customer {user.first_name} {user.last_name} has registered and verified their email.",
-                        link="/admin/customers",
-                        type="info"
-                    )
-                    db.add(new_notif)
-                    db.commit()
+            db_code = str(user.verification_code or "").strip()
+            if db_code and db_code == clean_code:
+                from datetime import datetime, timezone
+                if user.otp_expires_at:
+                    now_time = datetime.now(timezone.utc)
+                    expire_time = user.otp_expires_at
+                    if expire_time.tzinfo is None:
+                        expire_time = expire_time.replace(tzinfo=timezone.utc)
                     
-                    count = db.query(models.Notification).filter(models.Notification.user_id == admin.id, models.Notification.is_read == False).count()
-                    asyncio.create_task(manager.broadcast_to_user(admin.id, {
-                        "type": "new_notification",
-                        "message": f"New Customer: {user.first_name}",
-                        "count": count
-                    }))
+                    if now_time > expire_time:
+                        if is_ajax:
+                            return JSONResponse(status_code=400, content={"success": False, "message": "Verification code expired. Please request a new one."})
+                        return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "Verification code expired. Please request a new one."})
+
+                user.is_email_verified = True
+                user.verification_code = None
+                user.otp_expires_at = None
+                if user.role == "caterer" and user.status in ["pending_verification", "draft"]:
+                    user.status = "pending_approval"
+                else:
+                    user.status = "active"
+                    
+                user.last_login = func.now()
+                db.commit()
+                
+                # Safe Admin Notifications (won't interrupt user verification if failure occurs)
+                if user.role == "customer":
+                    try:
+                        from ..services.realtime import manager
+                        import asyncio
+                        admins = db.query(models.User).filter(models.User.role == "admin").all()
+                        for admin in admins:
+                            new_notif = models.Notification(
+                                user_id=admin.id,
+                                title="New Customer Registration",
+                                message=f"Customer {user.first_name} {user.last_name} has registered and verified their email.",
+                                link="/admin/customers",
+                                type="info"
+                            )
+                            db.add(new_notif)
+                        db.commit()
+                        
+                        for admin in admins:
+                            count = db.query(models.Notification).filter(models.Notification.user_id == admin.id, models.Notification.is_read == False).count()
+                            asyncio.create_task(manager.broadcast_to_user(admin.id, {
+                                "type": "new_notification",
+                                "message": f"New Customer: {user.first_name}",
+                                "count": count
+                            }))
+                    except Exception as notif_err:
+                        print(f"[AUTH NOTIFICATION ERROR] Non-fatal notification error: {notif_err}")
+
+            else:
+                if is_ajax:
+                    return JSONResponse(status_code=400, content={"success": False, "message": "Invalid verification code. Please check and try again."})
+                return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "Invalid verification code. Please check and try again."})
         else:
             if is_ajax:
-                return JSONResponse(status_code=400, content={"success": False, "message": "Invalid verification code"})
-            return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "Invalid verification code"})
-    else:
-        if is_ajax:
-            return JSONResponse(status_code=404, content={"success": False, "message": "User not found or registration expired"})
-        return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "User not found or registration expired"})
-        
-    access_token_expires = timedelta(minutes=security_auth.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = security_auth.create_access_token(
-        data={"sub": user.email, "role": user.role},
-        expires_delta=access_token_expires
-    )
+                return JSONResponse(status_code=404, content={"success": False, "message": "User not found or registration expired"})
+            return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "User not found or registration expired"})
+            
+        access_token_expires = timedelta(minutes=security_auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = security_auth.create_access_token(
+            data={"sub": user.email, "role": user.role},
+            expires_delta=access_token_expires
+        )
 
-    # Check if this is a caterer that needs admin approval
-    if user.role == "caterer" and user.status == "pending_approval":
-        pending_url = f"/auth/pending?email={user.email}&uid={user.id}"
+        redirect_url = next_url if next_url else utils.get_dashboard_url(user.role)
+        if "?" in redirect_url:
+            redirect_url += "&verified=success"
+        else:
+            redirect_url += "?verified=success"
+            
         if is_ajax:
-            response = JSONResponse(content={"success": True, "message": "Identity verified! Account pending caterer approval.", "redirect": pending_url})
-            response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
+            response = JSONResponse(content={"success": True, "message": "Email verified successfully!", "redirect": redirect_url, "role": user.role})
+            response.set_cookie(key="access_token", value=f"Bearer {access_token}", path="/", httponly=True, samesite="lax")
             return response
-        response = RedirectResponse(url=pending_url, status_code=status.HTTP_303_SEE_OTHER)
-        response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
-        return response
-    
-    redirect_url = next_url if next_url else utils.get_dashboard_url(user.role)
-    if "?" in redirect_url:
-        redirect_url += "&verified=success"
-    else:
-        redirect_url += "?verified=success"
-        
-    if is_ajax:
-        response = JSONResponse(content={"success": True, "message": "Email verified successfully!", "redirect": redirect_url})
-        response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
+
+        response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+        response.set_cookie(key="access_token", value=f"Bearer {access_token}", path="/", httponly=True, samesite="lax")
         return response
 
-    response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
-    response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
-    return response
+    except Exception as e:
+        print(f"[AUTH VERIFY ERROR] {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        if is_ajax:
+            return JSONResponse(status_code=500, content={"success": False, "message": f"Server verification error: {str(e)}"})
+        return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "A server error occurred during verification. Please try again."})
 
 @router.post("/resend-code")
 def resend_verification_code(
@@ -772,7 +807,8 @@ def resend_verification_code(
     email: str = Form(...),
     db: Session = Depends(database.get_db)
 ):
-    user = db.query(models.User).filter(models.User.email == email).first()
+    clean_email = (email or "").strip().lower()
+    user = db.query(models.User).filter(func.lower(models.User.email) == clean_email).first()
     if not user:
         return {"success": False, "message": "User not found"}
         
@@ -787,17 +823,35 @@ def resend_verification_code(
     db.commit()
     
     # Resend Email
-    if EmailService.send_verification_email(email, otp):
+    try:
+        EmailService.send_verification_email(user.email, otp)
         return {"success": True, "message": "Verification code resent"}
-    else:
-        return {"success": False, "message": "Failed to send email. Please check your email address or try again later."}
+    except Exception as e:
+        print(f"OTP RESEND FAILED: {type(e).__name__}: {e}")
+        return {"success": False, "message": f"Failed to send email: {type(e).__name__}: {str(e)}"}
+
+@router.get("/test-email")
+def test_email_endpoint(to: str = "occaserveplatform@gmail.com"):
+    """Standalone diagnostic to test Gmail SMTP independently."""
+    try:
+        EmailService.send_verification_email(to, "123456")
+        return {"success": True, "message": f"Test verification email dispatched to {to}."}
+    except Exception as e:
+        print(f"[STANDALONE TEST EMAIL FAILED]: {type(e).__name__}: {e}")
+        return {"success": False, "error": f"{type(e).__name__}: {str(e)}"}
 
 @router.get("/verify-status")
 def check_verify_status(email: str, db: Session = Depends(database.get_db)):
-    user = db.query(models.User).filter(models.User.email == email).first()
+    clean_email = (email or "").strip().lower()
+    user = db.query(models.User).filter(func.lower(models.User.email) == clean_email).first()
     if not user:
         return {"verified": False}
-    return {"verified": user.is_email_verified}
+    redirect_url = utils.get_dashboard_url(user.role)
+    return {
+        "verified": user.is_email_verified,
+        "role": user.role,
+        "redirect": redirect_url
+    }
 
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request, next: Optional[str] = None, db: Session = Depends(database.get_db)):
@@ -1011,7 +1065,7 @@ async def refresh_token(request: Request, db: Session = Depends(database.get_db)
 
 @router.get("/forgot-password", response_class=HTMLResponse)
 def forgot_password_page(request: Request):
-    return templates.TemplateResponse("auth/forgot_password.html", {"request": request})
+    return RedirectResponse(url="/?auth_modal=forgot")
 
 @router.post("/forgot-password")
 async def forgot_password(
@@ -1019,7 +1073,16 @@ async def forgot_password(
     email: str = Form(...),
     db: Session = Depends(database.get_db)
 ):
-    user = db.query(models.User).filter(models.User.email == email).first()
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or \
+              "application/json" in request.headers.get("Accept", "")
+
+    email_clean = email.strip()
+    if not email_clean or "@" not in email_clean:
+        if is_ajax:
+            return JSONResponse(status_code=400, content={"success": False, "error": "Please enter a valid email address."})
+        return RedirectResponse(url="/?auth_modal=forgot&error=invalid_email", status_code=status.HTTP_303_SEE_OTHER)
+
+    user = db.query(models.User).filter(models.User.email == email_clean).first()
     if user:
         token = str(uuid.uuid4())
         user.reset_token = token
@@ -1027,14 +1090,17 @@ async def forgot_password(
         db.commit()
         
         # Send Email
-        from ..services.email import EmailService
-        EmailService.send_password_reset_email(email, token)
+        try:
+            from ..services.email import EmailService
+            EmailService.send_password_reset_email(email_clean, token)
+        except Exception as e:
+            print(f"Error sending password reset email: {e}")
         
-    # Always return success message for security (don't reveal if email exists)
-    return templates.TemplateResponse("auth/forgot_password.html", {
-        "request": request,
-        "success": "If your email is registered, you will receive a reset link shortly."
-    })
+    success_msg = "If your email is registered, you will receive a reset link shortly."
+    if is_ajax:
+        return JSONResponse(content={"success": True, "message": success_msg})
+
+    return RedirectResponse(url="/?auth_modal=forgot&success=1", status_code=status.HTTP_303_SEE_OTHER)
 
 @router.get("/reset-password", response_class=HTMLResponse)
 def reset_password_page(request: Request, token: str):
@@ -1053,8 +1119,9 @@ async def reset_password(
     ).first()
     
     if not user:
-        return templates.TemplateResponse("auth/forgot_password.html", {
+        return templates.TemplateResponse("auth/reset_password.html", {
             "request": request,
+            "token": token,
             "error": "Invalid or expired reset token. Please request a new one."
         })
         
@@ -1085,7 +1152,9 @@ def check_email_availability(email: str, db: Session = Depends(database.get_db))
     if dummy_error:
         return {"available": False, "message": dummy_error}
     user = db.query(models.User).filter(func.lower(models.User.email) == email.lower().strip()).first()
-    return {"available": user is None}
+    if user and user.is_email_verified:
+        return {"available": False, "message": "This email is already registered. Please log in."}
+    return {"available": True}
 
 # --- Onboarding / Profile Completion ---
 

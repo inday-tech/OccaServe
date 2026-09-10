@@ -1,48 +1,118 @@
 import smtplib
+import ssl
 import logging
 import traceback
 import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formatdate, make_msgid
 from ..core.config import settings
 
 logger = logging.getLogger(__name__)
 
 class EmailService:
+    _last_error = None
+
+    @classmethod
+    def get_last_error(cls):
+        return cls._last_error
+
     @staticmethod
-    def _send_email(to_email: str, subject: str, body: str, html_body: str = None):
-        logger.info(f"[EMAIL SERVICE] Preparing to send email to {to_email} | subject: '{subject}'")
-        from_email = settings.MAIL_FROM if settings.MAIL_FROM else settings.MAIL_USERNAME
-        
+    def _send_email(
+        to_email: str,
+        subject: str,
+        body: str,
+        html_body: str = None
+    ):
         try:
-            msg = MIMEMultipart('alternative')
-            msg['From'] = from_email
-            msg['To'] = to_email
-            msg['Subject'] = subject
+            to_email = to_email.strip()
 
-            # Attach plain text version
-            msg.attach(MIMEText(body, 'plain'))
-            
-            # Attach HTML version if provided
+            from_email = (
+                settings.MAIL_FROM
+                if settings.MAIL_FROM
+                else settings.MAIL_USERNAME
+            ).strip()
+
+            clean_password = (
+                settings.MAIL_PASSWORD.replace(" ", "").strip()
+                if settings.MAIL_PASSWORD
+                else ""
+            )
+
+            msg = MIMEMultipart("alternative")
+            msg["From"] = f"OccaServe <{from_email}>"
+            msg["To"] = to_email
+            msg["Subject"] = subject
+            msg["Date"] = formatdate(localtime=True)
+            msg["Message-ID"] = make_msgid(domain="occaserve.com")
+
+            msg.attach(MIMEText(body, "plain", "utf-8"))
+
             if html_body:
-                msg.attach(MIMEText(html_body, 'html'))
+                msg.attach(
+                    MIMEText(html_body, "html", "utf-8")
+                )
 
-            logger.info(f"[EMAIL SERVICE] Connecting to SMTP server {settings.MAIL_SERVER}:{settings.MAIL_PORT}")
-            if settings.MAIL_PORT == 465:
-                server = smtplib.SMTP_SSL(settings.MAIL_SERVER, settings.MAIL_PORT)
+            print("\n==================== [SMTP DIAGNOSTIC] ====================")
+            print("MAIL_USERNAME:", settings.MAIL_USERNAME)
+            print("MAIL_SERVER:", settings.MAIL_SERVER)
+            print("MAIL_PORT:", settings.MAIL_PORT)
+            print("MAIL_TLS:", settings.MAIL_TLS)
+            print("MAIL_PASSWORD SET:", bool(clean_password), f"(Length: {len(clean_password)})")
+            print(f"[EMAIL] Connecting to {settings.MAIL_SERVER}:{settings.MAIL_PORT}")
+            print(f"[EMAIL] From: {from_email}")
+            print(f"[EMAIL] To: {to_email}")
+
+            if settings.MAIL_SSL or settings.MAIL_PORT == 465:
+                ssl_context = ssl.create_default_context()
+                server = smtplib.SMTP_SSL(
+                    settings.MAIL_SERVER,
+                    settings.MAIL_PORT,
+                    context=ssl_context,
+                    timeout=15
+                )
+                server.ehlo()
             else:
-                server = smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT)
-                server.starttls()
-            
-            clean_password = settings.MAIL_PASSWORD.replace(" ", "").strip() if settings.MAIL_PASSWORD else ""
-            server.login(settings.MAIL_USERNAME, clean_password)
-            server.sendmail(from_email, to_email, msg.as_string())
+                server = smtplib.SMTP(
+                    settings.MAIL_SERVER,
+                    settings.MAIL_PORT,
+                    timeout=15
+                )
+                # Port 587 is the STARTTLS submission port by standard — always enable TLS
+                if settings.MAIL_TLS or settings.MAIL_PORT == 587:
+                    print("[EMAIL] Upgrading connection with STARTTLS...")
+                    server.starttls()
+                    server.ehlo()
+
+            print("[EMAIL] Logging in...")
+
+            server.login(
+                settings.MAIL_USERNAME,
+                clean_password
+            )
+
+            print("[EMAIL] Login successful!")
+
+            result = server.sendmail(
+                from_email,
+                [to_email],
+                msg.as_string()
+            )
+
+            print(f"[EMAIL] sendmail result: {result}")
+
             server.quit()
-            logger.info(f"[EMAIL SERVICE] Email successfully sent to {to_email}")
+
+            print("[EMAIL] Email sent successfully!")
+            print("===========================================================\n")
+            EmailService._last_error = None
             return True
+
         except Exception as e:
-            logger.error(f"[EMAIL SERVICE ERROR] Failed to send email to {to_email}: {e}")
-            return False
+            EmailService._last_error = f"{type(e).__name__}: {str(e)}"
+            print(f"[EMAIL ERROR] {type(e).__name__}: {e}")
+            print("===========================================================\n")
+            raise
 
     @staticmethod
     def send_welcome_email(email: str, user_id: int):

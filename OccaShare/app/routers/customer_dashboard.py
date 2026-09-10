@@ -24,8 +24,14 @@ async def customer_dashboard(
     request: Request, 
     page: int = 1,
     db: Session = Depends(database.get_db),
-    user: models.User = Depends(customer_only)
+    user: models.User = Depends(auth.get_current_user)
 ):
+    if user.role == "caterer":
+        return RedirectResponse(url="/caterer/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    if user.role == "admin":
+        return RedirectResponse(url="/admin/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+    if user.role != "customer":
+        return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
     # Filter out archived, drafts, and food orders to match Bookings page
     bookings = []
     for b in user.bookings:

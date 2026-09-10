@@ -1,21 +1,58 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv(override=True)
+# Explicitly find and load .env in OccaShare project root
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+ENV_PATH = BASE_DIR / ".env"
+
+def reload_env():
+    if ENV_PATH.exists():
+        load_dotenv(dotenv_path=ENV_PATH, override=True)
+    else:
+        load_dotenv(override=True)
+
+reload_env()
 
 class Settings:
     # CORE CONFIG
     SECRET_KEY = os.getenv("SECRET_KEY", "")
     SITE_URL = os.getenv("SITE_URL", "http://127.0.0.1:8000")
     
-    # EMAIL CONFIGURATION
-    MAIL_USERNAME = os.getenv("MAIL_USERNAME", "")
-    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
-    MAIL_FROM = os.getenv("MAIL_FROM", "")
-    MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
-    MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com")
-    MAIL_TLS = os.getenv("MAIL_TLS", "True") == "True"
-    MAIL_SSL = os.getenv("MAIL_SSL", "False") == "True"
+    # EMAIL CONFIGURATION — read fresh from env each time so .env changes
+    # are picked up without needing a full server restart
+    @property
+    def MAIL_USERNAME(self):
+        reload_env()
+        return os.getenv("MAIL_USERNAME", "")
+
+    @property
+    def MAIL_PASSWORD(self):
+        reload_env()
+        return os.getenv("MAIL_PASSWORD", "")
+
+    @property
+    def MAIL_FROM(self):
+        reload_env()
+        return os.getenv("MAIL_FROM", "")
+
+    @property
+    def MAIL_PORT(self):
+        return int(os.getenv("MAIL_PORT", 587))
+
+    @property
+    def MAIL_SERVER(self):
+        return os.getenv("MAIL_SERVER", "smtp.gmail.com")
+
+    @property
+    def MAIL_TLS(self):
+        val = str(os.getenv("MAIL_TLS", "True")).strip().lower()
+        return val in ("true", "1", "yes", "t")
+
+    @property
+    def MAIL_SSL(self):
+        val = str(os.getenv("MAIL_SSL", "False")).strip().lower()
+        return val in ("true", "1", "yes", "t")
 
     # SOCIAL LOGIN CONFIGURATION
     FACEBOOK_CLIENT_ID = os.getenv("FACEBOOK_CLIENT_ID", "")
@@ -49,5 +86,3 @@ class Settings:
     CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "")
 
 settings = Settings()
-# Env reload trigger
-

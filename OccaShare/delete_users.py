@@ -15,7 +15,10 @@ from app.db.database import engine
 
 EMAILS_TO_DELETE = [
     "naomicaragay654@gmail.com",
-    "caragaynaomi30@gmail.com",
+    "naomicaragay6@gmail.com",
+    "naomicaragay30@gmail.com",
+    "malanhurie7@gmail.com",
+    "b15433701@gmail.com",
 ]
 
 def delete_users():

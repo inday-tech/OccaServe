@@ -510,7 +510,7 @@ async function handleDeactivate() {
     }
     try {
         const res = await window.apiAction("/caterer/settings/deactivate", { method: "POST" });
-        if (res) setTimeout(() => window.location.href = "/login", 1500);
+        if (res) setTimeout(() => window.location.href = "/auth/logout", 1500);
     } catch (e) {}
 }
 
@@ -536,7 +536,7 @@ async function handleDeleteRequest() {
     }
     try {
         const res = await window.apiAction("/caterer/settings/delete", { method: "POST" });
-        if (res) setTimeout(() => window.location.href = "/login", 2000);
+        if (res) setTimeout(() => window.location.href = "/auth/logout", 2000);
     } catch (e) {}
 }
 

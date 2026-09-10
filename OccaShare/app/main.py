@@ -33,31 +33,114 @@ from contextlib import asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Run one-time DB schema sync on startup to avoid per-request DDL locks."""
-    db = None
+    ddl_statements = [
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_address TEXT",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS id_address TEXT",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS current_address TEXT",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS verification_status VARCHAR DEFAULT 'pending'",
+        "ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS full_name VARCHAR",
+        "ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS birthdate DATE",
+        "ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS id_address_extracted TEXT",
+        "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS permit_status VARCHAR DEFAULT 'Pending'",
+        "ALTER TABLE booking_contracts ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE",
+        
+        # website_config
+        "ALTER TABLE website_config ADD COLUMN IF NOT EXISTS admin_gcash_name VARCHAR",
+        "ALTER TABLE website_config ADD COLUMN IF NOT EXISTS admin_gcash_number VARCHAR",
+        "ALTER TABLE website_config ADD COLUMN IF NOT EXISTS admin_gcash_qr_url VARCHAR",
+        "ALTER TABLE website_config ADD COLUMN IF NOT EXISTS max_file_size_mb INTEGER DEFAULT 5",
+        "ALTER TABLE website_config ADD COLUMN IF NOT EXISTS commission_rate FLOAT DEFAULT 10.0",
+        "ALTER TABLE website_config ADD COLUMN IF NOT EXISTS commission_fixed_amount FLOAT DEFAULT 20.0",
+        "ALTER TABLE website_config ADD COLUMN IF NOT EXISTS maintenance_mode BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE website_config ADD COLUMN IF NOT EXISTS maintenance_message TEXT DEFAULT 'OccaServe is currently undergoing scheduled maintenance. We''ll be back online shortly!'",
+        "ALTER TABLE website_config ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE",
+        
+        # catering_packages
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS cost_price FLOAT DEFAULT 0.0",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS cost_breakdown JSONB",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS price_unit VARCHAR DEFAULT 'per_guest'",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS min_guests INTEGER DEFAULT 10",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS max_guests INTEGER",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS image_url VARCHAR",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS gallery_images JSONB",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS service_type VARCHAR DEFAULT 'General'",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS pricing_mode VARCHAR DEFAULT 'per_pax'",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS price_per_head FLOAT",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS internal_cost_per_pax FLOAT DEFAULT 0.0",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS base_pax INTEGER DEFAULT 50",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS labor_cost FLOAT DEFAULT 0.0",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS utility_cost FLOAT DEFAULT 0.0",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS equipment_cost FLOAT DEFAULT 0.0",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS transportation_cost FLOAT DEFAULT 0.0",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS miscellaneous_cost FLOAT DEFAULT 0.0",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS ingredient_total_cost FLOAT DEFAULT 0.0",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS min_contract_amount FLOAT",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS additional_guest_price FLOAT",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS service_duration INTEGER DEFAULT 4",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS overtime_fee FLOAT DEFAULT 0.0",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS location_coverage VARCHAR",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS reservation_fee_type VARCHAR DEFAULT 'fixed'",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS reservation_fee_value FLOAT DEFAULT 0.0",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS booking_lead_time INTEGER DEFAULT 7",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS inclusions JSONB",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS policies JSONB",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS selection_rules JSONB",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'active'",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS markup_type VARCHAR DEFAULT 'percentage'",
+        "ALTER TABLE catering_packages ADD COLUMN IF NOT EXISTS markup_value FLOAT DEFAULT 0.0",
+
+        # menu_items
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS cost_price FLOAT DEFAULT 0.0",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS pricing_unit VARCHAR DEFAULT 'per_pax'",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS min_order_qty INTEGER DEFAULT 1",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS usage_type VARCHAR DEFAULT 'both'",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS available_for_package BOOLEAN DEFAULT TRUE",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS available_for_order BOOLEAN DEFAULT TRUE",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS pricing_type VARCHAR DEFAULT 'fixed'",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS cost_breakdown JSONB",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS dietary_tags VARCHAR[]",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS allergen_info VARCHAR[]",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS serving_size VARCHAR",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS serving_style VARCHAR",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS is_addon BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS addon_price FLOAT DEFAULT 0.0",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS max_stock_quantity INTEGER",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS is_combo BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS max_choices INTEGER DEFAULT 0",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS combo_options JSONB",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS average_rating FLOAT DEFAULT 0.0",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS review_count INTEGER DEFAULT 0",
+        "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS upgrade_fee FLOAT DEFAULT 0.0"
+    ]
+
     try:
-        from .db.database import SessionLocal
-        db = SessionLocal()
-        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_address TEXT"))
-        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS id_address TEXT"))
-        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS current_address TEXT"))
-        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS verification_status VARCHAR DEFAULT 'pending'"))
-        db.execute(text("ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS full_name VARCHAR"))
-        db.execute(text("ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS birthdate DATE"))
-        db.execute(text("ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS id_address_extracted TEXT"))
-        db.execute(text("ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS permit_status VARCHAR DEFAULT 'Pending'"))
-        db.execute(text("ALTER TABLE booking_contracts ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE"))
-        db.execute(text("UPDATE caterer_profiles SET is_verified = TRUE WHERE verification_status = 'Verified'"))
-        db.execute(text("UPDATE users SET is_verified = TRUE WHERE id IN (SELECT user_id FROM caterer_profiles WHERE verification_status = 'Verified')"))
-        db.execute(text("UPDATE caterer_profiles SET account_status = 'Active' WHERE account_status = 'Approved'"))
-        db.commit()
+        from .db.database import engine
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            for sql in ddl_statements:
+                try:
+                    conn.execute(text(sql))
+                except Exception as stmt_err:
+                    pass
+            
+            # Post-sync updates
+            post_updates = [
+                "UPDATE caterer_profiles SET is_verified = TRUE WHERE verification_status = 'Verified'",
+                "UPDATE users SET is_verified = TRUE WHERE id IN (SELECT user_id FROM caterer_profiles WHERE verification_status = 'Verified')",
+                "UPDATE caterer_profiles SET account_status = 'Active' WHERE account_status = 'Approved'"
+            ]
+            for upd in post_updates:
+                try:
+                    conn.execute(text(upd))
+                except Exception as upd_err:
+                    pass
         print("[STARTUP] Schema sync completed successfully.")
     except Exception as e:
-        print(f"[STARTUP] Schema sync error (non-fatal): {e}")
-        if db:
-            db.rollback()
-    finally:
-        if db:
-            db.close()
+        print(f"[STARTUP] Schema sync connection error (non-fatal): {e}")
+
     yield  # App runs here
 
 app = FastAPI(lifespan=lifespan)
@@ -129,6 +212,8 @@ async def maintenance_middleware(request: Request, call_next):
                         status_code=503,
                         content={"success": False, "message": config.maintenance_message}
                     )
+    except Exception as e:
+        print(f"[MAINTENANCE CHECK ERROR] Non-fatal config query error: {e}")
     finally:
         db.close()
 

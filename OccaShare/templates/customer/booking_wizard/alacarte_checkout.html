@@ -792,7 +792,7 @@
                             <i class="fas fa-check"></i>
                         </div>
                         <h1 class="wizard-title" style="font-size: 2rem;">Order Received!</h1>
-                        <p class="wizard-subtitle" style="margin-bottom: 3rem;" id="subtitle_step3">Your {{ 'mixed event order' if is_mixed else ('equipment request' if is_rental else 'food order') }} has been sent to {{ caterer.business_name }}.</p>
+                        <p class="wizard-subtitle" style="margin-bottom: 3rem;" id="subtitle_step3">Your {% if has_services and not has_food %}service booking{% elif is_rental and not has_food %}equipment request{% elif is_mixed %}event order{% else %}food order{% endif %} has been sent to {{ caterer.business_name }}.</p>
                         
                         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 1.25rem; padding: 1.5rem; text-align: left; margin-bottom: 3rem;">
                             <p style="color: #166534; font-weight: 700; margin-bottom: 0.5rem;"><i class="fas fa-clipboard-check" style="margin-right: 0.5rem;"></i> Track Order</p>
@@ -818,8 +818,19 @@
                 <h3 class="calc-title" style="flex-direction: column; align-items: flex-start; gap: 0.25rem;">
                     <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--wiz-slate-400);">Booking Summary</div>
                     <div style="font-size: 1.15rem; color: var(--wiz-text-dark); display: flex; align-items: center; gap: 0.5rem;">
-                        <i class="fas fa-receipt" style="color: var(--checkout-primary);"></i> 
-                        {{ 'Mixed Order' if is_mixed else ('Equipment Rental' if is_rental else 'Food Order') }}
+                        {# JS (alacarte_checkout.js > updateBookingLabel) populates this with actual item names #}
+                        <i class="fas fa-receipt" style="color: var(--checkout-primary);"></i>
+                        <span id="summary-order-label">
+                            {% if service_items and not menu_items and not equipment_items %}
+                                {{ service_items[0].name }}{% if service_items|length > 1 %} +{{ service_items|length - 1 }} more{% endif %}
+                            {% elif equipment_items and not menu_items and not service_items %}
+                                {{ equipment_items[0].name }}{% if equipment_items|length > 1 %} +{{ equipment_items|length - 1 }} more{% endif %}
+                            {% elif menu_items and not equipment_items and not service_items %}
+                                {{ menu_items[0].name }}{% if menu_items|length > 1 %} +{{ menu_items|length - 1 }} more{% endif %}
+                            {% else %}
+                                {{ (service_items[0].name if service_items else (equipment_items[0].name if equipment_items else menu_items[0].name)) }}{% set _total = (menu_items|length) + (equipment_items|length) + (service_items|length) %}{% if _total > 1 %} +{{ _total - 1 }} more{% endif %}
+                            {% endif %}
+                        </span>
                     </div>
                 </h3>
                 

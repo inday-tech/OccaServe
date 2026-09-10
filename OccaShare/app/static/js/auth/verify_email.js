@@ -1,35 +1,54 @@
-// Countdown Timer Logic
-let timeLeft = 180; // 3 minutes
-const timerElement = document.getElementById('timer');
-const resendBtn = document.getElementById('resendBtn');
+// Countdown Timer Logic (5 Minutes = 300 Seconds)
 let timerId;
+let timeLeft = 300;
 
 function startTimer() {
-    timeLeft = 60;
-    if (resendBtn) {
-        resendBtn.classList.add('disabled');
-        resendBtn.textContent = "Resend Code";
+    timeLeft = 300; // 5 minutes
+    const btn = document.getElementById('resendBtn');
+    const timer = document.getElementById('timer');
+    const timerContainer = document.getElementById('timerContainer');
+
+    // Hide the resend button while the countdown is running
+    if (btn) {
+        btn.style.display = 'none';
+        btn.classList.add('disabled');
+    }
+    if (timer) {
+        timer.textContent = "05:00";
+    }
+    if (timerContainer) {
+        timerContainer.style.display = 'block';
     }
 
     clearInterval(timerId);
     timerId = setInterval(() => {
+        timeLeft--;
+        const curTimer = document.getElementById('timer');
+        const curBtn = document.getElementById('resendBtn');
+        const curTimerContainer = document.getElementById('timerContainer');
+
         if (timeLeft <= 0) {
             clearInterval(timerId);
-            if (timerElement) timerElement.textContent = "00:00";
-            if (resendBtn) resendBtn.classList.remove('disabled');
+            // Time is up: hide countdown text and show clickable resend button
+            if (curTimerContainer) {
+                curTimerContainer.style.display = 'none';
+            }
+            if (curBtn) {
+                curBtn.style.display = 'inline-block';
+                curBtn.classList.remove('disabled');
+                curBtn.textContent = "Resend Code";
+            }
         } else {
-            timeLeft--;
             const minutes = Math.floor(timeLeft / 60);
             const seconds = timeLeft % 60;
-            if (timerElement) {
-                timerElement.textContent = `${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            if (curTimer) {
+                curTimer.textContent = `${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
             }
         }
     }, 1000);
 }
 
 function resetTimer() {
-    timeLeft = 180;
     startTimer();
 }
 
@@ -68,7 +87,8 @@ async function initVerifyPolling() {
                         confirmButtonColor: '#FF7B54'
                     });
                 }
-                const nextUrl = document.querySelector('input[name="next_url"]')?.value || '/customer/dashboard';
+                const roleBasedFallback = (result && result.role === 'caterer') ? '/caterer/dashboard' : '/customer/dashboard';
+                const nextUrl = (result && result.redirect) || document.querySelector('input[name="next_url"]')?.value || roleBasedFallback;
                 window.location.href = nextUrl;
             }
         } catch (error) {
@@ -80,13 +100,17 @@ async function initVerifyPolling() {
 // Resend Code Logic
 async function resendCode(e) {
     if (e) e.preventDefault();
-    if (!resendBtn || resendBtn.classList.contains('disabled')) return;
+    const btn = document.getElementById('resendBtn');
+    if (!btn || btn.classList.contains('disabled')) return;
 
     const email = document.getElementById('emailField')?.value;
-    if (!email) return;
+    if (!email) {
+        if (window.Swal) Swal.fire({ icon: 'error', title: 'Error', text: 'Email not found. Please register again.', confirmButtonColor: '#FF7B54' });
+        return;
+    }
 
-    resendBtn.textContent = "Sending...";
-    resendBtn.classList.add('disabled');
+    btn.textContent = "Sending...";
+    btn.classList.add('disabled');
 
     try {
         const formData = new FormData();
@@ -97,7 +121,13 @@ async function resendCode(e) {
             body: formData
         });
 
-        const result = await response.json();
+        let result;
+        try {
+            result = await response.json();
+        } catch (_) {
+            // Server returned a non-JSON response (e.g. 500 HTML page)
+            throw new Error(`Server error (${response.status}). Please restart the server and try again.`);
+        }
 
         if (result.success) {
             if (window.Swal) {
@@ -115,19 +145,27 @@ async function resendCode(e) {
             if (window.Swal) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'Oops...',
-                    text: result.message || 'Failed to resend code.',
+                    title: 'Failed to Send',
+                    text: result.message || 'Failed to resend code. Please try again.',
                     confirmButtonColor: '#FF7B54'
                 });
             }
-            resendBtn.classList.remove('disabled');
-            resendBtn.textContent = "Resend Code";
+            btn.classList.remove('disabled');
+            btn.textContent = "Resend Code";
         }
     } catch (error) {
-        console.error('Error:', error);
-        if (resendBtn) {
-            resendBtn.classList.remove('disabled');
-            resendBtn.textContent = "Resend Code";
+        console.error('Resend error:', error);
+        if (window.Swal) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Connection Error',
+                text: error.message || 'Could not reach the server. Please check your connection and try again.',
+                confirmButtonColor: '#FF7B54'
+            });
+        }
+        if (btn) {
+            btn.classList.remove('disabled');
+            btn.textContent = "Resend Code";
         }
     }
 }
@@ -240,10 +278,13 @@ async function submitOtpForm() {
                     confirmButtonColor: '#FF7B54'
                 });
             }
-            window.location.href = data.redirect || '/customer/dashboard';
+            const roleBasedFallback = (data && data.role === 'caterer') ? '/caterer/dashboard' : '/customer/dashboard';
+            const targetUrl = (data && data.redirect) || document.querySelector('input[name="next_url"]')?.value || roleBasedFallback;
+            window.location.href = targetUrl;
         } else {
             verifyForm.dataset.submitting = 'false';
-            const errMsg = (data && (data.message || data.detail)) || 'Invalid verification code. Please check and try again.';
+            const defaultErr = (!response.ok && response.status >= 500) ? 'Server error occurred during verification. Please try again.' : 'Invalid verification code. Please check and try again.';
+            const errMsg = (data && (data.message || data.detail)) || defaultErr;
             if (window.Swal) {
                 Swal.fire({
                     icon: 'error',
@@ -292,4 +333,5 @@ window.startTimer = startTimer;
 window.resendCode = resendCode;
 window.initVerifyPolling = initVerifyPolling;
 window.submitOtpForm = submitOtpForm;
+window.setupOtpInputListeners = setupOtpInputListeners;
 

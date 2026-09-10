@@ -26,20 +26,36 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
     # NOTE: Schema sync (ALTER TABLE) has been moved to app startup (main.py).
     # Running DDL per-request holds AccessExclusiveLock on tables and causes deadlocks.
 
-    packages = db.query(models.CateringPackage).filter(models.CateringPackage.is_active == True).limit(3).all()
-    caterers = db.query(models.CatererProfile).filter(
-        models.CatererProfile.status == 'Published',
-        models.CatererProfile.verification_status == 'Verified',
-        models.CatererProfile.account_status == 'Active'
-    ).order_by(models.CatererProfile.rating.desc()).limit(5).all()
+    try:
+        packages = db.query(models.CateringPackage).filter(models.CateringPackage.is_active == True).limit(3).all()
+    except Exception as e:
+        print(f"[HOMEPAGE ERROR] Failed to load catering packages: {e}")
+        db.rollback()
+        packages = []
 
-    highlighted_reviews = db.query(models.PlatformFeedback).filter(
-        models.PlatformFeedback.is_archived == False
-    ).order_by(models.PlatformFeedback.created_at.desc()).limit(15).all()
+    try:
+        caterers = db.query(models.CatererProfile).filter(
+            models.CatererProfile.status == 'Published',
+            models.CatererProfile.verification_status == 'Verified',
+            models.CatererProfile.account_status == 'Active'
+        ).order_by(models.CatererProfile.rating.desc()).limit(5).all()
+    except Exception as e:
+        print(f"[HOMEPAGE ERROR] Failed to load caterers: {e}")
+        db.rollback()
+        caterers = []
 
-    # Fallback: show highly-rated caterer reviews if no platform feedback is featured yet
-    if not highlighted_reviews:
-        highlighted_reviews = db.query(models.Review).filter(models.Review.rating >= 4).order_by(models.Review.created_at.desc()).limit(3).all()
+    try:
+        highlighted_reviews = db.query(models.PlatformFeedback).filter(
+            models.PlatformFeedback.is_archived == False
+        ).order_by(models.PlatformFeedback.created_at.desc()).limit(15).all()
+
+        # Fallback: show highly-rated caterer reviews if no platform feedback is featured yet
+        if not highlighted_reviews:
+            highlighted_reviews = db.query(models.Review).filter(models.Review.rating >= 4).order_by(models.Review.created_at.desc()).limit(3).all()
+    except Exception as e:
+        print(f"[HOMEPAGE ERROR] Failed to load reviews: {e}")
+        db.rollback()
+        highlighted_reviews = []
 
     # Stats for the "Trust Counter" section
     # Use func.count(Model.id) instead of ORM .count() to avoid the full-column subquery
@@ -70,7 +86,12 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
         "hosts": total_hosts
     }
 
-    config = db.query(models.WebsiteConfig).first()
+    try:
+        config = db.query(models.WebsiteConfig).first()
+    except Exception as e:
+        print(f"[HOMEPAGE ERROR] Failed to load config: {e}")
+        db.rollback()
+        config = None
 
     return templates.TemplateResponse("index.html", {
         "request": request,
