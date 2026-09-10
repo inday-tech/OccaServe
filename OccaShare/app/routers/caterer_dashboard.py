@@ -1725,7 +1725,6 @@ async def manage_bookings(
         models.CateringPackage.status == 'active'
     ).all()
     
-    from datetime import date
     today = date.today()
     
     unread_chat_map = {}
