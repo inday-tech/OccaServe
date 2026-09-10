@@ -325,6 +325,13 @@ def master_migration():
             ("price", "FLOAT")
         ]
 
+        # Booking History
+        booking_history_cols = [
+            ("entry_type", "VARCHAR DEFAULT 'system_change'"),
+            ("communication_channel", "VARCHAR"),
+            ("notes", "TEXT")
+        ]
+
         # Apply helper
         def add_cols(table_name, columns):
             print(f"  Migrating {table_name}...")
@@ -349,6 +356,7 @@ def master_migration():
         add_cols("caterer_gallery", gallery_cols)
         add_cols("platform_feedback", feedback_cols)
         add_cols("booking_menu_items", booking_menu_items_cols)
+        add_cols("booking_history", booking_history_cols)
 
         # Fix foreign key in package_services table if it points to menu_items instead of services
         print("  Checking package_services foreign key...")
