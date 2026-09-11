@@ -1870,19 +1870,68 @@ window.checkExtDuplicateUser = function() {
     }, 500);
 };
 
+// ─── WALK-IN BOOKING MODAL LOGIC ───────────────────────────────────────────────
+
 window.openExternalBookingModal = function() {
-    currentExtStep = 1;
-    document.getElementById('externalBookingForm').reset();
-    document.getElementById('extBookingFormError').style.display = 'none';
-    
-    // Reset selected items and render catalog
-    window.selectedCatalogItems = {};
-    if (window.renderCatalogItems) window.renderCatalogItems();
-    if (window.updateExtPackageSummary) window.updateExtPackageSummary();
-    
-    calcExtTotal();
-    updateExtStepperUI();
-    
+    const form = document.getElementById('externalBookingForm');
+    if (form) form.reset();
+
+    const errBox = document.getElementById('extBookingFormError');
+    if (errBox) {
+        errBox.innerText = '';
+        errBox.style.display = 'none';
+    }
+
+    const srvErr = document.getElementById('error-services-general');
+    if (srvErr) {
+        srvErr.innerText = '';
+        srvErr.style.display = 'none';
+    }
+
+    // Clear all field-specific error messages and red borders
+    const errMessages = document.querySelectorAll('.field-error-msg');
+    errMessages.forEach(el => {
+        el.innerText = '';
+        el.style.display = 'none';
+    });
+
+    const inputs = document.querySelectorAll('#externalBookingForm .control-pro');
+    inputs.forEach(inp => {
+        inp.style.borderColor = '#cbd5e1';
+    });
+
+    // Reset all 16 service checkboxes and disable amount fields
+    const checkboxes = document.querySelectorAll('.walkin-service-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = false;
+        const row = cb.closest('.walkin-service-row');
+        if (row) {
+            row.style.background = '#f8fafc';
+            row.style.borderColor = '#e2e8f0';
+        }
+    });
+
+    const amounts = document.querySelectorAll('.walkin-service-amount');
+    amounts.forEach(amt => {
+        amt.value = '';
+        amt.disabled = true;
+        amt.style.background = '#e2e8f0';
+        amt.style.color = '#94a3b8';
+        amt.style.borderColor = '#cbd5e1';
+    });
+
+    // Reset totals
+    recalculateWalkinTotals();
+
+    // Default booking date to min_booking_date if available
+    const dateInput = document.getElementById('extEventDate');
+    if (dateInput && window.MIN_BOOKING_DATE) {
+        dateInput.min = window.MIN_BOOKING_DATE;
+        if (!dateInput.value) {
+            dateInput.value = window.MIN_BOOKING_DATE;
+        }
+    }
+
     const modal = document.getElementById('externalBookingModal');
     if (modal) {
         modal.style.display = 'flex';
@@ -1890,319 +1939,383 @@ window.openExternalBookingModal = function() {
     }
 };
 
-window.changeExtStep = function(direction) {
-    // Validate current step before moving next
-        if (direction === 1) {
-        if (currentExtStep === 1) {
-            const form = document.getElementById('externalBookingForm');
-            const fullName = document.getElementById('extFullName') ? document.getElementById('extFullName').value.trim() : '';
-            const contact = document.getElementById('extCustomerContact') ? document.getElementById('extCustomerContact').value.trim() : '';
-            if (!fullName || !contact) {
-                document.getElementById('extBookingFormError').innerText = "Please fill in all required fields (Customer Full Name & Contact).";
-                document.getElementById('extBookingFormError').style.display = 'block';
-                return;
-            }
-        } else if (currentExtStep === 2) {
-            if (!document.getElementById('extEventName').value || !document.getElementById('extEventDate').value || !document.getElementById('extEventTime').value || !document.getElementById('extGuests').value) {
-                document.getElementById('extBookingFormError').innerText = "Please fill in all required event details.";
-                document.getElementById('extBookingFormError').style.display = 'block';
-                return;
-            }
+window.clearWalkinError = function(fieldId) {
+    const errEl = document.getElementById(`error-${fieldId}`);
+    if (errEl) {
+        errEl.innerText = '';
+        errEl.style.display = 'none';
+    }
+    const inputEl = document.getElementById(fieldId);
+    if (inputEl) {
+        inputEl.style.borderColor = '#cbd5e1';
+    }
+};
+
+window.setWalkinError = function(fieldId, message) {
+    const errEl = document.getElementById(`error-${fieldId}`);
+    if (errEl) {
+        errEl.innerText = message;
+        errEl.style.display = 'block';
+    }
+    const inputEl = document.getElementById(fieldId);
+    if (inputEl) {
+        inputEl.style.borderColor = '#ef4444';
+        inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+};
+
+window.handleWalkinServiceToggle = function(checkbox) {
+    const idx = checkbox.getAttribute('data-index');
+    const amountInput = document.getElementById(`walkin_amount_${idx}`);
+    const row = checkbox.closest('.walkin-service-row');
+    const errEl = document.getElementById(`error-walkin_amount_${idx}`);
+
+    if (checkbox.checked) {
+        if (amountInput) {
+            amountInput.disabled = false;
+            amountInput.style.background = '#ffffff';
+            amountInput.style.color = '#0f172a';
+            amountInput.style.borderColor = '#cbd5e1';
+            amountInput.focus();
         }
-        document.getElementById('extBookingFormError').style.display = 'none';
-    }
-    
-    currentExtStep += direction;
-    if (currentExtStep < 1) currentExtStep = 1;
-    if (currentExtStep > totalExtSteps) currentExtStep = totalExtSteps;
-    
-    updateExtStepperUI();
-};
-
-window.updateExtStepperUI = function() {
-    // Update progress bar
-    const progress = ((currentExtStep - 1) / (totalExtSteps - 1)) * 100;
-    const bar = document.getElementById('extStepProgress');
-    if (bar) bar.style.width = progress + '%';
-    
-    // Update steps
-    for (let i = 1; i <= totalExtSteps; i++) {
-        const nav = document.getElementById('ext-nav-' + i);
-        if (nav) {
-            nav.classList.remove('active', 'completed');
-            if (i < currentExtStep) nav.classList.add('completed');
-            if (i === currentExtStep) nav.classList.add('active');
+        if (row) {
+            row.style.background = '#ffffff';
+            row.style.borderColor = '#f97316';
         }
-        
-        const content = document.getElementById('ext-step-' + i);
-        if (content) {
-            if (i === currentExtStep) {
-                content.classList.add('active');
-            } else {
-                content.classList.remove('active');
-            }
+    } else {
+        if (amountInput) {
+            amountInput.value = '';
+            amountInput.disabled = true;
+            amountInput.style.background = '#e2e8f0';
+            amountInput.style.color = '#94a3b8';
+            amountInput.style.borderColor = '#cbd5e1';
+        }
+        if (row) {
+            row.style.background = '#f8fafc';
+            row.style.borderColor = '#e2e8f0';
+        }
+        if (errEl) {
+            errEl.innerText = '';
+            errEl.style.display = 'none';
         }
     }
-    
-    // Buttons
-    const btnPrev = document.getElementById('extBtnPrev');
-    const btnNext = document.getElementById('extBtnNext');
-    const btnSubmit = document.getElementById('extBtnSubmit');
-    
-    if (btnPrev) btnPrev.style.display = currentExtStep === 1 ? 'none' : 'block';
-    
-    if (currentExtStep === totalExtSteps) {
-        if (btnNext) btnNext.style.display = 'none';
-        if (btnSubmit) btnSubmit.style.display = 'block';
-        
-        // Populate summary
-        document.getElementById('summarySource').innerText = document.getElementById('extSource').value;
-        const sName = document.getElementById('extFullName') ? document.getElementById('extFullName').value : (document.getElementById('extFirstName') ? (document.getElementById('extFirstName').value + ' ' + document.getElementById('extLastName').value) : '');
-        document.getElementById('summaryCustomer').innerText = sName + ' (' + document.getElementById('extCustomerContact').value + ')';
-        
-        const dt = document.getElementById('extEventDate').value;
-        const tm = document.getElementById('extEventTime').value;
-        document.getElementById('summaryEvent').innerText = document.getElementById('extEventName').value + ' (' + document.getElementById('extEventType').value + ')';
-        document.getElementById('summaryDateTime').innerText = dt + ' ' + tm;
-        document.getElementById('summaryGuests').innerText = document.getElementById('extGuests').value + ' Pax';
-        
-        const mode = document.getElementById('extPackageMode');
-        document.getElementById('summaryPackage').innerText = mode.options[mode.selectedIndex].text;
-        document.getElementById('summaryTotal').innerText = 'PHP ' + document.getElementById('extTotalAmount').innerText;
-    } else {
-        if (btnNext) btnNext.style.display = 'block';
-        if (btnSubmit) btnSubmit.style.display = 'none';
+
+    const srvErr = document.getElementById('error-services-general');
+    if (srvErr) {
+        srvErr.innerText = '';
+        srvErr.style.display = 'none';
     }
+
+    recalculateWalkinTotals();
 };
 
-window.selectedCatalogItems = {};
+window.handleWalkinAmountChange = function(amountInput, idx) {
+    const errEl = document.getElementById(`error-walkin_amount_${idx}`);
+    const val = parseFloat(amountInput.value);
 
-window.updateExtPackageSummary = function() {
-    const mode = document.getElementById('extPackageMode');
-    if (!mode) return;
-    const isCustom = mode.value === 'custom';
-    
-    const summary = document.getElementById('extPackageSummary');
-    if (summary) summary.style.display = isCustom ? 'none' : 'block';
-    
-    if (!isCustom) {
-        const pkgId = mode.value;
-        const pkgMap = window.packageMap || {};
-        const pkgData = pkgMap[pkgId];
-        const basePrice = parseFloat(mode.options[mode.selectedIndex].dataset.price || 0);
-        
-        document.getElementById('extPackageBasePrice').innerText = '₱' + basePrice.toLocaleString('en-US', {minimumFractionDigits: 2});
-        
-        let html = '';
-        if (pkgData && pkgData.inclusions && pkgData.inclusions.length > 0) {
-            pkgData.inclusions.forEach(inc => {
-                html += `<div style="display: flex; align-items: flex-start; gap: 8px;">
-                    <i class="fas fa-check-circle" style="color: #10b981; margin-top: 3px;"></i>
-                    <span>${inc}</span>
-                </div>`;
-            });
-        } else {
-            html = `<i>No inclusions specified for this package.</i>`;
+    // Prevent negative numbers directly in input
+    if (val < 0) {
+        amountInput.value = Math.abs(val);
+    }
+
+    if (amountInput.value && parseFloat(amountInput.value) > 0) {
+        if (errEl) {
+            errEl.innerText = '';
+            errEl.style.display = 'none';
         }
-        document.getElementById('extPackageSummaryContent').innerHTML = html;
-        
-        document.getElementById('extBuilderTitle').innerText = 'Select Extra Add-ons';
-    } else {
-        document.getElementById('extBuilderTitle').innerText = 'Select Custom Items';
+        amountInput.style.borderColor = '#cbd5e1';
     }
-    
-    calcExtTotal();
+
+    recalculateWalkinTotals();
 };
 
-window.renderCatalogItems = function() {
-    const container = document.getElementById('extCatalogContainer');
-    if (!container) return;
-    
-    const filter = document.getElementById('extCatalogFilter').value;
-    const search = document.getElementById('extCatalogSearch').value.toLowerCase();
-    const catalog = window.catalogItems || {menu: [], services: [], equipment: []};
-    
-    let itemsToRender = [];
-    if (filter === 'all' || filter === 'menu') itemsToRender = itemsToRender.concat(catalog.menu.map(i => ({...i, type: 'menu'})));
-    if (filter === 'all' || filter === 'services') itemsToRender = itemsToRender.concat(catalog.services.map(i => ({...i, type: 'services'})));
-    if (filter === 'all' || filter === 'equipment') itemsToRender = itemsToRender.concat(catalog.equipment.map(i => ({...i, type: 'equipment'})));
-    
-    if (search) {
-        itemsToRender = itemsToRender.filter(i => i.name.toLowerCase().includes(search));
-    }
-    
-    let html = '';
-    if (itemsToRender.length === 0) {
-        html = `<div style="text-align: center; color: #94a3b8; padding: 20px;">No items found.</div>`;
-    } else {
-        itemsToRender.forEach(item => {
-            const key = `${item.type}_${item.id}`;
-            const isSelected = window.selectedCatalogItems[key] ? true : false;
-            const qty = isSelected ? window.selectedCatalogItems[key].qty : 1;
-            
-            html += `
-            <div style="background: white; border: 1px solid ${isSelected ? '#3b82f6' : '#e2e8f0'}; border-radius: 8px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s;">
-                <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
-                    <input type="checkbox" id="cb_${key}" onchange="window.toggleCatalogItem('${item.type}', ${item.id}, '${item.name.replace(/'/g, "\\'")}', ${item.price}, this.checked)" ${isSelected ? 'checked' : ''} style="width: 18px; height: 18px; cursor: pointer;">
-                    <div>
-                        <label for="cb_${key}" style="font-weight: 700; color: #1e293b; cursor: pointer; margin: 0;">${item.name}</label>
-                        <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">
-                            ${item.type === 'menu' ? '<i class="fas fa-utensils"></i> Menu' : item.type === 'services' ? '<i class="fas fa-concierge-bell"></i> Service' : '<i class="fas fa-chair"></i> Equipment'}
-                        </div>
-                    </div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 16px;">
-                    <div style="font-weight: 700; color: #10b981;">₱${parseFloat(item.price || 0).toLocaleString('en-US', {minimumFractionDigits:2})}</div>
-                    <div style="display: ${isSelected ? 'flex' : 'none'}; align-items: center; gap: 8px; background: #f1f5f9; padding: 4px 8px; border-radius: 20px;">
-                        <button type="button" onclick="window.updateCatalogQty('${key}', -1)" style="background: none; border: none; cursor: pointer; color: #64748b;"><i class="fas fa-minus-circle"></i></button>
-                        <span style="font-weight: 700; width: 20px; text-align: center; font-size: 0.85rem;" id="qty_${key}">${qty}</span>
-                        <button type="button" onclick="window.updateCatalogQty('${key}', 1)" style="background: none; border: none; cursor: pointer; color: #64748b;"><i class="fas fa-plus-circle"></i></button>
-                    </div>
-                </div>
-            </div>`;
-        });
-    }
-    container.innerHTML = html;
-};
-
-window.toggleCatalogItem = function(type, id, name, price, isChecked) {
-    const key = `${type}_${id}`;
-    if (isChecked) {
-        window.selectedCatalogItems[key] = { type, id, name, price, qty: 1 };
-    } else {
-        delete window.selectedCatalogItems[key];
-    }
-    window.renderCatalogItems(); // Re-render to show/hide qty controls
-    window.calcExtTotal();
-};
-
-window.updateCatalogQty = function(key, delta) {
-    if (window.selectedCatalogItems[key]) {
-        window.selectedCatalogItems[key].qty += delta;
-        if (window.selectedCatalogItems[key].qty < 1) window.selectedCatalogItems[key].qty = 1;
-        document.getElementById(`qty_${key}`).innerText = window.selectedCatalogItems[key].qty;
-        window.calcExtTotal();
-    }
-};
-
-window.calcExtTotal = function() {
+function recalculateWalkinTotals() {
     let total = 0;
-    
-    // Check package base price if selected
-    const mode = document.getElementById('extPackageMode');
-    if (mode && mode.value !== 'custom') {
-        const basePrice = parseFloat(mode.options[mode.selectedIndex].dataset.price || 0);
-        total += basePrice;
+    let selectedCount = 0;
+
+    const checkboxes = document.querySelectorAll('.walkin-service-checkbox');
+    checkboxes.forEach(cb => {
+        if (cb.checked) {
+            selectedCount++;
+            const idx = cb.getAttribute('data-index');
+            const amtInput = document.getElementById(`walkin_amount_${idx}`);
+            if (amtInput) {
+                const amt = parseFloat(amtInput.value) || 0;
+                if (amt > 0) {
+                    total += amt;
+                }
+            }
+        }
+    });
+
+    const totalDisplay = document.getElementById('walkinTotalDisplay');
+    if (totalDisplay) {
+        totalDisplay.innerText = '₱' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
-    
-    // Add custom/add-on items
-    let count = 0;
-    for (const key in window.selectedCatalogItems) {
-        const item = window.selectedCatalogItems[key];
-        total += (parseFloat(item.price) || 0) * item.qty;
-        count++;
+
+    const hiddenTotal = document.getElementById('extTotalAmount');
+    if (hiddenTotal) {
+        hiddenTotal.value = total;
     }
-    
-    const totalEl = document.getElementById('extTotalAmount');
-    if (totalEl) totalEl.value = total;
-    const totalDisp = document.getElementById('extQuoteTotal');
-    if (totalDisp) totalDisp.innerText = '₱' + total.toLocaleString('en-US', {minimumFractionDigits: 2});
-    const countDisp = document.getElementById('extSelectedCount');
-    if (countDisp) countDisp.innerText = count;
-};
+
+    const countDisplay = document.getElementById('walkinSelectedCount');
+    if (countDisplay) {
+        countDisplay.innerText = selectedCount;
+    }
+
+    return total;
+}
 
 window.submitExternalBooking = async function(e) {
-    e.preventDefault();
-    
-    // Prevent submission if not on the final step (e.g., user pressed Enter on an early step)
-    if (currentExtStep < totalExtSteps) {
-        window.changeExtStep(1);
+    if (e && e.preventDefault) e.preventDefault();
+
+    const form = document.getElementById('externalBookingForm');
+    const errBanner = document.getElementById('extBookingFormError');
+    if (errBanner) {
+        errBanner.innerText = '';
+        errBanner.style.display = 'none';
+    }
+
+    let isValid = true;
+    let firstInvalidEl = null;
+
+    function reportError(fieldId, message) {
+        isValid = false;
+        window.setWalkinError(fieldId, message);
+        if (!firstInvalidEl) {
+            firstInvalidEl = document.getElementById(fieldId);
+        }
+    }
+
+    // 1. Customer Name Validation
+    const nameEl = document.getElementById('extFullName');
+    const nameVal = nameEl ? nameEl.value.trim() : '';
+    if (!nameVal) {
+        reportError('extFullName', 'Customer full name is required.');
+    } else if (nameVal.length < 2) {
+        reportError('extFullName', 'Name must be at least 2 characters long.');
+    } else if (!/^[A-Za-zÑñ\s\.\,\-]+$/.test(nameVal)) {
+        reportError('extFullName', 'Please enter a valid customer name (letters, spaces, periods, hyphens only).');
+    }
+
+    // 2. Mobile Number Validation
+    const contactEl = document.getElementById('extCustomerContact');
+    const contactVal = contactEl ? contactEl.value.trim() : '';
+    // Normalize and test PH format: 09XXXXXXXXX or +639XXXXXXXXX
+    const phMobileRegex = /^(09\d{9}|\+639\d{9})$/;
+    if (!contactVal) {
+        reportError('extCustomerContact', 'Mobile number is required.');
+    } else {
+        const cleanContact = contactVal.replace(/[\s\-]/g, '');
+        if (!phMobileRegex.test(cleanContact)) {
+            reportError('extCustomerContact', 'Please enter a valid PH mobile number (e.g., 09XXXXXXXXX or +639XXXXXXXXX).');
+        } else {
+            // Repetitive check (e.g. 09111111111)
+            const digits = cleanContact.startsWith('+63') ? '0' + cleanContact.slice(3) : cleanContact;
+            if (new Set(digits.slice(2)).size <= 2) {
+                reportError('extCustomerContact', 'Invalid mobile number pattern detected.');
+            }
+        }
+    }
+
+    // 3. Type of Event
+    const typeEl = document.getElementById('extEventType');
+    if (!typeEl || !typeEl.value) {
+        reportError('extEventType', 'Please select the type of event.');
+    }
+
+    // 4. Date of Event
+    const dateEl = document.getElementById('extEventDate');
+    const dateVal = dateEl ? dateEl.value : '';
+    if (!dateVal) {
+        reportError('extEventDate', 'Date of event is required.');
+    } else {
+        const selectedDate = new Date(dateVal + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (selectedDate <= today) {
+            reportError('extEventDate', 'Event date cannot be in the past or today.');
+        } else if (window.MIN_BOOKING_DATE && dateVal < window.MIN_BOOKING_DATE) {
+            reportError('extEventDate', `Bookings require advance notice. Earliest available date is ${window.MIN_BOOKING_DATE}.`);
+        }
+    }
+
+    // 5. Venue Validation
+    const venueEl = document.getElementById('extVenue');
+    if (!venueEl || !venueEl.value.trim()) {
+        reportError('extVenue', 'Event venue is required.');
+    }
+
+    // 6. Address Validation
+    const addressEl = document.getElementById('extAddress');
+    if (!addressEl || !addressEl.value.trim()) {
+        reportError('extAddress', 'Customer address is required.');
+    }
+
+    // 7. Services Checklist & Amounts Validation
+    const checkboxes = document.querySelectorAll('.walkin-service-checkbox');
+    const selectedServices = [];
+    let checkedCount = 0;
+    let serviceAmountError = false;
+
+    checkboxes.forEach(cb => {
+        if (cb.checked) {
+            checkedCount++;
+            const idx = cb.getAttribute('data-index');
+            const sName = cb.getAttribute('data-service-name');
+            const amtInput = document.getElementById(`walkin_amount_${idx}`);
+            const errEl = document.getElementById(`error-walkin_amount_${idx}`);
+            const rawVal = amtInput ? amtInput.value.trim() : '';
+            const amtVal = parseFloat(rawVal);
+
+            if (!rawVal || isNaN(amtVal) || amtVal <= 0) {
+                isValid = false;
+                serviceAmountError = true;
+                if (errEl) {
+                    errEl.innerText = 'Amount is required and must be greater than ₱0.';
+                    errEl.style.display = 'block';
+                }
+                if (amtInput) {
+                    amtInput.style.borderColor = '#ef4444';
+                    if (!firstInvalidEl) firstInvalidEl = amtInput;
+                }
+            } else {
+                if (errEl) {
+                    errEl.innerText = '';
+                    errEl.style.display = 'none';
+                }
+                if (amtInput) amtInput.style.borderColor = '#cbd5e1';
+
+                selectedServices.push({
+                    name: sName,
+                    price: amtVal,
+                    item_type: 'service',
+                    qty: 1
+                });
+            }
+        }
+    });
+
+    const srvGeneralErr = document.getElementById('error-services-general');
+    if (checkedCount === 0) {
+        isValid = false;
+        if (srvGeneralErr) {
+            srvGeneralErr.innerText = 'Please select at least one service from the checklist.';
+            srvGeneralErr.style.display = 'block';
+            if (!firstInvalidEl) firstInvalidEl = srvGeneralErr;
+        }
+    } else if (serviceAmountError) {
+        if (srvGeneralErr) {
+            srvGeneralErr.innerText = 'Please enter a valid amount greater than ₱0 for all selected services.';
+            srvGeneralErr.style.display = 'block';
+        }
+    }
+
+    if (!isValid) {
+        if (firstInvalidEl && typeof firstInvalidEl.scrollIntoView === 'function') {
+            firstInvalidEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (typeof firstInvalidEl.focus === 'function') firstInvalidEl.focus();
+        }
         return;
     }
-    
+
+    // Submit state: Disable submit button and show saving indicator
     const btn = document.getElementById('extBtnSubmit');
+    const originalBtnHtml = btn ? btn.innerHTML : 'Save Walk-in Booking';
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving Walk-in Booking...';
     }
-    
-    const err = document.getElementById('extBookingFormError');
-    if (err) err.style.display = 'none';
-    
-    // Collect rows from selectedCatalogItems
-    const rows = [];
-    for (const key in window.selectedCatalogItems) {
-        const item = window.selectedCatalogItems[key];
-        rows.push({
-            name: `${item.qty}x ${item.name}`,
-            price: parseFloat(item.price) * item.qty,
-            item_type: item.type,
-            item_id: item.id,
-            qty: item.qty
-        });
+
+    // Recalculate total amount from selected services
+    const totalAmount = selectedServices.reduce((sum, s) => sum + s.price, 0);
+
+    // Format clean contact number for backend (09XXXXXXXXX)
+    let finalContact = contactVal.replace(/[\s\-]/g, '');
+    if (finalContact.startsWith('+63')) {
+        finalContact = '0' + finalContact.slice(3);
     }
-    
+
     const payload = {
-        booking_source: document.getElementById('extSource').value,
-        full_name: document.getElementById('extFullName') ? document.getElementById('extFullName').value : (document.getElementById('extFirstName') ? (document.getElementById('extFirstName').value + ' ' + document.getElementById('extLastName').value) : ''),
-        customer_contact: document.getElementById('extCustomerContact').value,
-        customer_email: document.getElementById('extCustomerEmail').value,
-        event_type: document.getElementById('extEventType').value,
-        event_name: document.getElementById('extEventName').value,
-        event_date: document.getElementById('extEventDate').value,
-        event_time: document.getElementById('extEventTime').value,
-        guest_count: parseInt(document.getElementById('extGuests').value || 1),
-        province: document.getElementById('extProvince') ? document.getElementById('extProvince').value : '',
-        municipality: document.getElementById('extMunicipality') ? document.getElementById('extMunicipality').value : '',
-        barangay: document.getElementById('extBarangay') ? document.getElementById('extBarangay').value : '',
-        landmark: document.getElementById('extLandmark') ? document.getElementById('extLandmark').value : '',
-        package_id: document.getElementById('extPackageMode').value === 'custom' ? null : document.getElementById('extPackageMode').value,
-        quotation_items: rows,
-        total_amount: parseFloat(document.getElementById('extTotalAmount').innerText || 0),
-        status: document.getElementById('extSaveStatus') ? document.getElementById('extSaveStatus').value : 'inquiry',
-        amount_paid: parseFloat(document.getElementById('extInitialPayment') ? document.getElementById('extInitialPayment').value : 0) || 0,
-        force_override: document.getElementById('extOverrideKyc') ? document.getElementById('extOverrideKyc').checked : false,
-        special_notes: document.getElementById('extCommNote') ? document.getElementById('extCommNote').value : ''
+        booking_source: "Walk-in",
+        full_name: nameVal,
+        customer_contact: finalContact,
+        customer_email: "",
+        event_type: typeEl.value,
+        event_name: `${typeEl.value} - ${nameVal}`,
+        event_date: dateVal,
+        event_time: "10:00",
+        guest_count: 1,
+        address: addressEl.value.trim(),
+        venue: venueEl.value.trim(),
+        celebrant_name: document.getElementById('extCelebrantName') ? document.getElementById('extCelebrantName').value.trim() : "",
+        motif_theme: document.getElementById('extMotifTheme') ? document.getElementById('extMotifTheme').value.trim() : "",
+        services: selectedServices,
+        quotation_items: selectedServices,
+        total_amount: totalAmount,
+        status: "confirmed",
+        amount_paid: 0,
+        force_override: false
     };
-    
+
     try {
         const response = await fetch('/caterer/api/bookings/manual', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-        
+
         const result = await response.json();
-        
+
         if (response.ok) {
             closeModal('externalBookingModal');
-            if (window.fullCalendarInstance) window.fullCalendarInstance.refetchEvents();
-            
-            if (result.booking_id) {
-                if (confirm(`Booking recorded successfully!\n\nWould you like to share the Secure Customer Document with the client now?`)) {
-                    const cName = document.getElementById('extFirstName').value + ' ' + document.getElementById('extLastName').value;
-                    window.openShareDocumentModal(result.booking_id, cName);
-                } else {
-                    showNotification('Success', 'External booking recorded successfully!', 'success');
-                }
+            if (window.fullCalendarInstance) {
+                window.fullCalendarInstance.refetchEvents();
+            }
+
+            if (window.showNotification) {
+                window.showNotification('Success', 'Walk-in booking successfully created.', 'success');
+            } else if (window.showToast) {
+                window.showToast('Walk-in booking successfully created.', 'success');
             } else {
-                showNotification('Success', 'External booking recorded successfully!', 'success');
+                alert('Walk-in booking successfully created.');
             }
         } else {
-            if (err) {
-                err.innerText = result.detail || 'Failed to record booking.';
-                err.style.display = 'block';
+            let detailMsg = result.detail || result.message || 'Failed to record walk-in booking.';
+            if (typeof detailMsg === 'string' && detailMsg.includes('|')) {
+                const parts = detailMsg.split('|');
+                const fieldKey = parts[0];
+                const cleanMsg = parts[1];
+                if (fieldKey === 'manDate' || fieldKey === 'event_date') {
+                    window.setWalkinError('extEventDate', cleanMsg);
+                } else if (fieldKey === 'manCustContact' || fieldKey === 'customer_contact') {
+                    window.setWalkinError('extCustomerContact', cleanMsg);
+                } else if (fieldKey === 'manFullName') {
+                    window.setWalkinError('extFullName', cleanMsg);
+                } else {
+                    if (errBanner) {
+                        errBanner.innerText = cleanMsg;
+                        errBanner.style.display = 'block';
+                    }
+                }
+            } else {
+                if (errBanner) {
+                    errBanner.innerText = detailMsg;
+                    errBanner.style.display = 'block';
+                    errBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
             }
         }
     } catch (error) {
-        if (err) {
-            err.innerText = 'Connection error: ' + error.message;
-            err.style.display = 'block';
+        if (errBanner) {
+            errBanner.innerText = 'Connection error: ' + error.message;
+            errBanner.style.display = 'block';
         }
     } finally {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = 'Save External Booking <i class="fas fa-check"></i>';
+            btn.innerHTML = originalBtnHtml;
         }
     }
 };

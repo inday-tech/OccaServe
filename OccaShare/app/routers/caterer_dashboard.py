@@ -414,15 +414,20 @@ async def create_manual_booking(
         else:
             customer_name = full_name
         
+        # Address & Venue Handling
         province = data.get("province", "").strip()
         municipality = data.get("municipality", "").strip()
         barangay = data.get("barangay", "").strip()
         landmark = data.get("landmark", "").strip()
+        direct_address = data.get("address", "").strip()
+        direct_venue = data.get("venue", "").strip()
         
-        if not province or not municipality or not barangay:
-            raise HTTPException(status_code=400, detail="manProvince|Complete address (Province, Municipality, Barangay) is required")
-            
-        venue_address = f"{landmark + ', ' if landmark else ''}{barangay}, {municipality}, {province}"
+        if direct_address:
+            venue_address = f"{direct_venue + ' — ' if direct_venue else ''}{direct_address}"
+        elif province and municipality and barangay:
+            venue_address = f"{landmark + ', ' if landmark else ''}{barangay}, {municipality}, {province}"
+        else:
+            raise HTTPException(status_code=400, detail="manProvince|Complete address is required.")
 
         # 1. Handle User (Customer)
         target_user = None
@@ -543,13 +548,36 @@ async def create_manual_booking(
             requested_status = "awaiting_customer"
             special_requests = special_requests + " [Awaiting Customer Digital Signature & KYC]"
         
+        # Services & Walk-in Metadata
+        services = data.get("services", [])
+        celebrant_name = data.get("celebrant_name", "").strip()
+        motif_theme = data.get("motif_theme", "").strip()
+
         # Build quotation data
         quotation_items = data.get("quotation_items", [])
+        if not quotation_items and services:
+            quotation_items = services
+
+        # If walk-in services provided, validate every item has positive price and compute authoritative total
+        if services:
+            computed_services_total = 0.0
+            for s in services:
+                s_price = float(s.get("price", 0) or 0)
+                if s_price <= 0:
+                    raise HTTPException(status_code=400, detail=f"services|Amount for '{s.get('name', 'selected service')}' must be greater than ₱0.")
+                computed_services_total += s_price
+            total_amt = computed_services_total
+        else:
+            total_amt = float(data.get("total_amount", 0) or 0)
+
         discount_amount = data.get("discount_amount", 0)
         amount_paid = float(data.get("amount_paid", 0) or 0)
         
         custom_reqs = {
             "is_walk_in": True,
+            "celebrant_name": celebrant_name,
+            "motif_theme": motif_theme,
+            "services": services,
             "quotation_items": quotation_items,
             "discount_amount": discount_amount,
             "amount_paid": amount_paid
@@ -562,7 +590,6 @@ async def create_manual_booking(
         # Total > 0 & Paid = 0 -> Unpaid
         # Paid > 0 but Paid < Total -> Partial
         # Paid >= Total -> Fully Paid (but not for 0/0)
-        total_amt = float(data.get("total_amount", 0) or 0)
         if total_amt == 0 and amount_paid == 0:
             computed_payment_status = 'no_payment'
         elif total_amt > 0 and amount_paid == 0:
@@ -583,8 +610,8 @@ async def create_manual_booking(
             event_date=event_date,
             event_time=event_time,
             guest_count=guest_count,
-            total_amount=data.get("total_amount", 0),
-            total_price=data.get("total_amount", 0),
+            total_amount=total_amt,
+            total_price=total_amt,
             venue_address=venue_address,
             status=requested_status,
             payment_status=computed_payment_status,
@@ -598,7 +625,7 @@ async def create_manual_booking(
         db.flush()
 
         # Build synthetic package details to avoid list structure in package_details
-        total_amount = float(data.get("total_amount", 0))
+        total_amount = total_amt
         synthetic_package_details = {
             "name": "Walk-in Custom Quotation",
             "description": "Walk-in generated quotation items",

@@ -43,6 +43,11 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS id_address_extracted TEXT",
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS permit_status VARCHAR DEFAULT 'Pending'",
         "ALTER TABLE booking_contracts ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE",
+        # users structured address fields
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS province VARCHAR",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS city_municipality VARCHAR",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS barangay VARCHAR",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS street_address TEXT",
         
         # website_config
         "ALTER TABLE website_config ADD COLUMN IF NOT EXISTS admin_gcash_name VARCHAR",

@@ -318,8 +318,8 @@
         <p>Manage bookings, preparation, availability, and your business schedule.</p>
     </div>
     <div style="display: flex; gap: 10px;">
-        <button onclick="openExternalBookingModal()" class="btn-secondary-pro" title="Add a new manual booking">
-            <i class="fas fa-user-plus"></i> Manual Booking
+        <button onclick="openExternalBookingModal()" class="btn-secondary-pro" title="Add a new walk-in booking">
+            <i class="fas fa-walking"></i> Walk-in Booking
         </button>
         <button onclick="openAddScheduleModal()" class="btn-primary-pro" title="Add Internal Schedule">
             <i class="fas fa-calendar-plus"></i> Add Schedule
@@ -1080,249 +1080,391 @@
 </div>
 
 <div id="externalBookingModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-lg occ-content-pop" style="display: flex; flex-direction: column; max-height: 90vh; overflow: hidden;">
-                <div class="occ-modal-header glass-header" style="flex-shrink: 0; z-index: 10;">
+    <div class="occ-modal-box sz-lg occ-content-pop" style="display: flex; flex-direction: column; max-height: 92vh; overflow: hidden; width: 100%; max-width: 820px; border-radius: 16px;">
+        <div class="occ-modal-header glass-header" style="flex-shrink: 0; padding: 1.25rem 1.75rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #ffffff;">
             <div>
-                <h3 class="occ-modal-title"><i class="fas fa-calendar-plus"></i> Create Manual Booking</h3>
-                <div class="occ-modal-subtitle">Record a customer inquiry or booking arranged outside the system.</div>
+                <h3 class="occ-modal-title" style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-walking" style="color: var(--primary-color, #f97316);"></i> Walk-in Booking
+                </h3>
+                <div class="occ-modal-subtitle" style="margin-top: 0.25rem; font-size: 0.85rem; color: #64748b;">
+                    Encode walk-in event details, select requested services, and compute totals.
+                </div>
             </div>
-            <button type="button" onclick="closeModal('externalBookingModal')" class="occ-modal-close"><i class="fas fa-times"></i></button>
+            <button type="button" onclick="closeModal('externalBookingModal')" class="occ-modal-close" style="background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: all 0.2s;">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
 
-        <style>
-            .booking-stepper-pro { position: relative; padding: 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; z-index: 5; }
-            .stepper-track-pro { position: absolute; top: 38px; left: 3rem; right: 3rem; height: 3px; background: #e2e8f0; z-index: 1; }
-            .progress-fill-pro { height: 100%; background: var(--primary-color); transition: width 0.3s ease; }
-            .stepper-steps-pro { position: relative; display: flex; justify-content: space-between; z-index: 2; }
-            .step-pro { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; width: 80px; }
-            .step-dot { width: 32px; height: 32px; background: white; border: 3px solid #e2e8f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 800; color: #94a3b8; transition: all 0.3s; }
-            .step-label { font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; text-align: center; }
-            .step-pro.active .step-dot { border-color: var(--primary-color); color: var(--primary-color); transform: scale(1.1); }
-            .step-pro.active .step-label { color: var(--primary-color); }
-            .step-pro.completed .step-dot { background: var(--primary-color); border-color: var(--primary-color); color: white; }
-            .step-pro.completed .step-label { color: #334155; }
-            .step-content { display: none; animation: slideInRight 0.3s ease-out; }
-            .step-content.active { display: block; }
-        </style>
+        <form id="externalBookingForm" onsubmit="submitExternalBooking(event)" novalidate style="display: flex; flex-direction: column; flex: 1; min-height: 0; margin: 0;">
+            <div class="compact-body" style="padding: 1.5rem 1.75rem; flex: 1; overflow-y: auto; background: #f8fafc;">
+                <!-- General Modal Alert Box -->
+                <div id="extBookingFormError" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 12px 16px; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 600; font-size: 0.9rem;"></div>
 
-        <form id="externalBookingForm" onsubmit="submitExternalBooking(event)" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
-            <div class="booking-stepper-pro">
-                <div class="stepper-track-pro">
-                    <div class="progress-fill-pro" id="extStepProgress" style="width: 0%;"></div>
-                </div>
-                <div class="stepper-steps-pro">
-                    <div class="step-pro active" id="ext-nav-1"><div class="step-dot">1</div><div class="step-label">Source</div></div>
-                    <div class="step-pro" id="ext-nav-2"><div class="step-dot">2</div><div class="step-label">Event</div></div>
-                    <div class="step-pro" id="ext-nav-3"><div class="step-dot">3</div><div class="step-label">Package</div></div>
-                    <div class="step-pro" id="ext-nav-4"><div class="step-dot">4</div><div class="step-label">Confirm</div></div>
-                </div>
-            </div>
-
-            <div class="compact-body" style="padding: 1.5rem; flex: 1; overflow-y: auto;">
-                <div id="extBookingFormError" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #ef4444; padding: 12px 16px; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 600; text-align: center;"></div>
-
-                <!-- STEP 1: SOURCE & CUSTOMER -->
-                <div class="step-content active" id="ext-step-1">
-                    <h4 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 1.5rem;">Step 1: Source & Customer</h4>
-                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
-                        <div class="form-group-pro" style="grid-column: span 2;">
-                            <label>Booking Source <span style="color: #ef4444;">*</span></label>
-                            <select id="extSource" name="booking_source" class="control-pro" required>
-                                <option value="Website">Website</option>
-                                <option value="Facebook Messenger">Facebook / Messenger</option>
-                                <option value="Phone Call">Phone Call</option>
-                                <option value="SMS/Text">SMS / Text</option>
-                                <option value="Walk-in">Walk-in</option>
-                                <option value="Referral">Referral</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                        <div class="form-group-pro" style="grid-column: span 2;">
-                            <label>Customer Full Name <span style="color: #ef4444;">*</span></label>
-                            <input type="text" id="extFullName" class="control-pro" required oninput="window.clearFieldError('extFullName')" placeholder="e.g. Juan Dela Cruz">
-                            <div class="field-error-msg" id="error-extFullName"></div>
-                        </div>
-                        <div class="form-group-pro">
-                            <label>Contact Number <span style="color: #ef4444;">*</span></label>
-                            <input type="text" id="extCustomerContact" name="customer_contact" class="control-pro" placeholder="e.g. 09123456789" required oninput="window.clearFieldError('extCustomerContact'); window.checkExtDuplicateUser();">
-                            <div class="field-error-msg" id="error-extCustomerContact"></div>
-                        </div>
-                        <div class="form-group-pro">
-                            <label>Email Address</label>
-                            <input type="email" id="extCustomerEmail" name="customer_email" class="control-pro" placeholder="Optional" oninput="window.checkExtDuplicateUser();">
-                        </div>
-                        <div id="extDuplicateAlert" style="display: none; grid-column: span 2; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 12px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; align-items: center; gap: 8px;">
-                            <i class="fas fa-exclamation-circle"></i> <span id="extDuplicateAlertMsg">Existing OccaServe Customer Account Detected. To avoid double booking, please ask the customer to book directly through their account. Walk-in encoding is disabled for this user.</span>
-                        </div>
+                <!-- SECTION 1: Customer & Event Information -->
+                <div class="walkin-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
+                        <i class="fas fa-id-card" style="color: var(--primary-color, #f97316);"></i> Customer & Event Information
                     </div>
-                </div>
 
-                <!-- STEP 2: EVENT DETAILS -->
-                <div class="step-content" id="ext-step-2">
-                    <h4 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 1.5rem;">Step 2: Event Details</h4>
-                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                        <!-- Full Name -->
                         <div class="form-group-pro">
-                            <label>Event Type <span style="color: #ef4444;">*</span></label>
-                            <select id="extEventType" name="event_type" class="control-pro" required>
-                                <option value="" disabled selected>Select Type</option>
+                            <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                Customer Full Name <span style="color: #ef4444;">*</span>
+                            </label>
+                            <input type="text" id="extFullName" class="control-pro" placeholder="e.g. Juan Dela Cruz" required oninput="clearWalkinError('extFullName')">
+                            <div class="field-error-msg" id="error-extFullName" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+                        </div>
+
+                        <!-- Mobile Number -->
+                        <div class="form-group-pro">
+                            <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                Mobile No. <span style="color: #ef4444;">*</span>
+                            </label>
+                            <input type="tel" id="extCustomerContact" name="customer_contact" class="control-pro" placeholder="09XXXXXXXXX or +639XXXXXXXXX" required oninput="clearWalkinError('extCustomerContact')">
+                            <div class="field-error-msg" id="error-extCustomerContact" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+                        </div>
+
+                        <!-- Type of Event -->
+                        <div class="form-group-pro">
+                            <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                Type of Event <span style="color: #ef4444;">*</span>
+                            </label>
+                            <select id="extEventType" name="event_type" class="control-pro" required onchange="clearWalkinError('extEventType')">
+                                <option value="" disabled selected>Select event type</option>
                                 <option value="Wedding">Wedding</option>
                                 <option value="Birthday">Birthday</option>
-                                <option value="Corporate">Corporate Event</option>
+                                <option value="Corporate">Corporate</option>
                                 <option value="Other">Other</option>
                             </select>
+                            <div class="field-error-msg" id="error-extEventType" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
                         </div>
+
+                        <!-- Date of Event -->
                         <div class="form-group-pro">
-                            <label>Event Name <span style="color: #ef4444;">*</span></label>
-                            <input type="text" id="extEventName" name="event_name" class="control-pro" required>
-                            <div class="field-error-msg" id="error-extEventName"></div>
+                            <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                Date of Event <span style="color: #ef4444;">*</span>
+                            </label>
+                            <input type="date" id="extEventDate" name="event_date" class="control-pro" required min="{{ min_booking_date.strftime('%Y-%m-%d') }}" onchange="clearWalkinError('extEventDate')">
+                            <div class="field-error-msg" id="error-extEventDate" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
                         </div>
+
+                        <!-- Name of Celebrant -->
                         <div class="form-group-pro">
-                            <label>Event Date <span style="color: #ef4444;">*</span></label>
-                            <input type="date" id="extEventDate" name="event_date" class="control-pro" required min="{{ min_booking_date.strftime('%Y-%m-%d') }}">
-                            <div class="field-error-msg" id="error-extEventDate"></div>
+                            <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                Name of Celebrant <span style="font-size: 0.75rem; font-weight: 500; color: #94a3b8;">(Optional)</span>
+                            </label>
+                            <input type="text" id="extCelebrantName" name="celebrant_name" class="control-pro" placeholder="e.g. Maria Santos (if applicable)">
                         </div>
+
+                        <!-- Motif / Theme -->
                         <div class="form-group-pro">
-                            <label>Event Time <span style="color: #ef4444;">*</span></label>
-                            <input type="time" id="extEventTime" name="event_time" class="control-pro" required>
+                            <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                Motif / Theme <span style="font-size: 0.75rem; font-weight: 500; color: #94a3b8;">(Optional)</span>
+                            </label>
+                            <input type="text" id="extMotifTheme" name="motif_theme" class="control-pro" placeholder="e.g. Dusty Rose & Emerald Green">
                         </div>
-                        <div class="form-group-pro">
-                            <label>Number of Guests (Pax) <span style="color: #ef4444;">*</span></label>
-                            <input type="number" id="extGuests" name="guest_count" class="control-pro" required min="1">
+
+                        <!-- Venue -->
+                        <div class="form-group-pro" style="grid-column: span 2;">
+                            <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                Venue <span style="color: #ef4444;">*</span>
+                            </label>
+                            <input type="text" id="extVenue" name="venue" class="control-pro" placeholder="e.g. Grand Ballroom, The Manor / Clubhouse Name" required oninput="clearWalkinError('extVenue')">
+                            <div class="field-error-msg" id="error-extVenue" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
                         </div>
-                        <div class="form-group-pro">
-                            <label>Province <span style="color: #ef4444;">*</span></label>
-                            <input type="text" id="extProvince" class="control-pro" required oninput="window.clearFieldError('extProvince')">
-                            <div class="field-error-msg" id="error-extProvince"></div>
-                        </div>
-                        <div class="form-group-pro">
-                            <label>Municipality <span style="color: #ef4444;">*</span></label>
-                            <input type="text" id="extMunicipality" class="control-pro" required oninput="window.clearFieldError('extMunicipality')">
-                            <div class="field-error-msg" id="error-extMunicipality"></div>
-                        </div>
-                        <div class="form-group-pro">
-                            <label>Barangay <span style="color: #ef4444;">*</span></label>
-                            <input type="text" id="extBarangay" class="control-pro" required oninput="window.clearFieldError('extBarangay')">
-                            <div class="field-error-msg" id="error-extBarangay"></div>
-                        </div>
-                        <div class="form-group-pro">
-                            <label>Landmark / Street</label>
-                            <input type="text" id="extLandmark" class="control-pro" placeholder="Optional">
+
+                        <!-- Customer Address -->
+                        <div class="form-group-pro" style="grid-column: span 2;">
+                            <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                Customer Address <span style="color: #ef4444;">*</span>
+                            </label>
+                            <input type="text" id="extAddress" name="address" class="control-pro" placeholder="e.g. 123 Rizal St., Brgy. San Antonio, Lucena City, Quezon" required oninput="clearWalkinError('extAddress')">
+                            <div class="field-error-msg" id="error-extAddress" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- STEP 3: PACKAGE & ADD-ONS -->
-                <div class="step-content" id="ext-step-3">
-                    <h4 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 1.5rem;">Step 3: Package & Quotation</h4>
-                    <div class="form-group-pro" style="margin-bottom: 1.5rem;">
-                        <label>Base Package / Pricing <span style="color: #ef4444;">*</span></label>
-                        <select id="extPackageMode" class="control-pro" onchange="window.updateExtPackageSummary();">
-                            <option value="custom" selected>Manual / Custom Quotation</option>
-                            <optgroup label="System Packages">
-                                {% for pkg in packages %}
-                                <option value="{{ pkg.id }}" data-price="{{ pkg.price or 0 }}">{{ pkg.name }} (₱{{ pkg.price or 0 }})</option>
-                                {% endfor %}
-                            </optgroup>
-                        </select>
-                        <script>
-                            window.packageMap = {{ package_map_json|safe }};
-                            window.catalogItems = {{ catalog_json|safe }};
-                        </script>
+                <!-- SECTION 2: Services Checklist & Amount Encoding -->
+                <div class="walkin-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
+                        <div style="font-size: 1rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-clipboard-check" style="color: var(--primary-color, #f97316);"></i> Services Checklist & Amounts <span style="color: #ef4444;">*</span>
+                        </div>
+                        <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Check to enable amount input</span>
                     </div>
 
-                    <!-- FIXED PACKAGE SUMMARY (Hidden if Custom) -->
-                    <div id="extPackageSummary" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 1.5rem;">
-                        <div style="background: #e2e8f0; padding: 10px 16px; font-weight: 700; font-size: 0.85rem; color: #334155; display: flex; justify-content: space-between;">
-                            <span>Package Summary & Inclusions</span>
-                            <span id="extPackageBasePrice" style="color: var(--primary-color);">₱0.00</span>
+                    <div class="field-error-msg" id="error-services-general" style="color: #ef4444; font-size: 0.8rem; margin-bottom: 0.75rem; display: none; background: #fef2f2; border: 1px solid #fee2e2; padding: 8px 12px; border-radius: 6px; font-weight: 600;"></div>
+
+                    <!-- 16 Services Grid -->
+                    <div id="walkinServicesGrid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
+                        <!-- List of 16 Services -->
+                        <!-- 1. Catering Service -->
+                        <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; cursor: pointer; flex: 1;">
+                                    <input type="checkbox" class="walkin-service-checkbox" data-service-name="Catering Service" data-index="0" onchange="handleWalkinServiceToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
+                                    <span>Catering Service</span>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">₱</span>
+                                    <input type="number" id="walkin_amount_0" class="control-pro walkin-service-amount" placeholder="0.00" min="1" step="0.01" disabled oninput="handleWalkinAmountChange(this, 0)" style="width: 120px; padding: 5px 8px; height: auto; text-align: right; font-weight: 700; background: #e2e8f0; color: #94a3b8;">
+                                </div>
+                            </div>
+                            <div class="field-error-msg" id="error-walkin_amount_0" style="color: #ef4444; font-size: 0.7rem; display: none; text-align: right;"></div>
                         </div>
-                        <div id="extPackageSummaryContent" style="padding: 16px; font-size: 0.85rem; color: #475569; display: flex; flex-direction: column; gap: 12px;">
+
+                        <!-- 2. Venue Styling -->
+                        <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; cursor: pointer; flex: 1;">
+                                    <input type="checkbox" class="walkin-service-checkbox" data-service-name="Venue Styling" data-index="1" onchange="handleWalkinServiceToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
+                                    <span>Venue Styling</span>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">₱</span>
+                                    <input type="number" id="walkin_amount_1" class="control-pro walkin-service-amount" placeholder="0.00" min="1" step="0.01" disabled oninput="handleWalkinAmountChange(this, 1)" style="width: 120px; padding: 5px 8px; height: auto; text-align: right; font-weight: 700; background: #e2e8f0; color: #94a3b8;">
+                                </div>
+                            </div>
+                            <div class="field-error-msg" id="error-walkin_amount_1" style="color: #ef4444; font-size: 0.7rem; display: none; text-align: right;"></div>
+                        </div>
+
+                        <!-- 3. Ceiling Treatment -->
+                        <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; cursor: pointer; flex: 1;">
+                                    <input type="checkbox" class="walkin-service-checkbox" data-service-name="Ceiling Treatment" data-index="2" onchange="handleWalkinServiceToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
+                                    <span>Ceiling Treatment</span>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">₱</span>
+                                    <input type="number" id="walkin_amount_2" class="control-pro walkin-service-amount" placeholder="0.00" min="1" step="0.01" disabled oninput="handleWalkinAmountChange(this, 2)" style="width: 120px; padding: 5px 8px; height: auto; text-align: right; font-weight: 700; background: #e2e8f0; color: #94a3b8;">
+                                </div>
+                            </div>
+                            <div class="field-error-msg" id="error-walkin_amount_2" style="color: #ef4444; font-size: 0.7rem; display: none; text-align: right;"></div>
+                        </div>
+
+                        <!-- 4. Church Design -->
+                        <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; cursor: pointer; flex: 1;">
+                                    <input type="checkbox" class="walkin-service-checkbox" data-service-name="Church Design" data-index="3" onchange="handleWalkinServiceToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
+                                    <span>Church Design</span>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">₱</span>
+                                    <input type="number" id="walkin_amount_3" class="control-pro walkin-service-amount" placeholder="0.00" min="1" step="0.01" disabled oninput="handleWalkinAmountChange(this, 3)" style="width: 120px; padding: 5px 8px; height: auto; text-align: right; font-weight: 700; background: #e2e8f0; color: #94a3b8;">
+                                </div>
+                            </div>
+                            <div class="field-error-msg" id="error-walkin_amount_3" style="color: #ef4444; font-size: 0.7rem; display: none; text-align: right;"></div>
+                        </div>
+
+                        <!-- 5. Grazing Table -->
+                        <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; cursor: pointer; flex: 1;">
+                                    <input type="checkbox" class="walkin-service-checkbox" data-service-name="Grazing Table" data-index="4" onchange="handleWalkinServiceToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
+                                    <span>Grazing Table</span>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">₱</span>
+                                    <input type="number" id="walkin_amount_4" class="control-pro walkin-service-amount" placeholder="0.00" min="1" step="0.01" disabled oninput="handleWalkinAmountChange(this, 4)" style="width: 120px; padding: 5px 8px; height: auto; text-align: right; font-weight: 700; background: #e2e8f0; color: #94a3b8;">
+                                </div>
+                            </div>
+                            <div class="field-error-msg" id="error-walkin_amount_4" style="color: #ef4444; font-size: 0.7rem; display: none; text-align: right;"></div>
+                        </div>
+
+                        <!-- 6. Photo Coverage -->
+                        <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; cursor: pointer; flex: 1;">
+                                    <input type="checkbox" class="walkin-service-checkbox" data-service-name="Photo Coverage" data-index="5" onchange="handleWalkinServiceToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
+                                    <span>Photo Coverage</span>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">₱</span>
+                                    <input type="number" id="walkin_amount_5" class="control-pro walkin-service-amount" placeholder="0.00" min="1" step="0.01" disabled oninput="handleWalkinAmountChange(this, 5)" style="width: 120px; padding: 5px 8px; height: auto; text-align: right; font-weight: 700; background: #e2e8f0; color: #94a3b8;">
+                                </div>
+                            </div>
+                            <div class="field-error-msg" id="error-walkin_amount_5" style="color: #ef4444; font-size: 0.7rem; display: none; text-align: right;"></div>
+                        </div>
+
+                        <!-- 7. Food Cart -->
+                        <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; cursor: pointer; flex: 1;">
+                                    <input type="checkbox" class="walkin-service-checkbox" data-service-name="Food Cart" data-index="6" onchange="handleWalkinServiceToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
+                                    <span>Food Cart</span>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">₱</span>
+                                    <input type="number" id="walkin_amount_6" class="control-pro walkin-service-amount" placeholder="0.00" min="1" step="0.01" disabled oninput="handleWalkinAmountChange(this, 6)" style="width: 120px; padding: 5px 8px; height: auto; text-align: right; font-weight: 700; background: #e2e8f0; color: #94a3b8;">
+                                </div>
+                            </div>
+                            <div class="field-error-msg" id="error-walkin_amount_6" style="color: #ef4444; font-size: 0.7rem; display: none; text-align: right;"></div>
+                        </div>
+
+                        <!-- 8. Souvenir -->
+                        <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; cursor: pointer; flex: 1;">
+                                    <input type="checkbox" class="walkin-service-checkbox" data-service-name="Souvenir" data-index="7" onchange="handleWalkinServiceToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
+                                    <span>Souvenir</span>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">₱</span>
+                                    <input type="number" id="walkin_amount_7" class="control-pro walkin-service-amount" placeholder="0.00" min="1" step="0.01" disabled oninput="handleWalkinAmountChange(this, 7)" style="width: 120px; padding: 5px 8px; height: auto; text-align: right; font-weight: 700; background: #e2e8f0; color: #94a3b8;">
+                                </div>
+                            </div>
+                            <div class="field-error-msg" id="error-walkin_amount_7" style="color: #ef4444; font-size: 0.7rem; display: none; text-align: right;"></div>
+                        </div>
+
+                        <!-- 9. Lights & Sounds -->
+                        <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; cursor: pointer; flex: 1;">
+                                    <input type="checkbox" class="walkin-service-checkbox" data-service-name="Lights & Sounds" data-index="8" onchange="handleWalkinServiceToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
+                                    <span>Lights & Sounds</span>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">₱</span>
+                                    <input type="number" id="walkin_amount_8" class="control-pro walkin-service-amount" placeholder="0.00" min="1" step="0.01" disabled oninput="handleWalkinAmountChange(this, 8)" style="width: 120px; padding: 5px 8px; height: auto; text-align: right; font-weight: 700; background: #e2e8f0; color: #94a3b8;">
+                                </div>
+                            </div>
+                            <div class="field-error-msg" id="error-walkin_amount_8" style="color: #ef4444; font-size: 0.7rem; display: none; text-align: right;"></div>
+                        </div>
+
+                        <!-- 10. OTD Coordination -->
+                        <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; cursor: pointer; flex: 1;">
+                                    <input type="checkbox" class="walkin-service-checkbox" data-service-name="OTD Coordination" data-index="9" onchange="handleWalkinServiceToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
+                                    <span>OTD Coordination</span>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">₱</span>
+                                    <input type="number" id="walkin_amount_9" class="control-pro walkin-service-amount" placeholder="0.00" min="1" step="0.01" disabled oninput="handleWalkinAmountChange(this, 9)" style="width: 120px; padding: 5px 8px; height: auto; text-align: right; font-weight: 700; background: #e2e8f0; color: #94a3b8;">
+                                </div>
+                            </div>
+                            <div class="field-error-msg" id="error-walkin_amount_9" style="color: #ef4444; font-size: 0.7rem; display: none; text-align: right;"></div>
+                        </div>
+
+                        <!-- 11. Cake -->
+                        <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; cursor: pointer; flex: 1;">
+                                    <input type="checkbox" class="walkin-service-checkbox" data-service-name="Cake" data-index="10" onchange="handleWalkinServiceToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
+                                    <span>Cake</span>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">₱</span>
+                                    <input type="number" id="walkin_amount_10" class="control-pro walkin-service-amount" placeholder="0.00" min="1" step="0.01" disabled oninput="handleWalkinAmountChange(this, 10)" style="width: 120px; padding: 5px 8px; height: auto; text-align: right; font-weight: 700; background: #e2e8f0; color: #94a3b8;">
+                                </div>
+                            </div>
+                            <div class="field-error-msg" id="error-walkin_amount_10" style="color: #ef4444; font-size: 0.7rem; display: none; text-align: right;"></div>
+                        </div>
+
+                        <!-- 12. Photobooth / 360 -->
+                        <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; cursor: pointer; flex: 1;">
+                                    <input type="checkbox" class="walkin-service-checkbox" data-service-name="Photobooth / 360" data-index="11" onchange="handleWalkinServiceToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
+                                    <span>Photobooth / 360</span>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">₱</span>
+                                    <input type="number" id="walkin_amount_11" class="control-pro walkin-service-amount" placeholder="0.00" min="1" step="0.01" disabled oninput="handleWalkinAmountChange(this, 11)" style="width: 120px; padding: 5px 8px; height: auto; text-align: right; font-weight: 700; background: #e2e8f0; color: #94a3b8;">
+                                </div>
+                            </div>
+                            <div class="field-error-msg" id="error-walkin_amount_11" style="color: #ef4444; font-size: 0.7rem; display: none; text-align: right;"></div>
+                        </div>
+
+                        <!-- 13. Videobooth -->
+                        <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; cursor: pointer; flex: 1;">
+                                    <input type="checkbox" class="walkin-service-checkbox" data-service-name="Videobooth" data-index="12" onchange="handleWalkinServiceToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
+                                    <span>Videobooth</span>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">₱</span>
+                                    <input type="number" id="walkin_amount_12" class="control-pro walkin-service-amount" placeholder="0.00" min="1" step="0.01" disabled oninput="handleWalkinAmountChange(this, 12)" style="width: 120px; padding: 5px 8px; height: auto; text-align: right; font-weight: 700; background: #e2e8f0; color: #94a3b8;">
+                                </div>
+                            </div>
+                            <div class="field-error-msg" id="error-walkin_amount_12" style="color: #ef4444; font-size: 0.7rem; display: none; text-align: right;"></div>
+                        </div>
+
+                        <!-- 14. Flowers for Entourage -->
+                        <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; cursor: pointer; flex: 1;">
+                                    <input type="checkbox" class="walkin-service-checkbox" data-service-name="Flowers for Entourage" data-index="13" onchange="handleWalkinServiceToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
+                                    <span>Flowers for Entourage</span>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">₱</span>
+                                    <input type="number" id="walkin_amount_13" class="control-pro walkin-service-amount" placeholder="0.00" min="1" step="0.01" disabled oninput="handleWalkinAmountChange(this, 13)" style="width: 120px; padding: 5px 8px; height: auto; text-align: right; font-weight: 700; background: #e2e8f0; color: #94a3b8;">
+                                </div>
+                            </div>
+                            <div class="field-error-msg" id="error-walkin_amount_13" style="color: #ef4444; font-size: 0.7rem; display: none; text-align: right;"></div>
+                        </div>
+
+                        <!-- 15. Bridal Car -->
+                        <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; cursor: pointer; flex: 1;">
+                                    <input type="checkbox" class="walkin-service-checkbox" data-service-name="Bridal Car" data-index="14" onchange="handleWalkinServiceToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
+                                    <span>Bridal Car</span>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">₱</span>
+                                    <input type="number" id="walkin_amount_14" class="control-pro walkin-service-amount" placeholder="0.00" min="1" step="0.01" disabled oninput="handleWalkinAmountChange(this, 14)" style="width: 120px; padding: 5px 8px; height: auto; text-align: right; font-weight: 700; background: #e2e8f0; color: #94a3b8;">
+                                </div>
+                            </div>
+                            <div class="field-error-msg" id="error-walkin_amount_14" style="color: #ef4444; font-size: 0.7rem; display: none; text-align: right;"></div>
+                        </div>
+
+                        <!-- 16. Emcee / Host -->
+                        <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; cursor: pointer; flex: 1;">
+                                    <input type="checkbox" class="walkin-service-checkbox" data-service-name="Emcee / Host" data-index="15" onchange="handleWalkinServiceToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
+                                    <span>Emcee / Host</span>
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">₱</span>
+                                    <input type="number" id="walkin_amount_15" class="control-pro walkin-service-amount" placeholder="0.00" min="1" step="0.01" disabled oninput="handleWalkinAmountChange(this, 15)" style="width: 120px; padding: 5px 8px; height: auto; text-align: right; font-weight: 700; background: #e2e8f0; color: #94a3b8;">
+                                </div>
+                            </div>
+                            <div class="field-error-msg" id="error-walkin_amount_15" style="color: #ef4444; font-size: 0.7rem; display: none; text-align: right;"></div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- DYNAMIC QUOTATION BUILDER (Custom / Add-ons) -->
-                    <div id="extDynamicBuilder" style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 1.5rem;">
-                        <div style="background: #f1f5f9; padding: 12px 16px; font-weight: 700; font-size: 0.9rem; color: #1e293b; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
-                            <span id="extBuilderTitle">Select Custom Items</span>
-                            <div style="display: flex; gap: 8px;">
-                                <input type="text" id="extCatalogSearch" placeholder="Search catalog..." class="control-pro" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 20px; border: 1px solid #cbd5e1; outline: none; width: 150px;" oninput="window.renderCatalogItems()">
-                                <select id="extCatalogFilter" class="control-pro" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 20px; border: 1px solid #cbd5e1; outline: none;" onchange="window.renderCatalogItems()">
-                                    <option value="all">All Items</option>
-                                    <option value="menu">Menu (Food)</option>
-                                    <option value="services">Services</option>
-                                    <option value="equipment">Equipment</option>
-                                </select>
-                            </div>
+                <!-- SECTION 3: Booking Summary & Total -->
+                <div class="walkin-summary-card" style="background: #0f172a; color: white; border-radius: 12px; padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; font-weight: 700;">Booking Summary</div>
+                        <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 0.25rem;">
+                            Selected Services: <span id="walkinSelectedCount" style="font-weight: 700; color: #f8fafc;">0</span> of 16
                         </div>
-                        
-                        <div id="extCatalogContainer" style="max-height: 250px; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; background: #fafafa;">
-                            <!-- Items injected here by JS -->
-                        </div>
-
-                        <!-- TOTALS BAR -->
-                        <div style="background: #0f172a; color: white; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Grand Total</div>
-                                <div id="extQuoteTotal" style="font-size: 1.5rem; font-weight: 800; color: #10b981;">₱0.00</div>
-                            </div>
-                            <div style="text-align: right;">
-                                <div style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px;">Selected Items: <span id="extSelectedCount" style="color: white; font-weight: 700;">0</span></div>
-                            </div>
-                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; font-weight: 700;">Total Amount</div>
+                        <div id="walkinTotalDisplay" style="font-size: 1.65rem; font-weight: 800; color: #10b981; line-height: 1.2;">₱0.00</div>
                         <input type="hidden" id="extTotalAmount" value="0">
                     </div>
                 </div>
-
-                <!-- STEP 4: CONFIRMATION -->
-                <div class="step-content" id="ext-step-4">
-                    <h4 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 1.5rem;">Step 4: Save & Confirm</h4>
-                    
-                    <div class="form-group-pro" style="margin-bottom: 1.5rem;">
-                        <label>Initial Payment Received (PHP) <span style="color: #64748b; font-weight: 400;">(Optional)</span></label>
-                        <input type="number" id="extInitialPayment" name="amount_paid" class="control-pro" placeholder="0.00" value="0" min="0" step="0.01">
-                        <small style="color: #64748b; font-size: 0.8rem; margin-top: 5px; display: block;">Enter amount if customer left a deposit or paid in full today.</small>
-                    </div>
-
-                    <div class="form-group-pro" style="margin-bottom: 1.5rem;">
-                        <label>What is the current situation with this customer? <span style="color: #ef4444;">*</span></label>
-                        <select id="extSaveStatus" name="status" class="control-pro" required>
-                            <option value="inquiry" selected>The customer is still inquiring.</option>
-                            <option value="quotation_sent">I already sent the quotation.</option>
-                            <option value="awaiting_confirmation">We are waiting for confirmation.</option>
-                            <option value="confirmed">We already agreed and confirmed the booking.</option>
-                        </select>
-                        <small style="color: #64748b; font-size: 0.8rem; margin-top: 5px; display: block;">Choose 'Confirmed' only if payment/deposit is secured.</small>
-                    </div>
-
-                    <div class="form-group-pro" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; display: flex; gap: 12px; align-items: flex-start;">
-                        <input type="checkbox" id="extOverrideKyc" name="override_kyc" style="margin-top: 4px; width: 18px; height: 18px; cursor: pointer;">
-                        <div>
-                            <label for="extOverrideKyc" style="font-weight: 700; color: #0f172a; margin-bottom: 4px; cursor: pointer;">Physical Contract Secured (Bypass Platform KYC & Digital Signature)</label>
-                            <small style="color: #475569; font-size: 0.8rem; display: block; line-height: 1.4;">Check this if you have met the customer in person and secured a physical contract. If unchecked and the customer has an existing unverified account, the booking will be saved as <strong>"Awaiting Customer"</strong> instead.</small>
-                        </div>
-                    </div>
-
-                    <div class="form-group-pro" style="margin-bottom: 1.5rem;">
-                        <label>Initial Communication Note / Remarks</label>
-                        <textarea id="extCommNote" name="notes" class="control-pro" rows="3" placeholder="e.g. Customer called to ask for rates..."></textarea>
-                    </div>
-                </div>
             </div>
 
-            <div class="occ-modal-footer" style="flex-shrink: 0; padding: 1.25rem 2rem; background: #fff; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; gap: 1.5rem; align-items: center;">
-                <div style="flex: 1; display: flex; justify-content: flex-start;">
-                    <button type="button" id="extBtnPrev" class="btn-secondary-pro" style="display: none;" onclick="changeExtStep(-1)">
-                        <i class="fas fa-arrow-left"></i> Previous
-                    </button>
-                </div>
-                <div style="flex: 1; display: flex; justify-content: flex-end;">
-                    <button type="button" id="extBtnNext" class="btn-primary-pro" onclick="changeExtStep(1)">
-                        Next Step <i class="fas fa-arrow-right"></i>
-                    </button>
-                    <button type="submit" id="extBtnSubmit" class="btn-primary-pro" style="display:none; background: #10b981; border-color: #10b981;">
-                        Create Manual Booking <i class="fas fa-check"></i>
-                    </button>
-                </div>
+            <!-- Modal Footer / Actions -->
+            <div class="occ-modal-footer" style="flex-shrink: 0; padding: 1.25rem 1.75rem; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 1rem; align-items: center;">
+                <button type="button" onclick="closeModal('externalBookingModal')" class="btn-secondary-pro" style="padding: 0.65rem 1.25rem; font-size: 0.9rem; font-weight: 600;">
+                    Cancel
+                </button>
+                <button type="submit" id="extBtnSubmit" class="btn-primary-pro" style="padding: 0.65rem 1.5rem; font-size: 0.9rem; font-weight: 700; background: var(--primary-color, #f97316); border-color: var(--primary-color, #f97316); display: inline-flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-check"></i> Save Walk-in Booking
+                </button>
             </div>
         </form>
     </div>

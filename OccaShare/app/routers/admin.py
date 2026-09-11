@@ -2940,6 +2940,9 @@ async def kyc_manual_action(
     user: models.User = Depends(admin_only),
     background_tasks: BackgroundTasks = BackgroundTasks()
 ):
+    from datetime import datetime
+    from dateutil.relativedelta import relativedelta
+
     target_user = db.query(models.User).get(target_user_id)
     if not target_user:
         return {"success": False, "message": "User not found"}
@@ -2950,8 +2953,6 @@ async def kyc_manual_action(
         
     if action == "approve":
         kyc.verification_status = "verified"
-        from datetime import datetime
-        from dateutil.relativedelta import relativedelta
         valid_until = datetime.now() + relativedelta(months=6)
         if hasattr(kyc, 'id_expiry_date') and kyc.id_expiry_date:
             id_expiry = kyc.id_expiry_date
