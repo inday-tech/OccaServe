@@ -91,6 +91,7 @@
 </div>
 
 <div class="dash-grid">
+    {% if profile.status != 'Published' %}
     <!-- Complete Your Business Listing Widget (Matching Screenshot) -->
     <div class="dash-card" style="padding: 1.75rem 2rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-bottom: 0.5rem;">
         <div style="display: flex; flex-direction: column; gap: 1.25rem;">
@@ -251,6 +252,7 @@
 
         </div>
     </div>
+    {% endif %}
     <!-- KPI Section -->
     <div class="kpi-grid-clean" style="">
         <div class="kpi-card-clean">

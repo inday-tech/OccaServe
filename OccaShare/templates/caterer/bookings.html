@@ -1121,7 +1121,7 @@
                                                                     
                                                                     {% if booking.is_custom_event or item_price > 0 %}
                                                                     <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
-                                                                        <span>₱{{ "%,.2f"|format(item_price) }}</span>
+                                                                        <span>₱{{ "{:,.2f}".format(item_price) }}</span>
                                                                         <i class="fas fa-times" style="font-size: 0.6rem; color: #94a3b8;"></i>
                                                                         <span>{{ item_qty }} qty</span>
                                                                     </div>
@@ -1130,7 +1130,7 @@
                                                                 
                                                                 <div style="display: flex; flex-direction: column; align-items: flex-end;">
                                                                     {% if booking.is_custom_event or item_price > 0 %}
-                                                                    <span style="font-weight: 800; color: #0f172a; font-size: 0.9rem;">₱{{ "%,.2f"|format(item_total) }}</span>
+                                                                    <span style="font-weight: 800; color: #0f172a; font-size: 0.9rem;">₱{{ "{:,.2f}".format(item_total) }}</span>
                                                                     {% else %}
                                                                     <span class="mi-qty-text" style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; color: #475569;">x{{ item_qty }}</span>
                                                                     {% endif %}
@@ -1173,7 +1173,7 @@
                                                                     
                                                                     {% if booking.is_custom_event or item_price > 0 %}
                                                                     <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
-                                                                        <span>₱{{ "%,.2f"|format(item_price) }}</span>
+                                                                        <span>₱{{ "{:,.2f}".format(item_price) }}</span>
                                                                         <i class="fas fa-times" style="font-size: 0.6rem; color: #94a3b8;"></i>
                                                                         <span>{{ item_qty }} qty</span>
                                                                     </div>
@@ -1181,7 +1181,7 @@
                                                                 </div>
                                                                 <div style="display: flex; flex-direction: column; align-items: flex-end;">
                                                                     {% if booking.is_custom_event or item_price > 0 %}
-                                                                    <span style="font-weight: 800; color: #0f172a; font-size: 0.9rem;">₱{{ "%,.2f"|format(item_total) }}</span>
+                                                                    <span style="font-weight: 800; color: #0f172a; font-size: 0.9rem;">₱{{ "{:,.2f}".format(item_total) }}</span>
                                                                     {% else %}
                                                                     <span class="mi-qty-text" style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; color: #475569;">x{{ item_qty }}</span>
                                                                     {% endif %}
@@ -1214,7 +1214,7 @@
                                                                     
                                                                     {% if booking.is_custom_event or item_price > 0 %}
                                                                     <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
-                                                                        <span>₱{{ "%,.2f"|format(item_price) }}</span>
+                                                                        <span>₱{{ "{:,.2f}".format(item_price) }}</span>
                                                                         <i class="fas fa-times" style="font-size: 0.6rem; color: #94a3b8;"></i>
                                                                         <span>{{ item_qty }} qty</span>
                                                                     </div>
@@ -1222,7 +1222,7 @@
                                                                 </div>
                                                                 <div style="display: flex; flex-direction: column; align-items: flex-end;">
                                                                     {% if booking.is_custom_event or item_price > 0 %}
-                                                                    <span style="font-weight: 800; color: #0f172a; font-size: 0.9rem;">₱{{ "%,.2f"|format(item_total) }}</span>
+                                                                    <span style="font-weight: 800; color: #0f172a; font-size: 0.9rem;">₱{{ "{:,.2f}".format(item_total) }}</span>
                                                                     {% else %}
                                                                     <span class="mi-qty-text" style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; color: #475569;">x{{ item_qty }}</span>
                                                                     {% endif %}
