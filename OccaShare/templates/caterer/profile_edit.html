@@ -56,6 +56,37 @@
                         <i class="fas fa-info-circle"></i> {{ profile.verification_status or 'Unverified' }}
                     {% endif %}
                 </div>
+
+                <!-- Marketplace Listing Status & Publish Toggle -->
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e2e8f0; width: 100%;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Marketplace:</span>
+                        {% if profile.status == 'Published' %}
+                            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.72rem; font-weight: 800; color: #16a34a; background: #dcfce7; padding: 2px 8px; border-radius: 99px;">
+                                <i class="fas fa-circle" style="font-size: 0.5rem;"></i> LIVE
+                            </span>
+                        {% else %}
+                            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.72rem; font-weight: 800; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 99px;">
+                                <i class="fas fa-circle" style="font-size: 0.5rem; color: #94a3b8;"></i> {{ profile.status or 'Draft' }}
+                            </span>
+                        {% endif %}
+                    </div>
+                    <button type="button" 
+                        onclick="window.toggleCatererPublish && window.toggleCatererPublish(this)"
+                        id="btnSidebarPublish"
+                        style="width: 100%; padding: 6px 10px; font-size: 0.75rem; font-weight: 800; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
+                        {% if profile.status == 'Published' %}
+                            background: #f8fafc; border: 1px solid #cbd5e1; color: #475569;
+                        {% else %}
+                            background: var(--primary-color); border: 1px solid var(--primary-color); color: #ffffff; box-shadow: 0 2px 6px rgba(var(--primary-color-rgb), 0.25);
+                        {% endif %}">
+                        {% if profile.status == 'Published' %}
+                            <i class="fas fa-eye-slash"></i> Unpublish Listing
+                        {% else %}
+                            <i class="fas fa-rocket"></i> Publish to Customers
+                        {% endif %}
+                    </button>
+                </div>
             </div>
         </div>
 

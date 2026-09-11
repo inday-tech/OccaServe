@@ -3071,10 +3071,15 @@ async def kyc_manual_action(
         
         if action == "approve":
             cat_prof.verification_status = "Verified"
+            cat_prof.is_verified = True
+            cat_prof.account_status = "Active"
+            target_user.is_verified = True
         elif action == "resubmit":
             cat_prof.verification_status = "Pending"
+            cat_prof.is_verified = False
         else:
             cat_prof.verification_status = "Rejected"
+            cat_prof.is_verified = False
             
         # Update specific CatererVerification record if it exists
         latest_caterer_ver = db.query(models.CatererVerification).filter_by(caterer_id=cat_prof.id).order_by(models.CatererVerification.id.desc()).first()

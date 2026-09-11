@@ -1332,9 +1332,9 @@ async def caterer_dashboard(
     has_menu = len([m for m in profile.menu_items if getattr(m, 'is_archived', False) == False]) > 0
     has_permit = bool(profile.permit_url)
     
-    # Check eligibility to publish: Identity Verified + 1 Package + 3 Photos + Description
-    is_identity_verified = profile.verification_status == 'Verified' and profile.user.is_verified
-    can_publish = is_identity_verified and has_packages and has_portfolio and has_description
+    # Check eligibility to publish: Identity Verified + Active Package + Description
+    is_identity_verified = (profile.verification_status == 'Verified') or (getattr(user, 'is_verified', False) == True)
+    can_publish = is_identity_verified and has_packages and has_description
 
     completion_pct = 0
     if is_identity_verified: completion_pct += 40
@@ -1408,11 +1408,11 @@ async def toggle_publish(
         return JSONResponse(status_code=404, content={"success": False, "message": "Profile not found"})
         
     has_description = bool(profile.description and profile.description.strip())
-    has_packages = len([p for p in profile.packages if getattr(p, 'is_archived', False) == False]) >= 1
-    has_portfolio = len([p for p in profile.portfolios if getattr(p, 'visibility', 'Public') == 'Public']) >= 1
-    is_identity_verified = profile.verification_status == 'Verified'
+    has_packages = len([p for p in profile.packages if getattr(p, 'is_archived', False) == False and getattr(p, 'is_active', True) == True]) >= 1
+    has_menu = len([m for m in profile.menu_items if getattr(m, 'is_archived', False) == False]) >= 1
+    is_identity_verified = (profile.verification_status == 'Verified') or (getattr(user, 'is_verified', False) == True)
     
-    can_publish = is_identity_verified and has_packages and has_portfolio and has_description
+    can_publish = is_identity_verified and has_packages and has_description
     
     if profile.status == "Published":
         profile.status = "Identity Verified"
@@ -1421,10 +1421,9 @@ async def toggle_publish(
     else:
         if not can_publish:
             missing = []
-            if not is_identity_verified: missing.append("Identity Verification")
-            if not has_packages: missing.append("At least 1 Package")
-            if not has_portfolio: missing.append("At least 1 Portfolio Event")
+            if not is_identity_verified: missing.append("Admin Verification (ID/Business Permit)")
             if not has_description: missing.append("Business Description")
+            if not has_packages: missing.append("At least 1 Active Package")
             return JSONResponse(
                 status_code=400, 
                 content={
@@ -1434,8 +1433,11 @@ async def toggle_publish(
             )
         
         profile.status = "Published"
+        profile.account_status = "Active"
+        if not profile.is_verified and is_identity_verified:
+            profile.is_verified = True
         db.commit()
-        return {"success": True, "status": "Published", "message": "Listing successfully published to customers!"}
+        return {"success": True, "status": "Published", "message": "Listing successfully published to marketplace!"}
 
 @router.get("/api/omni-search")
 async def caterer_omni_search(

@@ -2702,7 +2702,58 @@
             setTimeout(() => document.getElementById('univLogoutModal').style.display = 'none', 300);
         }
     </script>
-
+    <script>
+        window.toggleCatererPublish = async function(btn) {
+            const isCheckbox = btn && btn.type === 'checkbox';
+            const origChecked = isCheckbox ? !btn.checked : false;
+            const origHtml = (!isCheckbox && btn) ? btn.innerHTML : '';
+            
+            if (btn) {
+                btn.disabled = true;
+                if (!isCheckbox) {
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                }
+            }
+            try {
+                const res = await fetch('/caterer/toggle-publish', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    Swal.fire({
+                        title: data.status === 'Published' ? 'Listing Published!' : 'Listing Unpublished',
+                        text: data.message,
+                        icon: 'success',
+                        timer: 1800,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    if (isCheckbox) btn.checked = origChecked;
+                    Swal.fire({
+                        title: 'Unable to Publish',
+                        text: data.message || 'Please complete all required profile details.',
+                        icon: 'warning',
+                        confirmButtonText: 'Review Requirements'
+                    });
+                    if (btn) {
+                        btn.disabled = false;
+                        if (!isCheckbox) btn.innerHTML = origHtml;
+                    }
+                }
+            } catch (err) {
+                console.error("Publish toggle error:", err);
+                if (isCheckbox) btn.checked = origChecked;
+                Swal.fire('Error', 'A network error occurred. Please try again.', 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    if (!isCheckbox) btn.innerHTML = origHtml;
+                }
+            }
+        };
+    </script>
 </body>
 
 </html>

@@ -91,6 +91,166 @@
 </div>
 
 <div class="dash-grid">
+    <!-- Complete Your Business Listing Widget (Matching Screenshot) -->
+    <div class="dash-card" style="padding: 1.75rem 2rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-bottom: 0.5rem;">
+        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+            
+            <!-- Top Section: Circular Progress + Header + Publish Toggle -->
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 2rem;">
+                    <!-- Circular Progress Gauge -->
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <div style="position: relative; width: 84px; height: 84px; display: flex; align-items: center; justify-content: center;">
+                            <svg style="width: 84px; height: 84px; transform: rotate(-90deg);" viewBox="0 0 84 84">
+                                <circle cx="42" cy="42" r="34" stroke="#f1f5f9" stroke-width="7" fill="transparent" />
+                                <circle cx="42" cy="42" r="34" stroke="#f97316" stroke-width="7" fill="transparent"
+                                    stroke-dasharray="213.6"
+                                    stroke-dashoffset="{{ 213.6 - (213.6 * (completion_percentage or 0) / 100) }}"
+                                    stroke-linecap="round" style="transition: stroke-dashoffset 0.8s ease;" />
+                            </svg>
+                            <span style="position: absolute; font-size: 1.25rem; font-weight: 900; color: #0f172a;">{{ completion_percentage or 0 }}%</span>
+                        </div>
+                        <span style="font-size: 0.65rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 6px;">Setup Progress</span>
+                    </div>
+
+                    <!-- Title & Tagline -->
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                            <h2 style="margin: 0; font-size: 1.35rem; font-weight: 900; color: #0f172a; letter-spacing: -0.01em;">Complete Your Business Listing</h2>
+                            {% if profile.status == 'Published' %}
+                                <span style="background: #dcfce7; color: #15803d; font-size: 0.7rem; font-weight: 800; padding: 2px 8px; border-radius: 99px; display: inline-flex; align-items: center; gap: 4px; text-transform: uppercase; letter-spacing: 0.04em;">
+                                    <i class="fas fa-circle" style="font-size: 0.45rem;"></i> LIVE
+                                </span>
+                            {% else %}
+                                <span style="background: #fee2e2; color: #b91c1c; font-size: 0.7rem; font-weight: 800; padding: 2px 8px; border-radius: 99px; display: inline-flex; align-items: center; gap: 4px; text-transform: uppercase; letter-spacing: 0.04em;">
+                                    <i class="fas fa-signal-stream-slash" style="font-size: 0.65rem;"></i> OFFLINE
+                                </span>
+                            {% endif %}
+                        </div>
+                        <p style="margin: 0; font-size: 0.88rem; color: #64748b;">Complete the requirements below to make your services visible to elite clients.</p>
+                    </div>
+                </div>
+
+                <!-- Publish Listing Toggle Box -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 16px; display: flex; align-items: center; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.75rem; font-weight: 900; color: #1e293b; text-transform: uppercase; letter-spacing: 0.05em;">Publish Listing</div>
+                        <div style="font-size: 0.72rem; color: #64748b; font-weight: 600;">Status: <span style="color: {% if profile.status == 'Published' %}#16a34a{% else %}#64748b{% endif %}; font-weight: 700;">{{ profile.status or 'Draft' }}</span></div>
+                    </div>
+                    <!-- Custom Toggle Switch -->
+                    <label class="publish-switch" style="position: relative; display: inline-block; width: 46px; height: 26px; margin: 0; cursor: pointer;">
+                        <input type="checkbox" id="mainPublishToggle" {% if profile.status == 'Published' %}checked{% endif %} onchange="window.toggleCatererPublish(this)" style="opacity: 0; width: 0; height: 0;">
+                        <span class="publish-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: {% if profile.status == 'Published' %}#10b981{% else %}#cbd5e1{% endif %}; transition: .3s; border-radius: 34px;">
+                            <span style="position: absolute; content: ''; height: 20px; width: 20px; left: {% if profile.status == 'Published' %}23px{% else %}3px{% endif %}; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Requirements Grid (4 columns exactly like screenshot) -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem 1.5rem; margin-top: 0.25rem;">
+                <!-- Row 1 & 2 Items -->
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem;">
+                    {% if is_identity_verified %}
+                        <i class="fas fa-check-circle" style="color: #10b981; font-size: 1rem;"></i>
+                        <span style="font-weight: 700; color: #1e293b;">Identity Verified <span style="color: #94a3b8; font-weight: 600;">(40%)</span></span>
+                    {% else %}
+                        <i class="far fa-circle" style="color: #cbd5e1; font-size: 1rem;"></i>
+                        <a href="/caterer/profile#verification" style="color: #64748b; text-decoration: underline; font-weight: 600;">Identity Verified (+40%)</a>
+                    {% endif %}
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem;">
+                    {% if has_description %}
+                        <i class="fas fa-check-circle" style="color: #10b981; font-size: 1rem;"></i>
+                        <span style="font-weight: 700; color: #1e293b;">Business Description <span style="color: #94a3b8; font-weight: 600;">(+5%)</span></span>
+                    {% else %}
+                        <i class="far fa-circle" style="color: #cbd5e1; font-size: 1rem;"></i>
+                        <a href="/caterer/profile#general" style="color: #64748b; text-decoration: underline; font-weight: 600;">Business Description (+5%)</a>
+                    {% endif %}
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem;">
+                    {% if has_logo %}
+                        <i class="fas fa-check-circle" style="color: #10b981; font-size: 1rem;"></i>
+                        <span style="font-weight: 700; color: #1e293b;">Business Logo <span style="color: #94a3b8; font-weight: 600;">(+10%)</span></span>
+                    {% else %}
+                        <i class="far fa-circle" style="color: #cbd5e1; font-size: 1rem;"></i>
+                        <a href="/caterer/profile#general" style="color: #64748b; text-decoration: underline; font-weight: 600;">Business Logo (+10%)</a>
+                    {% endif %}
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem;">
+                    {% if has_cover %}
+                        <i class="fas fa-check-circle" style="color: #10b981; font-size: 1rem;"></i>
+                        <span style="font-weight: 700; color: #1e293b;">Cover Image <span style="color: #94a3b8; font-weight: 600;">(+5%)</span></span>
+                    {% else %}
+                        <i class="far fa-circle" style="color: #cbd5e1; font-size: 1rem;"></i>
+                        <a href="/caterer/profile#general" style="color: #64748b; text-decoration: underline; font-weight: 600;">Cover Image (+5%)</a>
+                    {% endif %}
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem;">
+                    {% if has_starting_price %}
+                        <i class="fas fa-check-circle" style="color: #10b981; font-size: 1rem;"></i>
+                        <span style="font-weight: 700; color: #1e293b;">Starting Price <span style="color: #94a3b8; font-weight: 600;">(+5%)</span></span>
+                    {% else %}
+                        <i class="far fa-circle" style="color: #cbd5e1; font-size: 1rem;"></i>
+                        <a href="/caterer/profile#general" style="color: #64748b; text-decoration: underline; font-weight: 600;">Starting Price (+5%)</a>
+                    {% endif %}
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem;">
+                    {% if has_packages %}
+                        <i class="fas fa-check-circle" style="color: #10b981; font-size: 1rem;"></i>
+                        <span style="font-weight: 700; color: #1e293b;">Catering Package <span style="color: #94a3b8; font-weight: 600;">(+15%)</span></span>
+                    {% else %}
+                        <i class="far fa-circle" style="color: #cbd5e1; font-size: 1rem;"></i>
+                        <a href="/caterer/packages" style="color: #64748b; text-decoration: underline; font-weight: 600;">Catering Package (+15%)</a>
+                    {% endif %}
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem;">
+                    {% if has_portfolio %}
+                        <i class="fas fa-check-circle" style="color: #10b981; font-size: 1rem;"></i>
+                        <span style="font-weight: 700; color: #1e293b;">3+ Food Photos <span style="color: #94a3b8; font-weight: 600;">(+10%)</span></span>
+                    {% else %}
+                        <i class="far fa-circle" style="color: #cbd5e1; font-size: 1rem;"></i>
+                        <a href="/caterer/portfolio" style="color: #64748b; text-decoration: underline; font-weight: 600;">3+ Food Photos (+10%)</a>
+                    {% endif %}
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem;">
+                    {% if has_menu %}
+                        <i class="fas fa-check-circle" style="color: #10b981; font-size: 1rem;"></i>
+                        <span style="font-weight: 700; color: #1e293b;">Sample Menu <span style="color: #94a3b8; font-weight: 600;">(+5%)</span></span>
+                    {% else %}
+                        <i class="far fa-circle" style="color: #cbd5e1; font-size: 1rem;"></i>
+                        <a href="/caterer/menu" style="color: #64748b; text-decoration: underline; font-weight: 600;">Sample Menu (+5%)</a>
+                    {% endif %}
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem;">
+                    {% if has_permit %}
+                        <i class="fas fa-check-circle" style="color: #10b981; font-size: 1rem;"></i>
+                        <span style="font-weight: 700; color: #1e293b;">Business Permit <span style="color: #94a3b8; font-weight: 600;">(+5%)</span></span>
+                    {% else %}
+                        <i class="far fa-circle" style="color: #cbd5e1; font-size: 1rem;"></i>
+                        <a href="/caterer/profile#verification" style="color: #64748b; text-decoration: underline; font-weight: 600;">Business Permit (+5%)</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Minimum to Publish Callout Note -->
+            <div style="background: #fef2f2; border: 1px solid #fee2e2; border-radius: 8px; padding: 10px 16px; display: flex; align-items: center; gap: 8px; margin-top: 0.5rem;">
+                <i class="fas fa-triangle-exclamation" style="color: #ef4444; font-size: 0.85rem;"></i>
+                <span style="font-size: 0.8rem; color: #b91c1c; font-weight: 600;">
+                    <strong>Minimum to Publish:</strong> Identity Verification, Business Description, 1 Catering Package, 3+ Unarchived Food Photos.
+                </span>
+            </div>
+
+        </div>
+    </div>
     <!-- KPI Section -->
     <div class="kpi-grid-clean" style="">
         <div class="kpi-card-clean">
