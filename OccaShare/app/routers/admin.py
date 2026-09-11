@@ -2041,46 +2041,93 @@ async def review_verification(
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
         
-    verification = target_user.identity_verification
-    if not verification:
-        # Create a blank record if it doesn't exist but is requested for audit
-        verification = models.IdentityVerification(user_id=user_id)
-        db.add(verification)
-        db.commit()
-        db.refresh(verification)
+    # Retrieve Government ID verification specifically (never accidentally select business_permit)
+    gov_id_verification = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.user_id == user_id,
+        models.IdentityVerification.verification_type != 'business_permit'
+    ).order_by(models.IdentityVerification.id.desc()).first()
 
-    # Retroactive Permit OCR for older profiles
-    if target_user.role == 'caterer' and target_user.caterer_profile and target_user.caterer_profile.permit_url:
-        permit_ident = db.query(models.IdentityVerification).filter(
+    if not gov_id_verification:
+        # Create a blank record if it doesn't exist but is requested for audit
+        gov_id_verification = models.IdentityVerification(user_id=user_id, verification_type='government_id')
+        db.add(gov_id_verification)
+        db.commit()
+        db.refresh(gov_id_verification)
+
+    # Separate Business Permit verification specifically
+    permit_verification = None
+    if target_user.role == 'caterer' and target_user.caterer_profile:
+        permit_verification = db.query(models.IdentityVerification).filter(
             models.IdentityVerification.user_id == user_id,
             models.IdentityVerification.verification_type == 'business_permit'
-        ).first()
-        
-        if not permit_ident:
+        ).order_by(models.IdentityVerification.id.desc()).first()
+
+        # Retroactive Permit OCR for older profiles if permit exists but OCR record missing
+        if not permit_verification and target_user.caterer_profile.permit_url:
             from app.services.verification import VerificationService
             try:
                 v_service = VerificationService()
                 permit_ocr_res = await v_service.extract_permit_data(target_user.caterer_profile.permit_url)
-                if permit_ocr_res and permit_ocr_res.get("success"):
-                    permit_ident = models.IdentityVerification(
-                        user_id=user_id,
-                        verification_type='business_permit',
-                        document_url=target_user.caterer_profile.permit_url,
-                        ocr_data=permit_ocr_res.get("data"),
-                        verification_status='Pending Review'
-                    )
-                    db.add(permit_ident)
-                    db.commit()
-                    # Refresh target user to ensure the new relation is loaded in the template
-                    db.refresh(target_user)
+                permit_data = permit_ocr_res.get("data") if (permit_ocr_res and permit_ocr_res.get("success")) else None
+                permit_verification = models.IdentityVerification(
+                    user_id=user_id,
+                    verification_type='business_permit',
+                    document_url=target_user.caterer_profile.permit_url,
+                    ocr_data=permit_data,
+                    verification_status='Pending Review'
+                )
+                db.add(permit_verification)
+                db.commit()
+                db.refresh(permit_verification)
             except Exception as e:
                 print(f"[KYC PERMIT OCR RECOVERY ERROR] {e}")
+
+    # Explicit Document URLs
+    caterer_prof = target_user.caterer_profile if target_user.role == 'caterer' else None
+    gov_id_url = gov_id_verification.document_url or (caterer_prof.gov_id_url if caterer_prof else None)
+    gov_id_back_url = gov_id_verification.document_back_url
+    selfie_url = gov_id_verification.selfie_url
+    permit_url = (caterer_prof.permit_url if caterer_prof else None) or (permit_verification.document_url if permit_verification else None)
+    dti_url = caterer_prof.dti_url if caterer_prof else None
+    bir_url = caterer_prof.bir_url if caterer_prof else None
+    mayors_permit_url = caterer_prof.mayors_permit_url if caterer_prof else None
+
+    # Calculate Name Match Status dynamically without guessing
+    from app.services.verification import VerificationService
+    v_service = VerificationService()
+    reg_full_name = f"{target_user.first_name or ''} {target_user.last_name or ''}".strip()
+    
+    ocr_name_raw = None
+    if gov_id_verification and gov_id_verification.ocr_data and isinstance(gov_id_verification.ocr_data, dict):
+        f_data = gov_id_verification.ocr_data.get('fields', {})
+        first_n = f_data.get('first_name', {}).get('value') or gov_id_verification.ocr_data.get('first_name')
+        last_n = f_data.get('last_name', {}).get('value') or gov_id_verification.ocr_data.get('last_name')
+        full_n = f_data.get('full_name', {}).get('value') or gov_id_verification.ocr_data.get('full_name')
+        if full_n:
+            ocr_name_raw = full_n
+        elif first_n or last_n:
+            ocr_name_raw = f"{first_n or ''} {last_n or ''}".strip()
+
+    name_matched = False
+    if ocr_name_raw and reg_full_name:
+        name_matched = v_service.match_name(reg_full_name, ocr_name_raw)
 
     return templates.TemplateResponse("admin/verification_detail.html", {
         "request": request,
         "user": user,
         "target_user": target_user,
-        "verification": verification,
+        "verification": gov_id_verification,
+        "gov_id_verification": gov_id_verification,
+        "permit_verification": permit_verification,
+        "gov_id_url": gov_id_url,
+        "gov_id_back_url": gov_id_back_url,
+        "selfie_url": selfie_url,
+        "permit_url": permit_url,
+        "dti_url": dti_url,
+        "bir_url": bir_url,
+        "mayors_permit_url": mayors_permit_url,
+        "ocr_name_raw": ocr_name_raw,
+        "name_matched": name_matched,
         "active_page": "kyc"
     })
 
@@ -2947,7 +2994,13 @@ async def kyc_manual_action(
     if not target_user:
         return {"success": False, "message": "User not found"}
         
-    kyc = target_user.identity_verification
+    kyc = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.user_id == target_user_id,
+        models.IdentityVerification.verification_type != 'business_permit'
+    ).order_by(models.IdentityVerification.id.desc()).first()
+
+    if not kyc:
+        kyc = target_user.identity_verification
     if not kyc:
         return {"success": False, "message": "KYC record not found"}
         

@@ -7224,9 +7224,89 @@ async def submit_verification(
             url = save_file(selfie, "selfie")
             if url: identity.selfie_url = url
             
+        # Synchronize CatererVerification & VerificationDocument relational entities
+        caterer_ver = db.query(models.CatererVerification).filter_by(caterer_id=profile.id).order_by(models.CatererVerification.id.desc()).first()
+        if not caterer_ver or caterer_ver.status in ['VERIFIED', 'REJECTED']:
+            caterer_ver = models.CatererVerification(
+                caterer_id=profile.id,
+                status="PENDING_REVIEW"
+            )
+            db.add(caterer_ver)
+            db.flush()
+        else:
+            caterer_ver.status = "PENDING_REVIEW"
+
+        def sync_doc_record(v_id, doc_type, file_path):
+            if not file_path:
+                return
+            existing_doc = db.query(models.VerificationDocument).filter_by(
+                verification_id=v_id,
+                document_type=doc_type
+            ).first()
+            if not existing_doc:
+                new_doc = models.VerificationDocument(
+                    verification_id=v_id,
+                    document_type=doc_type,
+                    secure_file_path=file_path,
+                    status="PENDING"
+                )
+                db.add(new_doc)
+            else:
+                existing_doc.secure_file_path = file_path
+                existing_doc.status = "PENDING"
+
+        if identity.document_url:
+            sync_doc_record(caterer_ver.id, "GOVERNMENT_ID", identity.document_url)
+        if identity.document_back_url:
+            sync_doc_record(caterer_ver.id, "GOVERNMENT_ID_BACK", identity.document_back_url)
+        if identity.selfie_url:
+            sync_doc_record(caterer_ver.id, "SELFIE", identity.selfie_url)
+        if profile.permit_url:
+            sync_doc_record(caterer_ver.id, "BUSINESS_PERMIT", profile.permit_url)
+        if profile.dti_url:
+            sync_doc_record(caterer_ver.id, "DTI_REGISTRATION", profile.dti_url)
+        if profile.bir_url:
+            sync_doc_record(caterer_ver.id, "BIR_REGISTRATION", profile.bir_url)
+        if profile.mayors_permit_url:
+            sync_doc_record(caterer_ver.id, "MAYORS_PERMIT", profile.mayors_permit_url)
+
         db.commit()
         
-        # Phase 3: Trigger OCR AI on Manual Uploads
+        # Trigger Business Permit OCR AI if a new permit was uploaded
+        if permit and profile.permit_url:
+            async def run_caterer_permit_ocr_bg(p_url, u_id):
+                try:
+                    from ..db.database import SessionLocal
+                    from ..services.verification import VerificationService
+                    db_session = SessionLocal()
+                    v_service = VerificationService()
+                    permit_ocr_res = await v_service.extract_permit_data(p_url)
+                    if permit_ocr_res and permit_ocr_res.get("success"):
+                        p_ident = db_session.query(models.IdentityVerification).filter(
+                            models.IdentityVerification.user_id == u_id,
+                            models.IdentityVerification.verification_type == 'business_permit'
+                        ).first()
+                        if not p_ident:
+                            p_ident = models.IdentityVerification(
+                                user_id=u_id,
+                                verification_type='business_permit',
+                                document_url=p_url,
+                                ocr_data=permit_ocr_res.get("data"),
+                                verification_status='Pending Review'
+                            )
+                            db_session.add(p_ident)
+                        else:
+                            p_ident.document_url = p_url
+                            p_ident.ocr_data = permit_ocr_res.get("data")
+                            p_ident.verification_status = 'Pending Review'
+                        db_session.commit()
+                    db_session.close()
+                except Exception as e:
+                    print(f"[CATERER PERMIT OCR BACKGROUND ERROR] {e}")
+
+            background_tasks.add_task(run_caterer_permit_ocr_bg, profile.permit_url, user.id)
+
+        # Trigger Government ID OCR AI on Manual Uploads
         if identity.document_url:
             full_name = f"{user.first_name} {user.last_name}"
             
@@ -7247,7 +7327,10 @@ async def submit_verification(
                         user_id=user_id
                     )
                     
-                    ident = db_session.query(models.IdentityVerification).filter_by(user_id=user_id).first()
+                    ident = db_session.query(models.IdentityVerification).filter(
+                        models.IdentityVerification.user_id == user_id,
+                        models.IdentityVerification.verification_type != 'business_permit'
+                    ).first()
                     if ident:
                         new_ocr = result.get("ocr_data")
                         if new_ocr and isinstance(new_ocr, dict) and new_ocr.get("fields"):

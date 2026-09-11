@@ -1182,37 +1182,105 @@
                                             <option value="Voter's ID">Voter's ID</option>
                                         </select>
                                     </div>
-                                    <div class="form-group">
+                                    <!-- Front ID -->
+                                    <div class="form-group" id="group_verif_id_front">
                                         <label>Front ID Image *</label>
-                                        <input type="file" id="verif_id_front" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% if profile.gov_id_url or (identity and identity.document_url) %}
                                         {% set doc_url = profile.gov_id_url or (identity.document_url if identity else '') %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
-                                        <div class="field-hint" style="margin-top: 8px; display: flex; align-items: center;"><i class="fas fa-check-circle" style="color: var(--accent-color); margin-right: 4px;"></i> Uploaded. 
-                                            <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem; margin-left: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fas fa-external-link-alt"></i> View File</a>
+                                        <div class="existing-doc-card" id="card_verif_id_front" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;">
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <i class="fas fa-check-circle" style="color: #10b981; font-size: 1.1rem;"></i>
+                                                <div>
+                                                    <div style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Uploaded Document</div>
+                                                    <div style="font-size: 0.75rem; color: #64748b;">Government ID (Front)</div>
+                                                </div>
+                                            </div>
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem;">
+                                                    <i class="fas fa-external-link-alt"></i> View File
+                                                </a>
+                                                <button type="button" onclick="enableFileReplacement('verif_id_front')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid #cbd5e1; font-size: 0.8rem; cursor: pointer;">
+                                                    <i class="fas fa-sync-alt"></i> Replace File
+                                                </button>
+                                            </div>
                                         </div>
+                                        <div id="wrapper_verif_id_front" style="display: none;">
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <input type="file" id="verif_id_front" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input" style="flex: 1;">
+                                                <button type="button" onclick="cancelFileReplacement('verif_id_front')" class="btn btn-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">Cancel</button>
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <input type="file" id="verif_id_front" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% endif %}
                                     </div>
-                                    <div class="form-group">
+
+                                    <!-- Back ID -->
+                                    <div class="form-group" id="group_verif_id_back">
                                         <label>Back ID Image (Optional)</label>
-                                        <input type="file" id="verif_id_back" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% if identity and identity.document_back_url %}
                                         {% set doc_url = identity.document_back_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
-                                        <div class="field-hint" style="margin-top: 8px; display: flex; align-items: center;"><i class="fas fa-check-circle" style="color: var(--accent-color); margin-right: 4px;"></i> Uploaded. 
-                                            <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem; margin-left: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fas fa-external-link-alt"></i> View File</a>
+                                        <div class="existing-doc-card" id="card_verif_id_back" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;">
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <i class="fas fa-check-circle" style="color: #10b981; font-size: 1.1rem;"></i>
+                                                <div>
+                                                    <div style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Uploaded Document</div>
+                                                    <div style="font-size: 0.75rem; color: #64748b;">Government ID (Back)</div>
+                                                </div>
+                                            </div>
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem;">
+                                                    <i class="fas fa-external-link-alt"></i> View File
+                                                </a>
+                                                <button type="button" onclick="enableFileReplacement('verif_id_back')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid #cbd5e1; font-size: 0.8rem; cursor: pointer;">
+                                                    <i class="fas fa-sync-alt"></i> Replace File
+                                                </button>
+                                            </div>
                                         </div>
+                                        <div id="wrapper_verif_id_back" style="display: none;">
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <input type="file" id="verif_id_back" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input" style="flex: 1;">
+                                                <button type="button" onclick="cancelFileReplacement('verif_id_back')" class="btn btn-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">Cancel</button>
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <input type="file" id="verif_id_back" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% endif %}
                                     </div>
-                                    <div class="form-group">
+
+                                    <!-- Selfie Photo -->
+                                    <div class="form-group" id="group_verif_selfie">
                                         <label>Selfie Photo (Liveness Check) *</label>
-                                        <input type="file" id="verif_selfie" accept="image/jpeg,image/png" capture="user" class="form-file-input">
                                         {% if identity and identity.selfie_url %}
                                         {% set doc_url = identity.selfie_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
-                                        <div class="field-hint" style="margin-top: 8px; display: flex; align-items: center;"><i class="fas fa-check-circle" style="color: var(--accent-color); margin-right: 4px;"></i> Uploaded. 
-                                            <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem; margin-left: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fas fa-external-link-alt"></i> View File</a>
+                                        <div class="existing-doc-card" id="card_verif_selfie" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;">
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <i class="fas fa-check-circle" style="color: #10b981; font-size: 1.1rem;"></i>
+                                                <div>
+                                                    <div style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Uploaded Selfie</div>
+                                                    <div style="font-size: 0.75rem; color: #64748b;">Liveness Photo</div>
+                                                </div>
+                                            </div>
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem;">
+                                                    <i class="fas fa-external-link-alt"></i> View File
+                                                </a>
+                                                <button type="button" onclick="enableFileReplacement('verif_selfie')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid #cbd5e1; font-size: 0.8rem; cursor: pointer;">
+                                                    <i class="fas fa-sync-alt"></i> Replace File
+                                                </button>
+                                            </div>
                                         </div>
+                                        <div id="wrapper_verif_selfie" style="display: none;">
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <input type="file" id="verif_selfie" accept="image/jpeg,image/png" capture="user" class="form-file-input" style="flex: 1;">
+                                                <button type="button" onclick="cancelFileReplacement('verif_selfie')" class="btn btn-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">Cancel</button>
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <input type="file" id="verif_selfie" accept="image/jpeg,image/png" capture="user" class="form-file-input">
                                         {% endif %}
                                     </div>
                                 </div>
@@ -1225,52 +1293,143 @@
                                     <span>Business Verification</span>
                                 </div>
                                 <div class="brand-card-body">
-                                    <div class="form-group">
+                                    <!-- Business Permit -->
+                                    <div class="form-group" id="group_verif_permit">
                                         <label>Business Permit *</label>
-                                        <input type="file" id="verif_permit" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% if profile.permit_url %}
                                         {% set doc_url = profile.permit_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
-                                        <div class="field-hint" style="margin-top: 8px; display: flex; align-items: center;"><i class="fas fa-check-circle" style="color: var(--accent-color); margin-right: 4px;"></i> Uploaded. 
-                                            <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem; margin-left: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fas fa-external-link-alt"></i> View File</a>
+                                        <div class="existing-doc-card" id="card_verif_permit" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;">
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <i class="fas fa-check-circle" style="color: #10b981; font-size: 1.1rem;"></i>
+                                                <div>
+                                                    <div style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Uploaded Document</div>
+                                                    <div style="font-size: 0.75rem; color: #64748b;">Business / Mayor's Permit</div>
+                                                </div>
+                                            </div>
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem;">
+                                                    <i class="fas fa-external-link-alt"></i> View File
+                                                </a>
+                                                <button type="button" onclick="enableFileReplacement('verif_permit')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid #cbd5e1; font-size: 0.8rem; cursor: pointer;">
+                                                    <i class="fas fa-sync-alt"></i> Replace File
+                                                </button>
+                                            </div>
                                         </div>
+                                        <div id="wrapper_verif_permit" style="display: none;">
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <input type="file" id="verif_permit" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input" style="flex: 1;">
+                                                <button type="button" onclick="cancelFileReplacement('verif_permit')" class="btn btn-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">Cancel</button>
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <input type="file" id="verif_permit" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% endif %}
                                     </div>
                                     <div class="form-group">
                                         <label>Permit Expiration Date</label>
                                         <input type="date" id="verif_permit_expiry" value="{{ profile.permit_expiry_date or '' }}" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
                                     </div>
-                                    <div class="form-group">
+
+                                    <!-- DTI Registration -->
+                                    <div class="form-group" id="group_verif_dti">
                                         <label>DTI Registration (Optional)</label>
-                                        <input type="file" id="verif_dti" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% if profile.dti_url %}
                                         {% set doc_url = profile.dti_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
-                                        <div class="field-hint" style="margin-top: 8px; display: flex; align-items: center;"><i class="fas fa-check-circle" style="color: var(--accent-color); margin-right: 4px;"></i> Uploaded. 
-                                            <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem; margin-left: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fas fa-external-link-alt"></i> View File</a>
+                                        <div class="existing-doc-card" id="card_verif_dti" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;">
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <i class="fas fa-check-circle" style="color: #10b981; font-size: 1.1rem;"></i>
+                                                <div>
+                                                    <div style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Uploaded Document</div>
+                                                    <div style="font-size: 0.75rem; color: #64748b;">DTI Registration</div>
+                                                </div>
+                                            </div>
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem;">
+                                                    <i class="fas fa-external-link-alt"></i> View File
+                                                </a>
+                                                <button type="button" onclick="enableFileReplacement('verif_dti')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid #cbd5e1; font-size: 0.8rem; cursor: pointer;">
+                                                    <i class="fas fa-sync-alt"></i> Replace File
+                                                </button>
+                                            </div>
                                         </div>
+                                        <div id="wrapper_verif_dti" style="display: none;">
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <input type="file" id="verif_dti" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input" style="flex: 1;">
+                                                <button type="button" onclick="cancelFileReplacement('verif_dti')" class="btn btn-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">Cancel</button>
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <input type="file" id="verif_dti" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% endif %}
                                     </div>
-                                    <div class="form-group">
+
+                                    <!-- BIR Registration -->
+                                    <div class="form-group" id="group_verif_bir">
                                         <label>BIR Registration (Optional)</label>
-                                        <input type="file" id="verif_bir" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% if profile.bir_url %}
                                         {% set doc_url = profile.bir_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
-                                        <div class="field-hint" style="margin-top: 8px; display: flex; align-items: center;"><i class="fas fa-check-circle" style="color: var(--accent-color); margin-right: 4px;"></i> Uploaded. 
-                                            <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem; margin-left: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fas fa-external-link-alt"></i> View File</a>
+                                        <div class="existing-doc-card" id="card_verif_bir" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;">
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <i class="fas fa-check-circle" style="color: #10b981; font-size: 1.1rem;"></i>
+                                                <div>
+                                                    <div style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Uploaded Document</div>
+                                                    <div style="font-size: 0.75rem; color: #64748b;">BIR Certificate</div>
+                                                </div>
+                                            </div>
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem;">
+                                                    <i class="fas fa-external-link-alt"></i> View File
+                                                </a>
+                                                <button type="button" onclick="enableFileReplacement('verif_bir')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid #cbd5e1; font-size: 0.8rem; cursor: pointer;">
+                                                    <i class="fas fa-sync-alt"></i> Replace File
+                                                </button>
+                                            </div>
                                         </div>
+                                        <div id="wrapper_verif_bir" style="display: none;">
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <input type="file" id="verif_bir" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input" style="flex: 1;">
+                                                <button type="button" onclick="cancelFileReplacement('verif_bir')" class="btn btn-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">Cancel</button>
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <input type="file" id="verif_bir" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% endif %}
                                     </div>
-                                    <div class="form-group">
+
+                                    <!-- Mayor's Permit -->
+                                    <div class="form-group" id="group_verif_mayors">
                                         <label>Mayor's Permit (Optional)</label>
-                                        <input type="file" id="verif_mayors" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% if profile.mayors_permit_url %}
                                         {% set doc_url = profile.mayors_permit_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
-                                        <div class="field-hint" style="margin-top: 8px; display: flex; align-items: center;"><i class="fas fa-check-circle" style="color: var(--accent-color); margin-right: 4px;"></i> Uploaded. 
-                                            <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem; margin-left: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fas fa-external-link-alt"></i> View File</a>
+                                        <div class="existing-doc-card" id="card_verif_mayors" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;">
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <i class="fas fa-check-circle" style="color: #10b981; font-size: 1.1rem;"></i>
+                                                <div>
+                                                    <div style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Uploaded Document</div>
+                                                    <div style="font-size: 0.75rem; color: #64748b;">Mayor's Permit</div>
+                                                </div>
+                                            </div>
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem;">
+                                                    <i class="fas fa-external-link-alt"></i> View File
+                                                </a>
+                                                <button type="button" onclick="enableFileReplacement('verif_mayors')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid #cbd5e1; font-size: 0.8rem; cursor: pointer;">
+                                                    <i class="fas fa-sync-alt"></i> Replace File
+                                                </button>
+                                            </div>
                                         </div>
+                                        <div id="wrapper_verif_mayors" style="display: none;">
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <input type="file" id="verif_mayors" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input" style="flex: 1;">
+                                                <button type="button" onclick="cancelFileReplacement('verif_mayors')" class="btn btn-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">Cancel</button>
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <input type="file" id="verif_mayors" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
                                         {% endif %}
                                     </div>
                                 </div>

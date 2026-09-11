@@ -2809,78 +2809,7 @@ class VerificationService:
             final_ocr_data["extracted_expiry"] = rich_data.get("extracted_expiry")
             final_ocr_data["extracted_address"] = rich_data.get("extracted_address")
 
-            # Override extracted fields with confirmed user profile values if db and user_id are provided
-            if db and user_id:
-                try:
-                    from ..db.models import User
-                    user = db.query(User).get(user_id)
-                    if user:
-                        usr_first = user.first_name or ""
-                        usr_middle = user.middle_name or ""
-                        usr_last = user.last_name or ""
-                        usr_dob = user.dob.strftime('%Y-%m-%d') if user.dob else (dob or "")
-                        usr_address = user.address or (address or "")
-                        usr_id_num = id_number or ""
-
-                        if "fields" not in final_ocr_data:
-                            final_ocr_data["fields"] = {}
-                        
-                        fields = final_ocr_data["fields"]
-
-                        # Standardize name parts fallback parser in case user fields are missing
-                        if not usr_first and not usr_last and full_name:
-                            parts = full_name.split()
-                            if len(parts) >= 3:
-                                usr_first = parts[0]
-                                usr_middle = parts[1]
-                                usr_last = parts[-1]
-                            elif len(parts) == 2:
-                                usr_first = parts[0]
-                                usr_middle = ""
-                                usr_last = parts[1]
-                            else:
-                                usr_first = full_name
-                                usr_middle = ""
-                                usr_last = ""
-
-                        # Populate OCR fields with user profile confirmed data
-                        if id_type in ["PhilSys / PhilID", "PhilID (National ID)", "philsys", "PhilID"]:
-                            fields["id_number"] = {"value": usr_id_num, "confidence": 100}
-                            fields["last_name"] = {"value": usr_last, "confidence": 100}
-                            fields["given_names"] = {"value": usr_first, "confidence": 100}
-                            fields["first_name"] = {"value": usr_first, "confidence": 100}
-                            fields["middle_name"] = {"value": usr_middle, "confidence": 100}
-                            fields["date_of_birth"] = {"value": usr_dob, "confidence": 100}
-                            fields["address"] = {"value": usr_address, "confidence": 100}
-                        elif id_type == "Driver's License":
-                            fields["license_number"] = {"value": usr_id_num, "confidence": 100}
-                            fields["id_number"] = {"value": usr_id_num, "confidence": 100}
-                            fields["last_name"] = {"value": usr_last, "confidence": 100}
-                            fields["first_name"] = {"value": usr_first, "confidence": 100}
-                            fields["middle_name"] = {"value": usr_middle, "confidence": 100}
-                            fields["date_of_birth"] = {"value": usr_dob, "confidence": 100}
-                            fields["address"] = {"value": usr_address, "confidence": 100}
-                        elif id_type == "Passport":
-                            fields["passport_number"] = {"value": usr_id_num, "confidence": 100}
-                            fields["id_number"] = {"value": usr_id_num, "confidence": 100}
-                            fields["last_name"] = {"value": usr_last, "confidence": 100}
-                            fields["given_names"] = {"value": usr_first, "confidence": 100}
-                            fields["middle_name"] = {"value": usr_middle, "confidence": 100}
-                            fields["date_of_birth"] = {"value": usr_dob, "confidence": 100}
-
-                        # Update backward-compatible flat keys
-                        final_ocr_data["full_name"] = f"{usr_first} {usr_middle + ' ' if usr_middle else ''}{usr_last}".strip()
-                        final_ocr_data["id_number"] = usr_id_num
-                        final_ocr_data["birth_date"] = usr_dob
-                        final_ocr_data["address"] = usr_address
-                        
-                        final_ocr_data["full_name_extracted"] = final_ocr_data["full_name"]
-                        final_ocr_data["dob_extracted"] = usr_dob
-                        final_ocr_data["address_extracted"] = usr_address
-                        final_ocr_data["extracted_dob"] = usr_dob
-                        final_ocr_data["extracted_address"] = usr_address
-                except Exception as override_err:
-                    print(f"[KYC WARNING] Failed to override OCR fields with user profile: {override_err}")
+            # Keep extracted OCR data pure; never overwrite or fabricate values with user registration values
 
             return {
                 "status": status,

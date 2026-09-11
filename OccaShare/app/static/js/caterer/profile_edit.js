@@ -581,20 +581,45 @@ async function resetBrandDefaults() {
     }
 }
 
+function enableFileReplacement(fieldId) {
+    const card = document.getElementById(`card_${fieldId}`);
+    const wrapper = document.getElementById(`wrapper_${fieldId}`);
+    if (card) card.style.display = 'none';
+    if (wrapper) wrapper.style.display = 'block';
+    const input = document.getElementById(fieldId);
+    if (input) input.click();
+}
+
+function cancelFileReplacement(fieldId) {
+    const card = document.getElementById(`card_${fieldId}`);
+    const wrapper = document.getElementById(`wrapper_${fieldId}`);
+    const input = document.getElementById(fieldId);
+    if (input) input.value = '';
+    if (wrapper) wrapper.style.display = 'none';
+    if (card) card.style.display = 'flex';
+}
+
 // Submit Verification Center documents via AJAX
 async function submitVerification() {
     const btn = document.getElementById('btnSubmitVerification');
-    const idFront = document.getElementById('verif_id_front').files[0];
-    const permit = document.getElementById('verif_permit').files[0];
-    const hasId = document.querySelector('#verif_id_front').nextElementSibling?.classList.contains('field-hint');
-    const hasPermit = document.querySelector('#verif_permit').nextElementSibling?.classList.contains('field-hint');
+    const idFrontInput = document.getElementById('verif_id_front');
+    const permitInput = document.getElementById('verif_permit');
+    const selfieInput = document.getElementById('verif_selfie');
 
-    if (!idFront && !hasId) { 
+    const hasExistingId = !!document.getElementById('card_verif_id_front');
+    const hasExistingPermit = !!document.getElementById('card_verif_permit');
+    const hasExistingSelfie = !!document.getElementById('card_verif_selfie');
+
+    const idFront = idFrontInput?.files?.[0];
+    const permit = permitInput?.files?.[0];
+    const selfie = selfieInput?.files?.[0];
+
+    if (!idFront && !hasExistingId) { 
         if (window.showToast) window.showToast('Government ID (Front) is required.', 'warning');
         else alert("Government ID (Front) is required."); 
         return; 
     }
-    if (!permit && !hasPermit) { 
+    if (!permit && !hasExistingPermit) { 
         if (window.showToast) window.showToast('Business Permit is required.', 'warning');
         else alert("Business Permit is required."); 
         return; 
@@ -603,20 +628,21 @@ async function submitVerification() {
     const formData = new FormData();
     formData.append('id_type', document.getElementById('verif_id_type').value);
     if (idFront) formData.append('id_front', idFront);
-    const idBack = document.getElementById('verif_id_back').files[0];
+    
+    const idBack = document.getElementById('verif_id_back')?.files?.[0];
     if (idBack) formData.append('id_back', idBack);
     
-    // Phase 2: Attach selfie to FormData
-    const selfie = document.getElementById('verif_selfie').files[0];
     if (selfie) formData.append('selfie', selfie);
     
     if (permit) formData.append('permit', permit);
-    formData.append('permit_expiry', document.getElementById('verif_permit_expiry').value);
-    const dti = document.getElementById('verif_dti').files[0];
+    const permitExpiryVal = document.getElementById('verif_permit_expiry')?.value;
+    if (permitExpiryVal) formData.append('permit_expiry', permitExpiryVal);
+
+    const dti = document.getElementById('verif_dti')?.files?.[0];
     if (dti) formData.append('dti', dti);
-    const bir = document.getElementById('verif_bir').files[0];
+    const bir = document.getElementById('verif_bir')?.files?.[0];
     if (bir) formData.append('bir', bir);
-    const mayors = document.getElementById('verif_mayors').files[0];
+    const mayors = document.getElementById('verif_mayors')?.files?.[0];
     if (mayors) formData.append('mayors', mayors);
 
     const originalHtml = btn.innerHTML;

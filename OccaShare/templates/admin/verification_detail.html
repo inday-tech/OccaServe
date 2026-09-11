@@ -113,78 +113,100 @@
             </div>
         </div>
 
-        {% if not verification.id_detected %}
+        {% if not gov_id_verification.id_detected and not ocr_name_raw %}
         <div class="discrepancy-alert">
-            <div class="discrepancy-title"><i class="fas fa-exclamation-triangle"></i> Potential Discrepancy Detected</div>
-            <div class="discrepancy-text">The system could not confidently extract data from the submitted ID. Please review manually or request a clearer photo.</div>
+            <div class="discrepancy-title"><i class="fas fa-exclamation-triangle"></i> Information Not Extracted Automatically</div>
+            <div class="discrepancy-text">The system could not extract full text from the submitted document. Please review the image manually or request resubmission if unreadable.</div>
         </div>
         {% endif %}
 
         <!-- Section 3: Identity Document -->
         <div class="verify-card">
             <div class="verify-section-title"><i class="fas fa-id-card"></i> Government ID Extraction</div>
+            {% set ocr_fields = gov_id_verification.ocr_data.get('fields', {}) if (gov_id_verification.ocr_data and 'fields' in gov_id_verification.ocr_data) else (gov_id_verification.ocr_data or {}) %}
             <div class="compare-container">
-                <div class="doc-preview" onclick="window.open('{{ verification.document_url }}', '_blank')">
-                    {% if verification.document_url %}
-                    <img src="{{ verification.document_url }}" alt="Gov ID">
+                <div class="doc-preview" onclick="window.open('{{ gov_id_url }}', '_blank')">
+                    {% if gov_id_url %}
+                    <img src="{{ gov_id_url }}" alt="Government ID Front">
                     {% else %}
-                    <div style="color: #94a3b8; font-size: 0.8rem; font-weight: 600;"><i class="fas fa-image fa-2x"></i><br>No Image Provided</div>
+                    <div style="color: #94a3b8; font-size: 0.8rem; font-weight: 600;"><i class="fas fa-image fa-2x"></i><br>No Government ID Uploaded</div>
                     {% endif %}
                 </div>
                 <div>
                     <ul class="ocr-data-list">
                         <li class="ocr-data-item">
-                            <span class="ocr-label">System Match</span>
-                            <span class="ocr-val"><i class="fas fa-robot text-primary"></i> Gemini OCR</span>
+                            <span class="ocr-label">Document Type</span>
+                            <span class="ocr-val"><strong>{{ gov_id_verification.verification_type or 'Government ID' }}</strong></span>
                         </li>
                         <li class="ocr-data-item">
-                            <span class="ocr-label">First Name</span>
-                            <span class="ocr-val">{{ verification.ocr_data.get('first_name', 'Not extracted') if verification.ocr_data else 'N/A' }}</span>
+                            <span class="ocr-label">Extracted First Name</span>
+                            {% set ext_first = ocr_fields.get('first_name', {}).get('value') if ocr_fields.get('first_name') is mapping else ocr_fields.get('first_name') %}
+                            <span class="ocr-val">{{ ext_first or 'Not extracted' }}</span>
                         </li>
                         <li class="ocr-data-item">
-                            <span class="ocr-label">Last Name</span>
-                            <span class="ocr-val">{{ verification.ocr_data.get('last_name', 'Not extracted') if verification.ocr_data else 'N/A' }}</span>
+                            <span class="ocr-label">Extracted Last Name</span>
+                            {% set ext_last = ocr_fields.get('last_name', {}).get('value') if ocr_fields.get('last_name') is mapping else ocr_fields.get('last_name') %}
+                            <span class="ocr-val">{{ ext_last or 'Not extracted' }}</span>
                         </li>
-                        <li class="ocr-data-item">
+                        <li class="ocr-data-item" style="border-top: 1px solid #e2e8f0; margin-top: 5px; padding-top: 10px;">
                             <span class="ocr-label">Registered Name</span>
                             <span class="ocr-val" style="color: #0f172a; font-weight: 800;">{{ target_user.first_name }} {{ target_user.last_name }}</span>
                         </li>
+                        <li class="ocr-data-item">
+                            <span class="ocr-label">Name Verification</span>
+                            {% if name_matched %}
+                            <span class="ocr-val ocr-match" style="color: #10b981; font-weight: 800;"><i class="fas fa-check-circle"></i> Matched</span>
+                            {% elif ocr_name_raw %}
+                            <span class="ocr-val" style="color: #ef4444; font-weight: 800;"><i class="fas fa-times-circle"></i> Mismatch</span>
+                            {% else %}
+                            <span class="ocr-val" style="color: #f59e0b; font-weight: 700;"><i class="fas fa-exclamation-circle"></i> Unable to Verify Automatically</span>
+                            {% endif %}
+                        </li>
                         <li class="ocr-data-item" style="border-top: 1px solid #e2e8f0; margin-top: 5px; padding-top: 10px;">
                             <span class="ocr-label">Date of Birth (ID)</span>
-                            <span class="ocr-val">{{ verification.ocr_data.get('date_of_birth', 'Not extracted') if verification.ocr_data else 'N/A' }}</span>
+                            {% set ext_dob = ocr_fields.get('date_of_birth', {}).get('value') if ocr_fields.get('date_of_birth') is mapping else (ocr_fields.get('date_of_birth') or ocr_fields.get('birth_date')) %}
+                            <span class="ocr-val">{{ ext_dob or 'Not available on document' }}</span>
                         </li>
                         <li class="ocr-data-item">
                             <span class="ocr-label">Registered DOB</span>
-                            <span class="ocr-val" style="color: #0f172a; font-weight: 800;">{{ target_user.dob.strftime('%b %d, %Y') if target_user.dob else 'No DOB provided' }}</span>
+                            <span class="ocr-val" style="color: #0f172a; font-weight: 700;">{{ target_user.dob.strftime('%b %d, %Y') if target_user.dob else 'No DOB provided' }}</span>
                         </li>
                         <li class="ocr-data-item" style="border-top: 1px solid #e2e8f0; margin-top: 5px; padding-top: 10px;">
                             <span class="ocr-label">ID Number</span>
-                            <span class="ocr-val">{{ verification.ocr_data.get('id_number', verification.id_number or 'Not extracted') if verification.ocr_data else 'N/A' }}</span>
+                            {% set ext_idnum = ocr_fields.get('id_number', {}).get('value') if ocr_fields.get('id_number') is mapping else (ocr_fields.get('id_number') or gov_id_verification.id_number) %}
+                            <span class="ocr-val">{{ ext_idnum or 'Not available on document' }}</span>
                         </li>
                         <li class="ocr-data-item">
-                            <span class="ocr-label">Address</span>
-                            <span class="ocr-val">{{ verification.ocr_data.get('address', 'Not extracted') if verification.ocr_data else 'N/A' }}</span>
+                            <span class="ocr-label">Extracted Address</span>
+                            {% set ext_addr = ocr_fields.get('address', {}).get('value') if ocr_fields.get('address') is mapping else ocr_fields.get('address') %}
+                            <span class="ocr-val">{{ ext_addr or 'Not available on document' }}</span>
                         </li>
                         <li class="ocr-data-item">
                             <span class="ocr-label">Registered Addr.</span>
                             <span class="ocr-val">{{ target_user.address or 'No address provided' }}</span>
                         </li>
-                        <li class="ocr-data-item">
-                            <span class="ocr-label">DOB Match</span>
-                            <span class="ocr-val ocr-match"><i class="fas fa-check"></i> Verified</span>
-                        </li>
                     </ul>
                 </div>
             </div>
+            {% if gov_id_back_url %}
+            <div style="margin-top: 15px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
+                <span style="font-size: 0.8rem; font-weight: 700; color: #475569;"><i class="fas fa-file-image"></i> Government ID (Back):</span>
+                <div style="margin-top: 8px;">
+                    <a href="{{ gov_id_back_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; background: #f1f5f9; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 0.85rem; color: #334155; text-decoration: none; border: 1px solid #cbd5e1;">
+                        <i class="fas fa-external-link-alt"></i> View ID Back Side
+                    </a>
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Section 4: Facial Matching -->
         <div class="verify-card" style="margin-top: 20px;">
             <div class="verify-section-title"><i class="fas fa-camera-retro"></i> Facial Matching</div>
             <div class="compare-container">
-                <div class="doc-preview" onclick="window.open('{{ verification.selfie_url }}', '_blank')">
-                    {% if verification.selfie_url %}
-                    <img src="{{ verification.selfie_url }}" alt="Selfie">
+                <div class="doc-preview" onclick="window.open('{{ selfie_url }}', '_blank')">
+                    {% if selfie_url %}
+                    <img src="{{ selfie_url }}" alt="Selfie">
                     {% else %}
                     <div style="color: #94a3b8; font-size: 0.8rem; font-weight: 600;"><i class="fas fa-camera fa-2x"></i><br>No Selfie Provided</div>
                     {% endif %}
@@ -192,12 +214,31 @@
                 <div style="display: flex; flex-direction: column; justify-content: center; gap: 1rem;">
                     <div style="background: white; padding: 1rem; border-radius: 12px; border: 1px solid #e2e8f0;">
                         <div class="ocr-label" style="margin-bottom: 8px;">Liveness Check</div>
+                        {% if not selfie_url %}
+                        <div style="font-size: 1rem; font-weight: 800; color: #94a3b8;"><i class="fas fa-minus-circle"></i> UNABLE TO VERIFY</div>
+                        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px; font-weight: 600;">Selfie photo was not provided.</div>
+                        {% elif gov_id_verification.liveness_status == 'passed' or (gov_id_verification.fraud_score and gov_id_verification.fraud_score >= 70) %}
                         <div style="font-size: 1.1rem; font-weight: 800; color: #10b981;"><i class="fas fa-check-circle"></i> PASSED</div>
-                        <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px; font-weight: 600;">System detected a live person during capture.</div>
+                        <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px; font-weight: 600;">Live person detected during submission.</div>
+                        {% elif gov_id_verification.liveness_status == 'failed' %}
+                        <div style="font-size: 1.1rem; font-weight: 800; color: #ef4444;"><i class="fas fa-times-circle"></i> FAILED</div>
+                        <div style="font-size: 0.75rem; color: #ef4444; margin-top: 4px; font-weight: 600;">Liveness checks failed or face obstructed.</div>
+                        {% else %}
+                        <div style="font-size: 1rem; font-weight: 800; color: #f59e0b;"><i class="fas fa-exclamation-circle"></i> NEEDS MANUAL REVIEW</div>
+                        <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px; font-weight: 600;">Automated liveness verification inconclusive.</div>
+                        {% endif %}
                     </div>
                     <div style="background: white; padding: 1rem; border-radius: 12px; border: 1px solid #e2e8f0;">
                         <div class="ocr-label" style="margin-bottom: 8px;">Face Match (ID vs Selfie)</div>
-                        <div style="font-size: 1.1rem; font-weight: 800; color: #10b981;"><i class="fas fa-check-circle"></i> MATCH</div>
+                        {% if not selfie_url %}
+                        <div style="font-size: 1rem; font-weight: 800; color: #94a3b8;"><i class="fas fa-minus-circle"></i> UNABLE TO VERIFY</div>
+                        {% elif gov_id_verification.match_score and gov_id_verification.match_score >= 0.75 %}
+                        <div style="font-size: 1.1rem; font-weight: 800; color: #10b981;"><i class="fas fa-check-circle"></i> MATCH ({{ (gov_id_verification.match_score * 100) | int }}%)</div>
+                        {% elif gov_id_verification.match_score and gov_id_verification.match_score > 0 %}
+                        <div style="font-size: 1.1rem; font-weight: 800; color: #ef4444;"><i class="fas fa-times-circle"></i> NO MATCH ({{ (gov_id_verification.match_score * 100) | int }}%)</div>
+                        {% else %}
+                        <div style="font-size: 1rem; font-weight: 800; color: #f59e0b;"><i class="fas fa-eye"></i> NEEDS MANUAL REVIEW</div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -205,13 +246,14 @@
 
         <!-- Section 5: Business Permit (Caterer Only) -->
         {% if target_user.role == 'caterer' and target_user.caterer_profile %}
-        <div class="verify-card">
+        <div class="verify-card" style="margin-top: 20px;">
             <div class="verify-section-title"><i class="fas fa-file-contract"></i> Business Permit Extraction</div>
-            {% set permit_verification = target_user.identity_verifications | selectattr('verification_type', 'equalto', 'business_permit') | first | default(None) %}
+            {% set p_data = permit_verification.ocr_data if permit_verification else {} %}
+            {% set p_fields = p_data.get('fields', {}) if (p_data and 'fields' in p_data) else (p_data or {}) %}
             <div class="compare-container">
-                <div class="doc-preview" onclick="window.open('{{ target_user.caterer_profile.permit_url }}', '_blank')">
-                    {% if target_user.caterer_profile.permit_url %}
-                    <img src="{{ target_user.caterer_profile.permit_url }}" alt="Business Permit">
+                <div class="doc-preview" onclick="window.open('{{ permit_url }}', '_blank')">
+                    {% if permit_url %}
+                    <img src="{{ permit_url }}" alt="Business Permit">
                     {% else %}
                     <div style="color: #94a3b8; font-size: 0.8rem; font-weight: 600;"><i class="fas fa-file-pdf fa-2x"></i><br>No Permit Provided</div>
                     {% endif %}
@@ -220,15 +262,17 @@
                     <ul class="ocr-data-list">
                         <li class="ocr-data-item">
                             <span class="ocr-label">System Match</span>
-                            <span class="ocr-val"><i class="fas fa-robot text-primary"></i> Gemini OCR</span>
+                            <span class="ocr-val"><i class="fas fa-robot text-primary"></i> Gemini / Vision OCR</span>
                         </li>
                         <li class="ocr-data-item">
                             <span class="ocr-label">Permit Type (AI)</span>
-                            <span class="ocr-val">{{ permit_verification.ocr_data.get('fields', {}).get('permit_type', {}).get('value', 'Not extracted') if permit_verification and permit_verification.ocr_data else 'N/A' }}</span>
+                            {% set p_type = p_fields.get('permit_type', {}).get('value') if p_fields.get('permit_type') is mapping else p_fields.get('permit_type') %}
+                            <span class="ocr-val">{{ p_type or 'Not extracted' }}</span>
                         </li>
                         <li class="ocr-data-item">
                             <span class="ocr-label">Extracted Business</span>
-                            <span class="ocr-val">{{ permit_verification.ocr_data.get('fields', {}).get('business_name', {}).get('value', 'Not extracted') if permit_verification and permit_verification.ocr_data else 'N/A' }}</span>
+                            {% set p_biz = p_fields.get('business_name', {}).get('value') if p_fields.get('business_name') is mapping else p_fields.get('business_name') %}
+                            <span class="ocr-val">{{ p_biz or 'Not extracted' }}</span>
                         </li>
                         <li class="ocr-data-item">
                             <span class="ocr-label">Registered Business</span>
@@ -236,15 +280,18 @@
                         </li>
                         <li class="ocr-data-item" style="border-top: 1px solid #e2e8f0; margin-top: 5px; padding-top: 10px;">
                             <span class="ocr-label">Owner Name (AI)</span>
-                            <span class="ocr-val">{{ permit_verification.ocr_data.get('fields', {}).get('owner_name', {}).get('value', 'Not extracted') if permit_verification and permit_verification.ocr_data else 'N/A' }}</span>
+                            {% set p_owner = p_fields.get('owner_name', {}).get('value') if p_fields.get('owner_name') is mapping else p_fields.get('owner_name') %}
+                            <span class="ocr-val">{{ p_owner or 'Not extracted' }}</span>
                         </li>
                         <li class="ocr-data-item">
                             <span class="ocr-label">Address (AI)</span>
-                            <span class="ocr-val">{{ permit_verification.ocr_data.get('fields', {}).get('address', {}).get('value', 'Not extracted') if permit_verification and permit_verification.ocr_data else 'N/A' }}</span>
+                            {% set p_addr = p_fields.get('address', {}).get('value') if p_fields.get('address') is mapping else p_fields.get('address') %}
+                            <span class="ocr-val">{{ p_addr or 'Not extracted' }}</span>
                         </li>
                         <li class="ocr-data-item">
                             <span class="ocr-label">Extracted Expiry</span>
-                            <span class="ocr-val">{{ permit_verification.ocr_data.get('fields', {}).get('expiry_date', {}).get('value', 'Not extracted') if permit_verification and permit_verification.ocr_data else 'N/A' }}</span>
+                            {% set p_exp = p_fields.get('expiry_date', {}).get('value') if p_fields.get('expiry_date') is mapping else (p_fields.get('expiry_date') or p_fields.get('expiration_date')) %}
+                            <span class="ocr-val">{{ p_exp or 'Not extracted' }}</span>
                         </li>
                         <li class="ocr-data-item">
                             <span class="ocr-label">Registered Expiry</span>
@@ -254,6 +301,45 @@
                 </div>
             </div>
         </div>
+
+        <!-- Section 6: Additional Business Compliance Documents -->
+        {% if dti_url or bir_url or mayors_permit_url %}
+        <div class="verify-card" style="margin-top: 20px;">
+            <div class="verify-section-title"><i class="fas fa-folder-open"></i> Additional Compliance Documents</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px;">
+                {% if dti_url %}
+                <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; min-width: 200px; background: white;">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">DTI Registration</div>
+                    <div style="margin-top: 8px;">
+                        <a href="{{ dti_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; background: #eff6ff; color: #2563eb; padding: 6px 12px; border-radius: 6px; font-weight: 700; text-decoration: none; font-size: 0.85rem; border: 1px solid #bfdbfe;">
+                            <i class="fas fa-external-link-alt"></i> View DTI Document
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+                {% if bir_url %}
+                <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; min-width: 200px; background: white;">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">BIR Registration</div>
+                    <div style="margin-top: 8px;">
+                        <a href="{{ bir_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; background: #eff6ff; color: #2563eb; padding: 6px 12px; border-radius: 6px; font-weight: 700; text-decoration: none; font-size: 0.85rem; border: 1px solid #bfdbfe;">
+                            <i class="fas fa-external-link-alt"></i> View BIR Document
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+                {% if mayors_permit_url %}
+                <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; min-width: 200px; background: white;">
+                    <div style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">Mayor's Permit</div>
+                    <div style="margin-top: 8px;">
+                        <a href="{{ mayors_permit_url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; background: #eff6ff; color: #2563eb; padding: 6px 12px; border-radius: 6px; font-weight: 700; text-decoration: none; font-size: 0.85rem; border: 1px solid #bfdbfe;">
+                            <i class="fas fa-external-link-alt"></i> View Mayor's Permit
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
         {% endif %}
     </div>
 
@@ -265,20 +351,40 @@
             <div style="display: flex; flex-direction: column; gap: 10px;">
                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700;">
                     <span style="color: #0f172a;">Identity Extraction</span>
-                    <span style="color: #10b981;"><i class="fas fa-check"></i> Passed</span>
+                    {% if ocr_name_raw or gov_id_verification.id_detected %}
+                    <span style="color: #10b981;"><i class="fas fa-check"></i> Extracted</span>
+                    {% else %}
+                    <span style="color: #f59e0b;"><i class="fas fa-exclamation-circle"></i> Needs Review</span>
+                    {% endif %}
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700;">
                     <span style="color: #0f172a;">Name Match</span>
+                    {% if name_matched %}
                     <span style="color: #10b981;"><i class="fas fa-check"></i> Match</span>
+                    {% elif ocr_name_raw %}
+                    <span style="color: #ef4444;"><i class="fas fa-times"></i> Mismatch</span>
+                    {% else %}
+                    <span style="color: #f59e0b;"><i class="fas fa-question-circle"></i> Needs Review</span>
+                    {% endif %}
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700;">
                     <span style="color: #0f172a;">Face Match (Selfie vs ID)</span>
+                    {% if not selfie_url %}
+                    <span style="color: #94a3b8;"><i class="fas fa-minus-circle"></i> No Selfie</span>
+                    {% elif gov_id_verification.match_score and gov_id_verification.match_score >= 0.75 %}
                     <span style="color: #10b981;"><i class="fas fa-check"></i> Passed</span>
+                    {% else %}
+                    <span style="color: #f59e0b;"><i class="fas fa-eye"></i> Manual Review</span>
+                    {% endif %}
                 </div>
                 {% if target_user.role == 'caterer' %}
                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700;">
                     <span style="color: #0f172a;">Business Permit</span>
-                    <span style="color: #10b981;"><i class="fas fa-check"></i> Detected</span>
+                    {% if permit_url %}
+                    <span style="color: #10b981;"><i class="fas fa-check"></i> Uploaded</span>
+                    {% else %}
+                    <span style="color: #ef4444;"><i class="fas fa-times"></i> Missing</span>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>
