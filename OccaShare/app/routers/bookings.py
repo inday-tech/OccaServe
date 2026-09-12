@@ -71,7 +71,14 @@ async def my_bookings_redirect():
 
 # --- Dedicated A La Carte Checkout ---
 @router.get("/alacarte/checkout/{caterer_id}", response_class=HTMLResponse)
-async def alacarte_checkout_page(request: Request, caterer_id: str, items: str, booking_id: Optional[int] = None, db: Session = Depends(database.get_db)):
+async def alacarte_checkout_page(
+    request: Request,
+    caterer_id: str,
+    items: str = "",
+    booking_id: Optional[int] = None,
+    verified: Optional[int] = None,
+    db: Session = Depends(database.get_db)
+):
     if caterer_id == "None" or not caterer_id.isdigit():
         return RedirectResponse(url="/customer/marketplace?error_msg=Invalid caterer selected.", status_code=303)
     caterer_id_int = int(caterer_id)
@@ -84,17 +91,29 @@ async def alacarte_checkout_page(request: Request, caterer_id: str, items: str, 
     
     # Parse multiple IDs with type prefixes (m_ for MenuItem, e_ for Equipment, s_ for Service)
     m_ids, e_ids, s_ids = [], [], []
-    for id_str in items.split(","):
-        id_str = id_str.strip()
-        if not id_str: continue
-        if id_str.startswith('m_'):
-            m_ids.append(int(id_str[2:]))
-        elif id_str.startswith('e_'):
-            e_ids.append(int(id_str[2:]))
-        elif id_str.startswith('s_'):
-            s_ids.append(int(id_str[2:]))
-        elif id_str.isdigit():
-            m_ids.append(int(id_str)) # legacy fallback
+    if items:
+        for id_str in items.split(","):
+            id_str = id_str.strip()
+            if not id_str: continue
+            if id_str.startswith('m_'):
+                m_ids.append(int(id_str[2:]))
+            elif id_str.startswith('e_'):
+                e_ids.append(int(id_str[2:]))
+            elif id_str.startswith('s_'):
+                s_ids.append(int(id_str[2:]))
+            elif id_str.isdigit():
+                m_ids.append(int(id_str)) # legacy fallback
+
+    # Fallback to existing booking items if items query param was omitted (e.g. return from KYC)
+    booking = db.query(models.Booking).get(booking_id) if booking_id else None
+    if not (m_ids or e_ids or s_ids) and booking and booking.user_id == user.id:
+        for b_item in booking.menu_items:
+            if b_item.menu_item_id:
+                m_ids.append(b_item.menu_item_id)
+            elif b_item.equipment_id:
+                e_ids.append(b_item.equipment_id)
+            elif b_item.service_id:
+                s_ids.append(b_item.service_id)
             
     menu_items = db.query(models.MenuItem).filter(
         models.MenuItem.id.in_(m_ids),
@@ -114,9 +133,16 @@ async def alacarte_checkout_page(request: Request, caterer_id: str, items: str, 
     if not caterer or (not menu_items and not equipment_items and not service_items):
         return RedirectResponse(url="/marketplace", status_code=303)
         
-    requires_kyc = any(eq.requires_kyc for eq in equipment_items)
+    # Verification Matrix:
+    # Menu only -> No verification required
+    # Equipment Rental or Event Service -> Verification required if user not verified
+    has_equipment = len(equipment_items) > 0
+    has_services = len(service_items) > 0
+    is_user_verified = bool(user and user.is_verified and user.is_kyc_complete)
+    requires_kyc = (has_equipment or has_services) and not is_user_verified
         
-    booking = db.query(models.Booking).get(booking_id) if booking_id else None
+    if not booking and booking_id:
+        booking = db.query(models.Booking).get(booking_id)
     
     return templates.TemplateResponse("customer/booking_wizard/alacarte_checkout.html", {
         "request": request,
@@ -128,6 +154,7 @@ async def alacarte_checkout_page(request: Request, caterer_id: str, items: str, 
         "items_raw": items,
         "booking": booking,
         "requires_kyc": requires_kyc,
+        "is_user_verified": is_user_verified,
         "current_step": 1
     })
 
@@ -144,6 +171,7 @@ async def alacarte_checkout_draft(
     address: Optional[str] = Form(""),
     quantity: int = Form(1),
     total_amount: float = Form(...),
+    booking_id: Optional[int] = Form(None),
     db: Session = Depends(database.get_db)
 ):
     user = get_current_user_from_session(request, db)
@@ -191,29 +219,48 @@ async def alacarte_checkout_draft(
             event_name = f"Food Order (Draft): {full_name}"
             event_type = "Ala Carte Order"
 
-        # Create Draft Booking
-        new_booking = models.Booking(
-            user_id=user.id,
-            caterer_id=caterer_id,
-            event_name=event_name,
-            event_type=event_type,
-            event_date=event_date_obj,
-            event_time=event_time_obj,
-            venue_address=address,
-            guest_count=quantity,
-            total_amount=total_amount,
-            total_price=total_amount,
-            reservation_fee=total_amount,
-            status="draft",
-            transaction_type="fast_track",
-            document_type=document_type,
-            custom_requirements={
+        # Check for existing draft booking to update or create new
+        new_booking = db.query(models.Booking).get(booking_id) if booking_id else None
+        if new_booking and new_booking.user_id == user.id:
+            new_booking.event_name = event_name
+            new_booking.event_type = event_type
+            new_booking.event_date = event_date_obj
+            new_booking.event_time = event_time_obj
+            new_booking.venue_address = address
+            new_booking.guest_count = quantity
+            new_booking.total_amount = total_amount
+            new_booking.total_price = total_amount
+            new_booking.reservation_fee = total_amount
+            new_booking.document_type = document_type
+            new_booking.custom_requirements = {
                 "recipient_name": full_name,
                 "recipient_contact": contact_number
             }
-        )
-        db.add(new_booking)
-        db.flush()
+            # Clear existing items to re-insert fresh
+            db.query(models.BookingMenuItem).filter(models.BookingMenuItem.booking_id == new_booking.id).delete()
+        else:
+            new_booking = models.Booking(
+                user_id=user.id,
+                caterer_id=caterer_id,
+                event_name=event_name,
+                event_type=event_type,
+                event_date=event_date_obj,
+                event_time=event_time_obj,
+                venue_address=address,
+                guest_count=quantity,
+                total_amount=total_amount,
+                total_price=total_amount,
+                reservation_fee=total_amount,
+                status="draft",
+                transaction_type="fast_track",
+                document_type=document_type,
+                custom_requirements={
+                    "recipient_name": full_name,
+                    "recipient_contact": contact_number
+                }
+            )
+            db.add(new_booking)
+            db.flush()
 
         # Add Menu Items to Draft
         if cart_data:
@@ -305,14 +352,39 @@ async def alacarte_checkout_submit(
     municipality: Optional[str] = Form(None),
     security_deposit_amount: float = Form(0.0),
     payment_proof: Optional[UploadFile] = File(None),
-    id_document: Optional[UploadFile] = File(None),
-    selfie: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db)
 ):
     user = get_current_user_from_session(request, db)
     if not user:
         return {"success": False, "message": "Unauthorized"}
-    
+
+    # Check if transaction contains equipment or services
+    has_equipment = False
+    has_service = False
+    if cart_data:
+        try:
+            cart_items_check = json.loads(cart_data)
+            for itm in cart_items_check:
+                t = itm.get('type', 'Menu')
+                if t == 'Equipment': has_equipment = True
+                elif t == 'Service': has_service = True
+        except Exception:
+            pass
+    elif items:
+        for id_str in items.split(","):
+            id_str = id_str.strip()
+            if id_str.startswith('e_'): has_equipment = True
+            elif id_str.startswith('s_'): has_service = True
+
+    # STRICT GATE: Verification Matrix Rule
+    # Menu only -> No verification required
+    # Equipment Rental or Event Services -> Identity Verification Required if not verified
+    if (has_equipment or has_service) and not (user.is_verified and user.is_kyc_complete):
+        return {
+            "success": False,
+            "message": "Identity Verification Required: Please complete identity verification before confirming equipment rental or event services."
+        }
+        
     try:
         # Save payment proof if uploaded
         proof_url = None
@@ -321,30 +393,6 @@ async def alacarte_checkout_submit(
             from app.services.storage import upload_file_to_cloudinary
             content_bytes = payment_proof.file.read()
             proof_url = upload_file_to_cloudinary(content_bytes, folder="payment_receipts")
-            
-        # Handle KYC Documents if provided
-        if id_document and id_document.filename and selfie and selfie.filename:
-            from app.services.storage import upload_file_to_cloudinary
-            id_content = id_document.file.read()
-            id_url = upload_file_to_cloudinary(id_content, folder="valid_ids")
-            
-            selfie_content = selfie.file.read()
-            selfie_url = upload_file_to_cloudinary(selfie_content, folder="verification")
-
-            
-            kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user.id).first()
-            if not kyc_record:
-                kyc_record = models.IdentityVerification(user_id=user.id)
-                db.add(kyc_record)
-            
-            kyc_record.document_url = id_url
-            kyc_record.selfie_url = selfie_url
-            kyc_record.verification_status = "pending_manual_review"
-            kyc_record.fraud_score = 0.0
-            
-            user.is_verified = False
-            user.is_kyc_complete = False
-            db.commit()
 
         # Spam Limit Validation (Flow B Rule 1)
         unpaid_spam_count = db.query(models.Booking).filter(
@@ -687,6 +735,27 @@ async def alacarte_checkout_submit(
                     if m_item:
                         db.add(models.BookingMenuItem(booking_id=booking.id, menu_item_id=m_item.id, price=m_item.price, quantity=1))
 
+        db.flush()
+
+        # Recalculate totals server-side directly from DB models to guarantee 100% price integrity
+        total_items_subtotal = 0.0
+        total_security_deposit = 0.0
+        for b_item in db.query(models.BookingMenuItem).filter(models.BookingMenuItem.booking_id == booking.id).all():
+            total_items_subtotal += float(b_item.price or 0.0) * int(b_item.quantity or 1)
+            if b_item.equipment_id:
+                eq = db.query(models.Equipment).get(b_item.equipment_id)
+                if eq and eq.cost_value and eq.security_deposit_pct:
+                    deposit_rate = float(eq.security_deposit_pct) / 100.0
+                    total_security_deposit += (float(eq.cost_value) * deposit_rate) * int(b_item.quantity or 1)
+
+        server_delivery_fee = float(booking.travel_fee or 0.0)
+        recalculated_total = round(total_items_subtotal + server_delivery_fee + total_security_deposit, 2)
+
+        booking.total_amount = recalculated_total
+        booking.total_price = recalculated_total
+        booking.reservation_fee = recalculated_total
+        booking.security_deposit_amount = round(total_security_deposit, 2)
+
         db.commit()
         
         # Trigger real-time notifications
@@ -901,7 +970,7 @@ async def continue_draft_booking(booking_id: int, request: Request, db: Session 
     # Step logic routing
     
     # 0. Ala Carte / Fast-Track Logic
-    if booking.event_type in ["Ala Carte Order", "Equipment Rental", "Service Booking"] or not booking.package_id:
+    if booking.event_type in ["Ala Carte Order", "Equipment Rental", "Service Booking", "Mixed Order"] or not booking.package_id:
         if booking.status == 'draft':
             # Reconstruct menu_id parameter
             items = db.query(models.BookingMenuItem).filter(models.BookingMenuItem.booking_id == booking.id).all()
@@ -929,14 +998,8 @@ async def continue_draft_booking(booking_id: int, request: Request, db: Session 
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
 
     # 1. Does user need KYC?
-    # NEW: Skip KYC if user has booking history
-    has_history = db.query(models.Booking).filter(
-        models.Booking.user_id == user.id,
-        models.Booking.id != booking.id,
-        models.Booking.status.notin_(['draft', 'cancelled', 'pending_quotation'])
-    ).first() is not None
-
-    if not user.is_verified and not user.is_kyc_complete and not has_history:
+    # Requirement #14 & #15: Transaction History != Verified. Only successful KYC makes customer verified.
+    if not (user.is_verified and user.is_kyc_complete):
         return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}", status_code=303)
         
     # If custom event and waiting for caterer, redirect to dashboard/manage
@@ -1433,15 +1496,9 @@ async def step_details_submit(
         "package_id": package_id
     }
 
-    # Check if we should skip KYC for verified users OR those with booking history
-    has_history = db.query(models.Booking).filter(
-        models.Booking.user_id == user.id,
-        models.Booking.id != booking.id,
-        models.Booking.status.notin_(['draft', 'cancelled', 'pending_quotation'])
-    ).first() is not None
-
-    if user.is_verified or user.is_kyc_complete or has_history:
-        # Mark as verified immediately if they have history or are already verified
+    # Requirement #14 & #15: Transaction History != Verified. Only successful KYC makes customer verified.
+    if user.is_verified and user.is_kyc_complete:
+        # Mark as verified immediately if they are already verified
         booking.ocr_verified = True
         booking.liveness_verified = True
         db.commit()
@@ -1451,7 +1508,7 @@ async def step_details_submit(
 
 # Phase 2: Identity Verification
 @router.get("/step/kyc/{booking_id}", response_class=HTMLResponse)
-async def step_kyc_page(booking_id: int, request: Request, db: Session = Depends(database.get_db)):
+async def step_kyc_page(booking_id: int, request: Request, return_to: Optional[str] = None, db: Session = Depends(database.get_db)):
     user = get_current_user_from_session(request, db)
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/step/kyc/{booking_id}")
@@ -1459,8 +1516,8 @@ async def step_kyc_page(booking_id: int, request: Request, db: Session = Depends
     booking = db.query(models.Booking).get(booking_id)
     if not booking: raise HTTPException(status_code=404)
 
-    # Dynamic Routing for Fast-Track
-    if booking.transaction_type == 'fast_track':
+    # Dynamic Routing for Fast-Track (only when not explicitly directed to KYC)
+    if booking.transaction_type == 'fast_track' and not return_to:
         if booking.document_type == 'invoice':
             return RedirectResponse(url=f"/bookings/step/payment/{booking.id}", status_code=303)
         elif booking.document_type == 'service_agreement':
@@ -1473,6 +1530,7 @@ async def step_kyc_page(booking_id: int, request: Request, db: Session = Depends
         "user": user,
         "current_step": 2,
         "active_page": "bookings",
+        "return_to": return_to,
         "is_locked": booking.status not in ["draft", "pending", "pending_quotation", "awaiting_caterer"] if booking else False
     })
 
@@ -1491,16 +1549,10 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
     
     # STRICT GATE: Ensure user is verified before seeing quotation/contract
-    # NEW: Also allow if user has booking history
-    has_history = db.query(models.Booking).filter(
-        models.Booking.user_id == user.id,
-        models.Booking.id != booking.id,
-        models.Booking.status.notin_(['draft', 'cancelled', 'pending_quotation'])
-    ).first() is not None
-
     has_equipment = any(item.equipment_id is not None for item in booking.selected_items)
-    if booking.transaction_type != 'fast_track' or has_equipment:
-        if not user.is_verified and not has_history:
+    has_services = any(item.service_id is not None for item in booking.selected_items)
+    if booking.transaction_type != 'fast_track' or has_equipment or has_services:
+        if not (user.is_verified and user.is_kyc_complete):
             return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}?auth_needed=1", status_code=303)
 
     # NEW: Transition status from draft to pending_quotation so it's visible to caterer
@@ -1607,15 +1659,17 @@ async def _validate_receipt_with_gemini(b64_string: str, payment_method: str, ex
     print("[GEMINI VALIDATION WARNING] AI service temporary fallback: Passing to caterer manual verification.")
     return True
 
+# Phase 4: Payment Confirmation
 @router.get("/step/payment/{booking_id}", response_class=HTMLResponse)
-async def step_payment_v2_page(booking_id: str, request: Request, db: Session = Depends(database.get_db)):
+async def step_payment_page(booking_id: str, request: Request, db: Session = Depends(database.get_db)):
     user = get_current_user_from_session(request, db)
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/step/payment/{booking_id}")
         
-    if not booking_id.isdigit():
-        return RedirectResponse(url="/customer/dashboard")
-    booking_id_int = int(booking_id)
+    try:
+        booking_id_int = int(booking_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid booking ID")
         
     booking = db.query(models.Booking).get(booking_id_int)
     if not booking: raise HTTPException(status_code=404)
@@ -1625,17 +1679,12 @@ async def step_payment_v2_page(booking_id: str, request: Request, db: Session = 
     if not is_valid:
         return RedirectResponse(url=f"/customer/bookings/manage/{booking_id_int}?error_msg={error_msg}", status_code=303)
 
-    # STRICT GATE: Ensure user is verified before payment (Skip for fast-track unless it's equipment rental)
+    # STRICT GATE: Ensure user is verified before payment (Skip for fast-track unless it's equipment rental or service)
     has_equipment = any(item.equipment_id is not None for item in booking.selected_items)
-    if booking.transaction_type != 'fast_track' or has_equipment:
-        has_history = db.query(models.Booking).filter(
-            models.Booking.user_id == user.id,
-            models.Booking.id != booking_id,
-            models.Booking.status.notin_(['draft', 'cancelled', 'pending_quotation'])
-        ).first() is not None
-
-        if not user.is_verified and not has_history:
-            return RedirectResponse(url=f"/bookings/step/kyc/{booking_id}?auth_needed=1", status_code=303)
+    has_services = any(item.service_id is not None for item in booking.selected_items)
+    if booking.transaction_type != 'fast_track' or has_equipment or has_services:
+        if not (user.is_verified and user.is_kyc_complete):
+            return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}?auth_needed=1", status_code=303)
 
     # Get signed quotation to enforce contractual amounts
     from ..services.quotation import quotation_service

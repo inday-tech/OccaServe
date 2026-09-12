@@ -2133,11 +2133,17 @@
     </div>
 
     <div class="wizard-actions" style="border-top: none;">
+        {% if return_to == 'alacarte' or (booking and booking.transaction_type == 'fast_track') %}
+        <a href="/bookings/alacarte/checkout/{{ booking.caterer_id }}?booking_id={{ booking_id }}" class="btn-wizard-back">
+            <i class="fas fa-arrow-left"></i> Back to Checkout
+        </a>
+        {% else %}
         <a href="/bookings/step/details/{{ booking_id }}" class="btn-wizard-back">
             <i class="fas fa-arrow-left"></i> Back
         </a>
+        {% endif %}
         <button type="button" id="btn-next" class="btn-wizard-next" style="display: none;"
-            onclick="window.location.href='{% if booking.transaction_type == "fast_track" %}/bookings/step/payment/{{ booking.id }}{% else %}/bookings/step/quotation/{{ booking.id }}{% endif %}'">
+            onclick="window.location.href='{% if return_to == "alacarte" or booking.transaction_type == "fast_track" %}/bookings/alacarte/checkout/{{ booking.caterer_id }}?booking_id={{ booking.id }}&verified=1{% else %}/bookings/step/quotation/{{ booking.id }}{% endif %}'">
             Next Step <i class="fas fa-chevron-right"></i>
         </button>
     </div>
@@ -2148,6 +2154,8 @@
 <script>
     window.bookingId = "{{ booking_id }}";
     window.transactionType = "{{ booking.transaction_type }}";
+    window.returnTo = "{{ return_to or '' }}";
+    window.catererId = "{{ booking.caterer_id }}";
 </script>
 <script type="module"
     src="{{ url_for('static', path='/js/customer/booking_wizard/step_kyc.js') }}?v={{ range(10000000, 99999999) | random }}"></script>

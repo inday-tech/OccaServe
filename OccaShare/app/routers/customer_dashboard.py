@@ -470,13 +470,7 @@ async def manage_booking(
     else:
         # Standard 6-Step Package Flow
         if current_status == "draft":
-            # Check for booking history to skip KYC step in UI
-            has_history = db.query(models.Booking).filter(
-                models.Booking.user_id == user.id,
-                models.Booking.id != booking.id,
-                models.Booking.status.notin_(['draft', 'cancelled', 'pending_quotation'])
-            ).first() is not None
-            current_step_idx = 2 if (user.is_kyc_complete or user.is_verified or has_history) else 1
+            current_step_idx = 2 if (user.is_kyc_complete or user.is_verified) else 1
         elif current_status in ["pending", "pending_quotation", "awaiting_caterer", "pending_review"]:
             current_step_idx = 3 # Quotation phase
         elif current_status in ["pending_payment", "awaiting_payment", "confirmed"]:

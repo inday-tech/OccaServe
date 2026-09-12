@@ -1971,8 +1971,13 @@ const initKyc = () => {
         document.getElementById('node-4').classList.remove('active');
 
         setTimeout(() => {
-            if (window.transactionType === 'fast_track') {
-                window.location.href = `/bookings/step/payment/${bookingId}`;
+            if (window.returnTo === 'alacarte' || window.transactionType === 'fast_track') {
+                const targetCatererId = window.catererId || '';
+                if (targetCatererId) {
+                    window.location.href = `/bookings/alacarte/checkout/${targetCatererId}?booking_id=${bookingId}&verified=1`;
+                } else {
+                    window.location.href = `/bookings/alacarte/checkout/1?booking_id=${bookingId}&verified=1`;
+                }
             } else {
                 window.location.href = `/bookings/step/quotation/${bookingId}`;
             }

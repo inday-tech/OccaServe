@@ -65,10 +65,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    // LOAD CART
+    // LOAD CART - check both sessionStorage and localStorage for single source of truth
     let parsedCart = [];
     try {
-        parsedCart = JSON.parse(localStorage.getItem('alacarte_cart_' + window.catererId));
+        const raw = sessionStorage.getItem('alacarte_cart_' + window.catererId) || localStorage.getItem('alacarte_cart_' + window.catererId);
+        if (raw) {
+            parsedCart = JSON.parse(raw);
+        }
         if (!Array.isArray(parsedCart)) parsedCart = [];
     } catch (e) {
         parsedCart = [];
@@ -76,24 +79,42 @@ document.addEventListener('DOMContentLoaded', function () {
     window.cartItems = parsedCart;
     
     // Fallback if cartItems is empty but backendMenuItems has items (e.g., direct navigation)
-    if (window.cartItems.length === 0 && window.backendMenuItems) {
+    if (window.cartItems.length === 0 && window.backendMenuItems && window.backendMenuItems.length > 0) {
         window.backendMenuItems.forEach(item => {
             window.cartItems.push({ id: String(item.id), type: item.type, name: item.name, price: item.price, qty: 1 });
         });
     }
+
+    // Dynamic Summary Title updater
+    window.updateBookingLabel = function() {
+        const labelEl = document.getElementById('summary-order-label');
+        if (!labelEl) return;
+        if (!window.cartItems || window.cartItems.length === 0) {
+            labelEl.innerText = 'No items selected';
+            return;
+        }
+        const firstItem = window.cartItems[0];
+        const firstName = firstItem.name || 'Selected Item';
+        const totalCount = window.cartItems.length;
+        if (totalCount === 1) {
+            labelEl.innerText = firstName;
+        } else {
+            labelEl.innerText = `${firstName} +${totalCount - 1} more`;
+        }
+    };
 
     // Define applyDynamicTerminology before calling it
     function applyDynamicTerminology() {
         const hasFood = window.cartItems.some(cItem => {
             const backendList = window.backendMenuItems || [];
             const bItem = backendList.find(i => String(i.id) === String(cItem.id) && (cItem.type ? i.type === cItem.type : true)) || cItem;
-            return bItem && bItem.type === 'Menu';
+            return bItem && (bItem.type === 'Menu' || (!bItem.type && !bItem.is_rental));
         });
 
         const hasRental = window.cartItems.some(cItem => {
             const backendList = window.backendMenuItems || [];
             const bItem = backendList.find(i => String(i.id) === String(cItem.id) && (cItem.type ? i.type === cItem.type : true)) || cItem;
-            return bItem && bItem.type === 'Equipment';
+            return bItem && (bItem.type === 'Equipment' || bItem.is_rental);
         });
 
         const hasService = window.cartItems.some(cItem => {
@@ -104,6 +125,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         window.isRentalOnly = hasRental && !hasFood && !hasService;
         window.isServiceOnly = hasService && !hasFood && !hasRental;
+        window.isMixed = ((hasFood && hasRental) || (hasFood && hasService) || (hasRental && hasService));
 
         const lblDelDate = document.getElementById('lbl_delivery_date');
         if (lblDelDate) lblDelDate.innerText = window.isServiceOnly ? 'Event Date' : (window.isRentalOnly ? 'Delivery / Setup Date' : 'Delivery Date');
@@ -112,27 +134,29 @@ document.addEventListener('DOMContentLoaded', function () {
         if (lblDelTime) lblDelTime.innerText = window.isServiceOnly ? 'Call Time' : (window.isRentalOnly ? 'Delivery / Setup Time' : 'Delivery Time');
 
         const lblFulfillDel = document.getElementById('lbl_fulfill_del');
-        if (lblFulfillDel) lblFulfillDel.innerText = window.isServiceOnly ? 'On-Site Service' : (window.isRentalOnly ? 'Delivery & Setup' : 'Delivery');
+        if (lblFulfillDel) lblFulfillDel.innerText = window.isMixed ? 'Event Delivery & Setup' : (window.isServiceOnly ? 'On-Site Service' : (window.isRentalOnly ? 'Delivery & Setup' : 'Delivery'));
 
         const lblFulfillPick = document.getElementById('lbl_fulfill_pick');
         if (lblFulfillPick) lblFulfillPick.innerText = window.isRentalOnly ? 'Self-Collect' : 'Pickup';
 
         const subtitle1 = document.getElementById('subtitle_step1');
-        if (subtitle1) subtitle1.innerText = window.isServiceOnly ? 'Please provide the venue address where the service will take place.' : (window.isRentalOnly ? 'Please tell us how you want to receive your equipment.' : 'Please tell us how you want to receive your order.');
+        if (subtitle1) subtitle1.innerText = window.isMixed ? 'Please provide details for the fulfillment of your mixed order.' : (window.isServiceOnly ? 'Please provide the venue address where the service will take place.' : (window.isRentalOnly ? 'Please tell us how you want to receive your equipment.' : 'Please tell us how you want to receive your order.'));
 
         const subtitle3 = document.getElementById('subtitle_step3');
-        if (subtitle3) subtitle3.innerText = window.isServiceOnly ? 'Your service request has been sent to' : (window.isRentalOnly ? 'Your equipment request has been sent to' : 'Your food order has been sent to');
+        if (subtitle3) subtitle3.innerText = window.isMixed ? 'Your event order has been sent to' : (window.isServiceOnly ? 'Your service request has been sent to' : (window.isRentalOnly ? 'Your equipment request has been sent to' : 'Your food order has been sent to'));
         
         const btnSubmit = document.getElementById('final-submit-btn');
         if (btnSubmit) {
             btnSubmit.innerHTML = window.isServiceOnly ? 'CONFIRM BOOKING <i class="fas fa-check" style="margin-left: 0.75rem;"></i>' : 
-                                  (window.isRentalOnly ? 'CONFIRM RENTAL <i class="fas fa-check" style="margin-left: 0.75rem;"></i>' : 'PLACE ORDER NOW <i class="fas fa-check" style="margin-left: 0.75rem;"></i>');
+                                  (window.isRentalOnly ? 'CONFIRM RENTAL <i class="fas fa-check" style="margin-left: 0.75rem;"></i>' : 'ACCEPT & CHECKOUT <i class="fas fa-check" style="margin-left: 0.75rem;"></i>');
         }
         
         const reviewTitle = document.getElementById('review-title');
         if (reviewTitle) {
             reviewTitle.innerHTML = window.isRentalOnly ? '<i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: var(--checkout-primary);"></i> Rent Review' : '<i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: var(--checkout-primary);"></i> Order Review';
         }
+
+        window.updateBookingLabel();
         
         // --- SETUP DATE MIN & MAX ---
         const dateInput = document.getElementById('delivery_date');
@@ -193,6 +217,18 @@ document.addEventListener('DOMContentLoaded', function () {
         let html = '';
         let baseTotal = 0;
 
+        if (!window.cartItems || window.cartItems.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 2rem 1rem; color: #94a3b8;">
+                    <i class="fas fa-shopping-basket" style="font-size: 2rem; margin-bottom: 0.5rem; display: block; opacity: 0.5;"></i>
+                    <p style="font-size: 0.9rem; font-weight: 600; margin: 0;">Your selection is empty</p>
+                </div>
+            `;
+            window.updateBookingLabel();
+            window.updateCheckoutSummary(0);
+            return;
+        }
+
         window.cartItems.forEach((cItem, index) => {
             const backendList = window.backendMenuItems || [];
             const bItem = backendList.find(i => String(i.id) === String(cItem.id) && (cItem.type ? i.type === cItem.type : true)) || cItem;
@@ -202,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             const isFixedQty = ['whole', 'per_event', 'per event', 'package'].includes(String(bItem.pricing_unit).toLowerCase());
             const qty = isFixedQty ? 1 : (parseInt(cItem.qty) || 1);
-            const itemName = cItem.name || bItem.name;
+            const itemName = cItem.name || bItem.name || 'Custom Item';
             const unitLabel = bItem.pricing_unit ? (UNIT_MAP[bItem.pricing_unit] || ' / ' + bItem.pricing_unit) : (bItem.is_rental ? '/ Unit' : (bItem.is_combo ? '(Platter)' : '/ Tray'));
             
             baseTotal += (itemPrice * qty);
@@ -231,6 +267,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         
         container.innerHTML = html;
+        window.updateBookingLabel();
         window.updateCheckoutSummary(baseTotal);
     };
 
@@ -247,7 +284,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         window.cartItems[index].qty = newQty;
-        localStorage.setItem('alacarte_cart_' + window.catererId, JSON.stringify(window.cartItems));
+        const cartJson = JSON.stringify(window.cartItems);
+        localStorage.setItem('alacarte_cart_' + window.catererId, cartJson);
+        sessionStorage.setItem('alacarte_cart_' + window.catererId, cartJson);
         window.renderBillItems();
     };
 
@@ -404,17 +443,75 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
             
-            // Removed Draft Booking creation here so orders are only saved when finally submitted
-            if (window.currentScreen === 1 && n === 2) {
-                // Draft logic removed
-            }
-            
-            // Validate KYC if moving from Step 2 to Step 3 and KYC is required
-            if (window.requiresKycStep && window.currentScreen === 2 && n === 3) {
-                const idFront = document.getElementById('kyc_id_front');
-                const selfie = document.getElementById('kyc_selfie');
-                if (!idFront.files.length || !selfie.files.length) {
-                    Swal.fire({icon: 'error', title: 'Missing Documents', text: 'Please upload both your ID and a selfie to proceed.', confirmButtonColor: '#ef4444'});
+            // If on Step 1 and KYC is required, save draft booking and redirect to shared KYC system
+            if (window.currentScreen === 1 && n === 2 && window.requiresKycStep) {
+                const sidebarBtn = document.getElementById('sidebar-next-btn');
+                const step1Btn = document.querySelector('.btn-step1-continue');
+                if (sidebarBtn) {
+                    sidebarBtn.disabled = true;
+                    sidebarBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing Verification...';
+                }
+                if (step1Btn) {
+                    step1Btn.disabled = true;
+                    step1Btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing Verification...';
+                }
+
+                try {
+                    const form = document.getElementById('checkoutForm');
+                    const draftData = new FormData(form);
+                    const curId = getActiveBookingId();
+                    if (curId) {
+                        draftData.append('booking_id', curId);
+                    }
+                    draftData.append('caterer_id', catererId);
+                    draftData.append('items', menuId || '');
+                    draftData.append('cart_data', buildCartData());
+                    draftData.append('total_amount', calculateTotal());
+                    draftData.append('security_deposit_amount', window.currentSecurityDeposit || 0);
+
+                    const res = await fetch('/bookings/alacarte/checkout/draft', {
+                        method: 'POST',
+                        body: draftData
+                    });
+                    const data = await res.json();
+                    if (data.success && data.booking_id) {
+                        localStorage.setItem(sessionKey, data.booking_id);
+                        // Redirect to shared identity verification wizard
+                        window.location.href = `/bookings/step/kyc/${data.booking_id}?return_to=alacarte`;
+                        return;
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Could Not Proceed',
+                            text: data.message || 'Unable to prepare verification. Please try again.',
+                            confirmButtonColor: 'var(--checkout-primary)'
+                        });
+                        if (sidebarBtn) {
+                            sidebarBtn.disabled = false;
+                            sidebarBtn.innerHTML = 'CONTINUE TO VERIFICATION <i class="fas fa-id-card" style="margin-left: 0.5rem;"></i>';
+                        }
+                        if (step1Btn) {
+                            step1Btn.disabled = false;
+                            step1Btn.innerHTML = 'CONTINUE TO VERIFICATION <i class="fas fa-id-card" style="margin-left: 0.5rem;"></i>';
+                        }
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Failed to create draft booking for KYC:', err);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Connection Error',
+                        text: 'Unable to connect to verification services. Please check your network.',
+                        confirmButtonColor: 'var(--checkout-primary)'
+                    });
+                    if (sidebarBtn) {
+                        sidebarBtn.disabled = false;
+                        sidebarBtn.innerHTML = 'CONTINUE TO VERIFICATION <i class="fas fa-id-card" style="margin-left: 0.5rem;"></i>';
+                    }
+                    if (step1Btn) {
+                        step1Btn.disabled = false;
+                        step1Btn.innerHTML = 'CONTINUE TO VERIFICATION <i class="fas fa-id-card" style="margin-left: 0.5rem;"></i>';
+                    }
                     return;
                 }
             }
@@ -434,13 +531,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const sidebarBtn = document.getElementById('sidebar-next-btn');
         if (sidebarBtn) {
             if (n === 1) {
-                sidebarBtn.innerHTML = window.requiresKycStep ? 'PROCEED TO VERIFICATION <i class="fas fa-id-card" style="margin-left: 0.5rem;"></i>' : 'PROCEED TO PAYMENT <i class="fas fa-arrow-right" style="margin-left: 0.5rem;"></i>';
-                sidebarBtn.style.display = 'block';
-            } else if (n === 2 && window.requiresKycStep) {
-                sidebarBtn.innerHTML = 'PROCEED TO PAYMENT <i class="fas fa-arrow-right" style="margin-left: 0.5rem;"></i>';
+                sidebarBtn.innerHTML = window.requiresKycStep ? 'CONTINUE TO VERIFICATION <i class="fas fa-id-card" style="margin-left: 0.5rem;"></i>' : 'PROCEED TO PAYMENT <i class="fas fa-arrow-right" style="margin-left: 0.5rem;"></i>';
                 sidebarBtn.style.display = 'block';
             } else if (n === window.paymentStep) {
-                sidebarBtn.innerHTML = 'CONFIRM & CHECKOUT <i class="fas fa-check" style="margin-left: 0.5rem;"></i>';
+                sidebarBtn.innerHTML = 'ACCEPT & CHECKOUT <i class="fas fa-check" style="margin-left: 0.5rem;"></i>';
                 sidebarBtn.style.display = 'block';
             } else {
                 sidebarBtn.style.display = 'none';
@@ -821,8 +915,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         
         window.currentSecurityDeposit = securityDepositTotal;
-
-        const total = base + deliveryFee + securityDepositTotal;
         
         const sumBaseEl = document.getElementById('sum-base-total');
         if (sumBaseEl) sumBaseEl.innerText = '₱' + base.toLocaleString(undefined, { minimumFractionDigits: 2 });
@@ -838,19 +930,37 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
         
+        const fulfillInput = document.querySelector('input[name="fulfillment"]:checked');
+        const fulfillment = fulfillInput ? fulfillInput.value : 'delivery';
+        const isPickup = fulfillment === 'pickup';
+
         const feeRow = document.getElementById('delivery-row');
         const feeEl = document.getElementById('sum-delivery-fee');
         if (feeRow) {
+            feeRow.style.display = isPickup ? 'none' : 'flex';
             feeRow.querySelector('span:first-child').innerText = window.isServiceOnly ? 'Travel Fee' : 'Delivery Fee';
         }
-        if (feeEl) {
-            if (window.isManualQuote || deliveryFee === 0 && !window.isServiceOnly && window.originalSavedAddressString === '') {
-                feeEl.innerText = 'TBD';
+
+        let effectiveFee = 0;
+        if (!isPickup) {
+            if (window.isManualQuote) {
+                effectiveFee = 0;
+                if (feeEl) feeEl.innerText = 'TBD';
+            } else if (window.outOfCoverageReject) {
+                effectiveFee = 0;
+                if (feeEl) feeEl.innerHTML = '<span style="color:red; font-size:0.85rem;">Out of Coverage</span>';
             } else {
-                feeEl.innerText = '₱' + deliveryFee.toLocaleString(undefined, { minimumFractionDigits: 2 });
+                effectiveFee = deliveryFee;
+                if (feeEl) feeEl.innerText = '₱' + effectiveFee.toLocaleString(undefined, { minimumFractionDigits: 2 });
             }
+        } else {
+            effectiveFee = 0;
+            if (feeEl) feeEl.innerText = '₱0.00';
         }
-        
+
+        const total = base + effectiveFee + securityDepositTotal;
+        window.lastCalculatedTotal = total;
+
         const grandEl = document.getElementById('sum-grand-total');
         if (grandEl) grandEl.innerText = '₱' + total.toLocaleString(undefined, { minimumFractionDigits: 2 });
     };
@@ -1427,6 +1537,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (data.success) {
                 localStorage.removeItem(sessionKey); 
                 localStorage.removeItem('alacarte_cart_' + window.catererId);
+                sessionStorage.removeItem('alacarte_cart_' + window.catererId);
                 window.closePaymentModal();
                 
                 const invBtn = document.getElementById('download-invoice-btn');

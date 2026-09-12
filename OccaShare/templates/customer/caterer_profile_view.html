@@ -2337,13 +2337,6 @@ window.toggleMenuItem = function(id, name, price) {
 window.checkoutOrder = function() {
     if (window.selectedItems.length === 0) return;
     const catererId = {{ caterer.id }};
-    
-    // Route Standalone Services to dedicated Service Checkout Workflow
-    if (window.selectedItems.length === 1 && window.selectedItems[0].type === 'Service') {
-        const serviceId = window.selectedItems[0].id;
-        window.location.href = `/services/checkout/${catererId}?service_id=${serviceId}`;
-        return;
-    }
 
     const menuIds = window.selectedItems.map(i => {
         if (i.type === 'Equipment') return 'e_' + i.id;
@@ -2351,6 +2344,7 @@ window.checkoutOrder = function() {
         return 'm_' + i.id;
     }).join(',');
     sessionStorage.setItem('alacarte_cart_' + catererId, JSON.stringify(window.selectedItems));
+    localStorage.setItem('alacarte_cart_' + catererId, JSON.stringify(window.selectedItems));
     window.location.href = `/bookings/alacarte/checkout/${catererId}?items=${menuIds}`;
 };
 
@@ -2358,7 +2352,7 @@ window.checkoutOrder = function() {
 document.addEventListener('DOMContentLoaded', function() {
     try {
         const catererId = {{ caterer.id }};
-        const stored = sessionStorage.getItem('alacarte_cart_' + catererId);
+        const stored = sessionStorage.getItem('alacarte_cart_' + catererId) || localStorage.getItem('alacarte_cart_' + catererId);
         if (stored) {
             window.selectedItems = JSON.parse(stored);
         }
