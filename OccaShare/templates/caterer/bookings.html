@@ -183,10 +183,13 @@
     }
     .smart-booking-card.is-urgent { border-left-color: #f59e0b; }
     .smart-booking-ref { color: #334155; font-size: 0.75rem; font-weight: 850; letter-spacing: 0.06em; }
-    .smart-booking-badges { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.4rem; }
-    .booking-type-badge, .booking-source-badge { display: inline-flex; align-items: center; gap: 0.3rem; border-radius: 5px; padding: 0.25rem 0.4rem; font-size: 0.64rem; font-weight: 750; white-space: nowrap; }
-    .booking-type-badge { background: #eef2ff; color: #4338ca; }
-    .booking-source-badge { background: #f1f5f9; color: #475569; }
+    .smart-booking-badges { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.4rem; }
+    .booking-type-badge, .booking-source-badge { display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 6px; padding: 0.28rem 0.55rem; font-size: 0.65rem; font-weight: 800; white-space: nowrap; width: fit-content; text-transform: uppercase; letter-spacing: 0.03em; }
+    .booking-type-badge { background: #eef2ff; color: #4338ca; border: 1px solid #e0e7ff; }
+    .booking-source-badge { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+    .booking-source-badge.badge-source-online { background: #f3e8ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+    .booking-source-badge.badge-source-walkin { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
+    .booking-source-subtext { font-size: 0.62rem; color: #64748b; font-weight: 600; text-transform: none; letter-spacing: normal; display: block; margin-top: 1px; }
     .smart-booking-customer, .smart-booking-event, .smart-booking-state, .smart-booking-next { min-width: 0; display: flex; flex-direction: column; gap: 0.2rem; }
     .smart-booking-customer strong, .smart-booking-event strong { color: #0f172a; font-size: 0.86rem; overflow-wrap: anywhere; }
     .smart-booking-customer span, .smart-booking-event span, .smart-booking-event small { color: #64748b; font-size: 0.72rem; overflow-wrap: anywhere; }
@@ -637,8 +640,8 @@
             </select>
             <select class="filter-select-pro" id="sourceFilter" onchange="filterBookings()" style="padding: 0.35rem 1.5rem 0.35rem 0.75rem; font-size: 0.78rem; border-radius: 6px; border: none; background-color: #fff; color: #334155; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer; outline: none;">
                 <option value="">All Sources</option>
-                <option value="online">Online</option>
-                <option value="walkin">Walk-in</option>
+                <option value="online">Online Booking</option>
+                <option value="walkin">Walk-in Booking</option>
             </select>
             <select class="filter-select-pro" id="paymentFilter" onchange="filterBookings()" style="padding: 0.35rem 1.5rem 0.35rem 0.75rem; font-size: 0.78rem; border-radius: 6px; border: none; background-color: #fff; color: #334155; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer; outline: none;">
                 <option value="">All Payments</option>
@@ -686,7 +689,12 @@
                     <div class="smart-booking-ref">{% if item.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ '%03d'|format(item.id) }}</div>
                     <div class="smart-booking-badges">
                         <span class="booking-type-badge"><i class="fas {{ item.type_icon }}"></i> {{ item.type_label }}</span>
-                        <span class="booking-source-badge"><i class="fas fa-sign-in-alt"></i> {{ item.source }}</span>
+                        <div>
+                            <span class="booking-source-badge {% if item.source_kind == 'walkin' %}badge-source-walkin{% else %}badge-source-online{% endif %}">
+                                <i class="fas {% if item.source_kind == 'walkin' %}fa-store{% else %}fa-globe{% endif %}"></i> {{ item.source_label }}
+                            </span>
+                            <small class="booking-source-subtext">{{ item.source_subtext }}</small>
+                        </div>
                     </div>
                 </div>
                 <div class="smart-booking-customer">
@@ -2057,12 +2065,21 @@
             <div class="desktop-only" style="width: 100%;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
                     <div style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1;">
-                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
                             <h2 id="modalBookingId" style="color: #0f172a; font-weight: 800; font-size: 1.4rem; margin: 0;">Booking Details</h2>
                             <span id="modalStatus" style="padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;" class="badge-status"></span>
                         </div>
                         
-                        <div style="font-size: 0.85rem; color: #64748b; margin-top: 0.25rem;">
+                        <!-- Prominent Booking Source Badge & Subtitle -->
+                        <div id="modalSourceBanner" style="display: flex; align-items: center; gap: 0.6rem; margin-top: 0.1rem; flex-wrap: wrap;">
+                            <span id="modalBookingSourceBadge" style="padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; display: inline-flex; align-items: center; gap: 6px;">
+                                <i id="modalBookingSourceIcon" class="fas fa-globe"></i>
+                                <span id="modalBookingSource">ONLINE BOOKING</span>
+                            </span>
+                            <span id="modalBookingSourceSubtext" style="font-size: 0.8rem; font-weight: 600; color: #64748b;">Booked by Customer</span>
+                        </div>
+
+                        <div style="font-size: 0.85rem; color: #64748b; margin-top: 0.15rem;">
                             <div style="margin-bottom: 4px;"><strong>Created:</strong> <span id="modalBookedOn"></span></div>
                             <div id="modalHeaderSummary" class="modal-header-summary"></div>
                         </div>
@@ -2099,7 +2116,13 @@
                     <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;">
                         <div>
                             <h2 id="modalBookingIdMobile" style="color: #0f172a; font-weight: 800; font-size: 1.1rem; margin: 0; margin-bottom: 0.25rem;">Booking #</h2>
-                            <span id="modalStatusMobile" style="padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block;" class="badge-status"></span>
+                            <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+                                <span id="modalStatusMobile" style="padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block;" class="badge-status"></span>
+                                <span id="modalBookingSourceBadgeMobile" style="padding: 3px 8px; border-radius: 6px; font-weight: 800; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.04em; display: inline-flex; align-items: center; gap: 4px;">
+                                    <span id="modalBookingSourceMobile">ONLINE BOOKING</span>
+                                </span>
+                            </div>
+                            <div id="modalBookingSourceSubtextMobile" style="font-size: 0.72rem; font-weight: 600; color: #64748b; margin-top: 2px;">Booked by Customer</div>
                         </div>
                         <div style="display: flex; gap: 0.5rem;">
                             <button type="button" onclick="window.toggleModalFullscreen('bookingDetailModal', this)" title="Expand/Minimize" style="background: #f1f5f9; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #64748b;">
@@ -2408,12 +2431,12 @@
                             </div>
 
                             <!-- Walkin View -->
-                            <div id="chatWalkinView" style="display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center;">
-                                <div style="background: #f1f5f9; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
-                                    <i class="fas fa-walking" style="font-size: 2.5rem; color: #94a3b8;"></i>
+                            <div id="chatWalkinView" style="display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 2rem 1rem;">
+                                <div style="background: #ffedd5; width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; color: #c2410c;">
+                                    <i class="fas fa-store" style="font-size: 2rem;"></i>
                                 </div>
-                                <h3 style="color: #0f172a; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem;">Walk-in Booking</h3>
-                                <p style="color: #64748b; font-size: 0.9rem; max-width: 300px; margin-bottom: 1.5rem;">This customer booked manually. Online platform chat is disabled. Please contact them via phone or email directly.</p>
+                                <h3 style="color: #0f172a; font-size: 1.1rem; font-weight: 800; margin-bottom: 0.5rem;">WALK-IN BOOKING</h3>
+                                <p style="color: #64748b; font-size: 0.9rem; max-width: 360px; margin-bottom: 1.5rem;">No consultation conversation for this walk-in booking.<br>This booking was manually created by the caterer. You can contact the customer directly via phone or email.</p>
                                 
                                 <div style="display: flex; gap: 1rem; width: 100%; max-width: 350px;">
                                     <a href="#" id="walkinCommSms" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; background: #eff6ff; border: 1px solid #bfdbfe; color: #2563eb; padding: 1rem; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: background 0.2s;">

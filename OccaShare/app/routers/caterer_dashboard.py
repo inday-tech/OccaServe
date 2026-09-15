@@ -1713,7 +1713,14 @@ def build_booking_list_projection(booking, today):
     elif booking.status == "in_progress":
         attention, next_action, needs_action = "Event is ongoing", "Mark Completed", True
 
-    source = booking.booking_source or ("Website" if booking.user_id else "Walk-in")
+    raw_source = (booking.booking_source or "").lower()
+    is_walkin = (not booking.user_id) or ("walk" in raw_source) or ("internal" in raw_source) or ("manual" in raw_source)
+    source_kind = "walkin" if is_walkin else "online"
+    source_label = "WALK-IN BOOKING" if is_walkin else "ONLINE BOOKING"
+    source_subtext = "Created by caterer" if is_walkin else "Customer booked through website"
+    created_by_label = "Caterer / Staff" if is_walkin else "Customer"
+    source = "Walk-in Booking" if is_walkin else (booking.booking_source or "Online Booking")
+
     customer = booking.user
     customer_name = f"{customer.first_name} {customer.last_name}" if customer else (booking.customer_name or "Walk-in Customer")
     display_item = booking.package.name if booking.package else (item_names[0] if item_names else (booking.event_name or "Custom booking"))
@@ -1724,7 +1731,8 @@ def build_booking_list_projection(booking, today):
         "customer_name": customer_name, "customer_email": customer.email if customer else (booking.customer_email or ""),
         "event_type": booking.event_type or "Event", "item_name": display_item,
         "item_count": len(item_names), "item_names": item_names[:4], "source": source,
-        "source_kind": "walkin" if not booking.user_id else "online", "show_guests": booking_kind == "catering" or bool(booking.guest_count),
+        "source_kind": source_kind, "source_label": source_label, "source_subtext": source_subtext,
+        "created_by_label": created_by_label, "show_guests": booking_kind == "catering" or bool(booking.guest_count),
         "guest_count": booking.guest_count, "event_date": booking.event_date,
         "event_time": booking.event_time, "is_urgent": bool(booking.event_date and 0 <= (booking.event_date - today).days <= 2 and needs_action),
         "amount": total, "has_quote": has_quote, "payment_filter": "paid" if paid >= total and total > 0 else ("partial" if paid > 0 else "pending"),
@@ -2372,6 +2380,13 @@ async def get_booking_details_api(
             "choices": item.choices or []
         })
 
+    raw_source = (booking.booking_source or "").lower()
+    is_walkin = (not booking.user_id) or ("walk" in raw_source) or ("internal" in raw_source) or ("manual" in raw_source)
+    source_kind = "walkin" if is_walkin else "online"
+    source_label = "WALK-IN BOOKING" if is_walkin else "ONLINE BOOKING"
+    source_subtext = "Created by caterer" if is_walkin else "Customer booked through website"
+    created_by_label = "Caterer / Staff" if is_walkin else "Customer"
+
     return {
         "id": booking.id,
         "user_id": booking.user_id,
@@ -2384,8 +2399,12 @@ async def get_booking_details_api(
         "guest_count": booking.guest_count or 0,
         "venue": booking.event_address or booking.venue_address or booking.event_location,
         "special_requests": booking.special_requests,
-        "booking_source": booking.booking_source,
-        "entry_method": entry_method,
+        "booking_source": "Walk-in Booking" if is_walkin else (booking.booking_source or "Online Booking"),
+        "source_kind": source_kind,
+        "source_label": source_label,
+        "source_subtext": source_subtext,
+        "created_by_label": created_by_label,
+        "entry_method": "walkin" if is_walkin else "online",
         "total_amount": total_price,
         "total_price": total_price,
         "amount_paid": float(booking.amount_paid or 0),
@@ -2449,13 +2468,25 @@ async def get_booking_history(
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
     
+    raw_source = (booking.booking_source or "").lower()
+    is_walkin = (not booking.user_id) or ("walk" in raw_source) or ("internal" in raw_source) or ("manual" in raw_source)
+
     history = db.query(models.BookingHistory).filter_by(booking_id=booking_id).order_by(models.BookingHistory.created_at.desc()).all()
     
     results = []
     for h in history:
+        notes = h.notes or "Status updated."
+        actor = "Caterer"
+        if not is_walkin:
+            lower_notes = notes.lower()
+            if "customer" in lower_notes or "booked" in lower_notes or "proof" in lower_notes or "signed" in lower_notes:
+                actor = "Customer"
+            elif "caterer" in lower_notes or "admin" in lower_notes:
+                actor = "Caterer"
         results.append({
             "status": h.status,
-            "notes": h.notes,
+            "notes": notes,
+            "actor": actor,
             "created_at_formatted": h.created_at.strftime("%b %d, %Y %I:%M %p")
         })
     return results

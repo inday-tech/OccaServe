@@ -439,6 +439,10 @@ function filterBookings() {
         let matchesSource = false;
         if (sourceFilter === '') {
             matchesSource = true;
+        } else if (sourceFilter === 'walkin' || sourceFilter === 'walk_in') {
+            matchesSource = rawEntry === 'walkin' || rawEntry === 'walk_in' || rawEntry === 'internal' || rawEntry.indexOf('walk') > -1;
+        } else if (sourceFilter === 'online') {
+            matchesSource = rawEntry === 'online' || rawEntry.indexOf('website') > -1 || rawEntry.indexOf('occaserve') > -1;
         } else {
             matchesSource = rawEntry === sourceFilter.toLowerCase();
         }
@@ -1051,11 +1055,37 @@ function showBookingDetails(btn) {
 
     const modalSource = document.getElementById('modalBookingSource');
     const modalSourceMobile = document.getElementById('modalBookingSourceMobile');
+    const modalSourceBadge = document.getElementById('modalBookingSourceBadge');
+    const modalSourceBadgeMobile = document.getElementById('modalBookingSourceBadgeMobile');
+    const modalSourceIcon = document.getElementById('modalBookingSourceIcon');
+    const modalSourceSubtext = document.getElementById('modalBookingSourceSubtext');
+    const modalSourceSubtextMobile = document.getElementById('modalBookingSourceSubtextMobile');
+
     const sourceValue = (data.source || '').trim();
-    const isWalkin = !data.targetUserId || ['walk-in', 'walkin', 'manual'].includes(sourceValue.toLowerCase());
-    const sourceText = isWalkin ? 'Manual / Walk-in' : 'Online Customer Booking';
+    const rawSourceKind = (data.sourceKind || data.entryMethod || '').toLowerCase();
+    const isWalkin = rawSourceKind === 'walkin' || !data.targetUserId || ['walk-in', 'walkin', 'manual'].includes(sourceValue.toLowerCase());
+    
+    const sourceText = isWalkin ? 'WALK-IN BOOKING' : 'ONLINE BOOKING';
+    const sourceSubtext = isWalkin ? 'Created by Caterer' : 'Booked by Customer';
+    
     if (modalSource) modalSource.innerText = sourceText;
     if (modalSourceMobile) modalSourceMobile.innerText = sourceText;
+    if (modalSourceSubtext) modalSourceSubtext.innerText = sourceSubtext;
+    if (modalSourceSubtextMobile) modalSourceSubtextMobile.innerText = sourceSubtext;
+
+    if (modalSourceBadge) {
+        modalSourceBadge.style.background = isWalkin ? '#ffedd5' : '#f3e8ff';
+        modalSourceBadge.style.color = isWalkin ? '#c2410c' : '#7e22ce';
+        modalSourceBadge.style.border = isWalkin ? '1px solid #fed7aa' : '1px solid #e9d5ff';
+    }
+    if (modalSourceBadgeMobile) {
+        modalSourceBadgeMobile.style.background = isWalkin ? '#ffedd5' : '#f3e8ff';
+        modalSourceBadgeMobile.style.color = isWalkin ? '#c2410c' : '#7e22ce';
+        modalSourceBadgeMobile.style.border = isWalkin ? '1px solid #fed7aa' : '1px solid #e9d5ff';
+    }
+    if (modalSourceIcon) {
+        modalSourceIcon.className = isWalkin ? 'fas fa-store' : 'fas fa-globe';
+    }
 
     // Chat Tab Conditional Rendering
     const tabBtnChat = document.getElementById('tabBtnChat');
@@ -1327,58 +1357,90 @@ var actionsEl = document.getElementById('bookingModalActionsTop') || document.ge
     let nextStepMsg = 'No further action required.';
     let actionBtnHtml = '';
 
-    if (data.status === 'cancelled' || data.status === 'completed') {
-        nextStepMsg = 'No further action required.';
-    } else if (data.status === 'inquiry') {
-        nextStepMsg = 'Quotation needs to be prepared. The customer is waiting before deciding.';
-        actionBtnHtml = `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.openQuotationWorkspace(${data.id})"><i class="fas fa-file-invoice-dollar"></i> Prepare Quotation</button>`;
-    } else if (data.status === 'tentative') {
-        nextStepMsg = 'Follow up for contract signing and initial deposit to confirm booking.';
-    } else if (data.status === 'draft') {
-        nextStepMsg = 'Finish encoding booking details and convert to Inquiry or Tentative.';
-    } else if (data.status === 'pending_quotation') {
-        nextStepMsg = 'Waiting for customer to approve the quotation.';
-    } else if (data.status === 'awaiting_customer') {
-        nextStepMsg = 'Waiting for customer to sign the contract.';
-    } else if (data.paymentStatus === 'expired') {
-        nextStepMsg = 'Reservation expired. Please cancel or archive this booking.';
-    } else if (data.status === 'pending') {
-        if (data.paymentStatus === 'proof_submitted') nextStepMsg = 'Customer submitted payment proof. Please verify and accept.';
-        else if (data.paymentStatus === 'reupload_requested') nextStepMsg = 'Re-upload requested. Waiting for customer.';
-        else nextStepMsg = 'Awaiting payment proof from customer.';
-    } else if (data.status === 'awaiting_caterer') {
-        nextStepMsg = 'Customer accepted quotation. Please sign the contract to finalize.';
-    } else if (data.status === 'confirmed') {
-        if (data.paymentStatus === 'balance_proof_submitted') {
-            nextStepMsg = 'Customer submitted final balance proof. Please verify.';
-        } else if (balance > 0) {
-            nextStepMsg = `Collect remaining balance of ₱${balance.toLocaleString('en-US', {minimumFractionDigits:2})}.`;
-            actionBtnHtml = `<button type="button" onclick="window.sendPaymentReminder(${data.id})" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#d97706; color:#b45309; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-link"></i> Send Payment Reminder</button>`;
-        } else if (prepStatus === 'not_started') {
-            nextStepMsg = 'Booking is confirmed. Start preparation when ready.';
+    if (data.status === 'cancelled') {
+        nextStepMsg = isWalkin ? 'This walk-in booking has been cancelled.' : 'This customer booking has been cancelled.';
+    } else if (data.status === 'completed') {
+        nextStepMsg = isWalkin ? 'This walk-in booking is completed.' : 'This customer booking is completed.';
+    } else if (isWalkin) {
+        // WALK-IN WORKFLOW
+        if (data.status === 'draft') {
+            nextStepMsg = 'Complete customer and service information for this walk-in booking.';
+            actionBtnHtml = `<button type="button" onclick="window.openEditBookingModal()" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#d97706; color:#b45309; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-edit"></i> Complete Booking</button>`;
+        } else if (data.status === 'pending') {
+            nextStepMsg = 'Verify the entered details and confirm this walk-in booking.';
+            actionBtnHtml = `<button type="button" onclick="window.confirmAcceptBooking(${data.id}, false, false, ${isPackage})" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#10b981; color:#047857; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-check-circle"></i> Confirm Walk-in Booking</button>`;
+        } else if (data.status === 'confirmed') {
+            nextStepMsg = 'This booking was manually created by the caterer. Verify details and proceed with preparation.';
+            actionBtnHtml = `<button type="button" onclick="window.updateBookingStage(${data.id}, 'preparing')" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#10b981; color:#047857; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-utensils"></i> Start Preparation</button>`;
+        } else if (data.status === 'preparing') {
+            nextStepMsg = 'Preparation is currently in progress. Continue monitoring the preparation checklist.';
             actionBtnHtml = `<button type="button" onclick="window.switchBookingTab('tasks', document.querySelector('.mtab-btn-pro[onclick*=\\'tasks\\']'))" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#10b981; color:#047857; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-tasks"></i> Open Preparation Checklist</button>`;
-        } else {
-            nextStepMsg = 'Preparation is ongoing. Continue tracking tasks.';
-            actionBtnHtml = `<button type="button" onclick="window.switchBookingTab('tasks', document.querySelector('.mtab-btn-pro[onclick*=\\'tasks\\']'))" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#10b981; color:#047857; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-tasks"></i> Manage Checklist</button>`;
+        } else if (data.status === 'ready_for_delivery') {
+            nextStepMsg = 'Walk-in items are prepared. Dispatch when the team departs.';
+            actionBtnHtml = `<button type="button" onclick="window.updateBookingStage(${data.id}, 'on_the_way')" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#2563eb; color:#1d4ed8; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-truck"></i> Out for Delivery</button>`;
+        } else if (data.status === 'ready_for_pickup') {
+            nextStepMsg = 'Walk-in order is ready for customer pickup.';
+            actionBtnHtml = `<button type="button" onclick="window.confirmCompleteBooking(${data.id})" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#10b981; color:#047857; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-flag-checkered"></i> Mark Picked Up</button>`;
+        } else if (data.status === 'on_the_way') {
+            nextStepMsg = 'Walk-in order is in transit to the venue.';
+            actionBtnHtml = `<button type="button" onclick="window.updateBookingStage(${data.id}, 'arrived')" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#2563eb; color:#1d4ed8; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-map-marker-alt"></i> Mark Arrived</button>`;
+        } else if (data.status === 'arrived') {
+            nextStepMsg = 'Team arrived at venue. Begin setup and service.';
+            actionBtnHtml = `<button type="button" onclick="window.updateBookingStage(${data.id}, 'setup_ongoing')" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#2563eb; color:#1d4ed8; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-magic"></i> Start Setup</button>`;
+        } else if (data.status === 'setup_ongoing' || data.status === 'in_progress') {
+            nextStepMsg = 'Walk-in event is ongoing. Mark completed when finished.';
+            actionBtnHtml = `<button type="button" onclick="window.confirmCompleteBooking(${data.id})" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#10b981; color:#047857; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-flag-checkered"></i> Mark Completed</button>`;
         }
-    } else if (data.status === 'preparing') {
-        if (data.venue === 'PICKUP') nextStepMsg = 'Mark items as ready for pickup.';
-        else if (isFoodOrder) nextStepMsg = 'Dispatch order for delivery.';
-        else nextStepMsg = 'Mark items as ready for delivery.';
-    } else if (data.status === 'ready_for_pickup') {
-        nextStepMsg = 'Waiting for customer to pick up the items.';
-    } else if (data.status === 'ready_for_delivery') {
-        nextStepMsg = 'Mark as out for delivery.';
-    } else if (data.status === 'on_the_way') {
-        nextStepMsg = isPackage ? 'Arrive at the venue location.' : 'Deliver items to customer.';
-    } else if (data.status === 'arrived') {
-        nextStepMsg = isPackage ? 'Setup the event and start serving.' : 'Complete the delivery/order.';
-    } else if (data.status === 'setup_ongoing' || data.status === 'in_progress') {
-        if (balance <= 0) {
-            nextStepMsg = 'Event in progress. Mark as completed when done.';
-        } else {
-            if (data.paymentStatus === 'balance_proof_submitted') nextStepMsg = 'Verify final balance proof.';
-            else nextStepMsg = 'Event in progress. Waiting for final bill settlement.';
+    } else {
+        // ONLINE CUSTOMER WORKFLOW
+        if (data.status === 'inquiry') {
+            nextStepMsg = 'Customer submitted booking inquiry. Prepare or review quotation.';
+            actionBtnHtml = `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.openQuotationWorkspace(${data.id})"><i class="fas fa-file-invoice-dollar"></i> Prepare Quotation</button>`;
+        } else if (data.status === 'pending_quotation') {
+            nextStepMsg = 'Quotation sent. Waiting for customer to approve quotation.';
+        } else if (data.status === 'awaiting_caterer') {
+            nextStepMsg = 'Customer accepted quotation. Sign the service contract to finalize.';
+            actionBtnHtml = `<button type="button" onclick="window.openIframeModal('/caterer/bookings/${data.id}/sign?modal=true', 'Sign Service Agreement')" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#2563eb; color:#1d4ed8; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-pen-nib"></i> Sign Contract Now</button>`;
+        } else if (data.status === 'awaiting_customer') {
+            nextStepMsg = 'Waiting for customer to sign the contract.';
+        } else if (data.paymentStatus === 'expired') {
+            nextStepMsg = 'Reservation expired. Please cancel or archive this booking.';
+        } else if (data.status === 'pending') {
+            if (data.paymentStatus === 'proof_submitted') {
+                nextStepMsg = 'Customer submitted payment proof. Review and verify.';
+                actionBtnHtml = `<button type="button" onclick="window.confirmAcceptBooking(${data.id}, true, ${isVerified}, ${isPackage})" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#10b981; color:#047857; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-check-double"></i> Verify Payment & Accept</button>`;
+            } else if (data.paymentStatus === 'reupload_requested') {
+                nextStepMsg = 'Re-upload requested. Waiting for customer to resubmit.';
+            } else {
+                nextStepMsg = 'Customer submitted booking request. Review booking details.';
+                actionBtnHtml = `<button type="button" onclick="switchBookingTab('details', document.querySelector('[data-tab=\\'details\\']'))" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#2563eb; color:#1d4ed8; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-eye"></i> Review Booking</button>`;
+            }
+        } else if (data.status === 'confirmed') {
+            if (data.paymentStatus === 'balance_proof_submitted') {
+                nextStepMsg = 'Customer submitted final balance proof. Please verify.';
+                actionBtnHtml = `<button type="button" onclick="window.confirmAcceptBooking(${data.id}, true)" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#10b981; color:#047857; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-check-double"></i> Verify Balance Proof</button>`;
+            } else {
+                nextStepMsg = 'This customer booking is confirmed and ready for preparation.';
+                actionBtnHtml = `<button type="button" onclick="window.updateBookingStage(${data.id}, 'preparing')" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#10b981; color:#047857; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-utensils"></i> Start Preparation</button>`;
+            }
+        } else if (data.status === 'preparing') {
+            nextStepMsg = 'Preparation is ongoing. Continue tracking tasks.';
+            actionBtnHtml = `<button type="button" onclick="window.switchBookingTab('tasks', document.querySelector('.mtab-btn-pro[onclick*=\\'tasks\\']'))" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#10b981; color:#047857; cursor:pointer; width: 100%; margin-top: 10px;"><i class="fas fa-tasks"></i> Open Preparation Checklist</button>`;
+        } else if (data.status === 'ready_for_pickup') {
+            nextStepMsg = 'Waiting for customer to pick up the items.';
+        } else if (data.status === 'ready_for_delivery') {
+            nextStepMsg = 'Mark as out for delivery.';
+        } else if (data.status === 'on_the_way') {
+            nextStepMsg = isPackage ? 'Arrive at the venue location.' : 'Deliver items to customer.';
+        } else if (data.status === 'arrived') {
+            nextStepMsg = isPackage ? 'Setup the event and start serving.' : 'Complete the delivery/order.';
+        } else if (data.status === 'setup_ongoing' || data.status === 'in_progress') {
+            if (balance <= 0) {
+                nextStepMsg = 'Event in progress. Mark as completed when done.';
+            } else {
+                if (data.paymentStatus === 'balance_proof_submitted') nextStepMsg = 'Verify final balance proof.';
+                else nextStepMsg = 'Event in progress. Waiting for final bill settlement.';
+            }
         }
     }
     var unifiedNST = document.getElementById('unifiedNextStepText');
@@ -1616,6 +1678,26 @@ var actionsEl = document.getElementById('bookingModalActionsTop') || document.ge
             }
         }
         
+        // Contextual Quick Nav Actions based on Walk-in vs Online
+        if (isWalkin) {
+            actionsEl.innerHTML += `<button type="button" class="btn-sm-outline" onclick="switchBookingTab('details', document.querySelector('[data-tab=\\'details\\']'))" style="background:white; border:1px solid #cbd5e1; color:#475569; justify-content:flex-start; width:100%; margin-bottom: 6px; text-align: left;"><i class="fas fa-list-check" style="width:20px; text-align:center; color: var(--primary-color);"></i> View Services & Amounts</button>`;
+            actionsEl.innerHTML += `<button type="button" class="btn-sm-outline" onclick="switchBookingTab('finance', document.querySelector('[data-tab=\\'finance\\']'))" style="background:white; border:1px solid #cbd5e1; color:#475569; justify-content:flex-start; width:100%; margin-bottom: 6px; text-align: left;"><i class="fas fa-receipt" style="width:20px; text-align:center; color: #16a34a;"></i> View Payment</button>`;
+            if (['confirmed', 'preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress'].includes(data.status)) {
+                actionsEl.innerHTML += `<button type="button" class="btn-sm-outline" onclick="window.switchBookingTab('tasks', document.querySelector('.mtab-btn-pro[onclick*=\\'tasks\\']'))" style="background:white; border:1px solid #cbd5e1; color:#475569; justify-content:flex-start; width:100%; margin-bottom: 6px; text-align: left;"><i class="fas fa-tasks" style="width:20px; text-align:center; color: #0284c7;"></i> Open Preparation Checklist</button>`;
+            }
+            actionsEl.innerHTML += `<button type="button" class="btn-sm-outline" onclick="switchBookingTab('activity', document.querySelector('[data-tab=\\'activity\\']'))" style="background:white; border:1px solid #cbd5e1; color:#475569; justify-content:flex-start; width:100%; margin-bottom: 8px; text-align: left;"><i class="fas fa-history" style="width:20px; text-align:center; color: #64748b;"></i> View Activity</button>`;
+        } else {
+            actionsEl.innerHTML += `<button type="button" class="btn-sm-outline" onclick="switchBookingTab('details', document.querySelector('[data-tab=\\'details\\']'))" style="background:white; border:1px solid #cbd5e1; color:#475569; justify-content:flex-start; width:100%; margin-bottom: 6px; text-align: left;"><i class="fas fa-user-circle" style="width:20px; text-align:center; color: #7c3aed;"></i> View Customer Details</button>`;
+            if (['inquiry', 'pending_quotation', 'awaiting_customer', 'awaiting_caterer'].includes(data.status)) {
+                actionsEl.innerHTML += `<button type="button" class="btn-sm-outline" onclick="window.openQuotationWorkspace(${data.id})" style="background:white; border:1px solid #cbd5e1; color:#475569; justify-content:flex-start; width:100%; margin-bottom: 6px; text-align: left;"><i class="fas fa-file-invoice-dollar" style="width:20px; text-align:center; color: var(--primary-color);"></i> View Quotation</button>`;
+            }
+            actionsEl.innerHTML += `<button type="button" class="btn-sm-outline" onclick="switchBookingTab('finance', document.querySelector('[data-tab=\\'finance\\']'))" style="background:white; border:1px solid #cbd5e1; color:#475569; justify-content:flex-start; width:100%; margin-bottom: 6px; text-align: left;"><i class="fas fa-receipt" style="width:20px; text-align:center; color: #16a34a;"></i> View Payment</button>`;
+            if (['confirmed', 'preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress'].includes(data.status)) {
+                actionsEl.innerHTML += `<button type="button" class="btn-sm-outline" onclick="window.switchBookingTab('tasks', document.querySelector('.mtab-btn-pro[onclick*=\\'tasks\\']'))" style="background:white; border:1px solid #cbd5e1; color:#475569; justify-content:flex-start; width:100%; margin-bottom: 6px; text-align: left;"><i class="fas fa-tasks" style="width:20px; text-align:center; color: #0284c7;"></i> Open Preparation Checklist</button>`;
+            }
+            actionsEl.innerHTML += `<button type="button" class="btn-sm-outline" onclick="switchBookingTab('activity', document.querySelector('[data-tab=\\'activity\\']'))" style="background:white; border:1px solid #cbd5e1; color:#475569; justify-content:flex-start; width:100%; margin-bottom: 8px; text-align: left;"><i class="fas fa-history" style="width:20px; text-align:center; color: #64748b;"></i> View Activity</button>`;
+        }
+
         // Add Copy Payment Link Button (useful for sending to FB Walk-in customers)
         const noLinkStatuses = ['draft', 'inquiry', 'tentative', 'pending_quotation', 'awaiting_caterer', 'awaiting_customer', 'pending', 'cancelled', 'completed', 'expired'];
         if (!noLinkStatuses.includes(data.status) && data.paymentStatus !== 'paid' && data.paymentStatus !== 'expired' && data.amount !== "₱0.00") {
@@ -1660,12 +1742,12 @@ var actionsEl = document.getElementById('bookingModalActionsTop') || document.ge
     const headerSummary = document.getElementById('modalHeaderSummary');
     if (headerSummary) {
         const eventDateLabel = data.eventDate ? new Date(data.eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date not set';
-        const bookingTypeLabel = isWalkin ? 'Walk-in' : 'Online';
+        const bookingTypeLabel = isWalkin ? 'Walk-in Booking' : 'Online Booking';
         headerSummary.innerHTML = [
             `<span><i class="fas fa-user"></i>${data.customer || 'Customer not set'}</span>`,
             `<span><i class="fas fa-calendar-day"></i>${data.eventType || 'Event not set'} · ${eventDateLabel}</span>`,
             `<span><i class="fas fa-users"></i>${data.guestCount || 0} guests</span>`,
-            `<span><i class="fas fa-sign-in-alt"></i>${bookingTypeLabel}</span>`
+            `<span><i class="fas ${isWalkin ? 'fa-store' : 'fa-globe'}"></i>${bookingTypeLabel}</span>`
         ].join('');
     }
     const displayPaymentPlan = (isFoodOrder || data.paymentPlan === 'full') ? 'FULL PAYMENT' : (data.paymentPlan || 'downpayment').toUpperCase();
@@ -2070,42 +2152,182 @@ function renderOverviewWorkspace(data, context) {
     if (attention) attention.innerHTML = missing.length ? missing.join('') : '<div class="workspace-attention-ok"><i class="fas fa-check-circle"></i> Booking information is complete.</div>';
 
     const eventDate = data.eventDate ? new Date(data.eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not set';
+    const paid = Math.max(parseFloat(data.amountPaid) || 0, 0);
+    const balance = Math.max(total - paid, 0);
     const summary = document.getElementById('overviewSummary');
     if (summary) {
-        const packageName = data.specificName && data.specificName !== data.eventType ? data.specificName : 'Not selected';
+        const packageName = data.specificName && data.specificName !== data.eventType ? data.specificName : (data.eventType || 'Not selected');
+        const sourceLabel = context.isWalkin ? 'Walk-in Booking' : 'Online Booking';
+        const createdByLabel = context.isWalkin ? 'Caterer / Staff' : 'Customer';
         summary.innerHTML = [
             ['Customer', data.customer || 'Not set'],
-            ['Event', data.eventType || 'Not set'],
-            ['Date', eventDate],
-            ['Guests', Number(data.guestCount) ? `${data.guestCount} guests` : 'Not set'],
+            ['Booking Source', sourceLabel],
+            ['Created By', createdByLabel],
+            ['Event Type', data.eventType || 'Not set'],
+            ['Event Date', eventDate],
+            ['Number of Guests', Number(data.guestCount) ? `${data.guestCount} guests` : 'Not set'],
             ['Venue', data.venue || 'Not specified'],
-            ['Source', context.isWalkin ? 'Walk-in' : 'Online'],
-            ['Package', packageName]
+            ['Services / Package', packageName],
+            ['Total', '₱' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })],
+            ['Paid', '₱' + paid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })],
+            ['Balance', '₱' + balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })]
         ].map(([label, value]) => `<div class="workspace-summary-item"><span>${label}</span><strong>${value}</strong></div>`).join('');
     }
 
-    const primary = {
-        inquiry: ['Quotation needs to be prepared.', 'The customer is waiting for a quotation before deciding.', 'Prepare Quotation', `window.openQuotationWorkspace(${data.id})`],
-        pending_quotation: ['Quotation is awaiting customer decision.', 'Review the quotation or send a reminder when needed.', 'View Quotation', `window.location.href='/caterer/bookings/${data.id}/quotation'`],
-        awaiting_customer: ['Customer action is pending.', 'Send a reminder if the customer has not completed the next step.', 'Send Reminder', `window.sendPaymentReminder(${data.id})`],
-        confirmed: ['Booking is confirmed. Prepare the event.', 'Move the booking into preparation when requirements are ready.', 'Start Preparation', `window.updateBookingStage(${data.id}, 'preparing')`],
-        preparing: ['Preparation is in progress.', 'Advance the booking when the event is ready for delivery or setup.', data.venue === 'PICKUP' ? 'Mark Ready for Pickup' : 'Mark Ready for Delivery', data.venue === 'PICKUP' ? `window.validateAndProceed(${data.id}, 'ready_for_pickup')` : `window.validateAndProceed(${data.id}, 'ready_for_delivery')`],
-        ready_for_delivery: ['Booking is ready for delivery.', 'Start the delivery stage when the team is on the way.', 'Out for Delivery', `window.updateBookingStage(${data.id}, 'on_the_way')`],
-        ready_for_pickup: ['Order is ready for pickup.', 'Complete the booking after the customer receives it.', 'Mark Picked Up', `window.confirmCompleteBooking(${data.id})`],
-        on_the_way: ['The booking is in transit.', 'Mark arrival when the team reaches the venue.', 'Mark Arrived', `window.updateBookingStage(${data.id}, 'arrived')`],
-        arrived: ['The team has arrived.', 'Start setup or complete the delivery.', context.isFoodOrder ? 'Mark Completed' : 'Start Setup', context.isFoodOrder ? `window.confirmCompleteBooking(${data.id})` : `window.updateBookingStage(${data.id}, 'setup_ongoing')`],
-        setup_ongoing: ['Setup is ongoing.', 'Complete the booking when service is finished.', 'Mark Completed', `window.confirmCompleteBooking(${data.id})`],
-        in_progress: ['The event is ongoing.', 'Complete the booking when service is finished.', 'Mark Completed', `window.confirmCompleteBooking(${data.id})`],
-        completed: ['Booking completed.', 'No operational action is required.', '', ''],
-        cancelled: ['Booking cancelled.', 'This record is closed and available for reference.', '', '']
-    }[status] || ['Booking requires review.', 'Review the booking details and choose the next available action.', 'Review Details', `switchBookingTab('details', document.querySelector('[data-tab="details"]'))`];
+    // Dynamic Source + Status primary action matrix
+    let primaryTitle = 'Booking requires review.';
+    let primaryDesc = 'Review the booking details and choose the next available action.';
+    let primaryBtnText = 'Review Details';
+    let primaryBtnAction = `switchBookingTab('details', document.querySelector('[data-tab="details"]'))`;
+    let primaryEyebrow = context.isWalkin ? 'Walk-in Booking Action' : 'Customer Booking Action';
+
+    if (context.isWalkin) {
+        if (status === 'draft') {
+            primaryTitle = 'Draft Walk-in Booking.';
+            primaryDesc = 'Complete the required customer and service details for this walk-in booking.';
+            primaryBtnText = 'Complete Booking';
+            primaryBtnAction = 'window.openEditBookingModal()';
+        } else if (status === 'pending') {
+            primaryTitle = 'WALK-IN BOOKING: Review & Confirm';
+            primaryDesc = 'This booking was manually created. Verify the customer, event details, and service amounts before confirming.';
+            primaryBtnText = 'Review & Confirm';
+            primaryBtnAction = `window.confirmAcceptBooking(${data.id}, false, false, ${data.isPackage === 'true'})`;
+        } else if (status === 'confirmed') {
+            primaryTitle = 'WALK-IN BOOKING: Ready for Preparation';
+            primaryDesc = 'This booking was manually created by the caterer. Verify the customer, event details, selected services, and amounts before proceeding with preparation.';
+            primaryBtnText = 'Start Preparation';
+            primaryBtnAction = `window.updateBookingStage(${data.id}, 'preparing')`;
+        } else if (status === 'preparing') {
+            primaryTitle = 'WALK-IN BOOKING: Preparation Ongoing';
+            primaryDesc = 'Preparation is currently in progress. Continue monitoring the preparation checklist and prepare requirements.';
+            primaryBtnText = 'Open Preparation Checklist';
+            primaryBtnAction = `window.switchBookingTab('tasks', document.querySelector('.mtab-btn-pro[onclick*="tasks"]'))`;
+        } else if (status === 'ready_for_delivery') {
+            primaryTitle = 'Walk-in Booking: Ready for Delivery.';
+            primaryDesc = 'Event items are prepared. Start delivery when team is dispatching.';
+            primaryBtnText = 'Out for Delivery';
+            primaryBtnAction = `window.updateBookingStage(${data.id}, 'on_the_way')`;
+        } else if (status === 'ready_for_pickup') {
+            primaryTitle = 'Walk-in Booking: Ready for Pickup.';
+            primaryDesc = 'Items are ready. Complete the booking after the customer collects them.';
+            primaryBtnText = 'Mark Picked Up';
+            primaryBtnAction = `window.confirmCompleteBooking(${data.id})`;
+        } else if (status === 'on_the_way') {
+            primaryTitle = 'Walk-in Booking: In Transit.';
+            primaryDesc = 'The delivery team is on the way to the venue.';
+            primaryBtnText = 'Mark Arrived';
+            primaryBtnAction = `window.updateBookingStage(${data.id}, 'arrived')`;
+        } else if (status === 'arrived') {
+            primaryTitle = 'Walk-in Booking: Arrived at Venue.';
+            primaryDesc = 'Team has arrived. Proceed with setup and serving.';
+            primaryBtnText = context.isFoodOrder ? 'Mark Completed' : 'Start Setup';
+            primaryBtnAction = context.isFoodOrder ? `window.confirmCompleteBooking(${data.id})` : `window.updateBookingStage(${data.id}, 'setup_ongoing')`;
+        } else if (status === 'setup_ongoing' || status === 'in_progress') {
+            primaryTitle = 'Walk-in Booking: Event in Progress.';
+            primaryDesc = 'Service is ongoing. Mark completed when all services are concluded.';
+            primaryBtnText = 'Mark Completed';
+            primaryBtnAction = `window.confirmCompleteBooking(${data.id})`;
+        } else if (status === 'completed') {
+            primaryTitle = 'Walk-in Booking Completed.';
+            primaryDesc = 'This walk-in booking is completed. All services have been fulfilled.';
+            primaryBtnText = '';
+            primaryBtnAction = '';
+        } else if (status === 'cancelled') {
+            primaryTitle = 'Walk-in Booking Cancelled.';
+            primaryDesc = 'This walk-in booking has been cancelled and closed.';
+            primaryBtnText = '';
+            primaryBtnAction = '';
+        }
+    } else {
+        // Online Customer Booking
+        if (status === 'inquiry') {
+            primaryTitle = 'Customer submitted booking inquiry.';
+            primaryDesc = 'The customer is waiting for a quotation before confirming.';
+            primaryBtnText = 'Prepare Quotation';
+            primaryBtnAction = `window.openQuotationWorkspace(${data.id})`;
+        } else if (status === 'pending_quotation') {
+            primaryTitle = 'Quotation sent to customer.';
+            primaryDesc = 'Quotation is awaiting customer approval. Send reminder if needed.';
+            primaryBtnText = 'View Quotation';
+            primaryBtnAction = `window.location.href='/caterer/bookings/${data.id}/quotation'`;
+        } else if (status === 'awaiting_caterer') {
+            primaryTitle = 'Customer accepted quotation.';
+            primaryDesc = 'Review customer confirmation and sign service contract.';
+            primaryBtnText = 'Sign Contract';
+            primaryBtnAction = `window.openIframeModal('/caterer/bookings/${data.id}/sign?modal=true', 'Sign Service Agreement')`;
+        } else if (status === 'awaiting_customer') {
+            primaryTitle = 'Customer action is pending.';
+            primaryDesc = 'Waiting for customer signature or confirmation.';
+            primaryBtnText = 'Send Reminder';
+            primaryBtnAction = `window.sendPaymentReminder(${data.id})`;
+        } else if (status === 'pending') {
+            if (data.paymentStatus === 'proof_submitted') {
+                primaryTitle = 'Customer submitted payment proof.';
+                primaryDesc = 'Verify payment proof and confirm customer booking.';
+                primaryBtnText = 'Verify & Accept';
+                primaryBtnAction = `window.confirmAcceptBooking(${data.id}, true, false, ${data.isPackage === 'true'})`;
+            } else {
+                primaryTitle = 'Customer submitted booking request.';
+                primaryDesc = 'Review customer booking details and verify payment status.';
+                primaryBtnText = 'Review Booking';
+                primaryBtnAction = `switchBookingTab('details', document.querySelector('[data-tab="details"]'))`;
+            }
+        } else if (status === 'confirmed') {
+            primaryTitle = 'CUSTOMER BOOKING: Confirmed & Ready';
+            primaryDesc = 'This customer booking is confirmed and ready for preparation. Review event requirements before starting preparation.';
+            primaryBtnText = 'Start Preparation';
+            primaryBtnAction = `window.updateBookingStage(${data.id}, 'preparing')`;
+        } else if (status === 'preparing') {
+            primaryTitle = 'CUSTOMER BOOKING: Preparation in Progress';
+            primaryDesc = 'Preparation is ongoing. Monitor the preparation checklist and prepare food/services.';
+            primaryBtnText = 'Open Preparation Checklist';
+            primaryBtnAction = `window.switchBookingTab('tasks', document.querySelector('.mtab-btn-pro[onclick*="tasks"]'))`;
+        } else if (status === 'ready_for_delivery') {
+            primaryTitle = 'Booking ready for delivery.';
+            primaryDesc = 'Event items are prepared. Dispatch when ready.';
+            primaryBtnText = 'Out for Delivery';
+            primaryBtnAction = `window.updateBookingStage(${data.id}, 'on_the_way')`;
+        } else if (status === 'ready_for_pickup') {
+            primaryTitle = 'Order ready for pickup.';
+            primaryDesc = 'Customer will collect the items at the premises.';
+            primaryBtnText = 'Mark Picked Up';
+            primaryBtnAction = `window.confirmCompleteBooking(${data.id})`;
+        } else if (status === 'on_the_way') {
+            primaryTitle = 'Booking in transit.';
+            primaryDesc = 'Delivery team is en route to customer venue.';
+            primaryBtnText = 'Mark Arrived';
+            primaryBtnAction = `window.updateBookingStage(${data.id}, 'arrived')`;
+        } else if (status === 'arrived') {
+            primaryTitle = 'Team arrived at venue.';
+            primaryDesc = 'Setup catering equipment, service stations, and food.';
+            primaryBtnText = context.isFoodOrder ? 'Mark Completed' : 'Start Setup';
+            primaryBtnAction = context.isFoodOrder ? `window.confirmCompleteBooking(${data.id})` : `window.updateBookingStage(${data.id}, 'setup_ongoing')`;
+        } else if (status === 'setup_ongoing' || status === 'in_progress') {
+            primaryTitle = 'Event service in progress.';
+            primaryDesc = 'Event is underway. Mark completed when finished.';
+            primaryBtnText = 'Mark Completed';
+            primaryBtnAction = `window.confirmCompleteBooking(${data.id})`;
+        } else if (status === 'completed') {
+            primaryTitle = 'Customer booking completed.';
+            primaryDesc = 'Event successfully completed. Record closed for audit.';
+            primaryBtnText = '';
+            primaryBtnAction = '';
+        } else if (status === 'cancelled') {
+            primaryTitle = 'Booking cancelled.';
+            primaryDesc = 'This booking was cancelled.';
+            primaryBtnText = '';
+            primaryBtnAction = '';
+        }
+    }
 
     const title = document.getElementById('overviewNextActionTitle');
     const description = document.getElementById('overviewNextActionDescription');
     const button = document.getElementById('overviewNextActionButton');
-    if (title) title.innerText = primary[0];
-    if (description) description.innerText = primary[1];
-    if (button) button.innerHTML = primary[2] ? `<button type="button" onclick="${primary[3]}"><i class="fas fa-arrow-right"></i> ${primary[2]}</button>` : '';
+    const eyebrowEl = document.querySelector('#overviewNextAction .workspace-eyebrow');
+    if (eyebrowEl) eyebrowEl.innerHTML = `<i class="fas ${context.isWalkin ? 'fa-store' : 'fa-globe'}"></i> ${primaryEyebrow}`;
+    if (title) title.innerText = primaryTitle;
+    if (description) description.innerText = primaryDesc;
+    if (button) button.innerHTML = primaryBtnText ? `<button type="button" onclick="${primaryBtnAction}"><i class="fas fa-arrow-right"></i> ${primaryBtnText}</button>` : '';
 
     const lifecycle = document.getElementById('overviewLifecycle');
     const early = ['inquiry', 'pending_quotation', 'awaiting_customer'];
@@ -2182,7 +2404,13 @@ async function loadBookingHistory(bookingId) {
                             <span class="timeline-status-pro">${item.status.replace(/_/g, ' ')}</span>
                             <span class="timeline-date-pro">${item.created_at_formatted}</span>
                         </div>
-                        <div class="timeline-note-pro">${item.notes || 'Status changed automatically.'}</div>
+                        <div class="timeline-note-pro">
+                            ${item.notes || 'Status changed automatically.'}
+                            <div style="font-size: 0.72rem; color: #64748b; margin-top: 4px; font-weight: 600;">
+                                <i class="fas ${item.actor === 'Customer' ? 'fa-user' : 'fa-user-tie'}" style="margin-right: 4px; color: ${item.actor === 'Customer' ? '#7c3aed' : '#c2410c'};"></i>
+                                ${item.status === 'created' ? 'Created by:' : 'Updated by:'} <strong>${item.actor || 'System'}</strong>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `).join('');

@@ -3,17 +3,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const catererId = window.catererId;
     const menuId = window.menuId;
 
-    let deliveryFee = 0; 
+    let deliveryFee = 0;
     window.currentScreen = 1;
 
     // Delivery Fee logic will be determined by server.
     const DEFAULT_FEE = 0;
     window.isManualQuote = true;
-    
+
     // RECOVER SESSION: Use a more robust check
     const sessionKey = `alc_draft_${window.catererId}_${window.menuId}`;
-    let bookingId = localStorage.getItem(sessionKey); 
-    
+    let bookingId = localStorage.getItem(sessionKey);
+
     // Function to ensure we always have the latest ID
     function getActiveBookingId() {
         if (!bookingId) {
@@ -35,14 +35,14 @@ document.addEventListener('DOMContentLoaded', function () {
     // SETUP DATE MIN & MAX is handled in applyDynamicTerminology
 
     // --- COMBO BUILDER LOGIC ---
-    window.handleComboSelection = function(checkbox) {
+    window.handleComboSelection = function (checkbox) {
         const grid = checkbox.closest('.combo-options-grid');
         const limit = parseInt(grid.dataset.limit) || 0;
         const itemId = grid.dataset.id;
-        
+
         const checked = grid.querySelectorAll('.combo-checkbox:checked');
         const count = checked.length;
-        
+
         const counterEl = document.getElementById(`counter-combo-${itemId}`);
         if (counterEl) {
             counterEl.innerText = `${count} / ${limit} Selected`;
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 counterEl.style.color = '#0f766e';
             }
         }
-        
+
         const allBoxes = grid.querySelectorAll('.combo-checkbox');
         if (count >= limit) {
             allBoxes.forEach(cb => {
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function () {
         parsedCart = [];
     }
     window.cartItems = parsedCart;
-    
+
     // Fallback if cartItems is empty but backendMenuItems has items (e.g., direct navigation)
     if (window.cartItems.length === 0 && window.backendMenuItems && window.backendMenuItems.length > 0) {
         window.backendMenuItems.forEach(item => {
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Dynamic Summary Title updater
-    window.updateBookingLabel = function() {
+    window.updateBookingLabel = function () {
         const labelEl = document.getElementById('summary-order-label');
         if (!labelEl) return;
         if (!window.cartItems || window.cartItems.length === 0) {
@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const lblDelDate = document.getElementById('lbl_delivery_date');
         if (lblDelDate) lblDelDate.innerText = window.isServiceOnly ? 'Event Date' : (window.isRentalOnly ? 'Delivery / Setup Date' : 'Delivery Date');
-        
+
         const lblDelTime = document.getElementById('lbl_delivery_time');
         if (lblDelTime) lblDelTime.innerText = window.isServiceOnly ? 'Call Time' : (window.isRentalOnly ? 'Delivery / Setup Time' : 'Delivery Time');
 
@@ -144,30 +144,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const subtitle3 = document.getElementById('subtitle_step3');
         if (subtitle3) subtitle3.innerText = window.isMixed ? 'Your event order has been sent to' : (window.isServiceOnly ? 'Your service request has been sent to' : (window.isRentalOnly ? 'Your equipment request has been sent to' : 'Your food order has been sent to'));
-        
+
         const btnSubmit = document.getElementById('final-submit-btn');
         if (btnSubmit) {
-            btnSubmit.innerHTML = window.isServiceOnly ? 'CONFIRM BOOKING <i class="fas fa-check" style="margin-left: 0.75rem;"></i>' : 
-                                  (window.isRentalOnly ? 'CONFIRM RENTAL <i class="fas fa-check" style="margin-left: 0.75rem;"></i>' : 'ACCEPT & CHECKOUT <i class="fas fa-check" style="margin-left: 0.75rem;"></i>');
+            btnSubmit.innerHTML = window.isServiceOnly ? 'CONFIRM BOOKING <i class="fas fa-check" style="margin-left: 0.75rem;"></i>' :
+                (window.isRentalOnly ? 'CONFIRM RENTAL <i class="fas fa-check" style="margin-left: 0.75rem;"></i>' : 'ACCEPT & CHECKOUT <i class="fas fa-check" style="margin-left: 0.75rem;"></i>');
         }
-        
+
         const reviewTitle = document.getElementById('review-title');
         if (reviewTitle) {
             reviewTitle.innerHTML = window.isRentalOnly ? '<i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: var(--checkout-primary);"></i> Rent Review' : '<i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: var(--checkout-primary);"></i> Order Review';
         }
 
         window.updateBookingLabel();
-        
+
         // --- SETUP DATE MIN & MAX ---
         const dateInput = document.getElementById('delivery_date');
         if (dateInput) {
             const fr = window.catererRules?.food_rules || {};
             const sr = window.catererRules?.service_rules || {};
             const er = window.catererRules?.equipment_rules || {};
-            
+
             let leadHours = fr.lead_time_hours || 24;
             let allowSameDay = fr.allow_same_day === true;
-            
+
             if (window.isRentalOnly) {
                 leadHours = er.lead_time_hours || 24;
                 allowSameDay = er.allow_same_day === true;
@@ -175,19 +175,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 leadHours = sr.lead_time_hours || 48;
                 allowSameDay = sr.allow_same_day === true;
             }
-            
+
             let leadDays = Math.ceil(leadHours / 24);
             if (!allowSameDay && leadDays < 1) {
                 leadDays = 1;
             }
-            
+
             const todayObj = new Date();
             todayObj.setDate(todayObj.getDate() + leadDays);
             const yyyy = todayObj.getFullYear();
             const mm = String(todayObj.getMonth() + 1).padStart(2, '0');
             const dd = String(todayObj.getDate()).padStart(2, '0');
             dateInput.setAttribute('min', `${yyyy}-${mm}-${dd}`);
-            
+
             const maxAdvance = parseInt(window.catererRules?.booking_rules?.max_advance_booking_days) || 90;
             const maxObj = new Date();
             maxObj.setDate(maxObj.getDate() + maxAdvance);
@@ -210,10 +210,10 @@ document.addEventListener('DOMContentLoaded', function () {
         'per_kg': ' / Kg', 'whole': ' / Whole', 'per_size': ''
     };
 
-    window.renderBillItems = function() {
+    window.renderBillItems = function () {
         const container = document.getElementById('dynamic-bill-items');
         if (!container) return;
-        
+
         let html = '';
         let baseTotal = 0;
 
@@ -240,7 +240,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const qty = isFixedQty ? 1 : (parseInt(cItem.qty) || 1);
             const itemName = cItem.name || bItem.name || 'Custom Item';
             const unitLabel = bItem.pricing_unit ? (UNIT_MAP[bItem.pricing_unit] || ' / ' + bItem.pricing_unit) : (bItem.is_rental ? '/ Unit' : (bItem.is_combo ? '(Platter)' : '/ Tray'));
-            
+
             baseTotal += (itemPrice * qty);
 
             html += `
@@ -252,35 +252,35 @@ document.addEventListener('DOMContentLoaded', function () {
                         <h4>${itemName}</h4>
                         <p style="margin-bottom: 0.5rem;">₱${itemPrice.toLocaleString(undefined, { minimumFractionDigits: 0 })} ${unitLabel}</p>
                         
-                        ${isFixedQty ? 
-                            `<span style="font-size: 0.85rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 4px 12px; border-radius: 6px; display: inline-block;">Qty: 1</span>` 
-                            : 
-                            `<div style="display: flex; align-items: center; gap: 0.5rem; background: #f1f5f9; width: fit-content; border-radius: 6px; padding: 2px;">
+                        ${isFixedQty ?
+                    `<span style="font-size: 0.85rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 4px 12px; border-radius: 6px; display: inline-block;">Qty: 1</span>`
+                    :
+                    `<div style="display: flex; align-items: center; gap: 0.5rem; background: #f1f5f9; width: fit-content; border-radius: 6px; padding: 2px;">
                                 <button type="button" onclick="updateItemQty(${index}, -1)" style="border: none; background: white; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; color: #64748b; font-weight: bold;">-</button>
                                 <span style="font-size: 0.8rem; font-weight: 800; width: 20px; text-align: center;">${qty}</span>
                                 <button type="button" onclick="updateItemQty(${index}, 1)" style="border: none; background: white; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; color: #64748b; font-weight: bold;">+</button>
                             </div>`
-                        }
+                }
                     </div>
                 </div>
             `;
         });
-        
+
         container.innerHTML = html;
         window.updateBookingLabel();
         window.updateCheckoutSummary(baseTotal);
     };
 
-    window.updateItemQty = function(index, delta) {
+    window.updateItemQty = function (index, delta) {
         const cItem = window.cartItems[index];
         const backendList = window.backendMenuItems || [];
         const bItem = backendList.find(i => String(i.id) === String(cItem.id) && (cItem.type ? i.type === cItem.type : true));
         const minQty = (bItem && bItem.min_quantity) ? parseInt(bItem.min_quantity) : 1;
-        
+
         let newQty = (parseInt(cItem.qty) || minQty) + delta;
         if (newQty < minQty) newQty = minQty;
         if (newQty > 99) {
-            Swal.fire({icon: 'info', title: 'Limit Reached', text: 'Maximum quantity limit reached.', confirmButtonColor: '#10b981'});
+            Swal.fire({ icon: 'info', title: 'Limit Reached', text: 'Maximum quantity limit reached.', confirmButtonColor: '#10b981' });
             return;
         }
         window.cartItems[index].qty = newQty;
@@ -302,7 +302,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     choices.push(cb.value);
                 });
             }
-            
+
             // Derive price accurately (handling dynamic prices for variable weight/size)
             const backendList = window.backendMenuItems || [];
             const bItem = backendList.find(i => String(i.id) === String(id) && (cItem.type ? i.type === cItem.type : true)) || cItem;
@@ -328,14 +328,14 @@ document.addEventListener('DOMContentLoaded', function () {
     reqFields.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            el.addEventListener('input', function() {
+            el.addEventListener('input', function () {
                 if (this.value.trim() === '') {
                     showError(id, `err-${id}`);
                 } else {
                     clearError(id, `err-${id}`);
                 }
             });
-            el.addEventListener('change', function() {
+            el.addEventListener('change', function () {
                 if (this.value.trim() === '') {
                     showError(id, `err-${id}`);
                 } else {
@@ -349,14 +349,14 @@ document.addEventListener('DOMContentLoaded', function () {
     // Real-Time Inventory Validation
     const dateInputInv = document.getElementById('delivery_date');
     const timeInputInv = document.getElementById('delivery_time');
-    
+
     async function checkInventoryAvailability() {
         if (!dateInputInv || !timeInputInv) return;
         const dateVal = dateInputInv.value;
         const timeVal = timeInputInv.value;
-        
+
         if (!dateVal || !timeVal || window.cartItems.length === 0) return;
-        
+
         const invErrId = 'err-inventory';
         let errEl = document.getElementById(invErrId);
         if (!errEl) {
@@ -379,7 +379,7 @@ document.addEventListener('DOMContentLoaded', function () {
             timeInputInv.classList.remove('is-invalid');
             window.inventoryConflict = false;
         }
-        
+
         try {
             const res = await fetch('/customer/api/check-inventory', {
                 method: 'POST',
@@ -392,7 +392,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
             });
             const data = await res.json();
-            
+
             const invErrId = 'err-inventory';
             let errEl = document.getElementById(invErrId);
             if (!errEl) {
@@ -402,7 +402,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Append under time
                 timeInputInv.parentNode.appendChild(errEl);
             }
-            
+
             if (data.status === 'error') {
                 errEl.innerText = data.error_text;
                 errEl.style.display = 'block';
@@ -420,7 +420,7 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error("Inventory check failed", e);
         }
     }
-    
+
     if (dateInputInv) dateInputInv.addEventListener('change', checkInventoryAvailability);
     if (timeInputInv) timeInputInv.addEventListener('change', checkInventoryAvailability);
 
@@ -442,7 +442,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 return;
             }
-            
+
             // If on Step 1 and KYC is required, save draft booking and redirect to shared KYC system
             if (window.currentScreen === 1 && n === 2 && window.requiresKycStep) {
                 const sidebarBtn = document.getElementById('sidebar-next-btn');
@@ -527,7 +527,7 @@ document.addEventListener('DOMContentLoaded', function () {
         window.currentScreen = n;
 
         if (n === window.paymentStep) populateReview();
-        
+
         const sidebarBtn = document.getElementById('sidebar-next-btn');
         if (sidebarBtn) {
             if (n === 1) {
@@ -570,7 +570,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const required = ['full_name', 'contact_number', 'delivery_date', 'delivery_time'];
             if (document.getElementById('pullout_time')) required.push('pullout_time');
             if (document.getElementById('event_duration')) required.push('event_duration');
-            
+
             if (fulfillment === 'delivery') {
                 const editSection = document.getElementById('address-edit-section');
                 if (editSection && editSection.style.display !== 'none') {
@@ -603,7 +603,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (document.getElementById('err-delivery_date') && document.getElementById('err-delivery_date').classList.contains('show')) {
                 isValid = false;
             }
-            
+
             const pTime = document.getElementById('pullout_time');
             if (pTime && pTime.value) {
                 if (pTime.value < earliestStart || pTime.value > latestEnd) {
@@ -622,18 +622,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     isValid = false;
                 }
             }
-            
+
             const phone = document.getElementById('contact_number').value.replace(/\D/g, '');
             if ((phone.length !== 11 || !phone.startsWith('09')) && phone.length > 0) {
                 showError('contact_number', 'err-contact_number');
                 isValid = false;
             }
         }
-        
+
         if (window.inventoryConflict) {
             isValid = false;
         }
-        
+
         if (window.outOfCoverageReject) {
             isValid = false;
             Swal.fire({
@@ -650,9 +650,9 @@ document.addEventListener('DOMContentLoaded', function () {
             if (firstError) {
                 firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 if (firstError.tagName === 'INPUT' || firstError.tagName === 'SELECT') {
-                    firstError.focus({preventScroll: true});
+                    firstError.focus({ preventScroll: true });
                 } else if (firstError.previousElementSibling && firstError.previousElementSibling.tagName === 'INPUT') {
-                    firstError.previousElementSibling.focus({preventScroll: true});
+                    firstError.previousElementSibling.focus({ preventScroll: true });
                 }
             }
         }
@@ -678,11 +678,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const required = ['full_name', 'delivery_date', 'delivery_time'];
         if (document.getElementById('pullout_time')) required.push('pullout_time');
         if (document.getElementById('event_duration')) required.push('event_duration');
-        
+
         required.forEach(id => {
             const el = document.getElementById(id);
             if (el) {
-                el.addEventListener('input', function() {
+                el.addEventListener('input', function () {
                     if (!this.value.trim()) {
                         showError(id, `err-${id}`);
                     } else {
@@ -692,7 +692,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                     }
                 });
-                el.addEventListener('change', function() {
+                el.addEventListener('change', function () {
                     if (id === 'delivery_date' || id === 'delivery_time') {
                         runDateTimeValidation();
                     }
@@ -702,7 +702,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const phone = document.getElementById('contact_number');
         if (phone) {
-            phone.addEventListener('input', function() {
+            phone.addEventListener('input', function () {
                 const val = this.value.replace(/\D/g, '');
                 if (val.length === 0 || val.length !== 11 || !val.startsWith('09')) {
                     showError('contact_number', 'err-contact_number');
@@ -714,7 +714,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const brgy = document.getElementById('brgy_select');
         if (brgy) {
-            brgy.addEventListener('change', function() {
+            brgy.addEventListener('change', function () {
                 const fulfillment = document.querySelector('input[name="fulfillment"]:checked').value;
                 if (fulfillment === 'delivery' && !this.value) {
                     showError('brgy_select', 'err-brgy_select');
@@ -728,9 +728,9 @@ document.addEventListener('DOMContentLoaded', function () {
     function runDateTimeValidation() {
         const dTime = document.getElementById('delivery_time');
         const dDate = document.getElementById('delivery_date');
-        
+
         if (!dDate || !dTime) return;
-        
+
         // Only run full complex validation if both have values (to prevent premature errors)
         if (!dTime.value) return;
 
@@ -738,10 +738,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const er = window.catererRules.equipment_rules || {};
         const sr = window.catererRules.service_rules || {};
         const rules = window.isRentalOnly ? er : (window.isServiceOnly ? sr : fr);
-        
+
         let earliestStart = rules.earliest_delivery || rules.earliest_start || '06:00';
         let latestEnd = rules.latest_pullout || rules.latest_end || '21:00';
-        
+
         let timeIsValid = true;
 
         if (dTime.value < earliestStart) {
@@ -779,11 +779,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const now = new Date();
             const minAllowedTime = new Date(now.getTime() + (exactLeadHours * 60 * 60 * 1000));
-            
+
             if (selectedDateTime < minAllowedTime) {
                 const errEl = document.getElementById('err-delivery_time');
                 if (errEl) {
-                    errEl.innerText = `Prep notice is ${exactLeadHours} hrs. Earliest time is ${minAllowedTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}.`;
+                    errEl.innerText = `Prep notice is ${exactLeadHours} hrs. Earliest time is ${minAllowedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`;
                     errEl.style.color = '#ef4444';
                     errEl.style.fontSize = '0.75rem';
                     errEl.style.fontWeight = '600';
@@ -799,11 +799,11 @@ document.addEventListener('DOMContentLoaded', function () {
     function bindDatePicker() {
         const dateInput = document.getElementById('delivery_date');
         if (!dateInput) return;
-        
+
         const fr = window.catererRules.food_rules || {};
         const er = window.catererRules.equipment_rules || {};
         const sr = window.catererRules.service_rules || {};
-        
+
         let leadTime = 1;
         if (window.isRentalOnly) {
             leadTime = Math.ceil((er.lead_time_hours || 24) / 24);
@@ -815,7 +815,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const rules = window.isRentalOnly ? er : (window.isServiceOnly ? sr : fr);
         const maxAdvance = parseInt(window.catererRules.booking_rules?.max_advance_booking_days) || 365;
-        
+
         const today = new Date();
         today.setDate(today.getDate() + leadTime);
         const yyyy = today.getFullYear();
@@ -823,7 +823,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const dd = String(today.getDate()).padStart(2, '0');
         const minDate = `${yyyy}-${mm}-${dd}`;
         dateInput.setAttribute('min', minDate);
-        
+
         const maxObj = new Date();
         maxObj.setDate(maxObj.getDate() + maxAdvance);
         const maxY = maxObj.getFullYear();
@@ -831,8 +831,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const maxD = String(maxObj.getDate()).padStart(2, '0');
         const maxDate = `${maxY}-${maxM}-${maxD}`;
         dateInput.setAttribute('max', maxDate);
-        
-        dateInput.addEventListener('change', function() {
+
+        dateInput.addEventListener('change', function () {
             if (this.value && this.value.length === 10) {
                 if (this.value < minDate) {
                     const errEl = document.getElementById('err-delivery_date');
@@ -878,17 +878,17 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
         if (!valid) {
-            Swal.fire({icon: 'warning', title: 'Incomplete Selection', text: 'Please complete your platter selections.', confirmButtonColor: '#10b981'});
+            Swal.fire({ icon: 'warning', title: 'Incomplete Selection', text: 'Please complete your platter selections.', confirmButtonColor: '#10b981' });
         }
         return valid;
     }
 
 
     // --- SUMMARY & FULFILLMENT ---
-    window.updateCheckoutSummary = function(calculatedBaseTotal = null) {
+    window.updateCheckoutSummary = function (calculatedBaseTotal = null) {
         let base = calculatedBaseTotal;
         let securityDepositTotal = 0;
-        
+
         if (base === null) {
             base = 0;
             window.cartItems.forEach(cItem => {
@@ -899,7 +899,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 base += (itemPrice * qty);
             });
         }
-        
+
         // Always recalculate deposit
         window.cartItems.forEach(cItem => {
             const backendList = window.backendMenuItems || [];
@@ -913,12 +913,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         });
-        
+
         window.currentSecurityDeposit = securityDepositTotal;
-        
+
         const sumBaseEl = document.getElementById('sum-base-total');
         if (sumBaseEl) sumBaseEl.innerText = '₱' + base.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        
+
         const depositRow = document.getElementById('deposit-row');
         const sumDepositEl = document.getElementById('sum-deposit-fee');
         if (depositRow && sumDepositEl) {
@@ -929,7 +929,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 depositRow.style.display = 'none';
             }
         }
-        
+
         const fulfillInput = document.querySelector('input[name="fulfillment"]:checked');
         const fulfillment = fulfillInput ? fulfillInput.value : 'delivery';
         const isPickup = fulfillment === 'pickup';
@@ -965,12 +965,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (grandEl) grandEl.innerText = '₱' + total.toLocaleString(undefined, { minimumFractionDigits: 2 });
     };
 
-    window.updateFulfillment = function(el) {
+    window.updateFulfillment = function (el) {
         const selector = el.closest('.fulfillment-selector');
         const opts = selector.querySelectorAll('.fulfillment-opt');
         opts.forEach(o => o.classList.remove('active'));
         el.parentElement.classList.add('active');
-        
+
         const addressSection = document.getElementById('address-section');
         const lblDelDate = document.getElementById('lbl_delivery_date');
         const lblDelTime = document.getElementById('lbl_delivery_time');
@@ -981,10 +981,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (addressSection) addressSection.style.display = 'none';
             if (lblDelDate) lblDelDate.innerText = 'Pickup Date';
             if (lblDelTime) lblDelTime.innerText = 'Pickup Time';
-            
+
             const pickupInfo = document.getElementById('pickup-address-info');
             if (pickupInfo) pickupInfo.style.display = 'block';
-            
+
             updateCheckoutSummary();
         } else {
             if (window.isServiceOnly) {
@@ -994,11 +994,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (addressSection) addressSection.style.display = 'block';
             if (lblDelDate) lblDelDate.innerText = window.isServiceOnly ? 'Event Date' : (window.isRentalOnly ? 'Delivery & Setup Date' : 'Delivery Date');
             if (lblDelTime) lblDelTime.innerText = window.isServiceOnly ? 'Call Time' : (window.isRentalOnly ? 'Setup Time' : 'Delivery Time');
-            
+
             const pickupInfo = document.getElementById('pickup-address-info');
             if (pickupInfo) pickupInfo.style.display = 'none';
-            
-            if (typeof window.syncAddress === 'function') window.syncAddress(); 
+
+            if (typeof window.syncAddress === 'function') window.syncAddress();
         }
     };
 
@@ -1029,24 +1029,24 @@ document.addEventListener('DOMContentLoaded', function () {
             timeStr = 'TBD';
         }
         document.getElementById('rev-datetime').innerText = `${dateStr} @ ${timeStr}`;
-        
+
         const mode = form.fulfillment.value;
         document.getElementById('rev-location').innerText = mode === 'pickup' ? (window.catererAddress || 'STORE PICKUP') : document.getElementById('address').value;
     }
 
     // --- ADDRESS SYNC & DYNAMIC FEE ---
-    
+
     // PSGC Initial Load
     async function initPSGC() {
         const provSelect = document.getElementById('prov_select');
         if (!provSelect) return;
-        
+
         provSelect.innerHTML = '<option value="" disabled selected hidden>-- Select Province --</option>';
-        
+
         const allowedProvinces = [
             { code: "043400000", name: "Laguna" }
         ];
-        
+
         allowedProvinces.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.code;
@@ -1063,7 +1063,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (window.userSavedAddress.province) {
                 let found = false;
                 Array.from(provSelect.options).forEach(opt => {
-                    if (opt.text.toLowerCase() === window.userSavedAddress.province.toLowerCase() || 
+                    if (opt.text.toLowerCase() === window.userSavedAddress.province.toLowerCase() ||
                         opt.value === window.userSavedAddress.province) {
                         opt.selected = true;
                         found = true;
@@ -1075,8 +1075,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     }
-    
-    window.showEditAddress = function() {
+
+    window.showEditAddress = function () {
         document.getElementById('address-display-section').style.display = 'none';
         document.getElementById('address-edit-section').style.display = 'block';
         window.addressEditing = true;
@@ -1089,11 +1089,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (typeof window.syncAddress === 'function') window.syncAddress();
     };
 
-    window.cancelEditAddress = function() {
+    window.cancelEditAddress = function () {
         document.getElementById('address-display-section').style.display = 'flex';
         document.getElementById('address-edit-section').style.display = 'none';
         window.addressEditing = false;
-        
+
         // Restore hidden address from Jinja saved vars
         document.getElementById('address').value = window.originalSavedAddressString || '';
         document.getElementById('hidden_province').value = window.userSavedAddress.province || '';
@@ -1101,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('hidden_barangay').value = window.userSavedAddress.brgy || '';
     };
 
-    window.saveEditAddress = function() {
+    window.saveEditAddress = function () {
         const provSelect = document.getElementById('prov_select');
         const citySelect = document.getElementById('city_select');
         const brgySelect = document.getElementById('brgy_select');
@@ -1118,16 +1118,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Force a final sync
         if (typeof window.syncAddress === 'function') window.syncAddress();
-        
+
         // Update the display string and show display section
         const hiddenAddress = document.getElementById('address').value;
         const displayEl = document.getElementById('saved-address-text');
         if (displayEl) displayEl.innerText = hiddenAddress.replace(', Philippines', '');
-        
+
         document.getElementById('address-display-section').style.display = 'flex';
         document.getElementById('address-edit-section').style.display = 'none';
         window.addressEditing = false;
-        
+
         // Save the current as the new original so canceling next time reverts to this
         window.originalSavedAddressString = hiddenAddress;
         window.userSavedAddress.province = document.getElementById('hidden_province').value;
@@ -1135,15 +1135,15 @@ document.addEventListener('DOMContentLoaded', function () {
         window.userSavedAddress.brgy = document.getElementById('hidden_barangay').value;
     };
 
-    window.handleProvinceChange = async function() {
+    window.handleProvinceChange = async function () {
         const provSelect = document.getElementById('prov_select');
         const code = provSelect.value;
         const name = provSelect.options[provSelect.selectedIndex]?.text || '';
         document.getElementById('hidden_province').value = name;
-        
+
         const citySelect = document.getElementById('city_select');
         const brgySelect = document.getElementById('brgy_select');
-        
+
         citySelect.innerHTML = '<option value="">-- Select Municipality --</option>';
         brgySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
         citySelect.disabled = true;
@@ -1158,16 +1158,16 @@ document.addEventListener('DOMContentLoaded', function () {
             citySelect.innerHTML = '<option value="">Loading...</option>';
             let endpoint = `https://psgc.gitlab.io/api/provinces/${code}/cities-municipalities/`;
             if (code === "130000000") endpoint = `https://psgc.gitlab.io/api/regions/${code}/cities-municipalities/`;
-            
+
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);
 
             const res = await fetch(endpoint, { signal: controller.signal });
             clearTimeout(timeoutId);
-            
+
             if (!res.ok) throw new Error("API Error");
             const cities = await res.json();
-            
+
             citySelect.innerHTML = '<option value="">-- Select Municipality --</option>';
             cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
                 const opt = document.createElement('option');
@@ -1176,12 +1176,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 citySelect.appendChild(opt);
             });
             citySelect.disabled = false;
-            
+
             // Autofill city
             if (window.userSavedAddress && window.userSavedAddress.city) {
                 let found = false;
                 Array.from(citySelect.options).forEach(opt => {
-                    if (opt.text.toLowerCase() === window.userSavedAddress.city.toLowerCase() || 
+                    if (opt.text.toLowerCase() === window.userSavedAddress.city.toLowerCase() ||
                         opt.value === window.userSavedAddress.city) {
                         opt.selected = true;
                         found = true;
@@ -1192,7 +1192,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     await window.handleCityChange();
                 }
             }
-        } catch (e) { 
+        } catch (e) {
             console.warn('Failed to load cities:', e);
             citySelect.innerHTML = '<option value="">-- Failed to load. Please refresh --</option>';
             citySelect.disabled = true;
@@ -1200,12 +1200,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (typeof window.syncAddress === 'function') window.syncAddress();
     };
 
-    window.handleCityChange = async function() {
+    window.handleCityChange = async function () {
         const citySelect = document.getElementById('city_select');
         const code = citySelect.value;
         const name = citySelect.options[citySelect.selectedIndex]?.text || '';
         document.getElementById('hidden_municipality').value = name;
-        
+
         const brgySelect = document.getElementById('brgy_select');
         brgySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
         brgySelect.disabled = true;
@@ -1217,16 +1217,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             brgySelect.innerHTML = '<option value="">Loading...</option>';
-            
+
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
-            
+
             const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${code}/barangays/`, { signal: controller.signal });
             clearTimeout(timeoutId);
-            
+
             if (!res.ok) throw new Error("API Error");
             const brgys = await res.json();
-            
+
             brgySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
             brgys.sort((a, b) => a.name.localeCompare(b.name)).forEach(b => {
                 const opt = document.createElement('option');
@@ -1235,12 +1235,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 brgySelect.appendChild(opt);
             });
             brgySelect.disabled = false;
-            
+
             // Autofill brgy
             if (window.userSavedAddress && window.userSavedAddress.brgy) {
                 let found = false;
                 Array.from(brgySelect.options).forEach(opt => {
-                    if (opt.text.toLowerCase() === window.userSavedAddress.brgy.toLowerCase() || 
+                    if (opt.text.toLowerCase() === window.userSavedAddress.brgy.toLowerCase() ||
                         opt.value === window.userSavedAddress.brgy) {
                         opt.selected = true;
                         found = true;
@@ -1251,7 +1251,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (typeof window.syncAddress === 'function') window.syncAddress();
                 }
             }
-        } catch (e) { 
+        } catch (e) {
             console.error('Failed to load barangays:', e);
             brgySelect.innerHTML = '<option value="">-- Failed to load. Please refresh --</option>';
             brgySelect.disabled = true;
@@ -1259,7 +1259,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (typeof window.syncAddress === 'function') window.syncAddress();
     };
 
-    window.syncAddress = async function() {
+    window.syncAddress = async function () {
         const fulfillInput = document.querySelector('input[name="fulfillment"]:checked');
         const fulfillment = fulfillInput ? fulfillInput.value : '';
 
@@ -1310,22 +1310,22 @@ document.addEventListener('DOMContentLoaded', function () {
             updateCheckoutSummary();
             return;
         }
-        
+
         const provEl = document.getElementById('prov_select');
         const cityEl = document.getElementById('city_select');
         const brgyEl = document.getElementById('brgy_select');
-        
+
         const prov = provEl ? (provEl.tagName === 'SELECT' ? (provEl.options[provEl.selectedIndex]?.text || '') : provEl.value) : '';
         const city = cityEl ? (cityEl.tagName === 'SELECT' ? (cityEl.options[cityEl.selectedIndex]?.text || '') : cityEl.value) : '';
         const brgy = brgyEl ? (brgyEl.tagName === 'SELECT' ? (brgyEl.options[brgyEl.selectedIndex]?.text || '') : brgyEl.value) : '';
         const street = document.getElementById('street_input') ? document.getElementById('street_input').value : '';
-        
+
         const hiddenInput = document.getElementById('address');
         const fulfillInput = document.querySelector('input[name="fulfillment"]:checked');
         const fulfillment = fulfillInput ? fulfillInput.value : '';
-        
+
         if (brgyEl) document.getElementById('hidden_barangay').value = brgy;
-        
+
         const addressParts = [];
         if (street) addressParts.push(street);
         if (brgy && !brgy.includes('--')) addressParts.push("Brgy. " + brgy);
@@ -1334,7 +1334,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (addressParts.length > 0) {
             hiddenInput.value = addressParts.join(', ') + ', Philippines';
-            
+
             if (fulfillment === 'delivery' && city && !city.includes('--') && prov && !prov.includes('--')) {
                 // Fetch dynamic fee
                 try {
@@ -1380,32 +1380,32 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.isManualQuote = false;
             }
         }
-        
+
         if (window.isManualQuote) {
-             const feeEl = document.getElementById('sum-delivery-fee');
-             if (feeEl) feeEl.innerText = 'TBD';
+            const feeEl = document.getElementById('sum-delivery-fee');
+            if (feeEl) feeEl.innerText = 'TBD';
         }
-        
+
         updateCheckoutSummary();
     };
 
     // --- PAYMENT SELECTION ---
-    window.selectPayment = function(method, el) {
+    window.selectPayment = function (method, el) {
         document.getElementById('payment_method').value = method;
         document.querySelectorAll('.payment-opt').forEach(opt => opt.classList.remove('active'));
         el.classList.add('active');
-        
+
         // Removed modal display logic - user uploads proof on dedicated page
         console.log("[CHECKOUT] Payment Method Selected:", method);
     };
 
-    window.closePaymentModal = function() {
+    window.closePaymentModal = function () {
         const overlay = document.getElementById('paymentModalOverlay');
         if (overlay) overlay.style.display = 'none';
     };
 
     // --- FINAL SUBMIT ---
-    window.submitAtaCarteOrder = async function() {
+    window.submitAtaCarteOrder = async function () {
         // Terms & Conditions Validation
         const termsCheckbox = document.getElementById('alacarteTermsAgreement');
         if (termsCheckbox && !termsCheckbox.checked) {
@@ -1419,54 +1419,54 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const paymentMethod = document.getElementById('payment_method').value;
-        
+
         if (paymentMethod !== 'CASH') {
             window.openPaymentModal(paymentMethod);
             return;
         }
-        
+
         await window.finalSubmitOrder();
     };
-    
-    window.openPaymentModal = function(method) {
+
+    window.openPaymentModal = function (method) {
         document.getElementById('paymentModalOverlay').style.display = 'flex';
         document.getElementById('modalContentGCASH').style.display = 'none';
         document.getElementById('modalContentMAYA').style.display = 'none';
         document.getElementById('modalContentBANK').style.display = 'none';
-        
+
         // Update AI modal amount
         const amountEl = document.getElementById('ai-modal-amount');
-        if(amountEl && window.lastCalculatedTotal) {
-            amountEl.innerText = window.lastCalculatedTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        if (amountEl && window.lastCalculatedTotal) {
+            amountEl.innerText = window.lastCalculatedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
-        
+
         const contentEl = document.getElementById('modalContent' + method);
-        if(contentEl) contentEl.style.display = 'block';
+        if (contentEl) contentEl.style.display = 'block';
     };
-    
-    window.closePaymentModal = function() {
+
+    window.closePaymentModal = function () {
         document.getElementById('paymentModalOverlay').style.display = 'none';
     };
-    
-    window.selectPayment = function(method, element) {
+
+    window.selectPayment = function (method, element) {
         document.querySelectorAll('.payment-opt').forEach(opt => opt.classList.remove('active'));
         if (element) {
             element.classList.add('active');
         }
         document.getElementById('payment_method').value = method;
-        
+
         if (method !== 'CASH') {
             window.openPaymentModal(method);
         }
     };
-    
-    window.finalSubmitOrder = async function() {
+
+    window.finalSubmitOrder = async function () {
         const paymentMethod = document.getElementById('payment_method').value;
         const proofInput = document.getElementById('proofImageInput');
-        
+
         if (paymentMethod !== 'CASH' && proofInput && proofInput.files.length === 0) {
             const err = document.getElementById('uploadErrorMsg');
-            if(err) {
+            if (err) {
                 err.style.display = 'block';
                 err.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Please select a receipt image to upload.';
             }
@@ -1500,25 +1500,25 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('cart_data', buildCartData());
         formData.append('total_amount', calculateTotal());
         formData.append('security_deposit_amount', window.currentSecurityDeposit || 0);
-        
+
         // Add payment proof from the Modal
         if (proofInput && proofInput.files.length > 0) {
             formData.append('payment_proof', proofInput.files[0]);
         }
-        
+
         const modalBtn = document.getElementById('submit-payment-btn');
         if (modalBtn) {
             modalBtn.disabled = true;
             modalBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating Receipt with AI...';
             modalBtn.style.opacity = '0.8';
         }
-        
+
         try {
             const res = await fetch('/bookings/alacarte/checkout/submit', {
                 method: 'POST',
                 body: formData
             });
-            
+
             if (!res.ok) {
                 let errorMsg = `Server error: ${res.status}`;
                 try {
@@ -1526,30 +1526,30 @@ document.addEventListener('DOMContentLoaded', function () {
                     try {
                         const json = JSON.parse(text);
                         errorMsg = json.message || json.detail || errorMsg;
-                    } catch(e) {
+                    } catch (e) {
                         errorMsg = "Server encountered an error processing the request.";
                     }
-                } catch(e) {}
+                } catch (e) { }
                 throw new Error(errorMsg);
             }
 
             const data = await res.json();
             if (data.success) {
-                localStorage.removeItem(sessionKey); 
+                localStorage.removeItem(sessionKey);
                 localStorage.removeItem('alacarte_cart_' + window.catererId);
                 sessionStorage.removeItem('alacarte_cart_' + window.catererId);
                 window.closePaymentModal();
-                
+
                 const invBtn = document.getElementById('download-invoice-btn');
                 if (invBtn && data.booking_id) {
                     invBtn.href = `/customer/booking/${data.booking_id}/invoice?download=1`;
                 }
-                
+
                 nextScreen(window.paymentStep + 1, true); // Go to success screen! No redirect!
             } else {
                 if (paymentMethod !== 'CASH') {
                     const err = document.getElementById('uploadErrorMsg');
-                    if(err) {
+                    if (err) {
                         err.style.display = 'block';
                         err.innerHTML = `<i class="fas fa-robot"></i> ${data.message}`;
                     }
@@ -1560,13 +1560,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 } else {
                     const errMsg = data.message || "Unknown Error";
-                    Swal.fire({icon: 'error', title: 'Checkout Failed', text: errMsg, confirmButtonColor: '#10b981'});
+                    Swal.fire({ icon: 'error', title: 'Checkout Failed', text: errMsg, confirmButtonColor: '#10b981' });
                 }
                 btn.disabled = false;
                 loader.style.display = 'none';
             }
         } catch (e) {
-            Swal.fire({icon: 'error', title: 'Submission Error', text: e.message || 'A network error occurred.', confirmButtonColor: '#10b981'});
+            Swal.fire({ icon: 'error', title: 'Submission Error', text: e.message || 'A network error occurred.', confirmButtonColor: '#10b981' });
             btn.disabled = false;
             loader.style.display = 'none';
             if (modalBtn) {
@@ -1587,13 +1587,13 @@ document.addEventListener('DOMContentLoaded', function () {
 // Universal Scheduling Validation
 function validateSchedulingRules() {
     if (!window.catererRules) return true;
-    
+
     let isValid = true;
     const rules = window.catererRules;
-    
+
     // Clear previous errors
     document.querySelectorAll('.schedule-rule-error').forEach(e => e.remove());
-    
+
     const showError = (inputId, message) => {
         const input = document.getElementById(inputId);
         if (input) {
@@ -1608,7 +1608,7 @@ function validateSchedulingRules() {
             isValid = false;
         }
     };
-    
+
     const resetError = (inputId) => {
         const input = document.getElementById(inputId);
         if (input) input.style.borderColor = '';
@@ -1618,7 +1618,7 @@ function validateSchedulingRules() {
     const pulloutTimeInput = document.getElementById('pullout_time');
     const eventDurationInput = document.getElementById('event_duration');
     const deliveryDateInput = document.getElementById('delivery_date');
-    
+
     const format12Hour = (timeStr) => {
         if (!timeStr) return '';
         let [h, m] = timeStr.split(':');
@@ -1632,10 +1632,10 @@ function validateSchedulingRules() {
         resetError('delivery_time');
         const dt = deliveryTimeInput.value;
         const bh = rules.business_hours || {};
-        
+
         if (bh.open_time && dt < bh.open_time) showError('delivery_time', `Time is before operating hours (${format12Hour(bh.open_time)})`);
         if (bh.close_time && dt > bh.close_time) showError('delivery_time', `Time is after operating hours (${format12Hour(bh.close_time)})`);
-        
+
         if (deliveryDateInput && deliveryDateInput.value) {
             // Validate operating days
             if (bh.operating_days) {
@@ -1658,7 +1658,7 @@ function validateSchedulingRules() {
                     showError('delivery_date', `Requires ${rules.food_rules.lead_time_hours} hours lead time.`);
                 }
             }
-            
+
             // 3-Month Max Validation
             const selectedDateObj = new Date(deliveryDateInput.value);
             const maxDateObj = new Date();
@@ -1669,7 +1669,7 @@ function validateSchedulingRules() {
             }
         }
     }
-    
+
     if (pulloutTimeInput && pulloutTimeInput.value && rules.equipment_rules) {
         resetError('pullout_time');
         const er = rules.equipment_rules;
@@ -1677,13 +1677,13 @@ function validateSchedulingRules() {
             const d1 = new Date(`2000-01-01T${deliveryTimeInput.value}`);
             let d2 = new Date(`2000-01-01T${pulloutTimeInput.value}`);
             if (d2 < d1) d2.setDate(d2.getDate() + 1); // Over-night assumption
-            
+
             const diffHours = (d2 - d1) / (1000 * 60 * 60);
             if (er.min_rental_hours && diffHours < er.min_rental_hours) showError('pullout_time', `Minimum rental is ${er.min_rental_hours} hours`);
             if (er.max_rental_hours && diffHours > er.max_rental_hours) showError('pullout_time', `Maximum rental is ${er.max_rental_hours} hours`);
         }
     }
-    
+
     if (eventDurationInput && eventDurationInput.value && rules.service_rules) {
         resetError('event_duration');
         const sr = rules.service_rules;

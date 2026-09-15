@@ -3,9 +3,11 @@
 {% set is_rental = true if equipment_items else false %}
 {% set has_services = true if service_items else false %}
 {% set has_food = true if menu_items else false %}
-{% set is_mixed = true if ((has_food and is_rental) or (has_food and has_services) or (is_rental and has_services)) else false %}
+{% set is_mixed = true if ((has_food and is_rental) or (has_food and has_services) or (is_rental and has_services)) else
+false %}
 
-{% block wizard_title %}{{ 'Checkout Details' if is_mixed else ('Equipment Rental Checkout' if is_rental else 'A La Carte Checkout') }}{% endblock %}
+{% block wizard_title %}{{ 'Checkout Details' if is_mixed else ('Equipment Rental Checkout' if is_rental else 'A La
+Carte Checkout') }}{% endblock %}
 
 {% block step_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}">
@@ -17,7 +19,7 @@
         --checkout-primary-hover: #E66000;
         --checkout-primary-soft: rgba(255, 107, 0, 0.1);
         --checkout-bg: #f8fafc;
-        --card-shadow: 0 10px 40px rgba(0,0,0,0.04);
+        --card-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
         --border-light: #f1f5f9;
         --text-slate: #1e293b;
         --text-muted: #64748b;
@@ -116,6 +118,7 @@
         gap: 1rem;
         margin-bottom: 2rem;
     }
+
     @media (max-width: 768px) {
         .fulfillment-selector {
             grid-template-columns: 1fr;
@@ -135,28 +138,67 @@
         position: relative;
     }
 
-    .fulfillment-opt:hover { border-color: #cbd5e1; }
+    .fulfillment-opt:hover {
+        border-color: #cbd5e1;
+    }
+
     .fulfillment-opt.active {
         border-color: var(--checkout-primary);
         background: rgba(255, 107, 0, 0.03);
     }
 
     .fulfillment-icon {
-        width: 44px; height: 44px;
-        background: #f8fafc; border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        color: var(--text-muted); font-size: 1.2rem; transition: all 0.3s;
+        width: 44px;
+        height: 44px;
+        background: #f8fafc;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        font-size: 1.2rem;
+        transition: all 0.3s;
     }
 
-    .fulfillment-opt.active .fulfillment-icon { background: var(--checkout-primary); color: #ffffff; }
-    .fulfillment-details { flex: 1; }
-    .fulfillment-name { font-weight: 800; font-size: 0.95rem; color: var(--text-slate); margin-bottom: 0.15rem; }
-    .fulfillment-hint { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
-    .fulfillment-check {
-        width: 24px; height: 24px; border: 2px solid #e2e8f0; border-radius: 50%;
-        display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 0.7rem; transition: all 0.2s;
+    .fulfillment-opt.active .fulfillment-icon {
+        background: var(--checkout-primary);
+        color: #ffffff;
     }
-    .fulfillment-opt.active .fulfillment-check { background: var(--checkout-primary); border-color: var(--checkout-primary); }
+
+    .fulfillment-details {
+        flex: 1;
+    }
+
+    .fulfillment-name {
+        font-weight: 800;
+        font-size: 0.95rem;
+        color: var(--text-slate);
+        margin-bottom: 0.15rem;
+    }
+
+    .fulfillment-hint {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+
+    .fulfillment-check {
+        width: 24px;
+        height: 24px;
+        border: 2px solid #e2e8f0;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        font-size: 0.7rem;
+        transition: all 0.2s;
+    }
+
+    .fulfillment-opt.active .fulfillment-check {
+        background: var(--checkout-primary);
+        border-color: var(--checkout-primary);
+    }
 
     /* Form & Sections */
     .form-group label {
@@ -179,47 +221,170 @@
         font-weight: normal;
     }
 
-    .form-input:focus { border-color: var(--checkout-primary); background: #fff; outline: none; }
+    .form-input:focus {
+        border-color: var(--checkout-primary);
+        background: #fff;
+        outline: none;
+    }
 
     /* Bill Summary Sidebar */
     .bill-item-wrap {
-        display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1.5rem;
-        padding-bottom: 1.5rem; border-bottom: 1px dashed var(--border-light);
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px dashed var(--border-light);
     }
 
-    .bill-item-thumb { width: 64px; height: 64px; border-radius: 1rem; overflow: hidden; border: 1px solid #e2e8f0; }
-    .bill-item-thumb img { width: 100%; height: 100%; object-fit: cover; }
-    .bill-item-info h4 { font-size: 0.9rem; font-weight: 800; color: var(--text-slate); margin: 0 0 0.25rem; text-transform: uppercase; }
-    .bill-item-info p { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin: 0; }
+    .bill-item-thumb {
+        width: 64px;
+        height: 64px;
+        border-radius: 1rem;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+    }
 
-    .bill-row { display: flex; justify-content: space-between; margin-bottom: 0.85rem; font-size: 0.9rem; font-weight: 600; color: var(--text-muted); }
-    .bill-divider { height: 1px; background: var(--border-light); margin: 1.5rem 0; }
-    .bill-total-impact { text-align: right; margin-bottom: 2rem; }
-    .bill-total-label { font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem; display: block; }
-    .bill-total-value { font-size: 2.25rem; font-weight: 950; color: var(--checkout-primary); letter-spacing: -0.04em; line-height: 1; }
+    .bill-item-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .bill-item-info h4 {
+        font-size: 0.9rem;
+        font-weight: 800;
+        color: var(--text-slate);
+        margin: 0 0 0.25rem;
+        text-transform: uppercase;
+    }
+
+    .bill-item-info p {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin: 0;
+    }
+
+    .bill-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.85rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+
+    .bill-divider {
+        height: 1px;
+        background: var(--border-light);
+        margin: 1.5rem 0;
+    }
+
+    .bill-total-impact {
+        text-align: right;
+        margin-bottom: 2rem;
+    }
+
+    .bill-total-label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .bill-total-value {
+        font-size: 2.25rem;
+        font-weight: 950;
+        color: var(--checkout-primary);
+        letter-spacing: -0.04em;
+        line-height: 1;
+    }
 
     .btn-secure-checkout {
-        width: 100%; background: var(--text-slate); padding: 1rem; border-radius: 1rem;
-        display: flex; align-items: center; justify-content: center; gap: 0.75rem;
-        color: #ffffff; font-weight: 800; font-size: 0.85rem; text-transform: uppercase; border: none; cursor: pointer;
+        width: 100%;
+        background: var(--text-slate);
+        padding: 1rem;
+        border-radius: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        color: #ffffff;
+        font-weight: 800;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        border: none;
+        cursor: pointer;
     }
 
     /* KYC Phase Styles */
-    .kyc-stepper-minimal { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 3rem; }
-    .step-node { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; opacity: 0.4; }
-    .step-node.active, .step-node.completed { opacity: 1; }
-    .node-icon { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
-    .step-node.active .node-icon { border-color: var(--checkout-primary); color: var(--checkout-primary); }
-    .step-node.completed .node-icon { background: #10b981; border-color: #10b981; color: white; }
-    .node-label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); }
+    .kyc-stepper-minimal {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 3rem;
+    }
+
+    .step-node {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        opacity: 0.4;
+    }
+
+    .step-node.active,
+    .step-node.completed {
+        opacity: 1;
+    }
+
+    .node-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 2px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+    }
+
+    .step-node.active .node-icon {
+        border-color: var(--checkout-primary);
+        color: var(--checkout-primary);
+    }
+
+    .step-node.completed .node-icon {
+        background: #10b981;
+        border-color: #10b981;
+        color: white;
+    }
+
+    .node-label {
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: var(--text-muted);
+    }
 
     .checkout-nav-box {
-        display: flex; justify-content: space-between; align-items: center;
-        margin-top: 1.5rem; padding: 0; border-radius: 0; 
-        border: none; background: transparent; box-shadow: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1.5rem;
+        padding: 0;
+        border-radius: 0;
+        border: none;
+        background: transparent;
+        box-shadow: none;
     }
-    
-    .btn-wizard-next, .btn-wizard-back {
+
+    .btn-wizard-next,
+    .btn-wizard-back {
         padding: 1rem;
         border-radius: 12px;
         font-weight: 800;
@@ -231,26 +396,47 @@
         border: none;
         cursor: pointer;
     }
+
     .btn-wizard-next {
         background: var(--checkout-primary);
         color: white;
     }
+
     .btn-wizard-next:hover {
         background: var(--checkout-primary-hover);
         transform: translateY(-2px);
     }
+
     .btn-wizard-back {
         background: white;
         border: 1px solid var(--border-light);
         color: var(--text-slate);
     }
+
     .btn-wizard-back:hover {
         background: #f8fafc;
     }
 
-    .checkout-screen { display: none; }
-    .checkout-screen.active { display: block; animation: slideUpFade 0.5s ease-out forwards; }
-    @keyframes slideUpFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    .checkout-screen {
+        display: none;
+    }
+
+    .checkout-screen.active {
+        display: block;
+        animation: slideUpFade 0.5s ease-out forwards;
+    }
+
+    @keyframes slideUpFade {
+        from {
+            opacity: 0;
+            transform: translateY(15px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 
     /* Payment Selector Premium */
     .payment-grid {
@@ -275,7 +461,7 @@
     .payment-opt:hover {
         border-color: #cbd5e1;
         transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
     }
 
     .payment-opt.active {
@@ -342,6 +528,7 @@
         .checkout-grid {
             grid-template-columns: 1fr;
         }
+
         .bill-card-premium {
             position: static;
         }
@@ -350,12 +537,13 @@
 {% endblock %}
 
 {% block wizard_content %}
-    <div style="max-width: 100%;">
+<div style="max-width: 100%;">
     <!-- Stepper -->
     <div class="wizard-steps">
         <div class="step-item active" id="m-step-1">
             <div class="step-icon">1</div>
-            <div class="step-label">{{ 'Checkout Details' if is_mixed else ('Rental Details' if is_rental else 'Delivery') }}</div>
+            <div class="step-label">{{ 'Checkout Details' if is_mixed else ('Rental Details' if is_rental else
+                'Delivery') }}</div>
         </div>
         <div class="step-item" id="m-step-2">
             <div class="step-icon">2</div>
@@ -371,27 +559,29 @@
                     <div class="c-card-premium">
                         <div class="section-header-wrap">
                             <div class="section-icon-wrap">
-                                <i class="fas {% if is_mixed %}fa-box-open{% elif has_services and not has_food %}fa-map-marker-alt{% else %}fa-truck{% endif %}"></i>
+                                <i
+                                    class="fas {% if is_mixed %}fa-box-open{% elif has_services and not has_food %}fa-map-marker-alt{% else %}fa-truck{% endif %}"></i>
                             </div>
                             <h3 class="form-section-title">
                                 {% if is_mixed %}
-                                    Fulfillment Details
+                                Fulfillment Details
                                 {% elif has_services and not has_food %}
-                                    Service & Location Details
+                                Service & Location Details
                                 {% elif is_rental %}
-                                    Equipment Rental Details
+                                Equipment Rental Details
                                 {% else %}
-                                    Delivery Information
+                                Delivery Information
                                 {% endif %}
                             </h3>
                         </div>
                         <p class="form-subtitle">
                             {% if is_mixed %}
-                                Please provide details for the fulfillment of your mixed order.
+                            Please provide details for the fulfillment of your mixed order.
                             {% elif has_services and not has_food %}
-                                Please provide the venue address where the service will take place.
+                            Please provide the venue address where the service will take place.
                             {% else %}
-                                {% if is_rental %}Please tell us how you want to receive your equipment.{% else %}Please tell us how you want to receive your order.{% endif %}
+                            {% if is_rental %}Please tell us how you want to receive your equipment.{% else %}Please
+                            tell us how you want to receive your order.{% endif %}
                             {% endif %}
                         </p>
 
@@ -399,11 +589,16 @@
                             <label>Fulfillment Method</label>
                             <div class="fulfillment-selector">
                                 <label class="fulfillment-opt active">
-                                    <input type="radio" name="fulfillment" value="delivery" checked onchange="updateFulfillment(this)" style="display: none;">
-                                    <div class="fulfillment-icon"><i class="fas {% if has_services and not has_food %}fa-map-pin{% else %}fa-bicycle{% endif %}"></i></div>
+                                    <input type="radio" name="fulfillment" value="delivery" checked
+                                        onchange="updateFulfillment(this)" style="display: none;">
+                                    <div class="fulfillment-icon"><i
+                                            class="fas {% if has_services and not has_food %}fa-map-pin{% else %}fa-bicycle{% endif %}"></i>
+                                    </div>
                                     <div class="fulfillment-details">
                                         <div class="fulfillment-name" id="lbl_fulfill_del">
-                                            {% if is_mixed %}Event Delivery & Setup{% elif has_services and not has_food %}On-Site Service{% elif is_rental %}Delivery & Setup{% else %}Delivery{% endif %}
+                                            {% if is_mixed %}Event Delivery & Setup{% elif has_services and not has_food
+                                            %}On-Site Service{% elif is_rental %}Delivery & Setup{% else %}Delivery{%
+                                            endif %}
                                         </div>
                                         <div class="fulfillment-hint">Calculated based on location</div>
                                     </div>
@@ -411,22 +606,31 @@
                                 </label>
                                 {% if not (has_services and not has_food and not is_rental) %}
                                 <label class="fulfillment-opt">
-                                    <input type="radio" name="fulfillment" value="pickup" onchange="updateFulfillment(this)" style="display: none;">
+                                    <input type="radio" name="fulfillment" value="pickup"
+                                        onchange="updateFulfillment(this)" style="display: none;">
                                     <div class="fulfillment-icon"><i class="fas fa-store"></i></div>
                                     <div class="fulfillment-details">
-                                        <div class="fulfillment-name" id="lbl_fulfill_pick">{{ 'Self-Collect' if is_rental else 'Pickup' }}</div>
+                                        <div class="fulfillment-name" id="lbl_fulfill_pick">{{ 'Self-Collect' if
+                                            is_rental else 'Pickup' }}</div>
                                         <div class="fulfillment-hint">Self-collect (Free)</div>
                                     </div>
                                     <div class="fulfillment-check"><i class="fas fa-check"></i></div>
                                 </label>
                                 {% endif %}
                             </div>
-                            
+
                             <!-- Pickup Location Hint -->
-                            <div id="pickup-address-info" style="display: none; margin-top: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1.5rem;">
-                                <h4 style="font-size: 0.85rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;"><i class="fas fa-map-marker-alt" style="color: var(--checkout-primary); margin-right: 0.5rem;"></i> Pickup Location</h4>
-                                <p style="font-size: 0.95rem; color: #475569; font-weight: 600; line-height: 1.5; margin: 0;">
-                                    {{ caterer.contact_address|replace('\n', '<br>')|safe if caterer.contact_address else 'The caterer will provide the exact pickup location upon confirmation.' }}
+                            <div id="pickup-address-info"
+                                style="display: none; margin-top: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1.5rem;">
+                                <h4
+                                    style="font-size: 0.85rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                                    <i class="fas fa-map-marker-alt"
+                                        style="color: var(--checkout-primary); margin-right: 0.5rem;"></i> Pickup
+                                    Location</h4>
+                                <p
+                                    style="font-size: 0.95rem; color: #475569; font-weight: 600; line-height: 1.5; margin: 0;">
+                                    {{ caterer.contact_address|replace('\n', '<br>')|safe if caterer.contact_address
+                                    else 'The caterer will provide the exact pickup location upon confirmation.' }}
                                 </p>
                             </div>
                         </div>
@@ -434,94 +638,131 @@
                         <!-- PLATTER BUILDER SECTION -->
                         {% set has_combos = false %}
                         {% for item in menu_items %}
-                            {% if item.is_combo %}
-                                {% set has_combos = true %}
-                            {% endif %}
+                        {% if item.is_combo %}
+                        {% set has_combos = true %}
+                        {% endif %}
                         {% endfor %}
 
                         {% if has_combos %}
                         <div class="combo-builder-section" style="margin-bottom: 2.5rem;">
-                            <div style="background:#f0fdfa; border:1px solid #14b8a6; border-radius:1rem; padding:1.5rem;">
-                                <h3 style="color: #0f766e; font-size: 1.1rem; font-weight: 800; margin-bottom: 0.5rem;"><i class="fas fa-utensils"></i> Platter / Combo Configuration</h3>
-                                <p style="font-size: 0.8rem; color: #0d9488; margin-bottom: 1.5rem;">Please select your choices for your platters.</p>
-                                
+                            <div
+                                style="background:#f0fdfa; border:1px solid #14b8a6; border-radius:1rem; padding:1.5rem;">
+                                <h3 style="color: #0f766e; font-size: 1.1rem; font-weight: 800; margin-bottom: 0.5rem;">
+                                    <i class="fas fa-utensils"></i> Platter / Combo Configuration</h3>
+                                <p style="font-size: 0.8rem; color: #0d9488; margin-bottom: 1.5rem;">Please select your
+                                    choices for your platters.</p>
+
                                 {% for item in menu_items %}
-                                    {% if item.is_combo %}
-                                        <div class="combo-item-box" style="background: white; border-radius: 0.75rem; padding: 1.25rem; margin-bottom: 1rem; border: 1px solid #ccfbf1;">
-                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                                <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #1e293b;">{{ item.name }}</h4>
-                                                <span class="combo-counter" id="counter-combo-{{ item.id }}" style="font-size: 0.75rem; font-weight: 800; color: #0f766e; background: #ccfbf1; padding: 2px 8px; border-radius: 99px;">0 / {{ item.max_choices }} Selected</span>
-                                            </div>
-                                            
-                                            <div class="combo-options-grid" data-limit="{{ item.max_choices }}" data-id="{{ item.id }}" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
-                                                {% if item.combo_options and item.combo_options is sequence and not item.combo_options is string %}
-                                                    {% for opt in item.combo_options %}
-                                                    <label class="combo-opt-card" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s;">
-                                                        <input type="checkbox" class="combo-checkbox" value="{{ opt }}" onchange="handleComboSelection(this)" style="accent-color: #14b8a6; width: 1.1rem; height: 1.1rem;">
-                                                        <span style="font-size: 0.85rem; font-weight: 700; color: #334155;">{{ opt }}</span>
-                                                    </label>
-                                                    {% endfor %}
-                                                {% elif item.combo_options and item.combo_options is mapping %}
-                                                    <div style="grid-column: 1 / -1; font-size: 0.85rem; color: #64748b;">
-                                                        <i>This is a preset combo. The inclusions are fixed.</i>
-                                                    </div>
-                                                {% endif %}
-                                            </div>
+                                {% if item.is_combo %}
+                                <div class="combo-item-box"
+                                    style="background: white; border-radius: 0.75rem; padding: 1.25rem; margin-bottom: 1rem; border: 1px solid #ccfbf1;">
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                        <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #1e293b;">{{
+                                            item.name }}</h4>
+                                        <span class="combo-counter" id="counter-combo-{{ item.id }}"
+                                            style="font-size: 0.75rem; font-weight: 800; color: #0f766e; background: #ccfbf1; padding: 2px 8px; border-radius: 99px;">0
+                                            / {{ item.max_choices }} Selected</span>
+                                    </div>
+
+                                    <div class="combo-options-grid" data-limit="{{ item.max_choices }}"
+                                        data-id="{{ item.id }}"
+                                        style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
+                                        {% if item.combo_options and item.combo_options is sequence and not
+                                        item.combo_options is string %}
+                                        {% for opt in item.combo_options %}
+                                        <label class="combo-opt-card"
+                                            style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s;">
+                                            <input type="checkbox" class="combo-checkbox" value="{{ opt }}"
+                                                onchange="handleComboSelection(this)"
+                                                style="accent-color: #14b8a6; width: 1.1rem; height: 1.1rem;">
+                                            <span style="font-size: 0.85rem; font-weight: 700; color: #334155;">{{ opt
+                                                }}</span>
+                                        </label>
+                                        {% endfor %}
+                                        {% elif item.combo_options and item.combo_options is mapping %}
+                                        <div style="grid-column: 1 / -1; font-size: 0.85rem; color: #64748b;">
+                                            <i>This is a preset combo. The inclusions are fixed.</i>
                                         </div>
-                                    {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endif %}
                                 {% endfor %}
                             </div>
                         </div>
                         {% endif %}
 
-                        <div class="grid-2-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div class="grid-2-col"
+                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                             <div class="form-group">
                                 <label>Recipient Full Name</label>
-                                <input type="text" name="full_name" id="full_name" class="form-input" value="{{ (booking.custom_requirements.get('recipient_name') if (booking and booking.custom_requirements) else user.name) or '' }}" required>
+                                <input type="text" name="full_name" id="full_name" class="form-input"
+                                    value="{{ (booking.custom_requirements.get('recipient_name') if (booking and booking.custom_requirements) else user.name) or '' }}"
+                                    required>
                                 <span class="field-error" id="err-full_name">Recipient name is required.</span>
                             </div>
                             <div class="form-group">
                                 <label>Contact Number (Editable)</label>
-                                <input type="tel" name="contact_number" id="contact_number" class="form-input" value="{{ (booking.custom_requirements.get('recipient_contact') if (booking and booking.custom_requirements) else user.phone_number) or '' }}" required>
-                                <span class="field-error" id="err-contact_number">Recipient contact number is required.</span>
+                                <input type="tel" name="contact_number" id="contact_number" class="form-input"
+                                    value="{{ (booking.custom_requirements.get('recipient_contact') if (booking and booking.custom_requirements) else user.phone_number) or '' }}"
+                                    required>
+                                <span class="field-error" id="err-contact_number">Recipient contact number is
+                                    required.</span>
                             </div>
                             <div class="form-group">
                                 <!-- Global Quantity Hidden -->
-                                <input type="hidden" name="quantity" id="quantity_input" value="{{ booking.guest_count if booking else 1 }}">
+                                <input type="hidden" name="quantity" id="quantity_input"
+                                    value="{{ booking.guest_count if booking else 1 }}">
                             </div>
                         </div>
 
-                        <div class="grid-2-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div class="grid-2-col"
+                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                             <div class="form-group">
                                 <label id="lbl_delivery_date">
-                                    {% if is_mixed %}Event / Setup Date{% elif has_services and not has_food %}Event Date{% elif is_rental %}Delivery / Setup Date{% else %}Delivery Date{% endif %}
+                                    {% if is_mixed %}Event / Setup Date{% elif has_services and not has_food %}Event
+                                    Date{% elif is_rental %}Delivery / Setup Date{% else %}Delivery Date{% endif %}
                                 </label>
-                                <input type="date" name="delivery_date" id="delivery_date" class="form-input" value="{{ booking.event_date.isoformat() if (booking and booking.event_date) else '' }}" required>
+                                <input type="date" name="delivery_date" id="delivery_date" class="form-input"
+                                    value="{{ booking.event_date.isoformat() if (booking and booking.event_date) else '' }}"
+                                    required>
                                 <span class="field-error" id="err-delivery_date">Please select a date.</span>
                             </div>
                             <div class="form-group">
                                 <label id="lbl_delivery_time">
-                                    {% if is_mixed %}Event / Setup Time{% elif has_services and not has_food %}Call Time{% elif is_rental %}Delivery / Setup Time{% else %}Delivery Time{% endif %}
+                                    {% if is_mixed %}Event / Setup Time{% elif has_services and not has_food %}Call
+                                    Time{% elif is_rental %}Delivery / Setup Time{% else %}Delivery Time{% endif %}
                                 </label>
-                                <input type="time" name="delivery_time" id="delivery_time" class="form-input" value="{{ booking.event_time.strftime('%H:%M') if (booking and booking.event_time) else '' }}" required>
+                                <input type="time" name="delivery_time" id="delivery_time" class="form-input"
+                                    value="{{ booking.event_time.strftime('%H:%M') if (booking and booking.event_time) else '' }}"
+                                    required>
                                 <span class="field-error" id="err-delivery_time">Please select a time.</span>
                             </div>
                         </div>
 
                         {% if is_rental or has_services %}
-                        <div class="grid-2-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div class="grid-2-col"
+                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                             {% if is_rental %}
                             <div class="form-group">
                                 <label>Pull-out / Pickup Return Time</label>
-                                <input type="time" name="pullout_time" id="pullout_time" class="form-input" value="{{ (booking.custom_requirements.get('pullout_time') if (booking and booking.custom_requirements)) or '' }}" required>
+                                <input type="time" name="pullout_time" id="pullout_time" class="form-input"
+                                    value="{{ (booking.custom_requirements.get('pullout_time') if (booking and booking.custom_requirements)) or '' }}"
+                                    required>
                                 <span class="field-error" id="err-pullout_time">Please specify return time.</span>
                             </div>
                             {% endif %}
-                            
+
                             {% if has_services %}
                             <div class="form-group">
-                                <label>Estimated Event Duration (Hours) <br><span style="font-weight: 400; font-size: 0.85em; color: var(--hub-slate-400); font-style: italic;">(For caterer's scheduling only, does not affect base rate)</span></label>
-                                <input type="number" name="event_duration" id="event_duration" class="form-input" min="1" value="{{ (booking.custom_requirements.get('event_duration') if (booking and booking.custom_requirements)) or 4 }}" required>
+                                <label>Estimated Event Duration (Hours) <br><span
+                                        style="font-weight: 400; font-size: 0.85em; color: var(--hub-slate-400); font-style: italic;">(For
+                                        caterer's scheduling only, does not affect base rate)</span></label>
+                                <input type="number" name="event_duration" id="event_duration" class="form-input"
+                                    min="1"
+                                    value="{{ (booking.custom_requirements.get('event_duration') if (booking and booking.custom_requirements)) or 4 }}"
+                                    required>
                             </div>
                             {% endif %}
                         </div>
@@ -529,80 +770,107 @@
 
                         <div id="address-section">
                             {% set addr_parts = [] %}
-                            {% if user.street_address or user.address %} {% set _ = addr_parts.append(user.street_address or user.address) %} {% endif %}
+                            {% if user.street_address or user.address %} {% set _ =
+                            addr_parts.append(user.street_address or user.address) %} {% endif %}
                             {% if user.barangay %} {% set _ = addr_parts.append("Brgy. " ~ user.barangay) %} {% endif %}
-                            {% if user.city_municipality %} {% set _ = addr_parts.append(user.city_municipality) %} {% endif %}
+                            {% if user.city_municipality %} {% set _ = addr_parts.append(user.city_municipality) %} {%
+                            endif %}
                             {% if user.province %} {% set _ = addr_parts.append(user.province) %} {% endif %}
                             {% set default_address_text = addr_parts | join(', ') %}
-                            
+
                             <!-- Address Display (if exists) -->
-                            <div id="address-display-section" style="{% if not default_address_text %}display: none;{% endif %} padding: 1.25rem; background: var(--dm-slate-50); border: 1px solid var(--dm-slate-200); border-radius: 0.75rem; display: flex; justify-content: space-between; align-items: flex-start; margin-top: 1rem;">
+                            <div id="address-display-section"
+                                style="{% if not default_address_text %}display: none;{% endif %} padding: 1.25rem; background: var(--dm-slate-50); border: 1px solid var(--dm-slate-200); border-radius: 0.75rem; display: flex; justify-content: space-between; align-items: flex-start; margin-top: 1rem;">
                                 <div>
-                                    <h4 style="margin: 0 0 4px; font-size: 0.85rem; font-weight: 800; color: var(--up-slate-900); text-transform: uppercase; letter-spacing: 0.05em;"><i class="fas fa-map-marker-alt" style="color: var(--checkout-primary); margin-right: 6px;"></i> Delivery Address</h4>
-                                    <p id="saved-address-text" style="margin: 0; font-size: 0.95rem; color: var(--dm-slate-400); font-weight: 500;">
+                                    <h4
+                                        style="margin: 0 0 4px; font-size: 0.85rem; font-weight: 800; color: var(--up-slate-900); text-transform: uppercase; letter-spacing: 0.05em;">
+                                        <i class="fas fa-map-marker-alt"
+                                            style="color: var(--checkout-primary); margin-right: 6px;"></i> Delivery
+                                        Address</h4>
+                                    <p id="saved-address-text"
+                                        style="margin: 0; font-size: 0.95rem; color: var(--dm-slate-400); font-weight: 500;">
                                         {{ default_address_text if default_address_text else '' }}
                                     </p>
                                 </div>
-                                <button type="button" onclick="showEditAddress()" style="background: white; border: 1px solid var(--dm-slate-200); padding: 0.4rem 0.8rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 700; color: var(--up-slate-900); cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fas fa-edit"></i> Edit</button>
+                                <button type="button" onclick="showEditAddress()"
+                                    style="background: white; border: 1px solid var(--dm-slate-200); padding: 0.4rem 0.8rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 700; color: var(--up-slate-900); cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i
+                                        class="fas fa-edit"></i> Edit</button>
                             </div>
 
                             <!-- Address Edit (Dropdowns) -->
-                            <div id="address-edit-section" style="{% if default_address_text %}display: none;{% endif %}">
-                                <div style="display: grid; grid-template-columns: 1fr; gap: 1rem; padding-top: 1rem; border-top: 1px dashed #e2e8f0; margin-top: 0.5rem;">
-                                    
+                            <div id="address-edit-section"
+                                style="{% if default_address_text %}display: none;{% endif %}">
+                                <div
+                                    style="display: grid; grid-template-columns: 1fr; gap: 1rem; padding-top: 1rem; border-top: 1px dashed #e2e8f0; margin-top: 0.5rem;">
+
                                     <div class="form-group" style="margin-bottom: 0;">
                                         <label>Province</label>
-                                        <select id="prov_select" class="form-input" required onchange="handleProvinceChange()">
+                                        <select id="prov_select" class="form-input" required
+                                            onchange="handleProvinceChange()">
                                             <option value="" disabled selected hidden>-- Select Province --</option>
                                         </select>
                                         <span class="field-error" id="err-prov_select">Please select a province.</span>
                                     </div>
-                                    
+
                                     <div class="form-group" style="margin-bottom: 0;">
                                         <label>Municipality / City</label>
-                                        <select id="city_select" class="form-input" required onchange="handleCityChange()" disabled>
+                                        <select id="city_select" class="form-input" required
+                                            onchange="handleCityChange()" disabled>
                                             <option value="" disabled selected hidden>-- Select Municipality --</option>
                                         </select>
-                                        <span class="field-error" id="err-city_select">Please select a municipality.</span>
+                                        <span class="field-error" id="err-city_select">Please select a
+                                            municipality.</span>
                                     </div>
 
                                     <div class="form-group" style="margin-bottom: 0;">
                                         <label>Barangay</label>
-                                        <select id="brgy_select" class="form-input" required onchange="syncAddress()" disabled>
+                                        <select id="brgy_select" class="form-input" required onchange="syncAddress()"
+                                            disabled>
                                             <option value="" disabled selected hidden>-- Select Barangay --</option>
                                         </select>
                                         <span class="field-error" id="err-brgy_select">Please select a barangay.</span>
                                     </div>
 
                                     <div class="form-group" style="margin-bottom: 0;">
-                                        <label>House No., Street & Landmark <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
-                                        <input type="text" id="street_input" class="form-input" placeholder="e.g. 123 Diamond St., Near White Gate" oninput="syncAddress()">
-                                        <small style="color:var(--dm-slate-400); margin-top:4px;">Do not include Barangay, City, or Province here to avoid duplicate display.</small>
+                                        <label>House No., Street & Landmark <span
+                                                style="text-transform:none; font-weight:500;">(Optional)</span></label>
+                                        <input type="text" id="street_input" class="form-input"
+                                            placeholder="e.g. 123 Diamond St., Near White Gate" oninput="syncAddress()">
+                                        <small style="color:var(--dm-slate-400); margin-top:4px;">Do not include
+                                            Barangay, City, or Province here to avoid duplicate display.</small>
                                     </div>
-                                    
-                                    <div style="text-align: right; margin-top: 1rem; display: flex; justify-content: flex-end; gap: 0.5rem;">
+
+                                    <div
+                                        style="text-align: right; margin-top: 1rem; display: flex; justify-content: flex-end; gap: 0.5rem;">
                                         {% if default_address_text %}
-                                        <button type="button" onclick="cancelEditAddress()" style="background: none; border: 1px solid #e2e8f0; font-size: 0.85rem; font-weight: 700; color: #64748b; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer;">Cancel</button>
+                                        <button type="button" onclick="cancelEditAddress()"
+                                            style="background: none; border: 1px solid #e2e8f0; font-size: 0.85rem; font-weight: 700; color: #64748b; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer;">Cancel</button>
                                         {% endif %}
-                                        <button type="button" onclick="saveEditAddress()" style="background: var(--checkout-primary); border: none; font-size: 0.85rem; font-weight: 700; color: white; padding: 0.5rem 1.25rem; border-radius: 8px; cursor: pointer;">Save Address</button>
+                                        <button type="button" onclick="saveEditAddress()"
+                                            style="background: var(--checkout-primary); border: none; font-size: 0.85rem; font-weight: 700; color: white; padding: 0.5rem 1.25rem; border-radius: 8px; cursor: pointer;">Save
+                                            Address</button>
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- Hidden field for combined address -->
-                            <input type="hidden" name="address" id="address" value="{{ (default_address_text ~ ', Philippines') if default_address_text else '' }}">
+                            <input type="hidden" name="address" id="address"
+                                value="{{ (default_address_text ~ ', Philippines') if default_address_text else '' }}">
                             <input type="hidden" name="province" id="hidden_province" value="{{ user.province or '' }}">
-                            <input type="hidden" name="municipality" id="hidden_municipality" value="{{ user.city_municipality or '' }}">
+                            <input type="hidden" name="municipality" id="hidden_municipality"
+                                value="{{ user.city_municipality or '' }}">
                             <input type="hidden" name="barangay" id="hidden_barangay" value="{{ user.barangay or '' }}">
-                            <span class="field-error" id="err-address" style="margin-top: 0.5rem; margin-bottom: 1rem;">Full address is required.</span>
+                            <span class="field-error" id="err-address"
+                                style="margin-top: 0.5rem; margin-bottom: 1rem;">Full address is required.</span>
                         </div>
 
                         <div class="checkout-nav-box" style="margin-top: 2rem; justify-content: flex-end;">
-                            <button type="button" class="btn-wizard-next btn-step1-continue" onclick="nextScreen(2)" style="padding: 1rem 1.75rem;">
+                            <button type="button" class="btn-wizard-next btn-step1-continue" onclick="nextScreen(2)"
+                                style="padding: 1rem 1.75rem;">
                                 {% if requires_kyc %}
-                                    CONTINUE TO VERIFICATION <i class="fas fa-id-card" style="margin-left: 0.5rem;"></i>
+                                CONTINUE TO VERIFICATION <i class="fas fa-id-card" style="margin-left: 0.5rem;"></i>
                                 {% else %}
-                                    PROCEED TO PAYMENT <i class="fas fa-arrow-right" style="margin-left: 0.5rem;"></i>
+                                PROCEED TO PAYMENT <i class="fas fa-arrow-right" style="margin-left: 0.5rem;"></i>
                                 {% endif %}
                             </button>
                         </div>
@@ -633,7 +901,8 @@
                                 </div>
                                 {% endif %}
                                 {% if caterer.gcash_number or caterer.gcash_qr_url %}
-                                <div class="payment-opt {% if not caterer.cash_instructions %}active{% endif %}" onclick="selectPayment('GCASH', this)">
+                                <div class="payment-opt {% if not caterer.cash_instructions %}active{% endif %}"
+                                    onclick="selectPayment('GCASH', this)">
                                     <div class="selection-indicator"><i class="fas fa-check"></i></div>
                                     <i class="fas fa-mobile-alt pay-icon"></i>
                                     <span class="pay-label">GCASH TRANSFER</span>
@@ -641,7 +910,8 @@
                                 </div>
                                 {% endif %}
                                 {% if caterer.maya_number or caterer.maya_qr_url %}
-                                <div class="payment-opt {% if not caterer.cash_instructions and not (caterer.gcash_number or caterer.gcash_qr_url) %}active{% endif %}" onclick="selectPayment('MAYA', this)">
+                                <div class="payment-opt {% if not caterer.cash_instructions and not (caterer.gcash_number or caterer.gcash_qr_url) %}active{% endif %}"
+                                    onclick="selectPayment('MAYA', this)">
                                     <div class="selection-indicator"><i class="fas fa-check"></i></div>
                                     <i class="fas fa-wallet pay-icon"></i>
                                     <span class="pay-label">MAYA TRANSFER</span>
@@ -649,7 +919,8 @@
                                 </div>
                                 {% endif %}
                                 {% if caterer.bank_name %}
-                                <div class="payment-opt {% if not caterer.cash_instructions and not (caterer.gcash_number or caterer.gcash_qr_url) and not (caterer.maya_number or caterer.maya_qr_url) %}active{% endif %}" onclick="selectPayment('BANK', this)">
+                                <div class="payment-opt {% if not caterer.cash_instructions and not (caterer.gcash_number or caterer.gcash_qr_url) and not (caterer.maya_number or caterer.maya_qr_url) %}active{% endif %}"
+                                    onclick="selectPayment('BANK', this)">
                                     <div class="selection-indicator"><i class="fas fa-check"></i></div>
                                     <i class="fas fa-university pay-icon"></i>
                                     <span class="pay-label">BANK TRANSFER</span>
@@ -657,36 +928,54 @@
                                 </div>
                                 {% endif %}
                             </div>
-                            <input type="hidden" name="payment_method" id="payment_method" value="{% if caterer.cash_instructions %}CASH{% elif caterer.gcash_number or caterer.gcash_qr_url %}GCASH{% elif caterer.maya_number or caterer.maya_qr_url %}MAYA{% elif caterer.bank_name %}BANK{% endif %}">
-                            
-<!-- Payment method note removed. Will use modal. -->
+                            <input type="hidden" name="payment_method" id="payment_method"
+                                value="{% if caterer.cash_instructions %}CASH{% elif caterer.gcash_number or caterer.gcash_qr_url %}GCASH{% elif caterer.maya_number or caterer.maya_qr_url %}MAYA{% elif caterer.bank_name %}BANK{% endif %}">
+
+                            <!-- Payment method note removed. Will use modal. -->
 
                             <!-- Payment Modal Moved to Bottom of Form -->
                         </div>
 
                         <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 2.5rem 0;">
 
-                        <div class="booking-summary-panel" style="background: white; border: 1px solid #e2e8f0; border-radius: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); overflow: hidden;">
+                        <div class="booking-summary-panel"
+                            style="background: white; border: 1px solid #e2e8f0; border-radius: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); overflow: hidden;">
                             <div style="background: #0f172a; padding: 1.25rem 1.5rem;">
-                                <h3 id="review-title" style="font-weight: 800; font-size: 1.1rem; margin: 0; color: white;"><i class="fas fa-file-invoice" style="margin-right: 0.5rem; color: var(--checkout-primary);"></i> Order Review</h3>
+                                <h3 id="review-title"
+                                    style="font-weight: 800; font-size: 1.1rem; margin: 0; color: white;"><i
+                                        class="fas fa-file-invoice"
+                                        style="margin-right: 0.5rem; color: var(--checkout-primary);"></i> Order Review
+                                </h3>
                             </div>
                             <div style="padding: 1.5rem;">
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                                     <div>
-                                        <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Recipient</div>
-                                        <div id="rev-name" style="font-weight: 600; color: #0f172a; font-size: 0.95rem;">-</div>
+                                        <div
+                                            style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+                                            Recipient</div>
+                                        <div id="rev-name"
+                                            style="font-weight: 600; color: #0f172a; font-size: 0.95rem;">-</div>
                                     </div>
                                     <div>
-                                        <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Contact Number</div>
-                                        <div id="rev-phone" style="font-weight: 600; color: #0f172a; font-size: 0.95rem;">-</div>
+                                        <div
+                                            style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+                                            Contact Number</div>
+                                        <div id="rev-phone"
+                                            style="font-weight: 600; color: #0f172a; font-size: 0.95rem;">-</div>
                                     </div>
                                     <div>
-                                        <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Delivery / Pickup Time</div>
-                                        <div id="rev-datetime" style="font-weight: 600; color: #0f172a; font-size: 0.95rem;">-</div>
+                                        <div
+                                            style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+                                            Delivery / Pickup Time</div>
+                                        <div id="rev-datetime"
+                                            style="font-weight: 600; color: #0f172a; font-size: 0.95rem;">-</div>
                                     </div>
                                     <div style="grid-column: 1 / -1;">
-                                        <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Destination</div>
-                                        <div id="rev-location" style="font-weight: 600; color: #0f172a; font-size: 0.95rem;">-</div>
+                                        <div
+                                            style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+                                            Destination</div>
+                                        <div id="rev-location"
+                                            style="font-weight: 600; color: #0f172a; font-size: 0.95rem;">-</div>
                                     </div>
                                 </div>
                             </div>
@@ -694,57 +983,73 @@
 
                         {% set doc_name = "Order Invoice" %}
                         {% set active_terms = caterer.general_terms %}
-                        
+
                         {% if is_rental and not has_food %}
-                            {% set doc_name = "Rental Agreement" %}
-                            {% set active_terms = caterer.rental_policies if caterer.rental_policies else caterer.general_terms %}
+                        {% set doc_name = "Rental Agreement" %}
+                        {% set active_terms = caterer.rental_policies if caterer.rental_policies else
+                        caterer.general_terms %}
                         {% elif has_services and not has_food %}
-                            {% set doc_name = "Event Service Agreement" %}
-                            {% set active_terms = caterer.terms_and_conditions %}
+                        {% set doc_name = "Event Service Agreement" %}
+                        {% set active_terms = caterer.terms_and_conditions %}
                         {% endif %}
 
                         {% if active_terms or (caterer.scheduling_rules and caterer.scheduling_rules.get('policies')) %}
-                        <div style="margin-top: 1.5rem; background: #f8fafc; padding: 1.5rem; border-radius: 1rem; border: 1px solid #cbd5e1;">
+                        <div
+                            style="margin-top: 1.5rem; background: #f8fafc; padding: 1.5rem; border-radius: 1rem; border: 1px solid #cbd5e1;">
                             <h4 style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;">
-                                <i class="fas fa-file-signature" style="color: var(--checkout-primary); margin-right: 0.5rem;"></i> {{ doc_name }} Terms
+                                <i class="fas fa-file-signature"
+                                    style="color: var(--checkout-primary); margin-right: 0.5rem;"></i> {{ doc_name }}
+                                Terms
                             </h4>
-                            <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; max-height: 200px; overflow-y: auto; font-size: 0.85rem; color: #475569; margin-bottom: 1rem; line-height: 1.6;">
+                            <div
+                                style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; max-height: 200px; overflow-y: auto; font-size: 0.85rem; color: #475569; margin-bottom: 1rem; line-height: 1.6;">
                                 {% if active_terms %}
                                 <div style="margin-bottom: 1rem;">
-                                    <strong><i class="fas fa-clipboard-check"></i> General Terms & Policies:</strong><br>
+                                    <strong><i class="fas fa-clipboard-check"></i> General Terms &
+                                        Policies:</strong><br>
                                     {{ active_terms | replace('\n', '<br>') | safe }}
                                 </div>
                                 {% endif %}
                             </div>
-                            
+
                             <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
-                                <input type="checkbox" id="alacarteTermsAgreement" name="terms_agreement" required style="margin-top: 4px; width: 1.2rem; height: 1.2rem; accent-color: var(--checkout-primary);">
+                                <input type="checkbox" id="alacarteTermsAgreement" name="terms_agreement" required
+                                    style="margin-top: 4px; width: 1.2rem; height: 1.2rem; accent-color: var(--checkout-primary);">
                                 <span style="font-size: 0.9rem; color: #1e293b; font-weight: 600;">
-                                    I have read and agree to the <strong>{{ doc_name }}</strong> of {{ caterer.business_name }}.
+                                    I have read and agree to the <strong>{{ doc_name }}</strong> of {{
+                                    caterer.business_name }}.
                                 </span>
                             </label>
                         </div>
                         {% else %}
-                            <div style="margin-top: 1.5rem; background: #f8fafc; padding: 1.5rem; border-radius: 1rem; border: 1px solid #cbd5e1;">
-                                <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
-                                    <input type="checkbox" id="alacarteTermsAgreement" name="terms_agreement" required style="margin-top: 4px; width: 1.2rem; height: 1.2rem; accent-color: var(--checkout-primary);">
-                                    <span style="font-size: 0.9rem; color: #1e293b; font-weight: 600;">
-                                        I confirm this <strong>{{ doc_name }}</strong> and agree to proceed.
-                                    </span>
-                                </label>
-                            </div>
+                        <div
+                            style="margin-top: 1.5rem; background: #f8fafc; padding: 1.5rem; border-radius: 1rem; border: 1px solid #cbd5e1;">
+                            <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
+                                <input type="checkbox" id="alacarteTermsAgreement" name="terms_agreement" required
+                                    style="margin-top: 4px; width: 1.2rem; height: 1.2rem; accent-color: var(--checkout-primary);">
+                                <span style="font-size: 0.9rem; color: #1e293b; font-weight: 600;">
+                                    I confirm this <strong>{{ doc_name }}</strong> and agree to proceed.
+                                </span>
+                            </label>
+                        </div>
                         {% endif %}
                     </div>
 
                     <div id="place-order-loading" style="display: none; text-align: center; margin-bottom: 2.5rem;">
-                         <div class="ocr-loader" style="width: 32px; height: 32px; border: 3px solid #f1f5f9; border-top-color: var(--kyc-accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem;"></div>
-                         <p style="font-weight: 700; font-size: 0.85rem; color: #64748b;">Broadcasting order to caterer...</p>
+                        <div class="ocr-loader"
+                            style="width: 32px; height: 32px; border: 3px solid #f1f5f9; border-top-color: var(--kyc-accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem;">
+                        </div>
+                        <p style="font-weight: 700; font-size: 0.85rem; color: #64748b;">Broadcasting order to
+                            caterer...</p>
                     </div>
 
                     <div class="checkout-nav-box">
-                        <button type="button" class="btn-wizard-back" onclick="nextScreen(1)"><i class="fas fa-chevron-left"></i> Back</button>
+                        <button type="button" class="btn-wizard-back" onclick="nextScreen(1)"><i
+                                class="fas fa-chevron-left"></i> Back</button>
                         <div class="nav-right">
-                            <button type="button" class="btn-wizard-next" id="final-submit-btn" onclick="submitAtaCarteOrder()" style="background: var(--checkout-primary); padding: 1rem 1.5rem;">
+                            <button type="button" class="btn-wizard-next" id="final-submit-btn"
+                                onclick="submitAtaCarteOrder()"
+                                style="background: var(--checkout-primary); padding: 1rem 1.5rem;">
                                 ACCEPT & CHECKOUT <i class="fas fa-check" style="margin-left: 0.75rem;"></i>
                             </button>
                         </div>
@@ -754,22 +1059,31 @@
                 <!-- SUCCESS SCREEN -->
                 <div class="checkout-screen" id="screen-3">
                     <div class="checkout-card" style="text-align: center; padding: 4rem 2rem;">
-                        <div style="width: 80px; height: 80px; background: #10b981; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 2rem; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.25);">
+                        <div
+                            style="width: 80px; height: 80px; background: #10b981; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 2rem; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.25);">
                             <i class="fas fa-check"></i>
                         </div>
                         <h1 class="wizard-title" style="font-size: 2rem;">Order Received!</h1>
-                        <p class="wizard-subtitle" style="margin-bottom: 3rem;" id="subtitle_step3">Your {% if has_services and not has_food %}service booking{% elif is_rental and not has_food %}equipment request{% elif is_mixed %}event order{% else %}food order{% endif %} has been sent to {{ caterer.business_name }}.</p>
-                        
-                        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 1.25rem; padding: 1.5rem; text-align: left; margin-bottom: 3rem;">
-                            <p style="color: #166534; font-weight: 700; margin-bottom: 0.5rem;"><i class="fas fa-clipboard-check" style="margin-right: 0.5rem;"></i> Track Order</p>
-                            <p style="color: #4b6351; font-size: 0.9rem;">You can monitor the status of your order in the "My Bookings" section of your dashboard.</p>
+                        <p class="wizard-subtitle" style="margin-bottom: 3rem;" id="subtitle_step3">Your {% if
+                            has_services and not has_food %}service booking{% elif is_rental and not has_food
+                            %}equipment request{% elif is_mixed %}event order{% else %}food order{% endif %} has been
+                            sent to {{ caterer.business_name }}.</p>
+
+                        <div
+                            style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 1.25rem; padding: 1.5rem; text-align: left; margin-bottom: 3rem;">
+                            <p style="color: #166534; font-weight: 700; margin-bottom: 0.5rem;"><i
+                                    class="fas fa-clipboard-check" style="margin-right: 0.5rem;"></i> Track Order</p>
+                            <p style="color: #4b6351; font-size: 0.9rem;">You can monitor the status of your order in
+                                the "My Bookings" section of your dashboard.</p>
                         </div>
 
-                        <a href="/customer/orders" class="btn-wizard-next" style="display: flex; justify-content: center; align-items: center; max-width: 320px; margin: 0 auto 1rem;">
+                        <a href="/customer/orders" class="btn-wizard-next"
+                            style="display: flex; justify-content: center; align-items: center; max-width: 320px; margin: 0 auto 1rem;">
                             VIEW MY ORDERS <i class="fas fa-arrow-right" style="margin-left: 0.75rem;"></i>
                         </a>
-                        
-                        <a href="#" target="_blank" id="download-invoice-btn" style="display: flex; align-items: center; justify-content: center; max-width: 320px; margin: 0 auto; padding: 1rem 1.5rem; background: white; border: 2px solid var(--checkout-primary); color: var(--checkout-primary); border-radius: 0.75rem; font-weight: 700; font-size: 0.95rem; text-decoration: none; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+
+                        <a href="#" target="_blank" id="download-invoice-btn"
+                            style="display: flex; align-items: center; justify-content: center; max-width: 320px; margin: 0 auto; padding: 1rem 1.5rem; background: white; border: 2px solid var(--checkout-primary); color: var(--checkout-primary); border-radius: 0.75rem; font-weight: 700; font-size: 0.95rem; text-decoration: none; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
                             DOWNLOAD INVOICE <i class="fas fa-download" style="margin-left: 0.75rem;"></i>
                         </a>
                     </div>
@@ -782,24 +1096,32 @@
         <aside class="calculator-sidebar">
             <div class="calc-card">
                 <h3 class="calc-title" style="flex-direction: column; align-items: flex-start; gap: 0.25rem;">
-                    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--wiz-slate-400);">Booking Summary</div>
-                    <div style="font-size: 1.15rem; color: var(--wiz-text-dark); display: flex; align-items: center; gap: 0.5rem;">
+                    <div
+                        style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--wiz-slate-400);">
+                        Booking Summary</div>
+                    <div
+                        style="font-size: 1.15rem; color: var(--wiz-text-dark); display: flex; align-items: center; gap: 0.5rem;">
                         {# JS (alacarte_checkout.js > updateBookingLabel) populates this with actual item names #}
                         <i class="fas fa-receipt" style="color: var(--checkout-primary);"></i>
                         <span id="summary-order-label">
                             {% if service_items and not menu_items and not equipment_items %}
-                                {{ service_items[0].name }}{% if service_items|length > 1 %} +{{ service_items|length - 1 }} more{% endif %}
+                            {{ service_items[0].name }}{% if service_items|length > 1 %} +{{ service_items|length - 1 }}
+                            more{% endif %}
                             {% elif equipment_items and not menu_items and not service_items %}
-                                {{ equipment_items[0].name }}{% if equipment_items|length > 1 %} +{{ equipment_items|length - 1 }} more{% endif %}
+                            {{ equipment_items[0].name }}{% if equipment_items|length > 1 %} +{{ equipment_items|length
+                            - 1 }} more{% endif %}
                             {% elif menu_items and not equipment_items and not service_items %}
-                                {{ menu_items[0].name }}{% if menu_items|length > 1 %} +{{ menu_items|length - 1 }} more{% endif %}
+                            {{ menu_items[0].name }}{% if menu_items|length > 1 %} +{{ menu_items|length - 1 }} more{%
+                            endif %}
                             {% else %}
-                                {{ (service_items[0].name if service_items else (equipment_items[0].name if equipment_items else menu_items[0].name)) }}{% set _total = (menu_items|length) + (equipment_items|length) + (service_items|length) %}{% if _total > 1 %} +{{ _total - 1 }} more{% endif %}
+                            {{ (service_items[0].name if service_items else (equipment_items[0].name if equipment_items
+                            else menu_items[0].name)) }}{% set _total = (menu_items|length) + (equipment_items|length) +
+                            (service_items|length) %}{% if _total > 1 %} +{{ _total - 1 }} more{% endif %}
                             {% endif %}
                         </span>
                     </div>
                 </h3>
-                
+
                 <div id="dynamic-bill-items">
                     <!-- Populated by JS -->
                 </div>
@@ -824,7 +1146,9 @@
                     <span class="total-price" id="sum-grand-total">₱0.00</span>
                 </div>
 
-                <button type="button" class="btn-wizard-next" id="sidebar-next-btn" onclick="nextScreen(window.currentScreen + 1)" style="width: 100%; justify-content: center; margin-top: 1.5rem;">
+                <button type="button" class="btn-wizard-next" id="sidebar-next-btn"
+                    onclick="nextScreen(window.currentScreen + 1)"
+                    style="width: 100%; justify-content: center; margin-top: 1.5rem;">
                     PROCEED TO PAYMENT <i class="fas fa-arrow-right"></i>
                 </button>
             </div>
@@ -838,96 +1162,126 @@
     window.originalSavedAddressString = {{ ((default_address_text ~ ', Philippines') if default_address_text else '') | tojson | safe }};
     window.userSavedAddress = {
         province: {{ (user.province or '') | tojson | safe }},
-        city: {{ (user.city_municipality or '') | tojson | safe }},
-        brgy: {{ (user.barangay or '') | tojson | safe }},
-        street: {{ (user.street_address or user.address or '') | tojson | safe }}
+    city: { { (user.city_municipality or '') | tojson | safe } },
+    brgy: { { (user.barangay or '') | tojson | safe } },
+    street: { { (user.street_address or user.address or '') | tojson | safe } }
     };
 </script>
 {% endblock %}
 
 
 {% block modals %}
-    <!-- Dynamic Payment Modal -->
-    <div id="paymentModalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-        <div id="paymentModalCard" style="background: white; width: 95%; max-width: 450px; border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); display: flex; flex-direction: column; max-height: 90vh;">
-            
-            <div style="background: #f8fafc; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0;">
-                <h3 id="modalTitle" style="margin: 0; font-size: 1.25rem; color: var(--up-slate-900); display: flex; align-items: center; gap: 8px; font-weight: 800;">
-                    <i class="fas fa-wallet"></i> Payment Details
-                </h3>
-                <button type="button" onclick="closePaymentModal()" style="background: none; border: none; font-size: 1.25rem; color: var(--up-slate-400); cursor: pointer;"><i class="fas fa-times"></i></button>
-            </div>
-            
-            <div style="padding: 2rem; overflow-y: auto;">
-                <div style="background: #eff6ff; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left; border: 1px solid #bfdbfe;">
-                    <h4 style="font-size: 0.9rem; font-weight: 800; color: #1e3a8a; margin-top: 0; margin-bottom: 0.5rem;"><i class="fas fa-robot"></i> AI Receipt Validation</h4>
-                    <div style="font-size:0.85rem; color: #1e3a8a;">Our AI will scan your receipt to verify the exact amount (<strong>₱<span id="ai-modal-amount">0.00</span></strong>), date, caterer details, and reference number. Please ensure the screenshot is clear and unedited.</div>
-                </div>
-                
-                <div id="modalContentGCASH" style="display: none; text-align: center;">
-                    <img src="{{ caterer.gcash_qr_url }}" alt="GCash QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bfdbfe; margin: 0 auto 1rem auto; display: block;">
-                    
-                    <div style="background: #eff6ff; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left;">
-                        <h4 style="font-size: 0.9rem; font-weight: 800; color: #1e3a8a; margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> GCash Payment Steps</h4>
-                        <div style="font-size:0.85rem; margin-bottom:5px;">1. Open GCash App.</div>
-                        <div style="font-size:0.85rem; margin-bottom:5px;">2. Scan QR or send to <strong>{{ caterer.gcash_number }}</strong>.</div>
-                        <div style="font-size:0.85rem;">3. Upload the screenshot below.</div>
-                    </div>
-                </div>
-                
-                <div id="modalContentMAYA" style="display: none; text-align: center;">
-                    <img src="{{ caterer.maya_qr_url }}" alt="Maya QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bbf7d0; margin: 0 auto 1rem auto; display: block;">
-                    
-                    <div style="background: #f0fdf4; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left;">
-                        <h4 style="font-size: 0.9rem; font-weight: 800; color: #14532d; margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> Maya Payment Steps</h4>
-                        <div style="font-size:0.85rem; margin-bottom:5px;">1. Open Maya App.</div>
-                        <div style="font-size:0.85rem; margin-bottom:5px;">2. Scan QR or send to <strong>{{ caterer.maya_number }}</strong>.</div>
-                        <div style="font-size:0.85rem;">3. Upload the screenshot below.</div>
-                    </div>
-                </div>
-                
-                <div id="modalContentBANK" style="display: none;">
-                    <div style="background: #fefce8; padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem; border: 1px solid #fef08a;">
-                        <div style="margin-bottom: 1rem;">
-                            <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Bank Name</div>
-                            <div style="font-size: 1.1rem; font-weight: 700; color: #713f12;">{{ caterer.bank_name }}</div>
-                        </div>
-                        <div style="margin-bottom: 1rem;">
-                            <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Account Name</div>
-                            <div style="font-size: 1.1rem; font-weight: 700; color: #713f12;">{{ caterer.bank_account_name }}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Account Number</div>
-                            <div style="font-size: 1.25rem; font-weight: 800; color: #713f12; letter-spacing: 1px;">{{ caterer.bank_account_number }}</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 2rem 0;">
-                
-                <div>
-                    <h4 style="font-size: 1rem; color: var(--up-slate-900); margin-bottom: 1rem; font-weight: 800;"><i class="fas fa-cloud-upload-alt" style="color: var(--up-emerald-500);"></i> Submit Proof of Payment</h4>
-                    <div style="margin-bottom: 1.25rem;">
-                        <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;">Receipt Image</label>
-                        <input type="file" id="proofImageInput" accept="image/*" style="width: 100%; padding: 0.75rem; border: 2px dashed #cbd5e1; border-radius: 8px; background: #f8fafc;">
-                    </div>
-                    <div id="uploadErrorMsg" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 1rem; border-radius: 12px; font-size: 0.85rem; margin-bottom: 1.25rem; font-weight: 500;"></div>
-                </div>
+<!-- Dynamic Payment Modal -->
+<div id="paymentModalOverlay"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div id="paymentModalCard"
+        style="background: white; width: 95%; max-width: 450px; border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); display: flex; flex-direction: column; max-height: 90vh;">
 
-                <button type="button" id="submit-payment-btn" onclick="finalSubmitOrder()" style="width: 100%; background: #10b981; color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: 0.2s;">
-                    Upload Proof & Finish Order
-                </button>
+        <div
+            style="background: #f8fafc; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0;">
+            <h3 id="modalTitle"
+                style="margin: 0; font-size: 1.25rem; color: var(--up-slate-900); display: flex; align-items: center; gap: 8px; font-weight: 800;">
+                <i class="fas fa-wallet"></i> Payment Details
+            </h3>
+            <button type="button" onclick="closePaymentModal()"
+                style="background: none; border: none; font-size: 1.25rem; color: var(--up-slate-400); cursor: pointer;"><i
+                    class="fas fa-times"></i></button>
+        </div>
+
+        <div style="padding: 2rem; overflow-y: auto;">
+            <div
+                style="background: #eff6ff; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left; border: 1px solid #bfdbfe;">
+                <h4 style="font-size: 0.9rem; font-weight: 800; color: #1e3a8a; margin-top: 0; margin-bottom: 0.5rem;">
+                    <i class="fas fa-robot"></i> AI Receipt Validation</h4>
+                <div style="font-size:0.85rem; color: #1e3a8a;">Our AI will scan your receipt to verify the exact amount
+                    (<strong>₱<span id="ai-modal-amount">0.00</span></strong>), date, caterer details, and reference
+                    number. Please ensure the screenshot is clear and unedited.</div>
             </div>
+
+            <div id="modalContentGCASH" style="display: none; text-align: center;">
+                <img src="{{ caterer.gcash_qr_url }}" alt="GCash QR"
+                    style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bfdbfe; margin: 0 auto 1rem auto; display: block;">
+
+                <div
+                    style="background: #eff6ff; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left;">
+                    <h4
+                        style="font-size: 0.9rem; font-weight: 800; color: #1e3a8a; margin-top: 0; margin-bottom: 1rem;">
+                        <i class="fas fa-info-circle"></i> GCash Payment Steps</h4>
+                    <div style="font-size:0.85rem; margin-bottom:5px;">1. Open GCash App.</div>
+                    <div style="font-size:0.85rem; margin-bottom:5px;">2. Scan QR or send to <strong>{{
+                            caterer.gcash_number }}</strong>.</div>
+                    <div style="font-size:0.85rem;">3. Upload the screenshot below.</div>
+                </div>
+            </div>
+
+            <div id="modalContentMAYA" style="display: none; text-align: center;">
+                <img src="{{ caterer.maya_qr_url }}" alt="Maya QR"
+                    style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bbf7d0; margin: 0 auto 1rem auto; display: block;">
+
+                <div
+                    style="background: #f0fdf4; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left;">
+                    <h4
+                        style="font-size: 0.9rem; font-weight: 800; color: #14532d; margin-top: 0; margin-bottom: 1rem;">
+                        <i class="fas fa-info-circle"></i> Maya Payment Steps</h4>
+                    <div style="font-size:0.85rem; margin-bottom:5px;">1. Open Maya App.</div>
+                    <div style="font-size:0.85rem; margin-bottom:5px;">2. Scan QR or send to <strong>{{
+                            caterer.maya_number }}</strong>.</div>
+                    <div style="font-size:0.85rem;">3. Upload the screenshot below.</div>
+                </div>
+            </div>
+
+            <div id="modalContentBANK" style="display: none;">
+                <div
+                    style="background: #fefce8; padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem; border: 1px solid #fef08a;">
+                    <div style="margin-bottom: 1rem;">
+                        <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Bank Name</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #713f12;">{{ caterer.bank_name }}</div>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Account Name</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #713f12;">{{ caterer.bank_account_name
+                            }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Account Number</div>
+                        <div style="font-size: 1.25rem; font-weight: 800; color: #713f12; letter-spacing: 1px;">{{
+                            caterer.bank_account_number }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 2rem 0;">
+
+            <div>
+                <h4 style="font-size: 1rem; color: var(--up-slate-900); margin-bottom: 1rem; font-weight: 800;"><i
+                        class="fas fa-cloud-upload-alt" style="color: var(--up-emerald-500);"></i> Submit Proof of
+                    Payment</h4>
+                <div style="margin-bottom: 1.25rem;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;">Receipt
+                        Image</label>
+                    <input type="file" id="proofImageInput" accept="image/*"
+                        style="width: 100%; padding: 0.75rem; border: 2px dashed #cbd5e1; border-radius: 8px; background: #f8fafc;">
+                </div>
+                <div id="uploadErrorMsg"
+                    style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 1rem; border-radius: 12px; font-size: 0.85rem; margin-bottom: 1.25rem; font-weight: 500;">
+                </div>
+            </div>
+
+            <button type="button" id="submit-payment-btn" onclick="finalSubmitOrder()"
+                style="width: 100%; background: #10b981; color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: 0.2s;">
+                Upload Proof & Finish Order
+            </button>
         </div>
     </div>
+</div>
 {% endblock %}
 {% block step_js %}
 <script>
     window.catererId = "{{ caterer.id }}";
     window.menuId = "{{ items_raw }}";
-    window.isVerified = {% if user.is_verified %}true{% else %}false{% endif %};
+    window.isVerified = {% if user.is_verified %}true{% else %} false{% endif %};
     window.bookingLeadTime = {{ caterer.booking_lead_time or 7 }};
-    window.catererRules = {{ (caterer.scheduling_rules or {}) | tojson | safe }};
+    window.catererRules = {{ (caterer.scheduling_rules or { }) | tojson | safe }};
     window.catererBaseDeliveryFee = {{ caterer.base_delivery_fee or 150.0 }};
     window.catererGcashNumber = "{{ caterer.gcash_number or '' }}";
     window.catererMayaNumber = "{{ caterer.maya_number or '' }}";
@@ -936,52 +1290,53 @@
     window.catererBankAccountNumber = "{{ caterer.bank_account_number or '' }}";
     window.backendMenuItems = [
         {% for item in menu_items %}
-        {
-            id: "{{ item.id }}",
+    {
+        id: "{{ item.id }}",
             type: "Menu",
-            name: {{ (item.name or '')|tojson }},
-            price: {{ item.price or 0 }},
-            pricing_unit: "{{ item.pricing_unit or 'per_tray' }}",
+                name: { { (item.name or '')| tojson } },
+        price: { { item.price or 0 } },
+        pricing_unit: "{{ item.pricing_unit or 'per_tray' }}",
             image_url: "{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}",
-            is_combo: {{ 'true' if item.is_combo else 'false' }},
-            is_rental: {{ 'true' if item.category and item.category|lower == 'rentals' else 'false' }}
-        }{% if not loop.last or equipment_items or service_items %},{% endif %}
-        {% endfor %}
-        
-        {% for item in equipment_items %}
-        {
-            id: "{{ item.id }}",
+                is_combo: { { 'true' if item.is_combo else 'false' } },
+        is_rental: { { 'true' if item.category and item.category | lower == 'rentals' else 'false' } }
+    } {% if not loop.last or equipment_items or service_items %}, {% endif %}
+    {% endfor %}
+
+    {% for item in equipment_items %}
+    {
+        id: "{{ item.id }}",
             type: "Equipment",
-            name: {{ (item.name or '')|tojson }},
-            price: {{ item.rental_price or 0 }},
-            cost_value: {{ item.cost_value or 0 }},
-            security_deposit_pct: {{ item.security_deposit_pct or 20.0 }},
-            requires_kyc: {{ 'true' if item.requires_kyc else 'false' }},
-            min_quantity: {{ item.min_quantity or 1 }},
-            pricing_unit: "{{ item.unit_type or 'per_unit' }}",
+                name: { { (item.name or '')| tojson } },
+        price: { { item.rental_price or 0 } },
+        cost_value: { { item.cost_value or 0 } },
+        security_deposit_pct: { { item.security_deposit_pct or 20.0 } },
+        requires_kyc: { { 'true' if item.requires_kyc else 'false' } },
+        min_quantity: { { item.min_quantity or 1 } },
+        pricing_unit: "{{ item.unit_type or 'per_unit' }}",
             image_url: "{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}",
-            is_combo: false,
-            is_rental: true
-        }{% if not loop.last or service_items %},{% endif %}
-        {% endfor %}
-        
-        {% for item in service_items %}
-        {
-            id: "{{ item.id }}",
+                is_combo: false,
+                    is_rental: true
+    } {% if not loop.last or service_items %}, {% endif %}
+    {% endfor %}
+
+    {% for item in service_items %}
+    {
+        id: "{{ item.id }}",
             type: "Service",
-            name: {{ (item.name or '')|tojson }},
-            price: {{ item.selling_price or 0 }},
-            pricing_unit: "{{ item.unit_type or 'per_unit' }}",
+                name: { { (item.name or '')| tojson } },
+        price: { { item.selling_price or 0 } },
+        pricing_unit: "{{ item.unit_type or 'per_unit' }}",
             image_url: "{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}",
-            is_combo: false,
-            is_rental: false
-        }{% if not loop.last %},{% endif %}
-        {% endfor %}
+                is_combo: false,
+                    is_rental: false
+    } {% if not loop.last %}, {% endif %}
+    {% endfor %}
     ];
-    
+
     // 2-step checkout flow (Step 1: Details / Step 2: Payment)
     window.paymentStep = 2;
     window.requiresKycStep = {{ 'true' if requires_kyc else 'false' }};
 </script>
-<script src="{{ url_for('static', path='/js/customer/alacarte_checkout.js') }}?v={{ range(1, 9999) | random }}"></script>
+<script
+    src="{{ url_for('static', path='/js/customer/alacarte_checkout.js') }}?v={{ range(1, 9999) | random }}"></script>
 {% endblock %}
