@@ -1204,6 +1204,9 @@ function showBookingDetails(btn) {
                     status: detail.status || btn.dataset.status || '',
                     paymentStatus: detail.payment_status || btn.dataset.paymentStatus || 'no_payment',
                     source: detail.booking_source || btn.dataset.source || '',
+                    sourceKind: detail.source_kind || (detail.user_id ? 'online' : 'walkin'),
+                    entryMethod: detail.entry_method || '',
+                    paymentRecordsJson: JSON.stringify(detail.payment_records || []),
                     eventDate: detail.event_date || '',
                     eventTime: detail.event_time || 'TBA',
                     customer: detail.customer_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Walk-in Customer',
@@ -1300,14 +1303,15 @@ function showBookingDetails(btn) {
     const isFoodOrder = data.isFoodOrder === 'true' || data.isFoodOrder === true;
     const formattedRefId = (isFoodOrder ? 'ORD-' : 'BK-') + String(data.id).padStart(6, '0');
     let titlePrefix = isFoodOrder ? 'Food Order #' : (data.status === 'pending_review' ? 'Inquiry Details #' : 'Booking #');
-    document.getElementById('modalBookingId').innerText = titlePrefix + formattedRefId;
+    
+    const mbTitle = document.getElementById('modalBookingId');
+    if (mbTitle) mbTitle.innerText = titlePrefix + formattedRefId;
     const mbId = document.getElementById('modalBookingIdMobile');
     if (mbId) mbId.innerText = (isFoodOrder ? 'Order #' : 'Booking #') + formattedRefId;
     
     // Urgent Indicator in Modal Header
-    const headerTitle = document.getElementById('modalBookingId');
     if (data.isUrgent === 'true') {
-        headerTitle.innerHTML = `${titlePrefix}${formattedRefId} <span style="background: #fff1f2; color: #e11d48; font-size: 0.65rem; padding: 2px 8px; border-radius: 50px; margin-left: 8px; border: 1px solid #fecdd3; vertical-align: middle;"><i class="fas fa-clock"></i> URGENT</span>`;
+        if (mbTitle) mbTitle.innerHTML = `${titlePrefix}${formattedRefId} <span style="background: #fff1f2; color: #e11d48; font-size: 0.65rem; padding: 2px 8px; border-radius: 50px; margin-left: 8px; border: 1px solid #fecdd3; vertical-align: middle;"><i class="fas fa-clock"></i> URGENT</span>`;
         if (mbId) mbId.innerHTML = `${(isFoodOrder ? 'Order #' : 'Booking #')}${formattedRefId} <span style="background: #fff1f2; color: #e11d48; font-size: 0.65rem; padding: 2px 8px; border-radius: 50px; margin-left: 8px; border: 1px solid #fecdd3; vertical-align: middle;"><i class="fas fa-clock"></i> URGENT</span>`;
     }
 
@@ -1319,11 +1323,15 @@ function showBookingDetails(btn) {
     const modalSourceSubtext = document.getElementById('modalBookingSourceSubtext');
     const modalSourceSubtextMobile = document.getElementById('modalBookingSourceSubtextMobile');
 
-    const sourceValue = (data.source || '').trim();
-    const rawSourceKind = (data.sourceKind || data.entryMethod || '').toLowerCase();
-    const isWalkin = rawSourceKind === 'walkin' || !data.targetUserId || ['walk-in', 'walkin', 'manual'].includes(sourceValue.toLowerCase());
+    const sourceValue = (data.source || '').toString().trim().toLowerCase();
+    const rawSourceKind = (data.sourceKind || data.entryMethod || '').toString().trim().toLowerCase();
+    const _targetUid = (data.targetUserId || '').toString().trim();
+    const _hasUser = _targetUid !== '' && _targetUid !== 'null' && _targetUid !== 'undefined' && _targetUid !== '0';
+    const isWalkin = sourceValue.includes('walk') || sourceValue === 'manual' || sourceValue.includes('internal')
+        || rawSourceKind.includes('walk') || rawSourceKind === 'manual'
+        || (!_hasUser && !sourceValue.includes('online'));
     
-    const sourceText = isWalkin ? 'WALK-IN BOOKING' : 'ONLINE BOOKING';
+    const sourceText = isWalkin ? 'WALK-IN' : 'ONLINE';
     const sourceSubtext = isWalkin ? 'Created by Caterer' : 'Booked by Customer';
     
     if (modalSource) modalSource.innerText = sourceText;
@@ -1371,15 +1379,16 @@ function showBookingDetails(btn) {
 
     configureBookingTabs(data, { isWalkin, isFoodOrder });
 
-    document.getElementById('modalCustomer').innerText = data.customer;
-    document.getElementById('modalEmail').innerText = data.email;
+    const mCust = document.getElementById('modalCustomer'); if (mCust) mCust.innerText = data.customer || '';
+    const mEmail = document.getElementById('modalEmail'); if (mEmail) mEmail.innerText = data.email || '';
     const labelEl = document.getElementById('modalEventDetailsLabel');
     if (labelEl) {
         labelEl.innerText = isFoodOrder ? 'Order Details' : 'Event Details';
     }
-    document.getElementById('modalEventName').innerText = data.specificName || data.eventName;
-    document.getElementById('modalEventType').innerHTML = `<i class="fas fa-tag" style="margin-right: 4px;"></i>${data.eventType}`;
-    document.getElementById('modalVenue').innerText = data.venue;
+    const mEvName = document.getElementById('modalEventName'); if (mEvName) mEvName.innerText = data.specificName || data.eventName || '';
+    const mEvType = document.getElementById('modalEventType'); if (mEvType) mEvType.innerHTML = `<i class="fas fa-tag" style="margin-right: 4px;"></i>${data.eventType || ''}`;
+    const mVenue = document.getElementById('modalVenue'); if (mVenue) mVenue.innerText = data.venue || '';
+    
     const reqEl = document.getElementById('modalRequests');
     if (reqEl) {
         if (!data.requests || data.requests.trim() === '' || data.requests === 'None') {
@@ -1446,6 +1455,107 @@ function showBookingDetails(btn) {
         }
     }
 
+    // --- POPULATE COMPACT HEADER SUMMARY BAR ---
+    const hCust = document.getElementById('headerSummaryCustomer'); if (hCust) hCust.innerText = data.customer || 'Walk-in Customer';
+    const hType = document.getElementById('headerSummaryEventType'); if (hType) hType.innerText = data.eventType || 'Booking';
+    const hDate = document.getElementById('headerSummaryDate'); if (hDate) hDate.innerText = formattedDate;
+    const hTime = document.getElementById('headerSummaryTime'); if (hTime) hTime.innerText = formattedTime;
+    const hPax = document.getElementById('headerSummaryPax'); if (hPax) hPax.innerText = (data.guestCount || 0) + ' pax';
+    const hVenue = document.getElementById('headerSummaryVenue'); if (hVenue) hVenue.innerText = data.venue || 'TBA';
+
+    // --- POPULATE OVERVIEW TAB: Event Information Card ---
+    const ovEvType = document.getElementById('ovEventType'); if (ovEvType) ovEvType.innerText = data.eventType || '—';
+    const ovEvDate = document.getElementById('ovEventDate'); if (ovEvDate) ovEvDate.innerText = formattedDate;
+    const ovEvTime = document.getElementById('ovEventTime'); if (ovEvTime) ovEvTime.innerText = formattedTime;
+    const ovPax = document.getElementById('ovGuestCount'); if (ovPax) ovPax.innerText = (data.guestCount || 0) + ' pax';
+    const ovVen = document.getElementById('ovVenue'); if (ovVen) ovVen.innerText = data.venue || 'Not specified';
+
+    // --- POPULATE OVERVIEW TAB: Booking Information Card ---
+    const ovRef = document.getElementById('ovBookingRef'); if (ovRef) ovRef.innerText = formattedRefId;
+    const ovSrcBadge = document.getElementById('ovSourceBadge');
+    if (ovSrcBadge) {
+        ovSrcBadge.innerText = sourceText;
+        ovSrcBadge.style.color = isWalkin ? '#c2410c' : '#7e22ce';
+    }
+    const ovCreated = document.getElementById('ovCreatedDate'); if (ovCreated) ovCreated.innerText = data.bookedOn || '—';
+    const ovStatusTxt = document.getElementById('ovStatusText');
+    const ovStaff = document.getElementById('ovAssignedStaff'); if (ovStaff) ovStaff.innerText = isWalkin ? 'Caterer / Staff (Walk-in)' : 'Customer (Online Booking)';
+
+    // --- POPULATE OVERVIEW TAB: Financial Overview ---
+    const ovTot = document.getElementById('ovTotalDisplay'); if (ovTot) ovTot.innerText = data.amount;
+    const ovPaid = document.getElementById('ovPaidDisplay'); if (ovPaid) ovPaid.innerText = '₱' + paidAmountValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const ovBal = document.getElementById('ovBalanceDisplay'); if (ovBal) ovBal.innerText = '₱' + Math.max(totalAmountValue - paidAmountValue, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // --- POPULATE CUSTOMER TAB ---
+    const custNote = document.getElementById('custSourceNote');
+    if (custNote) {
+        custNote.innerText = isWalkin ? 'WALK-IN ENTRY' : 'ONLINE ACCOUNT';
+        custNote.style.background = isWalkin ? '#ffedd5' : '#e0e7ff';
+        custNote.style.color = isWalkin ? '#c2410c' : '#3730a3';
+    }
+    const custName = document.getElementById('custFullName'); if (custName) custName.innerText = data.customer || 'Walk-in Customer';
+    const custMob = document.getElementById('custMobile'); if (custMob) custMob.innerText = data.contact || 'No mobile provided';
+    const custEm = document.getElementById('custEmail'); if (custEm) custEm.innerText = data.email || 'No email provided';
+    const custTyp = document.getElementById('custType'); if (custTyp) custTyp.innerText = isWalkin ? 'Walk-in Customer (Manual Entry)' : 'Registered Platform User';
+
+    const btnCall = document.getElementById('btnCallCustomer');
+    if (btnCall) {
+        if (data.contact) { btnCall.href = 'tel:' + data.contact; btnCall.style.pointerEvents = 'auto'; btnCall.style.opacity = '1'; }
+        else { btnCall.href = '#'; btnCall.style.pointerEvents = 'none'; btnCall.style.opacity = '0.5'; }
+    }
+    const btnEm = document.getElementById('btnEmailCustomer');
+    if (btnEm) {
+        if (data.email) { btnEm.href = 'mailto:' + data.email; btnEm.style.pointerEvents = 'auto'; btnEm.style.opacity = '1'; }
+        else { btnEm.href = '#'; btnEm.style.pointerEvents = 'none'; btnEm.style.opacity = '0.5'; }
+    }
+
+    // --- POPULATE ORDER & PACKAGE TAB ---
+    const orderPkg = document.getElementById('orderPkgName'); if (orderPkg) orderPkg.innerText = data.specificName || data.eventType || 'Standard Package';
+    const orderMeta = document.getElementById('orderPkgMeta'); if (orderMeta) orderMeta.innerText = isFoodOrder ? 'Ala Carte / Direct Food Order' : (Number(data.guestCount) ? `For ${data.guestCount} pax` : 'Custom Package');
+    const orderPrice = document.getElementById('orderPkgPrice'); if (orderPrice) orderPrice.innerText = data.amount;
+
+    // --- POPULATE PAYMENT TAB ---
+    const payBadge = document.getElementById('paymentTabBadge');
+    if (payBadge) {
+        let pSt = (data.paymentStatus || 'unpaid').toUpperCase().replace(/_/g, ' ');
+        payBadge.innerText = pSt;
+        if (pSt === 'PAID' || pSt === 'FULLY PAID') { payBadge.style.background = '#dcfce7'; payBadge.style.color = '#166534'; }
+        else { payBadge.style.background = '#fff7ed'; payBadge.style.color = '#c2410c'; }
+    }
+    const payTot = document.getElementById('payTotalAmount'); if (payTot) payTot.innerText = data.amount;
+    const payPd = document.getElementById('payTotalPaid'); if (payPd) payPd.innerText = '₱' + paidAmountValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const payBal = document.getElementById('payBalance'); if (payBal) payBal.innerText = '₱' + Math.max(totalAmountValue - paidAmountValue, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // Payment History Table Population
+    const payRows = document.getElementById('paymentHistoryRows');
+    if (payRows) {
+        let records = [];
+        try { if (data.paymentRecordsJson) records = JSON.parse(data.paymentRecordsJson); } catch (e) {}
+        if (records.length > 0) {
+            payRows.innerHTML = records.map(r => {
+                const rDate = r.payment_date ? new Date(r.payment_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
+                const rAmt = '₱' + (parseFloat(r.amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                return `<tr>
+                    <td style="padding: 0.75rem 1rem; color: #334155;">${rDate}</td>
+                    <td style="padding: 0.75rem 1rem; color: #334155; font-weight: 600;">${r.payment_method || 'Cash'}</td>
+                    <td style="padding: 0.75rem 1rem; color: #64748b;">${r.reference_notes || 'N/A'}</td>
+                    <td style="padding: 0.75rem 1rem; text-align: right; font-weight: 800; color: #166534;">${rAmt}</td>
+                    <td style="padding: 0.75rem 1rem; text-align: center;"><span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800;">VERIFIED</span></td>
+                </tr>`;
+            }).join('');
+        } else if (paidAmountValue > 0) {
+            payRows.innerHTML = `<tr>
+                <td style="padding: 0.75rem 1rem; color: #334155;">${data.bookedOn || formattedDate}</td>
+                <td style="padding: 0.75rem 1rem; color: #334155; font-weight: 600;">${data.paymentMethod || 'Cash'}</td>
+                <td style="padding: 0.75rem 1rem; color: #64748b;">${data.paymentRef || 'Recorded by Caterer'}</td>
+                <td style="padding: 0.75rem 1rem; text-align: right; font-weight: 800; color: #166534;">₱${paidAmountValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td style="padding: 0.75rem 1rem; text-align: center;"><span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800;">RECORDED</span></td>
+            </tr>`;
+        } else {
+            payRows.innerHTML = `<tr><td colspan="5" style="padding: 1.5rem; text-align: center; color: #94a3b8;">No payment records found.</td></tr>`;
+        }
+    }
+
     var statusEl = document.getElementById('modalStatus');
     var statusElMobile = document.getElementById('modalStatusMobile');
     var statusLabels = {
@@ -1459,8 +1569,10 @@ function showBookingDetails(btn) {
     };
     var statusText = data.displayStatus || statusLabels[bookingStatus] || bookingStatus.replace(/_/g, ' ').toUpperCase() || 'Status unavailable';
     
-    statusEl.innerText = statusText;
-    statusEl.className = 'badge-status';
+    if (statusEl) {
+        statusEl.innerText = statusText;
+        statusEl.className = 'badge-status';
+    }
     
     if (statusElMobile) {
         statusElMobile.innerText = statusText;
@@ -1488,8 +1600,33 @@ function showBookingDetails(btn) {
         'cancelled': 'badge-cancelled'
     };
     var badgeClass = data.displayBadge || statusMap[data.status] || 'badge-draft';
-    statusEl.classList.add(...badgeClass.trim().split(/\s+/));
+    if (statusEl) statusEl.classList.add(...badgeClass.trim().split(/\s+/));
     if (statusElMobile) statusElMobile.classList.add(...badgeClass.trim().split(/\s+/));
+
+    // Also populate overview tab status text
+    if (ovStatusTxt) {
+        ovStatusTxt.innerText = statusText;
+        const statusColorMap = {
+            confirmed: '#16a34a', completed: '#16a34a', preparing: '#2563eb',
+            on_the_way: '#7c3aed', arrived: '#0891b2', setup_ongoing: '#ca8a04',
+            cancelled: '#dc2626', pending: '#d97706', pending_review: '#d97706',
+            draft: '#64748b', inquiry: '#64748b'
+        };
+        ovStatusTxt.style.color = statusColorMap[bookingStatus] || '#0f172a';
+    }
+
+    // Payment Status Badge in header
+    const paymentBadgeHeader = document.getElementById('modalPaymentStatusBadge');
+    if (paymentBadgeHeader) {
+        let pSt = (data.paymentStatus || 'unpaid').toUpperCase().replace(/_/g, ' ');
+        paymentBadgeHeader.innerText = pSt;
+        if (pSt === 'PAID' || pSt === 'FULLY PAID') {
+            paymentBadgeHeader.style.background = '#dcfce7'; paymentBadgeHeader.style.color = '#166534'; paymentBadgeHeader.style.border = '1px solid #bbf7d0';
+        } else {
+            paymentBadgeHeader.style.background = '#fff7ed'; paymentBadgeHeader.style.color = '#c2410c'; paymentBadgeHeader.style.border = '1px solid #fed7aa';
+        }
+    }
+
     renderOverviewWorkspace(data, { isWalkin, isFoodOrder });
 
     var menuSource = document.getElementById('booking-items-' + data.id);
