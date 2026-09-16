@@ -107,6 +107,8 @@ body, .customer-page-content { background: #f1f5f9 !important; }
 .badge-active    { background:#f0f9ff; color:#0284c7; border:1px solid #bae6fd; }
 .badge-pay-now   { background:#fffbeb; color:#92400e; border:1px solid #fde68a; }
 .badge-reupload  { background:#fff1f2; color:#be123c; border:1px solid #fecdd3; }
+.badge-online    { background:#eff6ff; color:#4338ca; border:1px solid #dbeafe; }
+.badge-walkin    { background:#fff7ed; color:#ea580c; border:1px solid #ffedd5; }
 
 @keyframes bk-blink { 0%,100%{opacity:1}50%{opacity:.5} }
 .badge-pulse { animation: bk-blink 2s infinite; }
@@ -282,6 +284,12 @@ body, .customer-page-content { background: #f1f5f9 !important; }
             {% elif is_food_order %} {% set booking_type_label = 'Food Order' %}
             {% elif is_fast_track %} {% set booking_type_label = 'Custom' %} {% endif %}
 
+            {% set raw_source = (b.booking_source or '')|lower %}
+            {% set is_walkin = ('walk' in raw_source) or ('internal' in raw_source) or ('manual' in raw_source) %}
+            {% set source_label = 'WALK-IN' if is_walkin else 'ONLINE' %}
+            {% set source_badge_class = 'badge-walkin' if is_walkin else 'badge-online' %}
+
+
             {% set ps = b.payment_status or '' %}
             {% set bs = b.status or '' %}
             {% set needs_action = ps in ['reupload_requested','balance_reupload_requested'] or bs in ['pending_payment','awaiting_payment'] %}
@@ -298,6 +306,7 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                         {% else %}
                             <span class="bk-id-chip">BK-{{ "%03d"|format(b.id) }}</span>
                         {% endif %}
+                        <span class="bk-badge {{ source_badge_class }}"><i class="fas {% if is_walkin %}fa-store{% else %}fa-globe{% endif %}"></i> {{ source_label }}</span>
                         <span style="font-weight:700;"><i class="fas fa-store" style="color:var(--bk-primary); margin-right:4px;"></i>{{ b.caterer.business_name }}</span>
                     </div>
                 </td>

@@ -137,6 +137,8 @@ body, .customer-page-content { background: #f1f5f9 !important; }
 .badge-active    { background:#f0f9ff; color:#0369a1; border:1px solid #bae6fd; }
 .badge-pay-now   { background:#fff1f2; color:#be123c; border:1px solid #fecdd3; }
 .badge-reupload  { background:#fffbeb; color:#b45309; border:1px solid #fde68a; }
+.badge-online    { background:#eff6ff; color:#4338ca; border:1px solid #dbeafe; }
+.badge-walkin    { background:#fff7ed; color:#ea580c; border:1px solid #ffedd5; }
 
 @keyframes pulse-ring {
     0%,100% { box-shadow:0 0 0 0 rgba(239,68,68,.4); }
@@ -290,6 +292,12 @@ body, .customer-page-content { background: #f1f5f9 !important; }
             {% set ps = b.payment_status or '' %}
             {% set bs = b.status or '' %}
             {% set needs_action = ps in ['reupload_requested','balance_reupload_requested'] or bs in ['pending_payment','awaiting_payment','draft'] %}
+            
+            {% set raw_source = (b.booking_source or '')|lower %}
+            {% set is_walkin = ('walk' in raw_source) or ('internal' in raw_source) or ('manual' in raw_source) %}
+            {% set source_label = 'WALK-IN' if is_walkin else 'ONLINE' %}
+            {% set source_badge_class = 'badge-walkin' if is_walkin else 'badge-online' %}
+
             {% set item_names = [] %}
             {% if b.selected_items %}
                 {% for si in b.selected_items %}
@@ -315,7 +323,9 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                         {% endif %}
                     </div>
                     <div class="cell-sub">
-                        <span class="bk-id-chip">ORD-{{ "%03d"|format(b.id) }}</span>{{ b.caterer.business_name }}
+                        <span class="bk-id-chip">ORD-{{ "%03d"|format(b.id) }}</span>
+                        <span class="bk-badge {{ source_badge_class }}" style="margin-right:5px;"><i class="fas {% if is_walkin %}fa-store{% else %}fa-globe{% endif %}"></i> {{ source_label }}</span>
+                        {{ b.caterer.business_name }}
                     </div>
                 </td>
                 <td>

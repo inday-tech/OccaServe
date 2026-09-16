@@ -633,28 +633,13 @@
                             {% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ "%06d" | format(booking.id) }}
                         </div>
                         <div style="margin-top: 5px;">
-                            {% set src = booking.booking_source %}
-                            {% if not src %}
-                                {% set src = 'OccaServe' if booking.user_id else 'Walk-in' %}
-                            {% endif %}
-
-                            {% set entry = (booking.entry_method if booking.entry_method is defined else ( 'manual' if not booking.user_id or ('walk' in (booking.booking_source or '')|lower) else 'online')) %}
-                            {% if src == 'OccaServe' or src == 'OccaServe Platform' %}
-                                <span style="background: #e0e7ff; color: #4338ca; padding: 3px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 700;"><i class="fas fa-globe"></i> OccaServe Platform</span>
-                            {% else %}
-                                {% if 'facebook' in src.lower() or 'fb' in src.lower() %}
-                                    <span style="background: #e0f2fe; color: #0284c7; padding: 3px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 700;"><i class="fab fa-facebook-messenger"></i> {{ src }}</span>
-                                {% elif 'call' in src.lower() %}
-                                    <span style="background: #dcfce7; color: #16a34a; padding: 3px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 700;"><i class="fas fa-phone-alt"></i> {{ src }}</span>
-                                {% elif 'sms' in src.lower() or 'text' in src.lower() %}
-                                    <span style="background: #f3e8ff; color: #9333ea; padding: 3px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 700;"><i class="fas fa-comment-sms"></i> {{ src }}</span>
-                                {% else %}
-                                    <span style="background: #f1f5f9; color: #475569; padding: 3px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 700;"><i class="fas fa-walking"></i> {{ src }}</span>
-                                {% endif %}
-                            {% endif %}
-                            <div style="margin-top: 3px; font-size: 0.65rem; color: #64748b; font-weight: 700;">
-                                <span style="font-weight:800; color:#475569;">{{ 'MANUAL' if entry == 'manual' else 'ONLINE' }}</span>
-                            </div>
+                            {% set raw_src = (booking.booking_source or '')|lower %}
+                            {% set is_walkin = (not booking.user_id) or ('walk' in raw_src) or ('internal' in raw_src) or ('manual' in raw_src) %}
+                            {% set source_label = 'WALK-IN' if is_walkin else 'ONLINE' %}
+                            
+                            <span class="booking-source-badge {% if is_walkin %}badge-source-walkin{% else %}badge-source-online{% endif %}">
+                                <i class="fas {% if is_walkin %}fa-store{% else %}fa-globe{% endif %}"></i> {{ source_label }}
+                            </span>
                         </div>
                     </td>
 
