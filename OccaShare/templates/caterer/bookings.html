@@ -150,28 +150,17 @@
         text-transform: uppercase !important;
     }
 
-    /* Amount cell */
-    .bookings-list-table td:nth-child(6) {
-        font-size: 0.92rem !important;
-        font-weight: 700 !important;
-        color: #0f172a !important;
+    /* ══ TABLE DISPLAY & SCROLL WRAPPER ══ */
+    .bookings-table-scroll-wrapper {
+        display: block !important;
+        overflow-x: auto;
+        width: 100%;
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #f1f5f9;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
     }
-
-    /* Guest cell */
-    .bookings-list-table td:nth-child(5) {
-        font-size: 0.88rem !important;
-        font-weight: 600 !important;
-        color: #334155 !important;
-    }
-
-    /* ══ RESPONSIVE VIEW SWITCHER: TABLE (DESKTOP) VS CARDS (MOBILE) ══ */
-    .bookings-table-scroll-wrapper { display: block !important; }
     .smart-booking-list { display: none !important; }
-
-    @media (max-width: 900px) {
-        .bookings-table-scroll-wrapper { display: none !important; }
-        .smart-booking-list { display: grid !important; }
-    }
 
     /* ══ SMART BOOKING LIST ══════════════════════════════════════ */
     .smart-booking-list { display: grid; gap: 0.65rem; padding: 0.75rem; background: #f8fafc; }
@@ -266,14 +255,18 @@
     .overflow-trigger:focus-visible { outline: 2px solid var(--primary-color, #c2414f); outline-offset: 2px; }
 
     .overflow-menu {
-        display: none; position: absolute; right: 1rem; top: 100%;
-        background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
-        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
-        z-index: 100; min-width: 220px; padding: 4px 0;
-        animation: overflow-fade-in 0.12s ease-out;
+        display: none;
+        position: fixed;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 12px 30px -5px rgba(15, 23, 42, 0.15), 0 4px 10px -2px rgba(15, 23, 42, 0.05);
+        z-index: 9999999;
+        min-width: 220px;
+        padding: 6px 0;
+        animation: overflow-fade-in 0.15s ease-out;
     }
     .overflow-menu.open { display: block; }
-    .overflow-menu.position-top { top: auto; bottom: 100%; }
     @keyframes overflow-fade-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
     .overflow-action-item {
@@ -556,8 +549,6 @@
         <p style="margin: 0.25rem 0 0; font-size: 0.78rem; color: #94a3b8; font-weight: 500;">Manage and track your catering bookings</p>
     </div>
     <div class="header-controls" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
-        <input type="search" id="bookingSearchInput" placeholder="Search bookings..." oninput="filterBookings()" style="padding: 0.45rem 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; min-width: 200px; font-size: 0.82rem;">
-        
         <div class="filter-wrapper" style="display: flex; gap: 0.5rem; align-items: center;">
             <select class="filter-select-pro" id="statusFilter" onchange="filterBookings()" style="padding: 0.45rem 1.25rem 0.45rem 0.75rem; font-size: 0.82rem; border-radius: 8px; border: 1px solid #cbd5e1; background-color: #fff; color: #334155; font-weight: 600; cursor: pointer; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                 <option value="">Status: All</option>
@@ -587,62 +578,20 @@
             </div>
         </div>
         {% endif %}
-        <button onclick="openExternalBookingModal()" class="btn-primary-pro" title="Create New Booking">
-            <span>+ New Booking</span>
-        </button>
     </div>
 </div>
 
     {% if bookings %}
-    <div id="smartBookingList" class="smart-booking-list">
-        {% for item in booking_list %}
-        <article class="smart-booking-card {% if item.is_urgent %}is-urgent{% endif %}"
-            data-booking-card="true" data-status="{{ item.status }}" data-booking-kind="{{ item.kind }}" data-payment-status="{{ item.payment_filter }}"
-            data-entry-method="{{ item.source_kind }}" data-event-month="{{ item.event_date.strftime('%Y-%m') if item.event_date else '' }}"
-            data-is-urgent="{{ 'true' if item.is_urgent else 'false' }}" data-needs-action="{{ 'true' if item.needs_action else 'false' }}">
-            <div class="smart-booking-main">
-                <div class="smart-booking-identity">
-                    <div class="smart-booking-ref">{% if item.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ '%06d'|format(item.id) }}</div>
-                    <div class="smart-booking-badges">
-                        <span class="booking-type-badge"><i class="fas {{ item.type_icon }}"></i> {{ item.type_label }}</span>
-                        <span class="booking-source-badge {% if item.source_kind == 'walkin' %}badge-source-walkin{% else %}badge-source-online{% endif %}">
-                            <i class="fas {% if item.source_kind == 'walkin' %}fa-store{% else %}fa-globe{% endif %}"></i> {{ item.source_label }}
-                        </span>
-                    </div>
-                </div>
-                <div class="smart-booking-customer">
-                    <strong>{{ item.customer_name }}</strong>
-                    {% if item.customer_email %}<span>{{ item.customer_email }}</span>{% endif %}
-                </div>
-                <div class="smart-booking-event">
-                    <strong>{{ item.event_type }}</strong>
-                    <span>{{ item.item_name }}</span>
-                    <small>{% if item.event_date %}{{ item.event_date.strftime('%b %d, %Y') }}{% else %}Date not specified{% endif %}{% if item.event_time %} · {{ item.event_time.strftime('%I:%M %p') }}{% endif %}{% if item.show_guests and item.guest_count %} · {{ item.guest_count }} guests{% endif %}</small>
-                </div>
-                <div class="smart-booking-state">
-                    <span class="smart-status smart-status-{{ item.status|replace('_', '-') }}">{{ item.status_label }}</span>
-                    <span class="smart-payment">{% if item.has_quote %}{{ item.payment_label }}{% else %}Not quoted{% endif %}</span>
-                    {% if item.attention %}<span class="smart-attention"><i class="fas fa-exclamation-triangle"></i> {{ item.attention }}</span>{% endif %}
-                </div>
-                <div class="smart-booking-next"><span>Next</span><strong>{{ item.next_action }}</strong></div>
-            </div>
-            <div class="smart-booking-action">
-                <button type="button" class="overflow-trigger" aria-label="More actions" onclick="toggleActionMenuBookings('{{ item.id }}', event)"><i class="fas fa-ellipsis-h"></i></button>
-            </div>
-        </article>
-        {% endfor %}
-        <div id="smartSearchEmptyState" class="smart-empty-state" style="display:none;">No bookings match the selected filters.</div>
-    </div>
     <div class="bookings-table-scroll-wrapper" style="overflow-x: auto; width: 100%;">
         <table class="b-table bookings-list-table" style="width: 100%; border-collapse: collapse; min-width: 1000px;">
             <thead>
-                <tr style="border-bottom: 2px solid #f1f5f9;">
-                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 12%;">Ref ID</th>
-                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 18%;">Customer</th>
-                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 20%;">Event & Pax</th>
-                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 15%;">Date & Time</th>
-                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 25%;">Status & Billing</th>
-                    <th style="padding: 1rem 1.25rem; text-align: right; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 10%;">Actions</th>
+                <tr style="border-bottom: 2px solid #e2e8f0; background: #f8fafc;">
+                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 14%;">Ref ID & Source</th>
+                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 20%;">Customer</th>
+                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 22%;">Event & Pax</th>
+                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 16%;">Date & Time</th>
+                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 20%;">Status & Billing</th>
+                    <th style="padding: 1rem 1.25rem; text-align: right; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 8%;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -756,7 +705,7 @@
                     </td>
 
                     <!-- DATE -->
-                    <td class="booking-cell-first" style="padding: 1rem 1.25rem;">
+                    <td style="padding: 1rem 1.25rem;">
                         <div class="flex-column">
                             {% set is_early_stage = booking.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'] %}
                             {% set caterer_action_needed_cell = booking.status in ['pending', 'awaiting_caterer', 'pending_review'] or (booking.payment_status == 'proof_submitted' and is_early_stage) %}
@@ -892,7 +841,7 @@
                             </div>
                         </div>
                     </td>
-                    <td class="action-dropdown-container" style="padding: 1rem 1.25rem; text-align: center; position: relative;">
+                    <td class="action-dropdown-container" style="padding: 1rem 1.25rem; text-align: right; position: relative;">
                         <button class="overflow-trigger" aria-label="More actions" onclick="toggleActionMenuBookings('{{ booking.id }}', event)">
                             <i class="fas fa-ellipsis-h"></i>
                         </button>

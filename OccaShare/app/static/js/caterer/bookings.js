@@ -156,6 +156,10 @@ function closeAllBookingMenus() {
     document.querySelectorAll('.overflow-menu').forEach(function(m) {
         m.classList.remove('open', 'position-top');
         m.style.display = 'none';
+        m.style.top = '';
+        m.style.right = '';
+        m.style.left = '';
+        m.style.bottom = '';
     });
 }
 
@@ -192,7 +196,10 @@ function toggleActionMenuBookings(id, event) {
     var target = document.getElementById('actionMenu-' + id);
     if (!target) return;
 
-    var isOpen = target.classList.contains('open') || target.style.display === 'block';
+    var trigger = (event && (event.currentTarget || event.target.closest('.overflow-trigger'))) 
+                  || (target.parentElement ? target.parentElement.querySelector('.overflow-trigger') : null);
+
+    var isOpen = target.classList.contains('open') && target.style.display === 'block';
 
     // Close all open menus first
     closeAllBookingMenus();
@@ -201,18 +208,16 @@ function toggleActionMenuBookings(id, event) {
         return;
     }
 
-    // Open target
+    // Attach target directly to document.body so no parent overflow can clip it
+    if (target.parentElement !== document.body) {
+        document.body.appendChild(target);
+    }
+
+    // Open target with fixed positioning
     target.classList.add('open');
     target.style.display = 'block';
-
-    // Upward positioning if near viewport bottom
-    var rect = target.getBoundingClientRect();
-    var viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    if (rect.bottom > viewportHeight - 15) {
-        target.classList.add('position-top');
-    } else {
-        target.classList.remove('position-top');
-    }
+    target.style.position = 'fixed';
+    target.style.zIndex = '9999999';
 
     try {
         const bid = target.getAttribute('data-booking-id') || id;
@@ -225,142 +230,183 @@ function toggleActionMenuBookings(id, event) {
         const userId = target.getAttribute('data-user-id') || '';
 
         const container = target.querySelector('.dynamic-actions');
-        if (!container) return;
-        container.innerHTML = '';
+        if (container) {
+            container.innerHTML = '';
 
-        const addAction = (label, icon, onClick, isDestructive = false) => {
-            const b = document.createElement('button');
-            b.type = 'button';
-            b.className = 'overflow-action-item' + (isDestructive ? ' overflow-action-item--destructive' : '');
-            b.innerHTML = `<i class="fas ${icon}"></i> <span>${label}</span>`;
-            b.addEventListener('click', function(ev) {
-                ev.stopPropagation();
-                closeAllBookingMenus();
-                onClick();
-            });
-            container.appendChild(b);
-        };
+            const addAction = (label, icon, onClick, isDestructive = false) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'overflow-action-item' + (isDestructive ? ' overflow-action-item--destructive' : '');
+                b.innerHTML = `<i class="fas ${icon}"></i> <span>${label}</span>`;
+                b.addEventListener('click', function(ev) {
+                    ev.stopPropagation();
+                    closeAllBookingMenus();
+                    onClick();
+                });
+                container.appendChild(b);
+            };
 
-        const addSeparator = () => {
-            const sep = document.createElement('div');
-            sep.className = 'overflow-separator';
-            container.appendChild(sep);
-        };
+            const addSeparator = () => {
+                const sep = document.createElement('div');
+                sep.className = 'overflow-separator';
+                container.appendChild(sep);
+            };
 
-        // 1. Edit Booking (Status not completed, cancelled, or expired)
-        if (!['completed', 'cancelled', 'expired'].includes(status)) {
-            addAction('Edit Booking', 'fa-edit', function() {
-                currentBookingId = bid;
-                if (typeof window.openEditBookingModal === 'function') {
-                    window.openEditBookingModal();
-                } else {
-                    const viewBtn = target.querySelector('.view-details');
-                    if (viewBtn) window.showBookingDetails(viewBtn);
-                }
-            });
-        }
-
-        // 2. Update Payment (Has total > 0, not fully paid, not cancelled)
-        const isFullyPaid = (totalAmount > 0 && amountPaid >= totalAmount) || ['paid', 'fully_paid'].includes(payment);
-        if (totalAmount > 0 && !isFullyPaid && status !== 'cancelled') {
-            addAction('Update Payment', 'fa-money-bill-wave', function() {
-                const viewBtn = target.querySelector('.view-details');
-                if (viewBtn) {
-                    window.showBookingDetails(viewBtn);
-                    setTimeout(function() {
-                        const finBtn = document.querySelector('#bookingDetailModal [data-tab="finance"]');
-                        if (finBtn && typeof window.switchBookingTab === 'function') {
-                            window.switchBookingTab('finance', finBtn);
-                        }
-                    }, 350);
-                }
-            });
-        }
-
-        // 3. View Customer (Has userId)
-        if (userId) {
-            addAction('View Customer', 'fa-user', function() {
-                const viewBtn = target.querySelector('.view-details');
-                if (viewBtn) {
-                    window.showBookingDetails(viewBtn);
-                    setTimeout(function() {
-                        const chatBtn = document.querySelector('#bookingDetailModal [data-tab="chat"]');
-                        if (chatBtn && typeof window.switchBookingTab === 'function') {
-                            window.switchBookingTab('chat', chatBtn);
-                        }
-                    }, 350);
-                }
-            });
-        }
-
-        // 4. Preparation Checklist (Status in confirmed, preparing, setup_ongoing, in_progress, ready_for_delivery, ready_for_pickup, arrived)
-        if (['confirmed', 'preparing', 'setup_ongoing', 'in_progress', 'ready_for_delivery', 'ready_for_pickup', 'arrived'].includes(status)) {
-            addAction('Preparation Checklist', 'fa-tasks', function() {
-                const viewBtn = target.querySelector('.view-details');
-                if (viewBtn) {
-                    window.showBookingDetails(viewBtn);
-                    setTimeout(function() {
-                        const chk = document.getElementById('modalChecklistSection');
-                        if (chk) chk.scrollIntoView({ behavior: 'smooth' });
-                        if (typeof window.loadBookingTasks === 'function') {
-                            window.loadBookingTasks(bid);
-                        }
-                    }, 350);
-                }
-            });
-        }
-
-        // 5. View Activity (Always)
-        addAction('View Activity', 'fa-history', function() {
-            const viewBtn = target.querySelector('.view-details');
-            if (viewBtn) {
-                window.showBookingDetails(viewBtn);
-                setTimeout(function() {
-                    const actBtn = document.querySelector('#bookingDetailModal [data-tab="activity"]');
-                    if (actBtn && typeof window.switchBookingTab === 'function') {
-                        window.switchBookingTab('activity', actBtn);
+            // 1. Edit Booking (Status not completed, cancelled, or expired)
+            if (!['completed', 'cancelled', 'expired'].includes(status)) {
+                addAction('Edit Booking', 'fa-edit', function() {
+                    currentBookingId = bid;
+                    if (typeof window.openEditBookingModal === 'function') {
+                        window.openEditBookingModal();
+                    } else {
+                        const viewBtn = target.querySelector('.view-details');
+                        if (viewBtn) window.showBookingDetails(viewBtn);
                     }
-                    if (typeof window.loadBookingHistory === 'function') {
-                        window.loadBookingHistory(bid);
-                    }
-                }, 350);
+                });
             }
-        });
 
-        // 6. Copy Payment Link (Payable booking with userId)
-        if (userId && !['completed', 'cancelled'].includes(status) && !isFullyPaid) {
-            addAction('Copy Payment Link', 'fa-link', function() {
-                if (typeof window.copyInvoiceLink === 'function') {
-                    window.copyInvoiceLink(bid);
+            // 2. Update Payment (Has total > 0, not fully paid, not cancelled)
+            const isFullyPaid = (totalAmount > 0 && amountPaid >= totalAmount) || ['paid', 'fully_paid'].includes(payment);
+            if (totalAmount > 0 && !isFullyPaid && status !== 'cancelled') {
+                addAction('Update Payment', 'fa-money-bill-wave', function() {
+                    const viewBtn = target.querySelector('.view-details');
+                    if (viewBtn) {
+                        window.showBookingDetails(viewBtn);
+                        setTimeout(function() {
+                            const finBtn = document.querySelector('#bookingDetailModal [data-tab="finance"]');
+                            if (finBtn && typeof window.switchBookingTab === 'function') {
+                                window.switchBookingTab('finance', finBtn);
+                            }
+                        }, 350);
+                    }
+                });
+            }
+
+            // 3. View Customer (Has userId)
+            if (userId) {
+                addAction('View Customer', 'fa-user', function() {
+                    const viewBtn = target.querySelector('.view-details');
+                    if (viewBtn) {
+                        window.showBookingDetails(viewBtn);
+                        setTimeout(function() {
+                            const chatBtn = document.querySelector('#bookingDetailModal [data-tab="chat"]');
+                            if (chatBtn && typeof window.switchBookingTab === 'function') {
+                                window.switchBookingTab('chat', chatBtn);
+                            }
+                        }, 350);
+                    }
+                });
+            }
+
+            // 4. Preparation Checklist
+            if (['confirmed', 'preparing', 'setup_ongoing', 'in_progress', 'ready_for_delivery', 'ready_for_pickup', 'arrived'].includes(status)) {
+                addAction('Preparation Checklist', 'fa-tasks', function() {
+                    const viewBtn = target.querySelector('.view-details');
+                    if (viewBtn) {
+                        window.showBookingDetails(viewBtn);
+                        setTimeout(function() {
+                            const chk = document.getElementById('modalChecklistSection');
+                            if (chk) chk.scrollIntoView({ behavior: 'smooth' });
+                            if (typeof window.loadBookingTasks === 'function') {
+                                window.loadBookingTasks(bid);
+                            }
+                        }, 350);
+                    }
+                });
+            }
+
+            // 5. View Activity (Always)
+            addAction('View Activity', 'fa-history', function() {
+                const viewBtn = target.querySelector('.view-details');
+                if (viewBtn) {
+                    window.showBookingDetails(viewBtn);
+                    setTimeout(function() {
+                        const actBtn = document.querySelector('#bookingDetailModal [data-tab="activity"]');
+                        if (actBtn && typeof window.switchBookingTab === 'function') {
+                            window.switchBookingTab('activity', actBtn);
+                        }
+                        if (typeof window.loadBookingHistory === 'function') {
+                            window.loadBookingHistory(bid);
+                        }
+                    }, 350);
                 }
             });
-        }
 
-        // 7. Cancel Booking (Destructive - Status not completed, cancelled, or expired)
-        if (!['completed', 'cancelled', 'expired'].includes(status)) {
-            addSeparator();
-            addAction('Cancel Booking', 'fa-times-circle', function() {
-                if (typeof window.confirmRejectBooking === 'function') {
-                    window.confirmRejectBooking(bid);
-                }
-            }, true);
-        }
+            // 6. Copy Payment Link (Payable booking with userId)
+            if (userId && !['completed', 'cancelled'].includes(status) && !isFullyPaid) {
+                addAction('Copy Payment Link', 'fa-link', function() {
+                    if (typeof window.copyInvoiceLink === 'function') {
+                        window.copyInvoiceLink(bid);
+                    }
+                });
+            }
 
-        // Setup accessibility keyboard navigation
-        setupMenuKeyboardNav(target);
+            // 7. Cancel Booking (Destructive - Status not completed, cancelled, or expired)
+            if (!['completed', 'cancelled', 'expired'].includes(status)) {
+                addSeparator();
+                addAction('Cancel Booking', 'fa-times-circle', function() {
+                    if (typeof window.confirmRejectBooking === 'function') {
+                        window.confirmRejectBooking(bid);
+                    }
+                }, true);
+            }
+
+            setupMenuKeyboardNav(target);
+        }
     } catch (e) {
         console.error('Failed to build action menu', e);
+    }
+
+    // Now calculate position after actions are added and target has real height
+    if (trigger) {
+        const triggerRect = trigger.getBoundingClientRect();
+        const menuRect = target.getBoundingClientRect();
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+
+        let topPos = triggerRect.bottom + 6;
+        if (topPos + menuRect.height > viewportHeight - 12) {
+            const aboveTop = triggerRect.top - menuRect.height - 6;
+            if (aboveTop >= 10) {
+                topPos = aboveTop;
+                target.classList.add('position-top');
+            } else {
+                topPos = Math.max(10, viewportHeight - menuRect.height - 12);
+                target.classList.remove('position-top');
+            }
+        } else {
+            target.classList.remove('position-top');
+        }
+
+        let rightPos = viewportWidth - triggerRect.right;
+        if (rightPos < 10) rightPos = 10;
+        if (viewportWidth - rightPos - menuRect.width < 10) {
+            rightPos = Math.max(10, viewportWidth - menuRect.width - 10);
+        }
+
+        target.style.top = topPos + 'px';
+        target.style.right = rightPos + 'px';
+        target.style.left = 'auto';
+        target.style.bottom = 'auto';
     }
 }
 
 window.toggleActionMenuBookings = toggleActionMenuBookings;
 window.closeAllBookingMenus = closeAllBookingMenus;
 
-// Close overflow menus on click-outside or Escape key
+// Close overflow menus on click-outside, scroll, resize, or Escape key
 document.addEventListener('click', function(e) {
     if (!e.target.closest('.overflow-menu') && !e.target.closest('.overflow-trigger')) {
         closeAllBookingMenus();
     }
+});
+
+window.addEventListener('scroll', function() {
+    closeAllBookingMenus();
+}, true);
+
+window.addEventListener('resize', function() {
+    closeAllBookingMenus();
 });
 
 document.addEventListener('keydown', function(e) {
