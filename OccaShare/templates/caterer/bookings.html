@@ -164,10 +164,20 @@
         color: #334155 !important;
     }
 
+    /* ══ RESPONSIVE VIEW SWITCHER: TABLE (DESKTOP) VS CARDS (MOBILE) ══ */
+    .bookings-table-scroll-wrapper { display: block !important; }
+    .smart-booking-list { display: none !important; }
+
+    @media (max-width: 900px) {
+        .bookings-table-scroll-wrapper { display: none !important; }
+        .smart-booking-list { display: grid !important; }
+    }
+
     /* ══ SMART BOOKING LIST ══════════════════════════════════════ */
     .smart-booking-list { display: grid; gap: 0.65rem; padding: 0.75rem; background: #f8fafc; }
     .kpi-filter-card { cursor: pointer; transition: border-color 0.2s ease, transform 0.2s ease; }
     .kpi-filter-card:hover { border-color: #cbd5e1; transform: translateY(-1px); }
+    .kpi-filter-card.active-kpi { border-color: var(--primary-color, #c2414f) !important; background: #fef2f2 !important; }
     .process-legend-container { display: none !important; }
     .smart-booking-card {
         display: grid;
@@ -468,214 +478,71 @@
     });
 </script>
 
-<div class="kpi-grid-clean" style="margin-bottom: var(--space-lg);">
-    <div class="kpi-card-clean kpi-filter-card" onclick="document.getElementById('statusFilter').value='action_required'; filterBookings();">
+<div class="kpi-grid-clean" style="margin-bottom: var(--space-lg); display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+    <div class="kpi-card-clean kpi-filter-card" id="kpi-card-online" onclick="setUniversalFilter('online')">
         <div class="kpi-info">
-            <h4>Needs Action</h4>
-            <span class="kpi-value" style="color:#b45309;">{{ needs_action_count }}</span>
-            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Requires attention</span>
+            <h4 style="display: flex; align-items: center; gap: 6px;"><i class="fas fa-globe" style="color: #4338ca;"></i> ONLINE BOOKINGS</h4>
+            <span class="kpi-value" style="color: #4338ca;">{{ online_bookings_count|default(0) }}</span>
+            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Website reservations</span>
         </div>
     </div>
-    <div class="kpi-card-clean kpi-filter-card" onclick="document.getElementById('dateFilter').value=''; document.getElementById('statusFilter').value=''; filterBookings();">
+    <div class="kpi-card-clean kpi-filter-card" id="kpi-card-walkin" onclick="setUniversalFilter('walkin')">
         <div class="kpi-info">
-            <h4>Upcoming</h4>
-            <span class="kpi-value" style="color: var(--accent-color);">{{ upcoming_count }}</span>
-            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Scheduled bookings</span>
+            <h4 style="display: flex; align-items: center; gap: 6px;"><i class="fas fa-walking" style="color: #c2410c;"></i> WALK-IN BOOKINGS</h4>
+            <span class="kpi-value" style="color: #c2410c;">{{ walkin_bookings_count|default(0) }}</span>
+            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Staff / manual entries</span>
         </div>
     </div>
-    <div class="kpi-card-clean kpi-filter-card" onclick="document.getElementById('statusFilter').value='inquiry'; filterBookings();">
+    <div class="kpi-card-clean kpi-filter-card" id="kpi-card-completed" onclick="setUniversalFilter('completed')">
         <div class="kpi-info">
-            <h4>Inquiries</h4>
-            <span class="kpi-value" style="color: var(--accent-color);">{{ inquiry_count }}</span>
-            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Needs qualification</span>
+            <h4 style="display: flex; align-items: center; gap: 6px;"><i class="fas fa-check-circle" style="color: #16a34a;"></i> COMPLETED</h4>
+            <span class="kpi-value" style="color: #16a34a;">{{ completed_count|default(0) }}</span>
+            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Finished events</span>
         </div>
     </div>
-    <div class="kpi-card-clean kpi-filter-card" onclick="document.getElementById('statusFilter').value='confirmed'; filterBookings();">
+    <div class="kpi-card-clean kpi-filter-card" id="kpi-card-cancelled" onclick="setUniversalFilter('cancelled')">
         <div class="kpi-info">
-            <h4>Confirmed</h4>
-            <span class="kpi-value" style="color: var(--accent-color);">{{ confirmed_count }}</span>
-            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Ready to serve</span>
-        </div>
-    </div>
-</div>
-
-{% set payments_to_verify = [] %}
-{% set contracts_to_sign = [] %}
-{% set urgent_events = [] %}
-{% set unpaid_balances = [] %}
-
-{% for b in bookings %}
-    {% set is_early_stage = b.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'] %}
-    {% set caterer_action_needed = b.status in ['pending', 'awaiting_caterer', 'pending_review'] or (b.payment_status == 'proof_submitted' and is_early_stage) %}
-    {% if b.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
-        {% set caterer_action_needed = False %}
-    {% endif %}
-    {% set is_urgent = (b.event_date - today).days <= 2 and caterer_action_needed %}
-    {% if is_urgent %}
-        {% set _ = urgent_events.append(b) %}
-    {% else %}
-        {% set is_early_stage = b.status in ['draft', 'pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'] %}
-        {% if b.payment_status == 'balance_proof_submitted' or (b.payment_status == 'proof_submitted' and is_early_stage) %}
-            {% set _ = payments_to_verify.append(b) %}
-        {% endif %}
-        {% if b.status in ['awaiting_caterer', 'pending_review'] %}
-            {% set _ = contracts_to_sign.append(b) %}
-        {% endif %}
-        {% if b.status in ['confirmed', 'preparing'] and b.payment_plan == 'downpayment' and b.payment_status not in ['fully_paid', 'balance_proof_submitted'] and (b.event_date - today).days <= 7 and (b.event_date - today).days >= 0 %}
-            {% set _ = unpaid_balances.append(b) %}
-        {% endif %}
-    {% endif %}
-{% endfor %}
-
-{% set normal_alerts = (payments_to_verify|length + contracts_to_sign|length + unpaid_balances|length) %}
-{% set total_alerts = (normal_alerts + urgent_events|length) %}
-
-{% if total_alerts > 0 %}
-{% set is_critical = urgent_events|length > 0 %}
-<div class="action-banner-premium animate-up delay-1" id="alertBanner" style="background: {% if is_critical %}#fff1f2{% else %}#f8fafc{% endif %}; border: 1px solid {% if is_critical %}#fecdd3{% else %}#e2e8f0{% endif %}; border-left: 4px solid {% if is_critical %}#e11d48{% else %}#2563eb{% endif %}; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; margin-bottom: 1.5rem;">
-    <div class="action-banner-content" style="display: flex; gap: 1rem; align-items: center;">
-        <div class="action-banner-icon" style="background: {% if is_critical %}#ffe4e6{% else %}#dbeafe{% endif %}; color: {% if is_critical %}#e11d48{% else %}#2563eb{% endif %}; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
-            <i class="fas {% if is_critical %}fa-exclamation-circle{% else %}fa-bell{% endif %}"></i>
-        </div>
-        <div class="action-banner-text">
-            <h4 style="color: #0f172a; font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-                {% if is_critical %}Urgent Action Required{% else %}Action Required{% endif %} 
-                <span class="alert-count-badge" style="background: {% if is_critical %}#ef4444{% else %}#3b82f6{% endif %}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em;">{{ total_alerts }} ALERTS</span>
-            </h4>
-            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #475569; font-weight: 500;">
-                <span id="bannerTaskDetails">
-                    {% if is_critical %}
-                        You have <strong style="color: #ef4444;">{{ urgent_events|length }}</strong> urgent pending bookings (less than 48 hours away). Please review them immediately.
-                    {% else %}
-                        Pending: 
-                        {% set msg_parts = [] %}
-                        {% if payments_to_verify %} {% set _ = msg_parts.append('<span style="color: #0ea5e9; font-weight: 700;">' ~ payments_to_verify|length ~ '</span> payments') %} {% endif %}
-                        {% if contracts_to_sign %} {% set _ = msg_parts.append('<span style="color: #0ea5e9; font-weight: 700;">' ~ contracts_to_sign|length ~ '</span> contracts') %} {% endif %}
-                        {% if unpaid_balances %} {% set _ = msg_parts.append('<span style="color: #ef4444; font-weight: 700;">' ~ unpaid_balances|length ~ '</span> final balances') %} {% endif %}
-                        {{ msg_parts|join(' &bull; ')|safe }}
-                    {% endif %}
-                </span>
-            </p>
-        </div>
-    </div>
-    <button onclick="scrollToActionTable()" class="btn-outline" style="background: white; border: 1px solid {% if is_critical %}#ef4444{% else %}#cbd5e1{% endif %}; color: {% if is_critical %}#ef4444{% else %}#475569{% endif %}; font-weight: 600; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
-        {% if is_critical %}Resolve Now{% else %}Attend Now{% endif %} <i class="fas fa-arrow-right"></i>
-    </button>
-</div>
-<script>
-    function scrollToActionTable() {
-        const sf = document.getElementById('statusFilter');
-        if (sf) { 
-            sf.value = 'action_required'; 
-            // If filterBookings is global, we can call it, else trigger change
-            if (typeof filterBookings === 'function') {
-                filterBookings();
-            } else {
-                sf.dispatchEvent(new Event('change'));
-            }
-        }
-        const tc = document.querySelector('.b-table-container');
-        if (tc) {
-            tc.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            tc.style.boxShadow = '0 0 25px rgba(249, 115, 22, 0.2)';
-            setTimeout(() => { tc.style.boxShadow = ''; }, 2000);
-        }
-    }
-</script>
-{% endif %}
-
-
-<!-- Process Legend -->
-<div class="process-legend-container animate-up delay-2" style="margin-bottom: 1.5rem; padding: 1.25rem; background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; gap: 0.75rem;">
-    <div>
-        <div style="font-size: 0.85rem; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em;">Booking Icon Guide</div>
-        <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.2rem;">Use this guide to easily identify the status and source of your events.</div>
-    </div>
-    
-    <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 0.75rem;">
-        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #334155;">
-            <div style="width: 10px; height: 10px; background: #ef4444; border-radius: 50%; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2); animation: pulse 2s infinite;"></div>
-            <span>Urgent (Event within 48h)</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #334155;">
-            <span style="background: #e0e7ff; color: #4338ca; padding: 3px 6px; border-radius: 4px; font-size: 0.7rem;"><i class="fas fa-globe"></i></span>
-            <span>Online Booking</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #334155;">
-            <span style="background: #f1f5f9; color: #475569; padding: 3px 6px; border-radius: 4px; font-size: 0.7rem;"><i class="fas fa-walking"></i></span>
-            <span>Walk-in Booking</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #334155;">
-            <span style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 12px; font-size: 0.7rem;"><i class="fas fa-comment-dots"></i></span>
-            <span>Unread Chat Message</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #334155;">
-            <span class="pulse-update" style="font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; background: #fef9c3; color: #854d0e; border: 1px solid #fde047;">Action Needed</span>
-            <span>Requires contract signing / payment verification</span>
+            <h4 style="display: flex; align-items: center; gap: 6px;"><i class="fas fa-times-circle" style="color: #dc2626;"></i> CANCELLED</h4>
+            <span class="kpi-value" style="color: #dc2626;">{{ cancelled_count|default(0) }}</span>
+            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Void / cancelled</span>
         </div>
     </div>
 </div>
 
 <div class="b-table-header" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid #f1f5f9;">
     <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #0f172a;">All Bookings</h3>
-    <div class="header-controls" style="display: flex; gap: 0.75rem; flex-wrap: nowrap; align-items: center; overflow-x: auto; padding-bottom: 2px;">
-        <input type="search" id="bookingSearchInput" placeholder="Search customer, booking ID, contact number..." oninput="filterBookings()" style="padding: 0.45rem 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; min-width: 280px;">
+    <div class="header-controls" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+        <input type="search" id="bookingSearchInput" placeholder="Search ref (e.g. BK-000001), customer, event, phone..." oninput="filterBookings()" style="padding: 0.45rem 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; min-width: 280px;">
         
-        <div class="filter-wrapper" style="display: flex; gap: 0.5rem; align-items: center; background: #f8fafc; padding: 0.35rem; border-radius: 8px; border: 1px solid #e2e8f0;">
-            <select class="filter-select-pro" id="statusFilter" onchange="filterBookings()" style="padding: 0.35rem 1.5rem 0.35rem 0.75rem; font-size: 0.78rem; border-radius: 6px; border: none; background-color: #fff; color: #334155; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer; outline: none;">
-                <option value="">All Status</option>
-                <option value="action_required">🔥 Needs Action</option>
-                <option value="inquiry">Inquiry</option>
-                <option value="awaiting_customer">Awaiting Customer</option>
-                <option value="pending_quotation">Draft / Quoting</option>
-                <option value="awaiting_caterer">To Sign Contract</option>
-                <option value="pending">Pending Pay (Regular)</option>
-                <option value="awaiting_payment">Pending Pay (Installment/Walk-in)</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="preparing">Preparing Food/Event</option>
-                <option value="on_the_way">Ready For Delivery</option>
-                <option value="in_progress">Event Ongoing</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
+        <div class="filter-wrapper" style="display: flex; gap: 0.5rem; align-items: center;">
+            <select class="filter-select-pro" id="universalFilter" onchange="filterBookings()" style="padding: 0.45rem 1.25rem 0.45rem 0.75rem; font-size: 0.82rem; border-radius: 8px; border: 1px solid #cbd5e1; background-color: #fff; color: #334155; font-weight: 600; cursor: pointer; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                <option value="all">All Bookings</option>
+                <option value="online">🌐 Online Bookings</option>
+                <option value="walkin">🚶 Walk-in Bookings</option>
+                <option value="pending">⏳ Pending Review / Payment</option>
+                <option value="confirmed">✅ Confirmed</option>
+                <option value="completed">🎉 Completed</option>
+                <option value="cancelled">❌ Cancelled</option>
             </select>
-            <select class="filter-select-pro" id="sourceFilter" onchange="filterBookings()" style="padding: 0.35rem 1.5rem 0.35rem 0.75rem; font-size: 0.78rem; border-radius: 6px; border: none; background-color: #fff; color: #334155; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer; outline: none;">
-                <option value="">All Sources</option>
-                <option value="online">Online Booking</option>
-                <option value="walkin">Walk-in Booking</option>
-            </select>
-            <select class="filter-select-pro" id="paymentFilter" onchange="filterBookings()" style="padding: 0.35rem 1.5rem 0.35rem 0.75rem; font-size: 0.78rem; border-radius: 6px; border: none; background-color: #fff; color: #334155; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer; outline: none;">
-                <option value="">All Payments</option>
-                <option value="paid">Fully Paid</option>
-                <option value="partial">Partial</option>
-                <option value="pending">Pending</option>
-            </select>
-            <input type="month" id="dateFilter" class="filter-select-pro" style="padding: 0.35rem 0.75rem; font-size: 0.78rem; border-radius: 6px; border: none; background-color: #fff; color: #334155; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer; outline: none;" onchange="filterBookings()">
         </div>
 
         {% if bookings %}
-        <select class="filter-select-pro" id="bookingTypeFilter" onchange="filterBookings()" style="padding: 0.35rem 1.5rem 0.35rem 0.75rem; font-size: 0.78rem; border-radius: 6px; border: 1px solid #e2e8f0; background-color: #fff; color: #334155; font-weight: 600; cursor: pointer; outline: none;">
-            <option value="">All Types</option>
-            <option value="catering">Catering</option>
-            <option value="rental">Rental</option>
-            <option value="service">Service</option>
-            <option value="mixed">Mixed</option>
-        </select>
         <div class="action-dropdown-container" style="position: relative;">
             <button class="btn-outline input-sm" style="padding: 0.45rem 1rem; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 600; font-size: 0.78rem; color: #475569; background: white; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; white-space: nowrap;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'" onclick="window.toggleBookingExportMenu(event)">
                 <i class="fas fa-file-export"></i> Export <i class="fas fa-chevron-down" style="font-size: 0.65rem;"></i>
             </button>
             <div class="action-dropdown-menu" id="bookingExportMenu" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); width: 200px; z-index: 100; overflow: hidden;">
-                    <button onclick="window.exportBookings('excel')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569; border-bottom: 1px solid #f1f5f9;"><i class="fas fa-file-excel" style="color: var(--accent-color); font-size: 1.1rem; width: 20px;"></i> Excel (CSV)</button>
-                    <button onclick="window.exportBookings('pdf')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569; border-bottom: 1px solid #f1f5f9;"><i class="fas fa-file-pdf" style="color: #ef4444; font-size: 1.1rem; width: 20px;"></i> PDF Report</button>
-                    <button onclick="window.exportBookings('word')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569;"><i class="fas fa-file-word" style="color: #3b82f6; font-size: 1.1rem; width: 20px;"></i> Word Doc</button>
-                </div>
+                <button onclick="window.exportBookings('excel')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569; border-bottom: 1px solid #f1f5f9;"><i class="fas fa-file-excel" style="color: var(--accent-color); font-size: 1.1rem; width: 20px;"></i> Excel (CSV)</button>
+                <button onclick="window.exportBookings('pdf')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569; border-bottom: 1px solid #f1f5f9;"><i class="fas fa-file-pdf" style="color: #ef4444; font-size: 1.1rem; width: 20px;"></i> PDF Report</button>
+                <button onclick="window.exportBookings('word')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569;"><i class="fas fa-file-word" style="color: #3b82f6; font-size: 1.1rem; width: 20px;"></i> Word Doc</button>
             </div>
-            {% endif %}
-            <button onclick="openExternalBookingModal()" class="btn-primary-pro" title="Create Manual Booking">
-                <span>New Manual Booking</span>
-            </button>
         </div>
+        {% endif %}
+        <button onclick="openExternalBookingModal()" class="btn-primary-pro" title="Create Manual Booking">
+            <span>New Manual Booking</span>
+        </button>
     </div>
+</div>
 
     {% if bookings %}
     <div id="smartBookingList" class="smart-booking-list">
@@ -686,7 +553,7 @@
             data-is-urgent="{{ 'true' if item.is_urgent else 'false' }}" data-needs-action="{{ 'true' if item.needs_action else 'false' }}">
             <div class="smart-booking-main">
                 <div class="smart-booking-identity">
-                    <div class="smart-booking-ref">{% if item.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ '%03d'|format(item.id) }}</div>
+                    <div class="smart-booking-ref">{% if item.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ '%06d'|format(item.id) }}</div>
                     <div class="smart-booking-badges">
                         <span class="booking-type-badge"><i class="fas {{ item.type_icon }}"></i> {{ item.type_label }}</span>
                         <div>
@@ -720,7 +587,7 @@
         {% endfor %}
         <div id="smartSearchEmptyState" class="smart-empty-state" style="display:none;">No bookings match the selected filters.</div>
     </div>
-    <div class="bookings-table-scroll-wrapper" style="display:none; overflow-x: auto; width: 100%;">
+    <div class="bookings-table-scroll-wrapper" style="overflow-x: auto; width: 100%;">
         <table class="b-table bookings-list-table" style="width: 100%; border-collapse: collapse; min-width: 1000px;">
             <thead>
                 <tr style="border-bottom: 2px solid #f1f5f9;">
@@ -742,6 +609,8 @@
                 {% set row_is_urgent = (booking.event_date - today).days <= 2 and (booking.event_date - today).days >= 0 and caterer_action_needed %}
                 {% set is_past_event = (booking.event_date < today) and booking.status not in ['completed', 'cancelled'] %}
                 <tr id="booking-row-{{ booking.id }}" class="booking-row-item {% if row_is_urgent or is_past_event %}urgent-booking-row{% endif %}" 
+                    data-booking-row="true"
+                    data-booking-id="BK-{{ '%06d'|format(booking.id) }}"
                     data-status="{{ booking.status }}" 
                     data-payment-status="{{ booking.payment_status }}"
                     data-source="{{ booking.booking_source or ('OccaServe Platform' if booking.user_id else 'Walk-in') }}"
@@ -749,6 +618,8 @@
                     data-event-month="{{ booking.event_date.strftime('%Y-%m') }}"
                     data-is-urgent="{{ 'true' if row_is_urgent else 'false' }}"
                     data-is-past="{{ 'true' if is_past_event else 'false' }}"
+                    data-phone="{{ (booking.user.phone_number if booking.user else '') or '' }}"
+                    data-search-text="BK-{{ '%06d'|format(booking.id) }} ORD-{{ '%06d'|format(booking.id) }} {{ booking.id }} {{ booking.user.first_name if booking.user else '' }} {{ booking.user.last_name if booking.user else '' }} {{ booking.customer_name if booking.customer_name else '' }} {{ booking.event_type or '' }} {{ booking.package.name if booking.package else '' }} {{ booking.user.phone_number if booking.user else '' }} {{ booking.user.email if booking.user else (booking.customer_email or '') }}"
                     style="border-bottom: 1px solid #f8fafc; transition: all 0.2s ease;">
                     
                     <!-- ID & SOURCE -->
@@ -759,7 +630,7 @@
                             {% elif is_past_event %}
                                 <div class="urgent-pulse-indicator" style="background: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);" title="Event Date has Passed!"></div>
                             {% endif %}
-                            {% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ "%03d" | format(booking.id) }}
+                            {% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ "%06d" | format(booking.id) }}
                         </div>
                         <div style="margin-top: 5px;">
                             {% set src = booking.booking_source %}
@@ -1041,7 +912,6 @@
                                 <i class="far fa-eye" style="color: #64748b;"></i> View Details
                             </button>
                             <div class="dynamic-actions" style="display: flex; flex-direction: column;"></div>
-                        </div>
                         </div>
 
                         <!-- Hidden Menu Info for Modal -->
@@ -2483,31 +2353,6 @@
         </div>
     </div>
 </div>
-
-<!-- Mobile cards (visible only on small screens) -->
-<div class="mobile-only" style="display:none; margin-top:1rem;">
-    <div style="display:flex; flex-direction:column; gap:0.75rem;">
-        {% for booking in bookings %}
-        <div class="mobile-booking-card" style="background: white; border:1px solid #e2e8f0; border-radius:10px; padding:12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                <div style="font-weight:800;">{% if booking.user %}{{ booking.user.first_name }} {{ booking.user.last_name }}{% elif booking.customer_name and booking.customer_name != 'None' %}{{ booking.customer_name }}{% else %}Walk-in{% endif %}</div>
-                <div style="font-size:0.85rem; color:#64748b; font-weight:700;">BK-{{ "%03d"|format(booking.id) }}</div>
-            </div>
-            <div style="font-size:0.85rem; color:#94a3b8; margin-top:6px;">{{ booking.event_type }} • {{ booking.guest_count }} Pax • {{ booking.package.name if booking.package else 'Custom' }}</div>
-            <div style="display:flex; justify-content:space-between; margin-top:8px; align-items:center;">
-                <div style="font-size:0.85rem; color:#0f172a; font-weight:700;">{{ booking.event_date.strftime('%b %d, %Y') }} {{ booking.event_time.strftime('%I:%M %p') if booking.event_time else '' }}</div>
-                <div style="text-align:right;">
-                    {% set entry = (booking.entry_method if booking.entry_method is defined else ( 'manual' if not booking.user_id or ('walk' in (booking.booking_source or '')|lower) else 'online')) %}
-                    <div style="font-size:0.75rem; color:#64748b;">{{ 'MANUAL' if entry == 'manual' else 'ONLINE' }} · {{ booking.booking_source or ( 'Website' if booking.user_id else 'Walk-in') }}</div>
-                    <button onclick="(function(){ const v = document.querySelector('#actionMenu-{{ booking.id }} .view-details'); if(v) v.click(); else { window.location.href = '/caterer/bookings/{{ booking.id }}/manage'; } })()" style="margin-top:6px; background:var(--primary-color); color:white; border:none; padding:6px 8px; border-radius:6px; font-weight:700;">Manage</button>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-
-
 
 {% endblock %}
 

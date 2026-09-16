@@ -1735,6 +1735,7 @@ def build_booking_list_projection(booking, today):
         "created_by_label": created_by_label, "show_guests": booking_kind == "catering" or bool(booking.guest_count),
         "guest_count": booking.guest_count, "event_date": booking.event_date,
         "event_time": booking.event_time, "is_urgent": bool(booking.event_date and 0 <= (booking.event_date - today).days <= 2 and needs_action),
+        "booking_reference": f"ORD-{booking.id:06d}" if booking.document_type == 'invoice' else f"BK-{booking.id:06d}",
         "amount": total, "has_quote": has_quote, "payment_filter": "paid" if paid >= total and total > 0 else ("partial" if paid > 0 else "pending"),
         "document_type": booking.document_type or "booking"
     }
@@ -1750,12 +1751,19 @@ async def manage_bookings(
     
     booking_list = [build_booking_list_projection(b, today=date.today()) for b in all_bookings]
     total_bookings = len(all_bookings)
+    
+    # 4 Requested Summary Card Counts
+    online_bookings_count = sum(1 for item in booking_list if item["source_kind"] == "online")
+    walkin_bookings_count = sum(1 for item in booking_list if item["source_kind"] == "walkin")
+    completed_count = sum(1 for b in all_bookings if b.status == 'completed')
+    cancelled_count = sum(1 for b in all_bookings if b.status == 'cancelled')
+    
+    # Preserved backward-compatible counts if needed
     needs_action_count = sum(1 for item in booking_list if item["needs_action"])
     upcoming_count = sum(1 for item in booking_list if item["event_date"] and item["event_date"] >= date.today() and item["status"] not in ["cancelled", "completed"])
     inquiry_count = sum(1 for item in booking_list if item["status"] in ["inquiry", "pending_review"])
     confirmed_count = sum(1 for b in all_bookings if b.status in ['confirmed', 'completed'])
     pending_count = sum(1 for b in all_bookings if b.status in ['pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_customer', 'awaiting_payment', 'pending_review'])
-    cancelled_count = sum(1 for b in all_bookings if b.status == 'cancelled')
     
     packages = db.query(models.CateringPackage).filter(
         models.CateringPackage.caterer_id == user.caterer_profile.id,
@@ -1778,16 +1786,19 @@ async def manage_bookings(
         "bookings": all_bookings,
         "packages": packages,
         "total_bookings": total_bookings,
+        "online_bookings_count": online_bookings_count,
+        "walkin_bookings_count": walkin_bookings_count,
+        "completed_count": completed_count,
+        "cancelled_count": cancelled_count,
         "confirmed_count": confirmed_count,
         "pending_count": pending_count,
-        "cancelled_count": cancelled_count,
         "needs_action_count": needs_action_count,
         "upcoming_count": upcoming_count,
         "inquiry_count": inquiry_count,
         "active_page": "bookings",
         "today": today,
-        "unread_chat_map": unread_chat_map
-        ,"booking_list": booking_list
+        "unread_chat_map": unread_chat_map,
+        "booking_list": booking_list
     })
 
 @router.get("/orders", response_class=HTMLResponse)

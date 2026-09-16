@@ -26,6 +26,7 @@ if (typeof window.showError === 'undefined') {
 
 // ─── IMMEDIATE GLOBAL EXPOSURE (Fail-safe) ───────────────────────────────────
 (function exposeGlobals() {
+    window.setUniversalFilter = setUniversalFilter;
     window.filterBookings = filterBookings;
     window.filterBySignature = filterBySignature;
     window.toggleActionMenu = toggleActionMenuBookings;
@@ -402,70 +403,113 @@ function initEmailExistenceCheck() {
 
 // ─── FILTERING & PAGINATION ──────────────────────────────────────────────────
 
+function setUniversalFilter(filterVal) {
+    const uniSelect = document.getElementById('universalFilter');
+    if (!uniSelect) return;
+    
+    // Toggle: if already set to this filter, clicking again resets to 'all'
+    if (uniSelect.value === filterVal) {
+        uniSelect.value = 'all';
+    } else {
+        uniSelect.value = filterVal;
+    }
+    
+    // Update active highlight on KPI cards
+    const kpiCards = ['online', 'walkin', 'completed', 'cancelled'];
+    kpiCards.forEach(function(key) {
+        const card = document.getElementById('kpi-card-' + key);
+        if (card) {
+            if (uniSelect.value === key) {
+                card.classList.add('active-kpi');
+            } else {
+                card.classList.remove('active-kpi');
+            }
+        }
+    });
+
+    filterBookings();
+}
+
 function filterBookings() {
-    const searchInput = document.getElementById('bookingSearchInput') ? document.getElementById('bookingSearchInput').value.toLowerCase() : '';
+    const searchInput = document.getElementById('bookingSearchInput') ? document.getElementById('bookingSearchInput').value.trim().toLowerCase() : '';
+    const universalFilter = document.getElementById('universalFilter') ? document.getElementById('universalFilter').value : 'all';
+    
+    // Support backwards compatibility if legacy selects are queried
     const statusFilter = document.getElementById('statusFilter') ? document.getElementById('statusFilter').value : '';
     const sourceFilter = document.getElementById('sourceFilter') ? document.getElementById('sourceFilter').value : '';
-    const bookingTypeFilter = document.getElementById('bookingTypeFilter') ? document.getElementById('bookingTypeFilter').value : '';
-    const paymentFilter = document.getElementById('paymentFilter') ? document.getElementById('paymentFilter').value : '';
-    const dateFilter = document.getElementById('dateFilter') ? document.getElementById('dateFilter').value : '';
-    
-    const allRows = Array.from(document.querySelectorAll('[data-booking-card="true"]'));
 
-    filteredRows = allRows.filter(function(row) {
-        const rawStatus = row.dataset.status || '';
-        const payStatus = row.dataset.paymentStatus || '';
-        const rawEntry = (row.dataset.entryMethod || row.dataset.source || '').toLowerCase();
-        const bookingKind = row.dataset.bookingKind || '';
-        const rowDateMonth = row.dataset.eventMonth || '';
-        const rowText = row.textContent.toLowerCase();
+    // Synchronize KPI card highlights with universalFilter
+    const kpiCards = ['online', 'walkin', 'completed', 'cancelled'];
+    kpiCards.forEach(function(key) {
+        const card = document.getElementById('kpi-card-' + key);
+        if (card) {
+            if (universalFilter === key) {
+                card.classList.add('active-kpi');
+            } else {
+                card.classList.remove('active-kpi');
+            }
+        }
+    });
+
+    // We filter both table rows and cards simultaneously using pairs by booking id
+    const tableRows = Array.from(document.querySelectorAll('tr.booking-row-item'));
+    const cards = Array.from(document.querySelectorAll('.smart-booking-card'));
+
+    // If table rows exist, we pair each row and card by id
+    const allItems = tableRows.length > 0 ? tableRows : cards;
+
+    filteredRows = allItems.filter(function(el) {
+        const rawStatus = (el.dataset.status || '').toLowerCase();
+        const payStatus = (el.dataset.paymentStatus || '').toLowerCase();
+        const rawEntry = (el.dataset.entryMethod || el.dataset.source || '').toLowerCase();
+        const searchText = (el.dataset.searchText || el.textContent || '').toLowerCase();
         
-        const matchesSearch = rowText.indexOf(searchInput) > -1;
-        const matchesBookingType = !bookingTypeFilter || bookingKind === bookingTypeFilter;
-        
-        let matchesStatus = false;
-        if (statusFilter === '') {
-            matchesStatus = true;
-        } else if (statusFilter === 'action_required') {
-            const needsSignature = ['pending_quotation', 'awaiting_caterer'].includes(rawStatus);
-            const needsPaymentVerify = ['proof_submitted', 'balance_proof_submitted'].includes(payStatus);
-            const isUrgent = row.dataset.isUrgent === 'true';
-            const needsAction = row.dataset.needsAction === 'true';
-            matchesStatus = needsSignature || needsPaymentVerify || isUrgent || needsAction;
-        } else {
-            matchesStatus = rawStatus === statusFilter;
+        // Search Matching
+        let matchesSearch = true;
+        if (searchInput) {
+            matchesSearch = searchText.indexOf(searchInput) > -1;
         }
 
-        let matchesSource = false;
-        if (sourceFilter === '') {
-            matchesSource = true;
-        } else if (sourceFilter === 'walkin' || sourceFilter === 'walk_in') {
-            matchesSource = rawEntry === 'walkin' || rawEntry === 'walk_in' || rawEntry === 'internal' || rawEntry.indexOf('walk') > -1;
-        } else if (sourceFilter === 'online') {
-            matchesSource = rawEntry === 'online' || rawEntry.indexOf('website') > -1 || rawEntry.indexOf('occaserve') > -1;
-        } else {
-            matchesSource = rawEntry === sourceFilter.toLowerCase();
+        // Universal Filter Matching
+        let matchesFilter = true;
+        if (universalFilter && universalFilter !== 'all') {
+            if (universalFilter === 'online') {
+                matchesFilter = rawEntry === 'online' || rawEntry.indexOf('website') > -1 || rawEntry.indexOf('occaserve') > -1;
+            } else if (universalFilter === 'walkin') {
+                matchesFilter = rawEntry === 'walkin' || rawEntry === 'walk_in' || rawEntry === 'internal' || rawEntry.indexOf('walk') > -1;
+            } else if (universalFilter === 'pending') {
+                matchesFilter = ['pending', 'draft', 'inquiry', 'awaiting_customer', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'].includes(rawStatus);
+            } else if (universalFilter === 'confirmed') {
+                matchesFilter = ['confirmed', 'preparing', 'on_the_way', 'in_progress'].includes(rawStatus);
+            } else if (universalFilter === 'completed') {
+                matchesFilter = rawStatus === 'completed';
+            } else if (universalFilter === 'cancelled') {
+                matchesFilter = ['cancelled', 'rejected', 'void'].includes(rawStatus);
+            } else {
+                matchesFilter = rawStatus === universalFilter;
+            }
         }
 
-        let matchesPayment = false;
-        if (paymentFilter === '') {
-            matchesPayment = true;
-        } else if (paymentFilter === 'paid') {
-            matchesPayment = ['paid', 'fully_paid'].includes(payStatus);
-        } else if (paymentFilter === 'partial') {
-            matchesPayment = ['downpayment_paid', 'partial_paid'].includes(payStatus);
-        } else if (paymentFilter === 'pending') {
-            matchesPayment = !['paid', 'fully_paid', 'downpayment_paid', 'partial_paid'].includes(payStatus);
+        // Fallback checks for legacy filters if triggered by old code
+        if (statusFilter && statusFilter !== '') {
+            if (statusFilter === 'action_required') {
+                const needsSignature = ['pending_quotation', 'awaiting_caterer'].includes(rawStatus);
+                const needsPaymentVerify = ['proof_submitted', 'balance_proof_submitted'].includes(payStatus);
+                const isUrgent = el.dataset.isUrgent === 'true';
+                matchesFilter = matchesFilter && (needsSignature || needsPaymentVerify || isUrgent);
+            } else {
+                matchesFilter = matchesFilter && (rawStatus === statusFilter);
+            }
+        }
+        if (sourceFilter && sourceFilter !== '') {
+            if (sourceFilter === 'walkin') {
+                matchesFilter = matchesFilter && (rawEntry === 'walkin' || rawEntry.indexOf('walk') > -1);
+            } else if (sourceFilter === 'online') {
+                matchesFilter = matchesFilter && (rawEntry === 'online' || rawEntry.indexOf('occaserve') > -1);
+            }
         }
 
-        let matchesDate = false;
-        if (dateFilter === '') {
-            matchesDate = true;
-        } else {
-            matchesDate = rowDateMonth === dateFilter;
-        }
-        
-        return matchesSearch && matchesStatus && matchesSource && matchesPayment && matchesDate && matchesBookingType;
+        return matchesSearch && matchesFilter;
     });
 
     currentPage = 1;
@@ -481,8 +525,37 @@ function showPage(page) {
     const startIdx = (page - 1) * ROWS_PER_PAGE;
     const endIdx = startIdx + ROWS_PER_PAGE;
 
-    document.querySelectorAll('[data-booking-card="true"]').forEach(function(r) { r.style.display = 'none'; });
-    filteredRows.slice(startIdx, endIdx).forEach(function(r) { r.style.display = ''; });
+    // Collect IDs of items for this page
+    const pageItems = filteredRows.slice(startIdx, endIdx);
+    const visibleIds = new Set();
+    pageItems.forEach(function(item) {
+        // extract booking id from row or card id (e.g. booking-row-123 -> 123)
+        const rowId = item.id.replace('booking-row-', '');
+        if (rowId) visibleIds.add(rowId);
+        // or check dataset
+        if (item.dataset.bookingId) visibleIds.add(item.dataset.bookingId.replace('BK-', '').replace(/^0+/, ''));
+    });
+
+    // Hide all table rows and smart cards first
+    document.querySelectorAll('tr.booking-row-item').forEach(function(r) { 
+        const id = r.id.replace('booking-row-', '');
+        r.style.display = visibleIds.has(id) ? '' : 'none'; 
+    });
+
+    document.querySelectorAll('.smart-booking-card').forEach(function(c) { 
+        // find id from Manage button or view-details trigger
+        const manageBtn = c.querySelector('button');
+        let cardId = null;
+        if (manageBtn && manageBtn.getAttribute('onclick')) {
+            const m = manageBtn.getAttribute('onclick').match(/#actionMenu-(\d+)/);
+            if (m) cardId = m[1];
+        }
+        if (cardId) {
+            c.style.display = visibleIds.has(cardId) ? '' : 'none';
+        } else {
+            c.style.display = 'none';
+        }
+    });
 
     const searchEmpty = document.getElementById('searchEmptyState');
     if (searchEmpty) {
@@ -1041,16 +1114,17 @@ function showBookingDetails(btn) {
     // ---------------------------------
 
     const isFoodOrder = data.isFoodOrder === 'true' || data.isFoodOrder === true;
+    const formattedRefId = (isFoodOrder ? 'ORD-' : 'BK-') + String(data.id).padStart(6, '0');
     let titlePrefix = isFoodOrder ? 'Food Order #' : (data.status === 'pending_review' ? 'Inquiry Details #' : 'Booking #');
-    document.getElementById('modalBookingId').innerText = titlePrefix + data.id;
+    document.getElementById('modalBookingId').innerText = titlePrefix + formattedRefId;
     const mbId = document.getElementById('modalBookingIdMobile');
-    if (mbId) mbId.innerText = (isFoodOrder ? 'Order #' : 'Booking #') + data.id;
+    if (mbId) mbId.innerText = (isFoodOrder ? 'Order #' : 'Booking #') + formattedRefId;
     
     // Urgent Indicator in Modal Header
     const headerTitle = document.getElementById('modalBookingId');
     if (data.isUrgent === 'true') {
-        headerTitle.innerHTML = `${titlePrefix}${data.id} <span style="background: #fff1f2; color: #e11d48; font-size: 0.65rem; padding: 2px 8px; border-radius: 50px; margin-left: 8px; border: 1px solid #fecdd3; vertical-align: middle;"><i class="fas fa-clock"></i> URGENT</span>`;
-        if (mbId) mbId.innerHTML = `${(isFoodOrder ? 'Order #' : 'Booking #')}${data.id} <span style="background: #fff1f2; color: #e11d48; font-size: 0.65rem; padding: 2px 8px; border-radius: 50px; margin-left: 8px; border: 1px solid #fecdd3; vertical-align: middle;"><i class="fas fa-clock"></i> URGENT</span>`;
+        headerTitle.innerHTML = `${titlePrefix}${formattedRefId} <span style="background: #fff1f2; color: #e11d48; font-size: 0.65rem; padding: 2px 8px; border-radius: 50px; margin-left: 8px; border: 1px solid #fecdd3; vertical-align: middle;"><i class="fas fa-clock"></i> URGENT</span>`;
+        if (mbId) mbId.innerHTML = `${(isFoodOrder ? 'Order #' : 'Booking #')}${formattedRefId} <span style="background: #fff1f2; color: #e11d48; font-size: 0.65rem; padding: 2px 8px; border-radius: 50px; margin-left: 8px; border: 1px solid #fecdd3; vertical-align: middle;"><i class="fas fa-clock"></i> URGENT</span>`;
     }
 
     const modalSource = document.getElementById('modalBookingSource');
