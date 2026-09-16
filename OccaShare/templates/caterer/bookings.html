@@ -254,6 +254,47 @@
     .pulse-update     { animation: bk-blink 2s infinite; }
     @keyframes bk-blink { 0%,100%{opacity:1} 50%{opacity:.55} }
 
+    /* ══ OVERFLOW ACTION MENU ═════════════════════════════════════ */
+    .overflow-trigger {
+        width: 36px; height: 36px;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: transparent; border: none; border-radius: 8px;
+        color: #94a3b8; font-size: 1.15rem; cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .overflow-trigger:hover { background: #f1f5f9; color: #64748b; }
+    .overflow-trigger:focus-visible { outline: 2px solid var(--primary-color, #c2414f); outline-offset: 2px; }
+
+    .overflow-menu {
+        display: none; position: absolute; right: 1rem; top: 100%;
+        background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+        z-index: 100; min-width: 220px; padding: 4px 0;
+        animation: overflow-fade-in 0.12s ease-out;
+    }
+    .overflow-menu.open { display: block; }
+    .overflow-menu.position-top { top: auto; bottom: 100%; }
+    @keyframes overflow-fade-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .overflow-action-item {
+        width: 100%; text-align: left; padding: 0.6rem 1rem;
+        background: none; border: none;
+        font-size: 0.82rem; font-weight: 600; color: #475569;
+        cursor: pointer; display: flex; align-items: center; gap: 0.65rem;
+        transition: background 0.12s ease;
+        text-decoration: none;
+    }
+    .overflow-action-item:hover, .overflow-action-item:focus-visible { background: #f8fafc; color: #0f172a; outline: none; }
+    .overflow-action-item i { width: 16px; text-align: center; color: #94a3b8; font-size: 0.85rem; }
+    .overflow-action-item:hover i { color: #64748b; }
+
+    .overflow-action-item--destructive { color: #dc2626; }
+    .overflow-action-item--destructive:hover { background: #fef2f2; color: #b91c1c; }
+    .overflow-action-item--destructive i { color: #f87171; }
+    .overflow-action-item--destructive:hover i { color: #dc2626; }
+
+    .overflow-separator { height: 1px; background: #f1f5f9; margin: 4px 0; }
+
     /* ══ ICON LEGEND ══════════════════════════════════════════════ */
     .process-legend-container {
         border: 1px solid #f0f4f8 !important;
@@ -510,19 +551,27 @@
 </div>
 
 <div class="b-table-header" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid #f1f5f9;">
-    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #0f172a;">All Bookings</h3>
+    <div>
+        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #0f172a;">All Bookings</h3>
+        <p style="margin: 0.25rem 0 0; font-size: 0.78rem; color: #94a3b8; font-weight: 500;">Manage and track your catering bookings</p>
+    </div>
     <div class="header-controls" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
-        <input type="search" id="bookingSearchInput" placeholder="Search ref (e.g. BK-000001), customer, event, phone..." oninput="filterBookings()" style="padding: 0.45rem 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; min-width: 280px;">
+        <input type="search" id="bookingSearchInput" placeholder="Search bookings..." oninput="filterBookings()" style="padding: 0.45rem 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; min-width: 200px; font-size: 0.82rem;">
         
         <div class="filter-wrapper" style="display: flex; gap: 0.5rem; align-items: center;">
-            <select class="filter-select-pro" id="universalFilter" onchange="filterBookings()" style="padding: 0.45rem 1.25rem 0.45rem 0.75rem; font-size: 0.82rem; border-radius: 8px; border: 1px solid #cbd5e1; background-color: #fff; color: #334155; font-weight: 600; cursor: pointer; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                <option value="all">All Bookings</option>
-                <option value="online">🌐 Online Bookings</option>
-                <option value="walkin">🚶 Walk-in Bookings</option>
-                <option value="pending">⏳ Pending Review / Payment</option>
-                <option value="confirmed">✅ Confirmed</option>
-                <option value="completed">🎉 Completed</option>
-                <option value="cancelled">❌ Cancelled</option>
+            <select class="filter-select-pro" id="statusFilter" onchange="filterBookings()" style="padding: 0.45rem 1.25rem 0.45rem 0.75rem; font-size: 0.82rem; border-radius: 8px; border: 1px solid #cbd5e1; background-color: #fff; color: #334155; font-weight: 600; cursor: pointer; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                <option value="">Status: All</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="preparing">Preparing</option>
+                <option value="in_progress">Ongoing</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+            <select class="filter-select-pro" id="sourceFilter" onchange="filterBookings()" style="padding: 0.45rem 1.25rem 0.45rem 0.75rem; font-size: 0.82rem; border-radius: 8px; border: 1px solid #cbd5e1; background-color: #fff; color: #334155; font-weight: 600; cursor: pointer; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                <option value="">Source: All</option>
+                <option value="online">Online</option>
+                <option value="walkin">Walk-in</option>
             </select>
         </div>
 
@@ -538,8 +587,8 @@
             </div>
         </div>
         {% endif %}
-        <button onclick="openExternalBookingModal()" class="btn-primary-pro" title="Create Manual Booking">
-            <span>New Manual Booking</span>
+        <button onclick="openExternalBookingModal()" class="btn-primary-pro" title="Create New Booking">
+            <span>+ New Booking</span>
         </button>
     </div>
 </div>
@@ -556,12 +605,9 @@
                     <div class="smart-booking-ref">{% if item.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ '%06d'|format(item.id) }}</div>
                     <div class="smart-booking-badges">
                         <span class="booking-type-badge"><i class="fas {{ item.type_icon }}"></i> {{ item.type_label }}</span>
-                        <div>
-                            <span class="booking-source-badge {% if item.source_kind == 'walkin' %}badge-source-walkin{% else %}badge-source-online{% endif %}">
-                                <i class="fas {% if item.source_kind == 'walkin' %}fa-store{% else %}fa-globe{% endif %}"></i> {{ item.source_label }}
-                            </span>
-                            <small class="booking-source-subtext">{{ item.source_subtext }}</small>
-                        </div>
+                        <span class="booking-source-badge {% if item.source_kind == 'walkin' %}badge-source-walkin{% else %}badge-source-online{% endif %}">
+                            <i class="fas {% if item.source_kind == 'walkin' %}fa-store{% else %}fa-globe{% endif %}"></i> {{ item.source_label }}
+                        </span>
                     </div>
                 </div>
                 <div class="smart-booking-customer">
@@ -581,7 +627,7 @@
                 <div class="smart-booking-next"><span>Next</span><strong>{{ item.next_action }}</strong></div>
             </div>
             <div class="smart-booking-action">
-                <button type="button" class="smart-manage-button" onclick="(function(){ const v = document.querySelector('#actionMenu-{{ item.id }} .view-details'); if(v) v.click(); })()"><i class="fas fa-sliders-h"></i> Manage</button>
+                <button type="button" class="overflow-trigger" aria-label="More actions" onclick="toggleActionMenuBookings('{{ item.id }}', event)"><i class="fas fa-ellipsis-h"></i></button>
             </div>
         </article>
         {% endfor %}
@@ -846,23 +892,20 @@
                             </div>
                         </div>
                     </td>
-                    <td class="action-dropdown-container" style="padding: 1.25rem 1.5rem; text-align: right; position: relative;">
-                        <button class="btn-manage" onclick="(function(){ const v = document.querySelector('#actionMenu-{{ booking.id }} .view-details'); if(v) v.click(); else { window.location.href = '/caterer/bookings/{{ booking.id }}/manage'; } })()" style="background: var(--primary-color); color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 6px; font-weight:700; margin-right:8px; cursor:pointer;">
-                            Manage
-                        </button>
-                        <button class="btn-action-trigger" onclick="toggleActionMenuBookings('{{ booking.id }}', event)" style="background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1.1rem; padding: 0.4rem; transition: color 0.2s;">
+                    <td class="action-dropdown-container" style="padding: 1rem 1.25rem; text-align: center; position: relative;">
+                        <button class="overflow-trigger" aria-label="More actions" onclick="toggleActionMenuBookings('{{ booking.id }}', event)">
                             <i class="fas fa-ellipsis-h"></i>
                         </button>
-                        <div id="actionMenu-{{ booking.id }}" class="action-dropdown-menu"
-                            style="display: none; position: absolute; right: 1.5rem; background: white; border: 1px solid #e2e8f0; border-radius: var(--border-radius); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); z-index: 50; min-width: 160px; overflow: hidden;"
+                        <div id="actionMenu-{{ booking.id }}" class="overflow-menu"
                             data-booking-id="{{ booking.id }}"
                             data-status="{{ booking.status }}"
                             data-payment-status="{{ booking.payment_status }}"
+                            data-total-amount="{{ booking.total_price or booking.total_amount or 0 }}"
+                            data-amount-paid="{{ booking.amount_paid or 0 }}"
                             data-is-package="{{ 'true' if booking.package_id else 'false' }}"
                             data-is-verified="{{ 'true' if (booking.user and booking.user.is_verified) else 'false' }}"
                             data-user-id="{{ booking.user_id or '' }}">
-                            <button class="view-details"
-                                style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; font-size: 0.85rem; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; transition: background 0.2s;"
+                            <button class="overflow-action-item view-details"
                                 data-id="{{ booking.id }}"
                                 data-status="{{ booking.status or '' }}"
                                 data-payment-status="{{ booking.payment_status or 'no_payment' }}"
@@ -894,9 +937,9 @@
                                 data-proof-url="{{ (booking.payment_proof_url or '')|e }}"
                                 data-balance-proof-url="{{ (booking.balance_proof_url or '')|e }}"
                                 data-has-menu="{{ 'true' if booking.package or booking.selected_items else 'false' }}">
-                                <i class="far fa-eye" style="color: #64748b;"></i> View Details
+                                <i class="far fa-eye"></i> View Booking
                             </button>
-                            <div class="dynamic-actions" style="display: flex; flex-direction: column;"></div>
+                            <div class="dynamic-actions"></div>
                         </div>
 
                         <!-- Hidden Menu Info for Modal -->

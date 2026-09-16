@@ -151,81 +151,223 @@ function bk_closeModal(id) {
     }
 }
 
-/* ─── Safe action menu toggle ─── */
-function toggleActionMenuBookings(id, event) {
-    if (event) event.stopPropagation();
-    var allMenus = document.querySelectorAll('.action-dropdown-menu');
-    var target = document.getElementById('actionMenu-' + id);
-    allMenus.forEach(function(m) {
-        if (m !== target) m.style.display = 'none';
+/* ─── Safe action menu toggle & context-aware overflow builder ─── */
+function closeAllBookingMenus() {
+    document.querySelectorAll('.overflow-menu').forEach(function(m) {
+        m.classList.remove('open', 'position-top');
+        m.style.display = 'none';
     });
+}
+
+function setupMenuKeyboardNav(menuEl) {
+    if (!menuEl) return;
+    const items = Array.from(menuEl.querySelectorAll('.overflow-action-item'));
+    if (!items.length) return;
+    items.forEach(function(item, idx) {
+        item.tabIndex = 0;
+        item.onkeydown = function(e) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const next = items[(idx + 1) % items.length];
+                if (next) next.focus();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const prev = items[(idx - 1 + items.length) % items.length];
+                if (prev) prev.focus();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                closeAllBookingMenus();
+                const trigger = menuEl.parentElement ? menuEl.parentElement.querySelector('.overflow-trigger') : null;
+                if (trigger) trigger.focus();
+            }
+        };
+    });
+}
+
+function toggleActionMenuBookings(id, event) {
+    if (event) {
+        event.stopPropagation();
+        if (event.preventDefault) event.preventDefault();
+    }
+    var target = document.getElementById('actionMenu-' + id);
     if (!target) return;
-    var shouldShow = (target.style.display === 'none' || target.style.display === '');
-    target.style.display = shouldShow ? 'block' : 'none';
 
-    // If opening, populate dynamic actions based on booking data attributes
-    if (shouldShow) {
-        try {
-            const bid = target.getAttribute('data-booking-id') || id;
-            const status = (target.getAttribute('data-status') || '').toLowerCase();
-            const payment = (target.getAttribute('data-payment-status') || '').toLowerCase();
-            const isPackage = (target.getAttribute('data-is-package') || 'false') === 'true';
-            const isVerified = (target.getAttribute('data-is-verified') || 'false') === 'true';
-            const userId = target.getAttribute('data-user-id') || '';
+    var isOpen = target.classList.contains('open') || target.style.display === 'block';
 
-            const container = target.querySelector('.dynamic-actions');
-            if (!container) return;
-            container.innerHTML = '';
+    // Close all open menus first
+    closeAllBookingMenus();
 
-            // Helper to append action
-            const addActionLink = (label, icon, href) => {
-                const a = document.createElement('a');
-                a.href = href;
-                a.style = 'display:flex; align-items:center; gap:0.6rem; padding:0.75rem 1rem; text-decoration:none; font-size:0.85rem; color:#475569;';
-                a.innerHTML = `<i class="fas ${icon}" style="width:18px;color:#64748b;"></i> ${label}`;
-                container.appendChild(a);
-            };
+    if (isOpen) {
+        return;
+    }
 
-            const addActionBtn = (label, icon, onClick) => {
-                const b = document.createElement('button');
-                b.type = 'button';
-                b.style = 'width:100%; text-align:left; padding:0.75rem 1rem; background:none; border:none; font-size:0.85rem; color:#475569; cursor:pointer; display:flex; align-items:center; gap:0.6rem;';
-                b.innerHTML = `<i class="fas ${icon}" style="width:18px;color:#64748b;"></i> ${label}`;
-                b.addEventListener('click', function(ev) { ev.stopPropagation(); onClick(); target.style.display='none'; });
-                container.appendChild(b);
-            };
+    // Open target
+    target.classList.add('open');
+    target.style.display = 'block';
 
-            // Context-specific actions
-            if (['pending_quotation','awaiting_caterer'].includes(status)) {
-                addActionLink('Sign Contract', 'fa-pen-nib', `/caterer/bookings/${bid}/sign`);
-            }
+    // Upward positioning if near viewport bottom
+    var rect = target.getBoundingClientRect();
+    var viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    if (rect.bottom > viewportHeight - 15) {
+        target.classList.add('position-top');
+    } else {
+        target.classList.remove('position-top');
+    }
 
-            if (payment === 'proof_submitted' || payment === 'balance_proof_submitted' || payment === 'partial') {
-                addActionBtn('Verify Payment', 'fa-check-double', function(){ window.confirmAcceptBooking(bid, true, isVerified, isPackage); });
-            }
+    try {
+        const bid = target.getAttribute('data-booking-id') || id;
+        const status = (target.getAttribute('data-status') || '').toLowerCase();
+        const payment = (target.getAttribute('data-payment-status') || '').toLowerCase();
+        const totalAmount = parseFloat(target.getAttribute('data-total-amount') || '0');
+        const amountPaid = parseFloat(target.getAttribute('data-amount-paid') || '0');
+        const isPackage = (target.getAttribute('data-is-package') || 'false') === 'true';
+        const isVerified = (target.getAttribute('data-is-verified') || 'false') === 'true';
+        const userId = target.getAttribute('data-user-id') || '';
 
-            if (['pending','awaiting_payment','pending_payment','awaiting_caterer','pending_review','pending_quotation'].includes(status)) {
-                addActionBtn('Cancel Booking', 'fa-times-circle', function(){ window.confirmRejectBooking(bid); });
-            }
+        const container = target.querySelector('.dynamic-actions');
+        if (!container) return;
+        container.innerHTML = '';
 
-            if (['in_progress','setup_ongoing','on_the_way','arrived','ready_for_pickup','ready_for_delivery'].includes(status)) {
-                addActionBtn('Complete Event', 'fa-check-circle', function(){ window.confirmCompleteBooking(bid); });
-            }
+        const addAction = (label, icon, onClick, isDestructive = false) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'overflow-action-item' + (isDestructive ? ' overflow-action-item--destructive' : '');
+            b.innerHTML = `<i class="fas ${icon}"></i> <span>${label}</span>`;
+            b.addEventListener('click', function(ev) {
+                ev.stopPropagation();
+                closeAllBookingMenus();
+                onClick();
+            });
+            container.appendChild(b);
+        };
 
-            if (['completed','cancelled'].includes(status)) {
-                addActionBtn('Archive Record', 'fa-archive', function(){ window.confirmArchiveBooking(bid); });
-            }
+        const addSeparator = () => {
+            const sep = document.createElement('div');
+            sep.className = 'overflow-separator';
+            container.appendChild(sep);
+        };
 
-            if (userId) {
-                addActionBtn('Report Issue', 'fa-flag', function(){ window.openReportModal(bid); });
-            }
-
-            // Small separator and view details already exists as first button
-        } catch (e) {
-            console.error('Failed to build action menu', e);
+        // 1. Edit Booking (Status not completed, cancelled, or expired)
+        if (!['completed', 'cancelled', 'expired'].includes(status)) {
+            addAction('Edit Booking', 'fa-edit', function() {
+                currentBookingId = bid;
+                if (typeof window.openEditBookingModal === 'function') {
+                    window.openEditBookingModal();
+                } else {
+                    const viewBtn = target.querySelector('.view-details');
+                    if (viewBtn) window.showBookingDetails(viewBtn);
+                }
+            });
         }
+
+        // 2. Update Payment (Has total > 0, not fully paid, not cancelled)
+        const isFullyPaid = (totalAmount > 0 && amountPaid >= totalAmount) || ['paid', 'fully_paid'].includes(payment);
+        if (totalAmount > 0 && !isFullyPaid && status !== 'cancelled') {
+            addAction('Update Payment', 'fa-money-bill-wave', function() {
+                const viewBtn = target.querySelector('.view-details');
+                if (viewBtn) {
+                    window.showBookingDetails(viewBtn);
+                    setTimeout(function() {
+                        const finBtn = document.querySelector('#bookingDetailModal [data-tab="finance"]');
+                        if (finBtn && typeof window.switchBookingTab === 'function') {
+                            window.switchBookingTab('finance', finBtn);
+                        }
+                    }, 350);
+                }
+            });
+        }
+
+        // 3. View Customer (Has userId)
+        if (userId) {
+            addAction('View Customer', 'fa-user', function() {
+                const viewBtn = target.querySelector('.view-details');
+                if (viewBtn) {
+                    window.showBookingDetails(viewBtn);
+                    setTimeout(function() {
+                        const chatBtn = document.querySelector('#bookingDetailModal [data-tab="chat"]');
+                        if (chatBtn && typeof window.switchBookingTab === 'function') {
+                            window.switchBookingTab('chat', chatBtn);
+                        }
+                    }, 350);
+                }
+            });
+        }
+
+        // 4. Preparation Checklist (Status in confirmed, preparing, setup_ongoing, in_progress, ready_for_delivery, ready_for_pickup, arrived)
+        if (['confirmed', 'preparing', 'setup_ongoing', 'in_progress', 'ready_for_delivery', 'ready_for_pickup', 'arrived'].includes(status)) {
+            addAction('Preparation Checklist', 'fa-tasks', function() {
+                const viewBtn = target.querySelector('.view-details');
+                if (viewBtn) {
+                    window.showBookingDetails(viewBtn);
+                    setTimeout(function() {
+                        const chk = document.getElementById('modalChecklistSection');
+                        if (chk) chk.scrollIntoView({ behavior: 'smooth' });
+                        if (typeof window.loadBookingTasks === 'function') {
+                            window.loadBookingTasks(bid);
+                        }
+                    }, 350);
+                }
+            });
+        }
+
+        // 5. View Activity (Always)
+        addAction('View Activity', 'fa-history', function() {
+            const viewBtn = target.querySelector('.view-details');
+            if (viewBtn) {
+                window.showBookingDetails(viewBtn);
+                setTimeout(function() {
+                    const actBtn = document.querySelector('#bookingDetailModal [data-tab="activity"]');
+                    if (actBtn && typeof window.switchBookingTab === 'function') {
+                        window.switchBookingTab('activity', actBtn);
+                    }
+                    if (typeof window.loadBookingHistory === 'function') {
+                        window.loadBookingHistory(bid);
+                    }
+                }, 350);
+            }
+        });
+
+        // 6. Copy Payment Link (Payable booking with userId)
+        if (userId && !['completed', 'cancelled'].includes(status) && !isFullyPaid) {
+            addAction('Copy Payment Link', 'fa-link', function() {
+                if (typeof window.copyInvoiceLink === 'function') {
+                    window.copyInvoiceLink(bid);
+                }
+            });
+        }
+
+        // 7. Cancel Booking (Destructive - Status not completed, cancelled, or expired)
+        if (!['completed', 'cancelled', 'expired'].includes(status)) {
+            addSeparator();
+            addAction('Cancel Booking', 'fa-times-circle', function() {
+                if (typeof window.confirmRejectBooking === 'function') {
+                    window.confirmRejectBooking(bid);
+                }
+            }, true);
+        }
+
+        // Setup accessibility keyboard navigation
+        setupMenuKeyboardNav(target);
+    } catch (e) {
+        console.error('Failed to build action menu', e);
     }
 }
+
+window.toggleActionMenuBookings = toggleActionMenuBookings;
+window.closeAllBookingMenus = closeAllBookingMenus;
+
+// Close overflow menus on click-outside or Escape key
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.overflow-menu') && !e.target.closest('.overflow-trigger')) {
+        closeAllBookingMenus();
+    }
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeAllBookingMenus();
+    }
+});
 
 document.addEventListener('DOMContentLoaded', function () {
     console.log('[BookingsJS] Initializing components... [v1.8-robust]');
@@ -233,6 +375,7 @@ document.addEventListener('DOMContentLoaded', function () {
     try {
         // Override toggleActionMenu for this page
         window.toggleActionMenu = toggleActionMenuBookings;
+        window.toggleActionMenuBookings = toggleActionMenuBookings;
 
         // 1. Attach view-details listeners
         initDetailListeners();
@@ -404,58 +547,53 @@ function initEmailExistenceCheck() {
 // ─── FILTERING & PAGINATION ──────────────────────────────────────────────────
 
 function setUniversalFilter(filterVal) {
+    const statusSelect = document.getElementById('statusFilter');
+    const sourceSelect = document.getElementById('sourceFilter');
     const uniSelect = document.getElementById('universalFilter');
-    if (!uniSelect) return;
-    
-    // Toggle: if already set to this filter, clicking again resets to 'all'
-    if (uniSelect.value === filterVal) {
-        uniSelect.value = 'all';
-    } else {
-        uniSelect.value = filterVal;
-    }
-    
-    // Update active highlight on KPI cards
-    const kpiCards = ['online', 'walkin', 'completed', 'cancelled'];
-    kpiCards.forEach(function(key) {
-        const card = document.getElementById('kpi-card-' + key);
-        if (card) {
-            if (uniSelect.value === key) {
-                card.classList.add('active-kpi');
-            } else {
-                card.classList.remove('active-kpi');
-            }
+
+    if (filterVal === 'online' || filterVal === 'walkin') {
+        if (sourceSelect) {
+            sourceSelect.value = (sourceSelect.value === filterVal) ? '' : filterVal;
         }
-    });
+        if (statusSelect) statusSelect.value = '';
+        if (uniSelect) uniSelect.value = sourceSelect ? sourceSelect.value : filterVal;
+    } else if (filterVal === 'completed' || filterVal === 'cancelled' || filterVal === 'pending' || filterVal === 'confirmed' || filterVal === 'preparing' || filterVal === 'in_progress') {
+        if (statusSelect) {
+            statusSelect.value = (statusSelect.value === filterVal) ? '' : filterVal;
+        }
+        if (sourceSelect) sourceSelect.value = '';
+        if (uniSelect) uniSelect.value = statusSelect ? statusSelect.value : filterVal;
+    } else if (filterVal === 'all') {
+        if (statusSelect) statusSelect.value = '';
+        if (sourceSelect) sourceSelect.value = '';
+        if (uniSelect) uniSelect.value = 'all';
+    }
 
     filterBookings();
 }
 
 function filterBookings() {
     const searchInput = document.getElementById('bookingSearchInput') ? document.getElementById('bookingSearchInput').value.trim().toLowerCase() : '';
-    const universalFilter = document.getElementById('universalFilter') ? document.getElementById('universalFilter').value : 'all';
-    
-    // Support backwards compatibility if legacy selects are queried
-    const statusFilter = document.getElementById('statusFilter') ? document.getElementById('statusFilter').value : '';
-    const sourceFilter = document.getElementById('sourceFilter') ? document.getElementById('sourceFilter').value : '';
+    const statusFilter = document.getElementById('statusFilter') ? document.getElementById('statusFilter').value.toLowerCase() : '';
+    const sourceFilter = document.getElementById('sourceFilter') ? document.getElementById('sourceFilter').value.toLowerCase() : '';
+    const universalFilter = document.getElementById('universalFilter') ? document.getElementById('universalFilter').value.toLowerCase() : '';
 
-    // Synchronize KPI card highlights with universalFilter
-    const kpiCards = ['online', 'walkin', 'completed', 'cancelled'];
-    kpiCards.forEach(function(key) {
-        const card = document.getElementById('kpi-card-' + key);
-        if (card) {
-            if (universalFilter === key) {
-                card.classList.add('active-kpi');
-            } else {
-                card.classList.remove('active-kpi');
-            }
-        }
-    });
+    // Synchronize KPI card highlights with current filter selection
+    const kpiOnline = document.getElementById('kpi-card-online');
+    if (kpiOnline) kpiOnline.classList.toggle('active-kpi', sourceFilter === 'online' || universalFilter === 'online');
 
-    // We filter both table rows and cards simultaneously using pairs by booking id
+    const kpiWalkin = document.getElementById('kpi-card-walkin');
+    if (kpiWalkin) kpiWalkin.classList.toggle('active-kpi', sourceFilter === 'walkin' || universalFilter === 'walkin');
+
+    const kpiCompleted = document.getElementById('kpi-card-completed');
+    if (kpiCompleted) kpiCompleted.classList.toggle('active-kpi', statusFilter === 'completed' || universalFilter === 'completed');
+
+    const kpiCancelled = document.getElementById('kpi-card-cancelled');
+    if (kpiCancelled) kpiCancelled.classList.toggle('active-kpi', statusFilter === 'cancelled' || universalFilter === 'cancelled');
+
+    // Filter table rows and smart cards simultaneously
     const tableRows = Array.from(document.querySelectorAll('tr.booking-row-item'));
     const cards = Array.from(document.querySelectorAll('.smart-booking-card'));
-
-    // If table rows exist, we pair each row and card by id
     const allItems = tableRows.length > 0 ? tableRows : cards;
 
     filteredRows = allItems.filter(function(el) {
@@ -463,53 +601,48 @@ function filterBookings() {
         const payStatus = (el.dataset.paymentStatus || '').toLowerCase();
         const rawEntry = (el.dataset.entryMethod || el.dataset.source || '').toLowerCase();
         const searchText = (el.dataset.searchText || el.textContent || '').toLowerCase();
-        
-        // Search Matching
-        let matchesSearch = true;
-        if (searchInput) {
-            matchesSearch = searchText.indexOf(searchInput) > -1;
+
+        // 1. Search text matching
+        if (searchInput && searchText.indexOf(searchInput) === -1) {
+            return false;
         }
 
-        // Universal Filter Matching
-        let matchesFilter = true;
-        if (universalFilter && universalFilter !== 'all') {
-            if (universalFilter === 'online') {
-                matchesFilter = rawEntry === 'online' || rawEntry.indexOf('website') > -1 || rawEntry.indexOf('occaserve') > -1;
-            } else if (universalFilter === 'walkin') {
-                matchesFilter = rawEntry === 'walkin' || rawEntry === 'walk_in' || rawEntry === 'internal' || rawEntry.indexOf('walk') > -1;
-            } else if (universalFilter === 'pending') {
-                matchesFilter = ['pending', 'draft', 'inquiry', 'awaiting_customer', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'].includes(rawStatus);
-            } else if (universalFilter === 'confirmed') {
-                matchesFilter = ['confirmed', 'preparing', 'on_the_way', 'in_progress'].includes(rawStatus);
-            } else if (universalFilter === 'completed') {
-                matchesFilter = rawStatus === 'completed';
-            } else if (universalFilter === 'cancelled') {
-                matchesFilter = ['cancelled', 'rejected', 'void'].includes(rawStatus);
-            } else {
-                matchesFilter = rawStatus === universalFilter;
+        // 2. Status filtering
+        const activeStatus = statusFilter || (['pending','confirmed','completed','cancelled'].includes(universalFilter) ? universalFilter : '');
+        if (activeStatus) {
+            if (activeStatus === 'pending') {
+                const isPending = ['pending', 'draft', 'inquiry', 'awaiting_customer', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review', 'under_review'].includes(rawStatus);
+                if (!isPending) return false;
+            } else if (activeStatus === 'confirmed') {
+                if (rawStatus !== 'confirmed') return false;
+            } else if (activeStatus === 'preparing') {
+                if (rawStatus !== 'preparing') return false;
+            } else if (activeStatus === 'in_progress') {
+                const isOngoing = ['in_progress', 'setup_ongoing', 'on_the_way', 'ready_for_delivery', 'ready_for_pickup', 'arrived'].includes(rawStatus);
+                if (!isOngoing) return false;
+            } else if (activeStatus === 'completed') {
+                if (rawStatus !== 'completed') return false;
+            } else if (activeStatus === 'cancelled') {
+                const isCancelled = ['cancelled', 'rejected', 'void'].includes(rawStatus);
+                if (!isCancelled) return false;
+            } else if (rawStatus !== activeStatus) {
+                return false;
             }
         }
 
-        // Fallback checks for legacy filters if triggered by old code
-        if (statusFilter && statusFilter !== '') {
-            if (statusFilter === 'action_required') {
-                const needsSignature = ['pending_quotation', 'awaiting_caterer'].includes(rawStatus);
-                const needsPaymentVerify = ['proof_submitted', 'balance_proof_submitted'].includes(payStatus);
-                const isUrgent = el.dataset.isUrgent === 'true';
-                matchesFilter = matchesFilter && (needsSignature || needsPaymentVerify || isUrgent);
-            } else {
-                matchesFilter = matchesFilter && (rawStatus === statusFilter);
-            }
-        }
-        if (sourceFilter && sourceFilter !== '') {
-            if (sourceFilter === 'walkin') {
-                matchesFilter = matchesFilter && (rawEntry === 'walkin' || rawEntry.indexOf('walk') > -1);
-            } else if (sourceFilter === 'online') {
-                matchesFilter = matchesFilter && (rawEntry === 'online' || rawEntry.indexOf('occaserve') > -1);
+        // 3. Source filtering
+        const activeSource = sourceFilter || (['online','walkin'].includes(universalFilter) ? universalFilter : '');
+        if (activeSource) {
+            if (activeSource === 'online') {
+                const isOnline = rawEntry === 'online' || rawEntry.indexOf('website') > -1 || rawEntry.indexOf('occaserve') > -1;
+                if (!isOnline) return false;
+            } else if (activeSource === 'walkin') {
+                const isWalkin = rawEntry === 'walkin' || rawEntry === 'walk_in' || rawEntry === 'internal' || rawEntry.indexOf('walk') > -1;
+                if (!isWalkin) return false;
             }
         }
 
-        return matchesSearch && matchesFilter;
+        return true;
     });
 
     currentPage = 1;
@@ -529,26 +662,31 @@ function showPage(page) {
     const pageItems = filteredRows.slice(startIdx, endIdx);
     const visibleIds = new Set();
     pageItems.forEach(function(item) {
-        // extract booking id from row or card id (e.g. booking-row-123 -> 123)
         const rowId = item.id.replace('booking-row-', '');
         if (rowId) visibleIds.add(rowId);
-        // or check dataset
         if (item.dataset.bookingId) visibleIds.add(item.dataset.bookingId.replace('BK-', '').replace(/^0+/, ''));
     });
 
-    // Hide all table rows and smart cards first
+    // Hide/show table rows
     document.querySelectorAll('tr.booking-row-item').forEach(function(r) { 
         const id = r.id.replace('booking-row-', '');
         r.style.display = visibleIds.has(id) ? '' : 'none'; 
     });
 
+    // Hide/show smart cards
     document.querySelectorAll('.smart-booking-card').forEach(function(c) { 
-        // find id from Manage button or view-details trigger
-        const manageBtn = c.querySelector('button');
+        const btn = c.querySelector('button');
         let cardId = null;
-        if (manageBtn && manageBtn.getAttribute('onclick')) {
-            const m = manageBtn.getAttribute('onclick').match(/#actionMenu-(\d+)/);
+        if (btn && btn.getAttribute('onclick')) {
+            const m = btn.getAttribute('onclick').match(/(?:toggleActionMenuBookings\(['"]?|#actionMenu-)(\d+)/);
             if (m) cardId = m[1];
+        }
+        if (!cardId) {
+            const refEl = c.querySelector('.smart-booking-ref');
+            if (refEl) {
+                const rm = refEl.textContent.match(/\d+/);
+                if (rm) cardId = String(parseInt(rm[0], 10));
+            }
         }
         if (cardId) {
             c.style.display = visibleIds.has(cardId) ? '' : 'none';
