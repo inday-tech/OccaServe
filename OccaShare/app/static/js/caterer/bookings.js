@@ -1493,7 +1493,7 @@ function showBookingDetails(btn) {
         custNote.style.background = isWalkin ? '#ffedd5' : '#e0e7ff';
         custNote.style.color = isWalkin ? '#c2410c' : '#3730a3';
     }
-    const custName = document.getElementById('custFullName'); if (custName) custName.innerText = data.customer || 'Walk-in Customer';
+    const custNameEl = document.getElementById('custFullName'); if (custNameEl) custNameEl.innerText = data.customer || 'Walk-in Customer';
     const custMob = document.getElementById('custMobile'); if (custMob) custMob.innerText = data.contact || 'No mobile provided';
     const custEm = document.getElementById('custEmail'); if (custEm) custEm.innerText = data.email || 'No email provided';
     const custTyp = document.getElementById('custType'); if (custTyp) custTyp.innerText = isWalkin ? 'Walk-in Customer (Manual Entry)' : 'Registered Platform User';
@@ -2175,14 +2175,14 @@ var actionsEl = document.getElementById('bookingModalActionsTop') || document.ge
     const formatMoney = (val) => '₱' + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     
     // Populate Compact Header Summary
-    const custName = data.customer || 'Customer not set';
+    const custNameStr = data.customer || 'Customer not set';
     const eventTypeStr = data.eventType || 'Event';
     const eventDateStr = data.eventDate ? new Date(data.eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date not set';
     const eventTimeStr = data.eventTime || 'TBA';
     const guestPaxStr = (data.guestCount || 0) + ' pax';
     const venueStr = data.venue || 'TBA';
 
-    const hsCust = document.getElementById('headerSummaryCustomer'); if (hsCust) hsCust.innerText = custName;
+    const hsCust = document.getElementById('headerSummaryCustomer'); if (hsCust) hsCust.innerText = custNameStr;
     const hsEvent = document.getElementById('headerSummaryEventType'); if (hsEvent) hsEvent.innerText = eventTypeStr;
     const hsDate = document.getElementById('headerSummaryDate'); if (hsDate) hsDate.innerText = eventDateStr;
     const hsTime = document.getElementById('headerSummaryTime'); if (hsTime) hsTime.innerText = eventTimeStr;
@@ -2223,7 +2223,7 @@ var actionsEl = document.getElementById('bookingModalActionsTop') || document.ge
     const ovBal = document.getElementById('ovBalanceDisplay'); if (ovBal) ovBal.innerText = formatMoney(balanceRaw);
 
     // Populate Customer Tab
-    const cName = document.getElementById('custFullName'); if (cName) cName.innerText = custName;
+    const cName = document.getElementById('custFullName'); if (cName) cName.innerText = custNameStr;
     const cMobile = document.getElementById('custMobile'); if (cMobile) cMobile.innerText = data.contact || 'No contact provided';
     const cEmail = document.getElementById('custEmail'); if (cEmail) cEmail.innerText = data.email || 'No email provided';
     const cType = document.getElementById('custType'); if (cType) cType.innerText = isWalkin ? 'Walk-in Customer' : 'Online Registered Customer';
