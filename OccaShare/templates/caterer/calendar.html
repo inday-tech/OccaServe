@@ -1188,17 +1188,23 @@
                                 </div>
                                 <div>
                                     <label style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; margin-bottom: 0.25rem;">BARANGAY *</label>
-                                    <input type="text" id="extBarangay" class="control-pro" placeholder="e.g. San Antonio" required oninput="updateWalkinAddressPreview(); clearWalkinError('extBarangay')">
+                                    <select id="extBarangay" class="control-pro" required disabled onchange="updateWalkinAddressPreview(); clearWalkinError('extBarangay')">
+                                        <option value="" disabled selected hidden>Select Barangay</option>
+                                    </select>
                                     <div class="field-error-msg" id="error-extBarangay" style="color: #ef4444; font-size: 0.7rem; margin-top: 0.2rem; display: none;"></div>
                                 </div>
                                 <div>
                                     <label style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; margin-bottom: 0.25rem;">CITY / MUNICIPALITY *</label>
-                                    <input type="text" id="extCity" class="control-pro" placeholder="e.g. Lucena City" required oninput="updateWalkinAddressPreview(); clearWalkinError('extCity')">
+                                    <select id="extCity" class="control-pro" required onchange="handleWalkinCityChange(this.value); clearWalkinError('extCity')">
+                                        <option value="" disabled selected hidden>Select City/Municipality</option>
+                                    </select>
                                     <div class="field-error-msg" id="error-extCity" style="color: #ef4444; font-size: 0.7rem; margin-top: 0.2rem; display: none;"></div>
                                 </div>
                                 <div>
                                     <label style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; margin-bottom: 0.25rem;">PROVINCE *</label>
-                                    <input type="text" id="extProvince" class="control-pro" placeholder="e.g. Quezon" required oninput="updateWalkinAddressPreview(); clearWalkinError('extProvince')">
+                                    <select id="extProvince" class="control-pro" required disabled style="background: #f1f5f9; color: #334155; font-weight: 700; cursor: not-allowed;">
+                                        <option value="Laguna" selected>Laguna</option>
+                                    </select>
                                     <div class="field-error-msg" id="error-extProvince" style="color: #ef4444; font-size: 0.7rem; margin-top: 0.2rem; display: none;"></div>
                                 </div>
                             </div>
@@ -1224,24 +1230,50 @@
 
                     <!-- Dynamic Services Grid (Loaded from Caterer's active services or default catalog) -->
                     <div id="walkinServicesGrid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
-                        {% set default_services = [
-                            {'name': 'Catering Service', 'selling_price': 50000.0},
-                            {'name': 'Venue Styling', 'selling_price': 15000.0},
-                            {'name': 'Ceiling Treatment', 'selling_price': 10000.0},
-                            {'name': 'Church Design', 'selling_price': 12000.0},
-                            {'name': 'Grazing Table', 'selling_price': 8000.0},
-                            {'name': 'Photo Coverage', 'selling_price': 15000.0},
-                            {'name': 'Food Cart', 'selling_price': 6000.0},
-                            {'name': 'Souvenir', 'selling_price': 5000.0},
-                            {'name': 'Lights & Sounds', 'selling_price': 10000.0},
-                            {'name': 'OTD Coordination', 'selling_price': 15000.0},
-                            {'name': 'Cake', 'selling_price': 5000.0},
-                            {'name': 'Photobooth / 360 Videobooth', 'selling_price': 8000.0},
-                            {'name': 'Flowers for Entourage', 'selling_price': 12000.0},
-                            {'name': 'Bridal Car', 'selling_price': 7000.0},
-                            {'name': 'Emcee / Host', 'selling_price': 6000.0}
+                        {% set required_services = [
+                            {'name': 'Catering Service', 'selling_price': 0.0},
+                            {'name': 'Venue Styling', 'selling_price': 0.0},
+                            {'name': 'Ceiling Treatment', 'selling_price': 0.0},
+                            {'name': 'Church Design', 'selling_price': 0.0},
+                            {'name': 'Grazing Table', 'selling_price': 0.0},
+                            {'name': 'Photo Coverage', 'selling_price': 0.0},
+                            {'name': 'Food Cart', 'selling_price': 0.0},
+                            {'name': 'Souvenir', 'selling_price': 0.0},
+                            {'name': 'Lights and Sounds', 'selling_price': 0.0},
+                            {'name': 'OTD Coordination', 'selling_price': 0.0},
+                            {'name': 'Cake', 'selling_price': 0.0},
+                            {'name': 'Photobooth / 360 Videobooth', 'selling_price': 0.0},
+                            {'name': 'Flowers for Entourage', 'selling_price': 0.0},
+                            {'name': 'Emcee / Host', 'selling_price': 0.0},
+                            {'name': 'Bridal Car', 'selling_price': 0.0}
                         ] %}
-                        {% set active_services_list = caterer_services if caterer_services and caterer_services|length > 0 else default_services %}
+
+                        {% set active_services_list = [] %}
+                        {% for r in required_services %}
+                            {% set matched_price = namespace(val=r.selling_price) %}
+                            {% if caterer_services %}
+                                {% for cs in caterer_services %}
+                                    {% if cs.name and (cs.name|lower == r.name|lower or r.name|lower in cs.name|lower or cs.name|lower in r.name|lower) %}
+                                        {% set matched_price.val = cs.selling_price or 0.0 %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                            {% set _ = active_services_list.append({'name': r.name, 'selling_price': matched_price.val}) %}
+                        {% endfor %}
+
+                        {% if caterer_services %}
+                            {% for cs in caterer_services %}
+                                {% set cs_matched = namespace(found=false) %}
+                                {% for r in required_services %}
+                                    {% if cs.name and (cs.name|lower == r.name|lower or r.name|lower in cs.name|lower or cs.name|lower in r.name|lower) %}
+                                        {% set cs_matched.found = true %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if not cs_matched.found and cs.name %}
+                                    {% set _ = active_services_list.append({'name': cs.name, 'selling_price': cs.selling_price or 0.0}) %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
 
                         {% for srv in active_services_list %}
                         <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">

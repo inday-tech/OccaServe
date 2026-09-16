@@ -435,13 +435,17 @@ async def create_manual_booking(
                 customer_name = full_name
         
         # Address & Venue Handling with Structured Components
-        province = data.get("province", "").strip()
+        province = data.get("province", "").strip() or "Laguna"
         municipality = data.get("municipality", "").strip() or data.get("city_municipality", "").strip()
         barangay = data.get("barangay", "").strip()
         street_address = data.get("street_address", "").strip() or data.get("landmark", "").strip()
         postal_code = data.get("postal_code", "").strip()
         direct_address = data.get("address", "").strip()
         direct_venue = data.get("venue", "").strip()
+
+        # Operational Domain Check (Laguna Jurisdiction Enforcement)
+        if province.lower() != "laguna":
+            raise HTTPException(status_code=400, detail="extProvince|Operational domain is restricted to Laguna Province.")
         
         if street_address and barangay and municipality and province:
             formatted_addr_parts = [street_address, f"Brgy. {barangay}", municipality, province]
