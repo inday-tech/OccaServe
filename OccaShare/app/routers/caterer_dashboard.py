@@ -402,32 +402,61 @@ async def create_manual_booking(
         if customer_email.lower() == user.email.lower() or (customer_contact and customer_contact == user.phone_number):
             raise HTTPException(status_code=400, detail="manCustEmail|Security Violation: You cannot create a booking using your own caterer email or contact number.")
         
-        # Accept either `full_name` or first/middle/last for compatibility
-        full_name = data.get("full_name", "").strip()
-        if not full_name:
-            first_name = data.get("first_name", "").strip()
-            last_name = data.get("last_name", "").strip()
-            middle_name = data.get("middle_name", "").strip()
-            if not first_name or not last_name:
-                raise HTTPException(status_code=400, detail="manFullName|Customer full name (or first+last) is required")
-            customer_name = f"{first_name} {middle_name or ''} {last_name}".replace("  ", " ").strip()
+        # Dynamic Event-Type Participant Validation
+        event_type = data.get("event_type", "").strip()
+        bride_name = data.get("bride_name", "").strip()
+        groom_name = data.get("groom_name", "").strip()
+        celebrant_name = data.get("celebrant_name", "").strip()
+        representative_name = data.get("representative_name", "").strip()
+
+        if event_type.lower() == "wedding":
+            if not bride_name or not groom_name:
+                raise HTTPException(status_code=400, detail="manWeddingNames|Both Bride's Full Name and Groom's Full Name are required for Wedding bookings.")
+            customer_name = f"{bride_name} & {groom_name}"
+        elif event_type.lower() in ["birthday", "debut", "anniversary"]:
+            if not celebrant_name:
+                raise HTTPException(status_code=400, detail="manCelebrantName|Celebrant's Full Name is required.")
+            customer_name = celebrant_name
+        elif event_type.lower() in ["corporate", "seminar", "meeting", "product launch"]:
+            if not representative_name:
+                raise HTTPException(status_code=400, detail="manRepName|Contact Person / Event Representative name is required.")
+            customer_name = representative_name
         else:
-            customer_name = full_name
+            # Fallback or generic event type
+            full_name = data.get("full_name", "").strip()
+            if not full_name:
+                first_name = data.get("first_name", "").strip()
+                last_name = data.get("last_name", "").strip()
+                middle_name = data.get("middle_name", "").strip()
+                if not first_name or not last_name:
+                    raise HTTPException(status_code=400, detail="manFullName|Customer full name (or first+last) is required")
+                customer_name = f"{first_name} {middle_name or ''} {last_name}".replace("  ", " ").strip()
+            else:
+                customer_name = full_name
         
-        # Address & Venue Handling
+        # Address & Venue Handling with Structured Components
         province = data.get("province", "").strip()
-        municipality = data.get("municipality", "").strip()
+        municipality = data.get("municipality", "").strip() or data.get("city_municipality", "").strip()
         barangay = data.get("barangay", "").strip()
-        landmark = data.get("landmark", "").strip()
+        street_address = data.get("street_address", "").strip() or data.get("landmark", "").strip()
+        postal_code = data.get("postal_code", "").strip()
         direct_address = data.get("address", "").strip()
         direct_venue = data.get("venue", "").strip()
         
-        if direct_address:
+        if street_address and barangay and municipality and province:
+            formatted_addr_parts = [street_address, f"Brgy. {barangay}", municipality, province]
+            if postal_code:
+                formatted_addr_parts.append(postal_code)
+            clean_address = ", ".join(formatted_addr_parts)
+            venue_address = f"{direct_venue + ' — ' if direct_venue else ''}{clean_address}"
+        elif direct_address:
+            clean_address = direct_address
             venue_address = f"{direct_venue + ' — ' if direct_venue else ''}{direct_address}"
         elif province and municipality and barangay:
-            venue_address = f"{landmark + ', ' if landmark else ''}{barangay}, {municipality}, {province}"
+            clean_address = f"{street_address + ', ' if street_address else ''}{barangay}, {municipality}, {province}"
+            venue_address = f"{direct_venue + ' — ' if direct_venue else ''}{clean_address}"
         else:
-            raise HTTPException(status_code=400, detail="manProvince|Complete address is required.")
+            raise HTTPException(status_code=400, detail="manAddress|Complete customer address is required.")
 
         # 1. Handle User (Customer)
         target_user = None
@@ -439,25 +468,51 @@ async def create_manual_booking(
             if target_user and target_user.role != "customer":
                 raise HTTPException(status_code=400, detail="manCustEmail|Security Violation: This email is registered to a Caterer or Admin account. Only customer accounts can be used for bookings.")
         
-        # Contact Validation
+        # Phone Validation & Normalization to Canonical +639XXXXXXXXX
+        canonical_contact = ""
         if customer_contact:
-            clean_contact = "".join(filter(str.isdigit, customer_contact))
-            if not clean_contact.startswith("09") or len(clean_contact) != 11:
-                raise HTTPException(status_code=400, detail="manCustContact|Invalid contact number. Must be a valid 11-digit PH mobile number (09xx).")
+            raw_digits = "".join(filter(str.isdigit, customer_contact))
+            if raw_digits.startswith("63") and len(raw_digits) == 12:
+                canonical_contact = f"+{raw_digits}"
+            elif raw_digits.startswith("09") and len(raw_digits) == 11:
+                canonical_contact = f"+63{raw_digits[1:]}"
+            elif raw_digits.startswith("9") and len(raw_digits) == 10:
+                canonical_contact = f"+63{raw_digits}"
+            else:
+                raise HTTPException(status_code=400, detail="manCustContact|Invalid mobile number. Must be a valid Philippine mobile number (e.g., 09XXXXXXXXX or +639XXXXXXXXX).")
+            
             # Repetitive check (e.g. 09111111111)
-            if len(set(clean_contact[2:])) <= 2:
+            ph_9digits = canonical_contact.replace("+63", "0")
+            if len(set(ph_9digits[2:])) <= 2:
                  raise HTTPException(status_code=400, detail="manCustContact|Invalid contact number pattern detected. Please use a real mobile number.")
 
         if target_user:
             is_existing_user = True
+            # Update user address details if not previously set
+            if not target_user.street_address and street_address: target_user.street_address = street_address
+            if not target_user.barangay and barangay: target_user.barangay = barangay
+            if not target_user.city_municipality and municipality: target_user.city_municipality = municipality
+            if not target_user.province and province: target_user.province = province
+            if not target_user.phone_number and canonical_contact: target_user.phone_number = canonical_contact
         else:
             is_existing_user = False
-            # Create a shadow/guest user
+            # Parse First & Last name for structured user model
+            name_parts = customer_name.split()
+            parsed_first = name_parts[0] if name_parts else customer_name
+            parsed_last = " ".join(name_parts[1:]) if len(name_parts) > 1 else ""
+
+            # Create a shadow/guest customer user
             temp_pass = auth.pwd_context.hash(str(uuid.uuid4()))
             target_user = models.User(
                 email=customer_email if "@" in customer_email else f"walkin_{uuid.uuid4().hex[:8]}@guest.occashare.com",
-                first_name=customer_name,
-                phone_number=customer_contact,
+                first_name=parsed_first,
+                last_name=parsed_last,
+                phone_number=canonical_contact,
+                address=clean_address,
+                street_address=street_address or None,
+                barangay=barangay or None,
+                city_municipality=municipality or None,
+                province=province or None,
                 password_hash=temp_pass,
                 role="customer",
                 status="active"
@@ -478,7 +533,6 @@ async def create_manual_booking(
             raise HTTPException(status_code=400, detail="manDate|Bookings must be made at least 2 days in advance. Bookings for today or tomorrow are not allowed.")
 
         # Anti-Double Booking Validation (Duplicate Detection)
-        event_type = data.get("event_type", "").strip()
         duplicate_check = db.query(models.Booking).filter(
             models.Booking.user_id == target_user.id,
             models.Booking.event_date == event_date,
@@ -540,7 +594,7 @@ async def create_manual_booking(
         
         # Payment handling
         payment_method = data.get("payment_method", "Cash")
-        requested_status = data.get("status", "inquiry")
+        requested_status = data.get("status", "confirmed")
         override_kyc = data.get("override_kyc", False)
         
         # Enforce Digital Contract & KYC rule for existing users
@@ -550,7 +604,6 @@ async def create_manual_booking(
         
         # Services & Walk-in Metadata
         services = data.get("services", [])
-        celebrant_name = data.get("celebrant_name", "").strip()
         motif_theme = data.get("motif_theme", "").strip()
 
         # Build quotation data
@@ -566,53 +619,73 @@ async def create_manual_booking(
                 if s_price <= 0:
                     raise HTTPException(status_code=400, detail=f"services|Amount for '{s.get('name', 'selected service')}' must be greater than ₱0.")
                 computed_services_total += s_price
-            total_amt = computed_services_total
+            total_amt = round(computed_services_total, 2)
         else:
-            total_amt = float(data.get("total_amount", 0) or 0)
+            total_amt = round(float(data.get("total_amount", 0) or 0), 2)
 
-        discount_amount = data.get("discount_amount", 0)
-        amount_paid = float(data.get("amount_paid", 0) or 0)
-        
-        custom_reqs = {
-            "is_walk_in": True,
-            "celebrant_name": celebrant_name,
-            "motif_theme": motif_theme,
-            "services": services,
-            "quotation_items": quotation_items,
-            "discount_amount": discount_amount,
-            "amount_paid": amount_paid
-        }
-        # Record entry method in custom requirements (avoid adding DB column)
-        custom_reqs["entry_method"] = "manual"
-        
-        # Determine payment_status based on rules:
-        # Total = 0 & Paid = 0 -> No Payment
-        # Total > 0 & Paid = 0 -> Unpaid
-        # Paid > 0 but Paid < Total -> Partial
-        # Paid >= Total -> Fully Paid (but not for 0/0)
+        # Downpayment calculation & validation
+        has_downpayment = data.get("has_downpayment", False)
+        raw_downpayment = data.get("downpayment_amount", data.get("amount_paid", 0))
+        downpayment_amt = round(float(raw_downpayment or 0), 2) if has_downpayment or float(raw_downpayment or 0) > 0 else 0.0
+
+        if downpayment_amt < 0:
+            raise HTTPException(status_code=400, detail="manDownpayment|Downpayment cannot be negative.")
+        if downpayment_amt > total_amt:
+            raise HTTPException(status_code=400, detail="manDownpayment|Downpayment cannot exceed the total amount.")
+
+        amount_paid = downpayment_amt
+        remaining_balance = round(max(0.0, total_amt - amount_paid), 2)
+
+        # Determine payment_status according to strict specifications:
+        # Downpayment = 0 -> UNPAID
+        # Downpayment > 0 AND Downpayment < Total -> PARTIALLY PAID
+        # Downpayment = Total -> FULLY PAID
         if total_amt == 0 and amount_paid == 0:
-            computed_payment_status = 'no_payment'
+            computed_payment_status = 'unpaid'
         elif total_amt > 0 and amount_paid == 0:
             computed_payment_status = 'unpaid'
-        elif amount_paid > 0 and amount_paid < total_amt:
-            computed_payment_status = 'partial'
+        elif 0 < amount_paid < total_amt:
+            computed_payment_status = 'partially_paid'
         elif amount_paid >= total_amt and total_amt > 0:
             computed_payment_status = 'fully_paid'
         else:
             computed_payment_status = 'unpaid'
 
+        discount_amount = data.get("discount_amount", 0)
+        custom_reqs = {
+            "is_walk_in": True,
+            "event_type": event_type,
+            "bride_name": bride_name if event_type.lower() == "wedding" else "",
+            "groom_name": groom_name if event_type.lower() == "wedding" else "",
+            "celebrant_name": celebrant_name,
+            "representative_name": representative_name,
+            "motif_theme": motif_theme,
+            "services": services,
+            "quotation_items": quotation_items,
+            "discount_amount": discount_amount,
+            "has_downpayment": has_downpayment,
+            "downpayment_amount": downpayment_amt,
+            "remaining_balance": remaining_balance,
+            "amount_paid": amount_paid,
+            "entry_method": "manual"
+        }
+
         new_booking = models.Booking(
             user_id=target_user.id,
             caterer_id=user.caterer_profile.id,
             package_id=package_id or None,
-            event_name=data.get("event_name"),
-            event_type=data.get("event_type"),
+            customer_name=customer_name,
+            customer_email=target_user.email,
+            customer_contact=canonical_contact or target_user.phone_number,
+            event_name=data.get("event_name") or f"{event_type} - {customer_name}",
+            event_type=event_type,
             event_date=event_date,
             event_time=event_time,
-            guest_count=guest_count,
+            guest_count=guest_count or 1,
             total_amount=total_amt,
             total_price=total_amt,
             venue_address=venue_address,
+            event_address=venue_address,
             status=requested_status,
             payment_status=computed_payment_status,
             payment_method=payment_method,
@@ -624,14 +697,26 @@ async def create_manual_booking(
         db.add(new_booking)
         db.flush()
 
-        # Build synthetic package details to avoid list structure in package_details
-        total_amount = total_amt
+        # If an initial downpayment or payment was made, record it in BookingPaymentRecord
+        if amount_paid > 0:
+            pay_record = models.BookingPaymentRecord(
+                booking_id=new_booking.id,
+                amount=amount_paid,
+                payment_date=func.now(),
+                payment_method=payment_method,
+                payment_type="Deposit" if amount_paid < total_amt else "Full",
+                reference_notes=f"Walk-in Initial Downpayment recorded by caterer ({payment_method}).",
+                recorded_by="Caterer"
+            )
+            db.add(pay_record)
+
+        # Build synthetic package details for audit trail
         synthetic_package_details = {
-            "name": "Walk-in Custom Quotation",
-            "description": "Walk-in generated quotation items",
-            "base_amount": total_amount,
-            "guest_count": guest_count,
-            "unit_price": total_amount / guest_count if guest_count > 0 else 0
+            "name": f"Walk-in {event_type} Booking",
+            "description": "Walk-in generated services and inclusions",
+            "base_amount": total_amt,
+            "guest_count": guest_count or 1,
+            "unit_price": total_amt / (guest_count or 1)
         }
 
         # Save to Quotation table for audit trail
@@ -639,7 +724,7 @@ async def create_manual_booking(
             booking_id=new_booking.id,
             package_details=synthetic_package_details,
             addons=quotation_items,
-            total_amount=total_amount,
+            total_amount=total_amt,
             downpayment_percent=50,
             status="signed",
             customer_signed_at=func.now(),
@@ -665,7 +750,7 @@ async def create_manual_booking(
         history = models.BookingHistory(
             booking_id=new_booking.id,
             status=new_booking.status,
-            notes=f"{new_booking.status.upper()} CREATED\nManual booking ({data.get('booking_source', 'Walk-in')}) created by caterer."
+            notes=f"{new_booking.status.upper()} CREATED\nWalk-in booking created by caterer. Total: ₱{total_amt:,.2f}, Paid: ₱{amount_paid:,.2f}, Remaining: ₱{remaining_balance:,.2f}."
         )
         db.add(history)
         
@@ -673,7 +758,14 @@ async def create_manual_booking(
         create_default_booking_tasks(db, new_booking.id)
         
         db.commit()
-        return {"status": "success", "booking_id": new_booking.id}
+        return {
+            "status": "success",
+            "booking_id": new_booking.id,
+            "total_amount": total_amt,
+            "downpayment_amount": amount_paid,
+            "remaining_balance": remaining_balance,
+            "payment_status": computed_payment_status
+        }
     except HTTPException as he:
         # Re-raise so FastAPI handles it correctly
         raise he
@@ -3239,6 +3331,16 @@ async def caterer_calendar(
         "equipment": [{"id": e.id, "name": e.name, "price": e.rental_price, "category": getattr(e, 'category', None)} for e in equipment_items]
     }
     catalog_json = json.dumps(catalog)
+
+    caterer_services = [
+        {
+            "id": s.id,
+            "name": s.name,
+            "selling_price": float(s.selling_price or 0.0),
+            "category": s.category or "General Service"
+        }
+        for s in service_items
+    ]
     
     return templates.TemplateResponse("caterer/calendar.html", {
         "request": request,
@@ -3248,6 +3350,7 @@ async def caterer_calendar(
         "packages": packages,
         "package_map_json": package_map_json,
         "catalog_json": catalog_json,
+        "caterer_services": caterer_services,
         "max_bookings_per_day": user.caterer_profile.max_bookings_per_day or 1,
         "auto_block_enabled": user.caterer_profile.auto_block_enabled if user.caterer_profile.auto_block_enabled is not None else True,
         "primary_color": user.caterer_profile.primary_color or "#3b82f6",

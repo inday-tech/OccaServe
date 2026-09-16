@@ -26,6 +26,26 @@
     </div>
 </div>
 
+<!-- Unified Offerings Sub-Navigation -->
+<div class="caterer-unified-nav-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.75rem; overflow-x: auto; scrollbar-width: none;">
+    <a href="/caterer/menu" class="unified-nav-tab" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;">
+        <i class="fas fa-utensils"></i>
+        <span>Menu Library</span>
+    </a>
+    <a href="/caterer/services?tab=services" id="unifiedTabServices" class="unified-nav-tab" onclick="switchOfferingsTab(event, 'services')" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;">
+        <i class="fas fa-concierge-bell"></i>
+        <span>Services</span>
+    </a>
+    <a href="/caterer/services?tab=equipment" id="unifiedTabEquipment" class="unified-nav-tab" onclick="switchOfferingsTab(event, 'equipment')" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;">
+        <i class="fas fa-chair"></i>
+        <span>Equipment & Rentals</span>
+    </a>
+    <a href="/caterer/packages" class="unified-nav-tab" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;">
+        <i class="fas fa-gift"></i>
+        <span>Packages</span>
+    </a>
+</div>
+
 {% set unique_categories = [] %}
 {% for item in items %}
     {% if item.category and item.category not in unique_categories %}
@@ -47,7 +67,7 @@
 {% if items %}
 <div class="menu-grid animate-up delay-2">
     {% for item in items %}
-    <div class="menu-item-card-premium" data-category="{{ item.category }}" data-name="{{ item.name|lower }}">
+    <div class="menu-item-card-premium" data-category="{{ item.category }}" data-name="{{ item.name|lower }}" data-item-type="{{ item.item_type }}">
         <div class="item-visual-pro">
             {% if item.image_url %}
                 <img src="{{ item.image_url }}" alt="{{ item.name }}" class="item-img-pro" onerror="this.outerHTML='<div class=\'item-img-placeholder\'><i class=\'fas fa-box-open\'></i></div>'">
@@ -600,6 +620,44 @@
         if (!isActive) menu.classList.add('active');
     }
 
+    let activeOfferingsTab = 'all';
+
+    function switchOfferingsTab(e, tab) {
+        if (e) e.preventDefault();
+        activeOfferingsTab = tab;
+        const url = new URL(window.location);
+        url.searchParams.set('tab', tab);
+        window.history.replaceState({}, '', url);
+        updateUnifiedNavTabStyles();
+        filterMenu();
+    }
+
+    function updateUnifiedNavTabStyles() {
+        const sTab = document.getElementById('unifiedTabServices');
+        const eTab = document.getElementById('unifiedTabEquipment');
+        const activeStyle = "display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; color: #ffffff; background: var(--primary-color); box-shadow: 0 4px 10px rgba(var(--primary-color-rgb, 255, 123, 84), 0.25); transition: all 0.2s;";
+        const inactiveStyle = "display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;";
+        
+        if (sTab) {
+            if (activeOfferingsTab === 'services') {
+                sTab.style.cssText = activeStyle;
+                sTab.classList.add('active');
+            } else {
+                sTab.style.cssText = inactiveStyle;
+                sTab.classList.remove('active');
+            }
+        }
+        if (eTab) {
+            if (activeOfferingsTab === 'equipment') {
+                eTab.style.cssText = activeStyle;
+                eTab.classList.add('active');
+            } else {
+                eTab.style.cssText = inactiveStyle;
+                eTab.classList.remove('active');
+            }
+        }
+    }
+
     function filterByCategory(cat) {
         document.querySelectorAll('.cat-chip').forEach(c => c.classList.toggle('active', c.dataset.cat === cat));
         applyFilters(cat);
@@ -611,11 +669,18 @@
     }
 
     function applyFilters(cat) {
-        const query = document.getElementById('menuSearchInput').value.toLowerCase();
+        const query = (document.getElementById('menuSearchInput')?.value || '').toLowerCase();
         const cards = document.querySelectorAll('.menu-item-card-premium');
         let count = 0;
         cards.forEach(card => {
-            const match = card.textContent.toLowerCase().includes(query) && (cat === 'all' || card.dataset.category === cat);
+            const itemType = (card.dataset.itemType || '').toLowerCase();
+            let matchesTab = true;
+            if (activeOfferingsTab === 'services') {
+                matchesTab = itemType.includes('service') || itemType.includes('legacy');
+            } else if (activeOfferingsTab === 'equipment') {
+                matchesTab = itemType.includes('equipment') || itemType.includes('rental');
+            }
+            const match = matchesTab && card.textContent.toLowerCase().includes(query) && (cat === 'all' || card.dataset.category === cat);
             card.style.display = match ? 'flex' : 'none';
             if (match) count++;
         });
@@ -679,7 +744,16 @@
         }
     });
 
-    document.addEventListener('DOMContentLoaded', () => { handleTypeChange(); });
+    document.addEventListener('DOMContentLoaded', () => { 
+        handleTypeChange(); 
+        const params = new URLSearchParams(window.location.search);
+        const tabParam = params.get('tab');
+        if (tabParam === 'services' || tabParam === 'equipment') {
+            activeOfferingsTab = tabParam;
+            updateUnifiedNavTabStyles();
+            filterMenu();
+        }
+    });
 
     window.addEventListener('click', e => {
         if (!e.target.closest('.card-options-glass')) document.querySelectorAll('.dropdown-menu-glass').forEach(d => d.classList.remove('active'));

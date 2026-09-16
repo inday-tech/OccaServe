@@ -1964,11 +1964,141 @@ window.setWalkinError = function(fieldId, message) {
     }
 };
 
+window.handleWalkinEventTypeChange = function(eventType) {
+    const container = document.getElementById('dynamicNameFieldsContainer');
+    if (!container) return;
+
+    window.clearWalkinError('extEventType');
+    const normType = (eventType || '').toLowerCase();
+
+    if (normType === 'wedding') {
+        container.innerHTML = `
+            <div class="form-group-pro">
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                    Bride's Full Name <span style="color: #ef4444;">*</span>
+                </label>
+                <input type="text" id="extBrideName" class="control-pro" placeholder="e.g. Maria Santos" required oninput="clearWalkinError('extBrideName')">
+                <div class="field-error-msg" id="error-extBrideName" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+            </div>
+            <div class="form-group-pro">
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                    Groom's Full Name <span style="color: #ef4444;">*</span>
+                </label>
+                <input type="text" id="extGroomName" class="control-pro" placeholder="e.g. Juan Dela Cruz" required oninput="clearWalkinError('extGroomName')">
+                <div class="field-error-msg" id="error-extGroomName" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+            </div>
+        `;
+    } else if (normType === 'birthday' || normType === 'debut' || normType === 'anniversary') {
+        const titleLabel = normType === 'debut' ? "Debutante's Full Name" : (normType === 'anniversary' ? "Celebrant / Couple Full Name" : "Celebrant's Full Name");
+        container.innerHTML = `
+            <div class="form-group-pro" style="grid-column: span 2;">
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                    ${titleLabel} <span style="color: #ef4444;">*</span>
+                </label>
+                <input type="text" id="extCelebrantName" class="control-pro" placeholder="e.g. Maria Santos" required oninput="clearWalkinError('extCelebrantName')">
+                <div class="field-error-msg" id="error-extCelebrantName" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+            </div>
+        `;
+    } else if (normType === 'corporate' || normType === 'seminar' || normType === 'meeting' || normType === 'product launch') {
+        container.innerHTML = `
+            <div class="form-group-pro" style="grid-column: span 2;">
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                    Contact Person / Event Representative <span style="color: #ef4444;">*</span>
+                </label>
+                <input type="text" id="extRepresentativeName" class="control-pro" placeholder="e.g. Juan Dela Cruz (HR Coordinator)" required oninput="clearWalkinError('extRepresentativeName')">
+                <div class="field-error-msg" id="error-extRepresentativeName" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+            </div>
+        `;
+    } else {
+        container.innerHTML = `
+            <div class="form-group-pro" style="grid-column: span 2;">
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                    Customer Full Name <span style="color: #ef4444;">*</span>
+                </label>
+                <input type="text" id="extFullName" class="control-pro" placeholder="e.g. Juan Dela Cruz" required oninput="clearWalkinError('extFullName')">
+                <div class="field-error-msg" id="error-extFullName" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+            </div>
+        `;
+    }
+};
+
+window.updateWalkinAddressPreview = function() {
+    const street = (document.getElementById('extStreet')?.value || '').trim();
+    const brgy = (document.getElementById('extBarangay')?.value || '').trim();
+    const city = (document.getElementById('extCity')?.value || '').trim();
+    const prov = (document.getElementById('extProvince')?.value || '').trim();
+
+    const parts = [];
+    if (street) parts.push(street);
+    if (brgy) parts.push(`Brgy. ${brgy}`);
+    if (city) parts.push(city);
+    if (prov) parts.push(prov);
+
+    const formatted = parts.join(', ');
+    const previewEl = document.getElementById('walkinAddressPreview');
+    const hiddenAddr = document.getElementById('extAddress');
+
+    if (previewEl) {
+        previewEl.innerText = formatted || 'Address will automatically format here...';
+    }
+    if (hiddenAddr) {
+        hiddenAddr.value = formatted;
+    }
+};
+
+window.formatWalkinPhone = function(el) {
+    let val = el.value.replace(/[^\d+]/g, '');
+    el.value = val;
+};
+
+function formatCurrencyString(num) {
+    if (isNaN(num) || num === null || num === undefined) num = 0;
+    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function parseCurrencyFloat(val) {
+    if (typeof val === 'number') return val;
+    if (!val) return 0;
+    const clean = String(val).replace(/[^0-9.]/g, '');
+    const num = parseFloat(clean);
+    return isNaN(num) ? 0 : num;
+}
+
+window.handleCurrencyFocus = function(input) {
+    const rawNum = parseCurrencyFloat(input.value);
+    if (rawNum > 0) {
+        input.value = rawNum.toFixed(2);
+    } else {
+        input.value = '';
+    }
+};
+
+window.handleCurrencyBlur = function(input, idx) {
+    const rawNum = parseCurrencyFloat(input.value);
+    if (rawNum > 0) {
+        input.value = formatCurrencyString(rawNum);
+    } else {
+        input.value = '0.00';
+    }
+    recalculateWalkinTotals();
+};
+
+window.handleWalkinAmountInput = function(amountInput, idx) {
+    const errEl = document.getElementById(`error-walkin_amount_${idx}`);
+    if (errEl) {
+        errEl.innerText = '';
+        errEl.style.display = 'none';
+    }
+    amountInput.style.borderColor = '#cbd5e1';
+    recalculateWalkinTotals();
+};
+
 window.handleWalkinServiceToggle = function(checkbox) {
     const idx = checkbox.getAttribute('data-index');
     const amountInput = document.getElementById(`walkin_amount_${idx}`);
     const row = checkbox.closest('.walkin-service-row');
     const errEl = document.getElementById(`error-walkin_amount_${idx}`);
+    const basePrice = parseFloat(checkbox.getAttribute('data-base-price') || 0);
 
     if (checkbox.checked) {
         if (amountInput) {
@@ -1976,15 +2106,18 @@ window.handleWalkinServiceToggle = function(checkbox) {
             amountInput.style.background = '#ffffff';
             amountInput.style.color = '#0f172a';
             amountInput.style.borderColor = '#cbd5e1';
+            const curVal = parseCurrencyFloat(amountInput.value);
+            const initAmt = curVal > 0 ? curVal : (basePrice > 0 ? basePrice : 0);
+            amountInput.value = formatCurrencyString(initAmt);
             amountInput.focus();
         }
         if (row) {
             row.style.background = '#ffffff';
-            row.style.borderColor = '#f97316';
+            row.style.borderColor = 'var(--primary-color, #f97316)';
         }
     } else {
         if (amountInput) {
-            amountInput.value = '';
+            amountInput.value = '0.00';
             amountInput.disabled = true;
             amountInput.style.background = '#e2e8f0';
             amountInput.style.color = '#94a3b8';
@@ -2009,28 +2142,60 @@ window.handleWalkinServiceToggle = function(checkbox) {
     recalculateWalkinTotals();
 };
 
-window.handleWalkinAmountChange = function(amountInput, idx) {
-    const errEl = document.getElementById(`error-walkin_amount_${idx}`);
-    const val = parseFloat(amountInput.value);
-
-    // Prevent negative numbers directly in input
-    if (val < 0) {
-        amountInput.value = Math.abs(val);
+window.toggleWalkinDownpayment = function(isChecked) {
+    const dpInput = document.getElementById('extDownpaymentInput');
+    const dpErr = document.getElementById('error-extDownpayment');
+    if (dpErr) {
+        dpErr.innerText = '';
+        dpErr.style.display = 'none';
     }
 
-    if (amountInput.value && parseFloat(amountInput.value) > 0) {
-        if (errEl) {
-            errEl.innerText = '';
-            errEl.style.display = 'none';
+    if (isChecked) {
+        if (dpInput) {
+            dpInput.disabled = false;
+            dpInput.style.background = '#ffffff';
+            dpInput.style.color = '#0f172a';
+            dpInput.style.borderColor = '#cbd5e1';
+
+            // Default suggestion: 50% of subtotal if subtotal > 0
+            const total = parseFloat(document.getElementById('extTotalAmount')?.value || 0);
+            const currentDp = parseCurrencyFloat(dpInput.value);
+            if (currentDp <= 0 && total > 0) {
+                const suggestedDp = Math.round(total * 0.5 * 100) / 100;
+                dpInput.value = formatCurrencyString(suggestedDp);
+            }
+            dpInput.focus();
         }
-        amountInput.style.borderColor = '#cbd5e1';
+    } else {
+        if (dpInput) {
+            dpInput.value = '0.00';
+            dpInput.disabled = true;
+            dpInput.style.background = '#e2e8f0';
+            dpInput.style.color = '#94a3b8';
+            dpInput.style.borderColor = '#cbd5e1';
+        }
     }
+    recalculateWalkinTotals();
+};
 
+window.handleDownpaymentInput = function(dpInput) {
+    const dpErr = document.getElementById('error-extDownpayment');
+    if (dpErr) {
+        dpErr.innerText = '';
+        dpErr.style.display = 'none';
+    }
+    dpInput.style.borderColor = '#cbd5e1';
+    recalculateWalkinTotals();
+};
+
+window.handleDownpaymentBlur = function(dpInput) {
+    const val = parseCurrencyFloat(dpInput.value);
+    dpInput.value = formatCurrencyString(val);
     recalculateWalkinTotals();
 };
 
 function recalculateWalkinTotals() {
-    let total = 0;
+    let subtotal = 0;
     let selectedCount = 0;
 
     const checkboxes = document.querySelectorAll('.walkin-service-checkbox');
@@ -2040,36 +2205,93 @@ function recalculateWalkinTotals() {
             const idx = cb.getAttribute('data-index');
             const amtInput = document.getElementById(`walkin_amount_${idx}`);
             if (amtInput) {
-                const amt = parseFloat(amtInput.value) || 0;
+                const amt = parseCurrencyFloat(amtInput.value);
                 if (amt > 0) {
-                    total += amt;
+                    subtotal += amt;
                 }
             }
         }
     });
 
+    subtotal = Math.round(subtotal * 100) / 100;
+
+    // Update Subtotal Displays
+    const subtotalDisplay = document.getElementById('walkinSubtotalDisplay');
+    if (subtotalDisplay) subtotalDisplay.innerText = '₱' + formatCurrencyString(subtotal);
+
     const totalDisplay = document.getElementById('walkinTotalDisplay');
-    if (totalDisplay) {
-        totalDisplay.innerText = '₱' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
+    if (totalDisplay) totalDisplay.innerText = '₱' + formatCurrencyString(subtotal);
 
     const hiddenTotal = document.getElementById('extTotalAmount');
-    if (hiddenTotal) {
-        hiddenTotal.value = total;
-    }
+    if (hiddenTotal) hiddenTotal.value = subtotal;
 
     const countDisplay = document.getElementById('walkinSelectedCount');
-    if (countDisplay) {
-        countDisplay.innerText = selectedCount;
+    if (countDisplay) countDisplay.innerText = selectedCount;
+
+    // Downpayment & Remaining Balance
+    const hasDpCheckbox = document.getElementById('extHasDownpayment');
+    const dpInput = document.getElementById('extDownpaymentInput');
+    const dpErr = document.getElementById('error-extDownpayment');
+    let downpayment = 0;
+
+    if (hasDpCheckbox && hasDpCheckbox.checked && dpInput) {
+        downpayment = parseCurrencyFloat(dpInput.value);
+        if (downpayment > subtotal) {
+            if (dpErr) {
+                dpErr.innerText = 'Downpayment cannot exceed the total amount.';
+                dpErr.style.display = 'block';
+            }
+            dpInput.style.borderColor = '#ef4444';
+        } else {
+            if (dpErr) {
+                dpErr.innerText = '';
+                dpErr.style.display = 'none';
+            }
+            dpInput.style.borderColor = '#cbd5e1';
+        }
+    } else {
+        if (dpErr) {
+            dpErr.innerText = '';
+            dpErr.style.display = 'none';
+        }
     }
 
-    return total;
+    downpayment = Math.round(downpayment * 100) / 100;
+    const remainingBalance = Math.max(0, Math.round((subtotal - downpayment) * 100) / 100);
+
+    const hiddenDp = document.getElementById('extDownpaymentAmount');
+    if (hiddenDp) hiddenDp.value = downpayment;
+
+    const hiddenBal = document.getElementById('extRemainingBalance');
+    if (hiddenBal) hiddenBal.value = remainingBalance;
+
+    const balDisplay = document.getElementById('walkinBalanceDisplay');
+    if (balDisplay) balDisplay.innerText = '₱' + formatCurrencyString(remainingBalance);
+
+    // Dynamic Payment Status Badge
+    const badge = document.getElementById('walkinPaymentStatusBadge');
+    if (badge) {
+        if (subtotal <= 0 || downpayment === 0) {
+            badge.innerText = 'UNPAID';
+            badge.style.background = '#fef2f2';
+            badge.style.color = '#ef4444';
+        } else if (downpayment > 0 && downpayment < subtotal) {
+            badge.innerText = 'PARTIALLY PAID';
+            badge.style.background = '#fef9c3';
+            badge.style.color = '#854d0e';
+        } else if (downpayment >= subtotal && subtotal > 0) {
+            badge.innerText = 'FULLY PAID';
+            badge.style.background = '#dcfce7';
+            badge.style.color = '#15803d';
+        }
+    }
+
+    return subtotal;
 }
 
 window.submitExternalBooking = async function(e) {
     if (e && e.preventDefault) e.preventDefault();
 
-    const form = document.getElementById('externalBookingForm');
     const errBanner = document.getElementById('extBookingFormError');
     if (errBanner) {
         errBanner.innerText = '';
@@ -2087,44 +2309,89 @@ window.submitExternalBooking = async function(e) {
         }
     }
 
-    // 1. Customer Name Validation
-    const nameEl = document.getElementById('extFullName');
-    const nameVal = nameEl ? nameEl.value.trim() : '';
-    if (!nameVal) {
-        reportError('extFullName', 'Customer full name is required.');
-    } else if (nameVal.length < 2) {
-        reportError('extFullName', 'Name must be at least 2 characters long.');
-    } else if (!/^[A-Za-zÑñ\s\.\,\-]+$/.test(nameVal)) {
-        reportError('extFullName', 'Please enter a valid customer name (letters, spaces, periods, hyphens only).');
-    }
-
-    // 2. Mobile Number Validation
-    const contactEl = document.getElementById('extCustomerContact');
-    const contactVal = contactEl ? contactEl.value.trim() : '';
-    // Normalize and test PH format: 09XXXXXXXXX or +639XXXXXXXXX
-    const phMobileRegex = /^(09\d{9}|\+639\d{9})$/;
-    if (!contactVal) {
-        reportError('extCustomerContact', 'Mobile number is required.');
-    } else {
-        const cleanContact = contactVal.replace(/[\s\-]/g, '');
-        if (!phMobileRegex.test(cleanContact)) {
-            reportError('extCustomerContact', 'Please enter a valid PH mobile number (e.g., 09XXXXXXXXX or +639XXXXXXXXX).');
-        } else {
-            // Repetitive check (e.g. 09111111111)
-            const digits = cleanContact.startsWith('+63') ? '0' + cleanContact.slice(3) : cleanContact;
-            if (new Set(digits.slice(2)).size <= 2) {
-                reportError('extCustomerContact', 'Invalid mobile number pattern detected.');
-            }
-        }
-    }
-
-    // 3. Type of Event
+    // 1. Type of Event
     const typeEl = document.getElementById('extEventType');
-    if (!typeEl || !typeEl.value) {
+    const eventType = typeEl ? typeEl.value : '';
+    if (!eventType) {
         reportError('extEventType', 'Please select the type of event.');
     }
 
-    // 4. Date of Event
+    // 2. Dynamic Participant Names Validation
+    const normType = eventType.toLowerCase();
+    let brideName = '';
+    let groomName = '';
+    let celebrantName = '';
+    let repName = '';
+    let genericFullName = '';
+
+    if (normType === 'wedding') {
+        const brideEl = document.getElementById('extBrideName');
+        const groomEl = document.getElementById('extGroomName');
+        brideName = brideEl ? brideEl.value.trim() : '';
+        groomName = groomEl ? groomEl.value.trim() : '';
+
+        if (!brideName) {
+            reportError('extBrideName', "Bride's full name is required.");
+        } else if (!/^[A-Za-zÑñ\s\.\,\-]+$/.test(brideName)) {
+            reportError('extBrideName', 'Please enter a valid bride name (letters, spaces, periods, hyphens only).');
+        }
+
+        if (!groomName) {
+            reportError('extGroomName', "Groom's full name is required.");
+        } else if (!/^[A-Za-zÑñ\s\.\,\-]+$/.test(groomName)) {
+            reportError('extGroomName', 'Please enter a valid groom name (letters, spaces, periods, hyphens only).');
+        }
+    } else if (normType === 'birthday' || normType === 'debut' || normType === 'anniversary') {
+        const celEl = document.getElementById('extCelebrantName');
+        celebrantName = celEl ? celEl.value.trim() : '';
+        if (!celebrantName) {
+            reportError('extCelebrantName', "Celebrant's full name is required.");
+        } else if (!/^[A-Za-zÑñ\s\.\,\-]+$/.test(celebrantName)) {
+            reportError('extCelebrantName', 'Please enter a valid celebrant name (letters, spaces, periods, hyphens only).');
+        }
+    } else if (normType === 'corporate' || normType === 'seminar' || normType === 'meeting' || normType === 'product launch') {
+        const repEl = document.getElementById('extRepresentativeName');
+        repName = repEl ? repEl.value.trim() : '';
+        if (!repName) {
+            reportError('extRepresentativeName', 'Contact Person / Event Representative name is required.');
+        }
+    } else {
+        const nameEl = document.getElementById('extFullName');
+        genericFullName = nameEl ? nameEl.value.trim() : '';
+        if (!genericFullName) {
+            reportError('extFullName', 'Customer full name is required.');
+        } else if (!/^[A-Za-zÑñ\s\.\,\-]+$/.test(genericFullName)) {
+            reportError('extFullName', 'Please enter a valid customer name.');
+        }
+    }
+
+    // 3. Mobile Number Validation & Normalization
+    const contactEl = document.getElementById('extCustomerContact');
+    const contactVal = contactEl ? contactEl.value.trim() : '';
+    const cleanDigits = contactVal.replace(/[^\d]/g, '');
+
+    if (!contactVal) {
+        reportError('extCustomerContact', 'Mobile number is required.');
+    } else if (!/^(09\d{9}|639\d{9}|\+639\d{9})$/.test(contactVal.replace(/[\s\-]/g, ''))) {
+        reportError('extCustomerContact', 'Please enter a valid Philippine mobile number (e.g., 09XXXXXXXXX or +639XXXXXXXXX).');
+    } else {
+        const checkSequence = cleanDigits.startsWith('63') ? '0' + cleanDigits.slice(2) : cleanDigits;
+        if (new Set(checkSequence.slice(2)).size <= 2) {
+            reportError('extCustomerContact', 'Invalid mobile number pattern detected.');
+        }
+    }
+
+    // Canonical +639XXXXXXXXX format
+    let canonicalPhone = '';
+    if (cleanDigits.startsWith('63') && cleanDigits.length === 12) {
+        canonicalPhone = `+${cleanDigits}`;
+    } else if (cleanDigits.startsWith('09') && cleanDigits.length === 11) {
+        canonicalPhone = `+63${cleanDigits.slice(1)}`;
+    } else if (cleanDigits.startsWith('9') && cleanDigits.length === 10) {
+        canonicalPhone = `+63${cleanDigits}`;
+    }
+
+    // 4. Date of Event Validation
     const dateEl = document.getElementById('extEventDate');
     const dateVal = dateEl ? dateEl.value : '';
     if (!dateVal) {
@@ -2147,11 +2414,24 @@ window.submitExternalBooking = async function(e) {
         reportError('extVenue', 'Event venue is required.');
     }
 
-    // 6. Address Validation
-    const addressEl = document.getElementById('extAddress');
-    if (!addressEl || !addressEl.value.trim()) {
-        reportError('extAddress', 'Customer address is required.');
-    }
+    // 6. Structured Address Validation
+    const streetEl = document.getElementById('extStreet');
+    const brgyEl = document.getElementById('extBarangay');
+    const cityEl = document.getElementById('extCity');
+    const provEl = document.getElementById('extProvince');
+
+    const streetVal = streetEl ? streetEl.value.trim() : '';
+    const brgyVal = brgyEl ? brgyEl.value.trim() : '';
+    const cityVal = cityEl ? cityEl.value.trim() : '';
+    const provVal = provEl ? provEl.value.trim() : '';
+
+    if (!streetVal) reportError('extStreet', 'House/Street is required.');
+    if (!brgyVal) reportError('extBarangay', 'Barangay is required.');
+    if (!cityVal) reportError('extCity', 'City/Municipality is required.');
+    if (!provVal) reportError('extProvince', 'Province is required.');
+
+    window.updateWalkinAddressPreview();
+    const formattedAddress = document.getElementById('extAddress')?.value || `${streetVal}, Brgy. ${brgyVal}, ${cityVal}, ${provVal}`;
 
     // 7. Services Checklist & Amounts Validation
     const checkboxes = document.querySelectorAll('.walkin-service-checkbox');
@@ -2166,10 +2446,9 @@ window.submitExternalBooking = async function(e) {
             const sName = cb.getAttribute('data-service-name');
             const amtInput = document.getElementById(`walkin_amount_${idx}`);
             const errEl = document.getElementById(`error-walkin_amount_${idx}`);
-            const rawVal = amtInput ? amtInput.value.trim() : '';
-            const amtVal = parseFloat(rawVal);
+            const amtVal = parseCurrencyFloat(amtInput ? amtInput.value : 0);
 
-            if (!rawVal || isNaN(amtVal) || amtVal <= 0) {
+            if (amtVal <= 0) {
                 isValid = false;
                 serviceAmountError = true;
                 if (errEl) {
@@ -2212,6 +2491,20 @@ window.submitExternalBooking = async function(e) {
         }
     }
 
+    // 8. Downpayment Validation
+    const hasDpCheckbox = document.getElementById('extHasDownpayment');
+    const isDpChecked = hasDpCheckbox ? hasDpCheckbox.checked : false;
+    const totalAmount = selectedServices.reduce((sum, s) => sum + s.price, 0);
+    const downpaymentAmount = isDpChecked ? parseCurrencyFloat(document.getElementById('extDownpaymentInput')?.value || 0) : 0;
+
+    if (isDpChecked) {
+        if (downpaymentAmount < 0) {
+            reportError('extDownpayment', 'Downpayment cannot be negative.');
+        } else if (downpaymentAmount > totalAmount) {
+            reportError('extDownpayment', 'Downpayment cannot exceed total amount.');
+        }
+    }
+
     if (!isValid) {
         if (firstInvalidEl && typeof firstInvalidEl.scrollIntoView === 'function') {
             firstInvalidEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2228,34 +2521,34 @@ window.submitExternalBooking = async function(e) {
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving Walk-in Booking...';
     }
 
-    // Recalculate total amount from selected services
-    const totalAmount = selectedServices.reduce((sum, s) => sum + s.price, 0);
-
-    // Format clean contact number for backend (09XXXXXXXXX)
-    let finalContact = contactVal.replace(/[\s\-]/g, '');
-    if (finalContact.startsWith('+63')) {
-        finalContact = '0' + finalContact.slice(3);
-    }
-
     const payload = {
         booking_source: "Walk-in",
-        full_name: nameVal,
-        customer_contact: finalContact,
+        event_type: eventType,
+        bride_name: brideName,
+        groom_name: groomName,
+        celebrant_name: celebrantName,
+        representative_name: repName,
+        full_name: genericFullName || (normType === 'wedding' ? `${brideName} & ${groomName}` : (celebrantName || repName)),
+        customer_contact: canonicalPhone,
         customer_email: "",
-        event_type: typeEl.value,
-        event_name: `${typeEl.value} - ${nameVal}`,
+        event_name: `${eventType} - ${genericFullName || (normType === 'wedding' ? `${brideName} & ${groomName}` : (celebrantName || repName))}`,
         event_date: dateVal,
         event_time: "10:00",
         guest_count: 1,
-        address: addressEl.value.trim(),
+        street_address: streetVal,
+        barangay: brgyVal,
+        city_municipality: cityVal,
+        province: provVal,
+        address: formattedAddress,
         venue: venueEl.value.trim(),
-        celebrant_name: document.getElementById('extCelebrantName') ? document.getElementById('extCelebrantName').value.trim() : "",
         motif_theme: document.getElementById('extMotifTheme') ? document.getElementById('extMotifTheme').value.trim() : "",
         services: selectedServices,
         quotation_items: selectedServices,
         total_amount: totalAmount,
+        has_downpayment: isDpChecked,
+        downpayment_amount: downpaymentAmount,
+        amount_paid: downpaymentAmount,
         status: "confirmed",
-        amount_paid: 0,
         force_override: false
     };
 
@@ -2274,12 +2567,13 @@ window.submitExternalBooking = async function(e) {
                 window.fullCalendarInstance.refetchEvents();
             }
 
+            const successMsg = `Walk-in booking for ${payload.full_name} created successfully! Total: ₱${formatCurrencyString(totalAmount)}, Paid: ₱${formatCurrencyString(downpaymentAmount)}.`;
             if (window.showNotification) {
-                window.showNotification('Success', 'Walk-in booking successfully created.', 'success');
+                window.showNotification('Success', successMsg, 'success');
             } else if (window.showToast) {
-                window.showToast('Walk-in booking successfully created.', 'success');
+                window.showToast(successMsg, 'success');
             } else {
-                alert('Walk-in booking successfully created.');
+                alert(successMsg);
             }
         } else {
             let detailMsg = result.detail || result.message || 'Failed to record walk-in booking.';
@@ -2291,8 +2585,16 @@ window.submitExternalBooking = async function(e) {
                     window.setWalkinError('extEventDate', cleanMsg);
                 } else if (fieldKey === 'manCustContact' || fieldKey === 'customer_contact') {
                     window.setWalkinError('extCustomerContact', cleanMsg);
+                } else if (fieldKey === 'manWeddingNames') {
+                    window.setWalkinError('extBrideName', cleanMsg);
+                } else if (fieldKey === 'manCelebrantName') {
+                    window.setWalkinError('extCelebrantName', cleanMsg);
+                } else if (fieldKey === 'manRepName') {
+                    window.setWalkinError('extRepresentativeName', cleanMsg);
                 } else if (fieldKey === 'manFullName') {
                     window.setWalkinError('extFullName', cleanMsg);
+                } else if (fieldKey === 'manDownpayment') {
+                    window.setWalkinError('extDownpayment', cleanMsg);
                 } else {
                     if (errBanner) {
                         errBanner.innerText = cleanMsg;

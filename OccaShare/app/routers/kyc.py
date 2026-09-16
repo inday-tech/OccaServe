@@ -855,11 +855,19 @@ async def view_kyc_document(
         raise HTTPException(status_code=403, detail="Unauthorized access to this document.")
 
     path = os.path.join(UPLOAD_DIR, filename)
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Document not found.")
-
-    with open(path, "rb") as f:
-        file_data = f.read()
+    file_data = None
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            file_data = f.read()
+    else:
+        # Check valid_ids or alternate directories or Cloudinary fallback
+        try:
+            file_data = verification_service._load_image_bytes(filename)
+        except Exception:
+            raise HTTPException(status_code=404, detail="Document not found.")
+    
+    if not file_data:
+        raise HTTPException(status_code=404, detail="Document is empty or not found.")
     
     # Infer MIME type from the original filename extension
     ext = os.path.splitext(filename)[1].lower()

@@ -80,6 +80,26 @@ window.toggleAllInContainer = function(checkbox, containerSelector) {
 </div>
 </div>
 
+<!-- Unified Offerings Sub-Navigation -->
+<div class="caterer-unified-nav-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.75rem; overflow-x: auto; scrollbar-width: none;">
+    <a href="/caterer/menu" class="unified-nav-tab" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;">
+        <i class="fas fa-utensils"></i>
+        <span>Menu Library</span>
+    </a>
+    <a href="/caterer/services?tab=services" class="unified-nav-tab" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;">
+        <i class="fas fa-concierge-bell"></i>
+        <span>Services</span>
+    </a>
+    <a href="/caterer/services?tab=equipment" class="unified-nav-tab" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;">
+        <i class="fas fa-chair"></i>
+        <span>Equipment & Rentals</span>
+    </a>
+    <a href="/caterer/packages" class="unified-nav-tab active" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; color: #ffffff; background: var(--primary-color); box-shadow: 0 4px 10px rgba(var(--primary-color-rgb, 255, 123, 84), 0.25); transition: all 0.2s;">
+        <i class="fas fa-gift"></i>
+        <span>Packages</span>
+    </a>
+</div>
+
 {% if packages %}
 <div class="packages-grid-pro animate-up delay-1">
     {% for package in packages %}
