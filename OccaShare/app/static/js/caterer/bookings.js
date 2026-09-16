@@ -2037,6 +2037,108 @@ var actionsEl = document.getElementById('bookingModalActionsTop') || document.ge
     let balanceRaw = Math.max(totalRaw - paidRaw, 0);
     const formatMoney = (val) => '₱' + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     
+    // Populate Compact Header Summary
+    const custName = data.customer || 'Customer not set';
+    const eventTypeStr = data.eventType || 'Event';
+    const eventDateStr = data.eventDate ? new Date(data.eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date not set';
+    const eventTimeStr = data.eventTime || 'TBA';
+    const guestPaxStr = (data.guestCount || 0) + ' pax';
+    const venueStr = data.venue || 'TBA';
+
+    const hsCust = document.getElementById('headerSummaryCustomer'); if (hsCust) hsCust.innerText = custName;
+    const hsEvent = document.getElementById('headerSummaryEventType'); if (hsEvent) hsEvent.innerText = eventTypeStr;
+    const hsDate = document.getElementById('headerSummaryDate'); if (hsDate) hsDate.innerText = eventDateStr;
+    const hsTime = document.getElementById('headerSummaryTime'); if (hsTime) hsTime.innerText = eventTimeStr;
+    const hsPax = document.getElementById('headerSummaryPax'); if (hsPax) hsPax.innerText = guestPaxStr;
+    const hsVenue = document.getElementById('headerSummaryVenue'); if (hsVenue) hsVenue.innerText = venueStr;
+
+    // Populate Source Badge in Header & Badges
+    const srcBadge = document.getElementById('modalBookingSourceBadge');
+    const srcIcon = document.getElementById('modalBookingSourceIcon');
+    const srcText = document.getElementById('modalBookingSource');
+    if (srcBadge) {
+        if (isWalkin) {
+            srcBadge.style.background = '#ffedd5'; srcBadge.style.color = '#c2410c'; srcBadge.style.borderColor = '#fed7aa';
+            if (srcIcon) srcIcon.className = 'fas fa-store';
+            if (srcText) srcText.innerText = 'WALK-IN';
+        } else {
+            srcBadge.style.background = '#f3e8ff'; srcBadge.style.color = '#7e22ce'; srcBadge.style.borderColor = '#e9d5ff';
+            if (srcIcon) srcIcon.className = 'fas fa-globe';
+            if (srcText) srcText.innerText = 'ONLINE';
+        }
+    }
+
+    // Populate Overview Tab Cards
+    const ovEvType = document.getElementById('ovEventType'); if (ovEvType) ovEvType.innerText = eventTypeStr;
+    const ovEvDate = document.getElementById('ovEventDate'); if (ovEvDate) ovEvDate.innerText = eventDateStr;
+    const ovEvTime = document.getElementById('ovEventTime'); if (ovEvTime) ovEvTime.innerText = eventTimeStr;
+    const ovEvPax = document.getElementById('ovGuestCount'); if (ovEvPax) ovEvPax.innerText = guestPaxStr;
+    const ovEvVenue = document.getElementById('ovVenue'); if (ovEvVenue) ovEvVenue.innerText = venueStr;
+    const ovEvMotif = document.getElementById('ovMotif'); if (ovEvMotif) ovEvMotif.innerText = data.requests || 'Not specified';
+
+    const ovBkRef = document.getElementById('ovBookingRef'); if (ovBkRef) ovBkRef.innerText = '#' + (data.bookingRef || ('BK-' + String(data.id).padStart(6, '0')));
+    const ovSrcBadge = document.getElementById('ovSourceBadge'); if (ovSrcBadge) ovSrcBadge.innerText = isWalkin ? 'WALK-IN' : 'ONLINE';
+    const ovCreated = document.getElementById('ovCreatedDate'); if (ovCreated) ovCreated.innerText = data.bookedOn || '—';
+    const ovStatus = document.getElementById('ovStatusText'); if (ovStatus) ovStatus.innerText = (data.status || 'Confirmed').toUpperCase();
+
+    const ovTot = document.getElementById('ovTotalDisplay'); if (ovTot) ovTot.innerText = formatMoney(totalRaw);
+    const ovPaid = document.getElementById('ovPaidDisplay'); if (ovPaid) ovPaid.innerText = formatMoney(paidRaw);
+    const ovBal = document.getElementById('ovBalanceDisplay'); if (ovBal) ovBal.innerText = formatMoney(balanceRaw);
+
+    // Populate Customer Tab
+    const cName = document.getElementById('custFullName'); if (cName) cName.innerText = custName;
+    const cMobile = document.getElementById('custMobile'); if (cMobile) cMobile.innerText = data.contact || 'No contact provided';
+    const cEmail = document.getElementById('custEmail'); if (cEmail) cEmail.innerText = data.email || 'No email provided';
+    const cType = document.getElementById('custType'); if (cType) cType.innerText = isWalkin ? 'Walk-in Customer' : 'Online Registered Customer';
+    const cNote = document.getElementById('custSourceNote');
+    if (cNote) {
+        if (isWalkin) {
+            cNote.innerText = 'WALK-IN ENTRY'; cNote.style.background = '#ffedd5'; cNote.style.color = '#c2410c';
+        } else {
+            cNote.innerText = 'ONLINE RESERVATION'; cNote.style.background = '#f3e8ff'; cNote.style.color = '#7e22ce';
+        }
+    }
+    const btnCall = document.getElementById('btnCallCustomer');
+    if (btnCall) {
+        if (data.contact) { btnCall.href = 'tel:' + data.contact; btnCall.style.display = 'inline-flex'; }
+        else { btnCall.style.display = 'none'; }
+    }
+    const btnEmail = document.getElementById('btnEmailCustomer');
+    if (btnEmail) {
+        if (data.email) { btnEmail.href = 'mailto:' + data.email; btnEmail.style.display = 'inline-flex'; }
+        else { btnEmail.style.display = 'none'; }
+    }
+
+    // Populate Order & Package Tab
+    const oPkgName = document.getElementById('orderPkgName'); if (oPkgName) oPkgName.innerText = data.specificName || 'Catering Package';
+    const oPkgMeta = document.getElementById('orderPkgMeta'); if (oPkgMeta) oPkgMeta.innerText = (data.guestCount || 0) + ' pax · ' + (data.eventType || 'Event');
+    const oPkgPrice = document.getElementById('orderPkgPrice'); if (oPkgPrice) oPkgPrice.innerText = formatMoney(totalRaw);
+
+    // Populate Payment Tab
+    const pTot = document.getElementById('payTotalAmount'); if (pTot) pTot.innerText = formatMoney(totalRaw);
+    const pPaid = document.getElementById('payTotalPaid'); if (pPaid) pPaid.innerText = formatMoney(paidRaw);
+    const pBal = document.getElementById('payBalance'); if (pBal) pBal.innerText = formatMoney(balanceRaw);
+    const pTabBadge = document.getElementById('paymentTabBadge');
+    if (pTabBadge) {
+        const pStatus = data.paymentStatus || 'unpaid';
+        pTabBadge.innerText = pStatus.replace(/_/g, ' ').toUpperCase();
+        if (pStatus === 'paid' || pStatus === 'fully_paid') {
+            pTabBadge.style.background = '#dcfce7'; pTabBadge.style.color = '#15803d';
+        } else {
+            pTabBadge.style.background = '#fff7ed'; pTabBadge.style.color = '#c2410c';
+        }
+    }
+
+    // Populate Footer Actions Button Visibility
+    const btnCopyLink = document.getElementById('btnFooterCopyPaymentLink');
+    if (btnCopyLink) {
+        if (!isWalkin && data.paymentStatus !== 'paid' && totalRaw > 0) {
+            btnCopyLink.style.display = 'inline-flex';
+        } else {
+            btnCopyLink.style.display = 'none';
+        }
+    }
+
     let dtTotal = document.getElementById('modalTotalAmount');
     let dtPaid = document.getElementById('headerPaidAmount');
     let dtBalance = document.getElementById('headerBalanceAmount');
@@ -2351,35 +2453,20 @@ function switchBookingTab(tabId, targetEl) {
 }
 
 function configureBookingTabs(data, context) {
-    const status = data.status || '';
-    const paymentStatus = data.paymentStatus || 'no_payment';
-    const total = Math.max(parseFloat(data.totalRawAmount) || 0, 0);
-    const hasPaymentData = total > 0 || paymentStatus !== 'no_payment' || Boolean(data.proofUrl || data.balanceProofUrl);
-    const contractStatuses = ['awaiting_caterer', 'awaiting_customer', 'confirmed', 'preparing', 'ready_for_pickup', 'ready_for_delivery', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress', 'completed'];
-    const showContract = !context.isWalkin && (contractStatuses.includes(status) || Boolean(data.documentType));
-    const showChat = context.isWalkin ? Boolean(data.contact || data.email) : Boolean(data.targetUserId);
     const visibleTabs = {
         overview: true,
-        details: true,
-        finance: hasPaymentData,
-        contract: showContract,
-        chat: showChat,
+        customer: true,
+        order: true,
+        payment: true,
+        preparation: true,
         activity: true
     };
 
     Object.entries(visibleTabs).forEach(([tabId, isVisible]) => {
         const button = document.querySelector(`#bookingDetailModal [data-tab="${tabId}"]`);
         const pane = document.getElementById(`btab-${tabId}`);
-        if (button) button.style.display = isVisible ? 'flex' : 'none';
-        if (pane) pane.style.display = isVisible ? '' : 'none';
+        if (button) button.style.display = isVisible ? 'inline-flex' : 'none';
     });
-
-    const checklistCard = document.getElementById('checklistCard');
-    const checklistStatuses = ['confirmed', 'preparing', 'ready_for_pickup', 'ready_for_delivery', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress'];
-    if (checklistCard) checklistCard.style.display = checklistStatuses.includes(status) ? '' : 'none';
-
-    const dueDateCard = document.getElementById('dueDateCardPremium');
-    if (dueDateCard) dueDateCard.style.display = hasPaymentData && !['inquiry', 'draft', 'pending_quotation', 'awaiting_caterer', 'awaiting_customer', 'awaiting_payment', 'pending_payment'].includes(status) ? '' : 'none';
 
     const activeButton = document.querySelector('#bookingDetailModal .mtab-btn-pro.active');
     const activeTab = activeButton?.dataset.tab;
