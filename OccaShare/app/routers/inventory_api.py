@@ -103,3 +103,106 @@ async def check_inventory(request: Request, db: Session = Depends(database.get_d
         }
 
     return {"status": "success", "message": "Inventory available"}
+
+
+@router.api_route("/check-equipment-availability", methods=["GET", "POST"])
+async def check_equipment_availability(
+    request: Request,
+    db: Session = Depends(database.get_db)
+):
+    if request.method == "POST":
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+    else:
+        data = dict(request.query_params)
+        
+    equipment_id = data.get("equipment_id")
+    date_str = data.get("date") or data.get("event_date")
+    try:
+        requested_qty = int(data.get("requested_qty", 1) or 1)
+    except (ValueError, TypeError):
+        requested_qty = 1
+
+    if not equipment_id or not date_str:
+        return {"status": "error", "available": False, "message": "Equipment ID and date are required"}
+
+    try:
+        eq_id = int(str(equipment_id).replace("eq_", ""))
+    except (ValueError, TypeError):
+        return {"status": "error", "available": False, "message": "Invalid equipment ID"}
+
+    try:
+        event_date = datetime.strptime(str(date_str).strip(), "%Y-%m-%d").date()
+    except Exception:
+        return {"status": "error", "available": False, "message": "Invalid date format (use YYYY-MM-DD)"}
+
+    equipment = db.query(models.Equipment).filter(models.Equipment.id == eq_id).first()
+    if not equipment:
+        return {"status": "error", "available": False, "message": "Equipment item not found"}
+
+    total_inventory = int(equipment.available_qty or 1)
+
+    # Active bookings on this event date (or within turnover buffer)
+    active_statuses = ["Approved", "Pending", "Preparing", "Confirmed", "In Progress", "Out for Delivery", "Under Review", "Ready"]
+
+    bookings = db.query(models.Booking).filter(
+        models.Booking.caterer_id == equipment.caterer_id,
+        models.Booking.status.in_(active_statuses),
+        models.Booking.event_date.between(event_date - timedelta(days=1), event_date + timedelta(days=1))
+    ).all()
+
+    reserved_qty = 0
+    for b in bookings:
+        # Check selected_items (BookingSelected)
+        for item in b.selected_items:
+            if item.equipment_id == eq_id:
+                reserved_qty += int(item.quantity or 1)
+        
+        # Check package equipment inclusions if booking has a package
+        if b.package_id:
+            pkg_equip = db.query(models.PackageEquipment).filter(
+                models.PackageEquipment.package_id == b.package_id,
+                models.PackageEquipment.equipment_id == eq_id
+            ).all()
+            for pe in pkg_equip:
+                reserved_qty += int(pe.quantity or 1)
+                
+        # Check cart_items json if present
+        if b.cart_items:
+            items = b.cart_items
+            if isinstance(items, str):
+                try:
+                    items = json.loads(items)
+                except Exception:
+                    items = []
+            for c_item in items:
+                c_id = str(c_item.get("id", "")).replace("eq_", "")
+                if c_id == str(eq_id):
+                    reserved_qty += int(c_item.get("qty", 1))
+
+    available_qty = max(0, total_inventory - reserved_qty)
+    is_available = requested_qty <= available_qty
+
+    if not is_available:
+        msg = f"Only {available_qty} units are available for the selected date." if available_qty > 0 else "No units are available for the selected date."
+        return {
+            "status": "error",
+            "available": False,
+            "total_inventory": total_inventory,
+            "reserved_qty": reserved_qty,
+            "available_qty": available_qty,
+            "requested_qty": requested_qty,
+            "message": msg
+        }
+
+    return {
+        "status": "success",
+        "available": True,
+        "total_inventory": total_inventory,
+        "reserved_qty": reserved_qty,
+        "available_qty": available_qty,
+        "requested_qty": requested_qty,
+        "message": f"{available_qty} units available"
+    }

@@ -1873,8 +1873,15 @@ window.checkExtDuplicateUser = function() {
 // ─── WALK-IN BOOKING MODAL LOGIC ───────────────────────────────────────────────
 
 window.openExternalBookingModal = function() {
+    if (window.switchWalkinTab) {
+        window.switchWalkinTab('catering');
+    }
+
     const form = document.getElementById('externalBookingForm');
     if (form) form.reset();
+
+    const eqForm = document.getElementById('equipRentalForm');
+    if (eqForm) eqForm.reset();
 
     const errBox = document.getElementById('extBookingFormError');
     if (errBox) {
@@ -1882,10 +1889,10 @@ window.openExternalBookingModal = function() {
         errBox.style.display = 'none';
     }
 
-    const srvErr = document.getElementById('error-services-general');
-    if (srvErr) {
-        srvErr.innerText = '';
-        srvErr.style.display = 'none';
+    const eqErrBox = document.getElementById('equipRentalFormError');
+    if (eqErrBox) {
+        eqErrBox.innerText = '';
+        eqErrBox.style.display = 'none';
     }
 
     // Clear all field-specific error messages and red borders
@@ -1895,29 +1902,38 @@ window.openExternalBookingModal = function() {
         el.style.display = 'none';
     });
 
-    const inputs = document.querySelectorAll('#externalBookingForm .control-pro');
+    const inputs = document.querySelectorAll('#externalBookingModal .control-pro');
     inputs.forEach(inp => {
         inp.style.borderColor = '#cbd5e1';
     });
 
-    // Reset all service checkboxes and disable amount fields
-    const checkboxes = document.querySelectorAll('.walkin-service-checkbox');
-    checkboxes.forEach(cb => {
+    // Reset Package Selection
+    const pkgSelect = document.getElementById('extPackageSelect');
+    if (pkgSelect) pkgSelect.value = '';
+    const incBox = document.getElementById('walkinPackageInclusions');
+    if (incBox) incBox.style.display = 'none';
+
+    // Reset Equipment Rental List
+    const eqCheckboxes = document.querySelectorAll('.eq-rental-checkbox');
+    eqCheckboxes.forEach(cb => {
         cb.checked = false;
-        const row = cb.closest('.walkin-service-row');
+        const row = cb.closest('.eq-rental-row');
         if (row) {
             row.style.background = '#f8fafc';
             row.style.borderColor = '#e2e8f0';
+            const qty = row.querySelector('.eq-rental-qty');
+            if (qty) {
+                qty.value = 1;
+                qty.disabled = true;
+                qty.style.background = '#e2e8f0';
+                qty.style.color = '#94a3b8';
+            }
+            const badge = row.querySelector('.eq-avail-badge');
+            if (badge) {
+                badge.innerText = '';
+                badge.style.display = 'none';
+            }
         }
-    });
-
-    const amounts = document.querySelectorAll('.walkin-service-amount');
-    amounts.forEach(amt => {
-        amt.value = '';
-        amt.disabled = true;
-        amt.style.background = '#e2e8f0';
-        amt.style.color = '#94a3b8';
-        amt.style.borderColor = '#cbd5e1';
     });
 
     // Initialize Laguna Address Dropdowns
@@ -1926,14 +1942,27 @@ window.openExternalBookingModal = function() {
     }
 
     // Reset totals
-    recalculateWalkinTotals();
+    if (typeof recalculateWalkinTotals === 'function') {
+        recalculateWalkinTotals();
+    }
+    if (window.recalcEquipRentalTotals) {
+        window.recalcEquipRentalTotals();
+    }
 
-    // Default booking date to min_booking_date if available
+    // Default booking dates to min_booking_date if available
     const dateInput = document.getElementById('extEventDate');
     if (dateInput && window.MIN_BOOKING_DATE) {
         dateInput.min = window.MIN_BOOKING_DATE;
         if (!dateInput.value) {
             dateInput.value = window.MIN_BOOKING_DATE;
+        }
+    }
+
+    const eqDateInput = document.getElementById('eqRentalDate');
+    if (eqDateInput && window.MIN_BOOKING_DATE) {
+        eqDateInput.min = window.MIN_BOOKING_DATE;
+        if (!eqDateInput.value) {
+            eqDateInput.value = window.MIN_BOOKING_DATE;
         }
     }
 
@@ -2184,50 +2213,139 @@ window.handleWalkinAmountInput = function(amountInput, idx) {
     recalculateWalkinTotals();
 };
 
-window.handleWalkinServiceToggle = function(checkbox) {
-    const idx = checkbox.getAttribute('data-index');
-    const amountInput = document.getElementById(`walkin_amount_${idx}`);
-    const row = checkbox.closest('.walkin-service-row');
-    const errEl = document.getElementById(`error-walkin_amount_${idx}`);
-    const basePrice = parseFloat(checkbox.getAttribute('data-base-price') || 0);
+window.switchWalkinTab = function(tab) {
+    const tabCatering = document.getElementById('walkinTabCatering');
+    const tabEquipment = document.getElementById('walkinTabEquipment');
+    const btnCatering = document.getElementById('walkinTabBtnCatering');
+    const btnEquipment = document.getElementById('walkinTabBtnEquipment');
 
-    if (checkbox.checked) {
-        if (amountInput) {
-            amountInput.disabled = false;
-            amountInput.style.background = '#ffffff';
-            amountInput.style.color = '#0f172a';
-            amountInput.style.borderColor = '#cbd5e1';
-            const curVal = parseCurrencyFloat(amountInput.value);
-            const initAmt = curVal > 0 ? curVal : (basePrice > 0 ? basePrice : 0);
-            amountInput.value = formatCurrencyString(initAmt);
-            amountInput.focus();
+    if (tab === 'catering') {
+        if (tabCatering) tabCatering.style.display = 'flex';
+        if (tabEquipment) tabEquipment.style.display = 'none';
+
+        if (btnCatering) {
+            btnCatering.style.background = 'var(--primary-color, #f97316)';
+            btnCatering.style.color = '#ffffff';
+            btnCatering.classList.add('active');
         }
-        if (row) {
-            row.style.background = '#ffffff';
-            row.style.borderColor = 'var(--primary-color, #f97316)';
+        if (btnEquipment) {
+            btnEquipment.style.background = 'transparent';
+            btnEquipment.style.color = '#64748b';
+            btnEquipment.classList.remove('active');
         }
     } else {
-        if (amountInput) {
-            amountInput.value = '0.00';
-            amountInput.disabled = true;
-            amountInput.style.background = '#e2e8f0';
-            amountInput.style.color = '#94a3b8';
-            amountInput.style.borderColor = '#cbd5e1';
+        if (tabCatering) tabCatering.style.display = 'none';
+        if (tabEquipment) tabEquipment.style.display = 'flex';
+
+        if (btnEquipment) {
+            btnEquipment.style.background = 'var(--primary-color, #f97316)';
+            btnEquipment.style.color = '#ffffff';
+            btnEquipment.classList.add('active');
         }
-        if (row) {
-            row.style.background = '#f8fafc';
-            row.style.borderColor = '#e2e8f0';
+        if (btnCatering) {
+            btnCatering.style.background = 'transparent';
+            btnCatering.style.color = '#64748b';
+            btnCatering.classList.remove('active');
         }
-        if (errEl) {
-            errEl.innerText = '';
-            errEl.style.display = 'none';
+
+        const eqDateInput = document.getElementById('eqRentalDate');
+        if (eqDateInput && !eqDateInput.value && window.MIN_BOOKING_DATE) {
+            eqDateInput.value = window.MIN_BOOKING_DATE;
+            eqDateInput.min = window.MIN_BOOKING_DATE;
+        }
+        if (window.recalcEquipRentalTotals) {
+            window.recalcEquipRentalTotals();
+        }
+    }
+};
+
+window.handleWalkinPackageChange = function(packageId) {
+    window.clearWalkinError('extPackageSelect');
+    const inclusionsContainer = document.getElementById('walkinPackageInclusions');
+    const pkgSelect = document.getElementById('extPackageSelect');
+    if (!pkgSelect) return;
+
+    if (!packageId || !window.PACKAGE_MAP || !window.PACKAGE_MAP[packageId]) {
+        if (inclusionsContainer) inclusionsContainer.style.display = 'none';
+        recalculateWalkinTotals();
+        return;
+    }
+
+    const pkg = window.PACKAGE_MAP[packageId];
+    if (inclusionsContainer) inclusionsContainer.style.display = 'block';
+
+    // Package summary card
+    const nameEl = document.getElementById('walkinPkgName');
+    const metaEl = document.getElementById('walkinPkgMeta');
+    const priceEl = document.getElementById('walkinPkgPrice');
+
+    if (nameEl) nameEl.innerText = pkg.name;
+    if (metaEl) {
+        let metaParts = [];
+        if (pkg.service_type) metaParts.push(pkg.service_type);
+        if (pkg.min_guests) metaParts.push(`Min ${pkg.min_guests} pax`);
+        if (pkg.description) metaParts.push(pkg.description);
+        metaEl.innerText = metaParts.join(' · ');
+    }
+    if (priceEl) priceEl.innerText = '₱' + formatCurrencyString(pkg.price);
+
+    // Menu inclusions
+    const menuSec = document.getElementById('walkinPkgMenuSection');
+    const menuList = document.getElementById('walkinPkgMenuList');
+    if (menuSec && menuList) {
+        if (pkg.menu && pkg.menu.length > 0) {
+            menuSec.style.display = 'block';
+            menuList.innerHTML = pkg.menu.map(item => {
+                const iName = typeof item === 'object' ? (item.name || item.item_name) : item;
+                return `<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px; font-size: 0.8rem; font-weight: 600; color: #334155; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-check-circle" style="color: #10b981; font-size: 0.75rem;"></i>
+                    <span>${iName}</span>
+                </div>`;
+            }).join('');
+        } else {
+            menuSec.style.display = 'none';
+            menuList.innerHTML = '';
         }
     }
 
-    const srvErr = document.getElementById('error-services-general');
-    if (srvErr) {
-        srvErr.innerText = '';
-        srvErr.style.display = 'none';
+    // Service inclusions
+    const servSec = document.getElementById('walkinPkgServiceSection');
+    const servList = document.getElementById('walkinPkgServiceList');
+    if (servSec && servList) {
+        if (pkg.services && pkg.services.length > 0) {
+            servSec.style.display = 'block';
+            servList.innerHTML = pkg.services.map(s => {
+                const sName = typeof s === 'object' ? s.name : s;
+                const sQty = typeof s === 'object' && s.qty ? ` (x${s.qty})` : '';
+                return `<div style="background: #eff6ff; border: 1px solid #dbeafe; border-radius: 6px; padding: 6px 10px; font-size: 0.8rem; font-weight: 600; color: #1e40af; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-concierge-bell" style="color: #3b82f6; font-size: 0.75rem;"></i>
+                    <span>${sName}${sQty}</span>
+                </div>`;
+            }).join('');
+        } else {
+            servSec.style.display = 'none';
+            servList.innerHTML = '';
+        }
+    }
+
+    // Equipment inclusions
+    const eqSec = document.getElementById('walkinPkgEquipSection');
+    const eqList = document.getElementById('walkinPkgEquipList');
+    if (eqSec && eqList) {
+        if (pkg.equipment && pkg.equipment.length > 0) {
+            eqSec.style.display = 'block';
+            eqList.innerHTML = pkg.equipment.map(e => {
+                const eName = typeof e === 'object' ? e.name : e;
+                const eQty = typeof e === 'object' && e.qty ? ` (x${e.qty})` : '';
+                return `<div style="background: #f5f3ff; border: 1px solid #ede9fe; border-radius: 6px; padding: 6px 10px; font-size: 0.8rem; font-weight: 600; color: #5b21b6; display: flex; align-items: center; justify-content: space-between;">
+                    <span><i class="fas fa-chair" style="color: #8b5cf6; font-size: 0.75rem; margin-right: 6px;"></i> ${eName}${eQty}</span>
+                    <span style="font-size: 0.7rem; background: #dcfce7; color: #15803d; padding: 1px 6px; border-radius: 12px; font-weight: 700;">₱0 extra</span>
+                </div>`;
+            }).join('');
+        } else {
+            eqSec.style.display = 'none';
+            eqList.innerHTML = '';
+        }
     }
 
     recalculateWalkinTotals();
@@ -2287,22 +2405,24 @@ window.handleDownpaymentBlur = function(dpInput) {
 
 function recalculateWalkinTotals() {
     let subtotal = 0;
-    let selectedCount = 0;
+    const pkgSelect = document.getElementById('extPackageSelect');
+    const packageId = pkgSelect ? pkgSelect.value : '';
 
-    const checkboxes = document.querySelectorAll('.walkin-service-checkbox');
-    checkboxes.forEach(cb => {
-        if (cb.checked) {
-            selectedCount++;
-            const idx = cb.getAttribute('data-index');
-            const amtInput = document.getElementById(`walkin_amount_${idx}`);
-            if (amtInput) {
-                const amt = parseCurrencyFloat(amtInput.value);
-                if (amt > 0) {
-                    subtotal += amt;
+    if (packageId && window.PACKAGE_MAP && window.PACKAGE_MAP[packageId]) {
+        subtotal = parseFloat(window.PACKAGE_MAP[packageId].price || 0);
+    } else {
+        const checkboxes = document.querySelectorAll('.walkin-service-checkbox');
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                const idx = cb.getAttribute('data-index');
+                const amtInput = document.getElementById(`walkin_amount_${idx}`);
+                if (amtInput) {
+                    const amt = parseCurrencyFloat(amtInput.value);
+                    if (amt > 0) subtotal += amt;
                 }
             }
-        }
-    });
+        });
+    }
 
     subtotal = Math.round(subtotal * 100) / 100;
 
@@ -2315,9 +2435,6 @@ function recalculateWalkinTotals() {
 
     const hiddenTotal = document.getElementById('extTotalAmount');
     if (hiddenTotal) hiddenTotal.value = subtotal;
-
-    const countDisplay = document.getElementById('walkinSelectedCount');
-    if (countDisplay) countDisplay.innerText = selectedCount;
 
     // Downpayment & Remaining Balance
     const hasDpCheckbox = document.getElementById('extHasDownpayment');
@@ -2408,7 +2525,7 @@ window.submitExternalBooking = async function(e) {
     }
 
     // 2. Dynamic Participant Names Validation
-    const normType = eventType.toLowerCase();
+    const normType = (eventType || '').toLowerCase();
     let brideName = '';
     let groomName = '';
     let celebrantName = '';
@@ -2524,68 +2641,19 @@ window.submitExternalBooking = async function(e) {
     window.updateWalkinAddressPreview();
     const formattedAddress = document.getElementById('extAddress')?.value || `${streetVal}, Brgy. ${brgyVal}, ${cityVal}, ${provVal}`;
 
-    // 7. Services Checklist & Amounts Validation
-    const checkboxes = document.querySelectorAll('.walkin-service-checkbox');
-    const selectedServices = [];
-    let checkedCount = 0;
-    let serviceAmountError = false;
-
-    checkboxes.forEach(cb => {
-        if (cb.checked) {
-            checkedCount++;
-            const idx = cb.getAttribute('data-index');
-            const sName = cb.getAttribute('data-service-name');
-            const amtInput = document.getElementById(`walkin_amount_${idx}`);
-            const errEl = document.getElementById(`error-walkin_amount_${idx}`);
-            const amtVal = parseCurrencyFloat(amtInput ? amtInput.value : 0);
-
-            if (amtVal <= 0) {
-                isValid = false;
-                serviceAmountError = true;
-                if (errEl) {
-                    errEl.innerText = 'Amount is required and must be greater than ₱0.';
-                    errEl.style.display = 'block';
-                }
-                if (amtInput) {
-                    amtInput.style.borderColor = '#ef4444';
-                    if (!firstInvalidEl) firstInvalidEl = amtInput;
-                }
-            } else {
-                if (errEl) {
-                    errEl.innerText = '';
-                    errEl.style.display = 'none';
-                }
-                if (amtInput) amtInput.style.borderColor = '#cbd5e1';
-
-                selectedServices.push({
-                    name: sName,
-                    price: amtVal,
-                    item_type: 'service',
-                    qty: 1
-                });
-            }
-        }
-    });
-
-    const srvGeneralErr = document.getElementById('error-services-general');
-    if (checkedCount === 0) {
-        isValid = false;
-        if (srvGeneralErr) {
-            srvGeneralErr.innerText = 'Please select at least one service from the checklist.';
-            srvGeneralErr.style.display = 'block';
-            if (!firstInvalidEl) firstInvalidEl = srvGeneralErr;
-        }
-    } else if (serviceAmountError) {
-        if (srvGeneralErr) {
-            srvGeneralErr.innerText = 'Please enter a valid amount greater than ₱0 for all selected services.';
-            srvGeneralErr.style.display = 'block';
-        }
+    // 7. Package Selection Validation
+    const pkgSelect = document.getElementById('extPackageSelect');
+    const packageId = pkgSelect ? pkgSelect.value : '';
+    if (!packageId) {
+        reportError('extPackageSelect', 'Please select a catering package.');
     }
+
+    const selectedPkg = (packageId && window.PACKAGE_MAP && window.PACKAGE_MAP[packageId]) ? window.PACKAGE_MAP[packageId] : null;
+    const totalAmount = selectedPkg ? parseFloat(selectedPkg.price || 0) : parseCurrencyFloat(document.getElementById('extTotalAmount')?.value || 0);
 
     // 8. Downpayment Validation
     const hasDpCheckbox = document.getElementById('extHasDownpayment');
     const isDpChecked = hasDpCheckbox ? hasDpCheckbox.checked : false;
-    const totalAmount = selectedServices.reduce((sum, s) => sum + s.price, 0);
     const downpaymentAmount = isDpChecked ? parseCurrencyFloat(document.getElementById('extDownpaymentInput')?.value || 0) : 0;
 
     if (isDpChecked) {
@@ -2625,16 +2693,16 @@ window.submitExternalBooking = async function(e) {
         event_name: `${eventType} - ${genericFullName || (normType === 'wedding' ? `${brideName} & ${groomName}` : (celebrantName || repName))}`,
         event_date: dateVal,
         event_time: "10:00",
-        guest_count: 1,
+        guest_count: (selectedPkg ? selectedPkg.min_guests : 1) || 20,
         street_address: streetVal,
         barangay: brgyVal,
         city_municipality: cityVal,
         province: provVal,
         address: formattedAddress,
-        venue: venueEl.value.trim(),
+        venue: venueEl ? venueEl.value.trim() : "",
         motif_theme: document.getElementById('extMotifTheme') ? document.getElementById('extMotifTheme').value.trim() : "",
-        services: selectedServices,
-        quotation_items: selectedServices,
+        package_id: parseInt(packageId),
+        services: selectedPkg ? (selectedPkg.services || []) : [],
         total_amount: totalAmount,
         has_downpayment: isDpChecked,
         downpayment_amount: downpaymentAmount,
@@ -2658,7 +2726,7 @@ window.submitExternalBooking = async function(e) {
                 window.fullCalendarInstance.refetchEvents();
             }
 
-            const successMsg = `Walk-in booking for ${payload.full_name} created successfully! Total: ₱${formatCurrencyString(totalAmount)}, Paid: ₱${formatCurrencyString(downpaymentAmount)}.`;
+            const successMsg = `Walk-in catering booking for ${payload.full_name} created successfully! Total: ₱${formatCurrencyString(totalAmount)}, Paid: ₱${formatCurrencyString(downpaymentAmount)}.`;
             if (window.showNotification) {
                 window.showNotification('Success', successMsg, 'success');
             } else if (window.showToast) {
@@ -2686,6 +2754,324 @@ window.submitExternalBooking = async function(e) {
                     window.setWalkinError('extFullName', cleanMsg);
                 } else if (fieldKey === 'manDownpayment') {
                     window.setWalkinError('extDownpayment', cleanMsg);
+                } else {
+                    if (errBanner) {
+                        errBanner.innerText = cleanMsg;
+                        errBanner.style.display = 'block';
+                    }
+                }
+            } else {
+                if (errBanner) {
+                    errBanner.innerText = detailMsg;
+                    errBanner.style.display = 'block';
+                    errBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+    } catch (error) {
+        if (errBanner) {
+            errBanner.innerText = 'Connection error: ' + error.message;
+            errBanner.style.display = 'block';
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalBtnHtml;
+        }
+    }
+};
+
+// ─── EQUIPMENT RENTAL WORKFLOW LOGIC ───────────────────────────────────────────
+
+window.handleEqRentalToggle = function(checkbox) {
+    const row = checkbox.closest('.eq-rental-row');
+    if (!row) return;
+
+    const qtyInput = row.querySelector('.eq-rental-qty');
+    const badge = row.querySelector('.eq-avail-badge');
+
+    if (checkbox.checked) {
+        if (qtyInput) {
+            qtyInput.disabled = false;
+            qtyInput.style.background = '#ffffff';
+            qtyInput.style.color = '#0f172a';
+        }
+        row.style.background = '#ffffff';
+        row.style.borderColor = 'var(--primary-color, #f97316)';
+        checkEquipmentItemAvailability(row);
+    } else {
+        if (qtyInput) {
+            qtyInput.disabled = true;
+            qtyInput.style.background = '#e2e8f0';
+            qtyInput.style.color = '#94a3b8';
+            qtyInput.value = 1;
+        }
+        row.style.background = '#f8fafc';
+        row.style.borderColor = '#e2e8f0';
+        if (badge) {
+            badge.innerText = '';
+            badge.style.display = 'none';
+        }
+    }
+
+    const errBox = document.getElementById('error-eqRentalItems');
+    if (errBox) {
+        errBox.innerText = '';
+        errBox.style.display = 'none';
+    }
+
+    window.recalcEquipRentalTotals();
+};
+
+window.onEquipRentalDateChange = function() {
+    window.clearWalkinError('eqRentalDate');
+    const rows = document.querySelectorAll('.eq-rental-row');
+    rows.forEach(row => {
+        const cb = row.querySelector('.eq-rental-checkbox');
+        if (cb && cb.checked) {
+            checkEquipmentItemAvailability(row);
+        }
+    });
+};
+
+async function checkEquipmentItemAvailability(row) {
+    const eqId = row.getAttribute('data-eq-id');
+    const dateInput = document.getElementById('eqRentalDate');
+    const dateVal = dateInput ? dateInput.value : '';
+    const qtyInput = row.querySelector('.eq-rental-qty');
+    const qty = parseInt(qtyInput ? qtyInput.value : 1) || 1;
+    const badge = row.querySelector('.eq-avail-badge');
+
+    if (!eqId || !dateVal || !badge) return;
+
+    badge.style.display = 'inline-block';
+    badge.style.background = '#f1f5f9';
+    badge.style.color = '#64748b';
+    badge.innerText = 'Checking...';
+
+    try {
+        const resp = await fetch(`/customer/api/check-equipment-availability?equipment_id=${eqId}&date=${dateVal}&requested_qty=${qty}`);
+        const res = await resp.json();
+
+        if (res.status === 'success' || res.available === true) {
+            badge.style.background = '#dcfce7';
+            badge.style.color = '#15803d';
+            badge.innerText = `Available (${res.available_qty ?? 'In Stock'})`;
+        } else {
+            badge.style.background = '#fef2f2';
+            badge.style.color = '#b91c1c';
+            badge.innerText = res.available_qty !== undefined ? `Only ${res.available_qty} left` : 'Unavailable';
+        }
+    } catch (err) {
+        badge.style.display = 'none';
+    }
+}
+
+window.recalcEquipRentalTotals = function() {
+    let subtotal = 0;
+    const rows = document.querySelectorAll('.eq-rental-row');
+
+    rows.forEach(row => {
+        const cb = row.querySelector('.eq-rental-checkbox');
+        if (cb && cb.checked) {
+            const price = parseFloat(row.getAttribute('data-eq-price') || 0);
+            const qtyInput = row.querySelector('.eq-rental-qty');
+            const qty = parseInt(qtyInput ? qtyInput.value : 1) || 1;
+            subtotal += (price * qty);
+        }
+    });
+
+    subtotal = Math.round(subtotal * 100) / 100;
+    const downpayment = Math.round(subtotal * 0.5 * 100) / 100;
+    const balance = Math.max(0, Math.round((subtotal - downpayment) * 100) / 100);
+
+    const subEl = document.getElementById('eqRentalSubtotal');
+    const dpEl = document.getElementById('eqRentalDownpayment');
+    const balEl = document.getElementById('eqRentalBalance');
+
+    if (subEl) subEl.innerText = '₱' + formatCurrencyString(subtotal);
+    if (dpEl) dpEl.innerText = '₱' + formatCurrencyString(downpayment);
+    if (balEl) balEl.innerText = '₱' + formatCurrencyString(balance);
+
+    return { subtotal, downpayment, balance };
+};
+
+window.submitWalkinEquipmentRental = async function(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    const errBanner = document.getElementById('equipRentalFormError');
+    if (errBanner) {
+        errBanner.innerText = '';
+        errBanner.style.display = 'none';
+    }
+
+    let isValid = true;
+    let firstInvalidEl = null;
+
+    function reportEqError(fieldId, message) {
+        isValid = false;
+        window.setWalkinError(fieldId, message);
+        if (!firstInvalidEl) {
+            firstInvalidEl = document.getElementById(fieldId);
+        }
+    }
+
+    // 1. Customer Name
+    const nameEl = document.getElementById('eqRentalName');
+    const nameVal = nameEl ? nameEl.value.trim() : '';
+    if (!nameVal) {
+        reportEqError('eqRentalName', 'Customer full name is required.');
+    } else if (!/^[A-Za-zÑñ\s\.\,\-]+$/.test(nameVal)) {
+        reportEqError('eqRentalName', 'Please enter a valid customer name.');
+    }
+
+    // 2. Mobile Number
+    const contactEl = document.getElementById('eqRentalContact');
+    const contactVal = contactEl ? contactEl.value.trim() : '';
+    const cleanDigits = contactVal.replace(/[^\d]/g, '');
+
+    if (!contactVal) {
+        reportEqError('eqRentalContact', 'Mobile number is required.');
+    } else if (!/^(09\d{9}|639\d{9}|\+639\d{9})$/.test(contactVal.replace(/[\s\-]/g, ''))) {
+        reportEqError('eqRentalContact', 'Please enter a valid Philippine mobile number (e.g., 09XXXXXXXXX).');
+    }
+
+    let canonicalPhone = '';
+    if (cleanDigits.startsWith('63') && cleanDigits.length === 12) {
+        canonicalPhone = `+${cleanDigits}`;
+    } else if (cleanDigits.startsWith('09') && cleanDigits.length === 11) {
+        canonicalPhone = `+63${cleanDigits.slice(1)}`;
+    } else if (cleanDigits.startsWith('9') && cleanDigits.length === 10) {
+        canonicalPhone = `+63${cleanDigits}`;
+    }
+
+    // 3. Rental Date
+    const dateEl = document.getElementById('eqRentalDate');
+    const dateVal = dateEl ? dateEl.value : '';
+    if (!dateVal) {
+        reportEqError('eqRentalDate', 'Rental date is required.');
+    } else {
+        const selectedDate = new Date(dateVal + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (selectedDate <= today) {
+            reportEqError('eqRentalDate', 'Rental date cannot be in the past or today.');
+        } else if (window.MIN_BOOKING_DATE && dateVal < window.MIN_BOOKING_DATE) {
+            reportEqError('eqRentalDate', `Rental requires advance notice. Earliest available date is ${window.MIN_BOOKING_DATE}.`);
+        }
+    }
+
+    // 4. Selected Equipment Items
+    const selectedItems = [];
+    const rows = document.querySelectorAll('.eq-rental-row');
+    rows.forEach(row => {
+        const cb = row.querySelector('.eq-rental-checkbox');
+        if (cb && cb.checked) {
+            const eqId = parseInt(row.getAttribute('data-eq-id'));
+            const eqName = row.getAttribute('data-eq-name');
+            const eqPrice = parseFloat(row.getAttribute('data-eq-price') || 0);
+            const qtyInput = row.querySelector('.eq-rental-qty');
+            const qty = parseInt(qtyInput ? qtyInput.value : 1) || 1;
+            selectedItems.push({
+                id: eqId,
+                equipment_id: eqId,
+                name: eqName,
+                price: eqPrice,
+                rental_price: eqPrice,
+                qty: qty
+            });
+        }
+    });
+
+    const itemsErr = document.getElementById('error-eqRentalItems');
+    if (selectedItems.length === 0) {
+        isValid = false;
+        if (itemsErr) {
+            itemsErr.innerText = 'Please select at least one equipment item to rent.';
+            itemsErr.style.display = 'block';
+            if (!firstInvalidEl) firstInvalidEl = itemsErr;
+        }
+    } else {
+        if (itemsErr) {
+            itemsErr.innerText = '';
+            itemsErr.style.display = 'none';
+        }
+    }
+
+    if (!isValid) {
+        if (firstInvalidEl && typeof firstInvalidEl.scrollIntoView === 'function') {
+            firstInvalidEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (typeof firstInvalidEl.focus === 'function') firstInvalidEl.focus();
+        }
+        return;
+    }
+
+    const { subtotal, downpayment } = window.recalcEquipRentalTotals();
+
+    const btn = document.getElementById('eqRentalBtnSubmit');
+    const originalBtnHtml = btn ? btn.innerHTML : 'Save Equipment Rental';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving Equipment Rental...';
+    }
+
+    const payload = {
+        booking_source: "Walk-in",
+        event_type: "Equipment Rental",
+        full_name: nameVal,
+        customer_name: nameVal,
+        customer_contact: canonicalPhone,
+        customer_email: "",
+        event_name: `Equipment Rental - ${nameVal}`,
+        event_date: dateVal,
+        event_time: "10:00",
+        guest_count: 1,
+        venue: "Walk-in Equipment Rental",
+        equipment_items: selectedItems,
+        total_amount: subtotal,
+        downpayment_amount: downpayment,
+        amount_paid: downpayment,
+        has_downpayment: true,
+        status: "confirmed",
+        force_override: false
+    };
+
+    try {
+        const response = await fetch('/caterer/api/bookings/manual', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            closeModal('externalBookingModal');
+            if (window.fullCalendarInstance) {
+                window.fullCalendarInstance.refetchEvents();
+            }
+
+            const successMsg = `Equipment Rental for ${payload.full_name} recorded successfully! Total: ₱${formatCurrencyString(subtotal)}, 50% Downpayment: ₱${formatCurrencyString(downpayment)}.`;
+            if (window.showNotification) {
+                window.showNotification('Success', successMsg, 'success');
+            } else if (window.showToast) {
+                window.showToast(successMsg, 'success');
+            } else {
+                alert(successMsg);
+            }
+        } else {
+            let detailMsg = result.detail || result.message || 'Failed to record equipment rental.';
+            if (typeof detailMsg === 'string' && detailMsg.includes('|')) {
+                const parts = detailMsg.split('|');
+                const fieldKey = parts[0];
+                const cleanMsg = parts[1];
+                if (fieldKey === 'eqRentalDate' || fieldKey === 'event_date' || fieldKey === 'manDate') {
+                    window.setWalkinError('eqRentalDate', cleanMsg);
+                } else if (fieldKey === 'eqRentalContact' || fieldKey === 'customer_contact' || fieldKey === 'manCustContact') {
+                    window.setWalkinError('eqRentalContact', cleanMsg);
+                } else if (fieldKey === 'eqRentalName' || fieldKey === 'error-eqRentalName' || fieldKey === 'manFullName') {
+                    window.setWalkinError('eqRentalName', cleanMsg);
                 } else {
                     if (errBanner) {
                         errBanner.innerText = cleanMsg;

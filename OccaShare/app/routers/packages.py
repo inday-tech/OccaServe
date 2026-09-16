@@ -41,10 +41,15 @@ async def get_package_details_modal(
     
     addons = [item for item in package.menu_items if item.is_addon]
     
+    package_services = [link.service for link in package.service_links if link.service and not link.service.is_archived]
+    package_equipment = [link.equipment for link in package.equipment_links if link.equipment and not link.equipment.is_archived]
+
     return templates.TemplateResponse("customer/package_details_modal.html", {
         "request": request,
         "package": package,
         "categorised_menu": categorised_menu,
+        "package_services": package_services,
+        "package_equipment": package_equipment,
         "addons": addons
     })
 

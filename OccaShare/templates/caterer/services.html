@@ -1,50 +1,111 @@
 {% set active_page = 'services' %}
 {% extends "caterer/layout.html" %}
 
-{% block title %}Inventory & Services - OccaServe Caterer{% endblock %}
+{% block title %}Services - OccaServe Caterer{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v={{ range(1, 10000) | random }}">
+<link href="{{ url_for('static', path='/css/caterer/packages.css') }}?v=12.9" rel="stylesheet"/>
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div class="header-title-group">
-        <h1>Inventory & Services</h1>
-        <p>Manage your collection of rentals, decorations, and services.</p>
+        <h1>Services</h1>
+        <p>Manage your catering packages and equipment rentals.</p>
     </div>
     <div class="menu-header-actions">
         <input type="hidden" id="menuSearchInput">
         <div style="display: flex; gap: 10px;">
-            <button class="btn-primary-pro" style="background: var(--brand-secondary, #2D4059);" onclick="openWizard('rentalWizardModal')">
-                <i class="fas fa-chair"></i> <span>Add Rental</span>
+            <button class="btn-primary-pro" onclick="window.openAddPackageModal()">
+                <i class="fas fa-gift"></i> <span>Create Package</span>
             </button>
-            <button class="btn-primary-pro" onclick="openWizard('serviceWizardModal')">
-                <i class="fas fa-concierge-bell"></i> <span>Add Service</span>
+            <button class="btn-primary-pro" style="background: var(--brand-secondary, #2D4059);" onclick="openWizard('rentalWizardModal')">
+                <i class="fas fa-chair"></i> <span>Add Equipment</span>
             </button>
         </div>
     </div>
 </div>
 
-<!-- Unified Offerings Sub-Navigation -->
+<!-- Services Main Tabs -->
 <div class="caterer-unified-nav-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.75rem; overflow-x: auto; scrollbar-width: none;">
-    <a href="/caterer/menu" class="unified-nav-tab" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;">
-        <i class="fas fa-utensils"></i>
-        <span>Menu Library</span>
-    </a>
-    <a href="/caterer/services?tab=services" id="unifiedTabServices" class="unified-nav-tab" onclick="switchOfferingsTab(event, 'services')" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;">
-        <i class="fas fa-concierge-bell"></i>
-        <span>Services</span>
-    </a>
-    <a href="/caterer/services?tab=equipment" id="unifiedTabEquipment" class="unified-nav-tab" onclick="switchOfferingsTab(event, 'equipment')" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;">
-        <i class="fas fa-chair"></i>
-        <span>Equipment & Rentals</span>
-    </a>
-    <a href="/caterer/packages" class="unified-nav-tab" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;">
+    <button type="button" id="servicesTabPackages" class="unified-nav-tab active" onclick="switchServicesTab('packages')" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; cursor: pointer; color: #ffffff; background: var(--primary-color); box-shadow: 0 4px 10px rgba(var(--primary-color-rgb, 255, 123, 84), 0.25); border: none; transition: all 0.2s;">
         <i class="fas fa-gift"></i>
         <span>Packages</span>
-    </a>
+    </button>
+    <button type="button" id="servicesTabEquipment" class="unified-nav-tab" onclick="switchServicesTab('equipment')" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; cursor: pointer; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;">
+        <i class="fas fa-chair"></i>
+        <span>Equipment Rentals</span>
+    </button>
 </div>
+
+<!-- ==================== PACKAGES TAB ==================== -->
+<div id="servicesContentPackages">
+{% if packages %}
+<div class="packages-grid-pro animate-up delay-1">
+    {% for package in packages %}
+    <div class="package-card-pro" id="package-{{ package.id }}">
+<div class="package-media-pro" style="position: relative; overflow: hidden; height: 200px; background: #f8fafc;">
+<div class="pkg-badge-category" style="position: absolute; top: 12px; left: 12px; z-index: 10; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); color: white; padding: 4px 12px; border-radius: var(--border-radius, 99px); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid rgba(255,255,255,0.2);">
+                {{ package.service_type or 'General' }}
+            </div>
+            
+            {% if package.image_url %}
+            <img alt="{{ package.name }}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" src="{{ package.image_url }}" style="width: 100%; height: 100%; object-fit: cover;"/>
+<div class="no-image-placeholder" style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; background: #f1f5f9; color: #cbd5e1;">
+<i class="fas fa-box-open" style="font-size: 3rem;"></i>
+</div>
+            {% else %}
+            <div class="no-image-placeholder" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #cbd5e1;">
+<i class="fas fa-box-open" style="font-size: 3rem;"></i>
+</div>
+            {% endif %}
+
+            <div class="card-overlay-actions" style="position: absolute; bottom: 0; left: 0; right: 0; padding: 1.25rem; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); display: flex; gap: 0.75rem; opacity: 0; transition: all 0.3s ease; transform: translateY(10px); z-index: 5;">
+<button class="btn-overlay-action" onclick="window.editPackage({{ package.id }})" style="flex: 1; background: white; color: #1e293b; border: none; padding: 8px; border-radius: var(--border-radius, 8px); font-size: 0.8rem; font-weight: 800; cursor: pointer; transition: all 0.2s;" type="button"><i class="fas fa-pen"></i> Edit Package</button>
+</div>
+</div>
+<div class="package-body-pro" style="padding: 1.5rem; flex: 1; display: flex; flex-direction: column;">
+<div class="pkg-header-row" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+<h3 class="package-name-pro" style="font-size: 1.15rem; font-weight: 800; color: #1e293b; margin: 0; line-height: 1.3;">{{ package.name }}</h3>
+<div class="pkg-status-indicator" style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+<div style="width: 8px; height: 8px; border-radius: 50%; background: {{ 'var(--accent-color)' if package.is_active else '#94a3b8' }};"></div>
+<span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">{{ 'Active' if package.is_active else 'Hidden' }}</span>
+</div>
+</div>
+<div class="package-stats-pro" style="display: flex; margin-bottom: 1rem;">
+<div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600;">
+<i class="fas fa-calendar-check" style="margin-right: 4px;"></i> {{ package.bookings|length if package.bookings else 0 }} bookings
+                </div>
+</div>
+<p class="package-desc-pro" style="color: #64748b; font-size: 0.85rem; line-height: 1.6; margin-bottom: 1.5rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.7rem;">
+                {{ package.description or 'No description provided for this professional service package.' }}
+            </p>
+<div class="package-price-pro" style="margin-top: auto; background: #f8fafc; padding: 0.85rem 1rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+<div>
+<span style="display: block; font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Starting at</span>
+<span style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">₱{{ "{:,.0f}".format(package.price_per_head or 0) }}<small style="font-size: 0.75rem; color: #64748b; font-weight: 500;">{{ ' / pax' if package.pricing_mode == 'per_pax' else ' total' }}</small></span>
+</div>
+<button class="btn-archive-minimal" onclick="window.archivePackage({{ package.id }})" style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid #fee2e2; background: #fff5f5; color: #ef4444; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Archive Package" type="button"><i class="fas fa-archive" style="font-size: 0.85rem;"></i></button>
+</div>
+</div>
+</div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="packages-empty-pro animate-up delay-1 d-flex flex-column align-items-center justify-content-center text-center py-5" style="background: white; border-radius: var(--border-radius, 1.5rem); border: 2px dashed #e2e8f0; margin-top: 2rem;">
+<div class="empty-icon-pro text-brand" style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; opacity: 0.5; margin-bottom: 1.5rem;">
+<i class="fas fa-layer-group"></i>
+</div>
+<h2 class="text-secondary" style="font-weight: 800; margin-bottom: 0.5rem;">No Packages Yet</h2>
+<p style="color: #64748b; max-width: 400px; margin: 0 auto 1.5rem;">Create your first catering package with menu, services, and equipment inclusions.</p>
+<button class="btn-primary-pro" onclick="window.openAddPackageModal()" style="padding: 0.75rem 2rem; font-weight: 800;" type="button">Create First Package</button>
+</div>
+{% endif %}
+</div>
+
+<!-- ==================== EQUIPMENT RENTALS TAB ==================== -->
+<div id="servicesContentEquipment" style="display: none;">
 
 {% set unique_categories = [] %}
 {% for item in items %}
@@ -187,6 +248,7 @@
     <button class="btn-primary-pro mt-4 mx-auto" onclick="openAddMenuModal()" style="margin-top: 1.5rem;">Add Your First Item</button>
 </div>
 {% endif %}
+</div> <!-- /servicesContentEquipment -->
 
 <!-- Add/Edit Menu Modal -->
 <div id="menuModal" class="occ-modal-overlay">
@@ -396,6 +458,7 @@
 </div>
 {% include "caterer/components/rental_wizard.html" %}
 {% include "caterer/components/service_wizard.html" %}
+{% include "caterer/components/package_modal.html" %}
 {% endblock %}
 
 {% block extra_js %}
@@ -1207,5 +1270,109 @@
         }
     }
 </script>
-{% endblock %}
 
+{% include "caterer/components/package_modal.html" %}
+
+<script>
+window.toggleLibItemSelectCard = function(card, id) {
+    const cb = card.querySelector('input[type="checkbox"]');
+    if (!cb) return;
+    cb.checked = !cb.checked;
+
+    if (cb.checked) {
+        card.classList.add('selected');
+        card.style.background = '#f0fdf4';
+        card.style.borderColor = 'var(--primary-color)';
+        const i = card.querySelector('i');
+        if (i) {
+            i.className = 'fas fa-check-circle';
+            i.parentElement.style.color = 'var(--primary-color)';
+        }
+    } else {
+        card.classList.remove('selected');
+        card.style.background = 'white';
+        card.style.borderColor = '#e2e8f0';
+        const i = card.querySelector('i');
+        if (i) {
+            i.className = 'far fa-circle';
+            i.parentElement.style.color = '#cbd5e1';
+        }
+    }
+
+    if (card.closest('#tab-menu') || card.closest('#tab-food')) {
+        if (typeof updateSelectionRulesBuilder === 'function') {
+            updateSelectionRulesBuilder();
+        }
+    }
+    
+    if (typeof calculatePricing === 'function') {
+        calculatePricing();
+    }
+};
+
+window.toggleAllInContainer = function(checkbox, containerSelector) {
+    const container = document.querySelector(containerSelector);
+    if (!container) return;
+    
+    const cards = container.querySelectorAll('.menu-select-card');
+    cards.forEach(card => {
+        const cb = card.querySelector('input[type="checkbox"]');
+        if (!cb) return;
+        
+        if (cb.checked !== checkbox.checked) {
+            card.click();
+        }
+    });
+    
+    if (typeof calculatePricing === 'function') {
+        calculatePricing();
+    }
+};
+</script>
+
+<script>
+// ==================== Services Tab Switching ====================
+function switchServicesTab(tab) {
+    const tabPackages = document.getElementById('servicesTabPackages');
+    const tabEquipment = document.getElementById('servicesTabEquipment');
+    const contentPackages = document.getElementById('servicesContentPackages');
+    const contentEquipment = document.getElementById('servicesContentEquipment');
+
+    const activeStyle = 'display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; cursor: pointer; color: #ffffff; background: var(--primary-color); box-shadow: 0 4px 10px rgba(var(--primary-color-rgb, 255, 123, 84), 0.25); border: none; transition: all 0.2s;';
+    const inactiveStyle = 'display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; cursor: pointer; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;';
+
+    if (tab === 'packages') {
+        tabPackages.style.cssText = activeStyle;
+        tabEquipment.style.cssText = inactiveStyle;
+        contentPackages.style.display = '';
+        contentEquipment.style.display = 'none';
+    } else {
+        tabPackages.style.cssText = inactiveStyle;
+        tabEquipment.style.cssText = activeStyle;
+        contentPackages.style.display = 'none';
+        contentEquipment.style.display = '';
+    }
+}
+
+// Check URL hash for tab on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab === 'equipment') {
+        switchServicesTab('equipment');
+    }
+});
+</script>
+
+<script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v=12.9"></script>
+<script>
+    // Listen to global header search for packages
+    window.addEventListener('globalSearch', function(e) {
+        const hiddenInput = document.getElementById('packageSearchInput');
+        if (hiddenInput && typeof window.filterPackages === 'function') {
+            hiddenInput.value = e.detail.value;
+            window.filterPackages();
+        }
+    });
+</script>
+{% endblock %}

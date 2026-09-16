@@ -1080,288 +1080,373 @@
 </div>
 
 <div id="externalBookingModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-lg occ-content-pop" style="display: flex; flex-direction: column; max-height: 92vh; overflow: hidden; width: 100%; max-width: 820px; border-radius: 16px;">
-        <div class="occ-modal-header glass-header" style="flex-shrink: 0; padding: 1.25rem 1.75rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #ffffff;">
-            <div>
-                <h3 class="occ-modal-title" style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fas fa-walking" style="color: var(--primary-color, #f97316);"></i> Walk-in Booking
-                </h3>
-                <div class="occ-modal-subtitle" style="margin-top: 0.25rem; font-size: 0.85rem; color: #64748b;">
-                    Encode walk-in event details, select requested services, and compute totals.
+    <div class="occ-modal-box sz-lg occ-content-pop" style="display: flex; flex-direction: column; max-height: 92vh; overflow: hidden; width: 100%; max-width: 860px; border-radius: 16px;">
+        <div class="occ-modal-header glass-header" style="flex-shrink: 0; padding: 1.25rem 1.75rem; border-bottom: 1px solid #e2e8f0; background: #ffffff;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div>
+                    <h3 class="occ-modal-title" style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-walking" style="color: var(--primary-color, #f97316);"></i> Walk-in Transaction
+                    </h3>
+                    <div class="occ-modal-subtitle" style="margin-top: 0.25rem; font-size: 0.85rem; color: #64748b;">
+                        Create a walk-in catering booking or independent equipment rental.
+                    </div>
                 </div>
+                <button type="button" onclick="closeModal('externalBookingModal')" class="occ-modal-close" style="background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: all 0.2s;">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <button type="button" onclick="closeModal('externalBookingModal')" class="occ-modal-close" style="background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: all 0.2s;">
-                <i class="fas fa-times"></i>
-            </button>
+            <!-- Walk-in Tab Switcher -->
+            <div id="walkinTabSwitcher" style="display: flex; gap: 0; margin-top: 1rem; background: #f1f5f9; border-radius: 10px; padding: 4px;">
+                <button type="button" onclick="switchWalkinTab('catering')" id="walkinTabBtnCatering" class="walkin-tab-btn active" style="flex: 1; padding: 0.6rem 1rem; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.25s; background: var(--primary-color, #f97316); color: white;">
+                    <i class="fas fa-utensils" style="margin-right: 4px;"></i> Catering Booking
+                </button>
+                <button type="button" onclick="switchWalkinTab('equipment')" id="walkinTabBtnEquipment" class="walkin-tab-btn" style="flex: 1; padding: 0.6rem 1rem; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.25s; background: transparent; color: #64748b;">
+                    <i class="fas fa-chair" style="margin-right: 4px;"></i> Equipment Rental
+                </button>
+            </div>
         </div>
 
-        <form id="externalBookingForm" onsubmit="submitExternalBooking(event)" novalidate style="display: flex; flex-direction: column; flex: 1; min-height: 0; margin: 0;">
-            <div class="compact-body" style="padding: 1.5rem 1.75rem; flex: 1; overflow-y: auto; background: #f8fafc;">
-                <!-- General Modal Alert Box -->
-                <div id="extBookingFormError" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 12px 16px; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 600; font-size: 0.9rem;"></div>
+        <!-- ═══════════════ TAB 1: CATERING BOOKING (PACKAGE-BASED) ═══════════════ -->
+        <div id="walkinTabCatering" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+            <form id="externalBookingForm" onsubmit="submitExternalBooking(event)" novalidate style="display: flex; flex-direction: column; flex: 1; min-height: 0; margin: 0;">
+                <div class="compact-body" style="padding: 1.5rem 1.75rem; flex: 1; overflow-y: auto; background: #f8fafc;">
+                    <!-- General Modal Alert Box -->
+                    <div id="extBookingFormError" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 12px 16px; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 600; font-size: 0.9rem;"></div>
 
-                <!-- SECTION 1: Customer & Event Information -->
-                <div class="walkin-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                    <div style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
-                        <i class="fas fa-id-card" style="color: var(--primary-color, #f97316);"></i> Customer & Event Information
+                    <!-- SECTION 1: Customer & Event Information -->
+                    <div class="walkin-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <div style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
+                            <i class="fas fa-id-card" style="color: var(--primary-color, #f97316);"></i> Customer & Event Information
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                            <!-- Type of Event -->
+                            <div class="form-group-pro">
+                                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                    Type of Event <span style="color: #ef4444;">*</span>
+                                </label>
+                                <select id="extEventType" name="event_type" class="control-pro" required onchange="handleWalkinEventTypeChange(this.value)">
+                                    <option value="" disabled selected>Select event type</option>
+                                    <option value="Wedding">Wedding</option>
+                                    <option value="Birthday">Birthday</option>
+                                    <option value="Debut">Debut</option>
+                                    <option value="Anniversary">Anniversary</option>
+                                    <option value="Corporate">Corporate Event</option>
+                                    <option value="Seminar">Seminar</option>
+                                    <option value="Meeting">Meeting</option>
+                                    <option value="Product Launch">Product Launch</option>
+                                    <option value="Other">Other Events</option>
+                                </select>
+                                <div class="field-error-msg" id="error-extEventType" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+                            </div>
+
+                            <!-- Date of Event -->
+                            <div class="form-group-pro">
+                                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                    Date of Event <span style="color: #ef4444;">*</span>
+                                </label>
+                                <input type="date" id="extEventDate" name="event_date" class="control-pro" required min="{{ min_booking_date.strftime('%Y-%m-%d') }}" onchange="clearWalkinError('extEventDate')">
+                                <div class="field-error-msg" id="error-extEventDate" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+                            </div>
+
+                            <!-- DYNAMIC PARTICIPANT / CELEBRANT / REPRESENTATIVE NAME FIELDS -->
+                            <div id="dynamicNameFieldsContainer" style="grid-column: span 2; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                                <!-- Default: Customer Full Name -->
+                                <div class="form-group-pro" style="grid-column: span 2;" id="fieldGroup-genericName">
+                                    <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                        Customer Full Name <span style="color: #ef4444;">*</span>
+                                    </label>
+                                    <input type="text" id="extFullName" class="control-pro" placeholder="e.g. Juan Dela Cruz" oninput="clearWalkinError('extFullName')">
+                                    <div class="field-error-msg" id="error-extFullName" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+                                </div>
+                            </div>
+
+                            <!-- Mobile Number -->
+                            <div class="form-group-pro">
+                                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                    Mobile No. <span style="color: #ef4444;">*</span>
+                                </label>
+                                <input type="tel" id="extCustomerContact" name="customer_contact" class="control-pro" placeholder="09XXXXXXXXX or +639XXXXXXXXX" required oninput="formatWalkinPhone(this); clearWalkinError('extCustomerContact')">
+                                <div class="field-error-msg" id="error-extCustomerContact" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+                            </div>
+
+                            <!-- Motif / Theme -->
+                            <div class="form-group-pro">
+                                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                    Motif / Theme <span style="font-size: 0.75rem; font-weight: 500; color: #94a3b8;">(Optional)</span>
+                                </label>
+                                <input type="text" id="extMotifTheme" name="motif_theme" class="control-pro" placeholder="e.g. Dusty Rose & Emerald Green">
+                            </div>
+
+                            <!-- Venue -->
+                            <div class="form-group-pro" style="grid-column: span 2;">
+                                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                    Event Venue <span style="color: #ef4444;">*</span>
+                                </label>
+                                <input type="text" id="extVenue" name="venue" class="control-pro" placeholder="e.g. Grand Ballroom, The Manor / Clubhouse Name" required oninput="clearWalkinError('extVenue')">
+                                <div class="field-error-msg" id="error-extVenue" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+                            </div>
+
+                            <!-- Normalized Customer Address Components -->
+                            <div style="grid-column: span 2; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem;">
+                                <div style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between;">
+                                    <span><i class="fas fa-map-marker-alt" style="color: var(--primary-color, #f97316); margin-right: 4px;"></i> Customer Complete Address <span style="color: #ef4444;">*</span></span>
+                                    <span style="font-size: 0.75rem; color: #64748b; font-weight: 500;">Normalized address structure</span>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 0.75rem;">
+                                    <div>
+                                        <label style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; margin-bottom: 0.25rem;">HOUSE / UNIT / STREET *</label>
+                                        <input type="text" id="extStreet" class="control-pro" placeholder="e.g. 123 Rizal St." required oninput="updateWalkinAddressPreview(); clearWalkinError('extStreet')">
+                                        <div class="field-error-msg" id="error-extStreet" style="color: #ef4444; font-size: 0.7rem; margin-top: 0.2rem; display: none;"></div>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; margin-bottom: 0.25rem;">BARANGAY *</label>
+                                        <select id="extBarangay" class="control-pro" required disabled onchange="updateWalkinAddressPreview(); clearWalkinError('extBarangay')">
+                                            <option value="" disabled selected hidden>Select Barangay</option>
+                                        </select>
+                                        <div class="field-error-msg" id="error-extBarangay" style="color: #ef4444; font-size: 0.7rem; margin-top: 0.2rem; display: none;"></div>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; margin-bottom: 0.25rem;">CITY / MUNICIPALITY *</label>
+                                        <select id="extCity" class="control-pro" required onchange="handleWalkinCityChange(this.value); clearWalkinError('extCity')">
+                                            <option value="" disabled selected hidden>Select City/Municipality</option>
+                                        </select>
+                                        <div class="field-error-msg" id="error-extCity" style="color: #ef4444; font-size: 0.7rem; margin-top: 0.2rem; display: none;"></div>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; margin-bottom: 0.25rem;">PROVINCE *</label>
+                                        <select id="extProvince" class="control-pro" required disabled style="background: #f1f5f9; color: #334155; font-weight: 700; cursor: not-allowed;">
+                                            <option value="Laguna" selected>Laguna</option>
+                                        </select>
+                                        <div class="field-error-msg" id="error-extProvince" style="color: #ef4444; font-size: 0.7rem; margin-top: 0.2rem; display: none;"></div>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 0.6rem; font-size: 0.78rem; color: #475569; background: #ffffff; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 6px 10px; display: flex; align-items: center; gap: 6px;">
+                                    <strong style="color: #64748b; font-size: 0.72rem; text-transform: uppercase;">Formatted Display:</strong>
+                                    <span id="walkinAddressPreview" style="font-weight: 600; color: #0f172a;">Address will automatically format here...</span>
+                                </div>
+                                <input type="hidden" id="extAddress" name="address">
+                            </div>
+                        </div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
-                        <!-- Type of Event -->
-                        <div class="form-group-pro">
-                            <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
-                                Type of Event <span style="color: #ef4444;">*</span>
-                            </label>
-                            <select id="extEventType" name="event_type" class="control-pro" required onchange="handleWalkinEventTypeChange(this.value)">
-                                <option value="" disabled selected>Select event type</option>
-                                <option value="Wedding">Wedding</option>
-                                <option value="Birthday">Birthday</option>
-                                <option value="Debut">Debut</option>
-                                <option value="Anniversary">Anniversary</option>
-                                <option value="Corporate">Corporate Event</option>
-                                <option value="Seminar">Seminar</option>
-                                <option value="Meeting">Meeting</option>
-                                <option value="Product Launch">Product Launch</option>
-                                <option value="Other">Other Events</option>
-                            </select>
-                            <div class="field-error-msg" id="error-extEventType" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+                    <!-- SECTION 2: Package Selection -->
+                    <div class="walkin-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
+                            <div style="font-size: 1rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-box-open" style="color: var(--primary-color, #f97316);"></i> Select Catering Package <span style="color: #ef4444;">*</span>
+                            </div>
+                            <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">{{ packages|length }} package(s) available</span>
                         </div>
 
-                        <!-- Date of Event -->
-                        <div class="form-group-pro">
-                            <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
-                                Date of Event <span style="color: #ef4444;">*</span>
-                            </label>
-                            <input type="date" id="extEventDate" name="event_date" class="control-pro" required min="{{ min_booking_date.strftime('%Y-%m-%d') }}" onchange="clearWalkinError('extEventDate')">
-                            <div class="field-error-msg" id="error-extEventDate" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+                        <div class="field-error-msg" id="error-extPackageSelect" style="color: #ef4444; font-size: 0.8rem; margin-bottom: 0.75rem; display: none; background: #fef2f2; border: 1px solid #fee2e2; padding: 8px 12px; border-radius: 6px; font-weight: 600;"></div>
+
+                        <select id="extPackageSelect" class="control-pro" style="font-weight: 700; font-size: 0.95rem; padding: 0.7rem 1rem;" onchange="handleWalkinPackageChange(this.value)">
+                            <option value="" disabled selected>— Choose a catering package —</option>
+                            {% for pkg in packages %}
+                            <option value="{{ pkg.id }}">{{ pkg.name }} — ₱{{ '{:,.2f}'.format(pkg.price or 0) }} ({{ pkg.service_type or 'General' }}{% if pkg.min_guests %}, Min {{ pkg.min_guests }} pax{% endif %})</option>
+                            {% endfor %}
+                        </select>
+
+                        <!-- Package Inclusions Display (auto-populated) -->
+                        <div id="walkinPackageInclusions" style="display: none; margin-top: 1.25rem;">
+                            <!-- Package Summary Card -->
+                            <div id="walkinPkgSummaryCard" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: white; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; font-weight: 700;">Selected Package</div>
+                                        <div id="walkinPkgName" style="font-size: 1.15rem; font-weight: 800; color: #f8fafc; margin-top: 0.15rem;"></div>
+                                        <div id="walkinPkgMeta" style="font-size: 0.8rem; color: #cbd5e1; margin-top: 0.2rem;"></div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; font-weight: 700;">Package Price</div>
+                                        <div id="walkinPkgPrice" style="font-size: 1.65rem; font-weight: 800; color: #10b981; line-height: 1.2;"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Menu Inclusions -->
+                            <div id="walkinPkgMenuSection" style="display: none; margin-bottom: 0.75rem;">
+                                <div style="font-size: 0.8rem; font-weight: 800; color: #1e293b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-utensils" style="color: var(--primary-color, #f97316); font-size: 0.75rem;"></i> Food / Menu Inclusions
+                                </div>
+                                <div id="walkinPkgMenuList" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem;"></div>
+                            </div>
+
+                            <!-- Service Inclusions -->
+                            <div id="walkinPkgServiceSection" style="display: none; margin-bottom: 0.75rem;">
+                                <div style="font-size: 0.8rem; font-weight: 800; color: #1e293b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-concierge-bell" style="color: #3b82f6; font-size: 0.75rem;"></i> Event Services Inclusions
+                                </div>
+                                <div id="walkinPkgServiceList" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem;"></div>
+                            </div>
+
+                            <!-- Equipment Inclusions -->
+                            <div id="walkinPkgEquipSection" style="display: none; margin-bottom: 0.75rem;">
+                                <div style="font-size: 0.8rem; font-weight: 800; color: #1e293b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-chair" style="color: #8b5cf6; font-size: 0.75rem;"></i> Equipment Included
+                                    <span style="font-size: 0.7rem; background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 20px; font-weight: 700;">₱0 Extra Charge</span>
+                                </div>
+                                <div id="walkinPkgEquipList" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 3: Payment Breakdown -->
+                    <div class="walkin-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <div style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-coins" style="color: var(--primary-color, #f97316);"></i> Payment Breakdown & Computation
+                            </div>
+                            <span id="walkinPaymentStatusBadge" style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; background: #f1f5f9; color: #64748b; padding: 4px 10px; border-radius: 20px;">
+                                UNPAID
+                            </span>
                         </div>
 
-                        <!-- DYNAMIC PARTICIPANT / CELEBRANT / REPRESENTATIVE NAME FIELDS -->
-                        <div id="dynamicNameFieldsContainer" style="grid-column: span 2; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
-                            <!-- Default: Customer Full Name -->
-                            <div class="form-group-pro" style="grid-column: span 2;" id="fieldGroup-genericName">
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; align-items: flex-start;">
+                            <!-- Package Total -->
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
+                                <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Package Total Amount</div>
+                                <div id="walkinSubtotalDisplay" style="font-size: 1.4rem; font-weight: 800; color: #0f172a; margin-top: 0.25rem;">₱0.00</div>
+                                <input type="hidden" id="extTotalAmount" value="0">
+                            </div>
+
+                            <!-- Downpayment Input Group -->
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                                    <label style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;">
+                                        <input type="checkbox" id="extHasDownpayment" onchange="toggleWalkinDownpayment(this.checked)" style="width: 16px; height: 16px; accent-color: var(--primary-color, #f97316); cursor: pointer;">
+                                        <span>Has Downpayment</span>
+                                    </label>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.85rem; font-weight: 700; color: #64748b;">₱</span>
+                                    <input type="text" id="extDownpaymentInput" class="control-pro" placeholder="0.00" disabled onfocus="handleCurrencyFocus(this)" onblur="handleDownpaymentBlur(this)" oninput="handleDownpaymentInput(this)" style="font-weight: 700; text-align: right; background: #e2e8f0; color: #94a3b8;">
+                                </div>
+                                <input type="hidden" id="extDownpaymentAmount" value="0">
+                                <div class="field-error-msg" id="error-extDownpayment" style="color: #ef4444; font-size: 0.7rem; margin-top: 0.25rem; display: none;"></div>
+                            </div>
+
+                            <!-- Remaining Balance -->
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
+                                <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Remaining Balance</div>
+                                <div id="walkinBalanceDisplay" style="font-size: 1.4rem; font-weight: 800; color: #2563eb; margin-top: 0.25rem;">₱0.00</div>
+                                <input type="hidden" id="extRemainingBalance" value="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer / Actions -->
+                <div class="occ-modal-footer" style="flex-shrink: 0; padding: 1.25rem 1.75rem; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 1rem; align-items: center;">
+                    <button type="button" onclick="closeModal('externalBookingModal')" class="btn-secondary-pro" style="padding: 0.65rem 1.25rem; font-size: 0.9rem; font-weight: 600;">
+                        Cancel
+                    </button>
+                    <button type="submit" id="extBtnSubmit" class="btn-primary-pro" style="padding: 0.65rem 1.5rem; font-size: 0.9rem; font-weight: 700; background: var(--primary-color, #f97316); border-color: var(--primary-color, #f97316); display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-check"></i> Save Walk-in Booking
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ═══════════════ TAB 2: EQUIPMENT RENTAL ═══════════════ -->
+        <div id="walkinTabEquipment" style="display: none; flex-direction: column; flex: 1; min-height: 0;">
+            <form id="equipRentalForm" onsubmit="submitWalkinEquipmentRental(event)" novalidate style="display: flex; flex-direction: column; flex: 1; min-height: 0; margin: 0;">
+                <div class="compact-body" style="padding: 1.5rem 1.75rem; flex: 1; overflow-y: auto; background: #f8fafc;">
+                    <div id="equipRentalFormError" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 12px 16px; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 600; font-size: 0.9rem;"></div>
+
+                    <!-- Customer Info for Equipment Rental -->
+                    <div class="walkin-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <div style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
+                            <i class="fas fa-user" style="color: var(--primary-color, #f97316);"></i> Customer & Rental Information
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                            <div class="form-group-pro">
                                 <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
                                     Customer Full Name <span style="color: #ef4444;">*</span>
                                 </label>
-                                <input type="text" id="extFullName" class="control-pro" placeholder="e.g. Juan Dela Cruz" oninput="clearWalkinError('extFullName')">
-                                <div class="field-error-msg" id="error-extFullName" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+                                <input type="text" id="eqRentalName" class="control-pro" placeholder="e.g. Juan Dela Cruz" required>
+                                <div class="field-error-msg" id="error-eqRentalName" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
                             </div>
-                        </div>
-
-                        <!-- Mobile Number -->
-                        <div class="form-group-pro">
-                            <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
-                                Mobile No. <span style="color: #ef4444;">*</span>
-                            </label>
-                            <input type="tel" id="extCustomerContact" name="customer_contact" class="control-pro" placeholder="09XXXXXXXXX or +639XXXXXXXXX" required oninput="formatWalkinPhone(this); clearWalkinError('extCustomerContact')">
-                            <div class="field-error-msg" id="error-extCustomerContact" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
-                        </div>
-
-                        <!-- Motif / Theme -->
-                        <div class="form-group-pro">
-                            <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
-                                Motif / Theme <span style="font-size: 0.75rem; font-weight: 500; color: #94a3b8;">(Optional)</span>
-                            </label>
-                            <input type="text" id="extMotifTheme" name="motif_theme" class="control-pro" placeholder="e.g. Dusty Rose & Emerald Green">
-                        </div>
-
-                        <!-- Venue -->
-                        <div class="form-group-pro" style="grid-column: span 2;">
-                            <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
-                                Event Venue <span style="color: #ef4444;">*</span>
-                            </label>
-                            <input type="text" id="extVenue" name="venue" class="control-pro" placeholder="e.g. Grand Ballroom, The Manor / Clubhouse Name" required oninput="clearWalkinError('extVenue')">
-                            <div class="field-error-msg" id="error-extVenue" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
-                        </div>
-
-                        <!-- Normalized Customer Address Components -->
-                        <div style="grid-column: span 2; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem;">
-                            <div style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between;">
-                                <span><i class="fas fa-map-marker-alt" style="color: var(--primary-color, #f97316); margin-right: 4px;"></i> Customer Complete Address <span style="color: #ef4444;">*</span></span>
-                                <span style="font-size: 0.75rem; color: #64748b; font-weight: 500;">Normalized address structure</span>
+                            <div class="form-group-pro">
+                                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                    Mobile No. <span style="color: #ef4444;">*</span>
+                                </label>
+                                <input type="tel" id="eqRentalContact" class="control-pro" placeholder="09XXXXXXXXX" required oninput="formatWalkinPhone(this)">
+                                <div class="field-error-msg" id="error-eqRentalContact" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
                             </div>
-                            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 0.75rem;">
-                                <div>
-                                    <label style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; margin-bottom: 0.25rem;">HOUSE / UNIT / STREET *</label>
-                                    <input type="text" id="extStreet" class="control-pro" placeholder="e.g. 123 Rizal St." required oninput="updateWalkinAddressPreview(); clearWalkinError('extStreet')">
-                                    <div class="field-error-msg" id="error-extStreet" style="color: #ef4444; font-size: 0.7rem; margin-top: 0.2rem; display: none;"></div>
-                                </div>
-                                <div>
-                                    <label style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; margin-bottom: 0.25rem;">BARANGAY *</label>
-                                    <select id="extBarangay" class="control-pro" required disabled onchange="updateWalkinAddressPreview(); clearWalkinError('extBarangay')">
-                                        <option value="" disabled selected hidden>Select Barangay</option>
-                                    </select>
-                                    <div class="field-error-msg" id="error-extBarangay" style="color: #ef4444; font-size: 0.7rem; margin-top: 0.2rem; display: none;"></div>
-                                </div>
-                                <div>
-                                    <label style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; margin-bottom: 0.25rem;">CITY / MUNICIPALITY *</label>
-                                    <select id="extCity" class="control-pro" required onchange="handleWalkinCityChange(this.value); clearWalkinError('extCity')">
-                                        <option value="" disabled selected hidden>Select City/Municipality</option>
-                                    </select>
-                                    <div class="field-error-msg" id="error-extCity" style="color: #ef4444; font-size: 0.7rem; margin-top: 0.2rem; display: none;"></div>
-                                </div>
-                                <div>
-                                    <label style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; margin-bottom: 0.25rem;">PROVINCE *</label>
-                                    <select id="extProvince" class="control-pro" required disabled style="background: #f1f5f9; color: #334155; font-weight: 700; cursor: not-allowed;">
-                                        <option value="Laguna" selected>Laguna</option>
-                                    </select>
-                                    <div class="field-error-msg" id="error-extProvince" style="color: #ef4444; font-size: 0.7rem; margin-top: 0.2rem; display: none;"></div>
-                                </div>
+                            <div class="form-group-pro" style="grid-column: span 2;">
+                                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                    Rental Date <span style="color: #ef4444;">*</span>
+                                </label>
+                                <input type="date" id="eqRentalDate" class="control-pro" required min="{{ min_booking_date.strftime('%Y-%m-%d') }}" onchange="onEquipRentalDateChange()">
+                                <div class="field-error-msg" id="error-eqRentalDate" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
                             </div>
-                            <div style="margin-top: 0.6rem; font-size: 0.78rem; color: #475569; background: #ffffff; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 6px 10px; display: flex; align-items: center; gap: 6px;">
-                                <strong style="color: #64748b; font-size: 0.72rem; text-transform: uppercase;">Formatted Display:</strong>
-                                <span id="walkinAddressPreview" style="font-weight: 600; color: #0f172a;">Address will automatically format here...</span>
-                            </div>
-                            <input type="hidden" id="extAddress" name="address">
                         </div>
                     </div>
-                </div>
 
-                <!-- SECTION 2: Caterer Configured Services Checklist -->
-                <div class="walkin-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
-                        <div style="font-size: 1rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-clipboard-check" style="color: var(--primary-color, #f97316);"></i> Services Checklist & Amounts <span style="color: #ef4444;">*</span>
+                    <!-- Equipment Selection -->
+                    <div class="walkin-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <div style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
+                            <i class="fas fa-chair" style="color: #8b5cf6;"></i> Select Equipment to Rent
                         </div>
-                        <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Check to enable amount input</span>
-                    </div>
-
-                    <div class="field-error-msg" id="error-services-general" style="color: #ef4444; font-size: 0.8rem; margin-bottom: 0.75rem; display: none; background: #fef2f2; border: 1px solid #fee2e2; padding: 8px 12px; border-radius: 6px; font-weight: 600;"></div>
-
-                    <!-- Dynamic Services Grid (Loaded from Caterer's active services or default catalog) -->
-                    <div id="walkinServicesGrid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
-                        {% set required_services = [
-                            {'name': 'Catering Service', 'selling_price': 0.0},
-                            {'name': 'Venue Styling', 'selling_price': 0.0},
-                            {'name': 'Ceiling Treatment', 'selling_price': 0.0},
-                            {'name': 'Church Design', 'selling_price': 0.0},
-                            {'name': 'Grazing Table', 'selling_price': 0.0},
-                            {'name': 'Photo Coverage', 'selling_price': 0.0},
-                            {'name': 'Food Cart', 'selling_price': 0.0},
-                            {'name': 'Souvenir', 'selling_price': 0.0},
-                            {'name': 'Lights and Sounds', 'selling_price': 0.0},
-                            {'name': 'OTD Coordination', 'selling_price': 0.0},
-                            {'name': 'Cake', 'selling_price': 0.0},
-                            {'name': 'Photobooth / 360 Videobooth', 'selling_price': 0.0},
-                            {'name': 'Flowers for Entourage', 'selling_price': 0.0},
-                            {'name': 'Emcee / Host', 'selling_price': 0.0},
-                            {'name': 'Bridal Car', 'selling_price': 0.0}
-                        ] %}
-
-                        {% set active_services_list = [] %}
-                        {% for r in required_services %}
-                            {% set matched_price = namespace(val=r.selling_price) %}
-                            {% if caterer_services %}
-                                {% for cs in caterer_services %}
-                                    {% if cs.name and (cs.name|lower == r.name|lower or r.name|lower in cs.name|lower or cs.name|lower in r.name|lower) %}
-                                        {% set matched_price.val = cs.selling_price or 0.0 %}
-                                    {% endif %}
-                                {% endfor %}
-                            {% endif %}
-                            {% set _ = active_services_list.append({'name': r.name, 'selling_price': matched_price.val}) %}
-                        {% endfor %}
-
-                        {% if caterer_services %}
-                            {% for cs in caterer_services %}
-                                {% set cs_matched = namespace(found=false) %}
-                                {% for r in required_services %}
-                                    {% if cs.name and (cs.name|lower == r.name|lower or r.name|lower in cs.name|lower or cs.name|lower in r.name|lower) %}
-                                        {% set cs_matched.found = true %}
-                                    {% endif %}
-                                {% endfor %}
-                                {% if not cs_matched.found and cs.name %}
-                                    {% set _ = active_services_list.append({'name': cs.name, 'selling_price': cs.selling_price or 0.0}) %}
-                                {% endif %}
+                        <div class="field-error-msg" id="error-eqRentalItems" style="color: #ef4444; font-size: 0.8rem; margin-bottom: 0.75rem; display: none; background: #fef2f2; border: 1px solid #fee2e2; padding: 8px 12px; border-radius: 6px; font-weight: 600;"></div>
+                        <div id="eqRentalItemsGrid" style="display: grid; grid-template-columns: 1fr; gap: 0.6rem;">
+                            {% for eq in equipment_items if not eq.is_archived and eq.status == 'available' %}
+                            <div class="eq-rental-row" data-eq-id="{{ eq.id }}" data-eq-name="{{ eq.name }}" data-eq-price="{{ eq.rental_price or 0 }}" data-eq-stock="{{ eq.available_qty or 0 }}" data-eq-unit="{{ eq.unit_type or 'piece' }}" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; transition: all 0.2s;">
+                                <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1;">
+                                    <input type="checkbox" class="eq-rental-checkbox" onchange="handleEqRentalToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
+                                    <div>
+                                        <div style="font-size: 0.85rem; font-weight: 700; color: #1e293b;">{{ eq.name }}</div>
+                                        <div style="font-size: 0.75rem; color: #64748b;">₱{{ '{:,.2f}'.format(eq.rental_price or 0) }} / {{ eq.unit_type or 'piece' }} · {{ eq.available_qty or 0 }} in stock</div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <label style="font-size: 0.75rem; font-weight: 700; color: #64748b;">Qty:</label>
+                                    <input type="number" class="eq-rental-qty control-pro" min="1" max="{{ eq.available_qty or 1 }}" value="1" disabled onchange="recalcEquipRentalTotals()" style="width: 70px; text-align: center; font-weight: 700; padding: 4px 6px; background: #e2e8f0; color: #94a3b8;">
+                                    <div class="eq-avail-badge" style="font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: #f1f5f9; color: #64748b; display: none;"></div>
+                                </div>
+                            </div>
                             {% endfor %}
-                        {% endif %}
-
-                        {% for srv in active_services_list %}
-                        <div class="walkin-service-row" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; transition: all 0.2s;">
-                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
-                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; margin: 0; cursor: pointer; flex: 1;">
-                                    <input type="checkbox" class="walkin-service-checkbox" data-service-name="{{ srv.name }}" data-base-price="{{ srv.selling_price or 0 }}" data-index="{{ loop.index0 }}" onchange="handleWalkinServiceToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
-                                    <span>{{ srv.name }}</span>
-                                </label>
-                                <div style="display: flex; align-items: center; gap: 4px;">
-                                    <span style="font-size: 0.8rem; font-weight: 700; color: #64748b;">₱</span>
-                                    <input type="text" id="walkin_amount_{{ loop.index0 }}" class="control-pro walkin-service-amount" placeholder="0.00" disabled onfocus="handleCurrencyFocus(this)" onblur="handleCurrencyBlur(this, {{ loop.index0 }})" oninput="handleWalkinAmountInput(this, {{ loop.index0 }})" style="width: 130px; padding: 5px 8px; height: auto; text-align: right; font-weight: 700; background: #e2e8f0; color: #94a3b8;">
-                                </div>
-                            </div>
-                            <div class="field-error-msg" id="error-walkin_amount_{{ loop.index0 }}" style="color: #ef4444; font-size: 0.7rem; display: none; text-align: right;"></div>
+                            {% if not equipment_items %}
+                            <div style="text-align: center; color: #94a3b8; padding: 2rem; font-size: 0.9rem;">No equipment items available for rental.</div>
+                            {% endif %}
                         </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <!-- SECTION 3: Payment Breakdown, Downpayment & Real-Time Balance -->
-                <div class="walkin-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                    <div style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-coins" style="color: var(--primary-color, #f97316);"></i> Payment Breakdown & Computation
-                        </div>
-                        <span id="walkinPaymentStatusBadge" style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; background: #f1f5f9; color: #64748b; padding: 4px 10px; border-radius: 20px;">
-                            UNPAID
-                        </span>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; align-items: flex-start;">
-                        <!-- Subtotal -->
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
-                            <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Total Services Amount</div>
-                            <div id="walkinSubtotalDisplay" style="font-size: 1.4rem; font-weight: 800; color: #0f172a; margin-top: 0.25rem;">₱0.00</div>
-                            <input type="hidden" id="extTotalAmount" value="0">
+                    <!-- Equipment Rental Payment Summary -->
+                    <div class="walkin-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <div style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
+                            <i class="fas fa-calculator" style="color: var(--primary-color, #f97316);"></i> Payment Computation
                         </div>
-
-                        <!-- Downpayment Input Group -->
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                                <label style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;">
-                                    <input type="checkbox" id="extHasDownpayment" onchange="toggleWalkinDownpayment(this.checked)" style="width: 16px; height: 16px; accent-color: var(--primary-color, #f97316); cursor: pointer;">
-                                    <span>Has Downpayment</span>
-                                </label>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
+                                <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Rental Subtotal</div>
+                                <div id="eqRentalSubtotal" style="font-size: 1.4rem; font-weight: 800; color: #0f172a; margin-top: 0.25rem;">₱0.00</div>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 4px;">
-                                <span style="font-size: 0.85rem; font-weight: 700; color: #64748b;">₱</span>
-                                <input type="text" id="extDownpaymentInput" class="control-pro" placeholder="0.00" disabled onfocus="handleCurrencyFocus(this)" onblur="handleDownpaymentBlur(this)" oninput="handleDownpaymentInput(this)" style="font-weight: 700; text-align: right; background: #e2e8f0; color: #94a3b8;">
+                            <div style="background: #fef9c3; border: 1px solid #fde68a; border-radius: 8px; padding: 0.9rem 1rem;">
+                                <div style="font-size: 0.75rem; font-weight: 700; color: #854d0e; text-transform: uppercase;">50% Downpayment</div>
+                                <div id="eqRentalDownpayment" style="font-size: 1.4rem; font-weight: 800; color: #854d0e; margin-top: 0.25rem;">₱0.00</div>
                             </div>
-                            <input type="hidden" id="extDownpaymentAmount" value="0">
-                            <div class="field-error-msg" id="error-extDownpayment" style="color: #ef4444; font-size: 0.7rem; margin-top: 0.25rem; display: none;"></div>
-                        </div>
-
-                        <!-- Remaining Balance -->
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
-                            <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Remaining Balance</div>
-                            <div id="walkinBalanceDisplay" style="font-size: 1.4rem; font-weight: 800; color: #2563eb; margin-top: 0.25rem;">₱0.00</div>
-                            <input type="hidden" id="extRemainingBalance" value="0">
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
+                                <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Remaining Balance</div>
+                                <div id="eqRentalBalance" style="font-size: 1.4rem; font-weight: 800; color: #2563eb; margin-top: 0.25rem;">₱0.00</div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- SECTION 4: Final Booking Summary -->
-                <div class="walkin-summary-card" style="background: #0f172a; color: white; border-radius: 12px; padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; font-weight: 700;">Walk-in Summary</div>
-                        <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 0.25rem;">
-                            Selected Services: <span id="walkinSelectedCount" style="font-weight: 700; color: #f8fafc;">0</span> of <span id="walkinTotalCount">{{ active_services_list|length }}</span>
-                        </div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; font-weight: 700;">Authoritative Total</div>
-                        <div id="walkinTotalDisplay" style="font-size: 1.65rem; font-weight: 800; color: #10b981; line-height: 1.2;">₱0.00</div>
-                    </div>
+                <!-- Equipment Rental Footer -->
+                <div class="occ-modal-footer" style="flex-shrink: 0; padding: 1.25rem 1.75rem; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 1rem; align-items: center;">
+                    <button type="button" onclick="closeModal('externalBookingModal')" class="btn-secondary-pro" style="padding: 0.65rem 1.25rem; font-size: 0.9rem; font-weight: 600;">
+                        Cancel
+                    </button>
+                    <button type="submit" id="eqRentalBtnSubmit" class="btn-primary-pro" style="padding: 0.65rem 1.5rem; font-size: 0.9rem; font-weight: 700; background: var(--primary-color, #f97316); border-color: var(--primary-color, #f97316); display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-check"></i> Save Equipment Rental
+                    </button>
                 </div>
-            </div>
-
-            <!-- Modal Footer / Actions -->
-            <div class="occ-modal-footer" style="flex-shrink: 0; padding: 1.25rem 1.75rem; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 1rem; align-items: center;">
-                <button type="button" onclick="closeModal('externalBookingModal')" class="btn-secondary-pro" style="padding: 0.65rem 1.25rem; font-size: 0.9rem; font-weight: 600;">
-                    Cancel
-                </button>
-                <button type="submit" id="extBtnSubmit" class="btn-primary-pro" style="padding: 0.65rem 1.5rem; font-size: 0.9rem; font-weight: 700; background: var(--primary-color, #f97316); border-color: var(--primary-color, #f97316); display: inline-flex; align-items: center; gap: 0.5rem;">
-                    <i class="fas fa-check"></i> Save Walk-in Booking
-                </button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -1369,6 +1454,8 @@
 <!-- FullCalendar JS -->
 <script src='https://unpkg.com/fullcalendar@5.10.1/main.min.js'></script>
 <script>
+    window.PACKAGE_MAP = {{ package_map_json|safe }};
+    window.CATALOG = {{ catalog_json|safe }};
     window.CATERER_LEAD_TIME = parseInt("{{ booking_lead_time }}") || 0;
     window.BUSINESS_OPEN = "{{ business_open }}";
     window.BUSINESS_CLOSE = "{{ business_close }}";

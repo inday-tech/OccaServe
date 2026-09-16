@@ -1147,12 +1147,11 @@
 
     <!-- TABS NAVIGATION -->
     <div class="hub-tabs">
-        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-packages')" class="tab-btn active">Packages</a>
-        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-services')" class="tab-btn">Services</a>
-        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-equipment')" class="tab-btn">Equipment</a>
-        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-portfolio')" class="tab-btn">Gallery</a>
-        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-policies')" class="tab-btn">Reviews</a>
-        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-overview')" class="tab-btn">About Us</a>
+        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-packages')" class="tab-btn active"><i class="fas fa-gift" style="margin-right: 4px;"></i> Packages</a>
+        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-equipment')" class="tab-btn"><i class="fas fa-chair" style="margin-right: 4px;"></i> Equipment Rentals</a>
+        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-portfolio')" class="tab-btn"><i class="fas fa-camera-retro" style="margin-right: 4px;"></i> Gallery</a>
+        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-policies')" class="tab-btn"><i class="fas fa-star" style="margin-right: 4px;"></i> Reviews &amp; Rules</a>
+        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-overview')" class="tab-btn"><i class="fas fa-info-circle" style="margin-right: 4px;"></i> About Us</a>
     </div>
 
     <script>
@@ -1625,54 +1624,15 @@
                 {% endif %}
             </div> <!-- Closes hub-tab-packages -->
 
-            <!-- SERVICES TAB -->
-            <div id="hub-tab-services" class="tab-content">
-                <div class="intel-card" style="padding: 1.75rem;">
-                    <h2 class="section-title">Event Services</h2>
-                    
-                    {% set services = [] %}
-                    {% for item in active_inventory %}
-                        {% if not item.equipment_type %}
-                            {% set _ = services.append(item) %}
-                        {% endif %}
-                    {% endfor %}
-                    
-                    {% if services %}
-                    <div class="dish-grid">
-                        {% for item in services %}
-                        <div class="elite-item-card">
-                            <div class="ei-img-box">
-                                <img src="{{ item.image_url if item.image_url else 'https://ui-avatars.com/api/?name=' ~ (item.name|urlencode) ~ '&background=f1f5f9&color=3b82f6' }}" class="ei-img">
-                            </div>
-                            <div class="ei-body" style="padding: 1rem;">
-                                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                                    <span class="ei-cat">{{ item.category or 'Service' }}</span>
-                                    {% if item.average_rating and item.average_rating > 0 %}
-                                    <span style="font-size:0.65rem; font-weight:800; color:#b45309; background:rgba(245, 158, 11, 0.1); padding:2px 6px; border-radius:100px;">
-                                        <i class="fas fa-star"></i> {{ "%.1f"|format(item.average_rating) }} ({{ item.review_count }})
-                                    </span>
-                                    {% endif %}
-                                </div>
-                                <span class="ei-name" style="min-height: auto; margin-top: 4px;">{{ item.name }}</span>
-                                <span class="ei-price" style="font-size: 1rem; margin-top: 4px;">₱{{ "{:,.2f}".format(item.display_price or 0) }}</span>
-                                
-                                <button type="button" onclick="window.openInventoryDetails({{ item.id }})" class="btn-elite-sm" style="margin-top:auto;">
-                                    View Details
-                                </button>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <p style="color: var(--hub-slate-400); font-size: 0.9rem;">No services available.</p>
-                    {% endif %}
-                </div>
-            </div> <!-- Closes hub-tab-services -->
-
-            <!-- EQUIPMENT TAB -->
+            <!-- EQUIPMENT RENTALS TAB -->
             <div id="hub-tab-equipment" class="tab-content">
                 <div class="intel-card" style="padding: 1.75rem;">
-                    <h2 class="section-title">Equipment Rentals</h2>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                        <div>
+                            <h2 class="section-title" style="margin-bottom: 0.25rem;"><i class="fas fa-chair"></i> Equipment Rentals</h2>
+                            <p style="color: var(--hub-slate-600); font-size: 0.88rem; margin: 0;">Rent tables, chairs, party equipment, and dinnerware independently without booking a catering package. Select rental date to check real-time availability.</p>
+                        </div>
+                    </div>
                     
                     {% set equipment = [] %}
                     {% for item in active_inventory %}
@@ -2580,7 +2540,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const item = window.hubInventoryItems.find(i => String(i.id) === String(id));
             if(!item) return;
 
-            title.textContent = (item.type === 'Equipment') ? "Rental Details" : "Service Details";
+            title.textContent = (item.type === 'Equipment') ? "Equipment Rental Details" : "Service Details";
 
             const UNIT_MAP = {
                 'per_piece': '/pc', 'per_set': '/set', 'per_day': '/day', 'per_event': '/event',
@@ -2600,15 +2560,50 @@ document.addEventListener('DOMContentLoaded', function() {
             const actionBtnId = `mbtn-${item.type}-${item.id}`;
             const qtyId = `mq-${item.type}-${item.id}`;
 
+            let rentalSelectorHtml = '';
+            if (isEquipment) {
+                const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+                rentalSelectorHtml = `
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem; margin-top: 8px;">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--hub-slate-600); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">
+                            <i class="fas fa-calendar-day" style="color: var(--hub-primary);"></i> Rental Event Date *
+                        </label>
+                        <input type="date" id="rental-date-${item.id}" value="${tomorrow}" min="${tomorrow}" class="control-pro" style="width: 100%; padding: 10px; border: 1px solid var(--hub-slate-200); border-radius: 8px; font-weight: 700; font-family: 'Poppins', sans-serif;" onchange="window.onEquipmentRentalChange(${item.id})">
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+                            <span style="font-size: 0.82rem; font-weight: 700; color: var(--hub-text-dark);">Quantity:</span>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <input type="number" id="${qtyId}" value="1" min="1" max="${item.available_qty || 999}" ${isSelected ? 'disabled' : ''} style="width: 80px; padding: 8px; border: 1px solid var(--hub-slate-200); border-radius: 8px; text-align: center; font-weight: 800; font-size: 1rem;" oninput="window.onEquipmentRentalChange(${item.id})">
+                                <span style="font-size: 0.75rem; color: var(--hub-slate-400);">${unitSuffix || 'units'}</span>
+                            </div>
+                        </div>
+
+                        <div id="rental-avail-alert-${item.id}" style="margin-top: 8px; font-size: 0.8rem; font-weight: 700;"></div>
+
+                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--hub-slate-200); display: flex; flex-direction: column; gap: 6px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.82rem;">
+                                <span style="color: var(--hub-slate-500);">Rental Subtotal:</span>
+                                <span id="rental-subtotal-${item.id}" style="font-weight: 800; color: var(--hub-text-dark);">₱0.00</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.82rem;">
+                                <span style="color: var(--hub-slate-500);">50% Downpayment:</span>
+                                <span id="rental-downpayment-${item.id}" style="font-weight: 800; color: var(--hub-primary);">₱0.00</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.82rem;">
+                                <span style="color: var(--hub-slate-500);">Remaining Balance:</span>
+                                <span id="rental-remaining-${item.id}" style="font-weight: 800; color: #10b981;">₱0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
             const actionHtml = isPackageOnly
                 ? `<span style="font-size:0.85rem;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:10px;padding:12px 16px;font-weight:800;text-align:center;display:block;width:100%;"><i class="fas fa-box-open"></i> Available Only in Packages</span>`
-                : `<div style="display:flex; align-items:center; gap:8px; width: 100%;">
-                    ${item.type === 'Service' 
-                        ? `<input type="hidden" id="${qtyId}" value="1">`
-                        : `<span style="font-size:0.85rem; font-weight:700;">Qty:</span><input type="number" id="${qtyId}" value="1" min="1" ${isSelected ? 'disabled' : ''} style="width: 70px; padding:10px; border:1px solid var(--hub-slate-200); border-radius:10px; text-align:center; font-weight:800;">`
-                    }
-                    <button class="btn-hub-main ${isSelected ? 'selected' : ''}" id="${actionBtnId}" style="flex:1; padding: 12px; font-size: 0.9rem; font-weight:800; border-radius:10px;" onclick="window.toggleInventoryModalItem(${item.id}, '${item.type}')">
-                        ${isSelected ? '<i class="fas fa-check"></i> ' + (isEquipment ? 'Rented' : 'Booked') : (isEquipment ? '<i class="fas fa-plus"></i> Rent Item' : '<i class="fas fa-plus"></i> Book Service')}
+                : `<div style="display:flex; flex-direction: column; gap:8px; width: 100%;">
+                    ${rentalSelectorHtml}
+                    <button class="btn-hub-main ${isSelected ? 'selected' : ''}" id="${actionBtnId}" style="width: 100%; padding: 14px; font-size: 0.95rem; font-weight:800; border-radius:10px; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.toggleInventoryModalItem(${item.id}, '${item.type}')">
+                        ${isSelected ? '<i class="fas fa-check"></i> ' + (isEquipment ? 'Rented' : 'Booked') : (isEquipment ? '<i class="fas fa-chair"></i> Rent Equipment' : '<i class="fas fa-plus"></i> Book Service')}
                     </button>
                   </div>`;
 
@@ -2706,6 +2701,117 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             `;
             modal.classList.add('active');
+
+            if (isEquipment) {
+                setTimeout(() => window.onEquipmentRentalChange(item.id), 50);
+            }
+        };
+
+        window.onEquipmentRentalChange = async function(id) {
+            const item = window.hubInventoryItems.find(i => String(i.id) === String(id));
+            if (!item) return;
+            const dateInput = document.getElementById(`rental-date-${id}`);
+            const qtyInput = document.getElementById(`mq-Equipment-${id}`);
+            const alertEl = document.getElementById(`rental-avail-alert-${id}`);
+            const subtotalEl = document.getElementById(`rental-subtotal-${id}`);
+            const downpaymentEl = document.getElementById(`rental-downpayment-${id}`);
+            const remainingEl = document.getElementById(`rental-remaining-${id}`);
+            const actionBtn = document.getElementById(`mbtn-Equipment-${id}`);
+
+            const dateVal = dateInput ? dateInput.value : '';
+            const qtyVal = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
+
+            const unitPrice = parseFloat(item.price || 0);
+            const subtotal = qtyVal * unitPrice;
+            const downpayment = subtotal * 0.5;
+            const remaining = subtotal - downpayment;
+
+            if (subtotalEl) subtotalEl.textContent = '₱' + subtotal.toLocaleString('en-PH', {minimumFractionDigits: 2});
+            if (downpaymentEl) downpaymentEl.textContent = '₱' + downpayment.toLocaleString('en-PH', {minimumFractionDigits: 2});
+            if (remainingEl) remainingEl.textContent = '₱' + remaining.toLocaleString('en-PH', {minimumFractionDigits: 2});
+
+            if (!dateVal) {
+                if (alertEl) alertEl.innerHTML = '<span style="color:#d97706;"><i class="fas fa-info-circle"></i> Please select a rental date.</span>';
+                if (actionBtn && !actionBtn.classList.contains('selected')) actionBtn.disabled = true;
+                return;
+            }
+
+            try {
+                const res = await fetch(`/customer/api/check-equipment-availability?equipment_id=${id}&date=${dateVal}&requested_qty=${qtyVal}`);
+                const data = await res.json();
+
+                if (data.available === false) {
+                    if (alertEl) {
+                        alertEl.innerHTML = `<div style="color:#ef4444; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:8px 12px;"><i class="fas fa-exclamation-triangle"></i> ${data.message}</div>`;
+                    }
+                    if (actionBtn && !actionBtn.classList.contains('selected')) {
+                        actionBtn.disabled = true;
+                        actionBtn.style.opacity = '0.5';
+                        actionBtn.style.cursor = 'not-allowed';
+                    }
+                } else {
+                    if (alertEl) {
+                        alertEl.innerHTML = `<div style="color:#16a34a; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:8px 12px;"><i class="fas fa-check-circle"></i> ${data.available_qty} units available for this date.</div>`;
+                    }
+                    if (actionBtn && !actionBtn.classList.contains('selected')) {
+                        actionBtn.disabled = false;
+                        actionBtn.style.opacity = '1';
+                        actionBtn.style.cursor = 'pointer';
+                    }
+                }
+            } catch (err) {
+                console.error("Availability check error:", err);
+            }
+        };
+
+        window.toggleInventoryModalItem = function(id, type) {
+            const item = window.hubInventoryItems.find(i => String(i.id) === String(id) && i.type === type);
+            if (!item) return;
+            const isEquipment = type === 'Equipment';
+            const qty = document.getElementById(`mq-${type}-${id}`);
+            const dateInput = document.getElementById(`rental-date-${id}`);
+            const btn = document.getElementById(`mbtn-${type}-${id}`);
+            const qtyVal = qty ? (parseInt(qty.value) || 1) : 1;
+            const rentalDate = dateInput ? dateInput.value : '';
+
+            const idx = window.selectedItems.findIndex(i => String(i.id) === String(id) && i.type === type);
+
+            if (idx === -1) {
+                const price = parseFloat(item.price || 0);
+                const subtotal = qtyVal * price;
+                const downpayment = subtotal * 0.5;
+                const remaining = subtotal - downpayment;
+
+                window.selectedItems.push({
+                    id: String(id),
+                    name: item.name,
+                    price: price,
+                    qty: qtyVal,
+                    type: type,
+                    pricing_unit: item.pricing_unit,
+                    rental_date: rentalDate,
+                    subtotal: subtotal,
+                    downpayment: downpayment,
+                    remaining: remaining
+                });
+
+                if (btn) {
+                    btn.classList.add('selected');
+                    btn.innerHTML = '<i class="fas fa-check"></i> ' + (isEquipment ? 'Rented' : 'Booked');
+                }
+                if (qty) qty.disabled = true;
+                if (dateInput) dateInput.disabled = true;
+            } else {
+                window.selectedItems.splice(idx, 1);
+                if (btn) {
+                    btn.classList.remove('selected');
+                    btn.innerHTML = isEquipment ? '<i class="fas fa-chair"></i> Rent Equipment' : '<i class="fas fa-plus"></i> Book Service';
+                }
+                if (qty) qty.disabled = false;
+                if (dateInput) dateInput.disabled = false;
+                if (isEquipment) window.onEquipmentRentalChange(id);
+            }
+            window.updateCartUI();
         };
 
         window.openCategoryModal = function(cat) {

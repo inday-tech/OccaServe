@@ -421,6 +421,10 @@ async def create_manual_booking(
             if not representative_name:
                 raise HTTPException(status_code=400, detail="manRepName|Contact Person / Event Representative name is required.")
             customer_name = representative_name
+        elif event_type.lower() == "equipment rental":
+            customer_name = data.get("full_name", "").strip() or data.get("customer_name", "").strip()
+            if not customer_name:
+                raise HTTPException(status_code=400, detail="error-eqRentalName|Customer full name is required for Equipment Rental.")
         else:
             # Fallback or generic event type
             full_name = data.get("full_name", "").strip()
@@ -444,10 +448,17 @@ async def create_manual_booking(
         direct_venue = data.get("venue", "").strip()
 
         # Operational Domain Check (Laguna Jurisdiction Enforcement)
-        if province.lower() != "laguna":
+        if event_type.lower() == "equipment rental":
+            if not province: province = "Laguna"
+            if not municipality:
+                municipality = (user.caterer_profile.city_municipality if user.caterer_profile and user.caterer_profile.city_municipality else "Calamba")
+            if not barangay: barangay = "Poblacion"
+            if not street_address: street_address = "Caterer Premises / Walk-in Pickup"
+            clean_address = direct_address or f"{street_address}, Brgy. {barangay}, {municipality}, {province}"
+            venue_address = direct_venue or f"Equipment Rental — {clean_address}"
+        elif province.lower() != "laguna":
             raise HTTPException(status_code=400, detail="extProvince|Operational domain is restricted to Laguna Province.")
-        
-        if street_address and barangay and municipality and province:
+        elif street_address and barangay and municipality and province:
             formatted_addr_parts = [street_address, f"Brgy. {barangay}", municipality, province]
             if postal_code:
                 formatted_addr_parts.append(postal_code)
@@ -549,13 +560,13 @@ async def create_manual_booking(
 
         # Package Constraint Check
         package_id = data.get("package_id")
-        guest_count = int(data.get("guest_count", 0))
+        guest_count = int(data.get("guest_count", 0) or 0)
         if package_id:
             package = db.query(models.CateringPackage).get(package_id)
             if package:
                 min_guests = package.min_guests or 1
                 if guest_count < min_guests:
-                    raise HTTPException(status_code=400, detail=f"manGuests|The selected package '{package.name}' requires a minimum of {min_guests} guests.")
+                    guest_count = min_guests
 
         existing_on_date = db.query(models.Booking).filter(
             models.Booking.caterer_id == user.caterer_profile.id,
@@ -608,15 +619,36 @@ async def create_manual_booking(
         
         # Services & Walk-in Metadata
         services = data.get("services", [])
+        equipment_items = data.get("equipment_items", [])
         motif_theme = data.get("motif_theme", "").strip()
 
         # Build quotation data
         quotation_items = data.get("quotation_items", [])
         if not quotation_items and services:
             quotation_items = services
+        elif not quotation_items and equipment_items:
+            quotation_items = [
+                {
+                    "name": eq.get("name", "Equipment"),
+                    "price": float(eq.get("price", 0) or eq.get("rental_price", 0) or 0) * int(eq.get("qty", 1) or 1),
+                    "qty": int(eq.get("qty", 1) or 1),
+                    "item_type": "equipment"
+                }
+                for eq in equipment_items
+            ]
 
-        # If walk-in services provided, validate every item has positive price and compute authoritative total
-        if services:
+        # Authoritative Total Amount Computation
+        if package_id:
+            pkg_obj = db.query(models.CateringPackage).get(package_id)
+            total_amt = round(float(pkg_obj.price if (pkg_obj and pkg_obj.price) else (data.get("total_amount", 0) or 0)), 2)
+        elif event_type.lower() == "equipment rental" or equipment_items:
+            computed_eq_total = 0.0
+            for eq in equipment_items:
+                eq_price = float(eq.get("price", 0) or eq.get("rental_price", 0) or 0)
+                eq_qty = int(eq.get("qty", 1) or eq.get("quantity", 1) or 1)
+                computed_eq_total += (eq_price * eq_qty)
+            total_amt = round(computed_eq_total if computed_eq_total > 0 else float(data.get("total_amount", 0) or 0), 2)
+        elif services:
             computed_services_total = 0.0
             for s in services:
                 s_price = float(s.get("price", 0) or 0)
@@ -664,7 +696,9 @@ async def create_manual_booking(
             "celebrant_name": celebrant_name,
             "representative_name": representative_name,
             "motif_theme": motif_theme,
+            "package_id": package_id,
             "services": services,
+            "equipment_items": equipment_items,
             "quotation_items": quotation_items,
             "discount_amount": discount_amount,
             "has_downpayment": has_downpayment,
@@ -715,13 +749,30 @@ async def create_manual_booking(
             db.add(pay_record)
 
         # Build synthetic package details for audit trail
-        synthetic_package_details = {
-            "name": f"Walk-in {event_type} Booking",
-            "description": "Walk-in generated services and inclusions",
-            "base_amount": total_amt,
-            "guest_count": guest_count or 1,
-            "unit_price": total_amt / (guest_count or 1)
-        }
+        if package_id and package:
+            synthetic_package_details = {
+                "name": package.name,
+                "description": package.description or f"Package {package.name}",
+                "base_amount": total_amt,
+                "guest_count": guest_count or package.min_guests or 1,
+                "unit_price": total_amt / (guest_count or package.min_guests or 1)
+            }
+        elif event_type.lower() == "equipment rental":
+            synthetic_package_details = {
+                "name": "Equipment Rental",
+                "description": "Independent Equipment Rental",
+                "base_amount": total_amt,
+                "guest_count": 1,
+                "unit_price": total_amt
+            }
+        else:
+            synthetic_package_details = {
+                "name": f"Walk-in {event_type} Booking",
+                "description": "Walk-in generated services and inclusions",
+                "base_amount": total_amt,
+                "guest_count": guest_count or 1,
+                "unit_price": total_amt / (guest_count or 1)
+            }
 
         # Save to Quotation table for audit trail
         quotation = models.Quotation(
@@ -736,7 +787,7 @@ async def create_manual_booking(
         )
         db.add(quotation)
 
-        # 3. Handle Selected Menu Items (Add-ons or Package items)
+        # 3. Handle Selected Menu Items & Equipment Items
         menu_item_ids = data.get("menu_items", [])
         if menu_item_ids:
             for mi_id in menu_item_ids:
@@ -749,6 +800,24 @@ async def create_manual_booking(
                         price=mi.addon_price or mi.price or 0
                     )
                     db.add(sel_item)
+
+        if equipment_items:
+            for eq_data in equipment_items:
+                raw_eq_id = eq_data.get("id") or eq_data.get("equipment_id")
+                if raw_eq_id:
+                    try:
+                        eq_id_int = int(str(raw_eq_id).replace("eq_", ""))
+                        eq_qty = int(eq_data.get("qty", 1) or 1)
+                        eq_price = float(eq_data.get("price", 0) or eq_data.get("rental_price", 0) or 0)
+                        eq_item_rec = models.BookingMenuItem(
+                            booking_id=new_booking.id,
+                            equipment_id=eq_id_int,
+                            quantity=eq_qty,
+                            price=eq_price
+                        )
+                        db.add(eq_item_rec)
+                    except Exception:
+                        pass
         
         # 4. Add History
         history = models.BookingHistory(
@@ -3299,7 +3368,21 @@ async def caterer_calendar(
         menu_items_list = []
         if hasattr(p, 'menu_items') and p.menu_items:
             for m in p.menu_items:
-                menu_items_list.append({"name": m.name, "category": m.category})
+                menu_items_list.append({"name": m.name, "category": m.category, "description": m.description or ""})
+        
+        # Get service inclusions
+        services_list = []
+        if hasattr(p, 'service_links') and p.service_links:
+            for sl in p.service_links:
+                if sl.service:
+                    services_list.append({"name": sl.service.name, "quantity": sl.quantity or 1, "category": sl.service.category or "General"})
+        
+        # Get equipment inclusions
+        equipment_list = []
+        if hasattr(p, 'equipment_links') and p.equipment_links:
+            for el in p.equipment_links:
+                if el.equipment:
+                    equipment_list.append({"name": el.equipment.name, "quantity": el.quantity or 1, "unit_type": el.equipment.unit_type or "piece"})
         
         # Get inclusions
         incs = p.inclusions if hasattr(p, 'inclusions') and p.inclusions else {}
@@ -3308,7 +3391,12 @@ async def caterer_calendar(
             "name": p.name,
             "price": float(p.price) if p.price else 0,
             "min_guests": p.min_guests or 1,
+            "max_guests": p.max_guests,
+            "service_type": p.service_type or "General",
+            "description": p.description or "",
             "menu": menu_items_list,
+            "services": services_list,
+            "equipment": equipment_list,
             "inclusions": incs
         }
     
@@ -3352,6 +3440,7 @@ async def caterer_calendar(
         "bookings": tracker_bookings,
         "current_date": current_date,
         "packages": packages,
+        "equipment_items": equipment_items,
         "package_map_json": package_map_json,
         "catalog_json": catalog_json,
         "caterer_services": caterer_services,
@@ -3373,62 +3462,7 @@ async def manage_packages(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    profile = user.caterer_profile
-    active_packages = [p for p in profile.packages if p.status != 'archived']
-    
-    # Filter menu items (Dishes)
-    service_cats = ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
-    active_menu = [m for m in profile.menu_items if not m.is_archived and m.category not in service_cats and (getattr(m, 'usage_type', 'both') != 'order_only' or getattr(m, 'is_addon', False))]
-    
-    # Compile Inventory & Services
-    equipment_items = [e for e in profile.equipment_items if not e.is_archived and e.status == 'available' and (getattr(e, 'usage_type', 'both') != 'order_only' or getattr(e, 'is_addon', False))]
-    service_items = [s for s in profile.service_items if not s.is_archived and s.status == 'available' and (getattr(s, 'usage_type', 'both') != 'order_only' or getattr(s, 'is_addon', False))]
-    legacy_items = [m for m in profile.menu_items if not m.is_archived and m.status == 'available' and m.category in service_cats and (getattr(m, 'usage_type', 'both') != 'order_only' or getattr(m, 'is_addon', False))]
-    
-    # Unify them into a dictionary format compatible with the template
-    active_services = []
-    for e in equipment_items:
-        active_services.append({
-            "id": f"eq_{e.id}",
-            "real_id": e.id,
-            "type": "Equipment",
-            "name": e.name,
-            "category": e.category,
-            "cost_price": e.cost_value,
-            "image_url": e.image_url,
-            "is_addon": e.is_addon
-        })
-    for s in service_items:
-        active_services.append({
-            "id": f"svc_{s.id}",
-            "real_id": s.id,
-            "type": "Service",
-            "name": s.name,
-            "category": s.category,
-            "cost_price": s.cost,
-            "image_url": s.image_url,
-            "is_addon": s.is_addon
-        })
-    for m in legacy_items:
-        active_services.append({
-            "id": m.id, # legacy uses int ID
-            "real_id": m.id,
-            "type": "Legacy",
-            "name": m.name,
-            "category": m.category,
-            "cost_price": m.cost_price,
-            "image_url": m.image_url,
-            "is_addon": m.is_addon
-        })
-        
-    return templates.TemplateResponse("caterer/packages.html", {
-        "request": request,
-        "user": user,
-        "packages": active_packages,
-        "menu_items": active_menu,
-        "services": active_services,
-        "active_page": "packages"
-    })
+    return RedirectResponse(url="/caterer/services?tab=packages", status_code=303)
 
 @router.get("/menu", response_class=HTMLResponse)
 async def manage_menu(
@@ -3436,14 +3470,7 @@ async def manage_menu(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    service_cats = ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
-    active_menu = [m for m in user.caterer_profile.menu_items if not m.is_archived and m.category not in service_cats]
-    return templates.TemplateResponse("caterer/menu.html", {
-        "request": request,
-        "user": user,
-        "menu_items": active_menu,
-        "active_page": "menu"
-    })
+    return RedirectResponse(url="/caterer/services", status_code=303)
 
 @router.get("/services", response_class=HTMLResponse)
 async def manage_services(
@@ -3451,12 +3478,14 @@ async def manage_services(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    equipment_items = [e for e in user.caterer_profile.equipment_items if not e.is_archived]
-    service_items = [s for s in user.caterer_profile.service_items if not s.is_archived]
+    profile = user.caterer_profile
+    active_packages = [p for p in profile.packages if p.status != 'archived']
+    equipment_items = [e for e in profile.equipment_items if not e.is_archived]
+    service_items = [s for s in profile.service_items if not s.is_archived]
     
     # Legacy items in menu_items table
     service_cats = ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
-    legacy_items = [m for m in user.caterer_profile.menu_items if not m.is_archived and m.category in service_cats]
+    legacy_items = [m for m in profile.menu_items if not m.is_archived and m.category in service_cats]
     
     # Unify them for the frontend
     items = []
@@ -3525,6 +3554,7 @@ async def manage_services(
         "request": request,
         "user": user,
         "items": items,
+        "packages": active_packages,
         "active_page": "services"
     })
 
@@ -3963,7 +3993,7 @@ async def add_package(
         error_msg = " | ".join(errors)
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return JSONResponse({"status": "error", "message": error_msg}, status_code=400)
-        return RedirectResponse(url=f"/caterer/packages?error_msg={error_msg}", status_code=303)
+        return RedirectResponse(url=f"/caterer/services?tab=packages&error_msg={error_msg}", status_code=303)
 
     import base64
     image_url = None
@@ -4073,7 +4103,7 @@ async def add_package(
             "package_name": new_pkg.name
         })
 
-    return RedirectResponse(url="/caterer/packages?success_msg=Package+added+successfully", status_code=303)
+    return RedirectResponse(url="/caterer/services?tab=packages&success_msg=Package+added+successfully", status_code=303)
 
 @router.post("/packages/{package_id}/toggle")
 async def toggle_package_status(
@@ -4764,7 +4794,7 @@ async def update_package(
         error_msg = " | ".join(errors)
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return JSONResponse({"status": "error", "message": error_msg}, status_code=400)
-        return RedirectResponse(url=f"/caterer/packages?error_msg={error_msg}", status_code=303)
+        return RedirectResponse(url=f"/caterer/services?tab=packages&error_msg={error_msg}", status_code=303)
 
     package.name = name
     package.description = description
@@ -4856,7 +4886,7 @@ async def update_package(
             "package_name": package.name
         })
 
-    return RedirectResponse(url="/caterer/packages", status_code=303)
+    return RedirectResponse(url="/caterer/services?tab=packages", status_code=303)
 
 @router.post("/packages/{package_id}/archive")
 async def archive_package_caterer(
