@@ -1148,7 +1148,6 @@
     <!-- TABS NAVIGATION -->
     <div class="hub-tabs">
         <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-packages')" class="tab-btn active">Packages</a>
-        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-menu')" class="tab-btn">Menu</a>
         <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-services')" class="tab-btn">Services</a>
         <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-equipment')" class="tab-btn">Equipment</a>
         <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-portfolio')" class="tab-btn">Gallery</a>
@@ -1538,11 +1537,6 @@
                             <span class="smb-lab">Experience Years</span>
                         </div>
                         <div class="stat-mini-box">
-                            <i class="fas fa-utensils smb-icon"></i>
-                            <span class="smb-val">{{ active_menu|length }}</span>
-                            <span class="smb-lab">Food Options</span>
-                        </div>
-                        <div class="stat-mini-box">
                             <i class="fas fa-award smb-icon"></i>
                             <span class="smb-val">{{ (caterer.rating * 20)|int if caterer.rating else 100 }}%</span>
                             <span class="smb-lab">Trust Score</span>
@@ -1630,117 +1624,6 @@
                 </div>
                 {% endif %}
             </div> <!-- Closes hub-tab-packages -->
-
-            <!-- MENU TAB -->
-            <div id="hub-tab-menu" class="tab-content">
-                <div class="intel-card" style="padding: 1.75rem;">
-                    <h2 class="section-title">Food Menu</h2>
-                    
-                    {% if active_menu %}
-                    {% set categories = [] %}
-                    {% for item in active_menu %}
-                        {% if item.category and item.category not in categories %}
-                            {% set _ = categories.append(item.category) %}
-                        {% endif %}
-                    {% endfor %}
-                    
-                    <!-- Inline Category Filter (Foodpanda Style) -->
-                    <div class="category-hub" id="menu-category-filter">
-                        <button class="category-chip active" onclick="filterMenu('all', this)">All Dishes</button>
-                        {% for cat in categories %}
-                        <button class="category-chip" onclick="filterMenu('{{ cat }}', this)">{{ cat }}</button>
-                        {% endfor %}
-                    </div>
-
-                    <div class="dish-grid" id="menu-dish-grid">
-                        {% for item in active_menu %}
-                        {% set item_price = item.price or 0 %}
-                        {% if item.variants and item.variants|length > 0 %}
-                            {% set available_vars = item.variants | selectattr('status', 'equalto', 'available') | list %}
-                            {% if available_vars %}
-                                {% set item_price = available_vars[0].price %}
-                            {% else %}
-                                {% set item_price = item.variants[0].price %}
-                            {% endif %}
-                        {% elif item.pricing_type == 'weight_based' and item.weight_prices %}
-                            {% set item_price = item.weight_prices[0].price %}
-                        {% elif item.pricing_type == 'size_based' and item.size_prices %}
-                            {% set item_price = item.size_prices[0].price %}
-                        {% endif %}
-
-                        <div class="elite-item-card menu-item-display" data-category="{{ item.category }}">
-                            <div class="ei-img-box">
-                                <img src="{{ item.image_url if item.image_url else 'https://ui-avatars.com/api/?name=' ~ (item.name|urlencode) ~ '&background=f1f5f9&color=FF7B54' }}" class="ei-img">
-                            </div>
-                            <div class="ei-body" style="padding: 1rem;">
-                                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                                    <span class="ei-cat">{{ item.category }}</span>
-                                    {% if item.average_rating and item.average_rating > 0 %}
-                                    <span style="font-size:0.65rem; font-weight:800; color:#b45309; background:rgba(245, 158, 11, 0.1); padding:2px 6px; border-radius:100px;">
-                                        <i class="fas fa-star"></i> {{ "%.1f"|format(item.average_rating) }} ({{ item.review_count }})
-                                    </span>
-                                    {% endif %}
-                                </div>
-                                <span class="ei-name" style="min-height: auto; margin-top: 4px;">{{ item.name }}</span>
-                                <span class="ei-price" style="font-size: 1rem; margin-top: 4px;">₱{{ "{:,.2f}".format(item_price) }} <span style="font-size: 0.7rem; color: var(--hub-slate-400); font-weight: 700; text-transform: uppercase;">/ {{ item.serving_style or item.pricing_unit or 'Order' }}</span></span>
-                                
-                                {% if item.serving_size or item.serving_capacity %}
-                                <div style="font-size:0.7rem; color:var(--hub-slate-500); margin-top:4px;">
-                                    <i class="fas fa-user-friends"></i> {{ item.serving_capacity if item.serving_capacity else item.serving_size }}
-                                </div>
-                                {% endif %}
-                                
-                                {% if item.description %}
-                                <p style="font-size:0.75rem; color:var(--hub-slate-500); margin-top:8px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
-                                    {{ item.description }}
-                                </p>
-                                {% endif %}
-                                
-                                {% if item.is_combo and item.combo_options %}
-                                <details style="margin-top:8px;">
-                                    <summary style="font-size:0.7rem; font-weight:700; color:var(--hub-slate-500); background:var(--hub-slate-100); padding:6px 12px; border-radius:6px; cursor:pointer; list-style:none; display:flex; justify-content:space-between; align-items:center;">
-                                        <span>View Inclusions</span>
-                                        <i class="fas fa-chevron-down" style="font-size:0.6rem;"></i>
-                                    </summary>
-                                    <div style="font-size:0.75rem; color:var(--hub-text-dark); margin-top:4px; background:var(--hub-slate-50); padding:8px; border-radius:8px; border:1px solid var(--hub-slate-200); max-height:100px; overflow-y:auto;" class="custom-scrollbar">
-                                        <ul style="margin:0; padding-left:14px; display:flex; flex-direction:column; gap:2px;">
-                                        {% if item.combo_options is mapping %}
-                                            {% if item.combo_options.get('included_menu_ids') %}
-                                                {% for id in item.combo_options['included_menu_ids'] %}
-                                                    {% set found = namespace(name='') %}
-                                                    {% for m in active_menu %}
-                                                        {% if m.id == id %}{% set found.name = m.name %}{% endif %}
-                                                    {% endfor %}
-                                                    {% if found.name %}<li>{{ found.name }}</li>{% endif %}
-                                                {% endfor %}
-                                            {% endif %}
-                                            {% if item.combo_options.get('custom_items') %}
-                                                {% for cust in item.combo_options['custom_items'].split(',') %}
-                                                    {% if cust.strip() %}<li>{{ cust.strip() }}</li>{% endif %}
-                                                {% endfor %}
-                                            {% endif %}
-                                        {% elif item.combo_options is sequence and not item.combo_options is string %}
-                                            {% for opt in item.combo_options %}
-                                                <li>{{ opt }}</li>
-                                            {% endfor %}
-                                        {% endif %}
-                                        </ul>
-                                    </div>
-                                </details>
-                                {% endif %}
-                                
-                                <button type="button" onclick="window.openDishDetails({{ item.id }})" class="btn-elite-sm" style="margin-top:auto;">
-                                    View Details
-                                </button>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <p style="color: var(--hub-slate-400); font-size: 0.9rem;">No dishes available yet.</p>
-                    {% endif %}
-                </div>
-            </div> <!-- Closes hub-tab-menu -->
 
             <!-- SERVICES TAB -->
             <div id="hub-tab-services" class="tab-content">
@@ -2060,9 +1943,6 @@
                         {% if not caterer_unavailable %}
                         <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-packages')" class="btn-hub-main" style="border-radius: 12px; margin: 0;">
                             <i class="fas fa-bolt"></i> Book Package
-                        </a>
-                        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-menu')" class="btn-elite-sm" style="background: var(--hub-slate-50); color: var(--hub-text-dark); border: 1px solid var(--hub-slate-200); border-radius: 12px; padding: 1rem; font-size: 0.9rem; margin: 0; text-align: center; text-decoration: none;">
-                            <i class="fas fa-utensils"></i> Order Food Menu
                         </a>
                         {% endif %}
                         

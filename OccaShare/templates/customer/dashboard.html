@@ -189,54 +189,86 @@
         color: var(--text-dark);
     }
 
-    /* ── QUICK ACTIONS ── */
-    .qa-grid {
-        display: grid;
-        gap: 0.75rem;
-        padding: 1.25rem;
-    }
-
-    .qa-btn {
+    /* ── CATERER PROFILE QUICK EXPLORE CARDS ── */
+    .caterer-qa-card {
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 0.85rem 1rem;
+        padding: 0.75rem 0.9rem;
         border-radius: 12px;
         background: #f8fafc;
         border: 1px solid var(--dm-slate-100);
         text-decoration: none;
-        transition: all 0.2s;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
     }
 
-    .qa-btn:hover {
-        background: #fff;
+    .caterer-qa-card:hover {
+        background: #ffffff;
         border-color: var(--primary-color);
-        transform: translateX(4px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px -4px rgba(var(--primary-color-rgb, 255, 123, 84), 0.15);
     }
 
-    .qa-icon {
-        width: 36px;
-        height: 36px;
+    .caterer-qa-logo {
+        width: 44px;
+        height: 44px;
         border-radius: 10px;
+        object-fit: cover;
+        border: 1.5px solid #e2e8f0;
+        background: #fff;
+        flex-shrink: 0;
+    }
+
+    .caterer-qa-details {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .caterer-qa-name {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--text-dark, #0f172a);
+        margin: 0 0 2px 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         display: flex;
         align-items: center;
-        justify-content: center;
-        font-size: 1rem;
-        color: var(--primary-color);
-        background: rgba(255, 123, 84, 0.1);
+        gap: 5px;
     }
 
-    .qa-info b {
-        font-size: 0.85rem;
-        color: var(--text-dark);
-        display: block;
+    .caterer-qa-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.72rem;
+        color: var(--dm-slate-500, #64748b);
     }
 
-    .qa-info span {
+    .caterer-qa-rating {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        background: #fef3c7;
+        color: #b45309;
+        font-weight: 800;
         font-size: 0.7rem;
-        color: var(--dm-slate-400);
-        font-weight: 500;
+        padding: 1px 6px;
+        border-radius: 6px;
+    }
+
+    .caterer-qa-arrow {
+        color: #cbd5e1;
+        font-size: 0.8rem;
+        transition: transform 0.2s, color 0.2s;
+        flex-shrink: 0;
+    }
+
+    .caterer-qa-card:hover .caterer-qa-arrow {
+        color: var(--primary-color);
+        transform: translateX(3px);
     }
 
     /* ── DATA GRID ── */
@@ -642,25 +674,46 @@
                 </div>
             </div>
 
-            <!-- Quick Actions Hub -->
+            <!-- Explore Caterers Profile Cards -->
             <div class="panel">
                 <div class="panel-header">
-                    <h3>Quick Actions</h3>
+                    <h3><i class="fas fa-utensils" style="color: var(--primary-color); margin-right: 6px;"></i> Explore Caterers</h3>
+                    <a href="/customer/marketplace" class="panel-link">View All <i class="fas fa-arrow-right" style="font-size: 0.65rem;"></i></a>
                 </div>
-                <div class="qa-grid">
-                    <a href="/customer/marketplace" class="qa-btn">
-                        <div class="qa-icon"><i class="fas fa-store"></i></div>
-                        <div class="qa-info">
-                            <b>Marketplace</b>
-                            <span>Find caterers</span>
+                <div style="display: flex; flex-direction: column; gap: 0.65rem; padding: 1rem 1.25rem;">
+                    {% if featured_caterers %}
+                        {% for cat in featured_caterers[:3] %}
+                        <a href="/caterers/{{ cat.id }}" class="caterer-qa-card">
+                            <img src="{{ cat.logo_url or 'https://ui-avatars.com/api/?name=' ~ (cat.business_name|urlencode) ~ '&background=f1f5f9' }}" 
+                                 alt="{{ cat.business_name }}" 
+                                 class="caterer-qa-logo"
+                                 onerror="this.src='https://ui-avatars.com/api/?name={{ cat.business_name|urlencode }}&background=f1f5f9';">
+                            <div class="caterer-qa-details">
+                                <div class="caterer-qa-name">
+                                    {{ cat.business_name }}
+                                    {% if cat.is_verified or cat.verification_status == 'Verified' %}
+                                    <i class="fas fa-certificate" style="color: #3b82f6; font-size: 0.72rem;" title="Verified Caterer"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="caterer-qa-meta">
+                                    <span class="caterer-qa-rating">
+                                        <i class="fas fa-star" style="font-size: 0.65rem;"></i> {{ "%.1f"|format(cat.rating or 5.0) }}
+                                    </span>
+                                    <span><i class="fas fa-location-dot" style="font-size: 0.65rem; opacity: 0.7;"></i> {{ cat.city or 'Quezon' }}</span>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-right caterer-qa-arrow"></i>
+                        </a>
+                        {% endfor %}
+                    {% else %}
+                        <div style="text-align: center; padding: 1.5rem 1rem; color: #94a3b8; font-size: 0.85rem;">
+                            <i class="fas fa-store-slash" style="font-size: 1.5rem; margin-bottom: 0.5rem; display: block; opacity: 0.5;"></i>
+                            No caterers available at the moment.
                         </div>
-                    </a>
-                    <a href="/customer/marketplace?sort=rating&rating=4" class="qa-btn">
-                        <div class="qa-icon"><i class="fas fa-star"></i></div>
-                        <div class="qa-info">
-                            <b>Top Rated</b>
-                            <span>Best caterers</span>
-                        </div>
+                    {% endif %}
+
+                    <a href="/customer/marketplace" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0.65rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; font-size: 0.8rem; font-weight: 700; color: #475569; text-decoration: none; margin-top: 0.25rem; transition: all 0.2s;" onmouseover="this.style.background='#fff'; this.style.borderColor='var(--primary-color)'; this.style.color='var(--primary-color)';" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'; this.style.color='#475569';">
+                        <i class="fas fa-compass"></i> Discover More on Marketplace
                     </a>
                 </div>
             </div>
@@ -926,39 +979,46 @@
             {% endif %}
         </div>
 
-        <!-- Quick Actions Hub -->
+        <!-- Explore Caterers Profile Cards -->
         <div class="panel">
             <div class="panel-header">
-                <h3>Quick Actions</h3>
+                <h3><i class="fas fa-utensils" style="color: var(--primary-color); margin-right: 6px;"></i> Explore Caterers</h3>
+                <a href="/customer/marketplace" class="panel-link">View All <i class="fas fa-arrow-right" style="font-size: 0.65rem;"></i></a>
             </div>
-            <div class="qa-grid">
-                <a href="/customer/marketplace" class="qa-btn">
-                    <div class="qa-icon"><i class="fas fa-store"></i></div>
-                    <div class="qa-info">
-                        <b>Find Caterers</b>
-                        <span>Browse marketplace</span>
+            <div style="display: flex; flex-direction: column; gap: 0.65rem; padding: 1rem 1.25rem;">
+                {% if featured_caterers %}
+                    {% for cat in featured_caterers[:4] %}
+                    <a href="/caterers/{{ cat.id }}" class="caterer-qa-card">
+                        <img src="{{ cat.logo_url or 'https://ui-avatars.com/api/?name=' ~ (cat.business_name|urlencode) ~ '&background=f1f5f9' }}" 
+                             alt="{{ cat.business_name }}" 
+                             class="caterer-qa-logo"
+                             onerror="this.src='https://ui-avatars.com/api/?name={{ cat.business_name|urlencode }}&background=f1f5f9';">
+                        <div class="caterer-qa-details">
+                            <div class="caterer-qa-name">
+                                {{ cat.business_name }}
+                                {% if cat.is_verified or cat.verification_status == 'Verified' %}
+                                <i class="fas fa-certificate" style="color: #3b82f6; font-size: 0.72rem;" title="Verified Caterer"></i>
+                                {% endif %}
+                            </div>
+                            <div class="caterer-qa-meta">
+                                <span class="caterer-qa-rating">
+                                    <i class="fas fa-star" style="font-size: 0.65rem;"></i> {{ "%.1f"|format(cat.rating or 5.0) }}
+                                </span>
+                                <span><i class="fas fa-location-dot" style="font-size: 0.65rem; opacity: 0.7;"></i> {{ cat.city or 'Quezon' }}</span>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right caterer-qa-arrow"></i>
+                    </a>
+                    {% endfor %}
+                {% else %}
+                    <div style="text-align: center; padding: 1.5rem 1rem; color: #94a3b8; font-size: 0.85rem;">
+                        <i class="fas fa-store-slash" style="font-size: 1.5rem; margin-bottom: 0.5rem; display: block; opacity: 0.5;"></i>
+                        No caterers available at the moment.
                     </div>
-                </a>
-                <a href="/customer/marketplace?sort=rating&rating=4" class="qa-btn">
-                    <div class="qa-icon"><i class="fas fa-star"></i></div>
-                    <div class="qa-info">
-                        <b>Top Rated</b>
-                        <span>Best caterers</span>
-                    </div>
-                </a>
-                <a href="/customer/bookings" class="qa-btn">
-                    <div class="qa-icon"><i class="fas fa-calendar-check"></i></div>
-                    <div class="qa-info">
-                        <b>Track Bookings</b>
-                        <span>View your booking status</span>
-                    </div>
-                </a>
-                <a href="/customer/payments" class="qa-btn">
-                    <div class="qa-icon"><i class="fas fa-file-invoice-dollar"></i></div>
-                    <div class="qa-info">
-                        <b>Billing & Payments</b>
-                        <span>View payments and receipts</span>
-                    </div>
+                {% endif %}
+
+                <a href="/customer/marketplace" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0.65rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; font-size: 0.8rem; font-weight: 700; color: #475569; text-decoration: none; margin-top: 0.25rem; transition: all 0.2s;" onmouseover="this.style.background='#fff'; this.style.borderColor='var(--primary-color)'; this.style.color='var(--primary-color)';" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'; this.style.color='#475569';">
+                    <i class="fas fa-compass"></i> Discover More on Marketplace
                 </a>
             </div>
         </div>

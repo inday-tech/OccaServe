@@ -542,8 +542,7 @@ Carte Checkout') }}{% endblock %}
     <div class="wizard-steps">
         <div class="step-item active" id="m-step-1">
             <div class="step-icon">1</div>
-            <div class="step-label">{{ 'Checkout Details' if is_mixed else ('Rental Details' if is_rental else
-                'Delivery') }}</div>
+            <div class="step-label">{{ 'Service Details' if has_services and not is_rental else ('Rental Details' if is_rental else 'Booking Details') }}</div>
         </div>
         <div class="step-item" id="m-step-2">
             <div class="step-icon">2</div>
@@ -554,34 +553,31 @@ Carte Checkout') }}{% endblock %}
     <div class="details-grid">
         <div class="form-area">
             <form id="checkoutForm">
-                <!-- STEP 1: DELIVERY INFORMATION -->
+                <!-- STEP 1: FULFILLMENT / BOOKING DETAILS -->
                 <div class="checkout-screen active" id="screen-1">
                     <div class="c-card-premium">
                         <div class="section-header-wrap">
                             <div class="section-icon-wrap">
                                 <i
-                                    class="fas {% if is_mixed %}fa-box-open{% elif has_services and not has_food %}fa-map-marker-alt{% else %}fa-truck{% endif %}"></i>
+                                    class="fas {% if is_rental %}fa-truck{% elif has_services %}fa-map-marker-alt{% else %}fa-calendar-check{% endif %}"></i>
                             </div>
                             <h3 class="form-section-title">
-                                {% if is_mixed %}
-                                Fulfillment Details
-                                {% elif has_services and not has_food %}
+                                {% if has_services and not is_rental %}
                                 Service & Location Details
-                                {% elif is_rental %}
+                                {% elif is_rental and not has_services %}
                                 Equipment Rental Details
                                 {% else %}
-                                Delivery Information
+                                Booking & Fulfillment Details
                                 {% endif %}
                             </h3>
                         </div>
                         <p class="form-subtitle">
-                            {% if is_mixed %}
-                            Please provide details for the fulfillment of your mixed order.
-                            {% elif has_services and not has_food %}
+                            {% if has_services and not is_rental %}
                             Please provide the venue address where the service will take place.
+                            {% elif is_rental and not has_services %}
+                            Please tell us how and when you want to receive your equipment.
                             {% else %}
-                            {% if is_rental %}Please tell us how you want to receive your equipment.{% else %}Please
-                            tell us how you want to receive your order.{% endif %}
+                            Please provide the schedule and location details for your booking.
                             {% endif %}
                         </p>
 
@@ -596,22 +592,19 @@ Carte Checkout') }}{% endblock %}
                                     </div>
                                     <div class="fulfillment-details">
                                         <div class="fulfillment-name" id="lbl_fulfill_del">
-                                            {% if is_mixed %}Event Delivery & Setup{% elif has_services and not has_food
-                                            %}On-Site Service{% elif is_rental %}Delivery & Setup{% else %}Delivery{%
-                                            endif %}
+                                            {% if has_services and not is_rental %}On-Site Service & Setup{% elif is_rental %}Event Delivery & Setup{% else %}Event Delivery & Setup{% endif %}
                                         </div>
                                         <div class="fulfillment-hint">Calculated based on location</div>
                                     </div>
                                     <div class="fulfillment-check"><i class="fas fa-check"></i></div>
                                 </label>
-                                {% if not (has_services and not has_food and not is_rental) %}
+                                {% if not (has_services and not is_rental) %}
                                 <label class="fulfillment-opt">
                                     <input type="radio" name="fulfillment" value="pickup"
                                         onchange="updateFulfillment(this)" style="display: none;">
                                     <div class="fulfillment-icon"><i class="fas fa-store"></i></div>
                                     <div class="fulfillment-details">
-                                        <div class="fulfillment-name" id="lbl_fulfill_pick">{{ 'Self-Collect' if
-                                            is_rental else 'Pickup' }}</div>
+                                        <div class="fulfillment-name" id="lbl_fulfill_pick">Self-Collect</div>
                                         <div class="fulfillment-hint">Self-collect (Free)</div>
                                     </div>
                                     <div class="fulfillment-check"><i class="fas fa-check"></i></div>
@@ -635,79 +628,23 @@ Carte Checkout') }}{% endblock %}
                             </div>
                         </div>
 
-                        <!-- PLATTER BUILDER SECTION -->
-                        {% set has_combos = false %}
-                        {% for item in menu_items %}
-                        {% if item.is_combo %}
-                        {% set has_combos = true %}
-                        {% endif %}
-                        {% endfor %}
 
-                        {% if has_combos %}
-                        <div class="combo-builder-section" style="margin-bottom: 2.5rem;">
-                            <div
-                                style="background:#f0fdfa; border:1px solid #14b8a6; border-radius:1rem; padding:1.5rem;">
-                                <h3 style="color: #0f766e; font-size: 1.1rem; font-weight: 800; margin-bottom: 0.5rem;">
-                                    <i class="fas fa-utensils"></i> Platter / Combo Configuration</h3>
-                                <p style="font-size: 0.8rem; color: #0d9488; margin-bottom: 1.5rem;">Please select your
-                                    choices for your platters.</p>
-
-                                {% for item in menu_items %}
-                                {% if item.is_combo %}
-                                <div class="combo-item-box"
-                                    style="background: white; border-radius: 0.75rem; padding: 1.25rem; margin-bottom: 1rem; border: 1px solid #ccfbf1;">
-                                    <div
-                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                        <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #1e293b;">{{
-                                            item.name }}</h4>
-                                        <span class="combo-counter" id="counter-combo-{{ item.id }}"
-                                            style="font-size: 0.75rem; font-weight: 800; color: #0f766e; background: #ccfbf1; padding: 2px 8px; border-radius: 99px;">0
-                                            / {{ item.max_choices }} Selected</span>
-                                    </div>
-
-                                    <div class="combo-options-grid" data-limit="{{ item.max_choices }}"
-                                        data-id="{{ item.id }}"
-                                        style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
-                                        {% if item.combo_options and item.combo_options is sequence and not
-                                        item.combo_options is string %}
-                                        {% for opt in item.combo_options %}
-                                        <label class="combo-opt-card"
-                                            style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s;">
-                                            <input type="checkbox" class="combo-checkbox" value="{{ opt }}"
-                                                onchange="handleComboSelection(this)"
-                                                style="accent-color: #14b8a6; width: 1.1rem; height: 1.1rem;">
-                                            <span style="font-size: 0.85rem; font-weight: 700; color: #334155;">{{ opt
-                                                }}</span>
-                                        </label>
-                                        {% endfor %}
-                                        {% elif item.combo_options and item.combo_options is mapping %}
-                                        <div style="grid-column: 1 / -1; font-size: 0.85rem; color: #64748b;">
-                                            <i>This is a preset combo. The inclusions are fixed.</i>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                {% endif %}
-                                {% endfor %}
-                            </div>
-                        </div>
-                        {% endif %}
 
                         <div class="grid-2-col"
                             style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                             <div class="form-group">
-                                <label>Recipient Full Name</label>
+                                <label>Contact Person (Editable for Proxy Bookings)</label>
                                 <input type="text" name="full_name" id="full_name" class="form-input"
                                     value="{{ (booking.custom_requirements.get('recipient_name') if (booking and booking.custom_requirements) else user.name) or '' }}"
                                     required>
-                                <span class="field-error" id="err-full_name">Recipient name is required.</span>
+                                <span class="field-error" id="err-full_name">Contact person is required.</span>
                             </div>
                             <div class="form-group">
                                 <label>Contact Number (Editable)</label>
                                 <input type="tel" name="contact_number" id="contact_number" class="form-input"
                                     value="{{ (booking.custom_requirements.get('recipient_contact') if (booking and booking.custom_requirements) else user.phone_number) or '' }}"
                                     required>
-                                <span class="field-error" id="err-contact_number">Recipient contact number is
+                                <span class="field-error" id="err-contact_number">Contact number is
                                     required.</span>
                             </div>
                             <div class="form-group">
@@ -721,8 +658,7 @@ Carte Checkout') }}{% endblock %}
                             style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                             <div class="form-group">
                                 <label id="lbl_delivery_date">
-                                    {% if is_mixed %}Event / Setup Date{% elif has_services and not has_food %}Event
-                                    Date{% elif is_rental %}Delivery / Setup Date{% else %}Delivery Date{% endif %}
+                                    {% if has_services and not is_rental %}Event Date{% elif is_rental %}Event / Rental Date{% else %}Event Date{% endif %}
                                 </label>
                                 <input type="date" name="delivery_date" id="delivery_date" class="form-input"
                                     value="{{ booking.event_date.isoformat() if (booking and booking.event_date) else '' }}"
@@ -731,8 +667,7 @@ Carte Checkout') }}{% endblock %}
                             </div>
                             <div class="form-group">
                                 <label id="lbl_delivery_time">
-                                    {% if is_mixed %}Event / Setup Time{% elif has_services and not has_food %}Call
-                                    Time{% elif is_rental %}Delivery / Setup Time{% else %}Delivery Time{% endif %}
+                                    {% if has_services and not is_rental %}Call Time / Start Time{% elif is_rental %}Delivery / Setup Time{% else %}Start Time{% endif %}
                                 </label>
                                 <input type="time" name="delivery_time" id="delivery_time" class="form-input"
                                     value="{{ booking.event_time.strftime('%H:%M') if (booking and booking.event_time) else '' }}"
@@ -785,8 +720,7 @@ Carte Checkout') }}{% endblock %}
                                     <h4
                                         style="margin: 0 0 4px; font-size: 0.85rem; font-weight: 800; color: var(--up-slate-900); text-transform: uppercase; letter-spacing: 0.05em;">
                                         <i class="fas fa-map-marker-alt"
-                                            style="color: var(--checkout-primary); margin-right: 6px;"></i> Delivery
-                                        Address</h4>
+                                            style="color: var(--checkout-primary); margin-right: 6px;"></i> Event / Delivery Location</h4>
                                     <p id="saved-address-text"
                                         style="margin: 0; font-size: 0.95rem; color: var(--dm-slate-400); font-weight: 500;">
                                         {{ default_address_text if default_address_text else '' }}

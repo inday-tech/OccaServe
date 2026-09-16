@@ -168,14 +168,22 @@ async def customer_dashboard(
     if user.province and user.city_municipality and user.barangay and user.street_address: completion_points += 1
     profile_completion = int((completion_points / 3) * 100)
     
-    # Featured Caterers for FTUX
-    featured_caterers = []
-    if total_bookings == 0:
+    # Featured Caterers to explore in Quick Actions / Explore Caterers section
+    featured_caterers = db.query(models.CatererProfile).filter(
+        models.CatererProfile.status == "Published",
+        models.CatererProfile.verification_status == 'Verified',
+        models.CatererProfile.account_status == 'Active'
+    ).order_by(models.CatererProfile.rating.desc(), models.CatererProfile.review_count.desc()).limit(6).all()
+    
+    # Fallback if no verified caterer profiles yet, query published caterers
+    if not featured_caterers:
         featured_caterers = db.query(models.CatererProfile).filter(
-            models.CatererProfile.status == "Published",
-            models.CatererProfile.verification_status == 'Verified',
-            models.CatererProfile.account_status == 'Active'
-        ).order_by(models.CatererProfile.rating.desc()).limit(3).all()
+            models.CatererProfile.status == "Published"
+        ).order_by(models.CatererProfile.rating.desc()).limit(6).all()
+
+    # Fallback to any caterer profiles if database has test data
+    if not featured_caterers:
+        featured_caterers = db.query(models.CatererProfile).order_by(models.CatererProfile.id.desc()).limit(6).all()
 
     return templates.TemplateResponse("customer/dashboard.html", {
         "request": request,

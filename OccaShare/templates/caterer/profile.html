@@ -427,87 +427,7 @@
 
             <!-- Gallery Section -->
             
-{% if active_menu %}
-            <section class="card-premium p-6">
-                <div class="flex items-center justify-between mb-8">
-                    <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
-                        <span class="w-8 h-[1px] bg-slate-200"></span> Menu
-                    </h2>
-                    <span class="text-[10px] font-black text-accent uppercase bg-accent/10 px-2.5 py-1 rounded-full">
-                        {{ active_menu|length }} Dishes Available
-                    </span>
-                </div>
 
-                {% set categories = [] %}
-                {% for item in active_menu %}
-                {% if item.category not in categories %}
-                {% set _ = categories.append(item.category) %}
-                {% endif %}
-                {% endfor %}
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                    {% for cat in categories %}
-                    {% set cat_items = active_menu|selectattr('category', 'equalto', cat)|list %}
-                    {% set icon_class = get_category_icon(cat)|trim %}
-
-                    {# Extract first active item with valid image in this category #}
-                    {% set active_photo = namespace(url='') %}
-                    {% for item in cat_items %}
-                    {% if item.image_url and not active_photo.url %}
-                    {% set active_photo.url = item.image_url %}
-                    {% endif %}
-                    {% endfor %}
-                    {% set cat_cover_image = active_photo.url if active_photo.url else
-                    'https://ui-avatars.com/api/?name=' ~ (cat|urlencode) ~
-                    '&background=f1f5f9&color=64748b&size=400&font-size=0.2' %}
-
-                    {% set item_names = [] %}
-                    {% for item in cat_items[:3] %}
-                    {% set _ = item_names.append(item.name) %}
-                    {% endfor %}
-                    {% if cat_items|length == 1 %}
-                    {% set dynamic_desc = 'Featuring ' ~ item_names[0] ~ '.' %}
-                    {% else %}
-                    {% set dynamic_desc = cat_items|length ~ ' options available, including ' ~ item_names|join(', ') ~
-                    '.' %}
-                    {% endif %}
-
-                    <div class="group relative rounded-3xl overflow-hidden border border-slate-200 bg-white transition-all duration-300 hover:shadow-xl hover:border-brand/30 flex flex-col cursor-pointer"
-                        onclick="openCategoryShowcase('{{ cat|e }}')">
-
-                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent z-10 pointer-events-none opacity-100 transition-opacity">
-                        </div>
-
-                        <div class="h-32 w-full bg-slate-100 relative overflow-hidden">
-                            <img src="{{ cat_cover_image }}"
-                                onerror="this.src='https://ui-avatars.com/api/?name={{ cat|urlencode }}&background=f1f5f9&color=64748b&size=400&font-size=0.2'"
-                                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                alt="{{ cat }}">
-                            <div class="absolute inset-0 bg-black/10 transition-opacity opacity-100"></div>
-                        </div>
-
-                        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center z-20 border-2 border-white text-slate-400 group-hover:text-brand transition-colors">
-                            <i class="fas {{ icon_class }} text-xl"></i>
-                        </div>
-
-                        <div class="p-6 pt-10 text-center flex-1 flex flex-col">
-                            <div class="flex flex-col items-center mb-3">
-                                <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest mb-1.5 truncate max-w-full px-2">
-                                    {{ cat }}</h3>
-                                <span class="text-[9px] font-bold text-slate-400 bg-slate-100 group-hover:bg-brand group-hover:text-white px-3 py-1 rounded-full transition-colors flex-shrink-0">
-                                    {{ cat_items|length }} Items
-                                </span>
-                            </div>
-
-                            <div class="mt-auto flex items-center justify-center gap-1.5 text-[9px] font-black text-brand uppercase tracking-wider opacity-100 transition-opacity">
-                                Explore Selection <i class="fas fa-arrow-right text-[8px] mt-0.5 animate-bounce"></i>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </section>
-            {% endif %}
 
             <!-- Rentals & Services Section -->
             
@@ -691,11 +611,11 @@
                     </div>
                     <div
                         class="group bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
-                        <div class="mb-2 text-xl text-slate-400 transition-colors"><i class="fas fa-utensils"></i></div>
+                        <div class="mb-2 text-xl text-slate-400 transition-colors"><i class="fas fa-concierge-bell"></i></div>
                         <div class="text-xl font-black text-slate-800">
-                            {{ active_menu|length }}
+                            {{ (caterer.services or [])|length }}
                         </div>
-                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Dishes</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Services</div>
                     </div>
                     <div
                         class="group bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
