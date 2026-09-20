@@ -3,13 +3,6 @@
  * Globally accessible via window.showAlert(), window.showSuccess(), window.showError()
  */
 
-window.showAlert = (options) => {
-    if (!window.Swal) {
-        console.error("SweetAlert2 is not loaded!");
-        alert(options.message);
-        return;
-    }
-
 window.showStandardConfirm = function(options) {
     return new Promise((resolve) => {
         const modal = document.getElementById('globalConfirmModal');

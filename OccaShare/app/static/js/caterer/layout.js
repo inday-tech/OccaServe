@@ -315,6 +315,21 @@
                 if (window.fetchGlobalNotifications) {
                     window.fetchGlobalNotifications(true);
                 }
+            } else if (data.type === 'new_booking_message') {
+                if (typeof window.onNewBookingMessage === 'function') {
+                    window.onNewBookingMessage(data);
+                }
+                
+                const senderName = data.sender_name || 'Customer';
+                const bookingRef = data.booking_id ? `Booking #${data.booking_id}` : 'your booking';
+                showNativeNotification(`New Message from ${senderName}`, data.message || `Message about ${bookingRef}`, `/caterer/bookings`);
+                
+                if (window.showToast) {
+                    window.showToast(`💬 ${senderName}: ${data.message || 'Sent an attachment'}`, "info");
+                }
+                if (window.fetchGlobalNotifications) {
+                    window.fetchGlobalNotifications(true);
+                }
             } else if (data.type === 'booking_update') {
                 showNativeNotification("Booking Update", data.message || "A booking has been updated.", "/caterer/bookings");
 

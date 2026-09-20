@@ -317,6 +317,8 @@
                     alert("An unexpected error occurred. Please try again later.");
                 }
             }
+        };
+
         // Clear address errors on change/input
         ['province_cust', 'city_cust', 'barangay_cust'].forEach(id => {
             const el = document.getElementById(id);
@@ -329,14 +331,13 @@
                 });
             }
         });
-        const streetEl = document.getElementById('street_cust');
-        if (streetEl) {
-            streetEl.addEventListener('input', function() {
+        const streetInputEl = document.getElementById('street_cust');
+        if (streetInputEl) {
+            streetInputEl.addEventListener('input', function() {
                 if (this.value.trim()) {
                     window.setDiamondError('streetCust', "", false);
                 }
             });
         }
-        };
     }
 })();

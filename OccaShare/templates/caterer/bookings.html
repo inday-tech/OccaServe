@@ -107,47 +107,49 @@
     .bookings-list-table {
         border-spacing: 0 !important;
         border-collapse: collapse !important;
+        width: 100%;
     }
     .bookings-list-table th {
-        padding: 0.75rem 1.25rem !important;
+        padding: 0.65rem 1rem !important;
         font-size: 0.68rem !important;
-        font-weight: 700 !important;
-        color: #94a3b8 !important;
-        letter-spacing: 0.07em !important;
+        font-weight: 800 !important;
+        color: #64748b !important;
+        letter-spacing: 0.06em !important;
         background: #f8fafc !important;
-        border-bottom: 1px solid #f0f4f8 !important;
+        border-bottom: 2px solid #e2e8f0 !important;
+        text-transform: uppercase !important;
     }
     .booking-row-item td {
-        padding: 0.9rem 1.25rem !important;
-        border-bottom: 1px solid #f4f6f9 !important;
+        padding: 0.75rem 1rem !important;
+        border-bottom: 1px solid #f1f5f9 !important;
         vertical-align: middle !important;
     }
     .booking-row-item:hover {
-        background: #fafbfd !important;
+        background: #f8fafc !important;
         box-shadow: none !important;
     }
     .booking-row-item:last-child td { border-bottom: none !important; }
 
-    /* Cleaner customer cell */
-    .booking-row-item .customer-name { font-size: 0.88rem; font-weight: 700; color: #0f172a; }
-    .booking-row-item .customer-email { font-size: 0.73rem; color: #94a3b8; font-weight: 400; margin-top: 1px; }
-
-    /* Event name / type */
-    .booking-row-item .event-name-display { font-size: 0.88rem !important; font-weight: 700 !important; color: #0f172a !important; }
-    .booking-row-item td [style*="font-weight: 800; color: #0f172a"] { font-weight: 700 !important; font-size: 0.88rem !important; }
-    .booking-row-item td [style*="text-transform: uppercase; letter-spacing: 0.03em"] { font-size: 0.7rem !important; font-weight: 500 !important; color: #b0bec5 !important; text-transform: none !important; letter-spacing: 0 !important; }
-
-    /* Date cell */
-    .event-date-main { font-size: 0.88rem !important; font-weight: 700 !important; color: #0f172a !important; }
-    .event-time-sub  { font-size: 0.75rem !important; color: #94a3b8 !important; font-weight: 400 !important; }
-
-    /* BK-ID column */
-    .bookings-list-table td:first-child {
-        font-size: 0.78rem !important;
-        font-weight: 600 !important;
-        color: #64748b !important;
-        letter-spacing: 0.04em !important;
-        text-transform: uppercase !important;
+    .booking-source-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 7px;
+        border-radius: 4px;
+        font-weight: 700;
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .badge-source-walkin {
+        background: #ffedd5;
+        color: #c2410c;
+        border: 1px solid #fed7aa;
+    }
+    .badge-source-online {
+        background: #f3e8ff;
+        color: #7e22ce;
+        border: 1px solid #e9d5ff;
     }
 
     /* ══ TABLE DISPLAY & SCROLL WRAPPER ══ */
@@ -522,7 +524,7 @@
     </div>
     <div class="kpi-card-clean kpi-filter-card" id="kpi-card-walkin" onclick="setUniversalFilter('walkin')">
         <div class="kpi-info">
-            <h4 style="display: flex; align-items: center; gap: 6px;"><i class="fas fa-walking" style="color: #c2410c;"></i> WALK-IN BOOKINGS</h4>
+            <h4 style="display: flex; align-items: center; gap: 6px;"><i class="fas fa-clipboard-list" style="color: #c2410c;"></i> MANUAL BOOKINGS</h4>
             <span class="kpi-value" style="color: #c2410c;">{{ walkin_bookings_count|default(0) }}</span>
             <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Staff / manual entries</span>
         </div>
@@ -562,7 +564,7 @@
             <select class="filter-select-pro" id="sourceFilter" onchange="filterBookings()" style="padding: 0.45rem 1.25rem 0.45rem 0.75rem; font-size: 0.82rem; border-radius: 8px; border: 1px solid #cbd5e1; background-color: #fff; color: #334155; font-weight: 600; cursor: pointer; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                 <option value="">Source: All</option>
                 <option value="online">Online</option>
-                <option value="walkin">Walk-in</option>
+                <option value="walkin">Manual</option>
             </select>
         </div>
 
@@ -572,7 +574,7 @@
                 <i class="fas fa-file-export"></i> Export <i class="fas fa-chevron-down" style="font-size: 0.65rem;"></i>
             </button>
             <div class="action-dropdown-menu" id="bookingExportMenu" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); width: 200px; z-index: 100; overflow: hidden;">
-                <button onclick="window.exportBookings('excel')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569; border-bottom: 1px solid #f1f5f9;"><i class="fas fa-file-excel" style="color: var(--accent-color); font-size: 1.1rem; width: 20px;"></i> Excel (CSV)</button>
+                <button onclick="window.exportBookings('excel')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569; border-bottom: 1px solid #f1f5f9;"><i class="fas fa-file-excel" style="color: var(--accent-color, #f97316); font-size: 1.1rem; width: 20px;"></i> Excel (CSV)</button>
                 <button onclick="window.exportBookings('pdf')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569; border-bottom: 1px solid #f1f5f9;"><i class="fas fa-file-pdf" style="color: #ef4444; font-size: 1.1rem; width: 20px;"></i> PDF Report</button>
                 <button onclick="window.exportBookings('word')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569;"><i class="fas fa-file-word" style="color: #3b82f6; font-size: 1.1rem; width: 20px;"></i> Word Doc</button>
             </div>
@@ -586,12 +588,12 @@
         <table class="b-table bookings-list-table" style="width: 100%; border-collapse: collapse; min-width: 1000px;">
             <thead>
                 <tr style="border-bottom: 2px solid #e2e8f0; background: #f8fafc;">
-                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 14%;">Ref ID & Source</th>
-                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 20%;">Customer</th>
-                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 22%;">Event & Pax</th>
-                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 16%;">Date & Time</th>
-                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 20%;">Status & Billing</th>
-                    <th style="padding: 1rem 1.25rem; text-align: right; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 8%;">Actions</th>
+                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 13%;">REF ID & SOURCE</th>
+                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 19%;">CUSTOMER</th>
+                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 19%;">EVENT & PAX</th>
+                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 14%;">DATE & TIME</th>
+                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 26%;">STATUS & BILLING</th>
+                    <th style="padding: 0.75rem 1rem; text-align: right; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 9%;">ACTIONS</th>
                 </tr>
             </thead>
             <tbody>
@@ -603,45 +605,67 @@
                 {% endif %}
                 {% set row_is_urgent = (booking.event_date - today).days <= 2 and (booking.event_date - today).days >= 0 and caterer_action_needed %}
                 {% set is_past_event = (booking.event_date < today) and booking.status not in ['completed', 'cancelled'] %}
+                {% set raw_src = (booking.booking_source or '')|lower %}
+                {% set is_manual = (not booking.user_id) or ('walk' in raw_src) or ('internal' in raw_src) or ('manual' in raw_src) or (booking.custom_requirements and booking.custom_requirements.get('is_walk_in')) %}
+                {% set source_badge_label = 'MANUAL' if is_manual else 'ONLINE' %}
+                {% set custom_ch = (booking.custom_requirements or {}).get('booking_channel') or (booking.custom_requirements or {}).get('channel') %}
+                {% if is_manual %}
+                    {% if custom_ch %}
+                        {% set b_channel = custom_ch %}
+                    {% elif 'facebook' in raw_src or 'messenger' in raw_src %}
+                        {% set b_channel = 'Facebook Messenger' %}
+                    {% elif 'phone' in raw_src or 'call' in raw_src %}
+                        {% set b_channel = 'Phone Call' %}
+                    {% elif 'sms' in raw_src or 'text' in raw_src %}
+                        {% set b_channel = 'SMS/Text' %}
+                    {% elif 'walk' in raw_src or 'person' in raw_src %}
+                        {% set b_channel = 'In Person' %}
+                    {% elif 'other' in raw_src %}
+                        {% set b_channel = 'Other Offline Source' %}
+                    {% else %}
+                        {% set b_channel = 'In Person' %}
+                    {% endif %}
+                {% else %}
+                    {% set b_channel = 'OccaServe Website' %}
+                {% endif %}
                 <tr id="booking-row-{{ booking.id }}" class="booking-row-item {% if row_is_urgent or is_past_event %}urgent-booking-row{% endif %}" 
                     data-booking-row="true"
                     data-booking-id="BK-{{ '%06d'|format(booking.id) }}"
                     data-status="{{ booking.status }}" 
                     data-payment-status="{{ booking.payment_status }}"
-                    data-source="{{ booking.booking_source or ('OccaServe Platform' if booking.user_id else 'Walk-in') }}"
-                    data-entry-method="{{ 'internal' if 'internal' in (booking.booking_source or '')|lower else ('walkin' if not booking.user_id or 'walk' in (booking.booking_source or '')|lower else 'online') }}"
+                    data-source="{{ 'Manual Booking' if is_manual else (booking.booking_source or 'Online Booking') }}"
+                    data-source-kind="{{ 'manual' if is_manual else 'online' }}"
+                    data-booking-channel="{{ b_channel }}"
+                    data-entry-method="{{ 'walkin' if is_manual else 'online' }}"
                     data-event-month="{{ booking.event_date.strftime('%Y-%m') }}"
                     data-is-urgent="{{ 'true' if row_is_urgent else 'false' }}"
                     data-is-past="{{ 'true' if is_past_event else 'false' }}"
+                    data-unread-chat="{{ unread_chat_map.get(booking.id, 0) if unread_chat_map else 0 }}"
                     data-phone="{{ (booking.user.phone_number if booking.user else '') or '' }}"
                     data-search-text="BK-{{ '%06d'|format(booking.id) }} ORD-{{ '%06d'|format(booking.id) }} {{ booking.id }} {{ booking.user.first_name if booking.user else '' }} {{ booking.user.last_name if booking.user else '' }} {{ booking.customer_name if booking.customer_name else '' }} {{ booking.event_type or '' }} {{ booking.package.name if booking.package else '' }} {{ booking.user.phone_number if booking.user else '' }} {{ booking.user.email if booking.user else (booking.customer_email or '') }}"
-                    style="border-bottom: 1px solid #f8fafc; transition: all 0.2s ease;">
+                    style="border-bottom: 1px solid #f1f5f9; transition: all 0.15s ease;">
                     
-                    <!-- ID & SOURCE -->
-                    <td style="padding: 1rem 1.25rem;">
-                        <div style="font-weight: 800; color: #64748b; font-size: 0.85rem; letter-spacing: 0.05em; text-transform: uppercase; display: flex; align-items: center; gap: 8px;">
+                    <!-- REF ID & SOURCE -->
+                    <td style="padding: 0.75rem 1rem; vertical-align: middle;">
+                        <div style="font-weight: 800; color: #0f172a; font-size: 0.88rem; letter-spacing: 0.02em; display: flex; align-items: center; gap: 6px;">
                             {% if row_is_urgent %}
                                 <div class="urgent-pulse-indicator" title="Event Happening Soon!"></div>
                             {% elif is_past_event %}
                                 <div class="urgent-pulse-indicator" style="background: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);" title="Event Date has Passed!"></div>
                             {% endif %}
-                            {% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ "%06d" | format(booking.id) }}
+                            {{ 'ORD-' if booking.document_type == 'invoice' else 'BK-' }}{{ "%06d" | format(booking.id) }}
                         </div>
-                        <div style="margin-top: 5px;">
-                            {% set raw_src = (booking.booking_source or '')|lower %}
-                            {% set is_walkin = (not booking.user_id) or ('walk' in raw_src) or ('internal' in raw_src) or ('manual' in raw_src) %}
-                            {% set source_label = 'WALK-IN' if is_walkin else 'ONLINE' %}
-                            
-                            <span class="booking-source-badge {% if is_walkin %}badge-source-walkin{% else %}badge-source-online{% endif %}">
-                                <i class="fas {% if is_walkin %}fa-store{% else %}fa-globe{% endif %}"></i> {{ source_label }}
+                        <div style="margin-top: 4px;">
+                            <span class="booking-source-badge {% if is_manual %}badge-source-walkin{% else %}badge-source-online{% endif %}">
+                                <i class="fas {% if is_manual %}fa-clipboard-list{% else %}fa-globe{% endif %}"></i> {{ source_badge_label }}
                             </span>
                         </div>
                     </td>
 
                     <!-- CUSTOMER -->
-                    <td style="padding: 1rem 1.25rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                            <div style="font-weight: 800; color: #0f172a; font-size: var(--text-sm);">
+                    <td style="padding: 0.75rem 1rem; vertical-align: middle;">
+                        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                            <div style="font-weight: 700; color: #0f172a; font-size: 0.88rem; line-height: 1.25;">
                                 {% if booking.user %}
                                 {{ booking.user.first_name or '' }} {{ booking.user.last_name or '' }}
                                 {% elif booking.customer_name and booking.customer_name != 'None' %}
@@ -652,18 +676,18 @@
                             </div>
                             {% if booking.user %}
                                 {% if booking.user.is_verified %}
-                                    <span title="Identity Verified" style="color: var(--accent-color); font-size: 0.75rem;"><i class="fas fa-shield-check"></i></span>
+                                    <span title="Identity Verified" style="color: var(--accent-color, #f97316); font-size: 0.75rem;"><i class="fas fa-shield-check"></i></span>
                                 {% elif booking.package_id %}
-                                    <span title="Needs KYC Audit" style="color: var(--accent-color); font-size: 0.75rem;"><i class="fas fa-shield-exclamation"></i></span>
+                                    <span title="Needs KYC Audit" style="color: var(--accent-color, #f97316); font-size: 0.75rem;"><i class="fas fa-shield-exclamation"></i></span>
                                 {% endif %}
                             {% endif %}
                             {% if unread_chat_map and unread_chat_map.get(booking.id, 0) > 0 %}
-                                <span style="background: #3b82f6; color: white; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 12px; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 4px rgba(59,130,246,0.2);" title="Unread Consultation Messages">
+                                <span style="background: #3b82f6; color: white; font-size: 0.65rem; font-weight: 800; padding: 2px 7px; border-radius: 10px; display: inline-flex; align-items: center; gap: 3px; box-shadow: 0 1px 3px rgba(59,130,246,0.2);" title="Unread Consultation Messages">
                                     <i class="fas fa-comment-dots"></i> {{ unread_chat_map.get(booking.id) }}
                                 </span>
                             {% endif %}
                         </div>
-                        <div style="font-size: var(--text-xs); color: #94a3b8; font-weight: 500; margin-top: 0.2rem; letter-spacing: 0.02em;">
+                        <div style="font-size: 0.74rem; color: #64748b; font-weight: 500; margin-top: 3px; line-height: 1.2; word-break: break-all;">
                             {% if booking.user %}
                             {{ booking.user.email }}
                             {% elif booking.customer_email and booking.customer_email != 'None' %}
@@ -675,12 +699,12 @@
                     </td>
 
                     <!-- EVENT & PAX -->
-                    <td style="padding: 1rem 1.25rem;">
-                        <div style="font-weight: 800; color: #0f172a; font-size: var(--text-sm); line-height: 1.3;">
+                    <td style="padding: 0.75rem 1rem; vertical-align: middle;">
+                        <div style="font-weight: 700; color: #0f172a; font-size: 0.88rem; line-height: 1.25; text-transform: uppercase;">
                             {% if booking.package %}
                                 {{ booking.package.name }}
                             {% elif booking.event_type == 'Ala Carte Order' %}
-                                <span style="color: var(--primary-color);">Itemized Food Order</span>
+                                <span style="color: var(--primary-color, #f97316);">Itemized Food Order</span>
                             {% elif booking.event_type == 'Service Booking' %}
                                 {% set svcs = booking.selected_items|selectattr('service', 'defined')|selectattr('service', 'ne', None)|list %}
                                 {% if svcs %}
@@ -696,38 +720,39 @@
                                     Custom Rental
                                 {% endif %}
                             {% else %}
-                                Custom Menu
+                                {{ booking.event_type or 'Custom Menu' }}
                             {% endif %}
                         </div>
-                        <div style="font-size: var(--text-xs); color: #94a3b8; font-weight: 600; margin-top: 0.3rem; text-transform: uppercase; letter-spacing: 0.03em;">
-                            <i class="fas fa-tag" style="margin-right: 4px;"></i>{{ booking.event_type }} &nbsp;•&nbsp; <i class="fas fa-user-friends"></i> {{ booking.guest_count }} Pax
+                        <div style="font-size: 0.74rem; color: #64748b; font-weight: 600; margin-top: 3px; display: flex; align-items: center; gap: 4px; line-height: 1.2;">
+                            <i class="fas fa-tag" style="color: #94a3b8; font-size: 0.68rem;"></i>
+                            <span>{{ booking.event_type or 'Event' }}</span>
+                            <span style="color: #cbd5e1;">•</span>
+                            <i class="fas fa-user-friends" style="color: #94a3b8; font-size: 0.68rem; margin-left: 2px;"></i>
+                            <span>{{ booking.guest_count or 0 }} Pax</span>
                         </div>
                     </td>
 
-                    <!-- DATE -->
-                    <td style="padding: 1rem 1.25rem;">
-                        <div class="flex-column">
-                            {% set is_early_stage = booking.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'] %}
-                            {% set caterer_action_needed_cell = booking.status in ['pending', 'awaiting_caterer', 'pending_review'] or (booking.payment_status == 'proof_submitted' and is_early_stage) %}
-                            {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
-                                {% set caterer_action_needed_cell = False %}
+                    <!-- DATE & TIME -->
+                    <td style="padding: 0.75rem 1rem; vertical-align: middle;">
+                        {% set is_early_stage = booking.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'] %}
+                        {% set caterer_action_needed_cell = booking.status in ['pending', 'awaiting_caterer', 'pending_review'] or (booking.payment_status == 'proof_submitted' and is_early_stage) %}
+                        {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+                            {% set caterer_action_needed_cell = False %}
+                        {% endif %}
+                        {% set cell_is_urgent = (booking.event_date - today).days <= 2 and caterer_action_needed_cell %}
+                        <div style="display: flex; align-items: center; gap: 5px;">
+                            {% if cell_is_urgent %}
+                                <span style="background: #fff1f2; color: #e11d48; font-size: 0.65rem; font-weight: 800; padding: 1px 5px; border-radius: 4px; border: 1px solid #fecdd3;">URGENT</span>
                             {% endif %}
-                            {% set cell_is_urgent = (booking.event_date - today).days <= 2 and caterer_action_needed_cell %}
-                            <div class="event-date-main">
-                                {% if cell_is_urgent %}
-                                    <div class="urgent-status-chip" style="margin-bottom: 4px;">
-                                        <div class="urgent-pulse-indicator"></div>
-                                        <span>Urgent</span>
-                                    </div>
-                                {% endif %}
-                                {{ booking.event_date.strftime('%b %d, %Y') }}
-                            </div>
-                            <div class="event-time-sub" style="font-size: 0.85rem; color: #94a3b8; font-weight: 500; margin-top: 0.1rem;">{{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBA' }}</div>
+                            <span style="font-weight: 700; color: #0f172a; font-size: 0.88rem; line-height: 1.25;">{{ booking.event_date.strftime('%b %d, %Y') if booking.event_date else 'Date TBA' }}</span>
+                        </div>
+                        <div style="font-size: 0.74rem; color: #64748b; font-weight: 500; margin-top: 3px; line-height: 1.2;">
+                            {{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'Time TBA' }}
                         </div>
                     </td>
 
                     <!-- STATUS & BILLING -->
-                    <td style="padding: 1rem 1.25rem;">
+                    <td style="padding: 0.75rem 1rem; vertical-align: middle;">
                         {% set signed_dt = None %}
                         {% if booking.contract and booking.contract.customer_signed_at %}
                             {% set signed_dt = booking.contract.customer_signed_at %}
@@ -772,14 +797,19 @@
                             {% set status_label = 'To Sign' %}
                         {% elif booking.status in ['awaiting_payment', 'pending_payment'] %}
                             {% set badge_class = 'badge-payment timer-overdue-check' %}
+                            {% set status_label = 'Awaiting Pay' %}
                         {% elif booking.status == 'preparing' %}
                             {% set badge_class = 'badge-preparing' %}
+                            {% set status_label = 'Preparing' %}
                         {% elif booking.status in ['on_the_way', 'ready_for_delivery', 'ready_for_pickup', 'arrived'] %}
                             {% set badge_class = 'badge-active' %}
+                            {% set status_label = booking.status.replace('_', ' ').title() %}
                         {% elif booking.status in ['in_progress', 'setup_ongoing'] %}
                             {% set badge_class = 'badge-in_progress' %}
+                            {% set status_label = 'In Progress' %}
                         {% elif booking.status == 'completed' %}
                             {% set badge_class = 'badge-completed' %}
+                            {% set status_label = 'Completed' %}
                         {% elif booking.status == 'cancelled' %}
                             {% set badge_class = 'badge-cancelled' %}
                             {% set status_label = 'Cancelled' %}
@@ -789,214 +819,186 @@
                             {% set badge_class = 'badge-reupload' %}
                             {% set status_label = 'Re-upload' %}
                         {% endif %}
+
+                        {% set pay = booking.payment_status or 'no_payment' %}
+                        {% set total_val = booking.total_price or booking.total_amount or 0 %}
+                        {% set paid_val = booking.amount_paid or 0 %}
+                        {% if pay in ['paid', 'fully_paid'] and total_val > 0 and paid_val <= 0 %}
+                            {% set paid_val = total_val %}
+                        {% endif %}
+                        {% set balance_val = [total_val - paid_val, 0]|max %}
+                        {% set pay_label = 'No Payment' %}
+                        {% set pay_class = 'badge-draft' %}
+                        {% if total_val > 0 and (paid_val >= total_val or pay in ['paid','fully_paid']) %}
+                            {% set pay_label = 'Fully Paid' %}
+                            {% set pay_class = 'badge-confirmed' %}
+                        {% elif total_val > 0 and (paid_val > 0 or pay in ['partial','partial_paid','downpayment_paid','deposit_paid']) %}
+                            {% set pay_label = 'Partial' %}
+                            {% set pay_class = 'badge-payment' %}
+                        {% elif total_val > 0 %}
+                            {% set pay_label = 'Unpaid' %}
+                            {% set pay_class = 'badge-pending' %}
+                        {% endif %}
                         
-                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
-                            <div>
-                                <span class="badge-status {{ badge_class }}" data-start="{{ signed_dt.isoformat() if signed_dt else '' }}">{{ status_label }}</span>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <!-- Status badges row -->
+                            <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                                <span class="badge-status {{ badge_class }}" data-start="{{ signed_dt.isoformat() if signed_dt else '' }}" style="padding: 2px 7px; font-size: 0.7rem; font-weight: 700; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.02em;">{{ status_label }}</span>
+                                <span class="badge-status {{ pay_class }}" style="padding: 2px 7px; font-size: 0.7rem; font-weight: 700; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.02em;">{{ pay_label }}</span>
                             </div>
-                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
-                                <div>
-                                    {% set pay = booking.payment_status or 'no_payment' %}
-                                    {% set total_val = booking.total_price or booking.total_amount or 0 %}
-                                    {% set paid_val = booking.amount_paid or 0 %}
-                                    {% if pay in ['paid', 'fully_paid'] and total_val > 0 and paid_val <= 0 %}
-                                        {% set paid_val = total_val %}
-                                    {% endif %}
-                                    {% set balance_val = [total_val - paid_val, 0]|max %}
-                                    {% set pay_label = 'No Payment' %}
-                                    {% set pay_class = 'badge-draft' %}
-                                    {% if total_val > 0 and (paid_val >= total_val or pay in ['paid','fully_paid']) %}
-                                        {% set pay_label = 'Fully Paid' %}
-                                        {% set pay_class = 'badge-confirmed' %}
-                                    {% elif total_val > 0 and (paid_val > 0 or pay in ['partial','partial_paid','downpayment_paid','deposit_paid']) %}
-                                        {% set pay_label = 'Partial' %}
-                                        {% set pay_class = 'badge-payment' %}
-                                    {% elif total_val > 0 %}
-                                        {% set pay_label = 'Unpaid' %}
-                                        {% set pay_class = 'badge-pending' %}
-                                    {% endif %}
-                                    <span class="badge-status {{ pay_class }}" style="padding: 3px 8px; font-size:0.72rem;">{{ pay_label }}</span>
-                                </div>
-                                <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
-                                <div style="color: #0f172a; font-weight: 800; font-size: 0.9rem;">
-                                    Total: ₱{{ "{:,.2f}".format(total_val) }}
-                                </div>
-                                <div style="font-size: 0.75rem; color: #16a34a; font-weight: 700;">
-                                    Paid: ₱{{ "{:,.2f}".format(paid_val) }}
-                                </div>
-                                
-                                {% if total_val <= 0 %}
-                                <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; margin-top: 2px;">
-                                    No Payment Required
-                                </div>
-                                {% elif balance_val > 0 %}
-                                <div style="font-size: 0.7rem; color: #b45309; font-weight: 700; background: #fffbeb; padding: 2px 6px; border-radius: 4px; margin-top: 2px;">
-                                    Bal: ₱{{ "{:,.2f}".format(balance_val) }}
-                                </div>
-                                {% else %}
-                                <div style="font-size: 0.7rem; color: #16a34a; font-weight: 700; background: #dcfce3; padding: 2px 6px; border-radius: 4px; margin-top: 2px;">
-                                    Fully Paid
-                                </div>
-                                {% endif %}
+                            
+                            <!-- Financial values row -->
+                            <div style="display: flex; align-items: center; gap: 6px; font-size: 0.74rem; color: #64748b; flex-wrap: wrap; line-height: 1.3;">
+                                <span>Total <strong style="color: #0f172a; font-weight: 700;">₱{{ "{:,.2f}".format(total_val) }}</strong></span>
+                                <span style="color: #cbd5e1;">•</span>
+                                <span>Paid <strong style="color: #16a34a; font-weight: 700;">₱{{ "{:,.2f}".format(paid_val) }}</strong></span>
+                                <span style="color: #cbd5e1;">•</span>
+                                <span>Balance <strong style="{% if balance_val > 0 %}color: #c2410c; background: #fff7ed; border: 1px solid #fed7aa; padding: 1px 5px; border-radius: 4px;{% else %}color: #16a34a; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1px 5px; border-radius: 4px;{% endif %} font-weight: 800;">₱{{ "{:,.2f}".format(balance_val) }}</strong></span>
                             </div>
                         </div>
                     </td>
-                    <td class="action-dropdown-container" style="padding: 1rem 1.25rem; text-align: right; position: relative;">
-                        <button class="overflow-trigger" aria-label="More actions" onclick="toggleActionMenuBookings('{{ booking.id }}', event)">
-                            <i class="fas fa-ellipsis-h"></i>
-                        </button>
-                        <div id="actionMenu-{{ booking.id }}" class="overflow-menu"
-                            data-booking-id="{{ booking.id }}"
-                            data-status="{{ booking.status }}"
-                            data-payment-status="{{ booking.payment_status }}"
-                            data-total-amount="{{ booking.total_price or booking.total_amount or 0 }}"
-                            data-amount-paid="{{ booking.amount_paid or 0 }}"
-                            data-is-package="{{ 'true' if booking.package_id else 'false' }}"
-                            data-is-verified="{{ 'true' if (booking.user and booking.user.is_verified) else 'false' }}"
-                            data-user-id="{{ booking.user_id or '' }}">
-                            <button class="overflow-action-item view-details"
-                                data-id="{{ booking.id }}"
-                                data-status="{{ booking.status or '' }}"
-                                data-payment-status="{{ booking.payment_status or 'no_payment' }}"
-                                data-source="{{ (booking.booking_source or ('OccaServe Platform' if booking.user_id else 'Walk-in'))|e }}"
-                                data-event-date="{{ booking.event_date.isoformat() if booking.event_date else '' }}"
-                                data-event-time="{{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBA' }}"
-                                data-customer="{{ ((booking.user.first_name ~ ' ' ~ booking.user.last_name) if booking.user else (booking.customer_name or 'Walk-in Customer'))|trim|e }}"
-                                data-email="{{ ((booking.user.email if booking.user else booking.customer_email) or '')|e }}"
-                                data-contact="{{ (booking.user.phone_number if booking.user else '') or '' }}"
-                                data-venue="{{ (booking.venue or 'Not specified')|e }}"
-                                data-event-type="{{ (booking.event_type or 'Booking')|e }}"
-                                data-specific-name="{{ ((booking.package.name if booking.package else booking.event_type) or 'Booking')|e }}"
-                                data-guest-count="{{ booking.guest_count or 0 }}"
-                                data-total-raw-amount="{{ booking.total_price or booking.total_amount or 0 }}"
-                                data-amount-paid="{{ booking.amount_paid or 0 }}"
-                                data-payment-method="{{ (booking.payment_method or 'Not specified')|e }}"
-                                data-payment-plan="{{ booking.payment_plan or 'downpayment' }}"
-                                data-payment-ref="{{ (booking.payment_reference or '')|e }}"
-                                data-booked-on="{{ booking.created_at.strftime('%b %d, %Y at %I:%M %p') if booking.created_at else 'Not available' }}"
-                                data-balance-due="{{ booking.balance_due_date.isoformat() if booking.balance_due_date else '' }}"
-                                data-actual-cost="{{ booking.actual_cost or 0 }}"
-                                data-target-user-id="{{ booking.user_id or '' }}"
-                                data-is-package="{{ 'true' if booking.package_id else 'false' }}"
-                                data-is-food-order="{{ 'true' if booking.document_type == 'invoice' or booking.event_type == 'Ala Carte Order' else 'false' }}"
-                                data-is-verified="{{ 'true' if (booking.user and booking.user.is_verified) else 'false' }}"
-                                data-preparation-status="{{ booking.preparation_status or 'not_started' }}"
-                                data-requests="{{ (booking.special_requests or '')|e }}"
-                                data-document-type="{{ booking.document_type or '' }}"
-                                data-proof-url="{{ (booking.payment_proof_url or '')|e }}"
-                                data-balance-proof-url="{{ (booking.balance_proof_url or '')|e }}"
-                                data-has-menu="{{ 'true' if booking.package or booking.selected_items else 'false' }}">
-                                <i class="far fa-eye"></i> View Booking
-                            </button>
-                            <div class="dynamic-actions"></div>
-                        </div>
 
-                        <!-- Hidden Menu Info for Modal -->
-                        <div id="booking-items-{{ booking.id }}" style="display: none;">
-                            {% set has_menu_items = False %}
-                            {% if booking.selected_items %}
-                                {% for item in booking.selected_items %}
-                                    {% if item.menu_item_id %}{% set has_menu_items = True %}{% endif %}
-                                {% endfor %}
-                            {% endif %}
-                            
-                            {% if booking.package or has_menu_items %}
-                            {% if booking.package %}
-                                <div class="package-accordion-container">
-                                    <div class="package-accordion">
-                                        <button class="accordion-header" onclick="togglePackageAccordion(this)">
-                                            <span class="accordion-title">
-                                                <i class="fas fa-gift"></i> {{ booking.package.name }}
+                    <!-- ACTIONS -->
+                    <td style="padding: 0.75rem 1rem; text-align: right; white-space: nowrap; vertical-align: middle;">
+                        <button type="button" class="btn-sm-outline view-details"
+                            data-id="{{ booking.id }}"
+                            data-status="{{ booking.status or '' }}"
+                            data-payment-status="{{ booking.payment_status or 'no_payment' }}"
+                            data-source="{{ ('Manual Booking' if is_manual else (booking.booking_source or 'Online Booking'))|e }}"
+                            data-source-kind="{{ 'manual' if is_manual else 'online' }}"
+                            data-source-label="{{ 'MANUAL BOOKING' if is_manual else 'ONLINE BOOKING' }}"
+                            data-booking-channel="{{ b_channel|e }}"
+                            data-added-by="{{ ('Caterer' if is_manual else 'Customer')|e }}"
+                            data-event-date="{{ booking.event_date.isoformat() if booking.event_date else '' }}"
+                            data-event-time="{{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBA' }}"
+                            data-customer="{{ ((booking.user.first_name ~ ' ' ~ booking.user.last_name) if booking.user else (booking.customer_name or 'Customer'))|trim|e }}"
+                            data-email="{{ ((booking.user.email if booking.user else booking.customer_email) or '')|e }}"
+                            data-contact="{{ (booking.user.phone_number if booking.user else '') or '' }}"
+                            data-venue="{{ (booking.venue or 'Not specified')|e }}"
+                            data-event-type="{{ (booking.event_type or 'Booking')|e }}"
+                            data-specific-name="{{ ((booking.package.name if booking.package else booking.event_type) or 'Booking')|e }}"
+                            data-guest-count="{{ booking.guest_count or 0 }}"
+                            data-total-raw-amount="{{ booking.total_price or booking.total_amount or 0 }}"
+                            data-amount-paid="{{ booking.amount_paid or 0 }}"
+                            data-payment-method="{{ (booking.payment_method or 'Not specified')|e }}"
+                            data-payment-plan="{{ booking.payment_plan or 'downpayment' }}"
+                            data-payment-ref="{{ (booking.payment_reference or '')|e }}"
+                            data-booked-on="{{ booking.created_at.strftime('%b %d, %Y at %I:%M %p') if booking.created_at else 'Not available' }}"
+                            data-balance-due="{{ booking.balance_due_date.isoformat() if booking.balance_due_date else '' }}"
+                            data-actual-cost="{{ booking.actual_cost or 0 }}"
+                            data-target-user-id="{{ booking.user_id or '' }}"
+                            data-is-package="{{ 'true' if booking.package_id else 'false' }}"
+                            data-is-food-order="{{ 'true' if booking.document_type == 'invoice' or booking.event_type == 'Ala Carte Order' else 'false' }}"
+                            data-is-verified="{{ 'true' if (booking.user and booking.user.is_verified) else 'false' }}"
+                            data-preparation-status="{{ booking.preparation_status or 'not_started' }}"
+                            data-requests="{{ (booking.special_requests or '')|e }}"
+                            data-motif="{{ ((booking.custom_requirements.theme_motif if (booking.custom_requirements and booking.custom_requirements.theme_motif) else (booking.custom_requirements.motif_theme if (booking.custom_requirements and booking.custom_requirements.motif_theme) else '')) or '')|e }}"
+                            data-document-type="{{ booking.document_type or '' }}"
+                            data-proof-url="{{ (booking.payment_proof_url or '')|e }}"
+                            data-balance-proof-url="{{ (booking.balance_proof_url or '')|e }}"
+                            data-has-menu="{{ 'true' if booking.package or booking.selected_items else 'false' }}"
+                            style="padding: 0.35rem 0.75rem; font-size: 0.78rem; font-weight: 700; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; background: #ffffff; color: #475569; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.03); transition: all 0.15s ease;"
+                            onmouseover="this.style.background='#fff7ed'; this.style.color='#ea580c'; this.style.borderColor='#fed7aa';"
+                            onmouseout="this.style.background='#ffffff'; this.style.color='#475569'; this.style.borderColor='#cbd5e1';">
+                            <i class="far fa-eye" style="font-size: 0.75rem;"></i> View
+                        </button>
+                    </td>
+
+                    <!-- Hidden Menu & Inclusions Info for Modal -->
+                    <div id="booking-items-{{ booking.id }}" style="display: none;">
+                            {% set valid_menu_items = (booking.selected_items | selectattr('menu_item', 'defined') | selectattr('menu_item', 'ne', None) | list) if booking.selected_items else [] %}
+                            {% set valid_equip_items = (booking.selected_items | selectattr('equipment', 'defined') | selectattr('equipment', 'ne', None) | list) if booking.selected_items else [] %}
+                            {% set valid_service_items = (booking.selected_items | selectattr('service', 'defined') | selectattr('service', 'ne', None) | list) if booking.selected_items else [] %}
+
+                            {% set pkg_menu_items = (booking.package.menu_items | list) if (booking.package and booking.package.menu_items) else [] %}
+                            {% set pkg_equip_links = (booking.package.equipment_links | list) if (booking.package and booking.package.equipment_links) else [] %}
+                            {% set pkg_service_links = (booking.package.service_links | list) if (booking.package and booking.package.service_links) else [] %}
+                            {% set pkg_inclusions = (booking.package.inclusions | list) if (booking.package and booking.package.inclusions) else [] %}
+
+                            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                                <!-- 1. PACKAGE OVERVIEW & HIGHLIGHTS -->
+                                {% if booking.package and (booking.package.description or booking.package.service_duration or booking.package.min_guests) %}
+                                <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.9rem 1.15rem;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.4rem;">
+                                        <div style="font-size: 0.82rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.4rem;">
+                                            <i class="fas fa-gift" style="color: var(--primary-color, #800020);"></i> {{ booking.package.name }} Overview
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                                            {% if booking.package.service_duration %}
+                                            <span style="background: #e0e7ff; color: #3730a3; font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 10px; display: inline-flex; align-items: center; gap: 4px;">
+                                                <i class="far fa-clock"></i> {{ booking.package.service_duration }} hrs duration
                                             </span>
-                                            <i class="fas fa-chevron-down accordion-icon"></i>
-                                        </button>
-                                        <div class="accordion-content">
-                                            <div class="pkg-details-box">
-                                                {% if booking.package.description %}
-                                                    <p class="pkg-desc-text">{{ booking.package.description }}</p>
-                                                {% endif %}
-                                                
-                                                {% if booking.package.inclusions or booking.package.equipment_links or booking.package.service_links %}
-                                                    <div class="inclusion-section-p">
-                                                        <h4><i class="fas fa-check-circle"></i> Service Inclusions</h4>
-                                                        <div class="inclusion-grid-p">
-                                                            {% if booking.package.inclusions %}
-                                                                {% for inc in booking.package.inclusions %}
-                                                                    <div class="inclusion-item-p">
-                                                                        <i class="fas fa-star"></i> {{ inc }}
-                                                                    </div>
-                                                                {% endfor %}
-                                                            {% endif %}
-                                                            {% if booking.package.equipment_links %}
-                                                                {% for el in booking.package.equipment_links %}
-                                                                    <div class="inclusion-item-p">
-                                                                        <i class="fas fa-chair"></i> {{ el.equipment.name }}
-                                                                    </div>
-                                                                {% endfor %}
-                                                            {% endif %}
-                                                            {% if booking.package.service_links %}
-                                                                {% for sl in booking.package.service_links %}
-                                                                    <div class="inclusion-item-p">
-                                                                        <i class="fas fa-user-tie"></i> {{ sl.service.name }}
-                                                                    </div>
-                                                                {% endfor %}
-                                                            {% endif %}
-                                                        </div>
-                                                    </div>
-                                                {% endif %}
-                                            </div>
+                                            {% endif %}
+                                            {% if booking.package.min_guests or booking.package.max_guests %}
+                                            <span style="background: #e0f2fe; color: #0369a1; font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 10px; display: inline-flex; align-items: center; gap: 4px;">
+                                                <i class="fas fa-users"></i> {{ booking.package.min_guests or 10 }}{% if booking.package.max_guests %} - {{ booking.package.max_guests }}{% else %}+{% endif %} pax capacity
+                                            </span>
+                                            {% endif %}
+                                            {% if booking.package.service_type %}
+                                            <span style="background: #fef3c7; color: #92400e; font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 10px; display: inline-flex; align-items: center; gap: 4px;">
+                                                <i class="fas fa-tag"></i> {{ booking.package.service_type }}
+                                            </span>
+                                            {% endif %}
                                         </div>
                                     </div>
+                                    {% if booking.package.description %}
+                                    <p style="font-size: 0.8rem; color: #475569; margin: 0; line-height: 1.4;">{{ booking.package.description }}</p>
+                                    {% endif %}
                                 </div>
-                            {% endif %}
+                                {% endif %}
 
-                            <div class="menu-structured-p" style="margin-top: 1.5rem;">
-                                <div class="menu-section-p">
-                                    <h4 style="font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem;"><i class="fas fa-utensils"></i> Dish Selection</h4>
-                                    
-                                    {% if booking.selected_items %}
-                                        {% set valid_items = booking.selected_items | selectattr('menu_item', 'defined') | selectattr('menu_item', 'ne', None) | list %}
-                                        {% for group in valid_items|groupby('menu_item.category') %}
-                                            <div class="menu-cat-group">
-                                                <div class="menu-cat-label">{{ group.grouper or 'Main Dishes' }}</div>
-                                                <div class="menu-items-flex">
+                                <!-- 2. FOOD & MENU DISH SELECTION -->
+                                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1.15rem;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem; margin-bottom: 0.85rem;">
+                                        <div style="font-size: 0.82rem; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.45rem;">
+                                            <i class="fas fa-utensils" style="color: #ea580c;"></i> Food & Menu Selection
+                                        </div>
+                                        <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 10px;">
+                                            {% if valid_menu_items %}
+                                                {{ valid_menu_items|length }} dishes chosen
+                                            {% elif pkg_menu_items %}
+                                                {{ pkg_menu_items|length }} package dishes
+                                            {% else %}
+                                                0 dishes
+                                            {% endif %}
+                                        </span>
+                                    </div>
+
+                                    {% if valid_menu_items %}
+                                        {% for group in valid_menu_items|groupby('menu_item.category') %}
+                                            <div style="margin-bottom: 0.85rem;">
+                                                <div style="font-size: 0.74rem; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.45rem; display: flex; align-items: center; gap: 0.35rem;">
+                                                    <span style="width: 6px; height: 6px; border-radius: 50%; background: #ea580c; display: inline-block;"></span>
+                                                    {{ group.grouper or 'Main Dishes' }}
+                                                </div>
+                                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.65rem;">
                                                     {% for item in group.list %}
-                                                        <div class="mi-pill-premium" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 1rem; background: white; border: 1px solid #e2e8f0; border-radius: 8px; width: 100%; box-sizing: border-box;">
-                                                            <div style="display: flex; align-items: flex-start; justify-content: space-between; width: 100%;">
-                                                                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-                                                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                                                        <span class="mi-name-text" style="font-weight: 700; color: #0f172a;">{{ item.menu_item.name }}</span>
-                                                                        {% if item.is_add_on %}
-                                                                            <span class="mi-addon-badge" style="background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">Add-on</span>
-                                                                        {% endif %}
-                                                                    </div>
-                                                                    {% set item_qty = item.quantity if item.quantity else (booking.guest_count if not item.is_add_on else 1) %}
-                                                                    {% set item_price = item.price or item.menu_item.base_price or 0 %}
-                                                                    {% set item_total = item_qty * item_price %}
-                                                                    
-                                                                    {% if booking.is_custom_event or item_price > 0 %}
-                                                                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
-                                                                        <span>₱{{ "{:,.2f}".format(item_price) }}</span>
-                                                                        <i class="fas fa-times" style="font-size: 0.6rem; color: #94a3b8;"></i>
-                                                                        <span>{{ item_qty }} qty</span>
-                                                                    </div>
+                                                        <div style="display: flex; flex-direction: column; gap: 0.35rem; padding: 0.75rem 0.85rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+                                                            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;">
+                                                                <div>
+                                                                    <div style="font-weight: 700; color: #0f172a; font-size: 0.85rem;">{{ item.menu_item.name }}</div>
+                                                                    {% if item.is_add_on %}
+                                                                        <span style="background: #fef3c7; color: #92400e; padding: 1px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; display: inline-block; margin-top: 2px;">Add-on</span>
                                                                     {% endif %}
                                                                 </div>
-                                                                
-                                                                <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                                                                    {% if booking.is_custom_event or item_price > 0 %}
-                                                                    <span style="font-weight: 800; color: #0f172a; font-size: 0.9rem;">₱{{ "{:,.2f}".format(item_total) }}</span>
+                                                                {% set item_qty = item.quantity if item.quantity else (booking.guest_count if not item.is_add_on else 1) %}
+                                                                {% set item_price = item.price or item.menu_item.base_price or 0 %}
+                                                                {% set item_total = item_qty * item_price %}
+                                                                <div style="text-align: right;">
+                                                                    {% if booking.is_custom_event or item.is_add_on or item_price > 0 %}
+                                                                        <div style="font-weight: 800; color: #0f172a; font-size: 0.85rem;">₱{{ "{:,.2f}".format(item_total) }}</div>
+                                                                        <div style="font-size: 0.7rem; color: #64748b;">₱{{ "{:,.2f}".format(item_price) }} &times; {{ item_qty }}</div>
                                                                     {% else %}
-                                                                    <span class="mi-qty-text" style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; color: #475569;">x{{ item_qty }}</span>
+                                                                        <span style="background: #e2e8f0; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; color: #334155;">&times;{{ item_qty }}</span>
                                                                     {% endif %}
                                                                 </div>
                                                             </div>
                                                             {% if item.choices %}
-                                                                <div style="margin-top: 0.25rem; font-size: 0.75rem; color: #64748b; background: #f8fafc; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px dashed #cbd5e1; width: 100%; box-sizing: border-box;">
-                                                                    <span style="font-weight: 700; color: #334155;"><i class="fas fa-check-double" style="color: var(--primary-color);"></i> Choices:</span>
-                                                                    <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem;">
+                                                                <div style="margin-top: 0.2rem; font-size: 0.72rem; color: #64748b; background: white; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px dashed #cbd5e1;">
+                                                                    <span style="font-weight: 700; color: #334155;">Choices:</span>
+                                                                    <div style="display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.2rem;">
                                                                         {% for choice in item.choices %}
-                                                                            <span style="background: white; border: 1px solid #e2e8f0; padding: 2px 6px; border-radius: 4px; font-weight: 600; color: #475569;">{{ choice }}</span>
+                                                                            <span style="background: #f1f5f9; padding: 1px 5px; border-radius: 3px; font-weight: 600; color: #475569;">{{ choice }}</span>
                                                                         {% endfor %}
                                                                     </div>
                                                                 </div>
@@ -1006,97 +1008,201 @@
                                                 </div>
                                             </div>
                                         {% endfor %}
-
-                                        {% set valid_equip = booking.selected_items | selectattr('equipment', 'defined') | selectattr('equipment', 'ne', None) | list %}
-                                        {% if valid_equip %}
-                                            <div class="menu-cat-group" style="margin-top: 1rem;">
-                                                <div class="menu-cat-label" style="color: #6366f1;">Equipment & Rentals</div>
-                                                <div class="menu-items-flex">
-                                                    {% for item in valid_equip %}
-                                                        <div class="mi-pill-premium" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 1rem; background: white; border: 1px solid #e2e8f0; border-radius: 8px; width: 100%; box-sizing: border-box;">
-                                                            <div style="display: flex; align-items: flex-start; justify-content: space-between; width: 100%;">
-                                                                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-                                                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                                                        <span class="mi-name-text" style="font-weight: 700; color: #0f172a;">{{ item.equipment.name }}</span>
-                                                                        {% if item.is_add_on %}
-                                                                            <span class="mi-addon-badge" style="background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">Add-on</span>
-                                                                        {% endif %}
-                                                                    </div>
-                                                                    {% set item_qty = item.quantity if item.quantity else 1 %}
-                                                                    {% set item_price = item.price or item.equipment.rental_price or 0 %}
-                                                                    {% set item_total = item_qty * item_price %}
-                                                                    
-                                                                    {% if booking.is_custom_event or item_price > 0 %}
-                                                                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
-                                                                        <span>₱{{ "{:,.2f}".format(item_price) }}</span>
-                                                                        <i class="fas fa-times" style="font-size: 0.6rem; color: #94a3b8;"></i>
-                                                                        <span>{{ item_qty }} qty</span>
-                                                                    </div>
-                                                                    {% endif %}
+                                    {% elif pkg_menu_items %}
+                                        {% for group in pkg_menu_items|groupby('category') %}
+                                            <div style="margin-bottom: 0.85rem;">
+                                                <div style="font-size: 0.74rem; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.45rem; display: flex; align-items: center; gap: 0.35rem;">
+                                                    <span style="width: 6px; height: 6px; border-radius: 50%; background: #ea580c; display: inline-block;"></span>
+                                                    {{ group.grouper or 'Package Dishes' }}
+                                                </div>
+                                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.65rem;">
+                                                    {% for mitem in group.list %}
+                                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.75rem 0.85rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+                                                            <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                                                <div style="width: 32px; height: 32px; border-radius: 6px; background: #ffedd5; color: #ea580c; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0;">
+                                                                    <i class="fas fa-bowl-food"></i>
                                                                 </div>
-                                                                <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                                                                    {% if booking.is_custom_event or item_price > 0 %}
-                                                                    <span style="font-weight: 800; color: #0f172a; font-size: 0.9rem;">₱{{ "{:,.2f}".format(item_total) }}</span>
-                                                                    {% else %}
-                                                                    <span class="mi-qty-text" style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; color: #475569;">x{{ item_qty }}</span>
+                                                                <div>
+                                                                    <div style="font-weight: 700; color: #0f172a; font-size: 0.85rem;">{{ mitem.name }}</div>
+                                                                    {% if mitem.description %}
+                                                                        <div style="font-size: 0.72rem; color: #64748b; line-height: 1.3; margin-top: 1px;">{{ mitem.description|truncate(50) }}</div>
                                                                     {% endif %}
                                                                 </div>
                                                             </div>
+                                                            <span style="background: #dcfce7; color: #166534; padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; white-space: nowrap;">Included</span>
                                                         </div>
                                                     {% endfor %}
                                                 </div>
                                             </div>
-                                        {% endif %}
-
-                                        {% set valid_service = booking.selected_items | selectattr('service', 'defined') | selectattr('service', 'ne', None) | list %}
-                                        {% if valid_service %}
-                                            <div class="menu-cat-group" style="margin-top: 1rem;">
-                                                <div class="menu-cat-label" style="color: #f59e0b;">Additional Services</div>
-                                                <div class="menu-items-flex">
-                                                    {% for item in valid_service %}
-                                                        <div class="mi-pill-premium" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 1rem; background: white; border: 1px solid #e2e8f0; border-radius: 8px; width: 100%; box-sizing: border-box;">
-                                                            <div style="display: flex; align-items: flex-start; justify-content: space-between; width: 100%;">
-                                                                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-                                                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                                                        <span class="mi-name-text" style="font-weight: 700; color: #0f172a;">{{ item.service.name }}</span>
-                                                                        {% if item.is_add_on %}
-                                                                            <span class="mi-addon-badge" style="background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">Add-on</span>
-                                                                        {% endif %}
-                                                                    </div>
-                                                                    {% set item_qty = item.quantity if item.quantity else 1 %}
-                                                                    {% set item_price = item.price or item.service.rate or 0 %}
-                                                                    {% set item_total = item_qty * item_price %}
-                                                                    
-                                                                    {% if booking.is_custom_event or item_price > 0 %}
-                                                                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
-                                                                        <span>₱{{ "{:,.2f}".format(item_price) }}</span>
-                                                                        <i class="fas fa-times" style="font-size: 0.6rem; color: #94a3b8;"></i>
-                                                                        <span>{{ item_qty }} qty</span>
-                                                                    </div>
-                                                                    {% endif %}
-                                                                </div>
-                                                                <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                                                                    {% if booking.is_custom_event or item_price > 0 %}
-                                                                    <span style="font-weight: 800; color: #0f172a; font-size: 0.9rem;">₱{{ "{:,.2f}".format(item_total) }}</span>
-                                                                    {% else %}
-                                                                    <span class="mi-qty-text" style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; color: #475569;">x{{ item_qty }}</span>
-                                                                    {% endif %}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    {% endfor %}
-                                                </div>
-                                            </div>
-                                        {% endif %}
+                                        {% endfor %}
                                     {% else %}
-                                        <div style="text-align: center; padding: 2rem; background: #f8fafc; border-radius: var(--border-radius); border: 1px dashed #cbd5e1;">
-                                            <i class="fas fa-info-circle" style="color: #94a3b8; font-size: 1.5rem; margin-bottom: 0.5rem;"></i>
-                                            <p style="color: #64748b; font-size: 0.85rem; margin: 0;">No itemized menu data available for this booking.</p>
+                                        <div style="text-align: center; padding: 1.5rem 1rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                                            <i class="fas fa-utensils" style="color: #94a3b8; font-size: 1.35rem; margin-bottom: 0.35rem;"></i>
+                                            <p style="color: #64748b; font-size: 0.82rem; margin: 0;">No specific menu items configured for this booking.</p>
                                         </div>
                                     {% endif %}
                                 </div>
+
+                                <!-- 3. SERVICES & STAFFING INCLUDED -->
+                                {% if valid_service_items or pkg_service_links %}
+                                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1.15rem;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem; margin-bottom: 0.85rem;">
+                                        <div style="font-size: 0.82rem; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.45rem;">
+                                            <i class="fas fa-user-tie" style="color: #f59e0b;"></i> Services & Staffing Included
+                                        </div>
+                                        <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 10px;">
+                                            {{ (valid_service_items|length) + (pkg_service_links|length) }} services
+                                        </span>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.65rem;">
+                                        {% if valid_service_items %}
+                                            {% for item in valid_service_items %}
+                                                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; padding: 0.75rem 0.85rem; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px;">
+                                                    <div style="display: flex; align-items: flex-start; gap: 0.6rem;">
+                                                        <div style="width: 32px; height: 32px; border-radius: 6px; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0;">
+                                                            <i class="fas fa-user-check"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div style="font-weight: 700; color: #0f172a; font-size: 0.85rem;">{{ item.service.name }}</div>
+                                                            {% if item.is_add_on %}
+                                                                <span style="background: #fef3c7; color: #92400e; padding: 1px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; display: inline-block; margin-top: 2px;">Add-on</span>
+                                                            {% endif %}
+                                                            {% if item.service.description %}
+                                                                <div style="font-size: 0.72rem; color: #64748b; line-height: 1.3; margin-top: 2px;">{{ item.service.description|truncate(50) }}</div>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                    {% set item_qty = item.quantity if item.quantity else 1 %}
+                                                    {% set item_price = item.price or item.service.rate or 0 %}
+                                                    <div style="text-align: right;">
+                                                        {% if booking.is_custom_event or item.is_add_on or item_price > 0 %}
+                                                            <div style="font-weight: 800; color: #0f172a; font-size: 0.85rem;">₱{{ "{:,.2f}".format(item_qty * item_price) }}</div>
+                                                            <div style="font-size: 0.7rem; color: #64748b;">{{ item_qty }} staff/service</div>
+                                                        {% else %}
+                                                            <span style="background: #e2e8f0; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; color: #334155;">&times;{{ item_qty }}</span>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        {% endif %}
+
+                                        {% if pkg_service_links %}
+                                            {% for sl in pkg_service_links %}
+                                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.75rem 0.85rem; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px;">
+                                                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                                        <div style="width: 32px; height: 32px; border-radius: 6px; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0;">
+                                                            <i class="fas fa-user-check"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div style="font-weight: 700; color: #0f172a; font-size: 0.85rem;">{{ sl.service.name }}</div>
+                                                            <div style="font-size: 0.72rem; color: #92400e; font-weight: 600;">{{ sl.quantity }} Staff Included</div>
+                                                        </div>
+                                                    </div>
+                                                    <span style="background: #dcfce7; color: #166534; padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; white-space: nowrap;">Included</span>
+                                                </div>
+                                            {% endfor %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <!-- 4. EQUIPMENT & RENTALS INCLUDED -->
+                                {% if valid_equip_items or pkg_equip_links %}
+                                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1.15rem;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem; margin-bottom: 0.85rem;">
+                                        <div style="font-size: 0.82rem; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.45rem;">
+                                            <i class="fas fa-chair" style="color: #6366f1;"></i> Equipment & Rentals Included
+                                        </div>
+                                        <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 10px;">
+                                            {{ (valid_equip_items|length) + (pkg_equip_links|length) }} equipment
+                                        </span>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.65rem;">
+                                        {% if valid_equip_items %}
+                                            {% for item in valid_equip_items %}
+                                                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; padding: 0.75rem 0.85rem; background: #eef2ff; border: 1px solid #e0e7ff; border-radius: 8px;">
+                                                    <div style="display: flex; align-items: flex-start; gap: 0.6rem;">
+                                                        <div style="width: 32px; height: 32px; border-radius: 6px; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0;">
+                                                            <i class="fas fa-boxes-stacked"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div style="font-weight: 700; color: #0f172a; font-size: 0.85rem;">{{ item.equipment.name }}</div>
+                                                            {% if item.is_add_on %}
+                                                                <span style="background: #fef3c7; color: #92400e; padding: 1px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; display: inline-block; margin-top: 2px;">Add-on</span>
+                                                            {% endif %}
+                                                            {% if item.equipment.category %}
+                                                                <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">{{ item.equipment.category }}</div>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                    {% set item_qty = item.quantity if item.quantity else 1 %}
+                                                    {% set item_price = item.price or item.equipment.rental_price or 0 %}
+                                                    <div style="text-align: right;">
+                                                        {% if booking.is_custom_event or item.is_add_on or item_price > 0 %}
+                                                            <div style="font-weight: 800; color: #0f172a; font-size: 0.85rem;">₱{{ "{:,.2f}".format(item_qty * item_price) }}</div>
+                                                            <div style="font-size: 0.7rem; color: #64748b;">{{ item_qty }} units</div>
+                                                        {% else %}
+                                                            <span style="background: #e2e8f0; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; color: #334155;">&times;{{ item_qty }}</span>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        {% endif %}
+
+                                        {% if pkg_equip_links %}
+                                            {% for el in pkg_equip_links %}
+                                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.75rem 0.85rem; background: #eef2ff; border: 1px solid #e0e7ff; border-radius: 8px;">
+                                                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                                        <div style="width: 32px; height: 32px; border-radius: 6px; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0;">
+                                                            <i class="fas fa-boxes-stacked"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div style="font-weight: 700; color: #0f172a; font-size: 0.85rem;">{{ el.equipment.name }}</div>
+                                                            <div style="font-size: 0.72rem; color: #4338ca; font-weight: 600;">{{ el.quantity }} Units Included</div>
+                                                        </div>
+                                                    </div>
+                                                    <span style="background: #dcfce7; color: #166534; padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; white-space: nowrap;">Included</span>
+                                                </div>
+                                            {% endfor %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <!-- 5. PACKAGE PERKS & INCLUSIONS -->
+                                {% if pkg_inclusions %}
+                                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1.15rem;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem; margin-bottom: 0.85rem;">
+                                        <div style="font-size: 0.82rem; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.45rem;">
+                                            <i class="fas fa-star" style="color: #eab308;"></i> Package Perks & Free Inclusions
+                                        </div>
+                                        <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 10px;">
+                                            {{ pkg_inclusions|length }} perks
+                                        </span>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.65rem;">
+                                        {% for inc in pkg_inclusions %}
+                                            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.65rem 0.8rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
+                                                <i class="fas fa-check-circle" style="color: #16a34a; font-size: 0.9rem; flex-shrink: 0;"></i>
+                                                <span style="font-size: 0.82rem; font-weight: 600; color: #166534;">
+                                                    {{ inc.name if inc is mapping else inc }}{% if inc is mapping and inc.quantity %} ({{ inc.quantity }}){% endif %}
+                                                </span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <!-- 6. SPECIAL REQUESTS / CLIENT NOTES -->
+                                {% if booking.special_requests %}
+                                <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 10px; padding: 1rem 1.15rem;">
+                                    <div style="font-size: 0.78rem; font-weight: 800; color: #92400e; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.4rem;">
+                                        <i class="fas fa-comment-dots"></i> Client Special Requests & Notes
+                                    </div>
+                                    <p style="font-size: 0.82rem; color: #78350f; margin: 0; line-height: 1.45;">{{ booking.special_requests }}</p>
+                                </div>
+                                {% endif %}
                             </div>
-                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -1276,48 +1382,37 @@
     #bookingDetailModal .exec-header {
         position: relative;
         background: #ffffff;
-        padding: 1rem 1.25rem;
+        padding: 0.85rem 1.5rem;
         border-bottom: 1px solid #e2e8f0;
         flex-shrink: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-    .header-top-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .header-main-info {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-    
-    #bookingDetailModal .btn-close-modal {
-        background: #f1f5f9;
-        border: none;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #64748b;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    #bookingDetailModal .btn-close-modal:hover {
-        background: #e2e8f0;
-        color: #0f172a;
     }
     #bookingDetailModal h2#modalBookingId {
         color: #0f172a;
         font-weight: 800;
-        font-size: 1.25rem;
+        font-size: 1.85rem;
+        letter-spacing: -0.02em;
+        line-height: 1.15;
         margin: 0;
     }
     
+    #bookingDetailModal .header-action-btn {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    #bookingDetailModal .header-action-btn:hover {
+        background: #e2e8f0;
+        color: #0f172a;
+    }
+
     /* ─── Desktop Next Step Box ─── */
     .next-step-box {
         background: #fffbeb;
@@ -1347,10 +1442,11 @@
     /* ─── Tabs ─── */
     #bookingDetailModal .exec-tabs {
         display: flex;
+        align-items: center;
         background: #ffffff;
         border-bottom: 1px solid #e2e8f0;
-        padding: 0 1.5rem;
-        gap: 1.5rem;
+        padding: 0 1.25rem;
+        gap: 0.25rem;
         overflow-x: auto;
         flex-shrink: 0;
         scrollbar-width: none; /* Hide scrollbar */
@@ -1358,25 +1454,38 @@
     #bookingDetailModal .exec-tabs::-webkit-scrollbar { display: none; }
     
     #bookingDetailModal .mtab-btn-pro {
-        padding: 1rem 0;
+        height: 42px;
+        padding: 0 0.95rem;
         background: transparent;
         border: none;
-        border-bottom: 3px solid transparent;
+        border-bottom: 2.5px solid transparent;
         color: #64748b;
         font-weight: 600;
-        font-size: 0.9rem;
+        font-size: 0.84rem;
         cursor: pointer;
         white-space: nowrap;
-        display: flex;
+        display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-        transition: color 0.2s;
+        justify-content: center;
+        gap: 0.45rem;
+        transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+        border-radius: 4px 4px 0 0;
     }
-    #bookingDetailModal .mtab-btn-pro:hover { color: #0f172a; }
+    #bookingDetailModal .mtab-btn-pro i {
+        font-size: 0.82rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    #bookingDetailModal .mtab-btn-pro:hover {
+        color: #0f172a;
+        background: #f8fafc;
+    }
     #bookingDetailModal .mtab-btn-pro.active {
-        color: var(--primary-color, #0f172a);
-        border-bottom-color: var(--primary-color, #0f172a);
+        color: #ea580c !important;
+        border-bottom: 2.5px solid #ea580c !important;
         font-weight: 700;
+        background: transparent;
     }
 
     /* ─── Desktop Content Layout ─── */
@@ -1493,15 +1602,16 @@
         padding: 1.25rem 1.5rem 1.5rem !important;
     }
     #bookingDetailModal .exec-header {
-        padding: 1.15rem 1.5rem;
+        padding: 0.85rem 1.5rem;
     }
     #bookingDetailModal .exec-tabs {
-        padding: 0 1.5rem;
-        gap: 1.25rem;
+        padding: 0 1.25rem;
+        gap: 0.25rem;
     }
     #bookingDetailModal .mtab-btn-pro {
-        min-height: 48px;
-        font-size: 0.82rem;
+        height: 42px;
+        min-height: 42px;
+        font-size: 0.84rem;
     }
     #bookingDetailModal .layout-desktop-two-col {
         grid-template-columns: minmax(0, 1fr) 300px;
@@ -1519,72 +1629,81 @@
     }
     #bookingDetailModal .exec-grid-2 > .exec-card {
         height: 100%;
-        box-sizing: border-box;
+        margin-bottom: 0;
     }
     #bookingDetailModal .exec-card {
-        box-sizing: border-box;
-        padding: 1.25rem !important;
-        margin-bottom: 1rem !important;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+        margin-bottom: 1rem;
+        border-radius: 12px;
+        border-color: #e2e8f0;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+        background: #ffffff;
     }
     #bookingDetailModal .action-card-sticky {
-        padding: 1rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+        border-radius: 12px;
+        border-color: #e2e8f0;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
     }
     #bookingDetailModal .next-step-mobile-card {
-        margin-bottom: 0.75rem !important;
+        border-radius: 12px;
     }
     #bookingDetailModal .exec-title {
-        line-height: 1.25;
+        margin-bottom: 0.85rem;
     }
     #bookingDetailModal .workspace-next-action,
     #bookingDetailModal .workspace-lifecycle-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 1.25rem;
+        border: 1px solid #fed7aa;
+        border-radius: 12px;
+        background: #fffaf5;
+        padding: 1rem 1.15rem;
         margin-bottom: 1rem;
-        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    }
+    #bookingDetailModal .workspace-lifecycle-card {
+        background: #f8fafc;
+        border-color: #e2e8f0;
     }
     #bookingDetailModal .workspace-next-action {
-        border-left: 4px solid var(--primary-color, #c2414f);
-        background: linear-gradient(135deg, #fffdf7 0%, #ffffff 72%);
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
     }
     #bookingDetailModal .workspace-next-action h3,
     #bookingDetailModal .workspace-section-header h3 {
-        margin: 0.25rem 0 0;
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 800;
         color: #0f172a;
-        font-size: 1.05rem;
-        line-height: 1.3;
     }
     #bookingDetailModal .workspace-next-action p {
-        margin: 0.45rem 0 0.9rem;
-        color: #64748b;
-        font-size: 0.85rem;
-        line-height: 1.5;
+        margin: 0.25rem 0 0;
+        font-size: 0.82rem;
+        color: #475569;
+        line-height: 1.4;
     }
     #bookingDetailModal .workspace-eyebrow {
-        color: #b45309;
+        display: inline-flex;
+        align-items: center;
         font-size: 0.68rem;
         font-weight: 800;
-        letter-spacing: 0.08em;
         text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #c2410c;
+        margin-bottom: 0.35rem;
     }
     #bookingDetailModal .workspace-eyebrow i { margin-right: 0.35rem; }
     #bookingDetailModal .workspace-section-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin: 1.25rem 0 0.65rem;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
     }
     #bookingDetailModal .workspace-section-header.compact { margin: 0 0 0.75rem; }
     #bookingDetailModal .workspace-section-header h3 { font-size: 0.95rem; }
     #bookingDetailModal .workspace-attention-list {
-        display: grid;
-        gap: 0.5rem;
-        margin-bottom: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
     }
     #bookingDetailModal .workspace-attention-item,
     #bookingDetailModal .workspace-attention-ok {
@@ -1593,15 +1712,21 @@
         justify-content: space-between;
         gap: 0.75rem;
         padding: 0.75rem 0.9rem;
-        border-radius: 8px;
-        border: 1px solid #fde68a;
-        background: #fffbeb;
-        color: #78350f;
+        border-radius: 10px;
+        border: 1px solid #fee2e2;
+        background: #fef2f2;
+        color: #991b1b;
         font-size: 0.82rem;
-        font-weight: 650;
+        font-weight: 600;
+    }
+    #bookingDetailModal .workspace-attention-item span,
+    #bookingDetailModal .workspace-attention-ok span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
     }
     #bookingDetailModal .workspace-attention-ok {
-        border-color: #bbf7d0;
+        border-color: #dcfce7;
         background: #f0fdf4;
         color: #166534;
         justify-content: flex-start;
@@ -1771,7 +1896,7 @@
         }
         
         #bookingDetailModal .exec-header {
-            padding: 0.85rem 1rem;
+            padding: 0.75rem 1rem;
             position: sticky;
             top: 0;
             z-index: 50;
@@ -1779,12 +1904,14 @@
         }
         
         #bookingDetailModal .exec-tabs {
-            padding: 0 1rem;
-            gap: 0.85rem;
+            padding: 0 0.75rem;
+            gap: 0.25rem;
         }
         #bookingDetailModal .mtab-btn-pro {
-            font-size: 0.85rem;
-            padding: 0.75rem 0;
+            font-size: 0.82rem;
+            padding: 0 0.75rem;
+            height: 40px;
+            min-height: 40px;
         }
         
         .layout-desktop-two-col {
@@ -1905,72 +2032,148 @@
 </style>
 
 <div id="bookingDetailModal" class="occ-modal-overlay">
-    <div class="occ-modal-box modal-b-container occ-content-pop" style="padding: 0; display: flex; flex-direction: column; max-width: 1080px; width: 95%; max-height: 92vh; border-radius: 16px; overflow: hidden; background: #ffffff;">
+    <div id="bookingDetailModalBox" class="occ-modal-box modal-b-container occ-content-pop" style="padding: 0; display: flex; flex-direction: column; max-width: 1180px; width: 96%; max-height: 94vh; border-radius: 16px; overflow: hidden; background: #ffffff; box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);">
         
-        <!-- HEADER -->
-        <div class="occ-modal-header" style="padding: 1.25rem 1.75rem; border-bottom: 1px solid #e2e8f0; background: #ffffff; flex-shrink: 0;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; width: 100%;">
-                <div>
+        <!-- ══ MODAL HEADER ══ -->
+        <div class="occ-modal-header exec-header" style="padding: 1.15rem 1.75rem 1rem; border-bottom: 1px solid #e2e8f0; background: #ffffff; flex-shrink: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%; gap: 1.25rem;">
+                
+                <!-- Left Title & Metadata Area -->
+                <div style="display: flex; flex-direction: column; gap: 0.35rem; flex: 1; min-width: 0;">
+                    <!-- Line 1: Reference ID & Badges -->
                     <div style="display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;">
-                        <h2 id="modalBookingId" style="margin: 0; font-size: 1.35rem; font-weight: 800; color: #0f172a;">Booking #BK-000000</h2>
+                        <h2 id="modalBookingId" style="margin: 0; font-size: 1.55rem; font-weight: 900; color: #0f172a; letter-spacing: -0.02em; line-height: 1.15;">Booking #BK-000000</h2>
+                        
                         <!-- SOURCE BADGE -->
-                        <span id="modalBookingSourceBadge" style="padding: 3px 10px; border-radius: 6px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; display: inline-flex; align-items: center; gap: 4px;">
-                            <i id="modalBookingSourceIcon" class="fas fa-store"></i> <span id="modalBookingSource">WALK-IN</span>
+                        <span id="modalBookingSourceBadge" class="booking-source-badge badge-source-online" style="padding: 3.5px 10px; border-radius: 6px; font-weight: 850; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; display: inline-flex; align-items: center; gap: 5px;">
+                            <i id="modalBookingSourceIcon" class="fas fa-globe"></i> <span id="modalBookingSource">ONLINE BOOKING</span>
                         </span>
-                        <!-- STATUS BADGES -->
-                        <span id="modalStatus" class="badge-status badge-confirmed" style="padding: 3px 10px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">Confirmed</span>
-                        <span id="modalPaymentStatusBadge" style="padding: 3px 10px; border-radius: 6px; font-size: 0.72rem; font-weight: 800; background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa;">Unpaid</span>
+                        
+                        <!-- STATUS BADGE -->
+                        <span id="modalStatus" class="badge-status badge-confirmed" style="padding: 3.5px 11px; border-radius: 6px; font-weight: 800; font-size: 0.72rem; text-transform: uppercase;">CONFIRMED</span>
+                        
+                        <!-- PAYMENT BADGE -->
+                        <span id="modalPaymentStatusBadge" class="badge-status" style="padding: 3.5px 11px; border-radius: 6px; font-weight: 850; font-size: 0.72rem; text-transform: uppercase; background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa;">UNPAID</span>
+                    </div>
+
+                    <!-- Line 2: Booking Channel & Origin & Created Date -->
+                    <div style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.8rem; color: #475569; flex-wrap: wrap; margin-top: 1px;">
+                        <span style="font-weight: 700; color: #0f172a; display: inline-flex; align-items: center; gap: 4px;">
+                            <i class="fas fa-route" style="color: #6366f1; font-size: 0.75rem;"></i>
+                            Booking Channel: <strong id="modalBookingChannel" style="color: #4338ca; font-weight: 800;">OccaServe Website</strong>
+                        </span>
+                        <span style="color: #cbd5e1;">•</span>
+                        <span style="display: inline-flex; align-items: center; gap: 4px;">
+                            <i class="fas fa-user-edit" style="color: #64748b; font-size: 0.75rem;"></i>
+                            Origin: <strong id="modalAddedBy" style="color: #334155;">Customer</strong>
+                        </span>
+                        <span style="color: #cbd5e1;">•</span>
+                        <span>Created: <span id="modalCreatedDate" style="font-weight: 600; color: #334155;">—</span></span>
+                    </div>
+
+                    <!-- Line 3: Customer Headline & Event Subline & Location -->
+                    <div style="margin-top: 2px; display: flex; flex-direction: column; gap: 2px;">
+                        <div style="font-size: 1.05rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                            <span id="modalCustomerHeadline">—</span>
+                            <span id="modalCustomerVerificationBadge" style="display: none; font-size: 0.72rem; font-weight: 800; background: #dcfce7; color: #166534; padding: 1.5px 8px; border-radius: 4px; border: 1px solid #bbf7d0;">
+                                <i class="fas fa-check-circle"></i> VERIFIED
+                            </span>
+                        </div>
+                        <div style="font-size: 0.82rem; color: #475569; font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                            <span id="modalEventSublineText">—</span>
+                        </div>
+                        <div id="modalVenueLine" style="font-size: 0.78rem; color: #64748b; font-weight: 500; display: flex; align-items: center; gap: 4px;">
+                            <i class="fas fa-map-marker-alt" style="color: #ef4444; font-size: 0.75rem;"></i>
+                            <span id="modalVenueText">—</span>
+                        </div>
                     </div>
                 </div>
-                
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <button type="button" onclick="window.toggleModalFullscreen('bookingDetailModal', this)" title="Expand/Minimize" style="background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: all 0.2s;">
-                        <i class="fas fa-expand"></i>
-                    </button>
-                    <button type="button" onclick="bk_closeBookingDetailModal()" class="occ-modal-close" style="background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: all 0.2s;">
-                        <i class="fas fa-times"></i>
-                    </button>
+
+                <!-- Right: Window Controls & Financial Display -->
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.65rem; flex-shrink: 0;">
+                    <div style="display: flex; align-items: center; gap: 0.35rem;">
+                        <button type="button" onclick="window.toggleModalFullscreen('bookingDetailModal', this)" title="Expand/Minimize" class="header-action-btn" style="background: #f8fafc; border: 1px solid #e2e8f0; width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: all 0.2s;">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                        <button type="button" onclick="bk_closeBookingDetailModal()" class="header-action-btn" title="Close" style="background: #f8fafc; border: 1px solid #e2e8f0; width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: all 0.2s;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <!-- Financials Box -->
+                    <div style="text-align: right; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.5rem 0.85rem; min-width: 175px;">
+                        <div style="font-size: 0.65rem; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;">TOTAL AMOUNT</div>
+                        <div id="modalHeaderTotal" style="font-size: 1.45rem; font-weight: 900; color: #0f172a; line-height: 1.1; margin: 2px 0;">₱0.00</div>
+                        <div style="font-size: 0.74rem; font-weight: 700; color: #475569;">
+                            <span id="modalHeaderPaid" style="color: #16a34a;">₱0.00 paid</span> • 
+                            <span id="modalHeaderBalance" style="color: #c2410c;">₱0.00 bal</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <!-- COMPACT BOOKING SUMMARY BAR -->
-            <div id="modalCompactHeaderSummary" style="margin-top: 0.85rem; padding: 0.6rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; font-size: 0.82rem; color: #334155;">
-                <div><i class="fas fa-user" style="color: #64748b; margin-right: 5px;"></i> <strong id="headerSummaryCustomer" style="color: #0f172a;">—</strong></div>
-                <div><i class="fas fa-calendar-alt" style="color: #64748b; margin-right: 5px;"></i> <span id="headerSummaryEventType">—</span> &bull; <span id="headerSummaryDate">—</span></div>
-                <div><i class="fas fa-clock" style="color: #64748b; margin-right: 5px;"></i> <span id="headerSummaryTime">TBA</span></div>
-                <div><i class="fas fa-users" style="color: #64748b; margin-right: 5px;"></i> <span id="headerSummaryPax">0 pax</span></div>
-                <div><i class="fas fa-map-marker-alt" style="color: #64748b; margin-right: 5px;"></i> <span id="headerSummaryVenue">TBA</span></div>
             </div>
         </div>
 
-        <!-- NAVIGATION TABS -->
-        <div class="exec-tabs" style="flex-shrink: 0; display: flex; gap: 0.25rem; padding: 0 1.5rem; background: #ffffff; border-bottom: 1px solid #e2e8f0; overflow-x: auto; white-space: nowrap;">
-            <button id="tabBtnOverview" data-tab="overview" class="mtab-btn-pro active" onclick="switchBookingTab('overview', this)" style="padding: 0.85rem 1rem; font-size: 0.85rem; font-weight: 700; color: var(--primary-color, #800020); border: none; border-bottom: 2px solid var(--primary-color, #800020); background: transparent; cursor: pointer; transition: all 0.2s;">
-                <i class="fas fa-chart-pie" style="margin-right: 6px;"></i> Overview
+        <!-- ══ NAVIGATION TABS ══ -->
+        <div class="exec-tabs" style="flex-shrink: 0; display: flex; gap: 0.25rem; padding: 0 1.5rem; background: #ffffff; border-bottom: 1px solid #e2e8f0; overflow-x: auto; white-space: nowrap; scrollbar-width: none;">
+            <button id="tabBtnOverview" data-tab="overview" class="mtab-btn-pro active" onclick="switchBookingTab('overview', this)">
+                <i class="fas fa-chart-pie"></i> <span>Overview</span>
             </button>
-            <button id="tabBtnCustomer" data-tab="customer" class="mtab-btn-pro" onclick="switchBookingTab('customer', this)" style="padding: 0.85rem 1rem; font-size: 0.85rem; font-weight: 700; color: #64748b; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; transition: all 0.2s;">
-                <i class="fas fa-user-circle" style="margin-right: 6px;"></i> Customer
+            <button id="tabBtnCustomer" data-tab="customer" class="mtab-btn-pro" onclick="switchBookingTab('customer', this)">
+                <i class="fas fa-user-circle"></i> <span>Customer</span>
             </button>
-            <button id="tabBtnOrder" data-tab="order" class="mtab-btn-pro" onclick="switchBookingTab('order', this)" style="padding: 0.85rem 1rem; font-size: 0.85rem; font-weight: 700; color: #64748b; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; transition: all 0.2s;">
-                <i class="fas fa-box-open" style="margin-right: 6px;"></i> Order & Package
+            <button id="tabBtnServices" data-tab="services" class="mtab-btn-pro" onclick="switchBookingTab('services', this)">
+                <i class="fas fa-box-open"></i> <span id="tabServicesLabel">Event &amp; Package</span>
             </button>
-            <button id="tabBtnPayment" data-tab="payment" class="mtab-btn-pro" onclick="switchBookingTab('payment', this)" style="padding: 0.85rem 1rem; font-size: 0.85rem; font-weight: 700; color: #64748b; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; transition: all 0.2s;">
-                <i class="fas fa-receipt" style="margin-right: 6px;"></i> Payment
+            <button id="tabBtnChat" data-tab="chat" class="mtab-btn-pro" onclick="switchBookingTab('chat', this)">
+                <i class="fas fa-comments"></i> <span>Consultation Chat</span>
+                <span id="modalChatTabBadge" style="display: none; background: #ea580c; color: white; font-size: 0.65rem; font-weight: 850; padding: 1px 6px; border-radius: 10px; margin-left: 4px; box-shadow: 0 1px 3px rgba(234, 88, 12, 0.3);">0</span>
             </button>
-            <button id="tabBtnPreparation" data-tab="preparation" class="mtab-btn-pro" onclick="switchBookingTab('preparation', this)" style="padding: 0.85rem 1rem; font-size: 0.85rem; font-weight: 700; color: #64748b; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; transition: all 0.2s;">
-                <i class="fas fa-tasks" style="margin-right: 6px;"></i> Preparation
+            <button id="tabBtnVerification" data-tab="verification" class="mtab-btn-pro" onclick="switchBookingTab('verification', this)" style="display: none;">
+                <i class="fas fa-shield-alt"></i> <span>Verification</span>
             </button>
-            <button id="tabBtnActivity" data-tab="activity" class="mtab-btn-pro" onclick="switchBookingTab('activity', this)" style="padding: 0.85rem 1rem; font-size: 0.85rem; font-weight: 700; color: #64748b; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; transition: all 0.2s;">
-                <i class="fas fa-history" style="margin-right: 6px;"></i> Activity
+            <button id="tabBtnContract" data-tab="contract" class="mtab-btn-pro" onclick="switchBookingTab('contract', this)" style="display: none;">
+                <i class="fas fa-file-signature"></i> <span>Contract</span>
+            </button>
+            <button id="tabBtnPayment" data-tab="payment" class="mtab-btn-pro" onclick="switchBookingTab('payment', this)">
+                <i class="fas fa-receipt"></i> <span>Payment</span>
+            </button>
+            <button id="tabBtnPreparation" data-tab="preparation" class="mtab-btn-pro" onclick="switchBookingTab('preparation', this)">
+                <i class="fas fa-tasks"></i> <span>Preparation</span>
+            </button>
+            <button id="tabBtnActivity" data-tab="activity" class="mtab-btn-pro" onclick="switchBookingTab('activity', this)">
+                <i class="fas fa-history"></i> <span>Activity</span>
             </button>
         </div>
 
-        <!-- MODAL BODY / CONTENT PANES -->
+        <!-- ══ MODAL BODY / CONTENT PANES ══ -->
         <div class="modal-body-scroll" style="flex: 1; overflow-y: auto; padding: 1.5rem; background: #f8fafc;">
             
-            <!-- TAB 1: OVERVIEW -->
+            <!-- ─── TAB 1: OVERVIEW ─── -->
             <div id="btab-overview" class="mtab-pane-pro active" style="display: flex; flex-direction: column; gap: 1.25rem;">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem;">
+                <!-- Next Action / Operational Advisory Banner -->
+                <div id="modalOverviewActionBanner" class="workspace-next-action" style="border: 1px solid #fee2e2; border-left: 4px solid #b91c1c; border-radius: 12px; background: #ffffff; padding: 1.15rem 1.35rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03); flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 250px;">
+                        <div id="modalOverviewActionEyebrow" style="color: #b45309; font-size: 0.7rem; font-weight: 850; text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 5px;">
+                            <i class="fas fa-bolt"></i> NEXT STEP ADVISORY
+                        </div>
+                        <h4 id="modalOverviewActionTitle" style="margin: 0.2rem 0; font-size: 1.1rem; font-weight: 800; color: #0f172a;">Confirmed &amp; Ready for Preparation</h4>
+                        <p id="modalOverviewActionDesc" style="margin: 0; font-size: 0.85rem; color: #64748b; line-height: 1.4;">Review event schedule and confirmed requirements.</p>
+                    </div>
+                    <div id="modalOverviewActionBtnWrap">
+                        <!-- populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Missing Info / Attention Alert -->
+                <div id="modalOverviewAttentionBox" style="display: none; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 0.85rem 1.15rem; color: #92400e; font-size: 0.82rem;">
+                    <div style="font-weight: 800; text-transform: uppercase; font-size: 0.7rem; display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                        <i class="fas fa-exclamation-triangle"></i> Attention Required
+                    </div>
+                    <div id="modalOverviewAttentionList" style="display: flex; flex-direction: column; gap: 3px;"></div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
                     <!-- Event Information Card -->
                     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                         <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem; margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
@@ -1980,6 +2183,10 @@
                             <div>
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Event Type</span>
                                 <strong id="ovEventType" style="color: #0f172a;">—</strong>
+                            </div>
+                            <div>
+                                <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Celebrant / Guest of Honor</span>
+                                <strong id="ovCelebrant" style="color: #0f172a;">N/A</strong>
                             </div>
                             <div>
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Event Date</span>
@@ -1993,13 +2200,13 @@
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Number of Pax</span>
                                 <strong id="ovGuestCount" style="color: #0f172a;">0 pax</strong>
                             </div>
+                            <div>
+                                <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Motif / Theme</span>
+                                <span id="ovMotif" style="color: #334155; font-weight: 600;">Not specified</span>
+                            </div>
                             <div style="grid-column: span 2;">
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Venue Location</span>
                                 <span id="ovVenue" style="color: #334155; font-weight: 600;">—</span>
-                            </div>
-                            <div style="grid-column: span 2;">
-                                <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Motif / Theme</span>
-                                <span id="ovMotif" style="color: #334155; font-weight: 600;">Not specified</span>
                             </div>
                         </div>
                     </div>
@@ -2016,19 +2223,23 @@
                             </div>
                             <div>
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Booking Source</span>
-                                <span id="ovSourceBadge" style="font-weight: 800; font-size: 0.75rem; color: #c2410c;">WALK-IN</span>
+                                <span id="ovSourceBadge" style="font-weight: 800; font-size: 0.75rem; color: #4338ca;">ONLINE BOOKING</span>
+                            </div>
+                            <div>
+                                <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Booking Channel</span>
+                                <strong id="ovBookingChannel" style="color: #334155;">OccaServe Website</strong>
+                            </div>
+                            <div>
+                                <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Added By</span>
+                                <span id="ovAddedBy" style="color: #334155; font-weight: 600;">Customer</span>
                             </div>
                             <div>
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Created Date</span>
                                 <span id="ovCreatedDate" style="color: #334155; font-weight: 600;">—</span>
                             </div>
                             <div>
-                                <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Status</span>
-                                <span id="ovStatusText" style="font-weight: 700; color: #16a34a;">Confirmed</span>
-                            </div>
-                            <div style="grid-column: span 2;">
-                                <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Assigned Staff</span>
-                                <span id="ovAssignedStaff" style="color: #334155; font-weight: 600;">Caterer Admin Staff</span>
+                                <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Booking Status</span>
+                                <span id="ovStatusText" style="font-weight: 800; color: #16a34a;">Confirmed</span>
                             </div>
                         </div>
                     </div>
@@ -2040,7 +2251,7 @@
                         <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; font-weight: 700;">Financial Overview</div>
                         <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">Total booking value and settlement progress</div>
                     </div>
-                    <div style="display: flex; gap: 2rem; align-items: center;">
+                    <div style="display: flex; gap: 2rem; align-items: center; flex-wrap: wrap;">
                         <div style="text-align: right;">
                             <div style="font-size: 0.7rem; text-transform: uppercase; color: #94a3b8; font-weight: 700;">Total Amount</div>
                             <div id="ovTotalDisplay" style="font-size: 1.35rem; font-weight: 900; color: #ffffff;">₱0.00</div>
@@ -2051,26 +2262,30 @@
                         </div>
                         <div style="text-align: right;">
                             <div style="font-size: 0.7rem; text-transform: uppercase; color: #94a3b8; font-weight: 700;">Balance</div>
-                            <div id="ovBalanceDisplay" style="font-size: 1.35rem; font-weight: 900; color: #3b82f6;">₱0.00</div>
+                            <div id="ovBalanceDisplay" style="font-size: 1.35rem; font-weight: 900; color: #38bdf8;">₱0.00</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.7rem; text-transform: uppercase; color: #94a3b8; font-weight: 700;">Payment Status</div>
+                            <div id="ovPaymentStatusDisplay" style="font-size: 0.95rem; font-weight: 800; color: #f59e0b; text-transform: uppercase;">UNPAID</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- TAB 2: CUSTOMER -->
+            <!-- ─── TAB 2: CUSTOMER ─── -->
             <div id="btab-customer" class="mtab-pane-pro" style="display: none; flex-direction: column; gap: 1.25rem;">
                 <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; margin-bottom: 1.25rem;">
                         <div style="font-size: 1rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-id-card" style="color: var(--primary-color, #800020);"></i> Customer Profile & Information
+                            <i class="fas fa-id-card" style="color: var(--primary-color, #800020);"></i> Customer Profile &amp; Information
                         </div>
-                        <span id="custSourceNote" style="font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: #ffedd5; color: #c2410c;">WALK-IN ENTRY</span>
+                        <span id="custSourceNote" style="font-size: 0.75rem; font-weight: 800; padding: 3px 10px; border-radius: 20px; background: #e0e7ff; color: #4338ca;">ONLINE ACCOUNT</span>
                     </div>
 
                     <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; font-size: 0.88rem;">
                         <div>
                             <span style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Full Name</span>
-                            <strong id="custFullName" style="font-size: 1rem; color: #0f172a;">—</strong>
+                            <strong id="custFullName" style="font-size: 1.05rem; color: #0f172a;">—</strong>
                         </div>
                         <div>
                             <span style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Mobile Number</span>
@@ -2078,18 +2293,41 @@
                         </div>
                         <div>
                             <span style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Email Address</span>
-                            <span id="custEmail" style="color: #334155; font-weight: 600;">No email provided</span>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span id="custEmail" style="color: #334155; font-weight: 600;">—</span>
+                                <span id="custEmailVerifiedBadge" style="display: none; font-size: 0.68rem; font-weight: 800; background: #dcfce7; color: #166534; padding: 1px 6px; border-radius: 4px;">Verified</span>
+                            </div>
                         </div>
                         <div>
                             <span style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Customer Type</span>
-                            <span id="custType" style="color: #334155; font-weight: 700;">Walk-in Customer</span>
+                            <span id="custType" style="color: #334155; font-weight: 700;">Registered Customer</span>
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <span style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Customer Address</span>
+                            <span id="custAddress" style="color: #334155; font-weight: 600;">—</span>
                         </div>
                     </div>
 
-                    <!-- Contact Quick Actions -->
-                    <div style="margin-top: 1.5rem; pt: 1rem; border-top: 1px solid #f1f5f9; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                    <!-- KYC Summary Block (Only for Online Bookings) -->
+                    <div id="custKycSummaryBlock" style="display: none; margin-top: 1.25rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem 1.25rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <span style="font-size: 0.78rem; font-weight: 800; color: #0f172a; text-transform: uppercase;"><i class="fas fa-shield-alt" style="color: #16a34a;"></i> Identity Verification Status</span>
+                            <span id="custKycStatusBadge" style="font-size: 0.72rem; font-weight: 800; background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px;">VERIFIED</span>
+                        </div>
+                        <div id="custKycDetailsList" style="font-size: 0.8rem; color: #475569; display: flex; flex-direction: column; gap: 4px;">
+                            <div><i class="fas fa-check-circle" style="color: #16a34a;"></i> Government ID submitted</div>
+                            <div><i class="fas fa-check-circle" style="color: #16a34a;"></i> Document verification check completed</div>
+                            <div><i class="fas fa-check-circle" style="color: #16a34a;"></i> Facial liveness confirmed</div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; display: flex; gap: 0.75rem; flex-wrap: wrap;">
                         <a id="btnCallCustomer" href="#" class="btn-primary-pro" style="padding: 0.55rem 1.15rem; font-size: 0.82rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; background: #0284c7; border-color: #0284c7;">
                             <i class="fas fa-phone"></i> Call Customer
+                        </a>
+                        <a id="btnSmsCustomer" href="#" class="btn-secondary-pro" style="padding: 0.55rem 1.15rem; font-size: 0.82rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
+                            <i class="fas fa-sms"></i> Send SMS
                         </a>
                         <a id="btnEmailCustomer" href="#" class="btn-secondary-pro" style="padding: 0.55rem 1.15rem; font-size: 0.82rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
                             <i class="fas fa-envelope"></i> Send Email
@@ -2098,91 +2336,360 @@
                 </div>
             </div>
 
-            <!-- TAB 3: ORDER & PACKAGE -->
-            <div id="btab-order" class="mtab-pane-pro" style="display: none; flex-direction: column; gap: 1.25rem;">
-                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; margin-bottom: 1rem;">
-                        <div style="font-size: 1rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-box-open" style="color: var(--primary-color, #800020);"></i> Catering Package & Inclusions
-                        </div>
-                        <button type="button" onclick="bk_openModal('editBookingModal')" class="btn-secondary-pro" style="padding: 0.4rem 0.85rem; font-size: 0.78rem; font-weight: 700;">
-                            <i class="fas fa-edit"></i> Edit Package / Order
-                        </button>
-                    </div>
-
-                    <!-- Package Details -->
-                    <div id="orderPackageDetails" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <!-- ─── TAB 3: EVENT & PACKAGE / SERVICES ─── -->
+            <div id="btab-services" class="mtab-pane-pro" style="display: none; flex-direction: column; gap: 1.25rem;">
+                <!-- ONLINE PACKAGE VIEW -->
+                <div id="paneOnlinePackageView" style="display: flex; flex-direction: column; gap: 1.25rem;">
+                    <!-- Package Card -->
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.85rem; margin-bottom: 1rem;">
                             <div>
-                                <div style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Package Name</div>
-                                <div id="orderPkgName" style="font-size: 1.1rem; font-weight: 800; color: #0f172a; margin-top: 2px;">Standard Buffet Package</div>
-                                <div id="orderPkgMeta" style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">Min 50 pax &bull; General Service</div>
+                                <span style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Catering Package</span>
+                                <h3 id="onPkgTitle" style="margin: 2px 0 0; font-size: 1.25rem; font-weight: 900; color: #0f172a;">Standard Buffet Package</h3>
+                                <div id="onPkgMeta" style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">Min 50 guests • Standard Service</div>
                             </div>
                             <div style="text-align: right;">
-                                <div style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Package Price</div>
-                                <div id="orderPkgPrice" style="font-size: 1.35rem; font-weight: 900; color: #10b981;">₱0.00</div>
+                                <span style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Package Price</span>
+                                <div id="onPkgPrice" style="font-size: 1.45rem; font-weight: 900; color: #16a34a; margin-top: 2px;">₱0.00</div>
                             </div>
                         </div>
-                    </div>
+                        
+                        <!-- Special Requests / Theme -->
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                            <div style="background: #f8fafc; padding: 0.85rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                <span style="font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Motif / Theme</span>
+                                <div id="onPkgMotifText" style="font-weight: 700; color: #0f172a; margin-top: 2px;">Not specified</div>
+                            </div>
+                            <div style="background: #f8fafc; padding: 0.85rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                <span style="font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Special Requests</span>
+                                <div id="onPkgRequestsText" style="font-weight: 600; color: #0f172a; margin-top: 2px;">None</div>
+                            </div>
+                        </div>
 
-                    <!-- Menu items -->
-                    <div style="margin-bottom: 1rem;">
-                        <div style="font-size: 0.82rem; font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 0.5rem;">Food / Menu Items</div>
-                        <div id="modalMenuItems" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.65rem;"></div>
+                        <!-- Inclusions & Custom Menu Breakdown -->
+                        <div style="border-top: 1px solid #f1f5f9; padding-top: 1rem;">
+                            <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-utensils" style="color: var(--primary-color, #800020);"></i> Package Inclusions &amp; Menu Breakdown
+                            </div>
+                            <div id="onPkgInclusionsContainer" style="display: flex; flex-direction: column; gap: 0.75rem;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MANUAL SERVICES VIEW -->
+                <div id="paneManualServicesView" style="display: none; flex-direction: column; gap: 1.25rem;">
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; margin-bottom: 1rem;">
+                            <div>
+                                <div style="font-size: 1rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-concierge-bell" style="color: var(--primary-color, #800020);"></i> Selected Event Services &amp; Pricing
+                                </div>
+                                <div style="font-size: 0.78rem; color: #64748b; margin-top: 2px;">Itemized services and customizations selected for this manual booking</div>
+                            </div>
+                        </div>
+
+                        <!-- Selected Services Checklist Display -->
+                        <div id="manualSelectedServicesContainer" style="display: flex; flex-direction: column; gap: 0.65rem; margin-bottom: 1.25rem;"></div>
+
+                        <!-- Equipment / Extras if any -->
+                        <div id="manualEquipmentSection" style="display: none; margin-top: 1rem; border-top: 1px solid #f1f5f9; padding-top: 1rem;">
+                            <div style="font-size: 0.85rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem;"><i class="fas fa-tools" style="color: #ea580c;"></i> Equipment &amp; Rentals</div>
+                            <div id="manualEquipmentList" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+                        </div>
+
+                        <!-- Total Computed Services Amount -->
+                        <div style="margin-top: 1.25rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.85rem; font-weight: 800; color: #475569; text-transform: uppercase;">Total Services Amount:</span>
+                            <span id="manualServicesTotalDisplay" style="font-size: 1.35rem; font-weight: 900; color: #166534;">₱0.00</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- TAB 4: PAYMENT -->
-            <div id="btab-payment" class="mtab-pane-pro" style="display: none; flex-direction: column; gap: 1.25rem;">
-                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; margin-bottom: 1rem;">
-                        <div style="font-size: 1rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-coins" style="color: var(--primary-color, #800020);"></i> Payment Summary & History
+            <!-- ─── TAB: CONSULTATION CHAT ─── -->
+            <div id="btab-chat" class="mtab-pane-pro" style="display: none; flex-direction: column; gap: 1rem;">
+                <!-- ONLINE CONSULTATION CHAT VIEW -->
+                <div id="modalChatOnlineView" style="display: flex; flex-direction: column; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.02); height: 560px; max-height: calc(90vh - 280px);">
+                    <!-- Chat Header -->
+                    <div style="padding: 0.85rem 1.25rem; border-bottom: 1px solid #e2e8f0; background: #ffffff; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="width: 38px; height: 38px; border-radius: 50%; background: #fff7ed; color: #ea580c; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; border: 1px solid #fed7aa;">
+                                <i class="fas fa-comments"></i>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #ea580c;">CONSULTATION CHAT</div>
+                                <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; line-height: 1.2;" id="modalChatCustomerHeader">Customer Consultation</div>
+                                <div style="font-size: 0.75rem; color: #64748b;" id="modalChatBookingSubline">Booking #BK-000000</div>
+                            </div>
                         </div>
-                        <span id="paymentTabBadge" style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; background: #fff7ed; color: #c2410c;">UNPAID</span>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; font-weight: 700; color: #16a34a; background: #dcfce7; padding: 2px 8px; border-radius: 20px;">
+                                <i class="fas fa-circle" style="font-size: 6px;"></i> Direct Thread
+                            </span>
+                            <button type="button" onclick="loadBookingMessages(currentBookingId)" class="btn-sm-outline" style="background: #f8fafc; border: 1px solid #e2e8f0; color: #64748b; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;" title="Refresh Messages">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Payment Financial Summary -->
+                    <!-- Chat Messages Window -->
+                    <div id="modalChatMessages" style="flex: 1; overflow-y: auto; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.85rem; background: #f8fafc;">
+                        <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+                            <i class="fas fa-spinner fa-spin fa-2x"></i>
+                            <p style="margin-top: 0.5rem; font-size: 0.85rem;">Connecting to consultation thread...</p>
+                        </div>
+                    </div>
+
+                    <!-- Attachment Preview Bar -->
+                    <div id="modalChatAttachmentPreview" style="display: none; padding: 0.5rem 1.25rem; background: #fff7ed; border-top: 1px solid #fed7aa; align-items: center; justify-content: space-between;">
+                        <span id="modalChatAttachmentName" style="font-size: 0.78rem; font-weight: 700; color: #c2410c; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-paperclip"></i> File attached
+                        </span>
+                        <button type="button" onclick="clearModalChatAttachment()" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.85rem;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <!-- Chat Composer Form -->
+                    <form id="modalChatForm" onsubmit="sendBookingChatMessage(event)" style="padding: 0.85rem 1.25rem; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; align-items: center; gap: 0.65rem; flex-shrink: 0;">
+                        <input type="hidden" id="modalChatBookingId" name="booking_id" value="">
+                        <input type="file" id="modalChatFileInput" name="attachment" accept="image/*,.pdf,.doc,.docx" style="display: none;" onchange="handleModalChatFileSelect(this)">
+                        
+                        <button type="button" onclick="document.getElementById('modalChatFileInput').click()" class="btn-sm-outline" style="width: 38px; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; background: #f8fafc; color: #64748b; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;" title="Attach file or image">
+                            <i class="fas fa-paperclip" style="font-size: 0.95rem;"></i>
+                        </button>
+
+                        <textarea id="modalChatMessageInput" name="message" rows="1" placeholder="Type a message to customer..." style="flex: 1; resize: none; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.6rem 0.85rem; font-size: 0.85rem; font-family: inherit; line-height: 1.4; outline: none;" onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); document.getElementById('modalChatSubmitBtn').click(); }"></textarea>
+
+                        <button type="submit" id="modalChatSubmitBtn" class="btn-primary" style="background: var(--primary-color, #ea580c); color: white; border: none; height: 38px; padding: 0 1.15rem; border-radius: 8px; font-weight: 700; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; flex-shrink: 0;">
+                            <span>Send</span> <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- MANUAL BOOKING CHANNEL VIEW (Section 8) -->
+                <div id="modalChatManualView" style="display: none; flex-direction: column; gap: 1rem;">
+                    <div style="background: #ffffff; border: 1px solid #fed7aa; border-left: 4px solid #f97316; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <div style="display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1.25rem;">
+                            <div style="width: 44px; height: 44px; border-radius: 50%; background: #ffedd5; color: #ea580c; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
+                                <i class="fas fa-store"></i>
+                            </div>
+                            <div>
+                                <h4 style="margin: 0 0 4px; font-size: 1.05rem; font-weight: 850; color: #0f172a;">Manual Booking Communication</h4>
+                                <p style="margin: 0; font-size: 0.85rem; color: #64748b;">This booking was recorded manually outside the OccaServe website platform.</p>
+                            </div>
+                        </div>
+
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.85rem; margin-bottom: 1.25rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; border-bottom: 1px dashed #e2e8f0; padding-bottom: 0.65rem;">
+                                <span style="font-weight: 700; color: #64748b; text-transform: uppercase; font-size: 0.72rem;">Booking Source:</span>
+                                <span class="badge-status badge-manual" style="background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; font-weight: 800; font-size: 0.72rem; padding: 3px 10px; border-radius: 6px;">MANUAL BOOKING</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+                                <span style="font-weight: 700; color: #64748b; text-transform: uppercase; font-size: 0.72rem;">Booking Channel:</span>
+                                <strong id="modalManualChannelDisplay" style="color: #4338ca; font-weight: 800; font-size: 0.95rem;">Facebook Messenger</strong>
+                            </div>
+                        </div>
+
+                        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 0.85rem 1rem; display: flex; align-items: flex-start; gap: 0.65rem; font-size: 0.82rem; color: #1e40af; line-height: 1.45;">
+                            <i class="fas fa-info-circle" style="font-size: 1rem; margin-top: 2px;"></i>
+                            <div>
+                                <strong>External Communication Channel:</strong> Consultation chat history on the OccaServe platform is active for online bookings. For this manual booking, communication occurred directly through the channel above.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── TAB 4: VERIFICATION (ONLINE ONLY) ─── -->
+            <div id="btab-verification" class="mtab-pane-pro" style="display: none; flex-direction: column; gap: 1.25rem;">
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; margin-bottom: 1.25rem;">
+                        <div style="font-size: 1rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-user-shield" style="color: #16a34a;"></i> Customer Identity Verification (KYC)
+                        </div>
+                        <span id="verifStatusBadge" style="font-size: 0.75rem; font-weight: 800; padding: 3px 12px; border-radius: 20px; background: #dcfce7; color: #166534;">VERIFIED</span>
+                    </div>
+
+                    <p style="font-size: 0.85rem; color: #64748b; line-height: 1.5; margin: 0 0 1.25rem;">
+                        This customer has successfully completed the OccaServe identity verification checkpoints required for online event bookings.
+                    </p>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem; display: flex; align-items: center; gap: 0.75rem;">
+                            <i id="verifDocIcon" class="fas fa-check-circle" style="color: #16a34a; font-size: 1.5rem;"></i>
+                            <div>
+                                <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Government ID</div>
+                                <div id="verifDocText" style="font-size: 0.88rem; font-weight: 800; color: #0f172a;">Submitted &amp; Validated</div>
+                            </div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem; display: flex; align-items: center; gap: 0.75rem;">
+                            <i id="verifOcrIcon" class="fas fa-check-circle" style="color: #16a34a; font-size: 1.5rem;"></i>
+                            <div>
+                                <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Document Scan</div>
+                                <div id="verifOcrText" style="font-size: 0.88rem; font-weight: 800; color: #0f172a;">OCR Completed</div>
+                            </div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem; display: flex; align-items: center; gap: 0.75rem;">
+                            <i id="verifLivenessIcon" class="fas fa-check-circle" style="color: #16a34a; font-size: 1.5rem;"></i>
+                            <div>
+                                <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Liveness Verification</div>
+                                <div id="verifLivenessText" style="font-size: 0.88rem; font-weight: 800; color: #0f172a;">Face Check Passed</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="verifTimestampLine" style="font-size: 0.8rem; color: #64748b; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-clock"></i> Verification completed on: <strong id="verifTimestampVal" style="color: #334155;">—</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── TAB 5: CONTRACT ─── -->
+            <div id="btab-contract" class="mtab-pane-pro" style="display: none; flex-direction: column; gap: 1.25rem;">
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; margin-bottom: 1.25rem;">
+                        <div style="font-size: 1rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-file-contract" style="color: var(--primary-color, #800020);"></i> Service Agreement &amp; Contract
+                        </div>
+                        <span id="contractStatusBadge" style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; padding: 3px 12px; border-radius: 20px; background: #f1f5f9; color: #475569;">PENDING</span>
+                    </div>
+
+                    <div style="font-size: 0.85rem; font-weight: 800; color: #0f172a; margin-bottom: 0.75rem;">Digital Signature Records</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.25rem;">
+                        <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem; display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 1rem; color: #94a3b8; flex-shrink: 0;"><i class="fas fa-user"></i></div>
+                            <div>
+                                <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Customer Signature</div>
+                                <div id="contractCustSigText" style="font-size: 0.85rem; font-weight: 700; color: #94a3b8;">Awaiting Customer Signature</div>
+                            </div>
+                        </div>
+                        <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem; display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 1rem; color: #94a3b8; flex-shrink: 0;"><i class="fas fa-user-tie"></i></div>
+                            <div>
+                                <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Caterer Signature</div>
+                                <div id="contractCatSigText" style="font-size: 0.85rem; font-weight: 700; color: #94a3b8;">Awaiting Caterer Signature</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="contractExpiryNotice" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 0.75rem; border-radius: 8px; font-size: 0.82rem; margin-bottom: 1rem;">
+                        <i class="fas fa-exclamation-circle"></i> <strong>Notice:</strong> The event date has passed. Contract modifications are locked.
+                    </div>
+
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <button type="button" id="btnViewContractModal" onclick="window.openIframeModal('/caterer/bookings/' + currentBookingId + '/sign?modal=true', 'Service Agreement')" class="btn-primary-pro" style="padding: 0.55rem 1.15rem; font-size: 0.82rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.4rem;">
+                            <i class="fas fa-pen-nib"></i> View &amp; Sign Agreement
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── TAB 6: PAYMENT ─── -->
+            <div id="btab-payment" class="mtab-pane-pro" style="display: none; flex-direction: column; gap: 1.25rem;">
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                        <div style="font-size: 1rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-receipt" style="color: var(--primary-color, #800020);"></i> Payment Records &amp; Settlement
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                            <span id="paymentTabBadge" style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; background: #fff7ed; color: #c2410c;">UNPAID</span>
+                            <button type="button" id="btnPaymentRecordAction" onclick="openRecordPaymentModal()" class="btn-primary" style="background: #16a34a; color: white; border: none; padding: 0.4rem 0.95rem; font-size: 0.78rem; font-weight: 700; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                                <i class="fas fa-plus-circle"></i> Record Payment
+                            </button>
+                            <button type="button" id="btnPaymentTabCopyLink" onclick="window.copyInvoiceLink(currentBookingId)" class="btn-secondary-pro" style="padding: 0.4rem 0.85rem; font-size: 0.78rem; font-weight: 700; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                                <i class="fas fa-link"></i> Copy Link
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Payment Financial Summary 3 Cards -->
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.25rem;">
                         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
-                            <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Amount</div>
+                            <div style="font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Booking Amount</div>
                             <div id="payTotalAmount" style="font-size: 1.35rem; font-weight: 900; color: #0f172a; margin-top: 2px;">₱0.00</div>
                         </div>
                         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 0.9rem 1rem;">
-                            <div style="font-size: 0.72rem; font-weight: 700; color: #166534; text-transform: uppercase;">Total Paid</div>
+                            <div style="font-size: 0.7rem; font-weight: 700; color: #166534; text-transform: uppercase;">Total Paid</div>
                             <div id="payTotalPaid" style="font-size: 1.35rem; font-weight: 900; color: #166534; margin-top: 2px;">₱0.00</div>
                         </div>
                         <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 0.9rem 1rem;">
-                            <div style="font-size: 0.72rem; font-weight: 700; color: #1e40af; text-transform: uppercase;">Remaining Balance</div>
+                            <div style="font-size: 0.7rem; font-weight: 700; color: #1e40af; text-transform: uppercase;">Remaining Balance</div>
                             <div id="payBalance" style="font-size: 1.35rem; font-weight: 900; color: #1e40af; margin-top: 2px;">₱0.00</div>
                         </div>
                     </div>
 
+                    <!-- Uploaded Payment Proofs Section -->
+                    <div id="modalProofSection" style="display: none; margin-bottom: 1.25rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
+                        <div style="font-size: 0.82rem; font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-file-invoice" style="color: var(--primary-color, #800020);"></i> Uploaded Receipts &amp; Proofs
+                        </div>
+                        <div id="modalProofContainer" style="display: flex; gap: 1.5rem; flex-wrap: wrap;"></div>
+                    </div>
+
                     <!-- Payment History Table -->
-                    <div style="font-size: 0.85rem; font-weight: 800; color: #0f172a; margin-bottom: 0.6rem;">Recorded Transactions & Receipts</div>
+                    <div style="font-size: 0.85rem; font-weight: 800; color: #0f172a; margin-bottom: 0.6rem;">Payment History &amp; Transaction Audit</div>
                     <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #ffffff;">
                         <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
                             <thead style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #64748b; text-transform: uppercase; font-size: 0.7rem;">
                                 <tr>
                                     <th style="padding: 0.75rem 1rem; text-align: left;">Date</th>
-                                    <th style="padding: 0.75rem 1rem; text-align: left;">Payment Method</th>
-                                    <th style="padding: 0.75rem 1rem; text-align: left;">Ref # / Txn ID</th>
+                                    <th style="padding: 0.75rem 1rem; text-align: left;">Method</th>
+                                    <th style="padding: 0.75rem 1rem; text-align: left;">Recorded By</th>
+                                    <th style="padding: 0.75rem 1rem; text-align: left;">Reference / Notes</th>
                                     <th style="padding: 0.75rem 1rem; text-align: right;">Amount</th>
                                     <th style="padding: 0.75rem 1rem; text-align: center;">Status</th>
                                 </tr>
                             </thead>
                             <tbody id="paymentHistoryRows">
                                 <tr>
-                                    <td colspan="5" style="padding: 1.5rem; text-align: center; color: #94a3b8;">No payment records found.</td>
+                                    <td colspan="6" style="padding: 1.5rem; text-align: center; color: #94a3b8;">No payment records found.</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
+
+                <!-- Expense & Profit Tracker Card -->
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
+                        <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a;"><i class="fas fa-chart-line" style="color: var(--primary-color);"></i> Expense &amp; Profit Tracker</div>
+                    </div>
+                    <form id="onExpenseTrackerForm" onsubmit="submitExpenses(event)">
+                        <input type="hidden" id="expenseBookingId">
+                        <input type="hidden" id="bookingTotalAmount" value="0">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 1rem;">
+                            <div><div style="font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Revenue</div><div id="modalBookingTotal" style="font-weight: 800; font-size: 1.1rem; color: #0f172a;">₱0.00</div></div>
+                            <div><div style="font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Est. Profit</div><div id="modalEstimateProfit" style="color: #10b981; font-weight: 800; font-size: 1.1rem;">₱0.00</div></div>
+                            <div><div style="font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Margin</div><div id="modalRoiPercent" style="display: flex; gap: 4px; align-items: center; font-weight: 800; font-size: 1.1rem;"><span>0%</span><span id="roiTrendIcon"></span></div></div>
+                        </div>
+                        <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow-x: auto; margin-bottom: 1rem;">
+                            <table class="table" style="width: 100%; border-collapse: collapse; margin-bottom: 0;">
+                                <thead style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                                    <tr>
+                                        <th style="padding: 0.65rem 0.75rem; text-align: left; font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Description</th>
+                                        <th style="padding: 0.65rem 0.75rem; text-align: right; font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase; width: 30%;">Amount (₱)</th>
+                                        <th style="padding: 0.65rem 0.75rem; width: 44px; text-align: center;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="actualExpenseRows"></tbody>
+                            </table>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <button type="button" class="btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="addExpenseRow()"><i class="fas fa-plus"></i> Add Row</button>
+                            <div style="text-align: right;">
+                                <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Expenses:</span>
+                                <span id="totalActualExpenseDisplay" style="font-size: 1.1rem; font-weight: 800; color: #dc2626; margin-left: 0.5rem;">₱0.00</span>
+                            </div>
+                        </div>
+                        <div style="text-align: right; margin-top: 1rem; border-top: 1px solid #e2e8f0; padding-top: 0.75rem;">
+                            <button type="submit" id="saveExpenseBtn" class="btn-primary" style="padding: 6px 16px; font-size: 0.8rem;"><i class="fas fa-save"></i> Save Expenses</button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
-            <!-- TAB 5: PREPARATION -->
+            <!-- ─── TAB 7: PREPARATION ─── -->
             <div id="btab-preparation" class="mtab-pane-pro" style="display: none; flex-direction: column; gap: 1.25rem;">
                 <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; margin-bottom: 1rem;">
@@ -2206,11 +2713,11 @@
                 </div>
             </div>
 
-            <!-- TAB 6: ACTIVITY -->
+            <!-- ─── TAB 8: ACTIVITY ─── -->
             <div id="btab-activity" class="mtab-pane-pro" style="display: none; flex-direction: column; gap: 1.25rem;">
                 <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                     <div style="font-size: 1rem; font-weight: 800; color: #0f172a; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <i class="fas fa-history" style="color: var(--primary-color, #800020);"></i> Audit Trail & Activity Timeline
+                        <i class="fas fa-history" style="color: var(--primary-color, #800020);"></i> Audit Trail &amp; Activity Timeline
                     </div>
                     <div class="audit-timeline-pro" id="modalHistoryTimeline"></div>
                 </div>
@@ -2218,28 +2725,74 @@
 
         </div>
 
-        <!-- FIXED FOOTER ACTIONS -->
+        <!-- ══ FIXED FOOTER ACTIONS ══ -->
         <div class="occ-modal-footer" style="flex-shrink: 0; padding: 1rem 1.5rem; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <!-- DESTRUCTIVE CANCEL BUTTON -->
-                <button type="button" id="btnFooterCancelBooking" onclick="bk_openModal('rejectReasonModal')" class="btn-secondary-pro" style="padding: 0.6rem 1.1rem; font-size: 0.85rem; font-weight: 700; color: #dc2626; border-color: #fecaca; background: #fef2f2;">
+            <div id="modalFooterLeftActions" style="display: flex; align-items: center; gap: 0.75rem;">
+                <button type="button" id="btnFooterCancelBooking" onclick="confirmRejectBooking(currentBookingId)" class="btn-secondary-pro" style="padding: 0.6rem 1.1rem; font-size: 0.85rem; font-weight: 700; color: #dc2626; border-color: #fecaca; background: #fef2f2; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
                     <i class="fas fa-ban"></i> Cancel Booking
                 </button>
             </div>
             
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <button type="button" id="btnFooterCopyPaymentLink" onclick="window.copyInvoiceLink(currentBookingId)" class="btn-secondary-pro" style="padding: 0.6rem 1.1rem; font-size: 0.85rem; font-weight: 700; display: none;">
-                    <i class="fas fa-link"></i> Copy Payment Link
-                </button>
-                <button type="button" id="btnFooterUpdatePayment" onclick="bk_openModal('updatePaymentModal')" class="btn-secondary-pro" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700;">
-                    <i class="fas fa-coins"></i> Update Payment
-                </button>
-                <button type="button" id="btnFooterEditBooking" onclick="bk_openModal('editBookingModal')" class="btn-primary-pro" style="padding: 0.6rem 1.4rem; font-size: 0.85rem; font-weight: 700; background: var(--primary-color, #800020); border-color: var(--primary-color, #800020);">
-                    <i class="fas fa-edit"></i> Edit Booking
+            <div id="modalFooterRightActions" style="display: flex; align-items: center; gap: 0.75rem;">
+                <!-- dynamic action buttons populated based on status and source -->
+                <button type="button" onclick="bk_closeBookingDetailModal()" class="btn-secondary-pro" style="padding: 0.6rem 1.4rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer;">
+                    Close
                 </button>
             </div>
         </div>
 
+    </div>
+</div>
+
+<!-- ══ POPUP: RECORD PAYMENT MODAL ══ -->
+<div id="recordPaymentModal" class="occ-modal-overlay" style="z-index: 1200; display: none;">
+    <div class="occ-modal-box sz-sm occ-content-pop" style="max-width: 480px; width: 95%; background: #ffffff; border-radius: 12px; overflow: hidden;">
+        <div class="occ-modal-header glass-header" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a;"><i class="fas fa-cash-register" style="color: #16a34a; margin-right: 6px;"></i> Record Payment</h3>
+                <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">Record payment received by caterer for this booking</div>
+            </div>
+            <button type="button" onclick="closeRecordPaymentModal()" class="occ-modal-close" style="border: none; background: transparent; font-size: 1.1rem; cursor: pointer; color: #94a3b8;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="occ-modal-body" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+            <div style="background: #f8fafc; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.82rem; display: flex; justify-content: space-between;">
+                <span>Balance Remaining:</span>
+                <strong id="recPayBalanceNotice" style="color: #c2410c; font-weight: 800;">₱0.00</strong>
+            </div>
+            <form id="recordPaymentForm" onsubmit="submitRecordPayment(event)" style="display: flex; flex-direction: column; gap: 0.85rem;">
+                <div>
+                    <label style="display: block; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #475569; margin-bottom: 4px;">Payment Amount (₱) *</label>
+                    <input type="number" step="0.01" min="1" id="recPayAmount" required class="occ-form-input" placeholder="e.g. 5000" style="width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 700; font-size: 0.95rem;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #475569; margin-bottom: 4px;">Payment Method *</label>
+                    <select id="recPayMethod" required class="occ-form-input" style="width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; font-size: 0.85rem;">
+                        <option value="Cash">Cash</option>
+                        <option value="GCash">GCash</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Maya">Maya</option>
+                        <option value="Check">Check</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #475569; margin-bottom: 4px;">Reference Number / Txn ID</label>
+                    <input type="text" id="recPayRef" class="occ-form-input" placeholder="e.g. GCash Ref # or Receipt #" style="width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #475569; margin-bottom: 4px;">Notes / Description</label>
+                    <textarea id="recPayNotes" class="occ-form-input" rows="2" placeholder="e.g. 50% deposit received in person" style="width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; resize: none;"></textarea>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
+                    <button type="button" onclick="closeRecordPaymentModal()" class="btn-secondary-pro" style="padding: 0.55rem 1rem; font-size: 0.82rem;">Cancel</button>
+                    <button type="submit" id="btnSubmitRecPay" class="btn-primary" style="background: #16a34a; color: white; border: none; padding: 0.55rem 1.25rem; font-weight: 700; font-size: 0.82rem; border-radius: 6px; cursor: pointer;">
+                        Save Payment
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -2252,7 +2805,7 @@
     <div class="occ-modal-box sz-sm occ-content-pop">
         <div class="occ-modal-header glass-header">
             <div>
-                <h2 class="occ-modal-title" style="color: #991b1b;"><i class="fas fa-ban"></i> Reject Booking</h2>
+                <h2 class="occ-modal-title" style="color: #991b1b;"><i class="fas fa-ban"></i> Cancel / Reject Booking</h2>
                 <div class="occ-modal-subtitle">Please provide a reason for the cancellation</div>
             </div>
             <button onclick="bk_closeModal('rejectReasonModal')" class="occ-modal-close">
@@ -2261,15 +2814,15 @@
         </div>
         <div class="occ-modal-body">
             <div class="occ-form-group">
-                <label class="occ-form-label" style="font-weight: 800;">Reason for Rejection</label>
-                <textarea id="rejectReasonInput" class="occ-form-input" style="height: 120px; resize: none; border-color: #fecaca;" placeholder="Example: Fully booked on this date, out of service area, etc."></textarea>
-                <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;"><i class="fas fa-info-circle"></i> This reason will be sent to the customer via email.</p>
+                <label class="occ-form-label" style="font-weight: 800;">Reason for Cancellation</label>
+                <textarea id="rejectReasonInput" class="occ-form-input" style="height: 120px; resize: none; border-color: #fecaca;" placeholder="Example: Customer requested cancellation, fully booked on this date, etc."></textarea>
+                <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;"><i class="fas fa-info-circle"></i> This reason will be recorded and notified to the customer.</p>
             </div>
         </div>
         <div class="occ-modal-footer">
             <button onclick="bk_closeModal('rejectReasonModal')" class="btn-sm-outline">Go Back</button>
             <button onclick="submitRejectionWithReason()" class="btn-sm-danger" style="background: #dc2626; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--border-radius, 8px); font-weight: 800; display: flex; align-items: center; gap: 0.5rem;">
-                Confirm Rejection
+                Confirm Cancellation
             </button>
         </div>
     </div>
@@ -2481,8 +3034,8 @@
 
 <!-- Iframe Modal for MSA & KYC -->
 <div id="iframeModal" class="occ-modal-overlay" style="z-index: 1000001; display: none;">
-    <div class="occ-modal-box sz-lg occ-content-pop" style="padding: 0; display: flex; flex-direction: column; height: 95vh; max-height: 95vh; width: 95%; max-width: 1000px; border-radius: 12px; overflow: hidden; position: relative;">
-        <div style="background: #f8fafc; padding: 1rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+    <div class="occ-modal-box sz-lg occ-content-pop" style="padding: 0; display: flex; flex-direction: column; height: 95vh; max-height: 95vh; width: 96%; max-width: 1280px; border-radius: 12px; overflow: hidden; position: relative;">
+        <div id="iframeModalHeader" style="background: #f8fafc; padding: 1rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
             <h2 id="iframeModalTitle" style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #0f172a;">View Document</h2>
             <button onclick="document.getElementById('iframeModal').classList.remove('active'); setTimeout(() => document.getElementById('iframeModal').style.display='none', 300);" style="background: #e2e8f0; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #64748b;"><i class="fas fa-times"></i></button>
         </div>

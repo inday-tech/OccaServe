@@ -23,6 +23,10 @@
         --hub-radius: 14px;
     }
 
+    html, body {
+        overflow-x: clip !important;
+    }
+
     /* ---- BASE CONTAINER ---- */
     .hub-container {
         font-family: 'Poppins', sans-serif;
@@ -119,14 +123,13 @@
 
     /* ---- TABS NAVIGATION ---- */
     .hub-tabs {
-        z-index: 100 !important;
+        z-index: 20;
         display: flex;
         gap: 2rem;
         border-bottom: 2px solid var(--hub-slate-100);
         margin-bottom: 2rem;
         padding-bottom: 0.5rem;
-        position: sticky;
-        top: 0;
+        position: relative;
         background: #f8fafc;
         padding-top: 1rem;
     }
@@ -176,9 +179,9 @@
 
     /* Phase 2: Priority Ordering */
     #hub-tab-packages { order: 1; }
-    #hub-tab-menu { order: 2; }
-    #hub-tab-services { order: 3; }
-    #hub-tab-equipment { order: 4; }
+    #hub-tab-equipment { order: 2; }
+    #hub-tab-menu { order: 3; }
+    #hub-tab-services { order: 4; }
     #hub-tab-portfolio { order: 5; }
     #hub-tab-policies { order: 6; }
     #hub-tab-overview { order: 7; }
@@ -199,6 +202,13 @@
     @media (max-width: 1024px) {
         .hub-main-grid {
             grid-template-columns: 1fr;
+        }
+        .profile-sidebar {
+            position: static !important;
+            top: auto !important;
+            max-height: none !important;
+            overflow-y: visible !important;
+            margin-top: 1.5rem !important;
         }
     }
 
@@ -756,7 +766,11 @@
         /* --- Sidebar moves below content on mobile --- */
         .profile-sidebar {
             position: static !important;
+            top: auto !important;
+            max-height: none !important;
+            overflow-y: visible !important;
             margin-top: 0.5rem !important;
+            padding-bottom: 380px !important;
         }
         .elite-sidebar {
             padding: 1rem !important;
@@ -897,21 +911,15 @@
 
     /* ---- SIDEBAR & DRAWER ---- */
     .profile-sidebar {
+        position: -webkit-sticky;
         position: sticky;
-        top: 1.5rem;
-        align-self: flex-start;
+        top: calc(var(--topbar-height, 68px) + 20px);
+        align-self: start;
         display: flex;
         flex-direction: column;
-        gap: 1.5rem;
-    }
-    .order-drawer {
-        background: #fff;
-        border: 1px solid var(--hub-slate-200);
-        border-radius: var(--hub-radius);
-        padding: 1.75rem;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
-        display: none;
-        animation: slideIn 0.3s ease;
+        gap: 1.25rem;
+        z-index: 30;
+        height: fit-content;
     }
 
     .elite-sidebar {
@@ -920,6 +928,22 @@
         border-radius: var(--hub-radius);
         padding: 1.5rem;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+        flex-shrink: 0;
+        position: relative;
+        z-index: 2;
+    }
+
+    .order-drawer {
+        background: #fff;
+        border: 1px solid var(--hub-slate-200);
+        border-radius: var(--hub-radius);
+        padding: 1.75rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+        display: none;
+        animation: slideIn 0.3s ease;
+        flex-shrink: 0;
+        position: relative;
+        z-index: 1;
     }
 
     @keyframes slideIn {
@@ -1308,35 +1332,111 @@
             const pkg = window.hubPkgs ? window.hubPkgs[String(id)] : null;
             if (!pkg) return;
 
-            // Parse inclusions list
-            let incList = [];
+            // Parse & normalize inclusions into categorized objects
+            let normalizedInclusions = [];
             try {
-                if (pkg.inclusions) {
-                    if (Array.isArray(pkg.inclusions)) {
-                        // Array of strings — use as-is
-                        incList = pkg.inclusions.filter(Boolean);
-                    } else if (typeof pkg.inclusions === 'string') {
-                        try {
-                            const p = JSON.parse(pkg.inclusions);
-                            if (Array.isArray(p)) incList = p.filter(Boolean);
-                            else if (typeof p === 'object' && p !== null)
-                                incList = Object.keys(p).filter(k => p[k] === true || p[k] === 1);
-                            else incList = [String(p)];
+                let raw = pkg.inclusions;
+                if (typeof raw === 'string') {
+                    try { raw = JSON.parse(raw); } catch(e) { raw = raw.split(',').map(s => s.trim()).filter(Boolean); }
+                }
+                if (Array.isArray(raw)) {
+                    raw.forEach(item => {
+                        if (!item) return;
+                        if (typeof item === 'string') {
+                            normalizedInclusions.push({ category: 'Menu / Food', name: item, quantity: '', description: '' });
+                        } else if (typeof item === 'object') {
+                            normalizedInclusions.push({
+                                category: item.category || 'Menu / Food',
+                                name: item.name || '',
+                                quantity: item.quantity || item.qty || '',
+                                description: item.description || item.details || ''
+                            });
                         }
-                        catch(e) { incList = pkg.inclusions.split(',').map(s => s.trim()).filter(Boolean); }
-                    } else if (typeof pkg.inclusions === 'object' && pkg.inclusions !== null) {
-                        // JSONB object {"Tables": true, "Chairs": true} — extract enabled keys only
-                        incList = Object.keys(pkg.inclusions).filter(k => pkg.inclusions[k] === true || pkg.inclusions[k] === 1);
-                    }
+                    });
+                } else if (typeof raw === 'object' && raw !== null) {
+                    Object.entries(raw).forEach(([k, v]) => {
+                        if (v === true || v === 1) {
+                            normalizedInclusions.push({ category: 'Equipment', name: k, quantity: '', description: '' });
+                        }
+                    });
                 }
             } catch (err) {
                 console.error("Error parsing inclusions:", err);
             }
-            // Combine legacy inclusions with new linked inventory
+
+            // Merge legacy linked inventory if not already in inclusions
             if (pkg.linked_inventory && Array.isArray(pkg.linked_inventory)) {
-                pkg.linked_inventory.forEach(item => {
-                    if (item && !incList.includes(item)) incList.push(item);
+                pkg.linked_inventory.forEach(invName => {
+                    if (invName && !normalizedInclusions.some(i => i.name.toLowerCase() === String(invName).toLowerCase())) {
+                        normalizedInclusions.push({ category: 'Equipment', name: invName, quantity: '', description: '' });
+                    }
                 });
+            }
+
+            // Merge legacy dishes if not already in inclusions
+            if (pkg.dishes && Array.isArray(pkg.dishes)) {
+                pkg.dishes.forEach(dishName => {
+                    if (dishName && !normalizedInclusions.some(i => i.name.toLowerCase() === String(dishName).toLowerCase())) {
+                        normalizedInclusions.push({ category: 'Menu / Food', name: dishName, quantity: '', description: '' });
+                    }
+                });
+            }
+
+            // Build Grouped Inclusions HTML (Menu / Food, Services, Equipment, Other)
+            const groupedInc = {
+                'Menu / Food': [],
+                'Service': [],
+                'Equipment': [],
+                'Other': []
+            };
+
+            normalizedInclusions.forEach(item => {
+                let cat = item.category || 'Menu / Food';
+                if (!groupedInc[cat]) groupedInc[cat] = [];
+                groupedInc[cat].push(item);
+            });
+
+            const catThemes = {
+                'Menu / Food': { title: 'Menu & Food Inclusions', icon: 'fas fa-utensils', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
+                'Service': { title: 'Services Included', icon: 'fas fa-concierge-bell', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
+                'Equipment': { title: 'Equipment & Rentals Included', icon: 'fas fa-chair', color: '#ea580c', bg: '#fff7ed', border: '#fed7aa' },
+                'Other': { title: 'Other Inclusions', icon: 'fas fa-box-open', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' }
+            };
+
+            let incHtml = '';
+            for (const [cat, items] of Object.entries(groupedInc)) {
+                if (!items || items.length === 0) continue;
+                const theme = catThemes[cat] || catThemes['Other'];
+
+                incHtml += `
+                <div style="margin-bottom: 1.25rem;">
+                    <h4 style="font-size: 0.72rem; font-weight: 800; color: ${theme.color}; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px;">
+                        <i class="${theme.icon}"></i> ${theme.title}
+                        <span style="font-size: 0.68rem; background: ${theme.bg}; border: 1px solid ${theme.border}; padding: 1px 7px; border-radius: 12px; margin-left: auto;">${items.length} item${items.length === 1 ? '' : 's'}</span>
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;">
+                        ${items.map(item => `
+                            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.65rem 0.85rem; display: flex; flex-direction: column; gap: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 6px;">
+                                    <span style="font-size: 0.82rem; font-weight: 800; color: #1e293b; line-height: 1.25;">
+                                        <i class="fas fa-check-circle" style="color: ${theme.color}; font-size: 0.75rem; margin-right: 4px;"></i>${item.name}
+                                    </span>
+                                    ${item.quantity ? `
+                                        <span style="font-size: 0.68rem; font-weight: 700; color: #475569; background: #f1f5f9; padding: 1px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0;">
+                                            ${item.quantity}
+                                        </span>
+                                    ` : ''}
+                                </div>
+                                ${item.description ? `
+                                    <div style="font-size: 0.74rem; color: #64748b; line-height: 1.35; padding-left: 1rem;">
+                                        ${item.description}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                `;
             }
 
             // Section 1: Service Details
@@ -1377,21 +1477,7 @@
                     ${overtimeHtml}
                 </div>`;
 
-            // Section 2: Equipment & Inclusions
-            const incHtml = incList.length > 0 ? `
-                <div style="margin-bottom:1.25rem;">
-                    <h4 style="font-size:0.72rem;font-weight:800;color:var(--hub-slate-400);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
-                        <i class="fas fa-box-open" style="color:var(--hub-primary);margin-right:6px;"></i>Equipment & Services Included
-                    </h4>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-                        ${incList.map(inc => `
-                            <div style="font-size:0.75rem;color:var(--hub-slate-600);background:#fff;padding:8px 10px;border-radius:8px;border:1px solid var(--hub-slate-100);display:flex;align-items:center;gap:6px;">
-                                <i class="fas fa-check-circle" style="color:#10b981;flex-shrink:0;"></i>${inc}
-                            </div>`).join('')}
-                    </div>
-                </div>` : '';
-
-            // Section 3: Included Dishes / Selection Limits
+            // Selection Limits
             let dishHtml = '';
             if (pkg.selection_rules && Object.keys(pkg.selection_rules).length > 0) {
                 dishHtml += `
@@ -1401,17 +1487,6 @@
                     </h4>
                     <div style="display:flex;flex-wrap:wrap;gap:6px;">
                         ${Object.entries(pkg.selection_rules).map(([cat, limit]) => `<span style="background:var(--hub-slate-50);color:var(--hub-slate-600);padding:4px 12px;border-radius:100px;font-size:0.72rem;font-weight:700;border:1px solid var(--hub-slate-200);">Choose ${limit} ${cat}</span>`).join('')}
-                    </div>
-                </div>`;
-            }
-            if (pkg.dishes && pkg.dishes.length > 0) {
-                dishHtml += `
-                <div style="margin-bottom:1.25rem;">
-                    <h4 style="font-size:0.72rem;font-weight:800;color:var(--hub-slate-400);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
-                        <i class="fas fa-list" style="color:var(--hub-primary);margin-right:6px;"></i>Included Menu Options
-                    </h4>
-                    <div style="display:flex;flex-wrap:wrap;gap:6px;">
-                        ${pkg.dishes.map(d => `<span style="background:#fff;color:var(--hub-text-dark);padding:4px 12px;border-radius:100px;font-size:0.72rem;font-weight:600;border:1px solid var(--hub-slate-200);">${d}</span>`).join('')}
                     </div>
                 </div>`;
             }
@@ -1634,16 +1709,11 @@
                         </div>
                     </div>
                     
-                    {% set equipment = [] %}
-                    {% for item in active_inventory %}
-                        {% if item.equipment_type %}
-                            {% set _ = equipment.append(item) %}
-                        {% endif %}
-                    {% endfor %}
-                    
-                    {% if equipment %}
+                    {% set equipment_items_to_display = active_equipment if (active_equipment is defined and active_equipment) else (active_inventory if active_inventory is defined else []) %}
+                    {% if equipment_items_to_display %}
                     <div class="dish-grid">
-                        {% for item in equipment %}
+                        {% for item in equipment_items_to_display %}
+                        {% set item_price = (item.display_price if item.display_price is defined and item.display_price is not none and item.display_price > 0 else (item.rental_price if item.rental_price is defined and item.rental_price is not none and item.rental_price > 0 else (item.selling_price if item.selling_price is defined and item.selling_price is not none and item.selling_price > 0 else (item.price if item.price is defined and item.price is not none else 0)))) %}
                         <div class="elite-item-card">
                             <div class="ei-img-box">
                                 <img src="{{ item.image_url if item.image_url else 'https://ui-avatars.com/api/?name=' ~ (item.name|urlencode) ~ '&background=f1f5f9&color=10b981' }}" class="ei-img">
@@ -1658,7 +1728,7 @@
                                     {% endif %}
                                 </div>
                                 <span class="ei-name" style="min-height: auto; margin-top: 4px;">{{ item.name }}</span>
-                                <span class="ei-price" style="font-size: 1rem; margin-top: 4px;">₱{{ "{:,.2f}".format(item.display_price or 0) }}</span>
+                                <span class="ei-price" style="font-size: 1rem; margin-top: 4px;">₱{{ "{:,.2f}".format(item_price or 0) }} <span style="font-size: 0.72rem; color: var(--hub-slate-500); font-weight: 600;">/ {{ item.unit_type or 'unit' }}</span></span>
                                 
                                 <button type="button" onclick="window.openInventoryDetails({{ item.id }})" class="btn-elite-sm" style="margin-top:auto;">
                                     View Details
@@ -1935,7 +2005,7 @@
                     Live Selection Drawer
                 </div>
                 <div id="order-items-list"
-                    style="max-height: 350px; overflow-y: auto; margin-bottom: 1rem; padding-right: 5px;">
+                    style="max-height: 220px; overflow-y: auto; margin-bottom: 1rem; padding-right: 5px;">
                     <!-- Items will appear here -->
                 </div>
 
@@ -2028,7 +2098,7 @@ window.updateCartUI = function() {
             const UNIT_MAP = {
                 'per_serving': '', 'per_tray': ' / Tray', 'per_bilao': ' / Bilao',
                 'per_pax': ' / Pax', 'per_hour': ' / Hr', 'per_unit': ' / Unit', 'per_set': ' / Set',
-                'per_kg': ' / Kg', 'whole': ' / Whole'
+                'per_kg': ' / Kg', 'whole': ' / Whole', 'piece': ' / Piece', 'per_piece': ' / Piece'
             };
             const unitLabel = item.pricing_unit ? (UNIT_MAP[item.pricing_unit] || ' / ' + item.pricing_unit) : '';
             const subtotal = (item.qty * item.price).toLocaleString('en-PH', {minimumFractionDigits:2});
@@ -2319,15 +2389,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 id: {{ item.id|tojson }},
                 name: {{ item.name|tojson }},
                 category: {{ (item.category or '')|tojson }},
-                price: {{ (item.rental_price if item.rental_price is defined else item.selling_price)|default(0, true)|tojson }},
+                price: {{ ((item.rental_price if (item.rental_price is defined and item.rental_price is not none and item.rental_price > 0) else (item.display_price if (item.display_price is defined and item.display_price is not none and item.display_price > 0) else (item.selling_price if (item.selling_price is defined and item.selling_price is not none and item.selling_price > 0) else (item.price if item.price is defined and item.price is not none else 0)))))|default(0, true)|tojson }},
                 image: {{ (item.image_url or '')|tojson }},
                 description: {{ (item.description or '')|tojson }},
                 pricing_unit: {{ (item.unit_type or 'piece')|tojson }},
-                type: {{ ('Equipment' if item.rental_price is defined else 'Service')|tojson }},
-                available_qty: {{ (item.available_qty if item.available_qty is defined else item.max_available)|default(1, true)|tojson }},
-                deposit_pct: {{ (item.security_deposit_pct if item.security_deposit_pct is defined else 0)|default(0, true)|tojson }},
-                needs_kyc: {{ (item.requires_kyc if item.requires_kyc is defined else false)|default(false, true)|tojson }},
-                min_hours: {{ (item.base_duration_hours if item.base_duration_hours is defined else 0)|default(0, true)|tojson }},
+                type: {{ ('Equipment' if (item.rental_price is defined or item.equipment_type or (item.display_type is defined and item.display_type == 'Equipment')) else 'Service')|tojson }},
+                available_qty: {{ (item.display_qty if item.display_qty is defined and item.display_qty else (item.available_qty if item.available_qty is defined else (item.max_available if item.max_available is defined else 1)))|default(1, true)|tojson }},
+                deposit_pct: {{ (item.deposit_pct if item.deposit_pct is defined and item.deposit_pct else (item.security_deposit_pct if item.security_deposit_pct is defined else 0))|default(0, true)|tojson }},
+                needs_kyc: {{ (item.needs_kyc if item.needs_kyc is defined else (item.requires_kyc if item.requires_kyc is defined else false))|default(false, true)|tojson }},
+                min_hours: {{ (item.min_hours if item.min_hours is defined and item.min_hours else (item.base_duration_hours if item.base_duration_hours is defined else 0))|default(0, true)|tojson }},
                 details_json: {{ (item.details_json if item.details_json else {})|tojson|safe }},
                 min_quantity: 1
             }{{ ',' if not loop.last else '' }}
@@ -2533,6 +2603,18 @@ document.addEventListener('DOMContentLoaded', function() {
             modal.classList.add('active');
         };
 
+        window.stepEquipmentQty = function(id, delta) {
+            const qtyInput = document.getElementById(`mq-Equipment-${id}`);
+            if (!qtyInput || qtyInput.disabled) return;
+            let current = parseInt(qtyInput.value) || 1;
+            let maxQty = parseInt(qtyInput.getAttribute('max')) || 999;
+            let nextVal = current + delta;
+            if (nextVal < 1) nextVal = 1;
+            if (nextVal > maxQty) nextVal = maxQty;
+            qtyInput.value = nextVal;
+            window.onEquipmentRentalChange(id);
+        };
+
         window.openInventoryDetails = function(id) {
             const modal = document.getElementById('dish-cat-modal');
             const title = document.getElementById('dish-modal-cat-title');
@@ -2542,16 +2624,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
             title.textContent = (item.type === 'Equipment') ? "Equipment Rental Details" : "Service Details";
 
-            const UNIT_MAP = {
-                'per_piece': '/pc', 'per_set': '/set', 'per_day': '/day', 'per_event': '/event',
-                'per_hour': '/hr', 'per_person': '/person', 'per_session': '/session', 'piece': '/pc'
-            };
+            const rawUnit = item.pricing_unit || 'piece';
+            const cleanUnit = rawUnit.replace(/^(per_|_)/, '').replace(/\b\w/g, l => l.toUpperCase());
+            const unitLabel = cleanUnit === 'Piece' || cleanUnit === 'Unit' ? `Per ${cleanUnit}` : cleanUnit;
 
             const img = item.image || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(item.name) + '&background=f1f5f9&color=FF7B54&size=200';
-            const unitSuffix = UNIT_MAP[item.pricing_unit] || (item.pricing_unit ? '/' + item.pricing_unit : '');
             
             const priceDisplay = item.price > 0
-                ? `<div style="font-size: 1.4rem; font-weight: 900; color: var(--hub-primary);">₱${parseFloat(item.price).toLocaleString('en-PH', {minimumFractionDigits:2})}${unitSuffix}</div>`
+                ? `<div style="font-size: 1.4rem; font-weight: 900; color: var(--hub-primary);">₱${parseFloat(item.price).toLocaleString('en-PH', {minimumFractionDigits:2})} <span style="font-size: 0.85rem; font-weight: 700; color: var(--hub-slate-500);">/ ${unitLabel}</span></div>`
                 : '<div style="font-size:0.85rem; font-weight:800; color:var(--hub-slate-500); padding:8px 0;">Included in Package</div>';
 
             const isPackageOnly = item.price === 0;
@@ -2564,34 +2644,36 @@ document.addEventListener('DOMContentLoaded', function() {
             if (isEquipment) {
                 const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
                 rentalSelectorHtml = `
-                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem; margin-top: 8px;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--hub-slate-600); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-top: 8px;">
+                        <label style="font-size: 0.78rem; font-weight: 800; color: var(--hub-slate-700); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">
                             <i class="fas fa-calendar-day" style="color: var(--hub-primary);"></i> Rental Event Date *
                         </label>
-                        <input type="date" id="rental-date-${item.id}" value="${tomorrow}" min="${tomorrow}" class="control-pro" style="width: 100%; padding: 10px; border: 1px solid var(--hub-slate-200); border-radius: 8px; font-weight: 700; font-family: 'Poppins', sans-serif;" onchange="window.onEquipmentRentalChange(${item.id})">
+                        <input type="date" id="rental-date-${item.id}" value="${tomorrow}" min="${tomorrow}" class="control-pro" style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--hub-slate-200); border-radius: 8px; font-weight: 700; font-family: 'Poppins', sans-serif; font-size: 0.9rem;" onchange="window.onEquipmentRentalChange(${item.id})">
 
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
-                            <span style="font-size: 0.82rem; font-weight: 700; color: var(--hub-text-dark);">Quantity:</span>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <input type="number" id="${qtyId}" value="1" min="1" max="${item.available_qty || 999}" ${isSelected ? 'disabled' : ''} style="width: 80px; padding: 8px; border: 1px solid var(--hub-slate-200); border-radius: 8px; text-align: center; font-weight: 800; font-size: 1rem;" oninput="window.onEquipmentRentalChange(${item.id})">
-                                <span style="font-size: 0.75rem; color: var(--hub-slate-400);">${unitSuffix || 'units'}</span>
+                            <span style="font-size: 0.85rem; font-weight: 800; color: var(--hub-text-dark);">Quantity:</span>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <button type="button" onclick="window.stepEquipmentQty(${item.id}, -1)" ${isSelected ? 'disabled' : ''} style="width: 32px; height: 32px; border: 1px solid var(--hub-slate-200); background: #fff; border-radius: 6px; font-weight: 800; cursor: pointer; color: var(--hub-text-dark); display:flex; align-items:center; justify-content:center; font-size: 1.1rem;">-</button>
+                                <input type="number" id="${qtyId}" value="1" min="1" max="${item.available_qty || 999}" ${isSelected ? 'disabled' : ''} style="width: 60px; height: 32px; border: 1px solid var(--hub-slate-200); border-radius: 6px; text-align: center; font-weight: 800; font-size: 1rem;" oninput="window.onEquipmentRentalChange(${item.id})">
+                                <button type="button" onclick="window.stepEquipmentQty(${item.id}, 1)" ${isSelected ? 'disabled' : ''} style="width: 32px; height: 32px; border: 1px solid var(--hub-slate-200); background: #fff; border-radius: 6px; font-weight: 800; cursor: pointer; color: var(--hub-text-dark); display:flex; align-items:center; justify-content:center; font-size: 1.1rem;">+</button>
+                                <span style="font-size: 0.8rem; color: var(--hub-slate-500); font-weight: 700; margin-left: 4px;">${unitLabel}</span>
                             </div>
                         </div>
 
-                        <div id="rental-avail-alert-${item.id}" style="margin-top: 8px; font-size: 0.8rem; font-weight: 700;"></div>
+                        <div id="rental-avail-alert-${item.id}" style="margin-top: 10px; font-size: 0.85rem; font-weight: 700;"></div>
 
-                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--hub-slate-200); display: flex; flex-direction: column; gap: 6px;">
-                            <div style="display: flex; justify-content: space-between; font-size: 0.82rem;">
-                                <span style="color: var(--hub-slate-500);">Rental Subtotal:</span>
-                                <span id="rental-subtotal-${item.id}" style="font-weight: 800; color: var(--hub-text-dark);">₱0.00</span>
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--hub-slate-200); display: flex; flex-direction: column; gap: 8px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.88rem;">
+                                <span style="color: var(--hub-slate-500); font-weight: 600;">Rental Subtotal:</span>
+                                <span id="rental-subtotal-${item.id}" style="font-weight: 850; color: var(--hub-text-dark);">₱0.00</span>
                             </div>
-                            <div style="display: flex; justify-content: space-between; font-size: 0.82rem;">
-                                <span style="color: var(--hub-slate-500);">50% Downpayment:</span>
-                                <span id="rental-downpayment-${item.id}" style="font-weight: 800; color: var(--hub-primary);">₱0.00</span>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.88rem;">
+                                <span style="color: var(--hub-slate-500); font-weight: 600;">50% Downpayment:</span>
+                                <span id="rental-downpayment-${item.id}" style="font-weight: 850; color: var(--hub-primary);">₱0.00</span>
                             </div>
-                            <div style="display: flex; justify-content: space-between; font-size: 0.82rem;">
-                                <span style="color: var(--hub-slate-500);">Remaining Balance:</span>
-                                <span id="rental-remaining-${item.id}" style="font-weight: 800; color: #10b981;">₱0.00</span>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.88rem;">
+                                <span style="color: var(--hub-slate-500); font-weight: 600;">Remaining Balance:</span>
+                                <span id="rental-remaining-${item.id}" style="font-weight: 850; color: #10b981;">₱0.00</span>
                             </div>
                         </div>
                     </div>
@@ -2602,7 +2684,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 ? `<span style="font-size:0.85rem;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:10px;padding:12px 16px;font-weight:800;text-align:center;display:block;width:100%;"><i class="fas fa-box-open"></i> Available Only in Packages</span>`
                 : `<div style="display:flex; flex-direction: column; gap:8px; width: 100%;">
                     ${rentalSelectorHtml}
-                    <button class="btn-hub-main ${isSelected ? 'selected' : ''}" id="${actionBtnId}" style="width: 100%; padding: 14px; font-size: 0.95rem; font-weight:800; border-radius:10px; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.toggleInventoryModalItem(${item.id}, '${item.type}')">
+                    <button class="btn-hub-main ${isSelected ? 'selected' : ''}" id="${actionBtnId}" style="width: 100%; padding: 14px; font-size: 1rem; font-weight:850; border-radius:10px; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="window.toggleInventoryModalItem(${item.id}, '${item.type}')">
                         ${isSelected ? '<i class="fas fa-check"></i> ' + (isEquipment ? 'Rented' : 'Booked') : (isEquipment ? '<i class="fas fa-chair"></i> Rent Equipment' : '<i class="fas fa-plus"></i> Book Service')}
                     </button>
                   </div>`;
@@ -2611,63 +2693,48 @@ document.addEventListener('DOMContentLoaded', function() {
             const details = item.details_json || {};
             let detailsHtml = '';
 
-            if(details.inclusions && details.inclusions.length > 0) {
+            let specItems = [];
+            if (isEquipment) {
+                specItems.push('✓ Delivery');
+                specItems.push('✓ Setup');
+            }
+            if (details.specifications && details.specifications.length > 0) {
+                details.specifications.forEach(s => specItems.push(`${s.name}: ${s.value}`));
+            }
+            if (details.delivery) specItems.push(`Delivery: ${details.delivery}`);
+            if (details.setup) specItems.push(`Setup: ${details.setup}`);
+
+            if (specItems.length > 0) {
                 detailsHtml += `
-                    <div style="background:#f8fafc; border:1px solid #f1f5f9; border-radius:12px; padding:16px; margin-top:8px;">
-                        <h4 style="font-size:0.75rem; font-weight:850; color:var(--hub-slate-600); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:12px;"><i class="fas fa-gift" style="color:var(--hub-primary);"></i> What's Included</h4>
-                        <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px;">
-                            ${details.inclusions.map(i => `<li style="font-size:0.85rem; color:var(--hub-text-dark); display:flex; align-items:flex-start; gap:8px;"><i class="fas fa-check" style="color:#10b981; margin-top:3px;"></i> <div><span style="font-weight:700;">${i.qty ? i.qty + 'x ' : ''}${i.name}</span> ${i.details ? '- ' + i.details : ''}</div></li>`).join('')}
-                        </ul>
+                    <div style="background:#f8fafc; border:1px solid #f1f5f9; border-radius:12px; padding:14px 16px; margin-top:8px;">
+                        <h4 style="font-size:0.75rem; font-weight:850; color:var(--hub-slate-600); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px;"><i class="fas fa-info-circle" style="color:var(--hub-primary);"></i> Specifications</h4>
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                            ${specItems.map(s => `<div style="font-size:0.85rem; font-weight:700; color:var(--hub-text-dark); display:flex; align-items:center; gap:8px;"><i class="fas fa-check" style="color:#10b981;"></i> ${s.replace(/^✓\s*/, '')}</div>`).join('')}
+                        </div>
                     </div>
                 `;
             }
 
-            let specHtml = '';
-            if(details.specifications && details.specifications.length > 0) {
-                specHtml += details.specifications.map(s => `<div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0;"><span style="color:var(--hub-slate-500);">${s.name}:</span> <span style="font-weight:700; color:var(--hub-text-dark);">${s.value}</span></div>`).join('');
-            }
-            if(details.requirements && details.requirements.length > 0) {
-                specHtml += `<div style="font-size:0.75rem; font-weight:850; color:var(--hub-slate-400); text-transform:uppercase; margin-top:12px; margin-bottom:6px;">Requirements</div>`;
-                specHtml += details.requirements.map(r => `<div style="font-size:0.85rem; color:var(--hub-text-dark); padding:4px 0;"><i class="fas fa-exclamation-circle" style="color:#f59e0b;"></i> ${r}</div>`).join('');
-            }
-            if(details.area || details.delivery || details.setup) {
-                if(details.area) specHtml += `<div style="font-size:0.85rem; color:var(--hub-text-dark); padding:4px 0;"><i class="fas fa-map-marker-alt" style="color:var(--hub-primary);"></i> Area: <b>${details.area}</b></div>`;
-                if(details.delivery) specHtml += `<div style="font-size:0.85rem; color:var(--hub-text-dark); padding:4px 0;"><i class="fas fa-truck" style="color:var(--hub-primary);"></i> Delivery: <b>${details.delivery}</b></div>`;
-                if(details.setup) specHtml += `<div style="font-size:0.85rem; color:var(--hub-text-dark); padding:4px 0;"><i class="fas fa-tools" style="color:var(--hub-primary);"></i> Setup: <b>${details.setup}</b></div>`;
-            }
-
-            if(specHtml) {
-                detailsHtml += `
-                    <div style="background:#f8fafc; border:1px solid #f1f5f9; border-radius:12px; padding:16px; margin-top:8px;">
-                        <h4 style="font-size:0.75rem; font-weight:850; color:var(--hub-slate-600); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:12px;"><i class="fas fa-info-circle" style="color:var(--hub-primary);"></i> Specifications</h4>
-                        ${specHtml}
+            const depositPct = item.deposit_pct || (details.deposit ? details.deposit.value : 20);
+            let polHtml = `
+                <div style="font-size:0.85rem; background:#fff7ed; color:#c2410c; padding:10px 14px; border-radius:8px; border:1px solid #ffedd5; font-weight:700; display:flex; align-items:flex-start; gap:8px;">
+                    <i class="fas fa-shield-alt" style="margin-top:2px; font-size:1rem;"></i>
+                    <div>
+                        <div style="font-weight:800;">Refundable Security Deposit: ${depositPct}% of total price</div>
+                        <div style="font-size:0.75rem; font-weight:500; color:#9a3412; margin-top:2px;">Returned in full upon return of equipment in good condition.</div>
                     </div>
-                `;
+                </div>
+            `;
+            if (details.policies) {
+                polHtml += `<div style="font-size:0.8rem; color:var(--hub-slate-500); margin-top:8px; line-height:1.4;">${details.policies}</div>`;
             }
 
-            let polHtml = '';
-            if(details.deposit) {
-                polHtml += `<div style="font-size:0.85rem; background:#fff7ed; color:#c2410c; padding:8px 12px; border-radius:8px; border:1px solid #ffedd5; margin-bottom:12px; font-weight:700;"><i class="fas fa-shield-alt"></i> Security Deposit: ${details.deposit.value}${details.deposit.type === 'Percentage' ? '%' : ' PHP'}. ${details.deposit.condition || ''}</div>`;
-            } else if(item.deposit_pct) {
-                polHtml += `<div style="font-size:0.85rem; background:#fff7ed; color:#c2410c; padding:8px 12px; border-radius:8px; border:1px solid #ffedd5; margin-bottom:12px; font-weight:700;"><i class="fas fa-shield-alt"></i> Security Deposit: ${item.deposit_pct}% of total price.</div>`;
-            }
-
-            if(details.additional_charges && details.additional_charges.length > 0) {
-                polHtml += `<div style="font-size:0.75rem; font-weight:850; color:var(--hub-slate-400); text-transform:uppercase; margin-bottom:6px;">Extra Charges</div>`;
-                polHtml += details.additional_charges.map(c => `<div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0;"><span style="color:var(--hub-slate-600);">${c.name}</span> <span style="font-weight:700; color:var(--hub-text-dark);">₱${c.price}</span></div>`).join('');
-            }
-            if(details.policies) {
-                polHtml += `<div style="font-size:0.85rem; color:var(--hub-slate-500); white-space:pre-wrap; margin-top:12px; padding-top:12px; border-top:1px solid #e2e8f0;">${details.policies}</div>`;
-            }
-
-            if(polHtml) {
-                detailsHtml += `
-                    <div style="background:#f8fafc; border:1px solid #f1f5f9; border-radius:12px; padding:16px; margin-top:8px;">
-                        <h4 style="font-size:0.75rem; font-weight:850; color:var(--hub-slate-600); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:12px;"><i class="fas fa-scroll" style="color:var(--hub-primary);"></i> Policies</h4>
-                        ${polHtml}
-                    </div>
-                `;
-            }
+            detailsHtml += `
+                <div style="background:#f8fafc; border:1px solid #f1f5f9; border-radius:12px; padding:14px 16px; margin-top:8px;">
+                    <h4 style="font-size:0.75rem; font-weight:850; color:var(--hub-slate-600); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px;"><i class="fas fa-scroll" style="color:var(--hub-primary);"></i> Policies</h4>
+                    ${polHtml}
+                </div>
+            `;
 
             body.innerHTML = `
                 <div style="display:flex; flex-direction:column; gap:16px;">
@@ -2688,8 +2755,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             ${priceDisplay}
                         </div>
                         <div style="text-align:right;">
-                            <span style="font-size: 0.72rem; font-weight: 700; color: var(--hub-slate-400); text-transform:uppercase; display:block; margin-bottom:2px;">Min. Duration</span>
-                            <span style="font-size: 0.9rem; font-weight: 800; color: var(--hub-text-dark);">${item.min_hours ? item.min_hours + ' hrs' : 'Flexible'}</span>
+                            <span style="font-size: 0.72rem; font-weight: 700; color: var(--hub-slate-400); text-transform:uppercase; display:block; margin-bottom:2px;">Availability</span>
+                            <span style="font-size: 0.9rem; font-weight: 800; color: #10b981;">Total ${item.available_qty || 1} units</span>
                         </div>
                     </div>
 
@@ -2742,7 +2809,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (data.available === false) {
                     if (alertEl) {
-                        alertEl.innerHTML = `<div style="color:#ef4444; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:8px 12px;"><i class="fas fa-exclamation-triangle"></i> ${data.message}</div>`;
+                        const dateFormatted = new Date(dateVal + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                        const availCount = data.available_qty !== undefined ? data.available_qty : 0;
+                        const errorMsg = availCount > 0 
+                            ? `Only ${availCount} unit${availCount > 1 ? 's are' : ' is'} available for ${dateFormatted}.`
+                            : `No units are available for ${dateFormatted}.`;
+                        alertEl.innerHTML = `<div style="color:#ef4444; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:8px 12px;"><i class="fas fa-exclamation-triangle"></i> ${errorMsg}</div>`;
                     }
                     if (actionBtn && !actionBtn.classList.contains('selected')) {
                         actionBtn.disabled = true;
@@ -2751,7 +2823,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 } else {
                     if (alertEl) {
-                        alertEl.innerHTML = `<div style="color:#16a34a; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:8px 12px;"><i class="fas fa-check-circle"></i> ${data.available_qty} units available for this date.</div>`;
+                        alertEl.innerHTML = `<div style="color:#16a34a; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:8px 12px;"><i class="fas fa-check-circle"></i> ✓ ${data.available_qty} unit${data.available_qty > 1 ? 's' : ''} available for this date.</div>`;
                     }
                     if (actionBtn && !actionBtn.classList.contains('selected')) {
                         actionBtn.disabled = false;
@@ -2792,7 +2864,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     rental_date: rentalDate,
                     subtotal: subtotal,
                     downpayment: downpayment,
-                    remaining: remaining
+                    remaining: remaining,
+                    deposit_pct: item.deposit_pct || 20
                 });
 
                 if (btn) {
@@ -2811,6 +2884,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (dateInput) dateInput.disabled = false;
                 if (isEquipment) window.onEquipmentRentalChange(id);
             }
+            
+            const catererId = {{ caterer.id }};
+            sessionStorage.setItem('alacarte_cart_' + catererId, JSON.stringify(window.selectedItems));
+            localStorage.setItem('alacarte_cart_' + catererId, JSON.stringify(window.selectedItems));
             window.updateCartUI();
         };
 
@@ -3042,49 +3119,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // Force drawer visible with !important
-            const drawer = document.querySelector('.order-drawer');
-            if (drawer) {
-                drawer.style.setProperty(
-                    'display',
-                    window.selectedItems.length > 0 ? 'block' : 'none',
-                    'important'
-                );
-            }
-            window.updateCartUI();
-        };
-        // ── toggleInventoryModalItem ─────────────────────────────────────────
-        window.toggleInventoryModalItem = function(id, type) {
-            const sid = String(id);
-            const menuItem = window.hubInventoryItems
-                ? window.hubInventoryItems.find(i => String(i.id) === sid && i.type === type)
-                : null;
-
-            const idx = window.selectedItems.findIndex(i => String(i.id) === sid && i.type === type);
-            const btn = document.getElementById(`mbtn-${type}-${sid}`);
-            const qty = document.getElementById(`mq-${type}-${sid}`);
-            const qtyVal = qty ? (Math.max(1, parseInt(qty.value) || 1)) : 1;
-
-            if (idx === -1) {
-                if (qtyVal < 1 || qtyVal > 999) {
-                    alert('Please enter a valid quantity (1–999).');
-                    return;
-                }
-                window.selectedItems.push({
-                    id: sid,
-                    type: type,
-                    name: menuItem ? menuItem.name : type + ' #' + sid,
-                    price: menuItem ? (parseFloat(menuItem.price) || 0) : 0,
-                    qty: qtyVal,
-                    pricing_unit: menuItem ? menuItem.pricing_unit : ''
-                });
-                if (btn) { btn.classList.add('selected'); btn.innerHTML = (type === 'Equipment') ? '<i class="fas fa-check"></i> Rented' : '<i class="fas fa-check"></i> Booked'; }
-                if (qty) qty.disabled = true;
-            } else {
-                window.selectedItems.splice(idx, 1);
-                if (btn) { btn.classList.remove('selected'); btn.innerHTML = (type === 'Equipment') ? '<i class="fas fa-plus"></i> Rent Item' : '<i class="fas fa-plus"></i> Book Service'; }
-                if (qty) { qty.disabled = false; qty.value = 1; }
-            }
-
             const drawer = document.querySelector('.order-drawer');
             if (drawer) {
                 drawer.style.setProperty(

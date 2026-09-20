@@ -32,6 +32,13 @@ def process_base64_image(content_bytes: bytes, max_size=(600, 600), quality=75, 
     return url or ""
 
 
+def sanitize_booking_id(val) -> int:
+    """Extract integer ID from string representations like 'BK-000131' or numeric strings."""
+    import re
+    cleaned = re.sub(r"\D", "", str(val or ""))
+    return int(cleaned) if cleaned else 0
+
+
 def create_default_booking_tasks(db: Session, booking_id: int):
     # Idempotency check: Don't add if tasks already exist
     existing_count = db.query(models.BookingTask).filter(models.BookingTask.booking_id == booking_id).count()
@@ -605,7 +612,7 @@ async def create_manual_booking(
 
         # Build special requests from notes
         special_notes = data.get("special_notes", "").strip()
-        special_requests = f"Manual Booking{(' — ' + special_notes) if special_notes else ''}"
+        special_requests = special_notes if special_notes else ""
         
         # Payment handling
         payment_method = data.get("payment_method", "Cash")
@@ -707,6 +714,8 @@ async def create_manual_booking(
             "amount_paid": amount_paid,
             "entry_method": "manual"
         }
+        booking_channel = data.get("booking_channel") or data.get("channel") or data.get("booking_source") or "In Person"
+        custom_reqs["booking_channel"] = booking_channel
 
         new_booking = models.Booking(
             user_id=target_user.id,
@@ -730,7 +739,7 @@ async def create_manual_booking(
             amount_paid=amount_paid,
             special_requests=special_requests,
             custom_requirements=custom_reqs,
-            booking_source=data.get("booking_source", "Walk-in")
+            booking_source=booking_channel
         )
         db.add(new_booking)
         db.flush()
@@ -787,7 +796,21 @@ async def create_manual_booking(
         )
         db.add(quotation)
 
-        # 3. Handle Selected Menu Items & Equipment Items
+        # 3. Handle Selected Menu Items, Services & Equipment Items
+        if services:
+            for s_data in services:
+                s_name = s_data.get("name") or s_data.get("service_name") or "Service"
+                s_price = float(s_data.get("price", 0) or 0)
+                s_qty = int(s_data.get("qty", 1) or 1)
+                s_item_rec = models.BookingMenuItem(
+                    booking_id=new_booking.id,
+                    custom_name=s_name,
+                    quantity=s_qty,
+                    price=s_price,
+                    is_add_on=True
+                )
+                db.add(s_item_rec)
+
         menu_item_ids = data.get("menu_items", [])
         if menu_item_ids:
             for mi_id in menu_item_ids:
@@ -849,13 +872,14 @@ async def create_manual_booking(
 
 @router.post("/bookings/{booking_id}/dispatch-proof")
 async def upload_dispatch_proof(
-    booking_id: int,
+    booking_id: str,
     stage: str = Form(...),
     proof_image: UploadFile = File(...),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    booking = db.query(models.Booking).get(booking_id)
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
@@ -957,12 +981,13 @@ def snapshot_booking_actual_cost(booking):
 
 @router.post("/bookings/{booking_id}/update-status")
 async def update_booking_status(
-    booking_id: int,
+    booking_id: str,
     data: StatusUpdateSchema,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    booking = db.query(models.Booking).get(booking_id)
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
@@ -1497,20 +1522,18 @@ async def caterer_dashboard(
     has_menu = len([m for m in profile.menu_items if getattr(m, 'is_archived', False) == False]) > 0
     has_permit = bool(profile.permit_url)
     
-    # Check eligibility to publish: Identity Verified + Active Package + Description
+    # Check eligibility to publish: Identity Verified + Description
     is_identity_verified = (profile.verification_status == 'Verified') or (getattr(user, 'is_verified', False) == True)
-    can_publish = is_identity_verified and has_packages and has_description
+    can_publish = is_identity_verified and has_description
 
     completion_pct = 0
     if is_identity_verified: completion_pct += 40
     if has_logo: completion_pct += 10
     if has_cover: completion_pct += 5
-    if has_description: completion_pct += 5
-    if has_packages: completion_pct += 15
+    if has_description: completion_pct += 15
+    if has_starting_price: completion_pct += 10
     if has_portfolio: completion_pct += 10
-    if has_starting_price: completion_pct += 5
-    if has_menu: completion_pct += 5
-    if has_permit: completion_pct += 5
+    if has_permit: completion_pct += 10
     
     # Next Recommended Action Logic
     next_action = None
@@ -1524,14 +1547,10 @@ async def caterer_dashboard(
         next_action = {"title": "Upload Business Logo", "desc": "Make your profile stand out with a professional logo.", "url": "/caterer/profile#general", "btn": "Upload Logo"}
     elif not has_cover:
         next_action = {"title": "Upload Cover Image", "desc": "Add a beautiful banner image to attract customers.", "url": "/caterer/profile#general", "btn": "Upload Cover"}
-    elif not has_menu:
-        next_action = {"title": "Create Sample Menu", "desc": "Add at least one menu item that customers can choose from.", "url": "/caterer/menu", "btn": "Add Menu Item"}
     elif not has_portfolio:
         next_action = {"title": "Create Portfolio Event", "desc": "Showcase your past events and credibility by creating a portfolio project.", "url": "/caterer/portfolio", "btn": "Create Portfolio"}
-    elif not has_packages:
-        next_action = {"title": "Create First Package", "desc": "Create at least one catering package for customers to book.", "url": "/caterer/packages", "btn": "Create Package"}
     elif profile.status == 'Draft' or profile.status == 'Identity Verified':
-        next_action = {"title": "Publish Listing", "desc": "You're all set! Publish your listing to start receiving bookings.", "url": "#", "btn": "Publish Now", "onclick": "togglePublish(this)"}
+        next_action = {"title": "Publish Listing", "desc": "You're all set! Publish your listing to start receiving bookings.", "url": "#", "btn": "Publish Now", "onclick": "window.toggleCatererPublish && window.toggleCatererPublish(this)"}
 
     total_bookings = len([b for b in profile.bookings if b.status not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted', 'cancelled'] and not b.is_archived])
     
@@ -1573,11 +1592,9 @@ async def toggle_publish(
         return JSONResponse(status_code=404, content={"success": False, "message": "Profile not found"})
         
     has_description = bool(profile.description and profile.description.strip())
-    has_packages = len([p for p in profile.packages if getattr(p, 'is_archived', False) == False and getattr(p, 'is_active', True) == True]) >= 1
-    has_menu = len([m for m in profile.menu_items if getattr(m, 'is_archived', False) == False]) >= 1
     is_identity_verified = (profile.verification_status == 'Verified') or (getattr(user, 'is_verified', False) == True)
     
-    can_publish = is_identity_verified and has_packages and has_description
+    can_publish = is_identity_verified and has_description
     
     if profile.status == "Published":
         profile.status = "Identity Verified"
@@ -1588,7 +1605,6 @@ async def toggle_publish(
             missing = []
             if not is_identity_verified: missing.append("Admin Verification (ID/Business Permit)")
             if not has_description: missing.append("Business Description")
-            if not has_packages: missing.append("At least 1 Active Package")
             return JSONResponse(
                 status_code=400, 
                 content={
@@ -1803,8 +1819,12 @@ async def dashboard_overview_api(
     })
 
 @router.get("/bookings/{booking_id}")
-async def redirect_booking_details(booking_id: int):
-    return RedirectResponse(url=f"/caterer/bookings?focus={booking_id}", status_code=303)
+async def redirect_booking_details(booking_id: str):
+    import re
+    numeric_id = re.sub(r"\D", "", str(booking_id))
+    if numeric_id:
+        return RedirectResponse(url=f"/caterer/bookings?focus={numeric_id}", status_code=303)
+    return RedirectResponse(url="/caterer/bookings", status_code=303)
 
 def build_booking_list_projection(booking, today):
     item_categories = set()
@@ -1879,12 +1899,33 @@ def build_booking_list_projection(booking, today):
         attention, next_action, needs_action = "Event is ongoing", "Mark Completed", True
 
     raw_source = (booking.booking_source or "").lower()
-    is_walkin = (not booking.user_id) or ("walk" in raw_source) or ("internal" in raw_source) or ("manual" in raw_source)
-    source_kind = "walkin" if is_walkin else "online"
-    source_label = "WALK-IN BOOKING" if is_walkin else "ONLINE BOOKING"
-    source_subtext = "Created by caterer" if is_walkin else "Customer booked through website"
-    created_by_label = "Caterer / Staff" if is_walkin else "Customer"
-    source = "Walk-in Booking" if is_walkin else (booking.booking_source or "Online Booking")
+    is_manual = (not booking.user_id) or ("walk" in raw_source) or ("internal" in raw_source) or ("manual" in raw_source) or bool(booking.custom_requirements and booking.custom_requirements.get("is_walk_in"))
+    source_kind = "manual" if is_manual else "online"
+    source_label = "MANUAL BOOKING" if is_manual else "ONLINE BOOKING"
+    source_table_badge = "MANUAL" if is_manual else "ONLINE"
+    source_subtext = "Created by Caterer" if is_manual else "Customer booked through website"
+    created_by_label = "Caterer" if is_manual else "Customer"
+
+    custom_channel = (booking.custom_requirements or {}).get("booking_channel") or (booking.custom_requirements or {}).get("channel")
+    if is_manual:
+        if custom_channel:
+            booking_channel = custom_channel
+        elif "facebook" in raw_source or "messenger" in raw_source:
+            booking_channel = "Facebook Messenger"
+        elif "phone" in raw_source or "call" in raw_source:
+            booking_channel = "Phone Call"
+        elif "sms" in raw_source or "text" in raw_source:
+            booking_channel = "SMS/Text"
+        elif "walk" in raw_source or "person" in raw_source:
+            booking_channel = "In Person"
+        elif "other" in raw_source:
+            booking_channel = "Other Offline Source"
+        else:
+            booking_channel = "In Person"
+    else:
+        booking_channel = "OccaServe Website"
+
+    source = "Manual Booking" if is_manual else (booking.booking_source or "Online Booking")
 
     customer = booking.user
     customer_name = f"{customer.first_name} {customer.last_name}" if customer else (booking.customer_name or "Walk-in Customer")
@@ -1896,7 +1937,8 @@ def build_booking_list_projection(booking, today):
         "customer_name": customer_name, "customer_email": customer.email if customer else (booking.customer_email or ""),
         "event_type": booking.event_type or "Event", "item_name": display_item,
         "item_count": len(item_names), "item_names": item_names[:4], "source": source,
-        "source_kind": source_kind, "source_label": source_label, "source_subtext": source_subtext,
+        "source_kind": source_kind, "source_label": source_label, "source_table_badge": source_table_badge,
+        "source_subtext": source_subtext, "booking_channel": booking_channel,
         "created_by_label": created_by_label, "show_guests": booking_kind == "catering" or bool(booking.guest_count),
         "guest_count": booking.guest_count, "event_date": booking.event_date,
         "event_time": booking.event_time, "is_urgent": bool(booking.event_date and 0 <= (booking.event_date - today).days <= 2 and needs_action),
@@ -1997,12 +2039,13 @@ async def manage_orders(
 
 @router.get("/bookings/{booking_id}/contract", response_class=HTMLResponse)
 async def view_contract_caterer(
-    booking_id: int,
+    booking_id: str,
     request: Request,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    booking = db.query(models.Booking).get(booking_id)
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
@@ -2021,12 +2064,13 @@ async def view_contract_caterer(
 
 @router.get("/bookings/{booking_id}/sign", response_class=HTMLResponse)
 async def sign_contract_caterer(
-    booking_id: int,
+    booking_id: str,
     request: Request,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    booking = db.query(models.Booking).get(booking_id)
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
@@ -2129,7 +2173,7 @@ async def caterer_payments(
 
 
 @router.get("/payments/{booking_id}/confirm")
-async def confirm_caterer_payment_get(booking_id: int):
+async def confirm_caterer_payment_get(booking_id: str):
     # This specifically handles cases where old cached JS or browser redirects 
     # might attempt a GET request on this state-changing endpoint.
     # We redirect back to payments with an instruction to retry.
@@ -2260,12 +2304,13 @@ async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_u
 
 @router.post("/bookings/{booking_id}/accept")
 async def accept_booking_manual(
-    booking_id: int,
+    booking_id: str,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
     """Allows a caterer to manually accept a booking, bypassing digital proof verification."""
-    booking = db.query(models.Booking).get(booking_id)
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
         
@@ -2274,12 +2319,13 @@ async def accept_booking_manual(
 
 @router.post("/payments/{booking_id}/confirm")
 async def confirm_caterer_payment(
-    booking_id: int,
+    booking_id: str,
     request: Request,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    booking = db.query(models.Booking).get(booking_id)
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
@@ -2345,12 +2391,13 @@ async def confirm_caterer_payment(
 
 @router.post("/bookings/{booking_id}/request-new-proof")
 async def request_new_proof(
-    booking_id: int,
+    booking_id: str,
     request: Request,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    booking = db.query(models.Booking).get(booking_id)
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
@@ -2411,12 +2458,13 @@ async def request_new_proof(
 
 @router.get("/api/bookings/{booking_id}/contract/content")
 async def get_contract_content_caterer(
-    booking_id: int,
+    booking_id: str,
     request: Request,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    booking = db.query(models.Booking).get(booking_id)
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or (user.caterer_profile and booking.caterer_id != user.caterer_profile.id):
         raise HTTPException(status_code=404, detail="Booking not found")
 
@@ -2436,12 +2484,13 @@ class DueDateRequest(BaseModel):
 
 @router.post("/api/bookings/{booking_id}/set-due-date")
 async def set_balance_due_date(
-    booking_id: int,
+    booking_id: str,
     req: DueDateRequest,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    booking = db.query(models.Booking).get(booking_id)
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or (user.caterer_profile and booking.caterer_id != user.caterer_profile.id):
         raise HTTPException(status_code=404, detail="Booking not found")
 
@@ -2489,11 +2538,12 @@ async def set_balance_due_date(
 
 @router.post("/api/bookings/{booking_id}/verify-proof")
 async def verify_booking_proof(
-    booking_id: int,
+    booking_id: str,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    booking = db.query(models.Booking).get(booking_id)
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
@@ -2517,13 +2567,17 @@ async def verify_booking_proof(
 
     return {"status": "success", "data": verify_results}
 
+@router.get("/api/bookings/{booking_id}")
 @router.get("/api/bookings/{booking_id}/details")
 async def get_booking_details_api(
-    booking_id: int,
+    booking_id: str,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    booking = db.query(models.Booking).get(booking_id)
+    import re
+    numeric_str = re.sub(r"\D", "", str(booking_id))
+    numeric_id = int(numeric_str) if numeric_str else 0
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
@@ -2557,11 +2611,151 @@ async def get_booking_details_api(
         })
 
     raw_source = (booking.booking_source or "").lower()
-    is_walkin = (not booking.user_id) or ("walk" in raw_source) or ("internal" in raw_source) or ("manual" in raw_source)
-    source_kind = "walkin" if is_walkin else "online"
-    source_label = "WALK-IN BOOKING" if is_walkin else "ONLINE BOOKING"
-    source_subtext = "Created by caterer" if is_walkin else "Customer booked through website"
-    created_by_label = "Caterer / Staff" if is_walkin else "Customer"
+    is_manual = (not booking.user_id) or ("walk" in raw_source) or ("internal" in raw_source) or ("manual" in raw_source) or bool(booking.custom_requirements and booking.custom_requirements.get("is_walk_in"))
+    source_kind = "manual" if is_manual else "online"
+    source_label = "MANUAL BOOKING" if is_manual else "ONLINE BOOKING"
+    source_table_badge = "MANUAL" if is_manual else "ONLINE"
+    source_subtext = "Created by Caterer" if is_manual else "Customer booked through website"
+    created_by_label = "Caterer" if is_manual else "Customer"
+
+    custom_reqs = booking.custom_requirements or {}
+    custom_channel = custom_reqs.get("booking_channel") or custom_reqs.get("channel")
+    if is_manual:
+        if custom_channel:
+            booking_channel = custom_channel
+        elif "facebook" in raw_source or "messenger" in raw_source:
+            booking_channel = "Facebook Messenger"
+        elif "phone" in raw_source or "call" in raw_source:
+            booking_channel = "Phone Call"
+        elif "sms" in raw_source or "text" in raw_source:
+            booking_channel = "SMS/Text"
+        elif "walk" in raw_source or "person" in raw_source:
+            booking_channel = "In Person"
+        elif "other" in raw_source:
+            booking_channel = "Other Offline Source"
+        else:
+            booking_channel = "In Person"
+    else:
+        booking_channel = "OccaServe Website"
+
+    # Celebrant Name
+    celebrant_name = custom_reqs.get("celebrant_name") or ""
+    if not celebrant_name and booking.event_type and booking.event_type.lower() == "wedding":
+        b_name = custom_reqs.get("bride_name")
+        g_name = custom_reqs.get("groom_name")
+        if b_name and g_name:
+            celebrant_name = f"{b_name} & {g_name}"
+    if not celebrant_name and custom_reqs.get("representative_name"):
+        celebrant_name = custom_reqs.get("representative_name")
+
+    # Email handling (distinguish auto-generated guest email from real customer email)
+    raw_email = (booking.user.email if booking.user else booking.customer_email) or ""
+    is_guest_email = False
+    if "@guest.occashare.com" in raw_email.lower() or raw_email.lower().startswith("walkin_") or not raw_email:
+        is_guest_email = True
+        display_email = "Not provided"
+    else:
+        display_email = raw_email
+
+    # Verification Info (only for online bookings with authentic verification records)
+    verification_info = None
+    has_verif = bool(booking.ocr_verification or booking.ocr_verified or booking.liveness_verified or (booking.user and booking.user.is_verified))
+    if has_verif and not is_manual:
+        ocr = booking.ocr_verification
+        is_verified_state = bool(booking.ocr_verified or (ocr and ocr.status == "verified") or (booking.user and booking.user.is_verified))
+        verification_info = {
+            "has_record": True,
+            "status": "VERIFIED" if is_verified_state else (ocr.status.upper() if ocr else "PENDING"),
+            "id_submitted": bool(ocr and ocr.document_url),
+            "ocr_completed": bool(booking.ocr_verified or (ocr and ocr.status in ["verified", "completed"])),
+            "liveness_completed": bool(booking.liveness_verified or (ocr and ocr.selfie_url)),
+            "verified_at": ocr.created_at.strftime("%b %d, %Y at %I:%M %p") if (ocr and ocr.created_at) else None
+        }
+
+    # Contract Info
+    contract_info = None
+    today_date = date.today()
+    is_past_event = bool(booking.event_date and booking.event_date < today_date)
+    if booking.contract:
+        c = booking.contract
+        contract_info = {
+            "has_contract": True,
+            "id": c.id,
+            "status": c.status or "pending",
+            "customer_signed": bool(c.customer_signed_at or c.customer_signature),
+            "customer_signed_at": c.customer_signed_at.strftime("%b %d, %Y at %I:%M %p") if c.customer_signed_at else None,
+            "caterer_signed": bool(c.caterer_signed_at or c.caterer_signature),
+            "caterer_signed_at": c.caterer_signed_at.strftime("%b %d, %Y at %I:%M %p") if c.caterer_signed_at else None,
+            "expires_at": c.expires_at.strftime("%b %d, %Y") if c.expires_at else None,
+            "is_past_event": is_past_event
+        }
+    elif booking.quotation and booking.quotation.contract_url:
+        q = booking.quotation
+        contract_info = {
+            "has_contract": True,
+            "id": None,
+            "status": "fully_signed" if q.customer_signed_at else "pending",
+            "customer_signed": bool(q.customer_signed_at),
+            "customer_signed_at": q.customer_signed_at.strftime("%b %d, %Y at %I:%M %p") if q.customer_signed_at else None,
+            "caterer_signed": True,
+            "caterer_signed_at": None,
+            "expires_at": None,
+            "is_past_event": is_past_event
+        }
+
+    # Caterer Active Service Offerings
+    caterer_services = []
+    if user.caterer_profile and user.caterer_profile.service_items:
+        for s in user.caterer_profile.service_items:
+            if not getattr(s, 'is_archived', False) and not getattr(s, 'is_hidden', False):
+                caterer_services.append({
+                    "id": s.id,
+                    "name": s.name,
+                    "category": s.category or "Service",
+                    "price": float(s.selling_price or 0)
+                })
+
+    # Selected Services
+    services_list = []
+    raw_services = custom_reqs.get("services") or []
+    for s in raw_services:
+        if isinstance(s, dict) and s.get("name"):
+            services_list.append({
+                "name": s.get("name"),
+                "price": float(s.get("price", 0) or 0),
+                "category": s.get("category") or "Service",
+                "is_selected": True
+            })
+    for item in (booking.selected_items or []):
+        if item.service:
+            services_list.append({
+                "name": item.custom_name or item.service.name,
+                "price": float(item.price or item.service.selling_price or 0),
+                "category": item.service.category or "Service",
+                "is_selected": True
+            })
+
+    # Equipment items if rental or extra
+    equipment_list = []
+    for eq in (custom_reqs.get("equipment_items") or []):
+        if isinstance(eq, dict):
+            equipment_list.append({
+                "name": eq.get("name", "Equipment"),
+                "price": float(eq.get("price", 0) or eq.get("rental_price", 0) or 0),
+                "quantity": int(eq.get("qty", 1) or 1)
+            })
+
+    # Accurate payment calculations
+    paid_from_records = sum(float(r.amount or 0) for r in (booking.payment_records or []))
+    actual_paid = max(float(booking.amount_paid or 0), paid_from_records)
+    balance_amount = max(0.0, total_price - actual_paid)
+    
+    if total_price > 0 and actual_paid >= total_price:
+        computed_payment_status = 'fully_paid'
+    elif actual_paid > 0:
+        computed_payment_status = 'partially_paid'
+    else:
+        computed_payment_status = 'unpaid'
 
     return {
         "id": booking.id,
@@ -2569,26 +2763,32 @@ async def get_booking_details_api(
         "status": booking.status,
         "event_name": booking.event_name,
         "event_type": booking.event_type,
+        "celebrant_name": celebrant_name,
         "event_date": booking.event_date.isoformat() if booking.event_date else None,
         "event_time": booking.event_time.strftime("%I:%M %p") if booking.event_time else None,
         "event_end_time": booking.event_end_time.strftime("%I:%M %p") if booking.event_end_time else None,
         "guest_count": booking.guest_count or 0,
         "venue": booking.event_address or booking.venue_address or booking.event_location,
         "special_requests": booking.special_requests,
-        "booking_source": "Walk-in Booking" if is_walkin else (booking.booking_source or "Online Booking"),
+        "motif_theme": custom_reqs.get("theme_motif") or custom_reqs.get("motif_theme") or "",
+        "booking_source": "Manual Booking" if is_manual else (booking.booking_source or "Online Booking"),
         "source_kind": source_kind,
         "source_label": source_label,
+        "source_table_badge": source_table_badge,
         "source_subtext": source_subtext,
+        "booking_channel": booking_channel,
+        "added_by": created_by_label,
         "created_by_label": created_by_label,
-        "entry_method": "walkin" if is_walkin else "online",
+        "entry_method": "manual" if is_manual else "online",
         "total_amount": total_price,
         "total_price": total_price,
-        "amount_paid": float(booking.amount_paid or 0),
-        "balance_amount": max(total_price - float(booking.amount_paid or 0), 0),
+        "amount_paid": actual_paid,
+        "balance_amount": balance_amount,
         "commission": round(commission, 2),
         "net_amount": round(net_amount, 2),
         "commission_rate": comm_rate,
         "payment_status": booking.payment_status,
+        "computed_payment_status": computed_payment_status,
         "payment_method": booking.payment_method,
         "payment_plan": booking.payment_plan,
         "payment_reference": booking.payment_reference,
@@ -2605,9 +2805,15 @@ async def get_booking_details_api(
         "package": {
             "id": booking.package.id,
             "name": booking.package.name,
-            "price": float(booking.package.price or 0) if getattr(booking.package, "price", None) is not None else None
+            "price": float(booking.package.price or 0) if getattr(booking.package, "price", None) is not None else None,
+            "min_guests": getattr(booking.package, "min_guests", None)
         } if booking.package else None,
         "selected_items": selected_items,
+        "services": services_list,
+        "equipment_items": equipment_list,
+        "caterer_services": caterer_services,
+        "verification": verification_info,
+        "contract": contract_info,
         "payment_records": [{
             "id": record.id,
             "amount": float(record.amount or 0),
@@ -2615,39 +2821,43 @@ async def get_booking_details_api(
             "payment_method": record.payment_method,
             "payment_type": record.payment_type,
             "reference_notes": record.reference_notes,
-            "recorded_by": record.recorded_by
+            "recorded_by": record.recorded_by or "Caterer"
         } for record in payment_records],
         "quotation_id": booking.quotation.id if booking.quotation else None,
         "contract_url": booking.quotation.contract_url if booking.quotation else None,
-        "contract_status": booking.contract.status if booking.contract else None,
+        "contract_status": (contract_info["status"] if contract_info else None),
         "user": {
-            "first_name": booking.user.first_name if booking.user else "Walk-in",
+            "first_name": booking.user.first_name if booking.user else "Manual",
             "last_name": booking.user.last_name if booking.user else "Customer",
-            "email": booking.user.email if booking.user else booking.customer_email,
+            "email": display_email,
+            "is_guest_email": is_guest_email,
             "phone_number": booking.user.phone_number if booking.user else booking.customer_contact,
             "is_verified": bool(booking.user and booking.user.is_verified)
         },
-        "customer_name": booking.customer_name,
-        "customer_email": booking.customer_email,
-        "customer_contact": booking.customer_contact,
+        "customer_name": booking.customer_name or ((f"{booking.user.first_name} {booking.user.last_name}").strip() if booking.user else "Customer"),
+        "customer_email": display_email,
+        "is_guest_email": is_guest_email,
+        "customer_contact": booking.customer_contact or (booking.user.phone_number if booking.user else None),
         "is_package": booking.package_id is not None,
+        "custom_requirements": custom_reqs,
         "caterer_notes": booking.caterer_notes
     }
 
 @router.get("/api/bookings/{booking_id}/history")
 async def get_booking_history(
-    booking_id: int,
+    booking_id: str,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    booking = db.query(models.Booking).get(booking_id)
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
     
     raw_source = (booking.booking_source or "").lower()
     is_walkin = (not booking.user_id) or ("walk" in raw_source) or ("internal" in raw_source) or ("manual" in raw_source)
 
-    history = db.query(models.BookingHistory).filter_by(booking_id=booking_id).order_by(models.BookingHistory.created_at.desc()).all()
+    history = db.query(models.BookingHistory).filter_by(booking_id=numeric_id).order_by(models.BookingHistory.created_at.desc()).all()
     
     results = []
     for h in history:
@@ -2672,12 +2882,13 @@ class BookingNotesSchema(BaseModel):
 
 @router.post("/api/bookings/{booking_id}/notes")
 async def update_booking_notes(
-    booking_id: int,
+    booking_id: str,
     data: BookingNotesSchema,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    booking = db.query(models.Booking).get(booking_id)
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
     if booking.is_archived:
@@ -2689,23 +2900,25 @@ async def update_booking_notes(
 
 @router.get("/api/bookings/{booking_id}/messages")
 async def get_booking_messages(
-    booking_id: int,
+    booking_id: str,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    booking = db.query(models.Booking).get(booking_id)
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
         
     messages = []
     has_unread = False
-    for msg in booking.messages:
+    for msg in sorted(booking.messages, key=lambda x: x.id):
         if msg.sender_id != user.id and not msg.is_read:
             msg.is_read = True
             has_unread = True
         messages.append({
             "id": msg.id,
             "sender_id": msg.sender_id,
+            "sender_name": f"{msg.sender.first_name or ''} {msg.sender.last_name or ''}".strip() if msg.sender else "User",
             "message": msg.message,
             "attachment_url": msg.attachment_url,
             "is_me": msg.sender_id == user.id,
@@ -2720,12 +2933,13 @@ async def get_booking_messages(
 @router.get("/bookings/{booking_id}/quotation")
 async def view_booking_quotation(
     request: Request,
-    booking_id: int,
+    booking_id: str,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
     """View the detailed quotation/invoice for a booking or create a proposal."""
-    booking = db.query(models.Booking).get(booking_id)
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
     
@@ -2756,7 +2970,7 @@ async def view_booking_quotation(
 
 @router.post("/bookings/{booking_id}/proposal_maker")
 async def submit_proposal_maker(
-    booking_id: int,
+    booking_id: str,
     base_price: float = Form(...),
     total_amount: float = Form(...),
     addon_names: List[str] = Form([]),
@@ -2765,7 +2979,8 @@ async def submit_proposal_maker(
     user: models.User = Depends(caterer_only)
 ):
     """Submit a custom quotation/proposal from the caterer."""
-    booking = db.query(models.Booking).get(booking_id)
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
         
@@ -2842,12 +3057,13 @@ async def submit_proposal_maker(
 @router.post("/bookings/{booking_id}/complete")
 async def complete_booking(
     request: Request,
-    booking_id: int,
+    booking_id: str,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
     """Mark a confirmed booking as completed."""
-    booking = db.query(models.Booking).get(booking_id)
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
@@ -2949,13 +3165,14 @@ async def complete_booking(
 
 @router.post("/bookings/{booking_id}/actual-cost")
 async def update_actual_cost(
-    booking_id: int,
+    booking_id: str,
     request: Request,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    numeric_id = sanitize_booking_id(booking_id)
     booking = db.query(models.Booking).filter(
-        models.Booking.id == booking_id,
+        models.Booking.id == numeric_id,
         models.Booking.caterer_id == user.caterer_profile.id
     ).first()
     if not booking:
@@ -3793,21 +4010,35 @@ async def add_rental_wizard(
     except:
         pass
 
+    status_val = form.get("status", "available")
+    if status_val.lower() in ["published", "available"]:
+        status_val = "available"
+
     new_item = models.Equipment(
         caterer_id=user.caterer_profile.id,
         name=form.get("name"),
+        equipment_type="Equipment",
         category=form.get("category"),
         description=form.get("description"),
         rental_price=float(form.get("price", 0)),
         unit_type=form.get("unit_type", "Per Set"),
         available_qty=int(form.get("total_stock", 1)),
-        status=form.get("status", "Draft"),
+        status=status_val,
+        usage_type="both",
         details_json=details_json,
         image_url=image_url
     )
     db.add(new_item)
     db.commit()
-    return JSONResponse({"status": "success", "message": "Rental saved successfully!"})
+    return JSONResponse({
+        "status": "success", 
+        "message": "Rental saved successfully!",
+        "item_id": new_item.id,
+        "item_name": new_item.name,
+        "category": new_item.category or "Equipment",
+        "unit_type": new_item.unit_type or "unit",
+        "available_qty": new_item.available_qty or 1
+    })
 
 @router.post("/api/services/add-service-wizard")
 async def add_service_wizard(
@@ -3834,6 +4065,10 @@ async def add_service_wizard(
     except:
         pass
 
+    service_status_val = form.get("status", "available")
+    if service_status_val.lower() in ["published", "available"]:
+        service_status_val = "available"
+
     new_item = models.Service(
         caterer_id=user.caterer_profile.id,
         name=form.get("name"),
@@ -3841,14 +4076,22 @@ async def add_service_wizard(
         description=form.get("description"),
         selling_price=float(form.get("price", 0)),
         unit_type=form.get("unit_type", "Per Event"),
-        status=form.get("status", "Draft"),
+        status=service_status_val,
+        usage_type="both",
         base_duration_hours=int(form.get("base_duration_hours", 3)),
         details_json=details_json,
         image_url=image_url
     )
     db.add(new_item)
     db.commit()
-    return JSONResponse({"status": "success", "message": "Service saved successfully!"})
+    return JSONResponse({
+        "status": "success", 
+        "message": "Service saved successfully!",
+        "item_id": new_item.id,
+        "item_name": new_item.name,
+        "category": new_item.category or "Service",
+        "unit_type": new_item.unit_type or "service"
+    })
 
 @router.post("/services/{item_id}/archive")
 async def archive_service_item(
@@ -3911,6 +4154,232 @@ async def edit_profile(
         "active_page": "settings"
     })
 
+
+
+def _parse_inclusions(inclusions_json: Optional[str], inclusions_legacy: Optional[list]) -> list:
+    """Parse package inclusions: prefer new structured/freeform JSON array, fall back to legacy string list."""
+    import json as _json
+    if inclusions_json:
+        try:
+            parsed = _json.loads(inclusions_json)
+            if isinstance(parsed, list):
+                result = []
+                for item in parsed:
+                    if isinstance(item, dict):
+                        cat = (item.get("category") or item.get("item_type") or "Menu / Food").strip()
+                        item_type = item.get("item_type")
+                        if not item_type:
+                            if "equipment" in cat.lower(): item_type = "Equipment"
+                            elif "service" in cat.lower(): item_type = "Service"
+                            else: item_type = "Menu"
+                        result.append({
+                            "item_type": item_type,
+                            "category": cat,
+                            "item_id": item.get("item_id"),
+                            "name": (item.get("name") or "").strip(),
+                            "quantity": (str(item.get("quantity") or "")).strip(),
+                            "quantity_num": item.get("quantity_num"),
+                            "unit": item.get("unit") or "",
+                            "description": (item.get("description") or "").strip(),
+                            "notes": (item.get("notes") or "").strip()
+                        })
+                    elif isinstance(item, str) and item.strip():
+                        result.append({
+                            "item_type": "Menu",
+                            "category": "Menu / Food",
+                            "item_id": None,
+                            "name": item.strip(),
+                            "quantity": "",
+                            "description": "",
+                            "notes": ""
+                        })
+                return result
+        except Exception:
+            pass
+    # Legacy: list of string names
+    if inclusions_legacy:
+        return [{
+            "item_type": "Menu",
+            "category": "Menu / Food",
+            "item_id": None,
+            "name": inc.strip(),
+            "quantity": "",
+            "description": "",
+            "notes": ""
+        } for inc in inclusions_legacy if inc and str(inc).strip()]
+    return []
+
+
+def _normalize_inclusions_for_api(inclusions) -> list:
+    """Normalize package.inclusions to a list of dicts for the API response."""
+    if not inclusions:
+        return []
+    if isinstance(inclusions, list):
+        normalized = []
+        for i in inclusions:
+            if isinstance(i, dict):
+                cat = (i.get("category") or i.get("item_type") or "Menu / Food").strip()
+                item_type = i.get("item_type")
+                if not item_type:
+                    if "equipment" in cat.lower(): item_type = "Equipment"
+                    elif "service" in cat.lower(): item_type = "Service"
+                    else: item_type = "Menu"
+                normalized.append({
+                    "item_type": item_type,
+                    "category": cat,
+                    "item_id": i.get("item_id"),
+                    "name": i.get("name") or "",
+                    "quantity": str(i.get("quantity") or ""),
+                    "quantity_num": i.get("quantity_num"),
+                    "unit": i.get("unit") or "",
+                    "description": i.get("description") or "",
+                    "notes": i.get("notes") or ""
+                })
+            elif isinstance(i, str) and i.strip():
+                normalized.append({
+                    "item_type": "Menu",
+                    "category": "Menu / Food",
+                    "item_id": None,
+                    "name": i.strip(),
+                    "quantity": "",
+                    "description": "",
+                    "notes": ""
+                })
+        return normalized
+    if isinstance(inclusions, dict):
+        # Legacy format: { 'item name': True }
+        return [{
+            "item_type": "Equipment" if any(k in str(k).lower() for k in ["table", "chair"]) else "Menu",
+            "category": "Equipment" if any(k in str(k).lower() for k in ["table", "chair"]) else "Menu / Food",
+            "item_id": None,
+            "name": k,
+            "quantity": "",
+            "description": "",
+            "notes": ""
+        } for k, v in inclusions.items() if v]
+    return []
+
+
+def _sync_package_relational_inclusions(db: Session, package: models.CateringPackage, inclusions: list, linked_menu_ids: Optional[List[str]] = None):
+    """Synchronize PackageEquipment, PackageService, and MenuItem relations from inclusions without duplicating records."""
+    import re
+    eq_map = {}   # eq_id -> qty
+    svc_map = {}  # svc_id -> qty
+    menu_ids = set()
+
+    if inclusions and isinstance(inclusions, list):
+        for item in inclusions:
+            if not isinstance(item, dict):
+                continue
+            item_type = (item.get("item_type") or item.get("type") or item.get("category") or "").strip()
+            raw_id = item.get("item_id") or item.get("id")
+
+            # Try parsing numeric quantity
+            qty = 1
+            if item.get("quantity_num") is not None:
+                try: qty = int(item["quantity_num"])
+                except Exception: qty = 1
+            elif item.get("quantity"):
+                m = re.search(r'\d+', str(item["quantity"]))
+                if m:
+                    try: qty = int(m.group())
+                    except Exception: qty = 1
+            if qty < 1:
+                qty = 1
+
+            # Clean raw_id if string with prefix
+            cat_id = None
+            if raw_id is not None:
+                try:
+                    cat_id = int(str(raw_id).replace("eq_", "").replace("svc_", "").replace("leg_", ""))
+                except Exception:
+                    cat_id = None
+
+            # Fallback lookup by name if id is missing
+            item_name = (item.get("name") or "").strip()
+
+            if "equipment" in item_type.lower() or item_type == "Equipment":
+                if cat_id is None and item_name:
+                    eq_found = db.query(models.Equipment).filter(
+                        models.Equipment.caterer_id == package.caterer_id,
+                        models.Equipment.name.ilike(item_name),
+                        models.Equipment.is_archived == False
+                    ).first()
+                    if eq_found:
+                        cat_id = eq_found.id
+                        item["item_id"] = cat_id
+                        item["item_type"] = "Equipment"
+                if cat_id:
+                    eq_map[cat_id] = qty
+            elif "service" in item_type.lower() or item_type == "Service":
+                if cat_id is None and item_name:
+                    svc_found = db.query(models.Service).filter(
+                        models.Service.caterer_id == package.caterer_id,
+                        models.Service.name.ilike(item_name),
+                        models.Service.is_archived == False
+                    ).first()
+                    if svc_found:
+                        cat_id = svc_found.id
+                        item["item_id"] = cat_id
+                        item["item_type"] = "Service"
+                if cat_id:
+                    svc_map[cat_id] = qty
+            else: # Menu / Food
+                if cat_id is None and item_name:
+                    menu_found = db.query(models.MenuItem).filter(
+                        models.MenuItem.caterer_id == package.caterer_id,
+                        models.MenuItem.name.ilike(item_name),
+                        models.MenuItem.is_archived == False
+                    ).first()
+                    if menu_found:
+                        cat_id = menu_found.id
+                        item["item_id"] = cat_id
+                        item["item_type"] = "Menu"
+                if cat_id:
+                    menu_ids.add(cat_id)
+
+    # Also handle linked_menu_ids if passed from old addon grids
+    if linked_menu_ids:
+        for i in set(linked_menu_ids):
+            qty = 1
+            if '_q' in i:
+                parts = i.split('_q')
+                i = parts[0]
+                try: qty = int(parts[1])
+                except Exception: pass
+            if i.startswith('eq_'):
+                try: eq_map[int(i.replace('eq_', ''))] = qty
+                except Exception: pass
+            elif i.startswith('svc_'):
+                try: svc_map[int(i.replace('svc_', ''))] = qty
+                except Exception: pass
+            elif i.startswith('leg_'):
+                try: menu_ids.add(int(i.replace('leg_', '')))
+                except Exception: pass
+            else:
+                try: menu_ids.add(int(i))
+                except Exception: pass
+
+    # Clear previous relational links and insert current ones
+    db.query(models.PackageEquipment).filter(models.PackageEquipment.package_id == package.id).delete()
+    db.query(models.PackageService).filter(models.PackageService.package_id == package.id).delete()
+    package.menu_items = []
+
+    for eid, q in eq_map.items():
+        eq_record = db.query(models.Equipment).filter(models.Equipment.id == eid, models.Equipment.caterer_id == package.caterer_id).first()
+        if eq_record:
+            db.add(models.PackageEquipment(package_id=package.id, equipment_id=eid, quantity=q))
+
+    for sid, q in svc_map.items():
+        svc_record = db.query(models.Service).filter(models.Service.id == sid, models.Service.caterer_id == package.caterer_id).first()
+        if svc_record:
+            db.add(models.PackageService(package_id=package.id, service_id=sid, quantity=q))
+
+    if menu_ids:
+        m_items = db.query(models.MenuItem).filter(models.MenuItem.id.in_(menu_ids), models.MenuItem.caterer_id == package.caterer_id).all()
+        package.menu_items = m_items
+
+
 @router.post("/packages/add")
 async def add_package(
     request: Request,
@@ -3928,6 +4397,7 @@ async def add_package(
     min_guests: int = Form(1),
     max_guests: Optional[str] = Form(None),
     inclusions: Optional[List[str]] = Form(None),
+    inclusions_json: Optional[str] = Form(None),
     linked_menu_ids: Optional[List[str]] = Form(None),
     additional_guest_price: float = Form(0.0),
     image: Optional[UploadFile] = File(None),
@@ -4022,7 +4492,7 @@ async def add_package(
         min_guests=min_guests,
         max_guests=int(max_guests) if max_guests and str(max_guests).strip() else None,
         image_url=image_url,
-        inclusions={inc: True for inc in inclusions} if inclusions else {},
+        inclusions=_parse_inclusions(inclusions_json, inclusions),
         base_pax=base_pax,
         additional_guest_price=additional_guest_price,
         labor_cost=user.caterer_profile.default_labor_cost or 0.0,
@@ -4040,43 +4510,11 @@ async def add_package(
         status=status
     )
     
-    # Handle linked items
-    if linked_menu_ids:
-        db.add(new_pkg)
-        db.flush()
-        
-        menu_ids = []
-        eq_data = []
-        svc_data = []
-        for i in set(linked_menu_ids):
-            qty = 1
-            if '_q' in i:
-                parts = i.split('_q')
-                i = parts[0]
-                try: qty = int(parts[1])
-                except: pass
-                
-            if i.startswith('eq_'): eq_data.append((int(i.replace('eq_', '')), qty))
-            elif i.startswith('svc_'): svc_data.append((int(i.replace('svc_', '')), qty))
-            elif i.startswith('leg_'): menu_ids.append(int(i.replace('leg_', '')))
-            else:
-                try: menu_ids.append(int(i))
-                except: pass
-                
-        if menu_ids:
-            items = db.query(models.MenuItem).filter(models.MenuItem.id.in_(menu_ids)).all()
-            new_pkg.menu_items = items
-            
-        if eq_data:
-            for eid, qty in eq_data:
-                db.add(models.PackageEquipment(package_id=new_pkg.id, equipment_id=eid, quantity=qty))
-                
-        if svc_data:
-            for sid, qty in svc_data:
-                db.add(models.PackageService(package_id=new_pkg.id, service_id=sid, quantity=qty))
-    else:
-        db.add(new_pkg)
-        db.flush()
+    db.add(new_pkg)
+    db.flush()
+
+    # Handle relational links to existing catalog items (Equipment, Service, Menu)
+    _sync_package_relational_inclusions(db, new_pkg, new_pkg.inclusions, linked_menu_ids)
         
     # Save addons
     try:
@@ -4269,7 +4707,9 @@ async def add_menu_item(
             "status": "success", 
             "message": "Dish added successfully", 
             "item_id": new_item.id,
-            "item_name": new_item.name
+            "item_name": new_item.name,
+            "category": new_item.category,
+            "unit_type": getattr(new_item, 'pricing_unit', 'pax') or 'pax'
         })
 
     return RedirectResponse(url="/caterer/menu?success_msg=Dish+added+successfully", status_code=303)
@@ -4671,6 +5111,67 @@ async def get_package_details_api(
     if not package:
         raise HTTPException(status_code=404, detail="Package not found")
     
+    inclusions_list = _normalize_inclusions_for_api(package.inclusions)
+    if not inclusions_list:
+        inclusions_list = []
+        for eq_link in package.equipment_links:
+            if eq_link.equipment and not eq_link.equipment.is_archived:
+                inclusions_list.append({
+                    "item_type": "Equipment",
+                    "category": "Equipment",
+                    "item_id": eq_link.equipment.id,
+                    "name": eq_link.equipment.name,
+                    "quantity": f"{eq_link.quantity} {eq_link.equipment.unit_type or 'units'}",
+                    "quantity_num": eq_link.quantity,
+                    "unit": eq_link.equipment.unit_type or "units",
+                    "description": eq_link.equipment.description or ""
+                })
+        for svc_link in package.service_links:
+            if svc_link.service and not svc_link.service.is_archived:
+                inclusions_list.append({
+                    "item_type": "Service",
+                    "category": "Service",
+                    "item_id": svc_link.service.id,
+                    "name": svc_link.service.name,
+                    "quantity": f"{svc_link.quantity} {svc_link.service.unit_type or 'units'}",
+                    "quantity_num": svc_link.quantity,
+                    "unit": svc_link.service.unit_type or "units",
+                    "description": svc_link.service.description or ""
+                })
+        for m_item in package.menu_items:
+            if not m_item.is_archived:
+                inclusions_list.append({
+                    "item_type": "Menu",
+                    "category": "Menu / Food",
+                    "item_id": m_item.id,
+                    "name": m_item.name,
+                    "quantity": "Included",
+                    "quantity_num": 1,
+                    "unit": m_item.pricing_unit or "serving",
+                    "description": m_item.description or ""
+                })
+    else:
+        for item in inclusions_list:
+            if isinstance(item, dict):
+                cat = (item.get("category") or item.get("item_type") or "").lower()
+                t = item.get("item_type")
+                if not t:
+                    if "equipment" in cat: t = "Equipment"
+                    elif "service" in cat: t = "Service"
+                    else: t = "Menu"
+                    item["item_type"] = t
+                if not item.get("item_id") and item.get("name"):
+                    name_clean = item["name"].strip()
+                    if t == "Equipment":
+                        match = db.query(models.Equipment).filter(models.Equipment.caterer_id == user.caterer_profile.id, models.Equipment.name.ilike(name_clean)).first()
+                        if match: item["item_id"] = match.id
+                    elif t == "Service":
+                        match = db.query(models.Service).filter(models.Service.caterer_id == user.caterer_profile.id, models.Service.name.ilike(name_clean)).first()
+                        if match: item["item_id"] = match.id
+                    elif t == "Menu":
+                        match = db.query(models.MenuItem).filter(models.MenuItem.caterer_id == user.caterer_profile.id, models.MenuItem.name.ilike(name_clean)).first()
+                        if match: item["item_id"] = match.id
+
     return {
         "id": package.id,
         "name": package.name,
@@ -4686,7 +5187,7 @@ async def get_package_details_api(
         "max_guests": package.max_guests,
         "service_duration": package.service_duration,
         "image_url": package.image_url,
-        "inclusions": package.inclusions or {},
+        "inclusions": inclusions_list,
         "is_active": package.is_active,
         "pricing_mode": package.pricing_mode,
         "base_pax": package.base_pax,
@@ -4721,6 +5222,7 @@ async def update_package(
     min_guests: int = Form(1),
     max_guests: Optional[str] = Form(None),
     inclusions: Optional[List[str]] = Form(None),
+    inclusions_json: Optional[str] = Form(None),
     linked_menu_ids: Optional[List[str]] = Form(None),
     additional_guest_price: float = Form(0.0),
     image: Optional[UploadFile] = File(None),
@@ -4762,7 +5264,6 @@ async def update_package(
     
     if not name.strip():
         errors.append("Package name is required.")
-    # Removed mandatory menu item selection to allow optional packages
     if price_per_head <= 0:
         errors.append("Price per head must be greater than 0.")
     global_min_pax = user.caterer_profile.min_pax or 20
@@ -4773,14 +5274,13 @@ async def update_package(
     if booking_lead_time < global_lead_time:
         errors.append(f"Booking lead time cannot be lower than your global setting of {global_lead_time} days.")
     if reservation_fee_value <= 0 and price_per_head > 0:
-        pass # Optional warning: errors.append("Reservation fee must be greater than 0.")
+        pass
     elif reservation_fee_type == 'fixed' and price_per_head > 0 and min_guests > 0 and pricing_mode == 'per_pax':
         max_allowed_fee = (price_per_head * min_guests) * 0.5
         if reservation_fee_value > max_allowed_fee:
             errors.append(f"Reservation fee cannot exceed 50% of the total base package cost.")
-
-
-    # Smart Validation: Detect existing package with the same name, excluding this package
+            
+    # Smart Validation: Detect other package with the same name
     existing_pkg = db.query(models.CateringPackage).filter(
         models.CateringPackage.caterer_id == user.caterer_profile.id,
         models.CateringPackage.name.ilike(name.strip()),
@@ -4788,7 +5288,7 @@ async def update_package(
     ).first()
     
     if existing_pkg:
-        errors.append(f"A package named '{name}' already exists in your library.")
+        errors.append(f"Another package named '{name}' already exists in your library.")
         
     if errors:
         error_msg = " | ".join(errors)
@@ -4802,10 +5302,9 @@ async def update_package(
     package.pricing_mode = pricing_mode
     package.service_duration = service_duration
     package.price_per_head = price_per_head
-    package.price = price_per_head # Sync for compatibility
+    package.price = price_per_head
     package.cost_price = cost_price
-    if cost_breakdown is not None:
-        package.cost_breakdown = json.loads(cost_breakdown) if cost_breakdown else None
+    package.cost_breakdown = json.loads(cost_breakdown) if cost_breakdown else []
     package.min_contract_amount = min_contract_amount
     package.min_guests = min_guests
     package.max_guests = int(max_guests) if max_guests and str(max_guests).strip() else None
@@ -4824,47 +5323,11 @@ async def update_package(
     package.booking_lead_time = booking_lead_time
     package.selection_rules = json.loads(selection_rules) if selection_rules else None
     
-    
-    # Process inclusions into a dict for storage
-    if inclusions:
-        package.inclusions = {inc: True for inc in inclusions}
-    else:
-        package.inclusions = {}
+    # Process inclusions: prefer inclusions_json (structured format) over legacy form list
+    package.inclusions = _parse_inclusions(inclusions_json, inclusions)
 
-    # Handle linked items
-    if linked_menu_ids is not None:
-        menu_ids = []
-        eq_data = []
-        svc_data = []
-        for i in set(linked_menu_ids):
-            qty = 1
-            if '_q' in i:
-                parts = i.split('_q')
-                i = parts[0]
-                try: qty = int(parts[1])
-                except: pass
-                
-            if i.startswith('eq_'): eq_data.append((int(i.replace('eq_', '')), qty))
-            elif i.startswith('svc_'): svc_data.append((int(i.replace('svc_', '')), qty))
-            elif i.startswith('leg_'): menu_ids.append(int(i.replace('leg_', '')))
-            else:
-                try: menu_ids.append(int(i))
-                except: pass
-
-        # Clear existing specific table links
-        package.menu_items = []
-        db.query(models.PackageEquipment).filter(models.PackageEquipment.package_id == package.id).delete()
-        db.query(models.PackageService).filter(models.PackageService.package_id == package.id).delete()
-        
-        # Add new
-        if menu_ids:
-            items = db.query(models.MenuItem).filter(models.MenuItem.id.in_(menu_ids)).all()
-            package.menu_items = items
-            
-        for eid, qty in eq_data:
-            db.add(models.PackageEquipment(package_id=package.id, equipment_id=eid, quantity=qty))
-        for sid, qty in svc_data:
-            db.add(models.PackageService(package_id=package.id, service_id=sid, quantity=qty))
+    # Handle relational links to existing catalog items (Equipment, Service, Menu)
+    _sync_package_relational_inclusions(db, package, package.inclusions, linked_menu_ids)
 
 
     import base64
@@ -5180,6 +5643,65 @@ async def get_all_menu_items_api(
         })
         
     return result
+
+@router.get("/api/catalogs/inclusions")
+async def get_catalogs_inclusions(
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    equipment = db.query(models.Equipment).filter(
+        models.Equipment.caterer_id == profile.id,
+        models.Equipment.is_archived == False
+    ).order_by(models.Equipment.name.asc()).all()
+    
+    menus = db.query(models.MenuItem).filter(
+        models.MenuItem.caterer_id == profile.id,
+        models.MenuItem.is_archived == False
+    ).order_by(models.MenuItem.name.asc()).all()
+    
+    services = db.query(models.Service).filter(
+        models.Service.caterer_id == profile.id,
+        models.Service.is_archived == False
+    ).order_by(models.Service.name.asc()).all()
+    
+    return {
+        "equipment": [
+            {
+                "id": e.id,
+                "name": e.name,
+                "category": e.category or "Equipment",
+                "unit_type": e.unit_type or "unit",
+                "available_qty": e.available_qty or 0,
+                "rental_price": e.rental_price or 0.0,
+                "description": e.description or "",
+                "image_url": e.image_url or ""
+            } for e in equipment
+        ],
+        "menu": [
+            {
+                "id": m.id,
+                "name": m.name,
+                "category": m.category or "Menu",
+                "unit_type": m.pricing_unit or "serving",
+                "price": m.price or 0.0,
+                "description": m.description or "",
+                "image_url": m.image_url or ""
+            } for m in menus
+        ],
+        "service": [
+            {
+                "id": s.id,
+                "name": s.name,
+                "category": s.category or "Service",
+                "unit_type": s.unit_type or "service",
+                "price": s.selling_price or 0.0,
+                "max_available": s.max_available or 0,
+                "description": s.description or "",
+                "image_url": s.image_url or ""
+            } for s in services
+        ]
+    }
 
 @router.post("/packages/{package_id}/menu/link")
 async def link_menu_to_package(
@@ -5894,30 +6416,32 @@ async def set_booking_reminder(
 
 @router.get("/api/bookings/{booking_id}/tasks")
 async def get_booking_tasks(
-    booking_id: int,
+    booking_id: str,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    numeric_id = sanitize_booking_id(booking_id)
     booking = db.query(models.Booking).filter(
-        models.Booking.id == booking_id,
+        models.Booking.id == numeric_id,
         models.Booking.caterer_id == user.caterer_profile.id
     ).first()
     
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
         
-    tasks = db.query(models.BookingTask).filter(models.BookingTask.booking_id == booking_id).order_by(models.BookingTask.created_at.asc()).all()
+    tasks = db.query(models.BookingTask).filter(models.BookingTask.booking_id == numeric_id).order_by(models.BookingTask.created_at.asc()).all()
     return tasks
 
 @router.post("/api/bookings/{booking_id}/tasks")
 async def add_booking_task(
-    booking_id: int,
+    booking_id: str,
     data: dict = Body(...),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    numeric_id = sanitize_booking_id(booking_id)
     booking = db.query(models.Booking).filter(
-        models.Booking.id == booking_id,
+        models.Booking.id == numeric_id,
         models.Booking.caterer_id == user.caterer_profile.id
     ).first()
     
@@ -5927,7 +6451,7 @@ async def add_booking_task(
         raise HTTPException(status_code=400, detail="Cannot modify tasks on an archived or cancelled booking.")
         
     task = models.BookingTask(
-        booking_id=booking_id,
+        booking_id=numeric_id,
         title=str(data.get("title", "New Task"))[:200]
     )
     db.add(task)
@@ -6068,7 +6592,7 @@ async def cancel_booking(
 @router.post("/bookings/{booking_id}/reject")
 async def reject_booking(
     request: Request,
-    booking_id: int,
+    booking_id: str,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -6078,7 +6602,8 @@ async def reject_booking(
     except:
         reason = "Booking rejected by caterer."
 
-    booking = db.query(models.Booking).get(booking_id)
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
     
@@ -6094,7 +6619,7 @@ async def reject_booking(
 
     await manager.broadcast_to_user(user.id, {
         "type": "booking_update",
-        "booking_id": booking_id,
+        "booking_id": numeric_id,
         "new_status": "cancelled",
         "message": f"Booking rejected: {reason}"
     })
@@ -6117,13 +6642,14 @@ async def reject_booking(
 
 @router.post("/bookings/{booking_id}/archive")
 async def archive_booking(
-    booking_id: int,
+    booking_id: str,
     request: Request,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    numeric_id = sanitize_booking_id(booking_id)
     booking = db.query(models.Booking).filter(
-        models.Booking.id == booking_id,
+        models.Booking.id == numeric_id,
         models.Booking.caterer_id == user.caterer_profile.id
     ).first()
     if not booking:
@@ -6142,12 +6668,12 @@ async def archive_booking(
     })
     await manager.broadcast_to_user(user.id, {
         "type": "booking_archived",
-        "booking_id": booking_id,
+        "booking_id": numeric_id,
         "message": "Booking has been archived successfully."
     })
     
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-        return JSONResponse({"status": "success", "message": "Booking archived successfully", "booking_id": booking_id})
+        return JSONResponse({"status": "success", "message": "Booking archived successfully", "booking_id": numeric_id})
 
     # Allow redirecting back to where the request came from (e.g., payments page)
     next_url = request.query_params.get("next", "/caterer/bookings")
@@ -6159,13 +6685,14 @@ async def archive_booking(
 
 @router.post("/bookings/{booking_id}/restore")
 async def restore_booking(
-    booking_id: int,
+    booking_id: str,
     request: Request,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    numeric_id = sanitize_booking_id(booking_id)
     booking = db.query(models.Booking).filter(
-        models.Booking.id == booking_id,
+        models.Booking.id == numeric_id,
         models.Booking.caterer_id == user.caterer_profile.id
     ).first()
     if not booking:
@@ -7789,17 +8316,18 @@ async def set_preparation_date(
 
 @router.post("/api/bookings/{booking_id}/record-payment")
 async def record_manual_payment(
-    booking_id: int,
+    booking_id: str,
     request: Request,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    numeric_id = sanitize_booking_id(booking_id)
     caterer = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == user.id).first()
     if not caterer:
         raise HTTPException(status_code=403, detail="Unauthorized")
         
     booking = db.query(models.Booking).filter(
-        models.Booking.id == booking_id,
+        models.Booking.id == numeric_id,
         models.Booking.caterer_id == caterer.id
     ).first()
     if not booking:

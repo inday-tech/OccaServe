@@ -410,8 +410,26 @@
                                     total</span>
                                 {% endif %}
                             </div>
-                            <p class="text-xs text-slate-500 mb-6 flex-1 line-clamp-3 leading-relaxed">{{
+                            <p class="text-xs text-slate-500 mb-4 flex-1 line-clamp-3 leading-relaxed">{{
                                 pkg.description }}</p>
+
+                            {% if pkg.inclusions %}
+                            <div class="flex flex-wrap gap-1 mb-4 max-h-12 overflow-hidden">
+                                {% set count = namespace(val=0) %}
+                                {% for inc in pkg.inclusions %}
+                                    {% if count.val < 3 %}
+                                    <span class="text-[9px] font-bold bg-slate-50 text-slate-600 px-2 py-0.5 rounded-full border border-slate-100 flex items-center gap-1">
+                                        <i class="fas fa-check text-emerald-500 text-[8px]"></i>
+                                        {{ inc.name if inc is mapping else inc }}
+                                    </span>
+                                    {% set count.val = count.val + 1 %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if pkg.inclusions|length > 3 %}
+                                <span class="text-[9px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">+{{ pkg.inclusions|length - 3 }}</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
 
                             <button onclick="openPublicPkgDetails({{ pkg.id }})"
                                 style="border-color: var(--brand-primary); color: var(--brand-primary);"
@@ -429,83 +447,62 @@
             
 
 
-            <!-- Rentals & Services Section -->
-            
-{% if active_equipment %}
+            <!-- Rentals & Equipment Section -->
+            {% set display_equipment = active_equipment if (active_equipment is defined and active_equipment) else (active_inventory if active_inventory is defined else []) %}
+
+            {% if display_equipment %}
             <section class="card-premium p-6 mt-6">
-                <div class="flex items-center justify-between mb-8">
-                    <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
-                        <span class="w-8 h-[1px] bg-slate-200"></span> Rentals
-                    </h2>
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="font-black text-slate-400 uppercase flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 0.25rem !important;">
+                            <span class="w-8 h-[1px] bg-slate-200"></span> Equipment Rentals
+                        </h2>
+                        <p class="text-xs text-slate-500">Rent event tables, chairs, dinnerware, and catering equipment independently.</p>
+                    </div>
                     <span class="text-[10px] font-black text-brand uppercase bg-brand/10 px-2.5 py-1 rounded-full">
-                        {{ active_equipment|length }} Items Available
+                        {{ display_equipment|length }} Items Available
                     </span>
                 </div>
 
-                {% set inventory_categories = [] %}
-                {% for item in active_equipment %}
-                {% set cat_name = item.category if item.category else ('Equipment' if item.equipment_type else
-                'Service') %}
-                {% if cat_name not in inventory_categories %}
-                {% set _ = inventory_categories.append(cat_name) %}
-                {% endif %}
-                {% endfor %}
-
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                    {% for cat in inventory_categories %}
-                    {% set cat_items = [] %}
-                    {% for item in active_equipment %}
-                    {% set item_cat = item.category if item.category else ('Equipment' if item.equipment_type else
-                    'Service') %}
-                    {% if item_cat == cat %}
-                    {% set _ = cat_items.append(item) %}
-                    {% endif %}
-                    {% endfor %}
-
-                    {# Extract first active item with valid image in this category #}
-                    {% set active_photo = namespace(url='') %}
-                    {% for item in cat_items %}
-                    {% if item.image_url and not active_photo.url %}
-                    {% set active_photo.url = item.image_url %}
-                    {% endif %}
-                    {% endfor %}
-                    {% set cat_cover_image = active_photo.url if active_photo.url else
-                    'https://ui-avatars.com/api/?name=' ~ (cat|urlencode) ~
-                    '&background=f1f5f9&color=64748b&size=400&font-size=0.2' %}
-
-                    <div class="group relative rounded-3xl overflow-hidden border border-slate-200 bg-white transition-all duration-300 hover:shadow-xl hover:border-brand/30 flex flex-col cursor-pointer"
-                        onclick='openInventoryShowcase({{ cat|tojson|safe }})'>
-
-                        <div
-                            class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent z-10 pointer-events-none opacity-100 transition-opacity">
-                        </div>
-
-                        <div class="h-32 w-full bg-slate-100 relative overflow-hidden">
-                            <img src="{{ cat_cover_image }}"
-                                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                alt="{{ cat }}">
-                            <div class="absolute inset-0 bg-black/10 transition-opacity opacity-100"></div>
-                        </div>
-
-                        <div
-                            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center z-20 border-2 border-white text-slate-400 group-hover:text-brand transition-colors">
-                            <i class="fas fa-chair text-xl"></i>
-                        </div>
-
-                        <div class="p-6 pt-10 text-center flex-1 flex flex-col">
-                            <div class="flex flex-col items-center mb-3">
-                                <h3
-                                    class="text-sm font-black text-slate-800 uppercase tracking-widest mb-1.5 truncate max-w-full px-2">
-                                    {{ cat }}</h3>
-                                <span
-                                    class="text-[9px] font-bold text-slate-400 bg-slate-100 group-hover:bg-brand group-hover:text-white px-3 py-1 rounded-full transition-colors flex-shrink-0">
-                                    {{ cat_items|length }} Items
+                    {% for item in display_equipment %}
+                    {% set item_price = (item.rental_price if (item.rental_price is defined and item.rental_price is not none and item.rental_price > 0) else (item.display_price if (item.display_price is defined and item.display_price is not none and item.display_price > 0) else (item.price if (item.price is defined and item.price is not none) else 0))) %}
+                    {% set item_unit = item.unit_type or 'Piece' %}
+                    <div class="group border border-slate-200 rounded-3xl overflow-hidden flex flex-col bg-white transition-all hover:shadow-xl hover:border-brand/30">
+                        <div class="relative h-44 overflow-hidden bg-slate-100">
+                            {% if item.image_url %}
+                            <img src="{{ item.image_url }}" alt="{{ item.name }}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            {% else %}
+                            <div class="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-300">
+                                <i class="fas fa-chair text-4xl mb-1 text-slate-300"></i>
+                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Equipment</span>
+                            </div>
+                            {% endif %}
+                            <div class="absolute top-3 left-3">
+                                <span class="bg-white/90 backdrop-blur px-2.5 py-1 rounded-full text-[9px] font-black text-slate-700 uppercase tracking-widest shadow-sm">
+                                    {{ item.category or 'Equipment' }}
                                 </span>
                             </div>
+                            <div class="absolute bottom-3 right-3">
+                                <span class="bg-emerald-500/90 text-white backdrop-blur px-2.5 py-0.5 rounded-full text-[9px] font-bold shadow-sm">
+                                    ✓ {{ item.available_qty or 1 }} in stock
+                                </span>
+                            </div>
+                        </div>
 
-                            <div
-                                class="mt-auto flex items-center justify-center gap-1.5 text-[9px] font-black text-brand uppercase tracking-wider opacity-100 transition-opacity">
-                                Explore Items <i class="fas fa-arrow-right text-[8px] mt-0.5 animate-bounce"></i>
+                        <div class="p-5 flex-1 flex flex-col">
+                            <h3 class="text-sm font-black text-slate-800 uppercase mb-1 leading-snug line-clamp-1">{{ item.name }}</h3>
+                            <div class="text-brand font-black text-lg mb-2">
+                                ₱{{ "{:,.2f}".format(item_price) }} <span class="text-[10px] text-slate-400 font-bold ml-0.5">/ {{ item_unit }}</span>
+                            </div>
+                            <p class="text-xs text-slate-500 mb-4 flex-1 line-clamp-2 leading-relaxed">
+                                {{ item.description or 'High-quality catering and event equipment for rent.' }}
+                            </p>
+
+                            <div class="flex gap-2 pt-2 border-t border-slate-100">
+                                <button type="button" onclick="openPublicEquipmentModal({{ item.id }})" class="w-full py-2.5 bg-brand text-white hover:bg-brand/90 rounded-xl text-xs font-black transition-all shadow-sm flex items-center justify-center gap-1.5 uppercase tracking-wider">
+                                    <i class="fas fa-chair text-[11px]"></i> Rent Equipment
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -995,6 +992,98 @@
     </div>
 </div>
 
+<!-- Public Equipment Rental Interactive Modal -->
+<div id="public-equipment-modal" class="hidden fixed inset-0 z-[9999] items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 transition-all">
+    <div class="bg-white rounded-[24px] w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl relative animate-in fade-in zoom-in duration-200">
+        <button type="button" onclick="closePublicEquipmentModal()" class="absolute top-4 right-4 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors">
+            <i class="fas fa-times text-sm"></i>
+        </button>
+        
+        <div class="w-full h-44 bg-slate-100 relative shrink-0">
+            <img id="pub-eq-img" src="" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent"></div>
+            
+            <div class="absolute bottom-3 left-5 right-5">
+                <span id="pub-eq-cat" class="text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded bg-brand text-white shadow-sm">Category</span>
+                <h2 id="pub-eq-title" class="text-xl font-black text-white leading-tight mt-1">Equipment Name</h2>
+            </div>
+        </div>
+        
+        <div class="p-5 overflow-y-auto flex-1 custom-scrollbar bg-slate-50 space-y-4">
+            <p id="pub-eq-desc" class="text-xs text-slate-600 leading-relaxed"></p>
+            
+            <div class="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+                <div>
+                    <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Rental Rate</div>
+                    <div id="pub-eq-price" class="text-lg font-black text-brand">₱0.00 <span class="text-xs text-slate-400 font-bold">/ Piece</span></div>
+                </div>
+                <div class="text-right">
+                    <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Inventory</div>
+                    <span id="pub-eq-stock" class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">In Stock</span>
+                </div>
+            </div>
+
+            <!-- Date and Quantity Selector -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+                <div>
+                    <label class="text-[10px] font-black uppercase tracking-wider text-slate-700 block mb-1.5 flex items-center gap-1.5">
+                        <i class="fas fa-calendar-day text-brand"></i> Rental Event Date *
+                    </label>
+                    <input type="date" id="pub-eq-date" class="w-full px-3 py-2 text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand/30" onchange="checkPubEquipmentAvailability()">
+                </div>
+
+                <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+                    <span class="text-xs font-black text-slate-700">Quantity Needed:</span>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="stepPubEquipmentQty(-1)" class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 font-black text-slate-700 hover:bg-slate-100 flex items-center justify-center">-</button>
+                        <input type="number" id="pub-eq-qty" value="1" min="1" class="w-14 h-8 text-center text-xs font-black bg-slate-50 border border-slate-200 rounded-lg" oninput="checkPubEquipmentAvailability()">
+                        <button type="button" onclick="stepPubEquipmentQty(1)" class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 font-black text-slate-700 hover:bg-slate-100 flex items-center justify-center">+</button>
+                        <span id="pub-eq-unit-label" class="text-xs text-slate-500 font-bold ml-1">Piece</span>
+                    </div>
+                </div>
+
+                <div id="pub-eq-avail-alert" class="text-xs font-bold pt-1"></div>
+
+                <!-- Price Summary Box -->
+                <div class="pt-3 border-t border-dashed border-slate-200 space-y-1.5">
+                    <div class="flex justify-between text-xs font-semibold text-slate-600">
+                        <span>Rental Subtotal:</span>
+                        <span id="pub-eq-subtotal" class="font-black text-slate-900">₱0.00</span>
+                    </div>
+                    <div class="flex justify-between text-xs font-semibold text-brand">
+                        <span>50% Downpayment (Pay Now):</span>
+                        <span id="pub-eq-downpayment" class="font-black">₱0.00</span>
+                    </div>
+                    <div class="flex justify-between text-xs font-semibold text-emerald-600">
+                        <span>Remaining Balance:</span>
+                        <span id="pub-eq-remaining" class="font-black">₱0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deposit and Fulfillment Details -->
+            <div class="bg-amber-50/60 border border-amber-200/60 rounded-2xl p-3 flex items-start gap-2.5">
+                <i class="fas fa-shield-alt text-amber-500 text-sm mt-0.5"></i>
+                <div class="text-xs text-amber-900">
+                    <div class="font-bold">20% Refundable Security Deposit</div>
+                    <div class="text-[10px] text-amber-700/90 mt-0.5">Returned in full upon return of equipment in good condition.</div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 text-xs text-slate-600 font-semibold px-1">
+                <span class="flex items-center gap-1.5"><i class="fas fa-truck text-brand"></i> Delivery Available</span>
+                <span class="flex items-center gap-1.5"><i class="fas fa-tools text-brand"></i> Setup Available</span>
+            </div>
+        </div>
+        
+        <div class="p-4 border-t border-slate-100 bg-white">
+            <button type="button" onclick="proceedPubEquipmentRent()" id="pub-eq-proceed-btn" class="w-full py-3 bg-brand text-white hover:bg-brand/90 rounded-xl text-xs font-black transition-all shadow-md flex items-center justify-center gap-2 uppercase tracking-widest">
+                <i class="fas fa-chair"></i> <span>Proceed to Rent</span>
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Public Inventory Detailed Modal -->
 <div id="public-inventory-modal" class="hidden fixed inset-0 z-[9999] items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 transition-all">
     <div class="bg-white rounded-[24px] w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl relative">
@@ -1170,7 +1259,7 @@
     const inventoryItems = {
         {% set inventory_categories = [] %}
         {% for item in active_inventory %}
-        {% set cat_name = item.category if item.category else ('Equipment' if item.equipment_type else 'Service') %}
+        {% set cat_name = item.category if item.category else ('Equipment' if (item.equipment_type or item.rental_price is defined or (item.display_type is defined and item.display_type == 'Equipment')) else 'Service') %}
         {% if cat_name not in inventory_categories %}
         {% set _ = inventory_categories.append(cat_name) %}
         {% endif %}
@@ -1179,20 +1268,20 @@
         {% for cat in inventory_categories %}
         {{ cat|tojson|safe }}: [
             {% for item in active_inventory %}
-            {% set item_cat = item.category if item.category else ('Equipment' if item.equipment_type else 'Service') %}
+            {% set item_cat = item.category if item.category else ('Equipment' if (item.equipment_type or item.rental_price is defined or (item.display_type is defined and item.display_type == 'Equipment')) else 'Service') %}
             {% if item_cat == cat %}
             {
                 id: {{ item.id|tojson }},
                 name: {{ item.name|tojson }},
                 image_url: "{{ item.image_url if item.image_url else '' }}",
-                price: {{ (item.rental_price if item.rental_price is defined else (item.selling_price if item.selling_price is defined else (item.display_price if item.display_price is defined else 0)))|tojson }},
+                price: {{ (item.rental_price if (item.rental_price is defined and item.rental_price is not none and item.rental_price > 0) else (item.selling_price if (item.selling_price is defined and item.selling_price is not none and item.selling_price > 0) else (item.display_price if (item.display_price is defined and item.display_price is not none and item.display_price > 0) else (item.price if (item.price is defined and item.price is not none) else 0))))|tojson }},
                 unit_type: {{ (item.unit_type if item.unit_type else 'piece')|tojson }},
-                type: "{{ 'Equipment' if item.rental_price is defined else 'Service' }}",
+                type: "{{ 'Equipment' if (item.rental_price is defined or item.equipment_type or (item.display_type is defined and item.display_type == 'Equipment')) else 'Service' }}",
                 status: {{ (item.status or 'available')|tojson }},
                 description: {{ item.description|default('', true)|tojson }},
-                display_qty: {{ (item.available_qty if item.available_qty is defined else (item.max_available if item.max_available is defined else 0))|tojson }},
-                deposit_pct: {{ (item.security_deposit_pct if item.security_deposit_pct is defined else 0)|tojson }},
-                min_hours: {{ (item.minimum_hours if item.minimum_hours is defined else (item.base_duration_hours if item.base_duration_hours is defined else 0))|tojson }},
+                display_qty: {{ (item.available_qty if (item.available_qty is defined and item.available_qty is not none) else (item.max_available if (item.max_available is defined and item.max_available is not none) else (item.display_qty if (item.display_qty is defined and item.display_qty is not none) else 1)))|tojson }},
+                deposit_pct: {{ (item.security_deposit_pct if (item.security_deposit_pct is defined and item.security_deposit_pct is not none) else 0)|tojson }},
+                min_hours: {{ (item.minimum_hours if (item.minimum_hours is defined and item.minimum_hours is not none) else (item.base_duration_hours if (item.base_duration_hours is defined and item.base_duration_hours is not none) else 0))|tojson }},
                 details_json: {{ (item.details_json if item.details_json else {})|tojson|safe }}
             },
             {% endif %}
@@ -1200,6 +1289,184 @@
         ],
         {% endfor %}
     };
+
+    const allEquipmentList = [
+        {% for item in display_equipment %}
+        {
+            id: {{ item.id|tojson }},
+            name: {{ item.name|tojson }},
+            image_url: "{{ item.image_url if item.image_url else '' }}",
+            price: {{ (item.rental_price if (item.rental_price is defined and item.rental_price is not none and item.rental_price > 0) else (item.display_price if (item.display_price is defined and item.display_price is not none and item.display_price > 0) else (item.price if (item.price is defined and item.price is not none) else 0)))|tojson }},
+            unit_type: {{ (item.unit_type if item.unit_type else 'piece')|tojson }},
+            category: {{ (item.category or 'Equipment')|tojson }},
+            type: "Equipment",
+            status: {{ (item.status or 'available')|tojson }},
+            description: {{ item.description|default('', true)|tojson }},
+            display_qty: {{ (item.available_qty if (item.available_qty is defined and item.available_qty is not none) else 1)|tojson }},
+            deposit_pct: {{ (item.security_deposit_pct if (item.security_deposit_pct is defined and item.security_deposit_pct is not none) else 20)|tojson }},
+            details_json: {{ (item.details_json if item.details_json else {})|tojson|safe }}
+        },
+        {% endfor %}
+    ];
+
+    let currentPubEquipment = null;
+
+    function openPublicEquipmentModal(eqId) {
+        const eq = allEquipmentList.find(e => String(e.id) === String(eqId));
+        if (!eq) return;
+        currentPubEquipment = eq;
+
+        document.getElementById('pub-eq-title').innerText = eq.name;
+        document.getElementById('pub-eq-cat').innerText = eq.category || 'Equipment';
+        document.getElementById('pub-eq-desc').innerText = eq.description || 'High-quality catering and event equipment for rent.';
+        document.getElementById('pub-eq-price').innerHTML = `₱${parseFloat(eq.price).toLocaleString(undefined, {minimumFractionDigits: 2})} <span class="text-xs text-slate-400 font-bold">/ ${eq.unit_type}</span>`;
+        document.getElementById('pub-eq-unit-label').innerText = eq.unit_type;
+        document.getElementById('pub-eq-stock').innerText = `${eq.display_qty || 1} Units in Stock`;
+
+        const imgEl = document.getElementById('pub-eq-img');
+        if (eq.image_url) {
+            imgEl.src = eq.image_url;
+            imgEl.style.display = 'block';
+        } else {
+            imgEl.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(eq.name) + '&background=f1f5f9&color=FF7B54&size=400';
+            imgEl.style.display = 'block';
+        }
+
+        // Set default date to tomorrow
+        const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+        const dateInput = document.getElementById('pub-eq-date');
+        if (dateInput) {
+            dateInput.min = tomorrow;
+            if (!dateInput.value || dateInput.value < tomorrow) {
+                dateInput.value = tomorrow;
+            }
+        }
+
+        const qtyInput = document.getElementById('pub-eq-qty');
+        if (qtyInput) {
+            qtyInput.value = 1;
+            qtyInput.max = eq.display_qty || 999;
+        }
+
+        checkPubEquipmentAvailability();
+
+        const modal = document.getElementById('public-equipment-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closePublicEquipmentModal() {
+        const modal = document.getElementById('public-equipment-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    function stepPubEquipmentQty(delta) {
+        if (!currentPubEquipment) return;
+        const qtyInput = document.getElementById('pub-eq-qty');
+        if (!qtyInput) return;
+        let val = parseInt(qtyInput.value) || 1;
+        const max = currentPubEquipment.display_qty || 999;
+        val = Math.max(1, Math.min(max, val + delta));
+        qtyInput.value = val;
+        checkPubEquipmentAvailability();
+    }
+
+    async function checkPubEquipmentAvailability() {
+        if (!currentPubEquipment) return;
+        const dateInput = document.getElementById('pub-eq-date');
+        const qtyInput = document.getElementById('pub-eq-qty');
+        const alertEl = document.getElementById('pub-eq-avail-alert');
+        const subtotalEl = document.getElementById('pub-eq-subtotal');
+        const downpaymentEl = document.getElementById('pub-eq-downpayment');
+        const remainingEl = document.getElementById('pub-eq-remaining');
+        const proceedBtn = document.getElementById('pub-eq-proceed-btn');
+
+        const dateVal = dateInput ? dateInput.value : '';
+        const qtyVal = parseInt(qtyInput ? qtyInput.value : 1) || 1;
+
+        const unitPrice = parseFloat(currentPubEquipment.price || 0);
+        const subtotal = qtyVal * unitPrice;
+        const downpayment = subtotal * 0.5;
+        const remaining = subtotal - downpayment;
+
+        if (subtotalEl) subtotalEl.innerText = '₱' + subtotal.toLocaleString(undefined, {minimumFractionDigits: 2});
+        if (downpaymentEl) downpaymentEl.innerText = '₱' + downpayment.toLocaleString(undefined, {minimumFractionDigits: 2});
+        if (remainingEl) remainingEl.innerText = '₱' + remaining.toLocaleString(undefined, {minimumFractionDigits: 2});
+
+        if (!dateVal) {
+            if (alertEl) alertEl.innerHTML = '<span class="text-amber-600"><i class="fas fa-info-circle"></i> Please select a rental date.</span>';
+            if (proceedBtn) proceedBtn.disabled = true;
+            return;
+        }
+
+        try {
+            const res = await fetch(`/customer/api/check-equipment-availability?equipment_id=${currentPubEquipment.id}&date=${dateVal}&requested_qty=${qtyVal}`);
+            const data = await res.json();
+
+            if (data.available === false) {
+                const availCount = data.available_qty !== undefined ? data.available_qty : 0;
+                const errorMsg = availCount > 0 
+                    ? `Only ${availCount} unit${availCount > 1 ? 's are' : ' is'} available for this date.`
+                    : `No units are available for the selected date.`;
+                if (alertEl) alertEl.innerHTML = `<div class="p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-1.5"><i class="fas fa-exclamation-triangle"></i> ${errorMsg}</div>`;
+                if (proceedBtn) {
+                    proceedBtn.disabled = true;
+                    proceedBtn.style.opacity = '0.5';
+                    proceedBtn.style.cursor = 'not-allowed';
+                }
+            } else {
+                if (alertEl) alertEl.innerHTML = `<div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-1.5"><i class="fas fa-check-circle"></i> ✓ ${data.available_qty} unit${data.available_qty > 1 ? 's' : ''} available for this date.</div>`;
+                if (proceedBtn) {
+                    proceedBtn.disabled = false;
+                    proceedBtn.style.opacity = '1';
+                    proceedBtn.style.cursor = 'pointer';
+                }
+            }
+        } catch (err) {
+            console.error("Pub equipment availability check error:", err);
+        }
+    }
+
+    function proceedPubEquipmentRent() {
+        if (!currentPubEquipment) return;
+        const dateInput = document.getElementById('pub-eq-date');
+        const qtyInput = document.getElementById('pub-eq-qty');
+        const dateVal = dateInput ? dateInput.value : '';
+        const qtyVal = parseInt(qtyInput ? qtyInput.value : 1) || 1;
+
+        if (!dateVal) {
+            alert("Please select a rental event date.");
+            return;
+        }
+
+        const cartItem = {
+            id: currentPubEquipment.id,
+            name: currentPubEquipment.name,
+            price: currentPubEquipment.price,
+            unit: currentPubEquipment.unit_type || 'piece',
+            type: 'Equipment',
+            qty: qtyVal,
+            rental_date: dateVal,
+            security_deposit_pct: currentPubEquipment.deposit_pct || 20,
+            image: currentPubEquipment.image_url || ''
+        };
+
+        const catererId = {{ caterer.id }};
+        localStorage.setItem(`alacarte_cart_${catererId}`, JSON.stringify([cartItem]));
+        sessionStorage.setItem(`alacarte_cart_${catererId}`, JSON.stringify([cartItem]));
+
+        const isCustomer = {{ 'true' if (user and user.role == 'customer') else 'false' }};
+        if (isCustomer) {
+            window.location.href = `/bookings/alacarte/checkout?caterer_id=${catererId}`;
+        } else {
+            sessionStorage.setItem('pending_rental_redirect', `/bookings/alacarte/checkout?caterer_id=${catererId}`);
+            closePublicEquipmentModal();
+            promptBookingAuth();
+        }
+    }
 
     function openInventoryDetails(categoryName, itemIndex) {
         const item = inventoryItems[categoryName][itemIndex];
@@ -1704,19 +1971,112 @@
                 ${overtimeHtml}
             </div>`;
 
-        const incList = [...(pkg.inclusions || []), ...(pkg.linked_inventory || [])].filter((v, i, a) => a.indexOf(v) === i);
-        const incHtml = incList.length > 0 ? `
-            <div style="margin-bottom:1.25rem;">
-                <h4 style="font-size:0.72rem;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
-                    <i class="fas fa-box-open" style="color:var(--brand-primary);margin-right:6px;"></i>Equipment & Services Included
+        // Parse & normalize inclusions into categorized objects
+        let normalizedInclusions = [];
+        try {
+            let raw = pkg.inclusions;
+            if (typeof raw === 'string') {
+                try { raw = JSON.parse(raw); } catch(e) { raw = raw.split(',').map(s => s.trim()).filter(Boolean); }
+            }
+            if (Array.isArray(raw)) {
+                raw.forEach(item => {
+                    if (!item) return;
+                    if (typeof item === 'string') {
+                        normalizedInclusions.push({ category: 'Menu / Food', name: item, quantity: '', description: '' });
+                    } else if (typeof item === 'object') {
+                        normalizedInclusions.push({
+                            category: item.category || 'Menu / Food',
+                            name: item.name || '',
+                            quantity: item.quantity || item.qty || '',
+                            description: item.description || item.details || ''
+                        });
+                    }
+                });
+            } else if (typeof raw === 'object' && raw !== null) {
+                Object.entries(raw).forEach(([k, v]) => {
+                    if (v === true || v === 1) {
+                        normalizedInclusions.push({ category: 'Equipment', name: k, quantity: '', description: '' });
+                    }
+                });
+            }
+        } catch (err) {
+            console.error("Error parsing inclusions:", err);
+        }
+
+        // Merge legacy linked inventory if not already in inclusions
+        if (pkg.linked_inventory && Array.isArray(pkg.linked_inventory)) {
+            pkg.linked_inventory.forEach(invName => {
+                if (invName && !normalizedInclusions.some(i => i.name.toLowerCase() === String(invName).toLowerCase())) {
+                    normalizedInclusions.push({ category: 'Equipment', name: invName, quantity: '', description: '' });
+                }
+            });
+        }
+
+        // Merge legacy dishes if not already in inclusions
+        if (pkg.dishes && Array.isArray(pkg.dishes)) {
+            pkg.dishes.forEach(dishName => {
+                if (dishName && !normalizedInclusions.some(i => i.name.toLowerCase() === String(dishName).toLowerCase())) {
+                    normalizedInclusions.push({ category: 'Menu / Food', name: dishName, quantity: '', description: '' });
+                }
+            });
+        }
+
+        // Build Grouped Inclusions HTML (Menu / Food, Services, Equipment, Other)
+        const groupedInc = {
+            'Menu / Food': [],
+            'Service': [],
+            'Equipment': [],
+            'Other': []
+        };
+
+        normalizedInclusions.forEach(item => {
+            let cat = item.category || 'Menu / Food';
+            if (!groupedInc[cat]) groupedInc[cat] = [];
+            groupedInc[cat].push(item);
+        });
+
+        const catThemes = {
+            'Menu / Food': { title: 'Menu & Food Inclusions', icon: 'fas fa-utensils', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
+            'Service': { title: 'Services Included', icon: 'fas fa-concierge-bell', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
+            'Equipment': { title: 'Equipment & Rentals Included', icon: 'fas fa-chair', color: '#ea580c', bg: '#fff7ed', border: '#fed7aa' },
+            'Other': { title: 'Other Inclusions', icon: 'fas fa-box-open', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' }
+        };
+
+        let incHtml = '';
+        for (const [cat, items] of Object.entries(groupedInc)) {
+            if (!items || items.length === 0) continue;
+            const theme = catThemes[cat] || catThemes['Other'];
+
+            incHtml += `
+            <div style="margin-bottom: 1.25rem;">
+                <h4 style="font-size: 0.72rem; font-weight: 800; color: ${theme.color}; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px;">
+                    <i class="${theme.icon}"></i> ${theme.title}
+                    <span style="font-size: 0.68rem; background: ${theme.bg}; border: 1px solid ${theme.border}; padding: 1px 7px; border-radius: 12px; margin-left: auto;">${items.length} item${items.length === 1 ? '' : 's'}</span>
                 </h4>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-                    ${incList.map(inc => `
-                        <div style="font-size:0.75rem;color:#475569;background:#fff;padding:8px 10px;border-radius:8px;border:1px solid #f1f5f9;display:flex;align-items:center;gap:6px;">
-                            <i class="fas fa-check-circle" style="color:#10b981;flex-shrink:0;"></i>${inc}
-                        </div>`).join('')}
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;">
+                    ${items.map(item => `
+                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.65rem 0.85rem; display: flex; flex-direction: column; gap: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 6px;">
+                                <span style="font-size: 0.82rem; font-weight: 800; color: #1e293b; line-height: 1.25;">
+                                    <i class="fas fa-check-circle" style="color: ${theme.color}; font-size: 0.75rem; margin-right: 4px;"></i>${item.name}
+                                </span>
+                                ${item.quantity ? `
+                                    <span style="font-size: 0.68rem; font-weight: 700; color: #475569; background: #f1f5f9; padding: 1px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0;">
+                                        ${item.quantity}
+                                    </span>
+                                ` : ''}
+                            </div>
+                            ${item.description ? `
+                                <div style="font-size: 0.74rem; color: #64748b; line-height: 1.35; padding-left: 1rem;">
+                                    ${item.description}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('')}
                 </div>
-            </div>` : '';
+            </div>
+            `;
+        }
 
         let dishHtml = '';
         if (pkg.selection_rules && Object.keys(pkg.selection_rules).length > 0) {
@@ -1727,16 +2087,6 @@
                 </h4>
                 <div style="display:flex;flex-wrap:wrap;gap:6px;">
                     ${Object.entries(pkg.selection_rules).map(([cat, limit]) => `<span style="background:#f8fafc;color:#475569;padding:4px 12px;border-radius:100px;font-size:0.72rem;font-weight:700;border:1px solid #e2e8f0;">${limit} ${cat}</span>`).join('')}
-                </div>
-            </div>`;
-        } else if (pkg.dishes && pkg.dishes.length > 0) {
-            dishHtml = `
-            <div style="margin-bottom:1.25rem;">
-                <h4 style="font-size:0.72rem;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
-                    <i class="fas fa-utensils" style="color:var(--brand-primary);margin-right:6px;"></i>Dishes Included
-                </h4>
-                <div style="display:flex;flex-wrap:wrap;gap:6px;">
-                    ${pkg.dishes.map(d => `<span style="background:#f8fafc;color:#475569;padding:4px 12px;border-radius:100px;font-size:0.72rem;font-weight:700;border:1px solid #e2e8f0;">${d}</span>`).join('')}
                 </div>
             </div>`;
         }

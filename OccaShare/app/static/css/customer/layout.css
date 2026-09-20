@@ -40,7 +40,7 @@ html, body {
     background: var(--dashboard-bg);
     color: var(--secondary-color);
     min-height: 100vh;
-    overflow-x: hidden;
+    overflow-x: clip;
 }
 
 /* ---- SIDEBAR OVERLAY (Mobile) ---- */

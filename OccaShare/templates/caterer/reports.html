@@ -51,7 +51,7 @@ bookings|selectattr('status', 'equalto', 'completed')|list|length %}
                 {% if b.status != 'cancelled' and b.status != 'rejected' %}
     {
         date: '{{ b.created_at.strftime("%Y-%m") }}',
-            revenue: { { b.total_amount or b.total_price or 0.0 } }
+        revenue: {{ b.total_amount or b.total_price or 0.0 }}
     },
     {% endif %}
     {% endfor %}

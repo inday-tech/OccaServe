@@ -236,6 +236,17 @@
             } else {
                 window.setDiamondError('years', "", false);
             }
+
+            const minPaxEl = document.getElementById('min_pax_cat');
+            if (minPaxEl) {
+                const pVal = parseInt(minPaxEl.value.replace(/,/g, ''), 10);
+                if (isNaN(pVal) || pVal < 1 || pVal > 5000) {
+                    window.setDiamondError('minPaxCat', "Must be between 1 and 5,000 guests");
+                    valid = false;
+                } else {
+                    window.setDiamondError('minPaxCat', "", false);
+                }
+            }
         }
 
 

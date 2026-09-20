@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from ..core.templates import templates
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, func
 from typing import Optional
-from datetime import date, time, datetime
+from datetime import date, time, datetime, timedelta
 from ..db import database, models
 from ..core import security as auth
 from ..services.verification import verification_service
@@ -57,6 +58,93 @@ def save_upload_file(upload_file: UploadFile, folder: str = "general") -> str:
     return url or ""
 
 
+def get_package_grouped_inclusions(package) -> dict:
+    """Group package inclusions dynamically into Food & Beverages, Services, and Equipment."""
+    grouped = {
+        'food': [],
+        'services': [],
+        'equipment': []
+    }
+    if not package:
+        return grouped
+
+    seen_names = {'food': set(), 'services': set(), 'equipment': set()}
+
+    def add_item(bucket: str, name: str, quantity: str = "", description: str = ""):
+        name_clean = (name or "").strip()
+        if not name_clean:
+            return
+        name_key = name_clean.lower()
+        if name_key in seen_names[bucket]:
+            return
+        seen_names[bucket].add(name_key)
+        grouped[bucket].append({
+            'name': name_clean,
+            'quantity': (str(quantity) if quantity is not None else "").strip(),
+            'description': (str(description) if description is not None else "").strip()
+        })
+
+    # 1. Parse package.inclusions JSON / dict / list
+    raw = getattr(package, 'inclusions', None)
+    if raw:
+        if isinstance(raw, str):
+            try:
+                import json
+                raw = json.loads(raw)
+            except Exception:
+                raw = [i.strip() for i in raw.split(',') if i.strip()]
+
+        if isinstance(raw, list):
+            for item in raw:
+                if not item:
+                    continue
+                if isinstance(item, str):
+                    add_item('food', item)
+                elif isinstance(item, dict):
+                    name = item.get('name') or ''
+                    qty = item.get('quantity') or item.get('qty') or ''
+                    desc = item.get('description') or item.get('details') or item.get('notes') or ''
+                    cat = (item.get('category') or '').strip().lower()
+
+                    if any(k in cat for k in ['service', 'staff', 'coordination', 'waiter', 'host', 'crew', 'setup', 'cleanup']):
+                        add_item('services', name, qty, desc)
+                    elif any(k in cat for k in ['equipment', 'rental', 'furniture', 'table', 'chair', 'tent', 'utensil', 'chafing', 'sound', 'light']):
+                        add_item('equipment', name, qty, desc)
+                    else:
+                        add_item('food', name, qty, desc)
+        elif isinstance(raw, dict):
+            for k, v in raw.items():
+                if v:
+                    add_item('equipment', k)
+
+    # 2. Add linked package menu items (if not already listed)
+    if hasattr(package, 'menu_items') and package.menu_items:
+        for mi in package.menu_items:
+            cat_lower = (mi.category or '').strip().lower()
+            if any(k in cat_lower for k in ['rental', 'equipment', 'furniture']):
+                add_item('equipment', mi.name, '', mi.description or '')
+            elif any(k in cat_lower for k in ['service', 'staff', 'coordination']):
+                add_item('services', mi.name, '', mi.description or '')
+            else:
+                add_item('food', mi.name, '', mi.description or '')
+
+    # 3. Add linked services
+    if hasattr(package, 'service_links') and package.service_links:
+        for link in package.service_links:
+            if link.service and not link.service.is_archived:
+                qty_str = f"{link.quantity} staff" if link.quantity else ""
+                add_item('services', link.service.name, qty_str, link.service.description or '')
+
+    # 4. Add linked equipment
+    if hasattr(package, 'equipment_links') and package.equipment_links:
+        for link in package.equipment_links:
+            if link.equipment and not link.equipment.is_archived:
+                qty_str = f"{link.quantity} units" if link.quantity else ""
+                add_item('equipment', link.equipment.name, qty_str, link.equipment.description or '')
+
+    return grouped
+
+
 def save_base64_file(base64_str: str) -> str:
     if not base64_str or "," not in base64_str:
         return ""
@@ -107,7 +195,7 @@ async def alacarte_checkout_page(
     # Fallback to existing booking items if items query param was omitted (e.g. return from KYC)
     booking = db.query(models.Booking).get(booking_id) if booking_id else None
     if not (m_ids or e_ids or s_ids) and booking and booking.user_id == user.id:
-        for b_item in booking.menu_items:
+        for b_item in (booking.selected_items or []):
             if b_item.menu_item_id:
                 m_ids.append(b_item.menu_item_id)
             elif b_item.equipment_id:
@@ -122,12 +210,41 @@ async def alacarte_checkout_page(
     
     equipment_items = db.query(models.Equipment).filter(
         models.Equipment.id.in_(e_ids),
-        models.Equipment.status == 'available'
+        models.Equipment.is_archived == False,
+        or_(
+            func.lower(models.Equipment.status).in_(['available', 'published', 'active']),
+            models.Equipment.status.is_(None)
+        )
     ).all() if e_ids else []
+
+    # Ensure all equipment items have a non-zero rental_price
+    for eq in equipment_items:
+        if not getattr(eq, 'rental_price', None) or eq.rental_price == 0:
+            eq.rental_price = getattr(eq, 'cost_value', 0.0) or getattr(eq, 'price', 0.0)
+    
+    # Check if any e_ids were legacy equipment items stored in MenuItem
+    found_e_ids = {eq.id for eq in equipment_items}
+    missing_e_ids = [eid for eid in e_ids if eid not in found_e_ids]
+    if missing_e_ids:
+        legacy_eq = db.query(models.MenuItem).filter(
+            models.MenuItem.id.in_(missing_e_ids),
+            models.MenuItem.available_for_order == True
+        ).all()
+        for leg in legacy_eq:
+            leg.rental_price = leg.price
+            leg.unit_type = getattr(leg, 'pricing_unit', 'piece') or 'piece'
+            leg.cost_value = leg.price
+            leg.security_deposit_pct = 20.0
+            leg.available_qty = getattr(leg, 'max_stock_quantity', 1) or 1
+            equipment_items.append(leg)
     
     service_items = db.query(models.Service).filter(
         models.Service.id.in_(s_ids),
-        models.Service.status == 'available'
+        models.Service.is_archived == False,
+        or_(
+            func.lower(models.Service.status).in_(['available', 'published', 'active']),
+            models.Service.status.is_(None)
+        )
     ).all() if s_ids else []
     
     if not caterer or (not menu_items and not equipment_items and not service_items):
@@ -219,6 +336,9 @@ async def alacarte_checkout_draft(
             event_name = f"Food Order (Draft): {full_name}"
             event_type = "Ala Carte Order"
 
+        downpayment_amt = round(total_amount * 0.5, 2) if (is_rental and not has_food) else total_amount
+        payment_plan_val = 'downpayment' if (is_rental and not has_food) else 'full'
+
         # Check for existing draft booking to update or create new
         new_booking = db.query(models.Booking).get(booking_id) if booking_id else None
         if new_booking and new_booking.user_id == user.id:
@@ -230,7 +350,8 @@ async def alacarte_checkout_draft(
             new_booking.guest_count = quantity
             new_booking.total_amount = total_amount
             new_booking.total_price = total_amount
-            new_booking.reservation_fee = total_amount
+            new_booking.reservation_fee = downpayment_amt
+            new_booking.payment_plan = payment_plan_val
             new_booking.document_type = document_type
             new_booking.custom_requirements = {
                 "recipient_name": full_name,
@@ -250,7 +371,8 @@ async def alacarte_checkout_draft(
                 guest_count=quantity,
                 total_amount=total_amount,
                 total_price=total_amount,
-                reservation_fee=total_amount,
+                reservation_fee=downpayment_amt,
+                payment_plan=payment_plan_val,
                 status="draft",
                 transaction_type="fast_track",
                 document_type=document_type,
@@ -270,10 +392,41 @@ async def alacarte_checkout_draft(
                 qty = int(item.get('qty', item.get('quantity', 1)))
                 if item_type == 'Equipment':
                     e_item = db.query(models.Equipment).get(int(item['id']))
+                    if not e_item:
+                        e_item = db.query(models.MenuItem).get(int(item['id']))
+                        actual_price = float(getattr(e_item, 'price', 0.0) or 0.0) if e_item else 0.0
+                    else:
+                        actual_price = float(getattr(e_item, 'rental_price', 0.0) or getattr(e_item, 'cost_value', 0.0) or 0.0)
+                    
                     if e_item:
-                        price = item.get('price')
-                        if price is None: price = e_item.rental_price
-                        db.add(models.BookingMenuItem(booking_id=new_booking.id, equipment_id=e_item.id, price=float(price or 0), quantity=qty))
+                        # Server-side date availability check to prevent overbooking
+                        total_inv = int(getattr(e_item, 'available_qty', 1) or 1)
+                        res_qty = 0
+                        active_b_list = db.query(models.Booking).filter(
+                            models.Booking.caterer_id == caterer_id,
+                            or_(
+                                func.lower(models.Booking.status).notin_(['cancelled', 'rejected', 'declined', 'archived']),
+                                models.Booking.status.is_(None)
+                            ),
+                            models.Booking.id != new_booking.id,
+                            models.Booking.event_date.between(event_date_obj - timedelta(days=1), event_date_obj + timedelta(days=1))
+                        ).all()
+                        for ab in active_b_list:
+                            for si in (ab.selected_items or []):
+                                if si.equipment_id == e_item.id:
+                                    res_qty += int(si.quantity or 1)
+                        avail_units = max(0, total_inv - res_qty)
+                        if qty > avail_units:
+                            return {"success": False, "message": f"Only {avail_units} unit{'s are' if avail_units != 1 else ' is'} available for {e_item.name} on {event_date_obj}."}
+
+                        db.add(models.BookingMenuItem(
+                            booking_id=new_booking.id,
+                            equipment_id=e_item.id if hasattr(e_item, 'rental_price') else None,
+                            menu_item_id=e_item.id if not hasattr(e_item, 'rental_price') else None,
+                            price=actual_price,
+                            quantity=qty,
+                            custom_name=e_item.name
+                        ))
                 elif item_type == 'Service':
                     s_item = db.query(models.Service).get(int(item['id']))
                     if s_item:
@@ -307,7 +460,9 @@ async def alacarte_checkout_draft(
                 if not id_str: continue
                 if id_str.startswith('e_'):
                     e_item = db.query(models.Equipment).get(int(id_str[2:]))
-                    if e_item: db.add(models.BookingMenuItem(booking_id=new_booking.id, equipment_id=e_item.id, price=e_item.rental_price))
+                    if e_item:
+                        actual_price = float(getattr(e_item, 'rental_price', 0.0) or getattr(e_item, 'cost_value', 0.0) or 0.0)
+                        db.add(models.BookingMenuItem(booking_id=new_booking.id, equipment_id=e_item.id, price=actual_price, quantity=1, custom_name=e_item.name))
                 elif id_str.startswith('s_'):
                     s_item = db.query(models.Service).get(int(id_str[2:]))
                     if s_item:
@@ -476,10 +631,53 @@ async def alacarte_checkout_submit(
         if not is_capacity_valid:
             return {"success": False, "message": capacity_msg}
 
-        # 1. Update or Create Booking
+        # Check category to determine document type and payment plan first
+        is_rental = False
+        has_services = False
+        has_food = False
+        if cart_data:
+            cart_items = json.loads(cart_data)
+            for item in cart_items:
+                i_type = item.get('type', 'Menu')
+                if i_type == 'Equipment': is_rental = True
+                elif i_type == 'Service': has_services = True
+                else: has_food = True
+        elif items:
+            for id_str in items.split(","):
+                id_str = id_str.strip()
+                if not id_str: continue
+                if id_str.startswith('e_'): is_rental = True
+                elif id_str.startswith('s_'): has_services = True
+                else: has_food = True
+                
+        is_mixed = ((has_food and is_rental) or (has_food and has_services) or (is_rental and has_services))
         
-        # New Payment Logic for Ala Carte:
-        reservation_fee = total_amount
+        # Phase 2: Dynamic Document Routing Algorithm
+        if is_mixed:
+            document_type = "booking_agreement"
+            event_name = f"Mixed Order: {full_name}"
+            event_type = "Mixed Order"
+        elif is_rental:
+            document_type = "rental_agreement"
+            event_name = f"Equipment Rental: {full_name}"
+            event_type = "Equipment Rental"
+        elif has_services:
+            document_type = "service_agreement"
+            event_name = f"Service Booking: {full_name}"
+            event_type = "Service Booking"
+        else:
+            document_type = "invoice"
+            event_name = f"Food Order: {full_name}"
+            event_type = "Ala Carte Order"
+
+        # Payment Logic: 50% Downpayment for Equipment Rentals
+        if is_rental and not has_food:
+            reservation_fee = round(total_amount * 0.5, 2)
+            payment_plan = "downpayment"
+        else:
+            reservation_fee = total_amount
+            payment_plan = "full"
+
         if payment_method in ["CASH", "COD"]:
             status = "pending"
             payment_status = "pending"
@@ -499,7 +697,14 @@ async def alacarte_checkout_submit(
                 booking.venue_address = address if fulfillment == "delivery" else "PICKUP"
                 booking.special_requests = landmark
                 booking.total_amount = total_amount
+                booking.total_price = total_amount
                 booking.reservation_fee = reservation_fee
+                booking.payment_plan = payment_plan
+                booking.event_name = event_name
+                booking.event_type = event_type
+                booking.document_type = document_type
+                if proof_url:
+                    booking.payment_proof_url = proof_url
                 booking.security_deposit_amount = security_deposit_amount
                 if security_deposit_amount > 0:
                     booking.security_deposit_status = "held" if payment_status in ["paid", "proof_submitted"] else "unpaid"
@@ -544,52 +749,6 @@ async def alacarte_checkout_submit(
                 # Clear old items to re-save
                 db.query(models.BookingMenuItem).filter(models.BookingMenuItem.booking_id == booking.id).delete()
         
-        # Check category to determine document type
-        is_rental = False
-        has_services = False
-        has_food = False
-        if cart_data:
-            cart_items = json.loads(cart_data)
-            for item in cart_items:
-                i_type = item.get('type', 'Menu')
-                if i_type == 'Equipment': is_rental = True
-                elif i_type == 'Service': has_services = True
-                else: has_food = True
-        elif items:
-            for id_str in items.split(","):
-                id_str = id_str.strip()
-                if not id_str: continue
-                if id_str.startswith('e_'): is_rental = True
-                elif id_str.startswith('s_'): has_services = True
-                else: has_food = True
-                
-        is_mixed = ((has_food and is_rental) or (has_food and has_services) or (is_rental and has_services))
-        
-        # Phase 2: Dynamic Document Routing Algorithm
-        if is_mixed:
-            document_type = "booking_agreement"
-            event_name = f"Mixed Order: {full_name}"
-            event_type = "Mixed Order"
-        elif is_rental:
-            document_type = "rental_agreement"
-            event_name = f"Equipment Rental: {full_name}"
-            event_type = "Equipment Rental"
-        elif has_services:
-            document_type = "service_agreement"
-            event_name = f"Service Booking: {full_name}"
-            event_type = "Service Booking"
-        else:
-            document_type = "invoice"
-            event_name = f"Food Order: {full_name}"
-            event_type = "Ala Carte Order"
-        
-        if booking:
-            booking.event_name = event_name
-            booking.event_type = event_type
-            booking.document_type = document_type
-            if proof_url:
-                booking.payment_proof_url = proof_url
-            
         if not booking:
             booking = models.Booking(
                 user_id=user.id,
@@ -603,6 +762,7 @@ async def alacarte_checkout_submit(
                 total_amount=total_amount,
                 total_price=total_amount,
                 reservation_fee=reservation_fee,
+                payment_plan=payment_plan,
                 security_deposit_amount=security_deposit_amount,
                 security_deposit_status="held" if security_deposit_amount > 0 and status == "awaiting_payment" else "unpaid",
                 status=status,
@@ -666,14 +826,41 @@ async def alacarte_checkout_submit(
                 i_type = item.get('type', 'Menu')
                 if i_type == 'Equipment':
                     e_item = db.query(models.Equipment).get(int(item['id']))
+                    if not e_item:
+                        e_item = db.query(models.MenuItem).get(int(item['id']))
+                        actual_price = float(getattr(e_item, 'price', 0.0) or 0.0) if e_item else 0.0
+                    else:
+                        actual_price = float(getattr(e_item, 'rental_price', 0.0) or getattr(e_item, 'cost_value', 0.0) or 0.0)
+                    
                     if e_item:
-                        price = item.get('price')
-                        if price is None: price = e_item.rental_price
+                        # Re-verify availability at submission to prevent race conditions / double booking
+                        total_inv = int(getattr(e_item, 'available_qty', 1) or 1)
+                        res_qty = 0
+                        active_b_list = db.query(models.Booking).filter(
+                            models.Booking.caterer_id == caterer_id,
+                            or_(
+                                func.lower(models.Booking.status).notin_(['cancelled', 'rejected', 'declined', 'archived']),
+                                models.Booking.status.is_(None)
+                            ),
+                            models.Booking.id != booking.id,
+                            models.Booking.event_date.between(event_date_obj - timedelta(days=1), event_date_obj + timedelta(days=1))
+                        ).all()
+                        for ab in active_b_list:
+                            for si in (ab.selected_items or []):
+                                if si.equipment_id == e_item.id:
+                                    res_qty += int(si.quantity or 1)
+                        avail_units = max(0, total_inv - res_qty)
+                        item_qty = int(item.get('quantity', item.get('qty', 1)))
+                        if item_qty > avail_units:
+                            return {"success": False, "message": f"Only {avail_units} unit{'s are' if avail_units != 1 else ' is'} available for {e_item.name} on {event_date_obj}."}
+
                         booking_item = models.BookingMenuItem(
                             booking_id=booking.id,
-                            equipment_id=e_item.id,
-                            price=float(price or 0),
-                            quantity=int(item.get('quantity', 1)),
+                            equipment_id=e_item.id if hasattr(e_item, 'rental_price') else None,
+                            menu_item_id=e_item.id if not hasattr(e_item, 'rental_price') else None,
+                            price=actual_price,
+                            quantity=item_qty,
+                            custom_name=e_item.name,
                             choices=item.get('choices')
                         )
                         db.add(booking_item)
@@ -720,7 +907,8 @@ async def alacarte_checkout_submit(
                 if id_str.startswith('e_'):
                     e_item = db.query(models.Equipment).get(int(id_str[2:]))
                     if e_item:
-                        db.add(models.BookingMenuItem(booking_id=booking.id, equipment_id=e_item.id, price=e_item.rental_price, quantity=1))
+                        actual_price = float(getattr(e_item, 'rental_price', 0.0) or getattr(e_item, 'cost_value', 0.0) or 0.0)
+                        db.add(models.BookingMenuItem(booking_id=booking.id, equipment_id=e_item.id, price=actual_price, quantity=1, custom_name=e_item.name))
                 elif id_str.startswith('s_'):
                     s_item = db.query(models.Service).get(int(id_str[2:]))
                     if s_item:
@@ -1083,6 +1271,41 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
         package = db.query(models.CateringPackage).get(package_id)
     
     caterer = db.query(models.CatererProfile).get(data["caterer_id"])
+    if not caterer:
+        return RedirectResponse(url="/customer/marketplace", status_code=303)
+    
+    # Query all active packages for this caterer
+    caterer_packages = db.query(models.CateringPackage).filter(
+        models.CateringPackage.caterer_id == caterer.id,
+        models.CateringPackage.is_active == True,
+        models.CateringPackage.status == 'active'
+    ).order_by(models.CateringPackage.price.asc()).all()
+
+    package = None
+    package_id = data.get("package_id")
+    if package_id:
+        package = db.query(models.CateringPackage).get(package_id)
+    elif caterer_packages:
+        package = caterer_packages[0]
+
+    # Pre-map all caterer packages with their dynamic grouped inclusions for seamless instant UI switching
+    packages_map = {}
+    for p in caterer_packages:
+        packages_map[str(p.id)] = {
+            "id": p.id,
+            "name": p.name,
+            "event_type": p.service_type or "General Catering",
+            "pricing_mode": p.pricing_mode or ('per_pax' if p.price_unit == 'per_guest' else 'fixed'),
+            "price_per_head": float(p.price_per_head or p.price or 0),
+            "price": float(p.price or p.price_per_head or 0),
+            "price_unit": p.price_unit or 'per_guest',
+            "additional_guest_price": float(p.additional_guest_price or 0),
+            "min_guests": p.min_guests or caterer.min_pax or 10,
+            "max_guests": p.max_guests or 1000,
+            "service_duration": p.service_duration or 4,
+            "booking_lead_time": p.booking_lead_time or caterer.booking_lead_time or 7,
+            "grouped_inclusions": get_package_grouped_inclusions(p)
+        }
     
     # All active items for this caterer (to allow swapping)
     all_menu_items = db.query(models.MenuItem).filter(
@@ -1114,11 +1337,16 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
         selected_addon_equipment_ids = [item.equipment_id for item in booking.selected_items if item.is_add_on and item.equipment_id]
         selected_addon_service_ids = [item.service_id for item in booking.selected_items if item.is_add_on and item.service_id]
 
+    grouped_inclusions = get_package_grouped_inclusions(package) if package else {"food": [], "services": [], "equipment": []}
+
     return templates.TemplateResponse("customer/booking_wizard/step_details.html", {
         "request": request,
         "booking_data": data,
         "booking": booking,
         "package": package,
+        "caterer_packages": caterer_packages,
+        "packages_map": packages_map,
+        "grouped_inclusions": grouped_inclusions,
         "caterer": caterer,
         "all_menu_items": all_menu_items,
         "addon_items": addon_items,
@@ -1138,14 +1366,14 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
 async def step_details_submit(
     request: Request,
     caterer_id: int = Form(...),
-    package_id_str: Optional[str] = Form(None, alias="package_id"),
-    booking_id_str: Optional[str] = Form(None, alias="booking_id"),
-    event_name_str: Optional[str] = Form(None, alias="event_name"),
-    event_type_str: Optional[str] = Form(None, alias="event_type"),
-    event_date_str: Optional[str] = Form(None, alias="event_date"),
-    event_time_str: Optional[str] = Form(None, alias="event_time"),
-    event_end_time_str: Optional[str] = Form(None, alias="event_end_time"),
-    guest_count_str: Optional[str] = Form("0", alias="guest_count"),
+    package_id: Optional[str] = Form(None),
+    booking_id: Optional[str] = Form(None),
+    event_name: Optional[str] = Form(None),
+    event_type: Optional[str] = Form(None),
+    event_date: Optional[str] = Form(None),
+    event_time: Optional[str] = Form(None),
+    event_end_time: Optional[str] = Form(None),
+    guest_count: Optional[str] = Form("0"),
     venue_address: Optional[str] = Form(""),
     total_price: Optional[float] = Form(0.0),
     reservation_fee: Optional[float] = Form(0.0),
@@ -1161,66 +1389,112 @@ async def step_details_submit(
     other_event_type: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
+    # ── DEBUG: print exactly what FastAPI parsed from the form ────────────────
+    print(f"[StepDetails PARAMS] caterer_id={caterer_id!r}, event_date={event_date!r}, event_time={event_time!r}, event_name={event_name!r}, guest_count={guest_count!r}, package_id={package_id!r}, booking_id={booking_id!r}")
+    # ─────────────────────────────────────────────────────────────────────────
+
+    import logging
+    logger = logging.getLogger(__name__)
+
+    def _clean_str(val):
+        if val is not None:
+            return str(val).strip() or None
+        return None
+
+    # Safely parse IDs and numbers
+    cleaned_pkg_str = _clean_str(package_id)
+    package_id_int = int(cleaned_pkg_str) if cleaned_pkg_str and cleaned_pkg_str.isdigit() else None
+    if not package_id_int:
+        sess_data = request.session.get("booking_data", {})
+        if isinstance(sess_data, dict):
+            package_id_int = sess_data.get("package_id")
+
+    cleaned_booking_str = _clean_str(booking_id)
+    booking_id_int = int(cleaned_booking_str) if cleaned_booking_str and cleaned_booking_str.isdigit() else None
+
+    # Safely parse guest count (stripping any formatting commas)
+    cleaned_guest_str = (_clean_str(guest_count) or "0").replace(",", "")
+    try:
+        guest_count_int = int(cleaned_guest_str)
+    except:
+        guest_count_int = 0
+
     # Safely parse times and dates
-    event_end_time = None
-    if event_end_time_str and event_end_time_str.strip():
+    cleaned_end_time = _clean_str(event_end_time)
+    event_end_time_parsed = None
+    if cleaned_end_time:
         try:
-            event_end_time = time.fromisoformat(event_end_time_str)
-        except:
+            event_end_time_parsed = time.fromisoformat(cleaned_end_time)
+        except Exception:
             pass
-            
-    event_date = None
-    if event_date_str and event_date_str.strip():
+
+    cleaned_date_str = _clean_str(event_date)
+    event_date_parsed = None
+    if cleaned_date_str:
+        # Try standard ISO first, then common date formats
         try:
-            event_date = date.fromisoformat(event_date_str)
-        except:
-            pass
-            
-    event_time = None
-    if event_time_str and event_time_str.strip():
+            event_date_parsed = date.fromisoformat(cleaned_date_str)
+        except Exception as _iso_err:
+            print(f"[StepDetails] date.fromisoformat failed on {cleaned_date_str!r}: {_iso_err}, trying strptime...")
+        if not event_date_parsed:
+            for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%Y/%m/%d"):
+                try:
+                    event_date_parsed = datetime.strptime(cleaned_date_str, fmt).date()
+                    break
+                except Exception:
+                    pass
+
+    cleaned_time_str = _clean_str(event_time)
+    event_time_parsed = None
+    if cleaned_time_str:
         try:
-            # Handle HH:MM format
-            parts = event_time_str.split(':')
+            parts = cleaned_time_str.split(':')
             if len(parts) >= 2:
-                event_time = time(int(parts[0]), int(parts[1]))
-        except:
-            pass
-            
-    guest_count = 0
-    if guest_count_str and guest_count_str.strip():
-        try:
-            guest_count = int(guest_count_str)
-        except:
+                event_time_parsed = time(int(parts[0]), int(parts[1]))
+        except Exception:
             pass
 
-    # Safely parse IDs from strings to handle empty form values
-    package_id = int(package_id_str) if package_id_str and package_id_str.strip() else None
-    booking_id = int(booking_id_str) if booking_id_str and booking_id_str.strip() else None
+    print(f"[StepDetails PARSED] date={cleaned_date_str!r} -> {event_date_parsed}, time={cleaned_time_str!r} -> {event_time_parsed}, pkg={package_id_int}, booking={booking_id_int}")
 
-    event_name = event_name_str.strip() if event_name_str else ""
-    event_type = event_type_str.strip() if event_type_str else ""
+    package = db.query(models.CateringPackage).get(package_id_int) if package_id_int else None
 
-    # Handle custom event type
-    final_event_type = event_type
-    if event_type == "Other" and other_event_type and other_event_type.strip():
-        final_event_type = other_event_type.strip()
+    event_name_clean = _clean_str(event_name) or ""
+    event_type_clean = _clean_str(event_type) or ""
+
+    if not event_type_clean and package and package.service_type:
+        event_type_clean = package.service_type
+
+    final_event_type = event_type_clean
+    if event_type_clean == "Other" and other_event_type and str(other_event_type).strip():
+        final_event_type = str(other_event_type).strip()
+    elif not final_event_type and package and package.service_type:
+        final_event_type = package.service_type
+    elif not final_event_type:
+        final_event_type = "General Catering"
 
     user = get_current_user_from_session(request, db)
-    redirect_base = f"/bookings/step/details/{booking_id}" if booking_id else "/bookings/step/details"
-    if not user: return RedirectResponse(url=f"/auth/login?next={redirect_base}", status_code=303)
+    redirect_base = f"/bookings/step/details/{booking_id_int}" if booking_id_int else "/bookings/step/details"
+    if not user:
+        print("[StepDetails REJECT] User not logged in, redirecting to /auth/login")
+        return RedirectResponse(url=f"/auth/login?next={redirect_base}", status_code=303)
 
-    if booking_id:
-        existing_booking = db.query(models.Booking).get(booking_id)
+    if booking_id_int:
+        existing_booking = db.query(models.Booking).get(booking_id_int)
         if existing_booking and existing_booking.status not in ["draft", "pending", "pending_quotation", "awaiting_caterer"]:
+            print("[StepDetails REJECT] Booking is locked")
             return RedirectResponse(url=f"{redirect_base}?booking_error=Booking+is+already+locked+and+cannot+be+modified.", status_code=303)
 
-    if not event_date:
+    if not event_date_parsed:
+        print(f"[StepDetails REJECT] event_date_parsed is None! raw event_date={event_date!r}, cleaned={cleaned_date_str!r}")
         return RedirectResponse(url=f"{redirect_base}?booking_error=err-date:Valid+event+date+is+required", status_code=303)
-    if not event_time:
+    if not event_time_parsed:
+        print(f"[StepDetails REJECT] event_time_parsed is None! raw event_time={event_time!r}, cleaned={cleaned_time_str!r}")
         return RedirectResponse(url=f"{redirect_base}?booking_error=err-time:Valid+event+time+is+required", status_code=303)
-    if not event_name:
+    if not event_name_clean:
+        print(f"[StepDetails REJECT] event_name_clean is empty! raw={event_name!r}")
         return RedirectResponse(url=f"{redirect_base}?booking_error=err-name:Event+name+is+required", status_code=303)
     if not final_event_type:
+        print("[StepDetails REJECT] final_event_type is empty!")
         return RedirectResponse(url=f"{redirect_base}?booking_error=err-type:Event+type+is+required", status_code=303)
 
     # Construct venue address if missing from hidden field
@@ -1228,19 +1502,20 @@ async def step_details_submit(
         venue_address = f"{barangay}, {city}, {province}"
 
     caterer = db.query(models.CatererProfile).get(caterer_id)
-    if not caterer: return RedirectResponse(url=f"/customer/marketplace", status_code=303)
+    if not caterer:
+        print(f"[StepDetails REJECT] Caterer profile {caterer_id} not found")
+        return RedirectResponse(url=f"/customer/marketplace", status_code=303)
 
-    from datetime import date as dt_date, timedelta, datetime
-    today = dt_date.today()
+    today = date.today()
     
     # 🚨 VALIDATION 1: Strict Lead Time Validation
     rules = caterer.scheduling_rules or {}
     pkg_rules = rules.get("package_rules", {})
     food_rules = rules.get("food_rules", {})
 
-    is_package = package_id is not None
+    is_package = package_id_int is not None
     if is_package:
-        lead_time = caterer.booking_lead_time or 7
+        lead_time = (package.booking_lead_time if package and package.booking_lead_time else (caterer.booking_lead_time or 7))
         min_lead_date = today + timedelta(days=lead_time)
         error_msg = f"Package bookings must be at least {lead_time} days in advance."
     else:
@@ -1249,80 +1524,83 @@ async def step_details_submit(
         min_lead_date = today + timedelta(days=lead_time)
         error_msg = f"Food orders require at least {lead_time_hours} hours of preparation time."
 
-    if event_date < min_lead_date:
+    if event_date_parsed < min_lead_date:
+        print(f"[StepDetails REJECT] Lead time constraint failed: {event_date_parsed} < {min_lead_date}")
         return RedirectResponse(url=f"{redirect_base}?booking_error=err-date:{error_msg.replace(' ', '+')}", status_code=303)
 
     max_advance_date = today + timedelta(days=210)
-    if event_date > max_advance_date:
+    if event_date_parsed > max_advance_date:
+        print(f"[StepDetails REJECT] Max advance date failed: {event_date_parsed} > {max_advance_date}")
         return RedirectResponse(url=f"{redirect_base}?booking_error=err-date:Bookings+can+only+be+made+up+to+7+months+in+advance.", status_code=303)
 
     # 🚨 VALIDATION 1.5: Sensible Operating Hours Check
     # Restrict events to standard operating hours (8:00 AM to 8:00 PM)
-    if event_time.hour < 8 or event_time.hour >= 21:
+    if event_time_parsed.hour < 8 or event_time_parsed.hour >= 21:
+        print(f"[StepDetails REJECT] Operating hours failed: {event_time_parsed.hour}")
         return RedirectResponse(url=f"{redirect_base}?booking_error=err-time:Please+select+a+time+between+8:00+AM+and+8:00+PM.", status_code=303)
 
     # 🚨 VALIDATION 1.8: Unpaid Booking Spam Limit (Flow B Rule 1)
     unpaid_spam_count = db.query(models.Booking).filter(
         models.Booking.user_id == user.id,
         models.Booking.status.in_(['draft', 'pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment', 'pending_payment']),
-        models.Booking.id != (booking_id or 0)
+        models.Booking.id != (booking_id_int or 0)
     ).count()
 
     if unpaid_spam_count >= 2:
+        print(f"[StepDetails REJECT] Unpaid spam limit hit: {unpaid_spam_count} >= 2")
         return RedirectResponse(url=f"{redirect_base}?booking_error=Spam+Protection:+You+have+2+or+more+unpaid+or+pending+bookings.+Please+pay+the+downpayment+or+cancel+them+before+making+a+new+one.", status_code=303)
 
     # 🚨 VALIDATION 2: Anti-Spam / Duplicate Booking Check
     existing_duplicate = db.query(models.Booking).filter(
         models.Booking.user_id == user.id,
         models.Booking.caterer_id == caterer_id,
-        models.Booking.event_date == event_date,
-        models.Booking.event_time == event_time,
-        models.Booking.id != (booking_id or 0),
+        models.Booking.event_date == event_date_parsed,
+        models.Booking.event_time == event_time_parsed,
+        models.Booking.id != (booking_id_int or 0),
         models.Booking.status.notin_(['cancelled'])
     ).first()
     
     if existing_duplicate:
+        print(f"[StepDetails REJECT] Existing duplicate booking found: {existing_duplicate.id}")
         return RedirectResponse(url=f"{redirect_base}?booking_error=You+already+have+a+booking+request+for+this+exact+schedule+and+caterer.", status_code=303)
 
     # 🚨 VALIDATION 3: Caterer Overlap / Time-Gap Check
     same_day_bookings = db.query(models.Booking).filter(
         models.Booking.caterer_id == caterer_id,
-        models.Booking.event_date == event_date,
-        models.Booking.id != (booking_id or 0),
+        models.Booking.event_date == event_date_parsed,
+        models.Booking.id != (booking_id_int or 0),
         models.Booking.status.in_(['confirmed', 'preparing', 'in_progress', 'on_the_way'])
     ).all()
     
     turnover = pkg_rules.get('turnover_time_hours', caterer.equipment_turnover_hours or 6.0) if is_package else 2.0
     for sdb in same_day_bookings:
         if sdb.event_time:
-            dt1 = datetime.combine(today, event_time)
+            dt1 = datetime.combine(today, event_time_parsed)
             dt2 = datetime.combine(today, sdb.event_time)
             diff_hours = abs((dt1 - dt2).total_seconds()) / 3600.0
             if diff_hours < turnover:
                 return RedirectResponse(url=f"{redirect_base}?booking_error=The+caterer+has+another+confirmed+event+around+this+time.+Please+adjust+your+time+by+at+least+{turnover}+hours.", status_code=303)
 
     # 🚨 VALIDATION 4: Guest Count Bounds
-    package = None
     min_guests_required = caterer.min_pax or 50 if is_package else 1
-    if package_id:
-        package = db.query(models.CateringPackage).get(package_id)
-        if package:
-            min_guests_required = package.min_guests or caterer.min_pax or 50
-            if package.max_guests and guest_count > package.max_guests:
-                return RedirectResponse(url=f"{redirect_base}?booking_error=Guest+count+exceeds+the+package+maximum+capacity+of+{package.max_guests}.", status_code=303)
+    if package:
+        min_guests_required = package.min_guests or caterer.min_pax or 50
+        if package.max_guests and guest_count_int > package.max_guests:
+            return RedirectResponse(url=f"{redirect_base}?booking_error=Guest+count+exceeds+the+package+maximum+capacity+of+{package.max_guests}.", status_code=303)
 
-    if guest_count < min_guests_required:
+    if guest_count_int < min_guests_required:
         return RedirectResponse(url=f"{redirect_base}?booking_error=Guest+count+cannot+be+less+than+the+minimum+requirement+of+{min_guests_required}.", status_code=303)
 
     # 1. Check Availability (Only if date changed or new booking)
     # [Availability check logic remains same for now]
     availability = db.query(models.Availability).filter(
         models.Availability.caterer_id == caterer_id,
-        models.Availability.date == event_date,
+        models.Availability.date == event_date_parsed,
         models.Availability.is_available == False
     ).first()
     
     if availability:
+        print(f"[StepDetails REJECT] Availability check failed: Caterer {caterer_id} is marked unavailable on {event_date_parsed}")
         return RedirectResponse(url=f"{redirect_base}?booking_error=Date+unavailable", status_code=303)
 
     # 1.5. Capacity Check for Addon Services
@@ -1333,34 +1611,35 @@ async def step_details_submit(
             qty = 1
             if getattr(serv_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(serv_item, 'staff_to_pax_ratio', 0) > 0:
                 import math
-                qty = max(getattr(serv_item, 'min_staff_required', 1), math.ceil(guest_count / serv_item.staff_to_pax_ratio))
+                qty = max(getattr(serv_item, 'min_staff_required', 1), math.ceil(guest_count_int / serv_item.staff_to_pax_ratio))
             requested_services.append((serv_id, qty))
             
     from ..services.capacity_service import CapacityService
-    is_capacity_valid, capacity_msg = CapacityService.validate_booking_capacity(db, caterer_id, event_date, event_time, event_end_time, requested_services, booking_id)
+    is_capacity_valid, capacity_msg = CapacityService.validate_booking_capacity(db, caterer_id, event_date_parsed, event_time_parsed, event_end_time_parsed, requested_services, booking_id_int)
     if not is_capacity_valid:
+        print(f"[StepDetails REJECT] Capacity check failed: {capacity_msg}")
         return RedirectResponse(url=f"{redirect_base}?booking_error={capacity_msg}", status_code=303)
 
     # 2. Create or Update Booking
     booking = None
-    if booking_id:
-        booking = db.query(models.Booking).get(booking_id)
+    if booking_id_int:
+        booking = db.query(models.Booking).get(booking_id_int)
     
     if booking and booking.user_id == user.id:
         # Prevent editing bookings for past event dates
-        from datetime import date
         if booking.event_date and booking.event_date < date.today():
             return RedirectResponse(url=f"{redirect_base}?booking_error=Cannot+edit+past+bookings", status_code=303)
 
         # Update existing
-        booking.event_name = event_name
-        booking.event_type = final_event_type
-        booking.event_date = event_date
-        booking.event_time = event_time
-        booking.event_end_time = event_end_time
+        booking.package_id = package_id_int
+        booking.event_name = event_name_clean
+        booking.event_type = package.service_type if package and package.service_type else final_event_type
+        booking.event_date = event_date_parsed
+        booking.event_time = event_time_parsed
+        booking.event_end_time = event_end_time_parsed
         booking.venue_address = venue_address
         booking.event_address = venue_address
-        booking.guest_count = guest_count
+        booking.guest_count = guest_count_int
         booking.total_price = total_price
         booking.total_amount = total_price
         booking.reservation_fee = reservation_fee
@@ -1378,15 +1657,15 @@ async def step_details_submit(
         booking = models.Booking(
             user_id=user.id,
             caterer_id=caterer_id,
-            package_id=package_id,
-            event_name=event_name,
-            event_type=final_event_type,
-            event_date=event_date,
-            event_time=event_time,
-            event_end_time=event_end_time,
+            package_id=package_id_int,
+            event_name=event_name_clean,
+            event_type=package.service_type if package and package.service_type else final_event_type,
+            event_date=event_date_parsed,
+            event_time=event_time_parsed,
+            event_end_time=event_end_time_parsed,
             venue_address=venue_address,
             event_address=venue_address,
-            guest_count=guest_count,
+            guest_count=guest_count_int,
             total_price=total_price,
             total_amount=total_price,
             reservation_fee=reservation_fee,
@@ -1425,7 +1704,7 @@ async def step_details_submit(
     db.refresh(booking)
 
     # 3. Save Selected Items and Validate Rules
-    package = db.query(models.CateringPackage).get(package_id) if package_id else None
+    package = db.query(models.CateringPackage).get(package_id_int) if package_id_int else None
     
     # Selection Rule Validation
     if package and package.selection_rules:
@@ -1445,6 +1724,10 @@ async def step_details_submit(
                 return RedirectResponse(url=f"{redirect_base}?booking_error=You+selected+too+many+items+in+{cat}", status_code=303)
 
     all_items = selected_items + selected_addons
+    if not selected_items and package and package.menu_items:
+        default_pkg_items = [mi.id for mi in package.menu_items if getattr(mi, 'category', '') not in ["Rentals", "Services"] and not getattr(mi, 'is_addon', False)]
+        all_items = default_pkg_items + selected_addons
+
     for item_id in all_items:
         menu_item = db.query(models.MenuItem).get(item_id)
         if menu_item:
@@ -1454,7 +1737,7 @@ async def step_details_submit(
                 menu_item_id=item_id,
                 is_add_on=menu_item.is_addon,
                 price=item_price,
-                quantity=guest_count
+                quantity=guest_count_int
             )
             db.add(booking_item)
             
@@ -1476,7 +1759,7 @@ async def step_details_submit(
             qty = 1
             if getattr(serv_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(serv_item, 'staff_to_pax_ratio', 0) > 0:
                 import math
-                qty = max(getattr(serv_item, 'min_staff_required', 1), math.ceil(guest_count / serv_item.staff_to_pax_ratio))
+                qty = max(getattr(serv_item, 'min_staff_required', 1), math.ceil(guest_count_int / serv_item.staff_to_pax_ratio))
                 
             booking_item = models.BookingMenuItem(
                 booking_id=booking.id,
@@ -1493,7 +1776,7 @@ async def step_details_submit(
     request.session["booking_data"] = {
         "booking_id": booking.id,
         "caterer_id": caterer_id,
-        "package_id": package_id
+        "package_id": package_id_int
     }
 
     # Requirement #14 & #15: Transaction History != Verified. Only successful KYC makes customer verified.
@@ -1502,8 +1785,10 @@ async def step_details_submit(
         booking.ocr_verified = True
         booking.liveness_verified = True
         db.commit()
+        print(f"[StepDetails SUCCESS] Booking #{booking.id} created/updated for verified user! Redirecting to Quotation Review.")
         return RedirectResponse(url=f"/bookings/step/quotation/{booking.id}", status_code=303)
         
+    print(f"[StepDetails SUCCESS] Booking #{booking.id} created/updated! Redirecting to KYC Verification.")
     return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}", status_code=303)
 
 # Phase 2: Identity Verification
@@ -2199,7 +2484,7 @@ async def get_booking_messages_universal(
         
     messages = []
     has_unread = False
-    for msg in booking.messages:
+    for msg in sorted(booking.messages, key=lambda x: x.id):
         if msg.sender_id != user.id and not msg.is_read:
             msg.is_read = True
             has_unread = True

@@ -152,7 +152,7 @@
                                 {% for inc in all_inclusions %}
                                 <div class="list-item-minimal">
                                     <span class="dot-minimal inc-dot"></span>
-                                    <span class="item-name-minimal">{{ inc }}</span>
+                                    <span class="item-name-minimal">{{ inc.name if inc is mapping else inc }}{% if inc is mapping and inc.quantity %} ({{ inc.quantity }}){% endif %}</span>
                                 </div>
                                 {% endfor %}
                             </div>

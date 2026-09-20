@@ -67,27 +67,112 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
         db.commit()
     
     # Calculate active menu & inventory
-    # GAP 5 FIX: Include items that are public (not hidden), regardless of usage_type.
-    # 'package_only' items with public visibility should still be discoverable by customers
-    # (shown with an 'Included in Packages' badge). Only truly hidden items are excluded.
+    def is_item_active(item):
+        if getattr(item, 'is_archived', False):
+            return False
+        if getattr(item, 'is_hidden', False):
+            return False
+        status = (getattr(item, 'status', '') or '').lower()
+        if status in ['unavailable', 'maintenance', 'draft', 'archived', 'hidden']:
+            return False
+        return True
+
     active_menu = [
         m for m in caterer.menu_items
-        if not m.is_archived
-        and not m.is_hidden
-        and m.status == 'available'
-        and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
+        if is_item_active(m)
         and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
         and getattr(m, 'usage_type', '') != 'package_only'
     ]
     active_services = [
         s for s in getattr(caterer, 'service_items', [])
-        if not s.is_archived and not s.is_hidden and s.status == 'available'
+        if is_item_active(s) and getattr(s, 'usage_type', 'both') != 'package_only'
     ]
+    raw_equipment = db.query(models.Equipment).filter(models.Equipment.caterer_id == caterer.id).all()
     active_equipment = [
-        e for e in getattr(caterer, 'equipment_items', [])
-        if not e.is_archived and not e.is_hidden and e.status == 'available'
+        e for e in raw_equipment
+        if is_item_active(e) and getattr(e, 'usage_type', 'both') != 'package_only'
     ]
+    
+    # Ensure legacy rental items from menu_items table are also included
+    legacy_equipment = [
+        m for m in getattr(caterer, 'menu_items', [])
+        if is_item_active(m) and m.category in ['Rentals', 'Equipment Rental', 'Event Rental']
+    ]
+    for leg in legacy_equipment:
+        leg.equipment_type = getattr(leg, 'equipment_type', 'Equipment') or 'Equipment'
+        leg.rental_price = getattr(leg, 'rental_price', leg.price)
+        leg.unit_type = getattr(leg, 'unit_type', getattr(leg, 'pricing_unit', 'piece')) or 'piece'
+        leg.available_qty = getattr(leg, 'available_qty', getattr(leg, 'max_stock_quantity', 1)) or 1
+        if leg not in active_equipment:
+            active_equipment.append(leg)
+
+    legacy_services = [
+        m for m in getattr(caterer, 'menu_items', [])
+        if is_item_active(m) and m.category in ['Services', 'Event Styling', 'Entertainment', 'Event Coordination', 'Food Cart', 'Staffing Services']
+    ]
+    for leg in legacy_services:
+        leg.selling_price = getattr(leg, 'selling_price', leg.price)
+        leg.unit_type = getattr(leg, 'unit_type', getattr(leg, 'pricing_unit', 'per_event')) or 'per_event'
+        leg.max_available = getattr(leg, 'max_available', getattr(leg, 'max_stock_quantity', 1)) or 1
+        if leg not in active_services:
+            active_services.append(leg)
+
     active_inventory = active_services + active_equipment
+
+    for item in active_inventory:
+        is_equip = (
+            hasattr(item, 'rental_price') or 
+            hasattr(item, 'equipment_type') or 
+            getattr(item, 'equipment_type', None) is not None or 
+            item in active_equipment
+        )
+        item.display_price = getattr(item, 'rental_price', getattr(item, 'selling_price', getattr(item, 'price', 0.0)))
+        item.display_type = 'Equipment' if is_equip else 'Service'
+        item.display_qty = getattr(item, 'available_qty', getattr(item, 'max_available', getattr(item, 'max_stock_quantity', 1)))
+        item.deposit_pct = getattr(item, 'security_deposit_pct', 0)
+        item.needs_kyc = getattr(item, 'requires_kyc', False)
+        item.min_hours = getattr(item, 'minimum_hours', getattr(item, 'base_duration_hours', None))
+        if is_equip and not getattr(item, 'equipment_type', None):
+            item.equipment_type = 'Equipment'
+
+    active_packages = [p for p in caterer.packages if p.is_active and p.status == 'active']
+    import json
+    for p in active_packages:
+        raw_inclusions = []
+        if p.inclusions:
+            if isinstance(p.inclusions, str):
+                try:
+                    parsed = json.loads(p.inclusions)
+                    if isinstance(parsed, list):
+                        raw_inclusions = [i for i in parsed if i]
+                    elif isinstance(parsed, dict):
+                        raw_inclusions = [k for k, v in parsed.items() if v]
+                    else:
+                        raw_inclusions = [str(parsed)]
+                except:
+                    raw_inclusions = [i.strip() for i in p.inclusions.split(',') if i.strip()]
+            elif isinstance(p.inclusions, list):
+                raw_inclusions = [i for i in p.inclusions if i]
+            elif isinstance(p.inclusions, dict):
+                raw_inclusions = [k for k, v in p.inclusions.items() if v]
+        
+        flat_list = []
+        for inc in raw_inclusions:
+            if isinstance(inc, dict):
+                name = inc.get('name') or ''
+                if name:
+                    qty = inc.get('quantity')
+                    flat_list.append(f"{name} ({qty})" if qty else name)
+            elif isinstance(inc, str) and inc.strip():
+                flat_list.append(inc.strip())
+        
+        if getattr(p, 'linked_inventory', None) and isinstance(p.linked_inventory, list):
+            for i in p.linked_inventory:
+                if i and i not in flat_list:
+                    flat_list.append(i)
+        
+        p.parsed_inclusions = flat_list
+
     public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public']
 
     # If the user is a logged-in customer, show the dashboard-integrated view
@@ -95,9 +180,11 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
         return templates.TemplateResponse("customer/caterer_profile_view.html", {
             "request": request, 
             "caterer": caterer,
-            "packages": [p for p in caterer.packages if p.is_active and p.status == 'active'],
+            "packages": active_packages,
             "active_menu": active_menu,
             "active_inventory": active_inventory,
+            "active_equipment": active_equipment,
+            "active_services": active_services,
             "public_portfolios": public_portfolios,
             "gallery_items": caterer.gallery_items,
             "reviews": caterer.reviews,
@@ -107,7 +194,6 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
         })
     
     # Otherwise, show the standalone profile (e.g., for guests or other roles)
-    active_packages = [p for p in caterer.packages if p.is_active and p.status == 'active']
     return templates.TemplateResponse("caterer/profile.html", {
         "request": request, 
         "caterer": caterer,
@@ -149,14 +235,129 @@ def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(datab
         if not user or user.id != caterer.user_id:
             raise HTTPException(status_code=404, detail="Caterer not found")
 
+    def is_item_active(item):
+        if getattr(item, 'is_archived', False):
+            return False
+        if getattr(item, 'is_hidden', False):
+            return False
+        status = (getattr(item, 'status', '') or '').lower()
+        if status in ['unavailable', 'maintenance', 'draft', 'archived', 'hidden']:
+            return False
+        return True
+
     active_packages = [p for p in caterer.packages if p.is_active and p.status == 'active']
-    active_menu = [m for m in caterer.menu_items if not m.is_archived and not m.is_hidden and m.status == 'available' and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
+    import json
+    for p in active_packages:
+        raw_inclusions = []
+        if p.inclusions:
+            if isinstance(p.inclusions, str):
+                try:
+                    parsed = json.loads(p.inclusions)
+                    if isinstance(parsed, list):
+                        raw_inclusions = [i for i in parsed if i]
+                    elif isinstance(parsed, dict):
+                        raw_inclusions = [k for k, v in parsed.items() if v]
+                    else:
+                        raw_inclusions = [str(parsed)]
+                except:
+                    raw_inclusions = [i.strip() for i in p.inclusions.split(',') if i.strip()]
+            elif isinstance(p.inclusions, list):
+                raw_inclusions = [i for i in p.inclusions if i]
+            elif isinstance(p.inclusions, dict):
+                raw_inclusions = [k for k, v in p.inclusions.items() if v]
+        
+        flat_list = []
+        for inc in raw_inclusions:
+            if isinstance(inc, dict):
+                name = inc.get('name') or ''
+                if name:
+                    qty = inc.get('quantity')
+                    flat_list.append(f"{name} ({qty})" if qty else name)
+            elif isinstance(inc, str) and inc.strip():
+                flat_list.append(inc.strip())
+        
+        if getattr(p, 'linked_inventory', None) and isinstance(p.linked_inventory, list):
+            for i in p.linked_inventory:
+                if i and i not in flat_list:
+                    flat_list.append(i)
+        
+        p.parsed_inclusions = flat_list
+
+    active_menu = [
+        m for m in caterer.menu_items
+        if is_item_active(m)
+        and m.category not in ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
         and getattr(m, 'usage_type', '') != 'package_only'
     ]
-    active_services = [s for s in getattr(caterer, 'service_items', []) if not s.is_archived and not s.is_hidden and s.status == 'available' and s.usage_type in ['order_only', 'both']]
-    active_equipment = [e for e in getattr(caterer, 'equipment_items', []) if not e.is_archived and not e.is_hidden and e.status == 'available' and e.usage_type in ['order_only', 'both']]
+    active_services = [
+        s for s in getattr(caterer, 'service_items', [])
+        if is_item_active(s) and getattr(s, 'usage_type', 'both') != 'package_only'
+    ]
+    raw_equipment = db.query(models.Equipment).filter(models.Equipment.caterer_id == caterer.id).all()
+    active_equipment = [
+        e for e in raw_equipment
+        if is_item_active(e) and getattr(e, 'usage_type', 'both') != 'package_only'
+    ]
+    
+    legacy_equipment = [
+        m for m in getattr(caterer, 'menu_items', [])
+        if is_item_active(m) and m.category in ['Rentals', 'Equipment Rental', 'Event Rental']
+    ]
+    for leg in legacy_equipment:
+        leg.equipment_type = getattr(leg, 'equipment_type', 'Equipment') or 'Equipment'
+        leg.rental_price = getattr(leg, 'rental_price', leg.price)
+        leg.unit_type = getattr(leg, 'unit_type', getattr(leg, 'pricing_unit', 'piece')) or 'piece'
+        leg.available_qty = getattr(leg, 'available_qty', getattr(leg, 'max_stock_quantity', 1)) or 1
+        if leg not in active_equipment:
+            active_equipment.append(leg)
+
+    legacy_services = [
+        m for m in getattr(caterer, 'menu_items', [])
+        if is_item_active(m) and m.category in ['Services', 'Event Styling', 'Entertainment', 'Event Coordination', 'Food Cart', 'Staffing Services']
+    ]
+    for leg in legacy_services:
+        leg.selling_price = getattr(leg, 'selling_price', leg.price)
+        leg.unit_type = getattr(leg, 'unit_type', getattr(leg, 'pricing_unit', 'per_event')) or 'per_event'
+        leg.max_available = getattr(leg, 'max_available', getattr(leg, 'max_stock_quantity', 1)) or 1
+        if leg not in active_services:
+            active_services.append(leg)
+
     active_inventory = active_services + active_equipment
+
+    for item in active_inventory:
+        is_equip = (
+            hasattr(item, 'rental_price') or 
+            hasattr(item, 'equipment_type') or 
+            getattr(item, 'equipment_type', None) is not None or 
+            item in active_equipment
+        )
+        item.display_price = getattr(item, 'rental_price', getattr(item, 'selling_price', getattr(item, 'price', 0.0)))
+        item.display_type = 'Equipment' if is_equip else 'Service'
+        item.display_qty = getattr(item, 'available_qty', getattr(item, 'max_available', getattr(item, 'max_stock_quantity', 1)))
+        item.deposit_pct = getattr(item, 'security_deposit_pct', 0)
+        item.needs_kyc = getattr(item, 'requires_kyc', False)
+        item.min_hours = getattr(item, 'minimum_hours', getattr(item, 'base_duration_hours', None))
+        if is_equip and not getattr(item, 'equipment_type', None):
+            item.equipment_type = 'Equipment'
+
     public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public']
+
+    if user and user.role == "customer":
+        return templates.TemplateResponse("customer/caterer_profile_view.html", {
+            "request": request, 
+            "caterer": caterer,
+            "packages": active_packages,
+            "active_menu": active_menu,
+            "active_inventory": active_inventory,
+            "active_equipment": active_equipment,
+            "active_services": active_services,
+            "public_portfolios": public_portfolios,
+            "gallery_items": caterer.gallery_items,
+            "reviews": caterer.reviews,
+            "user": user,
+            "active_page": "marketplace",
+            "nav_page": "caterers"
+        })
 
     return templates.TemplateResponse("caterer/profile.html", {
         "request": request, 

@@ -1,4 +1,4 @@
-const LOCATION_DATA = {
+var LOCATION_DATA = window.LOCATION_DATA || {
     "Batangas": {
         "Agoncillo": [
             "Adia",

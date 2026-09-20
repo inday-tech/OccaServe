@@ -1080,29 +1080,148 @@
 </div>
 
 <div id="externalBookingModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-lg occ-content-pop" style="display: flex; flex-direction: column; max-height: 92vh; overflow: hidden; width: 100%; max-width: 860px; border-radius: 16px;">
-        <div class="occ-modal-header glass-header" style="flex-shrink: 0; padding: 1.25rem 1.75rem; border-bottom: 1px solid #e2e8f0; background: #ffffff;">
-            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                <div>
-                    <h3 class="occ-modal-title" style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
+    <div class="occ-modal-box sz-lg occ-content-pop" style="display: flex; flex-direction: column; max-height: 92vh; overflow: hidden; width: 100%; max-width: 940px; border-radius: 16px;">
+        <div class="occ-modal-header glass-header" style="flex-shrink: 0; padding: 1.15rem 1.75rem; border-bottom: 1px solid #e2e8f0; background: #ffffff;">
+            <style>
+                .walkin-header-container {
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: space-between !important;
+                    width: 100% !important;
+                    gap: 1.25rem !important;
+                    flex-wrap: wrap !important;
+                }
+                .walkin-header-left {
+                    display: flex !important;
+                    flex-direction: column !important;
+                    justify-content: center !important;
+                    min-width: 220px !important;
+                    flex: 1 1 auto !important;
+                }
+                .walkin-header-right {
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 12px !important;
+                    flex-shrink: 0 !important;
+                }
+                .walkin-segmented-control {
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    background: #f1f5f9 !important;
+                    border: 1px solid #e2e8f0 !important;
+                    border-radius: 10px !important;
+                    padding: 4px !important;
+                    gap: 4px !important;
+                    box-sizing: border-box !important;
+                }
+                .walkin-seg-btn {
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 8px !important;
+                    height: 38px !important;
+                    min-width: 165px !important;
+                    padding: 0 16px !important;
+                    border: none !important;
+                    border-radius: 7px !important;
+                    font-size: 0.84rem !important;
+                    font-weight: 700 !important;
+                    white-space: nowrap !important;
+                    cursor: pointer !important;
+                    transition: all 0.2s ease !important;
+                    text-decoration: none !important;
+                    box-sizing: border-box !important;
+                    user-select: none !important;
+                    line-height: 1 !important;
+                }
+                .walkin-seg-btn.active {
+                    background: var(--primary-color, #f97316) !important;
+                    color: #ffffff !important;
+                    box-shadow: 0 1px 3px rgba(249, 115, 22, 0.28) !important;
+                }
+                .walkin-seg-btn:not(.active) {
+                    background: #ffffff !important;
+                    color: #475569 !important;
+                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+                }
+                .walkin-seg-btn:not(.active):hover {
+                    color: #0f172a !important;
+                    background: #f8fafc !important;
+                }
+                .walkin-seg-btn i {
+                    font-size: 0.85rem !important;
+                    flex-shrink: 0 !important;
+                }
+                .walkin-modal-close-btn {
+                    background: #f1f5f9 !important;
+                    border: 1px solid #e2e8f0 !important;
+                    width: 38px !important;
+                    height: 38px !important;
+                    min-width: 38px !important;
+                    border-radius: 50% !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    color: #64748b !important;
+                    cursor: pointer !important;
+                    transition: all 0.2s ease !important;
+                    flex-shrink: 0 !important;
+                    padding: 0 !important;
+                }
+                .walkin-modal-close-btn:hover {
+                    background: #fee2e2 !important;
+                    color: #ef4444 !important;
+                    border-color: #fecaca !important;
+                }
+                @media (max-width: 768px) {
+                    .walkin-header-container {
+                        gap: 0.75rem !important;
+                    }
+                    .walkin-header-right {
+                        width: 100% !important;
+                        justify-content: space-between !important;
+                    }
+                    .walkin-segmented-control {
+                        flex: 1 1 auto !important;
+                    }
+                    .walkin-seg-btn {
+                        min-width: 0 !important;
+                        flex: 1 1 0 !important;
+                        font-size: 0.8rem !important;
+                        padding: 0 8px !important;
+                    }
+                }
+            </style>
+            <div class="walkin-header-container">
+                <!-- Left: Title & Subtitle -->
+                <div class="walkin-header-left">
+                    <h3 class="occ-modal-title" style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem; line-height: 1.2;">
                         <i class="fas fa-walking" style="color: var(--primary-color, #f97316);"></i> Walk-in Transaction
                     </h3>
-                    <div class="occ-modal-subtitle" style="margin-top: 0.25rem; font-size: 0.85rem; color: #64748b;">
+                    <div class="occ-modal-subtitle" style="margin-top: 0.25rem; font-size: 0.82rem; color: #64748b;">
                         Create a walk-in catering booking or independent equipment rental.
                     </div>
                 </div>
-                <button type="button" onclick="closeModal('externalBookingModal')" class="occ-modal-close" style="background: #f1f5f9; border: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: all 0.2s;">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <!-- Walk-in Tab Switcher -->
-            <div id="walkinTabSwitcher" style="display: flex; gap: 0; margin-top: 1rem; background: #f1f5f9; border-radius: 10px; padding: 4px;">
-                <button type="button" onclick="switchWalkinTab('catering')" id="walkinTabBtnCatering" class="walkin-tab-btn active" style="flex: 1; padding: 0.6rem 1rem; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.25s; background: var(--primary-color, #f97316); color: white;">
-                    <i class="fas fa-utensils" style="margin-right: 4px;"></i> Catering Booking
-                </button>
-                <button type="button" onclick="switchWalkinTab('equipment')" id="walkinTabBtnEquipment" class="walkin-tab-btn" style="flex: 1; padding: 0.6rem 1rem; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.25s; background: transparent; color: #64748b;">
-                    <i class="fas fa-chair" style="margin-right: 4px;"></i> Equipment Rental
-                </button>
+
+                <!-- Right: Segmented Tab Selector & Close Button -->
+                <div class="walkin-header-right">
+                    <!-- Segmented Control Tab Selector -->
+                    <div id="walkinTabSwitcher" class="walkin-segmented-control">
+                        <button type="button" onclick="switchWalkinTab('catering')" id="walkinTabBtnCatering" class="walkin-seg-btn active" title="Catering Booking">
+                            <i class="fas fa-utensils"></i>
+                            <span>Catering Booking</span>
+                        </button>
+                        <button type="button" onclick="switchWalkinTab('equipment')" id="walkinTabBtnEquipment" class="walkin-seg-btn" title="Equipment Rental">
+                            <i class="fas fa-building"></i>
+                            <span>Equipment Rental</span>
+                        </button>
+                    </div>
+
+                    <!-- Separate Close X Button -->
+                    <button type="button" onclick="closeModal('externalBookingModal')" class="walkin-modal-close-btn" title="Close Modal" aria-label="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -1230,65 +1349,208 @@
                         </div>
                     </div>
 
-                    <!-- SECTION 2: Package Selection -->
+                    <!-- SECTION 2: Event Services & Inclusions Checklist -->
                     <div class="walkin-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <style>
+                            .walkin-services-grid {
+                                display: grid !important;
+                                grid-template-columns: repeat(2, 1fr) !important;
+                                gap: 8px 12px !important;
+                                max-height: 380px !important;
+                                overflow-y: auto !important;
+                                padding: 4px 6px 4px 2px !important;
+                            }
+                            @media (max-width: 768px) {
+                                .walkin-services-grid {
+                                    grid-template-columns: 1fr !important;
+                                }
+                            }
+                            .walkin-service-row {
+                                display: flex !important;
+                                flex-direction: row !important;
+                                align-items: center !important;
+                                justify-content: space-between !important;
+                                flex-wrap: nowrap !important;
+                                background: #ffffff !important;
+                                border: 1.5px solid #e2e8f0 !important;
+                                border-radius: 10px !important;
+                                padding: 8px 12px !important;
+                                gap: 10px !important;
+                                box-sizing: border-box !important;
+                                transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s !important;
+                            }
+                            .walkin-service-row:hover {
+                                border-color: #cbd5e1 !important;
+                                background: #f8fafc !important;
+                            }
+                            .walkin-service-row.is-checked {
+                                background: #fffbf7 !important;
+                                border-color: #f97316 !important;
+                                box-shadow: 0 1px 4px rgba(249, 115, 22, 0.12) !important;
+                            }
+                            .walkin-service-label {
+                                display: flex !important;
+                                flex-direction: row !important;
+                                align-items: center !important;
+                                flex-wrap: nowrap !important;
+                                gap: 8px !important;
+                                margin: 0 !important;
+                                padding: 0 !important;
+                                cursor: pointer !important;
+                                flex: 1 1 auto !important;
+                                min-width: 0 !important;
+                            }
+                            .walkin-service-checkbox {
+                                width: 18px !important;
+                                height: 18px !important;
+                                min-width: 18px !important;
+                                margin: 0 !important;
+                                padding: 0 !important;
+                                flex-shrink: 0 !important;
+                                accent-color: #f97316 !important;
+                                cursor: pointer !important;
+                            }
+                            .walkin-service-icon {
+                                width: 28px !important;
+                                height: 28px !important;
+                                border-radius: 6px !important;
+                                display: flex !important;
+                                align-items: center !important;
+                                justify-content: center !important;
+                                flex-shrink: 0 !important;
+                                font-size: 0.8rem !important;
+                            }
+                            .walkin-service-name {
+                                font-size: 0.84rem !important;
+                                font-weight: 700 !important;
+                                color: #1e293b !important;
+                                white-space: nowrap !important;
+                                overflow: hidden !important;
+                                text-overflow: ellipsis !important;
+                                line-height: 1.2 !important;
+                            }
+                            .walkin-amount-box {
+                                display: flex !important;
+                                flex-direction: row !important;
+                                align-items: center !important;
+                                flex-wrap: nowrap !important;
+                                width: 145px !important;
+                                min-width: 145px !important;
+                                max-width: 145px !important;
+                                flex-shrink: 0 !important;
+                                background: #f8fafc !important;
+                                border: 1.5px solid #cbd5e1 !important;
+                                border-radius: 8px !important;
+                                padding: 4px 8px !important;
+                                height: 36px !important;
+                                box-sizing: border-box !important;
+                                transition: border-color 0.2s, background-color 0.2s !important;
+                            }
+                            .walkin-amount-box.is-active {
+                                background: #ffffff !important;
+                                border-color: #cbd5e1 !important;
+                            }
+                            .walkin-amount-box.is-focused {
+                                border-color: #f97316 !important;
+                                box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.15) !important;
+                            }
+                            .walkin-currency-symbol {
+                                display: inline-block !important;
+                                font-size: 0.85rem !important;
+                                font-weight: 700 !important;
+                                color: #64748b !important;
+                                line-height: 1 !important;
+                                margin: 0 4px 0 0 !important;
+                                padding: 0 !important;
+                                flex-shrink: 0 !important;
+                            }
+                            .walkin-service-amount {
+                                display: inline-block !important;
+                                width: 100% !important;
+                                flex: 1 1 auto !important;
+                                height: 100% !important;
+                                border: none !important;
+                                outline: none !important;
+                                background: transparent !important;
+                                font-weight: 700 !important;
+                                font-size: 0.88rem !important;
+                                text-align: right !important;
+                                color: #94a3b8 !important;
+                                padding: 0 !important;
+                                margin: 0 !important;
+                                box-shadow: none !important;
+                            }
+                            .walkin-service-amount:not(:disabled) {
+                                color: #0f172a !important;
+                            }
+                            .walkin-services-grid::-webkit-scrollbar {
+                                width: 6px;
+                            }
+                            .walkin-services-grid::-webkit-scrollbar-track {
+                                background: #f1f5f9;
+                                border-radius: 4px;
+                            }
+                            .walkin-services-grid::-webkit-scrollbar-thumb {
+                                background: #cbd5e1;
+                                border-radius: 4px;
+                            }
+                            .walkin-services-grid::-webkit-scrollbar-thumb:hover {
+                                background: #94a3b8;
+                            }
+                        </style>
+
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
-                            <div style="font-size: 1rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;">
-                                <i class="fas fa-box-open" style="color: var(--primary-color, #f97316);"></i> Select Catering Package <span style="color: #ef4444;">*</span>
+                            <div>
+                                <div style="font-size: 1rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-concierge-bell" style="color: var(--primary-color, #f97316);"></i> Select Event Services & Inclusions <span style="color: #ef4444;">*</span>
+                                </div>
+                                <div style="font-size: 0.78rem; color: #64748b; margin-top: 0.2rem;">
+                                    Check the services included for this walk-in booking and enter their corresponding amount.
+                                </div>
                             </div>
-                            <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">{{ packages|length }} package(s) available</span>
+                            <span id="walkinSelectedServicesCount" style="font-size: 0.75rem; color: #64748b; font-weight: 700; background: #f8fafc; padding: 4px 10px; border-radius: 20px; border: 1px solid #e2e8f0;">0 of 15 selected</span>
                         </div>
 
-                        <div class="field-error-msg" id="error-extPackageSelect" style="color: #ef4444; font-size: 0.8rem; margin-bottom: 0.75rem; display: none; background: #fef2f2; border: 1px solid #fee2e2; padding: 8px 12px; border-radius: 6px; font-weight: 600;"></div>
+                        <div class="field-error-msg" id="error-walkinServices" style="color: #ef4444; font-size: 0.8rem; margin-bottom: 0.75rem; display: none; background: #fef2f2; border: 1px solid #fee2e2; padding: 8px 12px; border-radius: 6px; font-weight: 600;"></div>
 
-                        <select id="extPackageSelect" class="control-pro" style="font-weight: 700; font-size: 0.95rem; padding: 0.7rem 1rem;" onchange="handleWalkinPackageChange(this.value)">
-                            <option value="" disabled selected>— Choose a catering package —</option>
-                            {% for pkg in packages %}
-                            <option value="{{ pkg.id }}">{{ pkg.name }} — ₱{{ '{:,.2f}'.format(pkg.price or 0) }} ({{ pkg.service_type or 'General' }}{% if pkg.min_guests %}, Min {{ pkg.min_guests }} pax{% endif %})</option>
+                        <!-- Services Checklist Grid -->
+                        <div id="walkinServicesList" class="walkin-services-grid">
+                            {% set walkin_services = [
+                                {"name": "Catering Service", "icon": "fas fa-utensils", "color": "#f97316"},
+                                {"name": "Venue Styling", "icon": "fas fa-couch", "color": "#ec4899"},
+                                {"name": "Ceiling Treatment", "icon": "fas fa-cloud", "color": "#8b5cf6"},
+                                {"name": "Church Design", "icon": "fas fa-church", "color": "#6366f1"},
+                                {"name": "Grazing Table", "icon": "fas fa-cheese", "color": "#f59e0b"},
+                                {"name": "Photo Coverage", "icon": "fas fa-camera", "color": "#06b6d4"},
+                                {"name": "Food Cart", "icon": "fas fa-hotdog", "color": "#eab308"},
+                                {"name": "Souvenir", "icon": "fas fa-gift", "color": "#14b8a6"},
+                                {"name": "Lights & Sounds", "icon": "fas fa-music", "color": "#3b82f6"},
+                                {"name": "OTD Coordination", "icon": "fas fa-clipboard-check", "color": "#10b981"},
+                                {"name": "Cake", "icon": "fas fa-birthday-cake", "color": "#f43f5e"},
+                                {"name": "Photobooth / 360 Videobooth", "icon": "fas fa-photo-video", "color": "#a855f7"},
+                                {"name": "Flowers for Entourage", "icon": "fas fa-spa", "color": "#059669"},
+                                {"name": "Bridal Car", "icon": "fas fa-car", "color": "#0284c7"},
+                                {"name": "Emcee / Host", "icon": "fas fa-microphone-alt", "color": "#d97706"}
+                            ] %}
+
+                            {% for s in walkin_services %}
+                            <div id="walkin_service_row_{{ loop.index0 }}" class="walkin-service-row">
+                                <!-- Left: Checkbox & Service Label -->
+                                <label class="walkin-service-label" for="walkin_service_cb_{{ loop.index0 }}">
+                                    <input type="checkbox" id="walkin_service_cb_{{ loop.index0 }}" class="walkin-service-checkbox" data-index="{{ loop.index0 }}" data-name="{{ s.name }}" onchange="handleWalkinServiceToggle({{ loop.index0 }})">
+                                    <div class="walkin-service-icon" style="background: {{ s.color }}15; color: {{ s.color }};">
+                                        <i class="{{ s.icon }}"></i>
+                                    </div>
+                                    <span class="walkin-service-name" title="{{ s.name }}">{{ s.name }}</span>
+                                </label>
+
+                                <!-- Right: Amount Input with Comma Formatting -->
+                                <div id="walkin_amount_box_{{ loop.index0 }}" class="walkin-amount-box">
+                                    <span class="walkin-currency-symbol">₱</span>
+                                    <input type="text" id="walkin_amount_{{ loop.index0 }}" class="walkin-service-amount" placeholder="0.00" disabled oninput="handleWalkinServiceAmountInput(this, {{ loop.index0 }})" onblur="handleWalkinServiceAmountBlur(this, {{ loop.index0 }})" onfocus="handleWalkinServiceAmountFocus(this, {{ loop.index0 }})">
+                                </div>
+                            </div>
                             {% endfor %}
-                        </select>
-
-                        <!-- Package Inclusions Display (auto-populated) -->
-                        <div id="walkinPackageInclusions" style="display: none; margin-top: 1.25rem;">
-                            <!-- Package Summary Card -->
-                            <div id="walkinPkgSummaryCard" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: white; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1rem;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; font-weight: 700;">Selected Package</div>
-                                        <div id="walkinPkgName" style="font-size: 1.15rem; font-weight: 800; color: #f8fafc; margin-top: 0.15rem;"></div>
-                                        <div id="walkinPkgMeta" style="font-size: 0.8rem; color: #cbd5e1; margin-top: 0.2rem;"></div>
-                                    </div>
-                                    <div style="text-align: right;">
-                                        <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; font-weight: 700;">Package Price</div>
-                                        <div id="walkinPkgPrice" style="font-size: 1.65rem; font-weight: 800; color: #10b981; line-height: 1.2;"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Menu Inclusions -->
-                            <div id="walkinPkgMenuSection" style="display: none; margin-bottom: 0.75rem;">
-                                <div style="font-size: 0.8rem; font-weight: 800; color: #1e293b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 6px;">
-                                    <i class="fas fa-utensils" style="color: var(--primary-color, #f97316); font-size: 0.75rem;"></i> Food / Menu Inclusions
-                                </div>
-                                <div id="walkinPkgMenuList" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem;"></div>
-                            </div>
-
-                            <!-- Service Inclusions -->
-                            <div id="walkinPkgServiceSection" style="display: none; margin-bottom: 0.75rem;">
-                                <div style="font-size: 0.8rem; font-weight: 800; color: #1e293b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 6px;">
-                                    <i class="fas fa-concierge-bell" style="color: #3b82f6; font-size: 0.75rem;"></i> Event Services Inclusions
-                                </div>
-                                <div id="walkinPkgServiceList" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem;"></div>
-                            </div>
-
-                            <!-- Equipment Inclusions -->
-                            <div id="walkinPkgEquipSection" style="display: none; margin-bottom: 0.75rem;">
-                                <div style="font-size: 0.8rem; font-weight: 800; color: #1e293b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 6px;">
-                                    <i class="fas fa-chair" style="color: #8b5cf6; font-size: 0.75rem;"></i> Equipment Included
-                                    <span style="font-size: 0.7rem; background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 20px; font-weight: 700;">₱0 Extra Charge</span>
-                                </div>
-                                <div id="walkinPkgEquipList" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem;"></div>
-                            </div>
                         </div>
                     </div>
 
@@ -1304,9 +1566,9 @@
                         </div>
 
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; align-items: flex-start;">
-                            <!-- Package Total -->
+                            <!-- Package / Services Total -->
                             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
-                                <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Package Total Amount</div>
+                                <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Total Services Amount</div>
                                 <div id="walkinSubtotalDisplay" style="font-size: 1.4rem; font-weight: 800; color: #0f172a; margin-top: 0.25rem;">₱0.00</div>
                                 <input type="hidden" id="extTotalAmount" value="0">
                             </div>

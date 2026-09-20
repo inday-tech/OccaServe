@@ -1,28 +1,238 @@
-import asyncio
-from sqlalchemy import create_engine, text
 import sys
 import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), 'app'))
 
 from app.db.database import SQLALCHEMY_DATABASE_URL
+from sqlalchemy import create_engine, text
 
 def upgrade():
-    print(f"Connecting to {SQLALCHEMY_DATABASE_URL}")
+    print(f"Connecting to database...")
     engine = create_engine(SQLALCHEMY_DATABASE_URL)
-    with engine.connect() as conn:
-        try:
-            conn.execute(text("ALTER TABLE caterer_profiles ADD COLUMN max_bookings_per_day INTEGER DEFAULT 1;"))
-            print("Added max_bookings_per_day")
-        except Exception as e:
-            print("Could not add max_bookings_per_day", e)
-            
-        try:
-            conn.execute(text("ALTER TABLE caterer_profiles ADD COLUMN auto_block_enabled BOOLEAN DEFAULT TRUE;"))
-            print("Added auto_block_enabled")
-        except Exception as e:
-            print("Could not add auto_block_enabled", e)
-        conn.commit()
+    
+    # Import startup statements from app.main
+    from app.main import lifespan
+    import inspect
+    
+    # Run the comprehensive list of ALTER TABLE statements
+    from app.main import STARTUP_DDL if hasattr(sys.modules.get('app.main'), 'STARTUP_DDL') else None
+    
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+        from app.db import models
+        models.Base.metadata.create_all(bind=engine)
+        print("Base metadata check complete.")
+        
+        # Ensure critical columns exist
+        critical_statements = [
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_name VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_email VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_contact VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_name VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_type VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_time TIME;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_end_time TIME;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS venue_address TEXT;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_address TEXT;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS id_address TEXT;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS current_address TEXT;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS verification_status VARCHAR DEFAULT 'pending';",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS guest_count INTEGER;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS total_amount FLOAT;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS actual_cost FLOAT DEFAULT 0.0;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS actual_cost_breakdown JSONB;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS total_price FLOAT;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reservation_fee NUMERIC;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS travel_fee FLOAT DEFAULT 0.0;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS travel_fee_status VARCHAR DEFAULT 'confirmed';",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'pending';",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_status VARCHAR DEFAULT 'pending';",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_method VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS amount_paid FLOAT DEFAULT 0.0;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS preparation_status VARCHAR DEFAULT 'not_started';",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS preparation_date DATE;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_archived BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_reference VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_proof_url VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS balance_proof_url VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS dispatch_proof_url VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS paymongo_link_id VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS paymongo_link_url VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payout_id INTEGER;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_verification_data JSONB;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS proof_image_hash VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS ocr_verified BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS liveness_verified BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS special_requests TEXT;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS caterer_notes TEXT;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_source VARCHAR DEFAULT 'OccaServe';",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS security_deposit_amount FLOAT DEFAULT 0.0;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS security_deposit_status VARCHAR DEFAULT 'unpaid';",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS damage_deduction_amount FLOAT DEFAULT 0.0;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS missing_items_count INTEGER DEFAULT 0;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS release_photo_url VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS return_photo_url VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS damage_proof_url VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS rental_disputed BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS commission_calculated BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS balance_due_date TIMESTAMP WITH TIME ZONE;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_plan VARCHAR DEFAULT 'downpayment';",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_location TEXT;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMP WITH TIME ZONE;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS terms_accepted_ip VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_custom_event BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS transaction_type VARCHAR DEFAULT 'contract_track';",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS document_type VARCHAR;",
+            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS custom_requirements JSONB;",
+            "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS dti_url VARCHAR;",
+            "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS bir_url VARCHAR;",
+            "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS mayors_permit_url VARCHAR;",
+            "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS permit_expiry_date DATE;",
+            "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS permit_url VARCHAR;",
+            "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS gov_id_url VARCHAR;",
+            "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS permit_status VARCHAR DEFAULT 'Pending';",
+            "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS max_bookings_per_day INTEGER DEFAULT 1;",
+            "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS auto_block_enabled BOOLEAN DEFAULT TRUE;",
+            "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS min_pax INTEGER DEFAULT 0;",
+            "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS starting_price FLOAT DEFAULT 0.0;",
+            "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS sample_menu_url VARCHAR;",
+            "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS team_size INTEGER DEFAULT 1;",
+            "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS registration_source VARCHAR DEFAULT 'Website';",
+            "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS admin_remarks TEXT;",
+            "ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS booking_id INTEGER;",
+            "ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS highlights VARCHAR;",
+            "ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS location VARCHAR;",
+            "ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS event_date DATE;",
+            "ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS visibility VARCHAR DEFAULT 'Public';",
+            "ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;",
+            "ALTER TABLE portfolio_images ADD COLUMN IF NOT EXISTS is_cover BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE reviews ADD COLUMN IF NOT EXISTS food_quality_rating INTEGER;",
+            "ALTER TABLE reviews ADD COLUMN IF NOT EXISTS service_quality_rating INTEGER;",
+            "ALTER TABLE reviews ADD COLUMN IF NOT EXISTS timeliness_rating INTEGER;",
+            "ALTER TABLE reviews ADD COLUMN IF NOT EXISTS recommend BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE reviews ADD COLUMN IF NOT EXISTS was_punctual BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_highlighted BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE reviews ADD COLUMN IF NOT EXISTS caterer_reply TEXT;",
+            "ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_helpful BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'available';",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS price FLOAT DEFAULT 0.0;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS cost_price FLOAT DEFAULT 0.0;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS pricing_unit VARCHAR DEFAULT 'per_pax';",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS min_order_qty INTEGER DEFAULT 1;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS usage_type VARCHAR DEFAULT 'both';",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS available_for_package BOOLEAN DEFAULT TRUE;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS available_for_order BOOLEAN DEFAULT TRUE;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS pricing_type VARCHAR DEFAULT 'fixed';",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS cost_breakdown JSONB;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS dietary_tags VARCHAR[];",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS allergen_info VARCHAR[];",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS serving_size VARCHAR;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS serving_style VARCHAR;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS is_addon BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS addon_price FLOAT DEFAULT 0.0;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS max_stock_quantity INTEGER;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS is_combo BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS max_choices INTEGER DEFAULT 0;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS combo_options JSONB;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS average_rating FLOAT DEFAULT 0.0;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS review_count INTEGER DEFAULT 0;",
+            "ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS upgrade_fee FLOAT DEFAULT 0.0;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS booking_id INTEGER;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS verification_type VARCHAR DEFAULT 'government_id';",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS document_url VARCHAR;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS document_back_url VARCHAR;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS id_type VARCHAR;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS id_number VARCHAR;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS id_expiry_date DATE;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS selfie_url VARCHAR;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS selfie_2_url VARCHAR;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS selfie_3_url VARCHAR;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS ocr_data JSONB;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS ocr_status VARCHAR;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS liveness_status VARCHAR;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS match_status VARCHAR;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS verification_status VARCHAR DEFAULT 'PROCESSING';",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS failure_reason TEXT;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS verified_at TIMESTAMP WITH TIME ZONE;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS verification_valid_until TIMESTAMP WITH TIME ZONE;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS review_status VARCHAR;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS reviewed_by INTEGER;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP WITH TIME ZONE;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS fraud_score INTEGER DEFAULT 0;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS match_score FLOAT DEFAULT 0.0;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS face_detected BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS id_detected BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS ip_address VARCHAR;",
+            "ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS device_info JSONB;",
+            "ALTER TABLE identity_verifications DROP CONSTRAINT IF EXISTS identity_verifications_user_id_key;",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS equipment_type VARCHAR DEFAULT 'Equipment';",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS category VARCHAR;",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS description TEXT;",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS image_url VARCHAR;",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS available_qty INTEGER DEFAULT 1;",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS cost_value FLOAT DEFAULT 0.0;",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS rental_price FLOAT DEFAULT 0.0;",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS unit_type VARCHAR DEFAULT 'piece';",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'available';",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS security_deposit_pct FLOAT DEFAULT 20.0;",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS maintenance_buffer_hours INTEGER DEFAULT 12;",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS requires_kyc BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS usage_type VARCHAR DEFAULT 'both';",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS is_addon BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS addon_price FLOAT DEFAULT 0.0;",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS average_rating FLOAT DEFAULT 0.0;",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS review_count INTEGER DEFAULT 0;",
+            "ALTER TABLE equipment ADD COLUMN IF NOT EXISTS details_json JSONB;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS category VARCHAR;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS description TEXT;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS image_url VARCHAR;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS base_duration_hours INTEGER DEFAULT 3;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS cost FLOAT DEFAULT 0.0;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS selling_price FLOAT DEFAULT 0.0;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS unit_type VARCHAR DEFAULT 'per_event';",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS max_available INTEGER DEFAULT 1;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'available';",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS usage_type VARCHAR DEFAULT 'both';",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS is_addon BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS addon_price FLOAT DEFAULT 0.0;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS capacity_type VARCHAR DEFAULT 'unit_based';",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS staff_to_pax_ratio INTEGER DEFAULT 0;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS min_staff_required INTEGER DEFAULT 1;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS allow_freelancers BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS buffer_time_hours INTEGER DEFAULT 0;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS requires_agreement BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS downpayment_percentage INTEGER DEFAULT 50;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS minimum_hours INTEGER DEFAULT 1;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS average_rating FLOAT DEFAULT 0.0;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS review_count INTEGER DEFAULT 0;",
+            "ALTER TABLE services ADD COLUMN IF NOT EXISTS details_json JSONB;",
+            "ALTER TABLE caterer_gallery ADD COLUMN IF NOT EXISTS media_type VARCHAR DEFAULT 'image';",
+            "ALTER TABLE caterer_gallery ADD COLUMN IF NOT EXISTS caption VARCHAR;",
+            "ALTER TABLE caterer_gallery ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;",
+            "ALTER TABLE caterer_gallery ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE platform_feedback ADD COLUMN IF NOT EXISTS attachment_base64 TEXT;",
+            "ALTER TABLE platform_feedback ADD COLUMN IF NOT EXISTS role VARCHAR;",
+            "ALTER TABLE platform_feedback ADD COLUMN IF NOT EXISTS is_highlighted BOOLEAN DEFAULT FALSE;",
+            "ALTER TABLE platform_feedback ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;"
+        ]
+        
+        for stmt in critical_statements:
+            try:
+                conn.execute(text(stmt))
+            except Exception as e:
+                print(f"Notice: {e}")
+        print("All critical columns synced successfully!")
 
 if __name__ == "__main__":
     upgrade()

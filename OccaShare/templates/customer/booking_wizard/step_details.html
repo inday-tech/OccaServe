@@ -50,7 +50,6 @@
 
 <form action="/bookings/step/details" method="POST" id="detailsForm" novalidate>
     <input type="hidden" name="caterer_id" value="{{ caterer.id }}">
-    <input type="hidden" name="package_id" value="{{ package.id if package else '' }}">
     <input type="hidden" name="booking_id" value="{{ booking.id if booking else '' }}">
     <input type="hidden" name="total_price" id="total_price_input" value="{{ booking.total_amount if booking else 0 }}">
     <input type="hidden" name="reservation_fee" id="reservation_fee_input" value="{{ booking.reservation_fee if booking else 0 }}">
@@ -64,6 +63,41 @@
                     <h3 class="form-section-title">Basic Event Info</h3>
                 </div>
 
+                <!-- Package Selection Row -->
+                {% if caterer_packages and caterer_packages|length > 1 %}
+                <div class="form-group">
+                    <label class="form-label">
+                        <span>Selected Package</span>
+                        <small style="color: #64748b; font-weight: normal;">Switch package to update event type &amp; inclusions</small>
+                    </label>
+                    <select name="package_id" id="package_id_select" class="filter-select-pro form-input" onchange="switchPackage(this.value)" required>
+                        {% for pkg in caterer_packages %}
+                        <option value="{{ pkg.id }}" {% if package and package.id == pkg.id %}selected{% endif %}>
+                            {{ pkg.name }} — ₱{{ "{:,.2f}".format(pkg.price_per_head or pkg.price or 0) }}{% if pkg.pricing_mode == 'per_pax' or pkg.price_unit == 'per_guest' %}/pax{% else %} total{% endif %} ({{ pkg.service_type or 'General' }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% elif package %}
+                <div class="form-group">
+                    <label class="form-label">Selected Package</label>
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong id="single_package_name" style="color: #0f172a; font-size: 0.95rem;">{{ package.name }}</strong>
+                            <span id="single_package_price" style="display: block; font-size: 0.78rem; color: #64748b; margin-top: 2px;">
+                                ₱{{ "{:,.2f}".format(package.price_per_head or package.price or 0) }}{% if package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest' %}/pax{% else %} total{% endif %}
+                            </span>
+                        </div>
+                        <span style="font-size: 0.72rem; font-weight: 700; color: #047857; background: #d1fae5; padding: 3px 9px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px;">
+                            <i class="fas fa-check-circle"></i> Selected
+                        </span>
+                    </div>
+                    <input type="hidden" name="package_id" id="package_id_hidden" value="{{ package.id }}">
+                </div>
+                {% else %}
+                <input type="hidden" name="package_id" id="package_id_hidden" value="">
+                {% endif %}
+
                 <div class="form-group">
                     <label class="form-label">Event Name</label>
                     <input type="text" name="event_name" id="event_name" class="form-input"
@@ -72,39 +106,32 @@
                 </div>
 
                 <div class="grid-2-col">
+                    <!-- Event Type: Locked to selected package -->
                     <div class="form-group">
-                        <label class="form-label">Event Type</label>
-                        <select name="event_type" id="event_type_select" class="filter-select-pro form-input" required>
-                            <option value="" disabled selected hidden>-- Select Type --</option>
-                            <option value="Wedding" {% if booking and booking.event_type=='Wedding' %}selected{% endif %}>Wedding</option>
-                            <option value="Birthday" {% if booking and booking.event_type=='Birthday' %}selected{% endif %}>Birthday</option>
-                            <option value="Corporate Event" {% if booking and booking.event_type=='Corporate Event' %}selected{% endif %}>Corporate Event</option>
-                            <option value="Debut / Milestone" {% if booking and booking.event_type=='Debut / Milestone' %}selected{% endif %}>Debut / Milestone</option>
-                            <option value="Baptism / Family Event" {% if booking and booking.event_type=='Baptism / Family Event' %}selected{% endif %}>Baptism / Family Event</option>
-                            <option value="Private Party" {% if booking and booking.event_type=='Private Party' %}selected{% endif %}>Private Party</option>
-                            <option value="Other" {% if booking and (booking.event_type not in ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family Event','Private Party','Fiesta / Large Event','Holiday Celebration']) and booking.event_type %}selected{% endif %}>Other (specify below)</option>
-                        </select>
-                        <span class="field-error" id="err-type">Please select the type of event you are celebrating.</span>
+                        <label class="form-label">
+                            <span>Event Type</span>
+                            <small style="color: #64748b; font-weight: normal;">(From Package)</small>
+                        </label>
+                        <div class="form-input" id="event_type_display_box" style="background: #f8fafc; border: 1px solid #e2e8f0; color: #0f172a; font-weight: 700; display: flex; align-items: center; justify-content: space-between; padding: 0.65rem 0.9rem; border-radius: 8px;">
+                            <span id="event_type_display_text" style="display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-calendar-check" style="color: var(--wiz-primary, #FF7B54);"></i>
+                                <span id="event_type_text_val">{{ package.service_type if package and package.service_type else (booking.event_type if booking else 'General Catering') }}</span>
+                            </span>
+                            <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; background: #e2e8f0; padding: 2px 8px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-lock" style="font-size: 0.65rem;"></i> Locked
+                            </span>
+                        </div>
+                        <input type="hidden" name="event_type" id="event_type_hidden" value="{{ package.service_type if package and package.service_type else (booking.event_type if booking else 'General Catering') }}">
+                        <span class="field-error" id="err-type">Please select a valid package.</span>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Guest Count <small>(max {{ package.max_guests if package and package.max_guests else 1000 }} pax)</small></label>
+                        <label class="form-label">Guest Count <small id="guest_range_label">(min <span id="min_guests_span">{{ package.min_guests or caterer.min_pax or 50 }}</span>, max <span id="max_guests_span">{{ package.max_guests or 1000 }}</span> pax)</small></label>
                         <input type="text" inputmode="numeric" id="guest_count_display" class="form-input"
-                            value="{{ '{:,}'.format(booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50)) }}" oninput="formatGuestCount(this); updateCalculator()"
-                            required>
+                            value="{{ '{:,}'.format(booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50)) }}" oninput="formatGuestCount(this); updateCalculator()">
                         <input type="hidden" name="guest_count" id="guest_count"
                             value="{{ booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50) }}">
                         <span class="field-error" id="err-guests">Please enter at least {{ caterer.min_pax or package.min_guests or 1 }} guests for this package.</span>
-                    </div>
-                </div>
-
-                <div id="other-event-wrap" class="{% if booking and (booking.event_type not in ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family Event','Private Party','Fiesta / Large Event','Holiday Celebration']) and booking.event_type %}visible{% endif %}">
-                    <div class="form-group">
-                        <label class="form-label">Specify Event Type</label>
-                        <input type="text" name="other_event_type" id="other_event_type" class="form-input"
-                            value="{{ booking.event_type if booking and (booking.event_type not in ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family Event','Private Party','Fiesta / Large Event','Holiday Celebration']) else '' }}"
-                            placeholder="e.g., Family Reunion, Anniversary Party" maxlength="80">
-                        <span class="field-error" id="err-other-type">Please describe your event type so we can prepare accordingly.</span>
                     </div>
                 </div>
                 
@@ -115,7 +142,7 @@
 
                 <div class="grid-2-col">
                     <div class="form-group">
-                        <label class="form-label">Event Date</label>
+                        <label class="form-label" for="event_date">Event Date</label>
                         <input type="date" name="event_date" id="event_date" class="form-input"
                             value="{{ booking.event_date.isoformat() if booking and booking.event_date else '' }}"
                             required onchange="checkAvailability()">
@@ -123,170 +150,110 @@
                         <span class="field-error" id="err-date">Please select an event date at least {{ caterer.booking_lead_time or 3 }} days from today.</span>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Start Time</label>
-                        <input type="text" name="event_time" id="event_time" class="form-input" data-initial="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}" required>
+                        <label class="form-label" for="event_time">Start Time</label>
+                        <div id="custom-time-select" style="position: relative; width: 100%;">
+                            <div id="time-trigger-btn" class="form-input" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                                <span id="time-trigger-text" style="color: {% if booking and booking.event_time %}#0f172a{% else %}#94a3b8{% endif %}; font-weight: 500;">
+                                    {% if booking and booking.event_time %}{{ booking.event_time.strftime('%I:%M %p') }}{% else %}-- Select Time --{% endif %}
+                                </span>
+                                <i id="time-trigger-icon" class="fas fa-chevron-down" style="color: #94a3b8; font-size: 0.8rem; pointer-events: none;"></i>
+                            </div>
+                            <div id="time-dropdown-menu" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; width: 100%; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05); padding: 0.75rem; max-height: 220px; overflow-y: auto; z-index: 100;">
+                                <div id="time-chips-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" name="event_time" id="event_time" value="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}" data-initial="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}">
                         <span class="field-error" id="err-time">Please choose an event start time between 8:00 AM and 8:00 PM.</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Package Inclusions & Services -->
-            {% set package_inventory = package.menu_items|selectattr("category", "in", ["Rentals", "Services"])|list %}
-            {% if package and (package.inclusions or package_inventory|length > 0) %}
-            <div class="c-card-premium">
-                <div class="section-header-wrap">
-                    <div class="section-icon-wrap"><i class="fas fa-concierge-bell"></i></div>
-                    <h3 class="form-section-title">Standard Service Inclusions</h3>
+            <!-- Included in This Package -->
+            <div class="c-card-premium" id="package-inclusions-card" style="margin-bottom: 1.5rem; {% if not package or (not grouped_inclusions.food and not grouped_inclusions.services and not grouped_inclusions.equipment) %}display: none;{% endif %}">
+                <div class="section-header-wrap" style="margin-bottom: 0.25rem;">
+                    <div class="section-icon-wrap" style="background: rgba(255, 123, 84, 0.12); color: var(--wiz-primary, #FF7B54);"><i class="fas fa-boxes-packing"></i></div>
+                    <h3 class="form-section-title" style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">Included in This Package</h3>
                 </div>
-                <p class="form-subtitle">Premium services included in your package fee</p>
+                <p class="form-subtitle" style="font-size: 0.82rem; color: #64748b; margin-bottom: 1.25rem;">Food, services, and equipment included with your selected package</p>
                 
-                <div class="inclusions-grid-pro">
-                    {% if package.inclusions is iterable and package.inclusions is not string %}
-                        {% for inc in package.inclusions %}
-                        <div class="inclusion-pill">
-                            <span style="color: var(--wiz-primary); font-weight: 700;">•</span>
-                            <span>{{ inc }}</span>
-                        </div>
-                        {% endfor %}
-                    {% elif package.inclusions is string and package.inclusions %}
-                        <div class="inclusion-pill">
-                            <span style="color: var(--wiz-primary); font-weight: 700;">•</span>
-                            <span>{{ package.inclusions }}</span>
-                        </div>
-                    {% endif %}
+                <div id="package-inclusions-content" style="display: flex; flex-direction: column; gap: 1.25rem;">
                     
-                    {% for item in package_inventory %}
-                        <div class="inclusion-pill">
-                            <span style="color: var(--wiz-primary); font-weight: 700;">•</span>
-                            <span>{{ item.name }}</span>
+                    <!-- 1. FOOD & BEVERAGES -->
+                    <div id="inclusions-food-block" class="inclusion-category-block" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02); {% if not grouped_inclusions.food or grouped_inclusions.food|length == 0 %}display: none;{% endif %}">
+                        <div style="display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem; margin-bottom: 0.75rem;">
+                            <span style="font-size: 1.1rem; line-height: 1;">🍽️</span>
+                            <span style="font-size: 0.92rem; font-weight: 800; color: #0f172a; letter-spacing: -0.01em;">Food &amp; Beverages</span>
+                            <span id="inclusions-food-count" style="font-size: 0.72rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 20px; margin-left: auto;">{{ grouped_inclusions.food|length }} items</span>
                         </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Menu Personalization -->
-            <div class="c-card-premium">
-                <div class="section-header-wrap">
-                    <div class="section-icon-wrap"><i class="fas fa-utensils"></i></div>
-                    <h3 class="form-section-title">Course Selection & Personalization</h3>
-                </div>
-                <p class="form-subtitle">Customize your included dishes or add premium extras</p>
-
-                <div class="menu-sections-pro">
-                    <!-- Included Items (Swappable vs Selectable) -->
-                    {% set food_items = package.menu_items|rejectattr("category", "in", ["Rentals", "Services"])|list %}
-                    {% if package.selection_rules and package.selection_rules.keys()|length > 0 %}
-                        {% set grouped_items = food_items|groupby('category') %}
-                        {% for cat in grouped_items %}
-                            {% set rule_limit = package.selection_rules.get(cat.grouper, 0) %}
-                            {% if rule_limit > 0 %}
-                            <div class="menu-sub-section" style="margin-bottom: 1.5rem;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                                    <label class="form-label" style="margin: 0;">{{ cat.grouper }}</label>
-                                    <span class="selection-counter" id="counter-{{ cat.grouper|replace(' ', '') }}" style="font-size: 0.72rem; font-weight: 600; color: #0f766e; background: #ccfbf1; padding: 2px 8px; border-radius: 99px;">0 / {{ rule_limit }} Selected</span>
+                        <div id="inclusions-food-grid" class="inclusions-category-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.5rem 1.25rem;">
+                            {% for item in grouped_inclusions.food %}
+                            <div class="inclusion-line-item" style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.875rem; line-height: 1.45;">
+                                <span style="color: var(--wiz-primary, #FF7B54); font-weight: 900; font-size: 1rem; line-height: 1.2;">•</span>
+                                <div style="flex: 1; min-width: 0; word-break: break-word;">
+                                    <strong style="color: #1e293b; font-weight: 700;">{{ item.name }}</strong>
+                                    {% if item.quantity %}
+                                    <span style="color: #64748b; font-weight: 500;"> — {{ item.quantity }}</span>
+                                    {% endif %}
+                                    {% if item.description %}
+                                    <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 1px;">{{ item.description }}</div>
+                                    {% endif %}
                                 </div>
-                                <div class="menu-item-cards selection-group" data-limit="{{ rule_limit }}" data-category="{{ cat.grouper|replace(' ', '') }}">
-                                    {% for item in cat.list %}
-                                    <div class="menu-item-card selectable" onclick="window.toggleCardSelection(this)">
-                                        <input type="checkbox" name="selected_items" value="{{ item.id }}" style="display: none;" data-upgrade-fee="{{ item.upgrade_fee or 0 }}">
-                                        <div class="indicator-circle"></div>
-                                        <div class="mic-info">
-                                            <span class="mic-name">{{ item.name }}</span>
-                                            <span class="mic-cat">{{ item.description|truncate(40) if item.description else 'Included' }}</span>
-                                            {% if item.upgrade_fee and item.upgrade_fee > 0 %}
-                                            <span style="font-size: 0.65rem; color: #4338ca; background: #eef2ff; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-top: 4px; display: inline-block; width: fit-content;">+₱{{ "{:,.0f}".format(item.upgrade_fee) }}/pax</span>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            {% endif %}
-                        {% endfor %}
-                    {% else %}
-                        <div class="menu-sub-section">
-                            <label class="form-label">Included in Package</label>
-                            <div class="menu-item-cards">
-                                {% for item in food_items %}
-                                <div class="menu-item-card included" id="slot-{{ loop.index }}">
-                                    <input type="hidden" name="selected_items" value="{{ item.id }}" class="slot-input" data-upgrade-fee="{{ item.upgrade_fee or 0 }}">
-                                    <div class="mic-info">
-                                        <span class="mic-name" id="name-{{ loop.index }}">{{ item.name }}</span>
-                                        <span class="mic-cat" id="cat-{{ loop.index }}">{{ item.category }}</span>
-                                        {% if item.upgrade_fee and item.upgrade_fee > 0 %}
-                                        <span class="upgrade-badge" style="font-size: 0.65rem; color: #4338ca; background: #eef2ff; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-top: 4px; display: inline-block; width: fit-content;">+₱{{ "{:,.0f}".format(item.upgrade_fee) }}/pax</span>
-                                        {% endif %}
-                                    </div>
-                                    <div class="mic-actions">
-                                        <span class="mic-status" style="font-weight: 500;">Included</span>
-                                        <button type="button" class="btn-swap-pro" 
-                                            onclick="openSwapModal('{{ item.category }}', '{{ loop.index }}')">
-                                            Swap
-                                        </button>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    {% endif %}
-
-                    <!-- Add-ons Section -->
-                    {% if addon_items or addon_equipment or addon_services %}
-                    <div class="menu-sub-section" style="margin-top: 2rem;">
-                        <label class="form-label">Optional Add-ons</label>
-                        <div class="menu-item-cards">
-                            {% for item in addon_items %}
-                            <div class="menu-item-card addon {% if item.id in selected_addon_ids %}selected{% endif %}" onclick="window.toggleCardSelection(this)">
-                                <input type="checkbox" name="selected_addons" value="{{ item.id }}" 
-                                    {% if item.id in selected_addon_ids %}checked{% endif %} 
-                                    data-price="{{ item.addon_price or 0 }}"
-                                    style="display: none;">
-                                <div class="indicator-circle"></div>
-                                <div class="mic-info">
-                                    <span class="mic-name">{{ item.name }}</span>
-                                    <span class="mic-cat">{{ item.category }}</span>
-                                </div>
-                                <span class="mic-price">+₱{{ "{:,.2f}".format(item.addon_price or 0) }}</span>
-                            </div>
-                            {% endfor %}
-                            
-                            {% for item in addon_equipment %}
-                            <div class="menu-item-card addon {% if item.id in selected_addon_equipment_ids %}selected{% endif %}" onclick="window.toggleCardSelection(this)">
-                                <input type="checkbox" name="selected_equipment_addons" value="{{ item.id }}" 
-                                    {% if item.id in selected_addon_equipment_ids %}checked{% endif %} 
-                                    data-price="{{ item.addon_price or 0 }}"
-                                    style="display: none;">
-                                <div class="indicator-circle"></div>
-                                <div class="mic-info">
-                                    <span class="mic-name">{{ item.name }}</span>
-                                    <span class="mic-cat">{{ item.category or 'Equipment' }}</span>
-                                </div>
-                                <span class="mic-price">+₱{{ "{:,.2f}".format(item.addon_price or 0) }}</span>
-                            </div>
-                            {% endfor %}
-
-                            {% for item in addon_services %}
-                            <div class="menu-item-card addon {% if item.id in selected_addon_service_ids %}selected{% endif %}" onclick="window.toggleCardSelection(this)">
-                                <input type="checkbox" name="selected_service_addons" value="{{ item.id }}" 
-                                    {% if item.id in selected_addon_service_ids %}checked{% endif %} 
-                                    data-price="{{ item.addon_price or 0 }}"
-                                    data-capacity-type="{{ getattr(item, 'capacity_type', 'unit_based') }}"
-                                    data-staff-ratio="{{ getattr(item, 'staff_to_pax_ratio', 0) }}"
-                                    data-min-staff="{{ getattr(item, 'min_staff_required', 1) }}"
-                                    style="display: none;">
-                                <div class="indicator-circle"></div>
-                                <div class="mic-info">
-                                    <span class="mic-name">{{ item.name }}</span>
-                                    <span class="mic-cat">{{ item.category or 'Service' }}</span>
-                                    <span class="staff-req-label" style="font-size: 0.7rem; color: var(--wiz-primary); display: none;">Requires: <span class="qty-val">1</span> staff</span>
-                                </div>
-                                <span class="mic-price" data-base-price="{{ item.addon_price or 0 }}">+₱{{ "{:,.2f}".format(item.addon_price or 0) }}</span>
                             </div>
                             {% endfor %}
                         </div>
                     </div>
-                    {% endif %}
+
+                    <!-- 2. SERVICES -->
+                    <div id="inclusions-services-block" class="inclusion-category-block" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02); {% if not grouped_inclusions.services or grouped_inclusions.services|length == 0 %}display: none;{% endif %}">
+                        <div style="display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem; margin-bottom: 0.75rem;">
+                            <span style="font-size: 1.1rem; line-height: 1;">🛎️</span>
+                            <span style="font-size: 0.92rem; font-weight: 800; color: #0f172a; letter-spacing: -0.01em;">Services</span>
+                            <span id="inclusions-services-count" style="font-size: 0.72rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 20px; margin-left: auto;">{{ grouped_inclusions.services|length }} items</span>
+                        </div>
+                        <div id="inclusions-services-grid" class="inclusions-category-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.5rem 1.25rem;">
+                            {% for item in grouped_inclusions.services %}
+                            <div class="inclusion-line-item" style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.875rem; line-height: 1.45;">
+                                <span style="color: var(--wiz-primary, #FF7B54); font-weight: 900; font-size: 1rem; line-height: 1.2;">•</span>
+                                <div style="flex: 1; min-width: 0; word-break: break-word;">
+                                    <strong style="color: #1e293b; font-weight: 700;">{{ item.name }}</strong>
+                                    {% if item.quantity %}
+                                    <span style="color: #64748b; font-weight: 500;"> — {{ item.quantity }}</span>
+                                    {% endif %}
+                                    {% if item.description %}
+                                    <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 1px;">{{ item.description }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- 3. EQUIPMENT -->
+                    <div id="inclusions-equipment-block" class="inclusion-category-block" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02); {% if not grouped_inclusions.equipment or grouped_inclusions.equipment|length == 0 %}display: none;{% endif %}">
+                        <div style="display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem; margin-bottom: 0.75rem;">
+                            <span style="font-size: 1.1rem; line-height: 1;">🪑</span>
+                            <span style="font-size: 0.92rem; font-weight: 800; color: #0f172a; letter-spacing: -0.01em;">Equipment</span>
+                            <span id="inclusions-equipment-count" style="font-size: 0.72rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 20px; margin-left: auto;">{{ grouped_inclusions.equipment|length }} items</span>
+                        </div>
+                        <div id="inclusions-equipment-grid" class="inclusions-category-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.5rem 1.25rem;">
+                            {% for item in grouped_inclusions.equipment %}
+                            <div class="inclusion-line-item" style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.875rem; line-height: 1.45;">
+                                <span style="color: var(--wiz-primary, #FF7B54); font-weight: 900; font-size: 1rem; line-height: 1.2;">•</span>
+                                <div style="flex: 1; min-width: 0; word-break: break-word;">
+                                    <strong style="color: #1e293b; font-weight: 700;">{{ item.name }}</strong>
+                                    {% if item.quantity %}
+                                    <span style="color: #64748b; font-weight: 500;"> — {{ item.quantity }}</span>
+                                    {% endif %}
+                                    {% if item.description %}
+                                    <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 1px;">{{ item.description }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -300,7 +267,7 @@
                 <div class="grid-2-col">
                     <div class="form-group">
                         <label class="form-label">Province</label>
-                        <select name="province" id="province_select" class="filter-select-pro form-input" required>
+                        <select name="province" id="province_select" class="filter-select-pro form-input">
                             <option value="" disabled selected hidden>-- Select Province --</option>
                             <option value="Laguna">Laguna</option>
                         </select>
@@ -308,7 +275,7 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">City / Municipality</label>
-                        <select name="city" id="city_select" class="filter-select-pro" required>
+                        <select name="city" id="city_select" class="filter-select-pro">
                             <option value="" disabled selected hidden>-- Select City --</option>
                         </select>
                         <span class="field-error" id="err-city">Please select the city or municipality of your event venue.</span>
@@ -317,7 +284,7 @@
 
                 <div class="form-group">
                     <label class="form-label">Barangay</label>
-                    <select name="barangay" id="barangay_select" class="filter-select-pro" required>
+                    <select name="barangay" id="barangay_select" class="filter-select-pro">
                         <option value="" disabled selected hidden>-- Select Barangay --</option>
                     </select>
                     <span class="field-error" id="err-barangay">Please select the barangay of your event venue.</span>
@@ -339,7 +306,7 @@
 
                 <div class="calc-row">
                     <span class="calc-label">Package Price</span>
-                    <span class="calc-val">₱{{ "{:,.2f}".format(package.price_per_head if package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest' else package.price or 0) }}{% if package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest' %}/pax{% else %} total{% endif %}</span>
+                    <span class="calc-val" id="calc-pkg-price-label">₱{{ "{:,.2f}".format(package.price_per_head if package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest' else package.price or 0) }}{% if package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest' %}/pax{% else %} total{% endif %}</span>
                 </div>
                 <div class="calc-row">
                     <span class="calc-label">Estimated Guests</span>
@@ -379,7 +346,7 @@
             <i class="fas fa-arrow-left"></i> Cancel Booking
         </a>
         {% endif %}
-        <button type="submit" id="submitBtn" class="btn-wizard-next no-submit">
+        <button type="submit" id="submitBtn" class="btn-wizard-next">
             Next Step: Identity <i class="fas fa-arrow-right"></i>
         </button>
     </div>
@@ -471,6 +438,9 @@
 
 {% block step_js %}
 <script>
+    window.packagesMap = {{ (packages_map or {}) | tojson | safe }};
+    window.currentPackageId = "{{ package.id if package else '' }}";
+    
     {% if package %}
     window.pricingMode = "{{ package.pricing_mode or ('per_pax' if package.price_unit == 'per_guest' else 'fixed') }}";
     window.pricePerHead = parseFloat("{{ package.price_per_head or package.price or 0 }}") || 0;

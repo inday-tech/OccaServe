@@ -40,15 +40,21 @@ async def check_phone(phone: str, db: Session = Depends(database.get_db)):
 @router.get("/check-business-name")
 async def check_business_name(name: str, db: Session = Depends(database.get_db)):
     """Check if business name is already taken (case-insensitively)."""
-    stripped_name = name.strip()
-    existing = db.query(models.CatererProfile).filter(
-        func.lower(models.CatererProfile.business_name) == func.lower(stripped_name)
-    ).first()
-    if existing:
-        owner = db.query(models.User).filter(models.User.id == existing.user_id).first()
-        if owner and owner.is_email_verified:
-            return {"available": False, "message": "This business name is already registered."}
-    return {"available": True}
+    try:
+        stripped_name = (name or "").strip()
+        if not stripped_name:
+            return {"available": True}
+        existing = db.query(models.CatererProfile).filter(
+            func.lower(models.CatererProfile.business_name) == func.lower(stripped_name)
+        ).first()
+        if existing:
+            owner = db.query(models.User).filter(models.User.id == existing.user_id).first()
+            if owner and owner.is_email_verified:
+                return {"available": False, "message": "This business name is already registered."}
+        return {"available": True}
+    except Exception as e:
+        print(f"[AUTH ERROR] Error checking business name '{name}': {e}")
+        return {"available": True}
 
 @router.post("/scan-document")
 async def scan_document(
@@ -591,27 +597,33 @@ async def register(
         db.flush()
         
         if role == "caterer":
-            from ..services.realtime import manager
-            import asyncio
-            admins = db.query(models.User).filter(models.User.role == "admin").all()
-            for admin in admins:
-                new_notif = models.Notification(
-                    user_id=admin.id,
-                    title="New Caterer Application",
-                    message=f"{business_name} has registered as a new caterer partner.",
-                    link="/admin/kyc",
-                    type="info"
-                )
-                db.add(new_notif)
-            db.flush()
-            
-            for admin in admins:
-                count = db.query(models.Notification).filter(models.Notification.user_id == admin.id, models.Notification.is_read == False).count()
-                asyncio.create_task(manager.broadcast_to_user(admin.id, {
-                    "type": "new_notification",
-                    "message": f"New Caterer Application: {business_name}",
-                    "count": count
-                }))
+            try:
+                from ..services.realtime import manager
+                import asyncio
+                admins = db.query(models.User).filter(models.User.role == "admin").all()
+                for admin in admins:
+                    new_notif = models.Notification(
+                        user_id=admin.id,
+                        title="New Caterer Application",
+                        message=f"{business_name} has registered as a new caterer partner.",
+                        link="/admin/kyc",
+                        type="info"
+                    )
+                    db.add(new_notif)
+                db.flush()
+                
+                for admin in admins:
+                    count = db.query(models.Notification).filter(models.Notification.user_id == admin.id, models.Notification.is_read == False).count()
+                    try:
+                        asyncio.create_task(manager.broadcast_to_user(admin.id, {
+                            "type": "new_notification",
+                            "message": f"New Caterer Application: {business_name}",
+                            "count": count
+                        }))
+                    except Exception:
+                        pass
+            except Exception as notif_err:
+                print(f"[AUTH WARNING] Failed to broadcast admin notifications: {notif_err}")
     
     # Only send verification email if it's a new email/password user
 

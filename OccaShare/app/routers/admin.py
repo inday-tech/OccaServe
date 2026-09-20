@@ -2080,6 +2080,7 @@ async def review_verification(
                 db.commit()
                 db.refresh(permit_verification)
             except Exception as e:
+                db.rollback()
                 print(f"[KYC PERMIT OCR RECOVERY ERROR] {e}")
 
     # Explicit Document URLs

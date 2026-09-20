@@ -70,7 +70,122 @@ document.addEventListener('DOMContentLoaded', function () {
         input.value = num.toLocaleString();
     };
 
-    // --- 2. Update Calculator ---
+    // --- 2. Dynamic Package Switching & Inclusions Rendering ---
+    window.switchPackage = function (packageId) {
+        if (!window.packagesMap || !window.packagesMap[packageId]) return;
+        const pkg = window.packagesMap[packageId];
+        window.currentPackageId = packageId;
+
+        // 1. Update package_id form control & event_type
+        const pkgSelect = document.getElementById('package_id_select');
+        if (pkgSelect) pkgSelect.value = pkg.id;
+
+        const pkgHidden = document.getElementById('package_id_hidden');
+        if (pkgHidden) pkgHidden.value = pkg.id;
+
+        const eventTypeHidden = document.getElementById('event_type_hidden');
+        if (eventTypeHidden) eventTypeHidden.value = pkg.event_type || 'General Catering';
+
+        const eventTypeTextVal = document.getElementById('event_type_text_val');
+        if (eventTypeTextVal) eventTypeTextVal.innerText = pkg.event_type || 'General Catering';
+
+        // 2. Update pricing & capacity state
+        window.pricingMode = pkg.pricing_mode || 'per_pax';
+        window.pricePerHead = Number(pkg.price_per_head || 0);
+        window.basePrice = Number(pkg.price || 0);
+        window.additionalGuestPrice = Number(pkg.additional_guest_price || 0);
+        window.minGuests = Number(pkg.min_guests || 1);
+        window.maxGuests = Number(pkg.max_guests || 1000);
+
+        // 3. Update guest count labels & bounds
+        const minSpan = document.getElementById('min_guests_span');
+        if (minSpan) minSpan.innerText = window.minGuests;
+        const maxSpan = document.getElementById('max_guests_span');
+        if (maxSpan) maxSpan.innerText = window.maxGuests || '1,000';
+        const errGuests = document.getElementById('err-guests');
+        if (errGuests) errGuests.innerText = `Please enter at least ${window.minGuests} guests for this package.`;
+
+        // 4. Update sidebar price row
+        const calcPkgPriceLabel = document.getElementById('calc-pkg-price-label');
+        if (calcPkgPriceLabel) {
+            if (window.pricingMode === 'per_pax' || pkg.price_unit === 'per_guest') {
+                calcPkgPriceLabel.innerText = `₱${window.pricePerHead.toLocaleString(undefined, { minimumFractionDigits: 2 })}/pax`;
+            } else {
+                calcPkgPriceLabel.innerText = `₱${window.basePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })} total`;
+            }
+        }
+
+        // 5. Update Inclusions Section
+        window.renderInclusions(pkg.grouped_inclusions || { food: [], services: [], equipment: [] });
+
+        // 6. Recalculate Total
+        window.updateCalculator();
+    };
+
+    window.renderInclusions = function (inclusions) {
+        const card = document.getElementById('package-inclusions-card');
+        const foodBlock = document.getElementById('inclusions-food-block');
+        const foodGrid = document.getElementById('inclusions-food-grid');
+        const foodCount = document.getElementById('inclusions-food-count');
+
+        const servBlock = document.getElementById('inclusions-services-block');
+        const servGrid = document.getElementById('inclusions-services-grid');
+        const servCount = document.getElementById('inclusions-services-count');
+
+        const equipBlock = document.getElementById('inclusions-equipment-block');
+        const equipGrid = document.getElementById('inclusions-equipment-grid');
+        const equipCount = document.getElementById('inclusions-equipment-count');
+
+        const escapeHtml = (str) => {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        };
+
+        const renderGroup = (items, block, grid, countEl) => {
+            if (!block || !grid) return;
+            if (!items || items.length === 0) {
+                block.style.display = 'none';
+                grid.innerHTML = '';
+                return;
+            }
+            block.style.display = 'block';
+            if (countEl) countEl.innerText = `${items.length} items`;
+
+            let html = '';
+            items.forEach(item => {
+                const qtyStr = item.quantity ? ` <span style="color: #64748b; font-weight: 500;"> — ${escapeHtml(item.quantity)}</span>` : '';
+                const descStr = item.description ? `<div style="font-size: 0.75rem; color: #94a3b8; margin-top: 1px;">${escapeHtml(item.description)}</div>` : '';
+                html += `
+                <div class="inclusion-line-item" style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.875rem; line-height: 1.45;">
+                    <span style="color: var(--wiz-primary, #FF7B54); font-weight: 900; font-size: 1rem; line-height: 1.2;">•</span>
+                    <div style="flex: 1; min-width: 0; word-break: break-word;">
+                        <strong style="color: #1e293b; font-weight: 700;">${escapeHtml(item.name)}</strong>${qtyStr}
+                        ${descStr}
+                    </div>
+                </div>`;
+            });
+            grid.innerHTML = html;
+        };
+
+        renderGroup(inclusions.food, foodBlock, foodGrid, foodCount);
+        renderGroup(inclusions.services, servBlock, servGrid, servCount);
+        renderGroup(inclusions.equipment, equipBlock, equipGrid, equipCount);
+
+        const hasAny = (inclusions.food && inclusions.food.length > 0) ||
+                       (inclusions.services && inclusions.services.length > 0) ||
+                       (inclusions.equipment && inclusions.equipment.length > 0);
+
+        if (card) {
+            card.style.display = hasAny ? 'block' : 'none';
+        }
+    };
+
+    // --- 2.5. Update Calculator ---
     window.updateCalculator = function () {
         const calcGuests = document.getElementById('calc-guests');
         const calcAddonsCount = document.getElementById('calc-addons-count');
@@ -89,14 +204,19 @@ document.addEventListener('DOMContentLoaded', function () {
         let basePackageTotal = 0;
         let excessGuestsTotal = 0;
 
+        const activePricePerHead = Number(window.pricePerHead || 0);
+        const activeBasePrice = Number(window.basePrice || 0);
+        const activeMinGuests = Number(window.minGuests || 1);
+        const activeAddPrice = Number(window.additionalGuestPrice || 0);
+
         if (window.pricingMode === 'fixed') {
-            basePackageTotal = window.basePrice;
-            if (guests > window.minGuests && window.additionalGuestPrice > 0) {
-                excessGuestsTotal = (guests - window.minGuests) * window.additionalGuestPrice;
+            basePackageTotal = activeBasePrice;
+            if (guests > activeMinGuests && activeAddPrice > 0) {
+                excessGuestsTotal = (guests - activeMinGuests) * activeAddPrice;
             }
             total = basePackageTotal + excessGuestsTotal;
         } else {
-            total = guests * pricePerHead;
+            total = guests * activePricePerHead;
         }
 
         // Add-ons price
@@ -253,13 +373,13 @@ document.addEventListener('DOMContentLoaded', function () {
         if (parts.length === 3) {
             const selectedDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
             const minDate = new Date();
-            minDate.setDate(minDate.getDate() + leadTime - 1); // Dynamic lead time constraint
+            minDate.setDate(minDate.getDate() + leadTime - 1);
             minDate.setHours(0,0,0,0);
-            
+
             if (chip) {
                 if (selectedDate <= minDate) {
-                    chip.style.display = 'none'; // Hide chip since inline validation already flags it
-                    if (submitBtn) submitBtn.disabled = true;
+                    chip.style.display = 'none';
+                    // Do NOT disable the button here — JS field validation already shows the error
                     return;
                 }
             }
@@ -281,10 +401,17 @@ document.addEventListener('DOMContentLoaded', function () {
             } else if (chip) {
                 chip.className = 'availability-chip booked';
                 chip.innerHTML = '<i class="fas fa-times-circle"></i> Fully Booked';
+                // Still don't permanently disable — re-enable if they pick another date
                 if (submitBtn) submitBtn.disabled = true;
             }
         } catch (error) {
-            if (chip) chip.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error checking date';
+            // API failure — don't block submission, just show warning
+            if (chip) {
+                chip.className = 'availability-chip';
+                chip.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Could not check';
+                chip.style.display = 'inline-flex';
+            }
+            if (submitBtn) submitBtn.disabled = false;
         }
     };
 
@@ -567,9 +694,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const validateEventDate = () => {
         if (!dateInput) return true;
         return validateField(dateInput, 'err-date', v => {
-            if (!v) return false;
+            const errEl = document.getElementById('err-date');
+            if (!v) {
+                if (errEl) errEl.innerText = `Please select an event date.`;
+                return false;
+            }
             const parts = v.split('-');
-            if(parts.length !== 3) return false;
+            if(parts.length !== 3) {
+                if (errEl) errEl.innerText = `Please enter a valid date.`;
+                return false;
+            }
             const selectedDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
             
             const minDate = new Date();
@@ -581,11 +715,11 @@ document.addEventListener('DOMContentLoaded', function () {
             maxDate.setHours(23,59,59,999);
             
             if (selectedDate <= minDate) {
-                document.getElementById('err-date').innerText = `Please select a date at least ${leadTime} days in advance.`;
+                if (errEl) errEl.innerText = `Please select a date at least ${leadTime} days in advance.`;
                 return false;
             }
             if (selectedDate > maxDate) {
-                document.getElementById('err-date').innerText = `Bookings can only be made up to 7 months in advance.`;
+                if (errEl) errEl.innerText = `Bookings can only be made up to 7 months in advance.`;
                 return false;
             }
             
@@ -595,13 +729,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 const selectedDayName = daysOfWeek[selectedDate.getDay()];
                 const operatingDays = window.catererRules.business_hours.operating_days;
                 if (operatingDays.length > 0 && operatingDays.length < 7 && !operatingDays.includes(selectedDayName)) {
-                    document.getElementById('err-date').innerText = `Caterer is closed on ${selectedDayName}s. (${operatingDays.join(', ')})`;
+                    if (errEl) errEl.innerText = `Caterer is closed on ${selectedDayName}s. (${operatingDays.join(', ')})`;
                     return false;
                 }
             }
             
             return true;
-        }, `Invalid date.`);
+        }, null);
     };
     if (dateInput) {
         dateInput.addEventListener('input', validateEventDate);
@@ -612,7 +746,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const validateEventTime = () => {
         if (!timeInput) return true;
         return validateField(timeInput, 'err-time', v => {
-            const customTrigger = document.querySelector('#custom-time-select .form-input');
+            const customTrigger = document.getElementById('time-trigger-btn') || document.querySelector('#custom-time-select .form-input');
             if (!v) {
                 if (customTrigger) customTrigger.classList.add('error');
                 return false;
@@ -660,7 +794,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const closeFormatted = formatAmPm(finalCloseMins);
             
             if (selectedMins < finalOpenMins || selectedMins > finalCloseMins) {
-                document.getElementById('err-time').innerText = `Please choose an event start time between ${openFormatted} and ${closeFormatted}.`;
+                const errTime = document.getElementById('err-time');
+                if (errTime) errTime.innerText = `Please choose an event start time between ${openFormatted} and ${closeFormatted}.`;
                 if (customTrigger) customTrigger.classList.add('error');
                 return false;
             }
@@ -668,6 +803,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return true;
         }, "Please select a valid time.");
     };
+
     if (timeInput) {
         let openTime = '08:00';
         let closeTime = '20:00';
@@ -677,8 +813,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         
         const parseTimeStr = (t) => {
-            const [h,m] = t.split(':').map(Number);
-            return h*60 + m;
+            const [h,m] = (t || '').split(':').map(Number);
+            return (h || 0) * 60 + (m || 0);
         };
         const formatTimeStr = (mins) => {
             const h = Math.floor(mins / 60);
@@ -696,90 +832,42 @@ document.addEventListener('DOMContentLoaded', function () {
         const openMins = Math.max(parseTimeStr(openTime), 8*60);
         const closeMins = Math.min(parseTimeStr(closeTime), 20*60);
         
-        if (timeInput) {
-            timeInput.style.display = 'none';
-            const initialVal = timeInput.getAttribute('data-initial') || timeInput.value || '';
-            
-            let customSelect = document.getElementById('custom-time-select');
-            let menu = document.getElementById('time-dropdown-menu');
-            let triggerText = document.getElementById('time-trigger-text');
-            let icon = null;
-            let grid = null;
+        const initialVal = timeInput.getAttribute('data-initial') || timeInput.value || '';
+        
+        const triggerBtn = document.getElementById('time-trigger-btn');
+        const triggerText = document.getElementById('time-trigger-text');
+        const triggerIcon = document.getElementById('time-trigger-icon');
+        const dropdownMenu = document.getElementById('time-dropdown-menu');
+        const chipsGrid = document.getElementById('time-chips-grid');
 
-            if (!customSelect) {
-                customSelect = document.createElement('div');
-                customSelect.id = 'custom-time-select';
-                customSelect.style.position = 'relative';
-                
-                // Trigger button
-                const trigger = document.createElement('div');
-                trigger.className = 'form-input';
-                trigger.style.cursor = 'pointer';
-                trigger.style.display = 'flex';
-                trigger.style.justifyContent = 'space-between';
-                trigger.style.alignItems = 'center';
-                
-                triggerText = document.createElement('span');
-                triggerText.id = 'time-trigger-text';
-                triggerText.innerText = initialVal ? formatAmPmStr(parseTimeStr(initialVal)) : '-- Select Time --';
-                triggerText.style.color = initialVal ? '#334155' : '#94a3b8';
-                
-                icon = document.createElement('i');
-                icon.className = 'fas fa-chevron-down';
-                icon.style.color = '#94a3b8';
-                icon.style.fontSize = '0.8rem';
-                
-                trigger.appendChild(triggerText);
-                trigger.appendChild(icon);
-                
-                // Dropdown Menu
-                menu = document.createElement('div');
-                menu.id = 'time-dropdown-menu';
-                menu.style.display = 'none';
-                menu.style.width = '100%';
-                menu.style.background = '#fff';
-                menu.style.border = '1px solid #e2e8f0';
-                menu.style.borderRadius = '0.5rem';
-                menu.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-                menu.style.padding = '1rem';
-                menu.style.marginTop = '0.5rem';
-                menu.style.maxHeight = '220px';
-                menu.style.overflowY = 'auto';
-                
-                // Grid layout (Three columns for compactness)
-                grid = document.createElement('div');
-                grid.style.display = 'grid';
-                grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
-                grid.style.gap = '0.5rem';
-                
-                menu.appendChild(grid);
-                customSelect.appendChild(trigger);
-                customSelect.appendChild(menu);
-                
-                timeInput.parentNode.insertBefore(customSelect, timeInput.nextSibling);
-                
-                // Toggle Dropdown
-                trigger.onclick = (e) => {
-                    e.stopPropagation();
-                    const isVisible = menu.style.display === 'block';
-                    menu.style.display = isVisible ? 'none' : 'block';
-                    icon.className = isVisible ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
-                };
-                
-                // Close on outside click
-                document.addEventListener('click', (e) => {
-                    if (!customSelect.contains(e.target)) {
-                        menu.style.display = 'none';
-                        icon.className = 'fas fa-chevron-down';
-                    }
-                });
-            } else {
-                grid = menu.querySelector('div');
-                icon = customSelect.querySelector('i');
+        if (triggerBtn && dropdownMenu && chipsGrid) {
+            if (initialVal) {
+                timeInput.value = initialVal;
+                if (triggerText) {
+                    triggerText.innerText = formatAmPmStr(parseTimeStr(initialVal));
+                    triggerText.style.color = '#0f172a';
+                }
             }
-            
-            grid.innerHTML = '';
-            
+
+            // Toggle Dropdown
+            triggerBtn.onclick = (e) => {
+                e.stopPropagation();
+                const isVisible = dropdownMenu.style.display === 'block';
+                dropdownMenu.style.display = isVisible ? 'none' : 'block';
+                if (triggerIcon) triggerIcon.className = isVisible ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+            };
+
+            // Close on outside click
+            document.addEventListener('click', (e) => {
+                const customSelect = document.getElementById('custom-time-select');
+                if (customSelect && !customSelect.contains(e.target)) {
+                    dropdownMenu.style.display = 'none';
+                    if (triggerIcon) triggerIcon.className = 'fas fa-chevron-down';
+                }
+            });
+
+            // Populate time chips
+            chipsGrid.innerHTML = '';
             for (let m = openMins; m <= closeMins; m += 30) {
                 const valStr = formatTimeStr(m);
                 const labelStr = formatAmPmStr(m);
@@ -791,18 +879,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 chip.style.padding = '0.6rem 0.2rem';
                 chip.style.border = '1px solid #cbd5e1';
                 chip.style.borderRadius = '0.375rem';
-                chip.style.background = '#f8fafc';
-                chip.style.color = '#475569';
+                chip.style.background = (valStr === initialVal) ? 'var(--wiz-primary, #ff7b54)' : '#f8fafc';
+                chip.style.color = (valStr === initialVal) ? '#fff' : '#475569';
+                chip.style.borderColor = (valStr === initialVal) ? 'var(--wiz-primary, #ff7b54)' : '#cbd5e1';
                 chip.style.cursor = 'pointer';
                 chip.style.fontSize = '0.8rem';
+                chip.style.fontWeight = '600';
                 chip.style.textAlign = 'center';
-                chip.style.transition = 'all 0.1s';
-                
-                if (valStr === initialVal) {
-                    chip.style.background = 'var(--wiz-primary, #ff7b54)';
-                    chip.style.color = '#fff';
-                    chip.style.borderColor = 'var(--wiz-primary, #ff7b54)';
-                }
+                chip.style.transition = 'all 0.15s ease';
                 
                 chip.onmouseenter = function() {
                     if (timeInput.value !== valStr) {
@@ -818,7 +902,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 chip.onclick = function(e) {
                     e.stopPropagation();
                     
-                    Array.from(grid.children).forEach(c => {
+                    Array.from(chipsGrid.children).forEach(c => {
                         c.style.background = '#f8fafc';
                         c.style.color = '#475569';
                         c.style.borderColor = '#cbd5e1';
@@ -829,12 +913,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     this.style.borderColor = 'var(--wiz-primary, #ff7b54)';
                     
                     timeInput.value = valStr;
-                    triggerText.innerText = labelStr;
-                    triggerText.style.color = '#334155';
+                    if (triggerText) {
+                        triggerText.innerText = labelStr;
+                        triggerText.style.color = '#0f172a';
+                    }
                     
-                    menu.style.display = 'none';
-                    icon.className = 'fas fa-chevron-down';
+                    dropdownMenu.style.display = 'none';
+                    if (triggerIcon) triggerIcon.className = 'fas fa-chevron-down';
                     
+                    if (triggerBtn) triggerBtn.classList.remove('error');
                     timeInput.classList.remove('error');
                     const errTime = document.getElementById('err-time');
                     if (errTime) errTime.classList.remove('show');
@@ -842,20 +929,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (typeof validateEventTime === 'function') validateEventTime();
                 };
                 
-                grid.appendChild(chip);
+                chipsGrid.appendChild(chip);
             }
         }
-        
-        let hintLabel = document.getElementById('time-hint-label');
-        if (!hintLabel) {
-            hintLabel = document.createElement('div');
-            hintLabel.id = 'time-hint-label';
-            hintLabel.style.fontSize = '0.75rem';
-            hintLabel.style.color = '#64748b';
-            hintLabel.style.marginTop = '0.5rem';
-            timeInput.parentNode.insertBefore(hintLabel, timeInput.nextSibling);
-        }
-        hintLabel.innerText = `Select your preferred start time from the available schedule.`;
 
         timeInput.addEventListener('change', validateEventTime);
         timeInput.addEventListener('blur', validateEventTime);
@@ -877,32 +953,85 @@ document.addEventListener('DOMContentLoaded', function () {
     if (form) {
         form.addEventListener('submit', function (e) {
             try {
+                console.log('[BookingWizard] Form submit triggered');
                 let isValid = true;
-                const check = (result) => { if (!result) isValid = false; };
+                const check = (label, result) => {
+                    if (!result) {
+                        console.warn('[BookingWizard] FAILED:', label);
+                        isValid = false;
+                    } else {
+                        console.log('[BookingWizard] OK:', label);
+                    }
+                };
 
-                if (eventName) check(validateField(eventName, 'err-name', v => (v || '').trim().length > 0));
-                
-                if (eventTypeSelect) {
-                    check(validateField(eventTypeSelect, 'err-type', v => v !== ''));
-                    if (eventTypeSelect.value === 'Other') {
-                        check(validateField(otherEventInput, 'err-other-type', v => (v || '').trim().length > 0));
+                // 1. Event name
+                check('event_name', eventName ? validateField(eventName, 'err-name', v => (v || '').trim().length > 0) : true);
+
+                // 2. Event type (locked from package — hidden input)
+                const eventTypeHidden = document.getElementById('event_type_hidden');
+                if (eventTypeHidden) {
+                    check('event_type_hidden', validateField(eventTypeHidden, 'err-type', v => (v || '').trim().length > 0));
+                } else if (eventTypeSelect) {
+                    check('event_type_select', validateField(eventTypeSelect, 'err-type', v => v !== ''));
+                    if (eventTypeSelect.value === 'Other' && otherEventInput) {
+                        check('other_event_type', validateField(otherEventInput, 'err-other-type', v => (v || '').trim().length > 0));
                     }
                 }
 
-                if (guestDisplay) check(validateGuestCount());
-                if (dateInput) check(validateEventDate());
-                if (timeInput) check(validateEventTime());
-                
-                if (provinceSelect) check(validateField(provinceSelect, 'err-province', v => v !== ''));
-                if (citySelect) check(validateField(citySelect, 'err-city', v => v !== ''));
-                if (barangaySelect) check(validateField(barangaySelect, 'err-barangay', v => v !== ''));
-                
-                if (window.deliveryFeeStatus === "error") {
-                    isValid = false;
-                    alert("Out of Coverage: Sorry, the caterer does not deliver to your specified location.");
+                // 3. Guest count
+                check('guest_count', guestDisplay ? validateGuestCount() : true);
+
+                // 4. Event date
+                check('event_date', dateInput ? validateEventDate() : true);
+
+                // 5. Event time
+                check('event_time', timeInput ? validateEventTime() : true);
+
+                // 6. Location — construct venue_address from selects NOW (in case async hasn't updated the hidden)
+                const pEl = document.getElementById('province_select');
+                const cEl = document.getElementById('city_select');
+                const bEl = document.getElementById('barangay_select');
+                const pVal = pEl ? (pEl.options[pEl.selectedIndex] ? pEl.options[pEl.selectedIndex].value : '') : '';
+                const cVal = cEl ? (cEl.options[cEl.selectedIndex] ? cEl.options[cEl.selectedIndex].value : '') : '';
+                const bVal = bEl ? (bEl.options[bEl.selectedIndex] ? bEl.options[bEl.selectedIndex].value : '') : '';
+
+                if (pVal && pVal !== '' && cVal && cVal !== '' && bVal && bVal !== '') {
+                    // Update the hidden venue_address right now before submission
+                    if (venueHidden) venueHidden.value = `${bVal}, ${cVal}, ${pVal}`;
                 }
-                
-                // Selection Rules Validation
+
+                const hasProvince = pVal && pVal !== '';
+                const hasCity = cVal && cVal !== '';
+                const hasBarangay = bVal && bVal !== '';
+
+                if (!hasProvince) {
+                    console.warn('[BookingWizard] FAILED: province');
+                    if (provinceSelect) validateField(provinceSelect, 'err-province', v => v !== '');
+                    isValid = false;
+                } else if (!hasCity) {
+                    console.warn('[BookingWizard] FAILED: city');
+                    if (citySelect) validateField(citySelect, 'err-city', v => v !== '');
+                    isValid = false;
+                } else if (!hasBarangay) {
+                    console.warn('[BookingWizard] FAILED: barangay');
+                    if (barangaySelect) validateField(barangaySelect, 'err-barangay', v => v !== '');
+                    isValid = false;
+                } else {
+                    console.log('[BookingWizard] OK: location =', venueHidden ? venueHidden.value : 'n/a');
+                }
+
+                // 7. Delivery fee coverage
+                if (window.deliveryFeeStatus === "error") {
+                    console.warn('[BookingWizard] FAILED: out of delivery coverage');
+                    isValid = false;
+                    if (window.Swal) {
+                        Swal.fire({ icon: 'error', title: 'Out of Coverage', text: 'Sorry, the caterer does not deliver to your specified location.', confirmButtonColor: '#FF7B54' });
+                    } else {
+                        alert('Out of Coverage: Sorry, the caterer does not deliver to your specified location.');
+                    }
+                }
+
+                // 8. Menu selection rules
                 const selectionGroups = document.querySelectorAll('.selection-group');
                 let selectionErrorMsg = '';
                 if (selectionGroups && selectionGroups.length > 0) {
@@ -910,12 +1039,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         try {
                             const limit = parseInt(group.dataset.limit) || 0;
                             const catRaw = group.dataset.category;
-                            if (!catRaw) return;
+                            if (!catRaw || limit === 0) return;
                             const count = group.querySelectorAll('input[type="checkbox"]:checked').length;
-                            
-                            if (count !== limit && limit > 0) {
+
+                            if (count !== limit) {
                                 isValid = false;
-                                selectionErrorMsg += `• Please select exactly ${limit} item(s) for ${catRaw.replace(/([A-Z])/g, ' $1').trim()}.\n`;
+                                selectionErrorMsg += `• Please select exactly ${limit} item(s) for ${catRaw.replace(/([A-Z])/g, ' $1').trim()}.
+`;
                                 const counterEl = document.getElementById(`counter-${catRaw}`);
                                 if (counterEl) {
                                     counterEl.style.background = '#fee2e2';
@@ -923,35 +1053,57 @@ document.addEventListener('DOMContentLoaded', function () {
                                 }
                             }
                         } catch(err) {
-                            console.error("Selection rule check error:", err);
+                            console.error('Selection rule check error:', err);
                         }
                     });
                 }
 
                 if (selectionErrorMsg) {
-                    alert("Incomplete Menu Setup:\n\n" + selectionErrorMsg);
+                    if (window.Swal) {
+                        Swal.fire({ icon: 'warning', title: 'Incomplete Menu Setup', text: selectionErrorMsg, confirmButtonColor: '#FF7B54' });
+                    } else {
+                        alert('Incomplete Menu Setup:\n\n' + selectionErrorMsg);
+                    }
                 }
+
+                console.log('[BookingWizard] isValid =', isValid);
 
                 if (!isValid) {
                     e.preventDefault();
                     e.stopPropagation();
+
                     const firstError = document.querySelector('.field-error.show');
                     if (firstError) {
                         firstError.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
-                    
-                    // Recover the submit button from loading state if it was activated by main.js
-                    const submitBtn = document.getElementById('submitBtn');
-                    if (submitBtn && submitBtn.classList.contains('is-loading')) {
-                        submitBtn.innerHTML = `Next: Verify Identity <i class="fas fa-id-card"></i>`;
-                        submitBtn.disabled = false;
-                        submitBtn.classList.remove('is-loading');
+
+                    // Reset the submit button if main.js already started its loading state
+                    const submitBtnEl = document.getElementById('submitBtn');
+                    if (submitBtnEl) {
+                        submitBtnEl.innerHTML = `Next Step: Identity <i class="fas fa-arrow-right"></i>`;
+                        submitBtnEl.disabled = false;
+                        submitBtnEl.classList.remove('is-loading');
                     }
+
+                    if (!selectionErrorMsg && window.deliveryFeeStatus !== 'error') {
+                        if (window.Swal) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Please complete all required fields',
+                                text: 'Check your Event Date, Time, Venue Location, and Guest Count.',
+                                confirmButtonColor: '#FF7B54'
+                            });
+                        } else {
+                            alert('Please fill in all required fields (Date, Time, Location, Guest Count).');
+                        }
+                    }
+                } else {
+                    console.log('[BookingWizard] All valid — submitting form to server');
                 }
             } catch (err) {
-                console.error("Fatal validation error:", err);
+                console.error('Fatal validation error:', err);
                 e.preventDefault();
-                alert("An error occurred during form validation. Please check your inputs.");
+                alert('An error occurred during form validation: ' + err.message);
             }
         });
     }
@@ -960,28 +1112,64 @@ document.addEventListener('DOMContentLoaded', function () {
     const urlParams = new URLSearchParams(window.location.search);
     const bookingError = urlParams.get('booking_error');
     if (bookingError) {
-        let errorId = 'err-date';
-        let errorMsg = decodeURIComponent(bookingError);
-        let targetInput = dateInput;
-        
-        if (errorMsg.includes(':')) {
-            const parts = errorMsg.split(':');
-            errorId = parts[0];
-            errorMsg = parts.slice(1).join(':');
-            
-            if (errorId === 'err-type') targetInput = eventTypeSelect;
+        let errorId = null;
+        let errorMsg = decodeURIComponent(bookingError).replace(/\+/g, ' ');
+        let targetInput = null;
+
+        if (errorMsg.startsWith('err-')) {
+            const colonIdx = errorMsg.indexOf(':');
+            if (colonIdx !== -1) {
+                errorId = errorMsg.substring(0, colonIdx).trim();
+                errorMsg = errorMsg.substring(colonIdx + 1).trim();
+            } else {
+                errorId = errorMsg.trim();
+                errorMsg = 'Please correct this field.';
+            }
+
+            if (errorId === 'err-date') targetInput = dateInput;
+            else if (errorId === 'err-time') {
+                // time-trigger-btn is a div, not an input — mark it visually
+                targetInput = timeInput;
+                const timeTrigger = document.getElementById('time-trigger-btn');
+                if (timeTrigger) timeTrigger.classList.add('error');
+            }
             else if (errorId === 'err-name') targetInput = eventName;
-            else if (errorId === 'err-time') targetInput = timeInput;
+            else if (errorId === 'err-type') {
+                // event_type is a locked display box, highlight the parent card
+                targetInput = document.getElementById('event_type_hidden');
+                const displayBox = document.getElementById('event_type_display_box');
+                if (displayBox) displayBox.style.border = '1.5px solid #ef4444';
+            }
+            else if (errorId === 'err-guests') targetInput = guestDisplay;
+            else if (errorId === 'err-province') targetInput = provinceSelect;
+            else if (errorId === 'err-city') targetInput = citySelect;
+            else if (errorId === 'err-barangay') targetInput = barangaySelect;
         }
-        
-        const errSpan = document.getElementById(errorId);
-        if (errSpan && targetInput) {
+
+        const errSpan = errorId ? document.getElementById(errorId) : null;
+        if (errSpan) {
             errSpan.innerText = errorMsg;
             errSpan.classList.add('show');
-            targetInput.classList.add('error');
-            targetInput.scrollIntoView({behavior: 'smooth', block: 'center'});
+            if (targetInput) {
+                if (targetInput.classList) targetInput.classList.add('error');
+                targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                errSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        } else {
+            // Generic fallback — always show the error to the user
+            if (window.Swal) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Cannot proceed',
+                    text: errorMsg,
+                    confirmButtonColor: '#FF7B54'
+                });
+            } else {
+                alert('Error: ' + errorMsg);
+            }
         }
-        
+
         const url = new URL(window.location.href);
         url.searchParams.delete('booking_error');
         window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);

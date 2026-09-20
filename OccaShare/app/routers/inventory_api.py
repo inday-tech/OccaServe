@@ -128,81 +128,128 @@ async def check_equipment_availability(
     if not equipment_id or not date_str:
         return {"status": "error", "available": False, "message": "Equipment ID and date are required"}
 
+    import traceback
     try:
-        eq_id = int(str(equipment_id).replace("eq_", ""))
-    except (ValueError, TypeError):
-        return {"status": "error", "available": False, "message": "Invalid equipment ID"}
+        try:
+            eq_id = int(str(equipment_id).replace("eq_", ""))
+        except (ValueError, TypeError):
+            return {"status": "error", "available": False, "message": "Invalid equipment ID"}
 
-    try:
-        event_date = datetime.strptime(str(date_str).strip(), "%Y-%m-%d").date()
-    except Exception:
-        return {"status": "error", "available": False, "message": "Invalid date format (use YYYY-MM-DD)"}
+        try:
+            event_date = datetime.strptime(str(date_str).strip(), "%Y-%m-%d").date()
+        except Exception:
+            return {"status": "error", "available": False, "message": "Invalid date format (use YYYY-MM-DD)"}
 
-    equipment = db.query(models.Equipment).filter(models.Equipment.id == eq_id).first()
-    if not equipment:
-        return {"status": "error", "available": False, "message": "Equipment item not found"}
+        equipment = db.query(models.Equipment).filter(models.Equipment.id == eq_id).first()
+        legacy_item = None
+        if not equipment:
+            legacy_item = db.query(models.MenuItem).filter(models.MenuItem.id == eq_id).first()
+            if not legacy_item:
+                return {"status": "error", "available": False, "message": "Equipment item not found"}
 
-    total_inventory = int(equipment.available_qty or 1)
+        caterer_id = equipment.caterer_id if equipment else legacy_item.caterer_id
+        total_inventory = int(equipment.available_qty if equipment else (legacy_item.available_qty or legacy_item.max_stock_quantity or 1))
 
-    # Active bookings on this event date (or within turnover buffer)
-    active_statuses = ["Approved", "Pending", "Preparing", "Confirmed", "In Progress", "Out for Delivery", "Under Review", "Ready"]
+        # Active bookings on this event date (or within turnover buffer)
+        # Exclude cancelled, rejected, and declined bookings
+        inactive_statuses = ['cancelled', 'rejected', 'declined', 'archived']
 
-    bookings = db.query(models.Booking).filter(
-        models.Booking.caterer_id == equipment.caterer_id,
-        models.Booking.status.in_(active_statuses),
-        models.Booking.event_date.between(event_date - timedelta(days=1), event_date + timedelta(days=1))
-    ).all()
+        bookings = db.query(models.Booking).filter(
+            models.Booking.caterer_id == caterer_id,
+            models.Booking.event_date.between(event_date - timedelta(days=1), event_date + timedelta(days=1))
+        ).all()
 
-    reserved_qty = 0
-    for b in bookings:
-        # Check selected_items (BookingSelected)
-        for item in b.selected_items:
-            if item.equipment_id == eq_id:
-                reserved_qty += int(item.quantity or 1)
-        
-        # Check package equipment inclusions if booking has a package
-        if b.package_id:
-            pkg_equip = db.query(models.PackageEquipment).filter(
-                models.PackageEquipment.package_id == b.package_id,
-                models.PackageEquipment.equipment_id == eq_id
-            ).all()
-            for pe in pkg_equip:
-                reserved_qty += int(pe.quantity or 1)
-                
-        # Check cart_items json if present
-        if b.cart_items:
-            items = b.cart_items
-            if isinstance(items, str):
+        # Filter active in python
+        bookings = [
+            b for b in bookings 
+            if not b.status or str(b.status).lower().strip() not in inactive_statuses
+        ]
+
+        reserved_qty = 0
+        for b in bookings:
+            # Check selected_items (BookingMenuItem)
+            if b.selected_items:
+                for item in b.selected_items:
+                    if item.equipment_id == eq_id:
+                        reserved_qty += int(item.quantity or 1)
+            
+            # Check package equipment inclusions if booking has a package
+            if b.package_id:
                 try:
-                    items = json.loads(items)
+                    pkg_equip = db.query(models.PackageEquipment).filter(
+                        models.PackageEquipment.package_id == b.package_id,
+                        models.PackageEquipment.equipment_id == eq_id
+                    ).all()
+                    for pe in pkg_equip:
+                        reserved_qty += int(pe.quantity or 1)
                 except Exception:
-                    items = []
-            for c_item in items:
-                c_id = str(c_item.get("id", "")).replace("eq_", "")
-                if c_id == str(eq_id):
-                    reserved_qty += int(c_item.get("qty", 1))
+                    pass
+                    
+            # Check cart_items json if present
+            raw_cart = getattr(b, 'cart_items', None)
+            if not raw_cart and getattr(b, 'custom_requirements', None) and isinstance(b.custom_requirements, dict):
+                raw_cart = b.custom_requirements.get('cart_data') or b.custom_requirements.get('cart_items')
+            
+            if raw_cart:
+                items = raw_cart
+                if isinstance(items, str):
+                    try:
+                        items = json.loads(items)
+                    except Exception:
+                        items = []
+                if isinstance(items, list):
+                    for c_item in items:
+                        if isinstance(c_item, dict):
+                            c_id = str(c_item.get("id", "")).replace("eq_", "").replace("e_", "")
+                            if c_id == str(eq_id):
+                                reserved_qty += int(c_item.get("qty", c_item.get("quantity", 1)))
 
-    available_qty = max(0, total_inventory - reserved_qty)
-    is_available = requested_qty <= available_qty
+        available_qty = max(0, total_inventory - reserved_qty)
+        is_available = requested_qty <= available_qty
 
-    if not is_available:
-        msg = f"Only {available_qty} units are available for the selected date." if available_qty > 0 else "No units are available for the selected date."
+        item_name = equipment.name if equipment else legacy_item.name
+        rental_price = float(equipment.rental_price if equipment else (legacy_item.price or 0.0))
+        unit = equipment.unit_type if equipment else getattr(legacy_item, 'pricing_unit', 'piece')
+        security_deposit_pct = float(equipment.security_deposit_pct if equipment else 20.0)
+
+        if not is_available:
+            msg = f"Only {available_qty} units are available for the selected date." if available_qty > 0 else "No units are available for the selected date."
+            return {
+                "status": "error",
+                "available": False,
+                "name": item_name,
+                "rental_price": rental_price,
+                "unit": unit,
+                "security_deposit_pct": security_deposit_pct,
+                "total_inventory": total_inventory,
+                "reserved_qty": reserved_qty,
+                "available_qty": available_qty,
+                "requested_qty": requested_qty,
+                "message": msg
+            }
+
         return {
-            "status": "error",
-            "available": False,
+            "status": "success",
+            "available": True,
+            "caterer_id": caterer_id,
+            "item_status": getattr(equipment, 'status', None),
+            "is_archived": getattr(equipment, 'is_archived', False),
+            "is_hidden": getattr(equipment, 'is_hidden', False),
+            "usage_type": getattr(equipment, 'usage_type', 'both'),
+            "name": item_name,
+            "rental_price": rental_price,
+            "unit": unit,
+            "security_deposit_pct": security_deposit_pct,
             "total_inventory": total_inventory,
             "reserved_qty": reserved_qty,
             "available_qty": available_qty,
             "requested_qty": requested_qty,
-            "message": msg
+            "message": f"{available_qty} units available"
         }
-
-    return {
-        "status": "success",
-        "available": True,
-        "total_inventory": total_inventory,
-        "reserved_qty": reserved_qty,
-        "available_qty": available_qty,
-        "requested_qty": requested_qty,
-        "message": f"{available_qty} units available"
-    }
+    except Exception as err:
+        return {
+            "status": "error",
+            "available": False,
+            "message": f"Server error checking availability: {str(err)}",
+            "traceback": traceback.format_exc()
+        }

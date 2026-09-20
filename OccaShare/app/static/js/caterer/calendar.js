@@ -1907,11 +1907,28 @@ window.openExternalBookingModal = function() {
         inp.style.borderColor = '#cbd5e1';
     });
 
-    // Reset Package Selection
-    const pkgSelect = document.getElementById('extPackageSelect');
-    if (pkgSelect) pkgSelect.value = '';
-    const incBox = document.getElementById('walkinPackageInclusions');
-    if (incBox) incBox.style.display = 'none';
+    // Reset Walk-in Services Checklist
+    const serviceCheckboxes = document.querySelectorAll('.walkin-service-checkbox');
+    serviceCheckboxes.forEach(cb => {
+        cb.checked = false;
+        const idx = cb.getAttribute('data-index');
+        const row = document.getElementById(`walkin_service_row_${idx}`);
+        if (row) {
+            row.classList.remove('is-checked');
+        }
+        const amtBox = document.getElementById(`walkin_amount_box_${idx}`);
+        if (amtBox) {
+            amtBox.classList.remove('is-active', 'is-focused');
+        }
+        const amtInput = document.getElementById(`walkin_amount_${idx}`);
+        if (amtInput) {
+            amtInput.value = '';
+            amtInput.disabled = true;
+        }
+    });
+    if (window.updateSelectedServicesCount) {
+        window.updateSelectedServicesCount();
+    }
 
     // Reset Equipment Rental List
     const eqCheckboxes = document.querySelectorAll('.eq-rental-checkbox');
@@ -2184,6 +2201,125 @@ function parseCurrencyFloat(val) {
     return isNaN(num) ? 0 : num;
 }
 
+function formatNumberWithCommas(val) {
+    if (!val && val !== 0) return '';
+    let str = String(val).replace(/[^0-9.]/g, '');
+    const parts = str.split('.');
+    let intPart = parts[0] || '';
+    const decPart = parts.length > 1 ? parts.slice(1).join('') : null;
+
+    if (intPart.length > 1 && intPart.startsWith('0')) {
+        intPart = intPart.replace(/^0+/, '') || '0';
+    }
+
+    const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+    if (decPart !== null) {
+        return `${formattedInt}.${decPart.slice(0, 2)}`;
+    }
+    return formattedInt;
+}
+
+window.handleWalkinServiceToggle = function(idx) {
+    const cb = document.getElementById(`walkin_service_cb_${idx}`);
+    const amtInput = document.getElementById(`walkin_amount_${idx}`);
+    const amtBox = document.getElementById(`walkin_amount_box_${idx}`);
+    const row = document.getElementById(`walkin_service_row_${idx}`);
+    const errEl = document.getElementById('error-walkinServices');
+
+    if (errEl) {
+        errEl.innerText = '';
+        errEl.style.display = 'none';
+    }
+
+    if (!cb || !amtInput) return;
+
+    if (cb.checked) {
+        amtInput.disabled = false;
+        if (row) row.classList.add('is-checked');
+        if (amtBox) amtBox.classList.add('is-active');
+        amtInput.focus();
+    } else {
+        amtInput.value = '';
+        amtInput.disabled = true;
+        if (row) row.classList.remove('is-checked');
+        if (amtBox) amtBox.classList.remove('is-active', 'is-focused');
+    }
+
+    updateSelectedServicesCount();
+    recalculateWalkinTotals();
+};
+
+window.handleWalkinServiceAmountInput = function(input, idx) {
+    const errEl = document.getElementById('error-walkinServices');
+    if (errEl) {
+        errEl.innerText = '';
+        errEl.style.display = 'none';
+    }
+    const amtBox = document.getElementById(`walkin_amount_box_${idx}`);
+    if (amtBox) amtBox.classList.add('is-focused');
+
+    // Real-time comma formatting with cursor position preservation
+    const oldVal = input.value;
+    const oldSel = input.selectionStart || 0;
+    const digitsBefore = (oldVal.slice(0, oldSel).match(/[0-9.]/g) || []).length;
+
+    const formatted = formatNumberWithCommas(oldVal);
+    input.value = formatted;
+
+    let newSel = 0;
+    let countedDigits = 0;
+    for (let i = 0; i < formatted.length; i++) {
+        if (/[0-9.]/.test(formatted[i])) {
+            countedDigits++;
+        }
+        newSel = i + 1;
+        if (countedDigits >= digitsBefore) break;
+    }
+    if (typeof input.setSelectionRange === 'function') {
+        input.setSelectionRange(newSel, newSel);
+    }
+
+    recalculateWalkinTotals();
+};
+
+window.handleWalkinServiceAmountFocus = function(input, idx) {
+    const amtBox = document.getElementById(`walkin_amount_box_${idx}`);
+    if (amtBox) amtBox.classList.add('is-focused');
+};
+
+window.handleWalkinServiceAmountBlur = function(input, idx) {
+    const amtBox = document.getElementById(`walkin_amount_box_${idx}`);
+    if (amtBox) amtBox.classList.remove('is-focused');
+
+    const rawNum = parseCurrencyFloat(input.value);
+    if (rawNum > 0) {
+        input.value = formatCurrencyString(rawNum);
+    } else {
+        input.value = '';
+    }
+    recalculateWalkinTotals();
+};
+
+function updateSelectedServicesCount() {
+    const allCbs = document.querySelectorAll('.walkin-service-checkbox');
+    const checkedCbs = document.querySelectorAll('.walkin-service-checkbox:checked');
+    const badge = document.getElementById('walkinSelectedServicesCount');
+    if (badge) {
+        badge.innerText = `${checkedCbs.length} of ${allCbs.length} selected`;
+        if (checkedCbs.length > 0) {
+            badge.style.background = '#fff7ed';
+            badge.style.color = '#ea580c';
+            badge.style.borderColor = '#fdba74';
+        } else {
+            badge.style.background = '#f8fafc';
+            badge.style.color = '#64748b';
+            badge.style.borderColor = '#e2e8f0';
+        }
+    }
+}
+window.updateSelectedServicesCount = updateSelectedServicesCount;
+
 window.handleCurrencyFocus = function(input) {
     const rawNum = parseCurrencyFloat(input.value);
     if (rawNum > 0) {
@@ -2224,28 +2360,32 @@ window.switchWalkinTab = function(tab) {
         if (tabEquipment) tabEquipment.style.display = 'none';
 
         if (btnCatering) {
+            btnCatering.classList.add('active');
             btnCatering.style.background = 'var(--primary-color, #f97316)';
             btnCatering.style.color = '#ffffff';
-            btnCatering.classList.add('active');
+            btnCatering.style.boxShadow = '0 1px 3px rgba(249, 115, 22, 0.28)';
         }
         if (btnEquipment) {
-            btnEquipment.style.background = 'transparent';
-            btnEquipment.style.color = '#64748b';
             btnEquipment.classList.remove('active');
+            btnEquipment.style.background = '#ffffff';
+            btnEquipment.style.color = '#475569';
+            btnEquipment.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.04)';
         }
     } else {
         if (tabCatering) tabCatering.style.display = 'none';
         if (tabEquipment) tabEquipment.style.display = 'flex';
 
         if (btnEquipment) {
+            btnEquipment.classList.add('active');
             btnEquipment.style.background = 'var(--primary-color, #f97316)';
             btnEquipment.style.color = '#ffffff';
-            btnEquipment.classList.add('active');
+            btnEquipment.style.boxShadow = '0 1px 3px rgba(249, 115, 22, 0.28)';
         }
         if (btnCatering) {
-            btnCatering.style.background = 'transparent';
-            btnCatering.style.color = '#64748b';
             btnCatering.classList.remove('active');
+            btnCatering.style.background = '#ffffff';
+            btnCatering.style.color = '#475569';
+            btnCatering.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.04)';
         }
 
         const eqDateInput = document.getElementById('eqRentalDate');
@@ -2257,98 +2397,6 @@ window.switchWalkinTab = function(tab) {
             window.recalcEquipRentalTotals();
         }
     }
-};
-
-window.handleWalkinPackageChange = function(packageId) {
-    window.clearWalkinError('extPackageSelect');
-    const inclusionsContainer = document.getElementById('walkinPackageInclusions');
-    const pkgSelect = document.getElementById('extPackageSelect');
-    if (!pkgSelect) return;
-
-    if (!packageId || !window.PACKAGE_MAP || !window.PACKAGE_MAP[packageId]) {
-        if (inclusionsContainer) inclusionsContainer.style.display = 'none';
-        recalculateWalkinTotals();
-        return;
-    }
-
-    const pkg = window.PACKAGE_MAP[packageId];
-    if (inclusionsContainer) inclusionsContainer.style.display = 'block';
-
-    // Package summary card
-    const nameEl = document.getElementById('walkinPkgName');
-    const metaEl = document.getElementById('walkinPkgMeta');
-    const priceEl = document.getElementById('walkinPkgPrice');
-
-    if (nameEl) nameEl.innerText = pkg.name;
-    if (metaEl) {
-        let metaParts = [];
-        if (pkg.service_type) metaParts.push(pkg.service_type);
-        if (pkg.min_guests) metaParts.push(`Min ${pkg.min_guests} pax`);
-        if (pkg.description) metaParts.push(pkg.description);
-        metaEl.innerText = metaParts.join(' · ');
-    }
-    if (priceEl) priceEl.innerText = '₱' + formatCurrencyString(pkg.price);
-
-    // Menu inclusions
-    const menuSec = document.getElementById('walkinPkgMenuSection');
-    const menuList = document.getElementById('walkinPkgMenuList');
-    if (menuSec && menuList) {
-        if (pkg.menu && pkg.menu.length > 0) {
-            menuSec.style.display = 'block';
-            menuList.innerHTML = pkg.menu.map(item => {
-                const iName = typeof item === 'object' ? (item.name || item.item_name) : item;
-                return `<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px; font-size: 0.8rem; font-weight: 600; color: #334155; display: flex; align-items: center; gap: 6px;">
-                    <i class="fas fa-check-circle" style="color: #10b981; font-size: 0.75rem;"></i>
-                    <span>${iName}</span>
-                </div>`;
-            }).join('');
-        } else {
-            menuSec.style.display = 'none';
-            menuList.innerHTML = '';
-        }
-    }
-
-    // Service inclusions
-    const servSec = document.getElementById('walkinPkgServiceSection');
-    const servList = document.getElementById('walkinPkgServiceList');
-    if (servSec && servList) {
-        if (pkg.services && pkg.services.length > 0) {
-            servSec.style.display = 'block';
-            servList.innerHTML = pkg.services.map(s => {
-                const sName = typeof s === 'object' ? s.name : s;
-                const sQty = typeof s === 'object' && s.qty ? ` (x${s.qty})` : '';
-                return `<div style="background: #eff6ff; border: 1px solid #dbeafe; border-radius: 6px; padding: 6px 10px; font-size: 0.8rem; font-weight: 600; color: #1e40af; display: flex; align-items: center; gap: 6px;">
-                    <i class="fas fa-concierge-bell" style="color: #3b82f6; font-size: 0.75rem;"></i>
-                    <span>${sName}${sQty}</span>
-                </div>`;
-            }).join('');
-        } else {
-            servSec.style.display = 'none';
-            servList.innerHTML = '';
-        }
-    }
-
-    // Equipment inclusions
-    const eqSec = document.getElementById('walkinPkgEquipSection');
-    const eqList = document.getElementById('walkinPkgEquipList');
-    if (eqSec && eqList) {
-        if (pkg.equipment && pkg.equipment.length > 0) {
-            eqSec.style.display = 'block';
-            eqList.innerHTML = pkg.equipment.map(e => {
-                const eName = typeof e === 'object' ? e.name : e;
-                const eQty = typeof e === 'object' && e.qty ? ` (x${e.qty})` : '';
-                return `<div style="background: #f5f3ff; border: 1px solid #ede9fe; border-radius: 6px; padding: 6px 10px; font-size: 0.8rem; font-weight: 600; color: #5b21b6; display: flex; align-items: center; justify-content: space-between;">
-                    <span><i class="fas fa-chair" style="color: #8b5cf6; font-size: 0.75rem; margin-right: 6px;"></i> ${eName}${eQty}</span>
-                    <span style="font-size: 0.7rem; background: #dcfce7; color: #15803d; padding: 1px 6px; border-radius: 12px; font-weight: 700;">₱0 extra</span>
-                </div>`;
-            }).join('');
-        } else {
-            eqSec.style.display = 'none';
-            eqList.innerHTML = '';
-        }
-    }
-
-    recalculateWalkinTotals();
 };
 
 window.toggleWalkinDownpayment = function(isChecked) {
@@ -2641,15 +2689,44 @@ window.submitExternalBooking = async function(e) {
     window.updateWalkinAddressPreview();
     const formattedAddress = document.getElementById('extAddress')?.value || `${streetVal}, Brgy. ${brgyVal}, ${cityVal}, ${provVal}`;
 
-    // 7. Package Selection Validation
-    const pkgSelect = document.getElementById('extPackageSelect');
-    const packageId = pkgSelect ? pkgSelect.value : '';
-    if (!packageId) {
-        reportError('extPackageSelect', 'Please select a catering package.');
+    // 7. Services Selection Validation
+    const selectedServices = [];
+    let servicesTotal = 0;
+    let hasServiceAmountError = false;
+    let firstServiceAmtInput = null;
+
+    const serviceCbs = document.querySelectorAll('.walkin-service-checkbox');
+    serviceCbs.forEach(cb => {
+        if (cb.checked) {
+            const idx = cb.getAttribute('data-index');
+            const name = cb.getAttribute('data-name') || cb.value;
+            const amtInput = document.getElementById(`walkin_amount_${idx}`);
+            const amt = amtInput ? parseCurrencyFloat(amtInput.value) : 0;
+            if (amt <= 0) {
+                hasServiceAmountError = true;
+                const amtBox = document.getElementById(`walkin_amount_box_${idx}`);
+                if (amtBox) amtBox.style.borderColor = '#ef4444';
+                if (!firstServiceAmtInput) firstServiceAmtInput = amtInput;
+            }
+            selectedServices.push({
+                name: name,
+                price: amt,
+                qty: 1
+            });
+            servicesTotal += amt;
+        }
+    });
+
+    if (selectedServices.length === 0) {
+        reportError('walkinServices', 'Please select at least one service for this booking.');
+        const svcSection = document.getElementById('walkinServicesList');
+        if (svcSection && !firstInvalidEl) firstInvalidEl = svcSection;
+    } else if (hasServiceAmountError) {
+        reportError('walkinServices', 'Please enter a valid amount greater than ₱0 for all selected services.');
+        if (firstServiceAmtInput && !firstInvalidEl) firstInvalidEl = firstServiceAmtInput;
     }
 
-    const selectedPkg = (packageId && window.PACKAGE_MAP && window.PACKAGE_MAP[packageId]) ? window.PACKAGE_MAP[packageId] : null;
-    const totalAmount = selectedPkg ? parseFloat(selectedPkg.price || 0) : parseCurrencyFloat(document.getElementById('extTotalAmount')?.value || 0);
+    const totalAmount = Math.round(servicesTotal * 100) / 100;
 
     // 8. Downpayment Validation
     const hasDpCheckbox = document.getElementById('extHasDownpayment');
@@ -2693,7 +2770,7 @@ window.submitExternalBooking = async function(e) {
         event_name: `${eventType} - ${genericFullName || (normType === 'wedding' ? `${brideName} & ${groomName}` : (celebrantName || repName))}`,
         event_date: dateVal,
         event_time: "10:00",
-        guest_count: (selectedPkg ? selectedPkg.min_guests : 1) || 20,
+        guest_count: 20,
         street_address: streetVal,
         barangay: brgyVal,
         city_municipality: cityVal,
@@ -2701,8 +2778,9 @@ window.submitExternalBooking = async function(e) {
         address: formattedAddress,
         venue: venueEl ? venueEl.value.trim() : "",
         motif_theme: document.getElementById('extMotifTheme') ? document.getElementById('extMotifTheme').value.trim() : "",
-        package_id: parseInt(packageId),
-        services: selectedPkg ? (selectedPkg.services || []) : [],
+        package_id: null,
+        services: selectedServices,
+        quotation_items: selectedServices,
         total_amount: totalAmount,
         has_downpayment: isDpChecked,
         downpayment_amount: downpaymentAmount,

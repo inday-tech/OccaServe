@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v={{ range(1, 10000) | random }}">
-<link href="{{ url_for('static', path='/css/caterer/packages.css') }}?v=12.9" rel="stylesheet"/>
+<link href="{{ url_for('static', path='/css/caterer/packages.css') }}?v=12.9" rel="stylesheet" />
 {% endblock %}
 
 {% block content %}
@@ -20,7 +20,8 @@
             <button class="btn-primary-pro" onclick="window.openAddPackageModal()">
                 <i class="fas fa-gift"></i> <span>Create Package</span>
             </button>
-            <button class="btn-primary-pro" style="background: var(--brand-secondary, #2D4059);" onclick="openWizard('rentalWizardModal')">
+            <button class="btn-primary-pro" style="background: var(--brand-secondary, #2D4059);"
+                onclick="openWizard('rentalWizardModal')">
                 <i class="fas fa-chair"></i> <span>Add Equipment</span>
             </button>
         </div>
@@ -28,12 +29,16 @@
 </div>
 
 <!-- Services Main Tabs -->
-<div class="caterer-unified-nav-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.75rem; overflow-x: auto; scrollbar-width: none;">
-    <button type="button" id="servicesTabPackages" class="unified-nav-tab active" onclick="switchServicesTab('packages')" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; cursor: pointer; color: #ffffff; background: var(--primary-color); box-shadow: 0 4px 10px rgba(var(--primary-color-rgb, 255, 123, 84), 0.25); border: none; transition: all 0.2s;">
+<div class="caterer-unified-nav-tabs"
+    style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.75rem; overflow-x: auto; scrollbar-width: none;">
+    <button type="button" id="servicesTabPackages" class="unified-nav-tab active"
+        onclick="switchServicesTab('packages')"
+        style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; cursor: pointer; color: #ffffff; background: var(--primary-color); box-shadow: 0 4px 10px rgba(var(--primary-color-rgb, 255, 123, 84), 0.25); border: none; transition: all 0.2s;">
         <i class="fas fa-gift"></i>
         <span>Packages</span>
     </button>
-    <button type="button" id="servicesTabEquipment" class="unified-nav-tab" onclick="switchServicesTab('equipment')" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; cursor: pointer; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;">
+    <button type="button" id="servicesTabEquipment" class="unified-nav-tab" onclick="switchServicesTab('equipment')"
+        style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; cursor: pointer; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;">
         <i class="fas fa-chair"></i>
         <span>Equipment Rentals</span>
     </button>
@@ -41,213 +46,243 @@
 
 <!-- ==================== PACKAGES TAB ==================== -->
 <div id="servicesContentPackages">
-{% if packages %}
-<div class="packages-grid-pro animate-up delay-1">
-    {% for package in packages %}
-    <div class="package-card-pro" id="package-{{ package.id }}">
-<div class="package-media-pro" style="position: relative; overflow: hidden; height: 200px; background: #f8fafc;">
-<div class="pkg-badge-category" style="position: absolute; top: 12px; left: 12px; z-index: 10; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); color: white; padding: 4px 12px; border-radius: var(--border-radius, 99px); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid rgba(255,255,255,0.2);">
-                {{ package.service_type or 'General' }}
-            </div>
-            
-            {% if package.image_url %}
-            <img alt="{{ package.name }}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" src="{{ package.image_url }}" style="width: 100%; height: 100%; object-fit: cover;"/>
-<div class="no-image-placeholder" style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; background: #f1f5f9; color: #cbd5e1;">
-<i class="fas fa-box-open" style="font-size: 3rem;"></i>
-</div>
-            {% else %}
-            <div class="no-image-placeholder" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #cbd5e1;">
-<i class="fas fa-box-open" style="font-size: 3rem;"></i>
-</div>
-            {% endif %}
-
-            <div class="card-overlay-actions" style="position: absolute; bottom: 0; left: 0; right: 0; padding: 1.25rem; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); display: flex; gap: 0.75rem; opacity: 0; transition: all 0.3s ease; transform: translateY(10px); z-index: 5;">
-<button class="btn-overlay-action" onclick="window.editPackage({{ package.id }})" style="flex: 1; background: white; color: #1e293b; border: none; padding: 8px; border-radius: var(--border-radius, 8px); font-size: 0.8rem; font-weight: 800; cursor: pointer; transition: all 0.2s;" type="button"><i class="fas fa-pen"></i> Edit Package</button>
-</div>
-</div>
-<div class="package-body-pro" style="padding: 1.5rem; flex: 1; display: flex; flex-direction: column;">
-<div class="pkg-header-row" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-<h3 class="package-name-pro" style="font-size: 1.15rem; font-weight: 800; color: #1e293b; margin: 0; line-height: 1.3;">{{ package.name }}</h3>
-<div class="pkg-status-indicator" style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-<div style="width: 8px; height: 8px; border-radius: 50%; background: {{ 'var(--accent-color)' if package.is_active else '#94a3b8' }};"></div>
-<span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">{{ 'Active' if package.is_active else 'Hidden' }}</span>
-</div>
-</div>
-<div class="package-stats-pro" style="display: flex; margin-bottom: 1rem;">
-<div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600;">
-<i class="fas fa-calendar-check" style="margin-right: 4px;"></i> {{ package.bookings|length if package.bookings else 0 }} bookings
+    {% if packages %}
+    <div class="packages-grid-pro animate-up delay-1">
+        {% for package in packages %}
+        <div class="package-card-pro" id="package-{{ package.id }}">
+            <div class="package-media-pro"
+                style="position: relative; overflow: hidden; height: 200px; background: #f8fafc;">
+                <div class="pkg-badge-category"
+                    style="position: absolute; top: 12px; left: 12px; z-index: 10; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); color: white; padding: 4px 12px; border-radius: var(--border-radius, 99px); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid rgba(255,255,255,0.2);">
+                    {{ package.service_type or 'General' }}
                 </div>
-</div>
-<p class="package-desc-pro" style="color: #64748b; font-size: 0.85rem; line-height: 1.6; margin-bottom: 1.5rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.7rem;">
-                {{ package.description or 'No description provided for this professional service package.' }}
-            </p>
-<div class="package-price-pro" style="margin-top: auto; background: #f8fafc; padding: 0.85rem 1rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
-<div>
-<span style="display: block; font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Starting at</span>
-<span style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">₱{{ "{:,.0f}".format(package.price_per_head or 0) }}<small style="font-size: 0.75rem; color: #64748b; font-weight: 500;">{{ ' / pax' if package.pricing_mode == 'per_pax' else ' total' }}</small></span>
-</div>
-<button class="btn-archive-minimal" onclick="window.archivePackage({{ package.id }})" style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid #fee2e2; background: #fff5f5; color: #ef4444; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Archive Package" type="button"><i class="fas fa-archive" style="font-size: 0.85rem;"></i></button>
-</div>
-</div>
-</div>
-    {% endfor %}
-</div>
-{% else %}
-<div class="packages-empty-pro animate-up delay-1 d-flex flex-column align-items-center justify-content-center text-center py-5" style="background: white; border-radius: var(--border-radius, 1.5rem); border: 2px dashed #e2e8f0; margin-top: 2rem;">
-<div class="empty-icon-pro text-brand" style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; opacity: 0.5; margin-bottom: 1.5rem;">
-<i class="fas fa-layer-group"></i>
-</div>
-<h2 class="text-secondary" style="font-weight: 800; margin-bottom: 0.5rem;">No Packages Yet</h2>
-<p style="color: #64748b; max-width: 400px; margin: 0 auto 1.5rem;">Create your first catering package with menu, services, and equipment inclusions.</p>
-<button class="btn-primary-pro" onclick="window.openAddPackageModal()" style="padding: 0.75rem 2rem; font-weight: 800;" type="button">Create First Package</button>
-</div>
-{% endif %}
+
+                {% if package.image_url %}
+                <img alt="{{ package.name }}"
+                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                    src="{{ package.image_url }}" style="width: 100%; height: 100%; object-fit: cover;" />
+                <div class="no-image-placeholder"
+                    style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; background: #f1f5f9; color: #cbd5e1;">
+                    <i class="fas fa-box-open" style="font-size: 3rem;"></i>
+                </div>
+                {% else %}
+                <div class="no-image-placeholder"
+                    style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #cbd5e1;">
+                    <i class="fas fa-box-open" style="font-size: 3rem;"></i>
+                </div>
+                {% endif %}
+
+                <div class="card-overlay-actions"
+                    style="position: absolute; bottom: 0; left: 0; right: 0; padding: 1.25rem; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); display: flex; gap: 0.75rem; opacity: 0; transition: all 0.3s ease; transform: translateY(10px); z-index: 5;">
+                    <button class="btn-overlay-action" onclick="window.editPackage({{ package.id }})"
+                        style="flex: 1; background: white; color: #1e293b; border: none; padding: 8px; border-radius: var(--border-radius, 8px); font-size: 0.8rem; font-weight: 800; cursor: pointer; transition: all 0.2s;"
+                        type="button"><i class="fas fa-pen"></i> Edit Package</button>
+                </div>
+            </div>
+            <div class="package-body-pro" style="padding: 1.5rem; flex: 1; display: flex; flex-direction: column;">
+                <div class="pkg-header-row"
+                    style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                    <h3 class="package-name-pro"
+                        style="font-size: 1.15rem; font-weight: 800; color: #1e293b; margin: 0; line-height: 1.3;">{{
+                        package.name }}</h3>
+                    <div class="pkg-status-indicator"
+                        style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                        <div
+                            style="width: 8px; height: 8px; border-radius: 50%; background: {{ 'var(--accent-color)' if package.is_active else '#94a3b8' }};">
+                        </div>
+                        <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">{{
+                            'Active' if package.is_active else 'Hidden' }}</span>
+                    </div>
+                </div>
+                <div class="package-stats-pro" style="display: flex; margin-bottom: 1rem;">
+                    <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600;">
+                        <i class="fas fa-calendar-check" style="margin-right: 4px;"></i> {{ package.bookings|length if
+                        package.bookings else 0 }} bookings
+                    </div>
+                </div>
+                <p class="package-desc-pro"
+                    style="color: #64748b; font-size: 0.85rem; line-height: 1.6; margin-bottom: 1.5rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.7rem;">
+                    {{ package.description or 'No description provided for this professional service package.' }}
+                </p>
+                <div class="package-price-pro"
+                    style="margin-top: auto; background: #f8fafc; padding: 0.85rem 1rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span
+                            style="display: block; font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Starting
+                            at</span>
+                        <span style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">₱{{
+                            "{:,.0f}".format(package.price_per_head or 0) }}<small
+                                style="font-size: 0.75rem; color: #64748b; font-weight: 500;">{{ ' / pax' if
+                                package.pricing_mode == 'per_pax' else ' total' }}</small></span>
+                    </div>
+                    <button class="btn-archive-minimal" onclick="window.archivePackage({{ package.id }})"
+                        style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid #fee2e2; background: #fff5f5; color: #ef4444; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;"
+                        title="Archive Package" type="button"><i class="fas fa-archive"
+                            style="font-size: 0.85rem;"></i></button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="packages-empty-pro animate-up delay-1 d-flex flex-column align-items-center justify-content-center text-center py-5"
+        style="background: white; border-radius: var(--border-radius, 1.5rem); border: 2px dashed #e2e8f0; margin-top: 2rem;">
+        <div class="empty-icon-pro text-brand"
+            style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; opacity: 0.5; margin-bottom: 1.5rem;">
+            <i class="fas fa-layer-group"></i>
+        </div>
+        <h2 class="text-secondary" style="font-weight: 800; margin-bottom: 0.5rem;">No Packages Yet</h2>
+        <p style="color: #64748b; max-width: 400px; margin: 0 auto 1.5rem;">Create your first catering package with
+            menu, services, and equipment inclusions.</p>
+        <button class="btn-primary-pro" onclick="window.openAddPackageModal()"
+            style="padding: 0.75rem 2rem; font-weight: 800;" type="button">Create First Package</button>
+    </div>
+    {% endif %}
 </div>
 
 <!-- ==================== EQUIPMENT RENTALS TAB ==================== -->
 <div id="servicesContentEquipment" style="display: none;">
 
-{% set unique_categories = [] %}
-{% for item in items %}
-    {% if item.category and item.category not in unique_categories %}
-        {% set _ = unique_categories.append(item.category) %}
-    {% endif %}
-{% endfor %}
-<div class="category-filters animate-up delay-1">
-    <button class="cat-chip active" data-cat="all" onclick="filterByCategory('all')">
-        All Items <span class="badge-count">{{ items|length }}</span>
-    </button>
-    {% for cat in unique_categories|sort %}
-    {% set count = items|selectattr('category', 'equalto', cat)|list|length %}
-    <button class="cat-chip" data-cat="{{ cat }}" onclick="filterByCategory('{{ cat }}')">
-        {{ cat }} <span class="badge-count">{{ count }}</span>
-    </button>
-    {% endfor %}
-</div>
-
-{% if items %}
-<div class="menu-grid animate-up delay-2">
+    {% set unique_categories = [] %}
     {% for item in items %}
-    <div class="menu-item-card-premium" data-category="{{ item.category }}" data-name="{{ item.name|lower }}" data-item-type="{{ item.item_type }}">
-        <div class="item-visual-pro">
-            {% if item.image_url %}
-                <img src="{{ item.image_url }}" alt="{{ item.name }}" class="item-img-pro" onerror="this.outerHTML='<div class=\'item-img-placeholder\'><i class=\'fas fa-box-open\'></i></div>'">
-            {% else %}
-                <div class="item-img-placeholder"><i class="fas fa-box-open"></i></div>
-            {% endif %}
-            <div class="item-status-overlay">
-                {% if item.status == 'unavailable' %}
-                    <span class="status-chip unavailable">Unavailable</span>
-                {% else %}
-                    <span class="status-chip available">Available</span>
-                {% endif %}
-            </div>
-        </div>
-        <div class="card-options-glass">
-            <button class="btn-dots-glass" onclick="toggleDropdown(this, event)">
-                <i class="fas fa-ellipsis-h"></i>
-            </button>
-            <div class="dropdown-menu-glass">
-                <button class="dropdown-item-pro"
-                    data-id="{{ item.id }}"
-                    data-name="{{ item.name }}"
-                    data-type="{{ item.item_type }}"
-                    data-category="{{ item.category }}"
-                    data-description="{{ item.description or '' }}"
-                    data-price="{{ item.price or 0 }}"
-                    data-cost-price="{{ item.cost_price or 0 }}"
-                    data-pricing-unit="{{ item.unit_type or 'Per Event' }}"
-                    data-available-qty="{{ item.available_qty or '' }}"
-                    data-status="{{ item.status }}"
-                    data-is-hidden="{{ 'true' if item.is_hidden else 'false' }}"
-                    data-usage-type="{{ item.usage_type or 'both' }}"
-                    data-is-addon="{{ 'true' if item.is_addon else 'false' }}"
-                    data-addon-price="{{ item.addon_price or 0 }}"
-                    data-base-duration-hours="{{ item.base_duration_hours | default(3, true) }}"
-                    data-image-url="{{ item.image_url or '' }}"
-                    onclick="viewMenuItem(this)">
-                    <i class="fas fa-eye"></i> View
-                </button>
-                <button class="dropdown-item-pro"
-                    data-id="{{ item.id }}"
-                    data-name="{{ item.name }}"
-                    data-type="{{ item.item_type }}"
-                    data-category="{{ item.category }}"
-                    data-description="{{ item.description or '' }}"
-                    data-price="{{ item.price or 0 }}"
-                    data-cost-price="{{ item.cost_price or 0 }}"
-                    data-pricing-unit="{{ item.unit_type or 'Per Event' }}"
-                    data-available-qty="{{ item.available_qty or '' }}"
-                    data-status="{{ item.status }}"
-                    data-is-hidden="{{ 'true' if item.is_hidden else 'false' }}"
-                    data-usage-type="{{ item.usage_type or 'both' }}"
-                    data-is-addon="{{ 'true' if item.is_addon else 'false' }}"
-                    data-addon-price="{{ item.addon_price or 0 }}"
-                    data-base-duration-hours="{{ item.base_duration_hours | default(3, true) }}"
-                    data-capacity-type="{{ item.capacity_type or 'unit_based' }}"
-                    data-staff-to-pax-ratio="{{ item.staff_to_pax_ratio or 0 }}"
-                    data-min-staff-required="{{ item.min_staff_required or 1 }}"
-                    data-allow-freelancers="{{ 'true' if item.allow_freelancers else 'false' }}"
-                    data-buffer-time-hours="{{ item.buffer_time_hours or 0 }}"
-                    data-image-url="{{ item.image_url or '' }}"
-                    onclick="editMenuItem(this)">
-                    <i class="fas fa-edit"></i> Edit
-                </button>
-                <button class="dropdown-item-pro delete" onclick="confirmArchiveDish({{ item.id }}, '{{ item.item_type }}')">
-                    <i class="fas fa-archive"></i> Archive
-                </button>
-            </div>
-        </div>
-
-        <div class="item-info-premium">
-            <div class="item-header-row">
-                <span class="item-cat-tag">{{ item.category }}</span>
-                <span class="item-addon-tag" style="background: #e2e8f0; color: #475569;">
-                    {% if item.item_type == 'Equipment' %}Equipment/Rental
-                    {% elif item.item_type == 'Service_Unit' %}Service (Unit-Based)
-                    {% elif item.item_type == 'Service_Staff' %}Service (Staff-Based)
-                    {% else %}{{ item.item_type }}{% endif %}
-                </span>
-            </div>
-            <h3 class="item-name-premium">{{ item.name }}</h3>
-            <p class="item-desc-premium">{{ item.description|truncate(80) if item.description else 'No description provided.' }}</p>
-            
-            <div class="item-footer-premium">
-                {% if item.is_hidden %}
-                <div class="price-stack" style="width: 100%;">
-                    <span class="price-label">Selling Price</span>
-                    <span class="price-value" style="color: #64748b; font-size: 0.9rem;">Included in Package</span>
-                </div>
-                {% else %}
-                <div class="price-stack">
-                    <span class="price-label">Selling Price</span>
-                    <span class="price-value">₱{{ "{:,.0f}".format(item.price or 0) }} / {{ item.unit_type }}</span>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
+    {% if item.category and item.category not in unique_categories %}
+    {% set _ = unique_categories.append(item.category) %}
+    {% endif %}
     {% endfor %}
+    <div class="category-filters animate-up delay-1">
+        <button class="cat-chip active" data-cat="all" onclick="filterByCategory('all')">
+            All Items <span class="badge-count">{{ items|length }}</span>
+        </button>
+        {% for cat in unique_categories|sort %}
+        {% set count = items|selectattr('category', 'equalto', cat)|list|length %}
+        <button class="cat-chip" data-cat="{{ cat }}" onclick="filterByCategory('{{ cat }}')">
+            {{ cat }} <span class="badge-count">{{ count }}</span>
+        </button>
+        {% endfor %}
+    </div>
 
-    <!-- No Search Results Empty State -->
-    <div id="searchEmptyState" class="empty-state animate-up delay-2" style="display: none; width: 100%; grid-column: 1 / -1; padding: 4rem 1rem; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-        <div class="empty-icon text-brand" style="opacity: 0.5; font-size: 3rem; margin-bottom: 1rem;">
-            <i class="fas fa-search"></i>
+    {% if items %}
+    <div class="menu-grid animate-up delay-2">
+        {% for item in items %}
+        <div class="menu-item-card-premium" data-category="{{ item.category }}" data-name="{{ item.name|lower }}"
+            data-item-type="{{ item.item_type }}">
+            <div class="item-visual-pro">
+                {% if item.image_url %}
+                <img src="{{ item.image_url }}" alt="{{ item.name }}" class="item-img-pro"
+                    onerror="this.outerHTML='<div class=\'item-img-placeholder\'><i class=\'fas fa-box-open\'></i></div>'">
+                {% else %}
+                <div class="item-img-placeholder"><i class="fas fa-box-open"></i></div>
+                {% endif %}
+                <div class="item-status-overlay">
+                    {% if item.status == 'unavailable' %}
+                    <span class="status-chip unavailable">Unavailable</span>
+                    {% else %}
+                    <span class="status-chip available">Available</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-options-glass">
+                <button class="btn-dots-glass" onclick="toggleDropdown(this, event)">
+                    <i class="fas fa-ellipsis-h"></i>
+                </button>
+                <div class="dropdown-menu-glass">
+                    <button class="dropdown-item-pro" data-id="{{ item.id }}" data-name="{{ item.name }}"
+                        data-type="{{ item.item_type }}" data-category="{{ item.category }}"
+                        data-description="{{ item.description or '' }}" data-price="{{ item.price or 0 }}"
+                        data-cost-price="{{ item.cost_price or 0 }}"
+                        data-pricing-unit="{{ item.unit_type or 'Per Event' }}"
+                        data-available-qty="{{ item.available_qty or '' }}" data-status="{{ item.status }}"
+                        data-is-hidden="{{ 'true' if item.is_hidden else 'false' }}"
+                        data-usage-type="{{ item.usage_type or 'both' }}"
+                        data-is-addon="{{ 'true' if item.is_addon else 'false' }}"
+                        data-addon-price="{{ item.addon_price or 0 }}"
+                        data-base-duration-hours="{{ item.base_duration_hours | default(3, true) }}"
+                        data-image-url="{{ item.image_url or '' }}" onclick="viewMenuItem(this)">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    <button class="dropdown-item-pro" data-id="{{ item.id }}" data-name="{{ item.name }}"
+                        data-type="{{ item.item_type }}" data-category="{{ item.category }}"
+                        data-description="{{ item.description or '' }}" data-price="{{ item.price or 0 }}"
+                        data-cost-price="{{ item.cost_price or 0 }}"
+                        data-pricing-unit="{{ item.unit_type or 'Per Event' }}"
+                        data-available-qty="{{ item.available_qty or '' }}" data-status="{{ item.status }}"
+                        data-is-hidden="{{ 'true' if item.is_hidden else 'false' }}"
+                        data-usage-type="{{ item.usage_type or 'both' }}"
+                        data-is-addon="{{ 'true' if item.is_addon else 'false' }}"
+                        data-addon-price="{{ item.addon_price or 0 }}"
+                        data-base-duration-hours="{{ item.base_duration_hours | default(3, true) }}"
+                        data-capacity-type="{{ item.capacity_type or 'unit_based' }}"
+                        data-staff-to-pax-ratio="{{ item.staff_to_pax_ratio or 0 }}"
+                        data-min-staff-required="{{ item.min_staff_required or 1 }}"
+                        data-allow-freelancers="{{ 'true' if item.allow_freelancers else 'false' }}"
+                        data-buffer-time-hours="{{ item.buffer_time_hours or 0 }}"
+                        data-image-url="{{ item.image_url or '' }}" onclick="editMenuItem(this)">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button class="dropdown-item-pro delete"
+                        onclick="confirmArchiveDish({{ item.id }}, '{{ item.item_type }}')">
+                        <i class="fas fa-archive"></i> Archive
+                    </button>
+                </div>
+            </div>
+
+            <div class="item-info-premium">
+                <div class="item-header-row">
+                    <span class="item-cat-tag">{{ item.category }}</span>
+                    <span class="item-addon-tag" style="background: #e2e8f0; color: #475569;">
+                        {% if item.item_type == 'Equipment' %}Equipment/Rental
+                        {% elif item.item_type == 'Service_Unit' %}Service (Unit-Based)
+                        {% elif item.item_type == 'Service_Staff' %}Service (Staff-Based)
+                        {% else %}{{ item.item_type }}{% endif %}
+                    </span>
+                </div>
+                <h3 class="item-name-premium">{{ item.name }}</h3>
+                <p class="item-desc-premium">{{ item.description|truncate(80) if item.description else 'No description
+                    provided.' }}</p>
+
+                <div class="item-footer-premium">
+                    {% if item.is_hidden %}
+                    <div class="price-stack" style="width: 100%;">
+                        <span class="price-label">Selling Price</span>
+                        <span class="price-value" style="color: #64748b; font-size: 0.9rem;">Included in Package</span>
+                    </div>
+                    {% else %}
+                    <div class="price-stack">
+                        <span class="price-label">Selling Price</span>
+                        <span class="price-value">₱{{ "{:,.0f}".format(item.price or 0) }} / {{ item.unit_type }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
-        <h2 class="text-secondary" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">No matches found</h2>
-        <p style="color: #64748b; font-size: 0.9rem; margin-top: 0;">Try adjusting your search or filter to find what you're looking for.</p>
+        {% endfor %}
+
+        <!-- No Search Results Empty State -->
+        <div id="searchEmptyState" class="empty-state animate-up delay-2"
+            style="display: none; width: 100%; grid-column: 1 / -1; padding: 4rem 1rem; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+            <div class="empty-icon text-brand" style="opacity: 0.5; font-size: 3rem; margin-bottom: 1rem;">
+                <i class="fas fa-search"></i>
+            </div>
+            <h2 class="text-secondary" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">No matches
+                found</h2>
+            <p style="color: #64748b; font-size: 0.9rem; margin-top: 0;">Try adjusting your search or filter to find
+                what you're looking for.</p>
+        </div>
     </div>
-</div>
-{% else %}
-<div class="empty-state animate-up delay-2" style="padding: 4rem 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%;">
-    <div class="empty-icon text-brand" style="opacity: 0.5; font-size: 4rem; margin-bottom: 1.5rem;">
-        <i class="fas fa-box-open"></i>
+    {% else %}
+    <div class="empty-state animate-up delay-2"
+        style="padding: 4rem 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%;">
+        <div class="empty-icon text-brand" style="opacity: 0.5; font-size: 4rem; margin-bottom: 1.5rem;">
+            <i class="fas fa-box-open"></i>
+        </div>
+        <h2 class="text-secondary" style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Your Inventory is
+            Empty</h2>
+        <p class="mx-auto" style="max-width: 400px; color: #64748b; margin-top: 0;">Start adding your rentals,
+            decorations, and services.</p>
+        <button class="btn-primary-pro mt-4 mx-auto" onclick="openWizard('rentalWizardModal')" style="margin-top: 1.5rem;">Add Your
+            First Item</button>
     </div>
-    <h2 class="text-secondary" style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Your Inventory is Empty</h2>
-    <p class="mx-auto" style="max-width: 400px; color: #64748b; margin-top: 0;">Start adding your rentals, decorations, and services.</p>
-    <button class="btn-primary-pro mt-4 mx-auto" onclick="openAddMenuModal()" style="margin-top: 1.5rem;">Add Your First Item</button>
-</div>
-{% endif %}
+    {% endif %}
 </div> <!-- /servicesContentEquipment -->
 
 <!-- Add/Edit Menu Modal -->
@@ -267,10 +302,10 @@
             <input type="hidden" name="remove_image" id="removeImageFlag" value="false">
             <!-- Hidden field to track item type during update -->
             <input type="hidden" name="update_item_type" id="updateItemType">
-            
+
             <div class="occ-modal-body compact-body" style="max-height: 70vh; overflow-y: auto;">
                 <div id="menuErrorDrawer" class="error-drawer"></div>
-                
+
                 <div class="form-row-pro">
                     <div class="form-group-pro">
                         <label>Type *</label>
@@ -282,17 +317,20 @@
                     </div>
                     <div class="form-group-pro">
                         <label>Category *</label>
-                        <select name="category" id="modalCategory" class="control-pro" required onchange="toggleCustomCategory()">
+                        <select name="category" id="modalCategory" class="control-pro" required
+                            onchange="toggleCustomCategory()">
                             <!-- Populated dynamically via JS -->
                         </select>
-                        <input type="text" name="custom_category" id="customCategoryInput" class="control-pro" placeholder="Type specific category" style="display: none; margin-top: 10px;">
+                        <input type="text" name="custom_category" id="customCategoryInput" class="control-pro"
+                            placeholder="Type specific category" style="display: none; margin-top: 10px;">
                     </div>
                 </div>
 
                 <div class="form-row-pro">
                     <div class="form-group-pro">
                         <label>Name *</label>
-                        <input type="text" name="name" class="control-pro" placeholder="e.g. Plastic Chair, Tent, Waiter" required minlength="2" maxlength="100">
+                        <input type="text" name="name" class="control-pro"
+                            placeholder="e.g. Plastic Chair, Tent, Waiter" required minlength="2" maxlength="100">
                         <div class="invalid-feedback"></div>
                     </div>
                     <div class="form-group-pro">
@@ -306,7 +344,8 @@
                 <div class="form-row-pro">
                     <div class="form-group-pro" id="qtyGroup">
                         <label id="qtyLabel">Available Quantity *</label>
-                        <input type="number" name="available_qty" id="availableQtyInput" class="control-pro" placeholder="e.g. 100" min="1" required>
+                        <input type="number" name="available_qty" id="availableQtyInput" class="control-pro"
+                            placeholder="e.g. 100" min="1" required>
                     </div>
                     <div class="form-group-pro">
                         <label>Status *</label>
@@ -315,39 +354,51 @@
                         </select>
                     </div>
                 </div>
-                
+
                 <div class="form-row-pro" id="serviceDurationGroup" style="display: none;">
                     <div class="form-group-pro">
-                        <label>Service Duration (Hours) * <i class="fas fa-info-circle text-muted" title="Standard duration provided for the service"></i></label>
-                        <input type="number" name="base_duration_hours" id="baseDurationInput" class="control-pro" placeholder="e.g. 3" min="1" max="24" value="3">
+                        <label>Service Duration (Hours) * <i class="fas fa-info-circle text-muted"
+                                title="Standard duration provided for the service"></i></label>
+                        <input type="number" name="base_duration_hours" id="baseDurationInput" class="control-pro"
+                            placeholder="e.g. 3" min="1" max="24" value="3">
                     </div>
                     <div class="form-group-pro service-capacity-group" style="display: none;">
-                        <label>Buffer/Travel Time (Hours) <i class="fas fa-info-circle text-muted" title="Extra time blocked before and after the event for travel/setup."></i></label>
-                        <input type="number" name="buffer_time_hours" id="bufferTimeInput" class="control-pro" placeholder="e.g. 2" min="0" value="0">
+                        <label>Buffer/Travel Time (Hours) <i class="fas fa-info-circle text-muted"
+                                title="Extra time blocked before and after the event for travel/setup."></i></label>
+                        <input type="number" name="buffer_time_hours" id="bufferTimeInput" class="control-pro"
+                            placeholder="e.g. 2" min="0" value="0">
                     </div>
                 </div>
-                
+
                 <div class="form-row-pro staff-capacity-group" style="display: none;">
                     <div class="form-group-pro">
-                        <label>Guests per Staff (Ratio) * <i class="fas fa-info-circle text-muted" title="How many guests 1 staff can serve."></i></label>
-                        <input type="number" name="staff_to_pax_ratio" id="staffRatioInput" class="control-pro" placeholder="e.g. 25" min="0">
+                        <label>Guests per Staff (Ratio) * <i class="fas fa-info-circle text-muted"
+                                title="How many guests 1 staff can serve."></i></label>
+                        <input type="number" name="staff_to_pax_ratio" id="staffRatioInput" class="control-pro"
+                            placeholder="e.g. 25" min="0">
                     </div>
                     <div class="form-group-pro">
-                        <label>Minimum Staff Required * <i class="fas fa-info-circle text-muted" title="Minimum number of staff assigned for small events."></i></label>
-                        <input type="number" name="min_staff_required" id="minStaffInput" class="control-pro" placeholder="e.g. 1" min="1" value="1">
+                        <label>Minimum Staff Required * <i class="fas fa-info-circle text-muted"
+                                title="Minimum number of staff assigned for small events."></i></label>
+                        <input type="number" name="min_staff_required" id="minStaffInput" class="control-pro"
+                            placeholder="e.g. 1" min="1" value="1">
                     </div>
                 </div>
-                
+
                 <div class="form-row-pro staff-capacity-group" style="display: none; margin-bottom: 1rem;">
                     <div class="form-group-pro" style="display: flex; align-items: center; gap: 10px;">
-                        <input type="checkbox" name="allow_freelancers" id="allowFreelancersInput" style="width: 18px; height: 18px;">
-                        <label for="allowFreelancersInput" style="margin: 0; font-weight: 500;">Allow Overbooking / Unlimited Staff (Uses Freelancers)</label>
+                        <input type="checkbox" name="allow_freelancers" id="allowFreelancersInput"
+                            style="width: 18px; height: 18px;">
+                        <label for="allowFreelancersInput" style="margin: 0; font-weight: 500;">Allow Overbooking /
+                            Unlimited Staff (Uses Freelancers)</label>
                     </div>
                 </div>
-                
+
                 <div class="form-group-pro">
-                    <label>Catalog Visibility * <i class="fas fa-info-circle text-muted" title="If hidden, customers can only book this if it's inside a package."></i></label>
-                    <select name="visibility" id="modalVisibility" class="control-pro" required onchange="toggleServicePricing()">
+                    <label>Catalog Visibility * <i class="fas fa-info-circle text-muted"
+                            title="If hidden, customers can only book this if it's inside a package."></i></label>
+                    <select name="visibility" id="modalVisibility" class="control-pro" required
+                        onchange="toggleServicePricing()">
                         <option value="public">Show on Profile</option>
                         <option value="hidden">Hidden (Package Only)</option>
                     </select>
@@ -357,34 +408,41 @@
 
                 <div class="form-group-pro">
                     <label>Description</label>
-                    <textarea name="description" class="control-pro" placeholder="Describe dimensions, material, or service details..." maxlength="500" style="height: 80px;"></textarea>
+                    <textarea name="description" class="control-pro"
+                        placeholder="Describe dimensions, material, or service details..." maxlength="500"
+                        style="height: 80px;"></textarea>
                 </div>
 
                 <div id="servicePricingSection">
                     <div class="form-row-pro">
                         <div class="form-group-pro" id="serviceSellingPriceGroup">
                             <label id="priceLabel">Selling Price (₱) *</label>
-                            <input type="text" name="price" id="servicePriceInput" class="control-pro js-format-comma" placeholder="0" inputmode="numeric" maxlength="10" required>
+                            <input type="text" name="price" id="servicePriceInput" class="control-pro js-format-comma"
+                                placeholder="0" inputmode="numeric" maxlength="10" required>
                         </div>
                     </div>
                 </div>
 
                 <div class="form-group-pro">
                     <label>Photo</label>
-                    <div class="photo-dropzone-pro" id="photoDropzone" onclick="document.getElementById('menuImageInput').click()">
+                    <div class="photo-dropzone-pro" id="photoDropzone"
+                        onclick="document.getElementById('menuImageInput').click()">
                         <i class="fas fa-camera"></i>
                         <span>Upload photo</span>
-                        <input type="file" name="image" id="menuImageInput" accept="image/*" style="display: none;" onchange="previewImage(event)">
+                        <input type="file" name="image" id="menuImageInput" accept="image/*" style="display: none;"
+                            onchange="previewImage(event)">
                     </div>
                     <div id="imagePreviewContainer" class="preview-box-pro" style="display: none;">
                         <img id="imagePreview" src="" class="img-preview-pro" alt="Preview">
-                        <button type="button" class="btn-remove-img-pro" onclick="removeImage(true)"><i class="fas fa-times"></i></button>
+                        <button type="button" class="btn-remove-img-pro" onclick="removeImage(true)"><i
+                                class="fas fa-times"></i></button>
                     </div>
                 </div>
             </div>
 
             <div class="occ-modal-footer">
-                <button type="button" class="btn-secondary-pro" style="min-width:100px;" onclick="window.closeModal('menuModal')">Cancel</button>
+                <button type="button" class="btn-secondary-pro" style="min-width:100px;"
+                    onclick="window.closeModal('menuModal')">Cancel</button>
                 <button type="submit" class="btn-primary-pro" style="padding:0 var(--space-xl);">Save Item</button>
             </div>
         </form>
@@ -395,14 +453,19 @@
 <div id="archiveDishModal" class="occ-modal-overlay" style="display: none; z-index: 99999;">
     <div class="occ-modal-box occ-modal-prompt" style="max-width: 450px;">
         <div style="padding: 3rem 2rem; text-align: center;">
-            <div class="occ-modal-icon-box" style="background: #fef2f2; color: #ef4444; box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.2);">
+            <div class="occ-modal-icon-box"
+                style="background: #fef2f2; color: #ef4444; box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.2);">
                 <i class="fas fa-archive"></i>
             </div>
             <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.75rem;">Archive Item?</h3>
-            <p style="font-size: 0.9rem; color: #64748b; font-weight: 500; line-height: 1.6; margin-bottom: 2rem;">Archive "<strong id="archiveItemName"></strong>"? It will no longer appear in your active inventory or package creator. Linked packages will still retain this item temporarily.</p>
+            <p style="font-size: 0.9rem; color: #64748b; font-weight: 500; line-height: 1.6; margin-bottom: 2rem;">
+                Archive "<strong id="archiveItemName"></strong>"? It will no longer appear in your active inventory or
+                package creator. Linked packages will still retain this item temporarily.</p>
             <div style="display: flex; gap: 12px; justify-content: center;">
-                <button type="button" class="occ-modal-btn-outline" style="flex: 1;" onclick="window.closeModal('archiveDishModal')">Cancel</button>
-                <button type="button" class="occ-modal-btn-primary" style="flex: 1; background: #ef4444;" id="confirmArchiveBtn">Archive Now</button>
+                <button type="button" class="occ-modal-btn-outline" style="flex: 1;"
+                    onclick="window.closeModal('archiveDishModal')">Cancel</button>
+                <button type="button" class="occ-modal-btn-primary" style="flex: 1; background: #ef4444;"
+                    id="confirmArchiveBtn">Archive Now</button>
             </div>
         </div>
     </div>
@@ -412,11 +475,14 @@
 <div id="viewItemModal" class="occ-modal-overlay" style="display: none; z-index: 99999;">
     <div class="occ-modal-box sz-md occ-content-pop" style="padding: 0; overflow: hidden; max-width: 550px;">
         <div style="position: relative; height: 200px; background: #f1f5f9;">
-            <img id="viewItemImage" src="" alt="Preview" style="width: 100%; height: 100%; object-fit: cover; display: none;">
-            <div id="viewItemNoImage" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 4rem; color: #cbd5e1;">
+            <img id="viewItemImage" src="" alt="Preview"
+                style="width: 100%; height: 100%; object-fit: cover; display: none;">
+            <div id="viewItemNoImage"
+                style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 4rem; color: #cbd5e1;">
                 <i class="fas fa-box-open"></i>
             </div>
-            <button onclick="window.closeModal('viewItemModal')" style="position: absolute; top: 1rem; right: 1rem; background: rgba(0,0,0,0.5); color: white; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+            <button onclick="window.closeModal('viewItemModal')"
+                style="position: absolute; top: 1rem; right: 1rem; background: rgba(0,0,0,0.5); color: white; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -426,32 +492,44 @@
                 <span id="viewItemType" class="item-addon-tag" style="background: #e2e8f0; color: #475569;"></span>
                 <span id="viewItemStatus" class="status-chip" style="margin-left: auto;"></span>
             </div>
-            <h3 id="viewItemName" style="font-size: 1.5rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;"></h3>
-            <p id="viewItemDesc" style="font-size: 0.95rem; color: #64748b; line-height: 1.6; margin-bottom: 1.5rem;"></p>
-            
-            <div style="background: #f8fafc; padding: 1.5rem; border-radius: var(--border-radius, 1rem); border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 1.25rem;">
+            <h3 id="viewItemName" style="font-size: 1.5rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;">
+            </h3>
+            <p id="viewItemDesc" style="font-size: 0.95rem; color: #64748b; line-height: 1.6; margin-bottom: 1.5rem;">
+            </p>
+
+            <div
+                style="background: #f8fafc; padding: 1.5rem; border-radius: var(--border-radius, 1rem); border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 1.25rem;">
                 <div>
-                    <span style="display: block; font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;" id="viewPriceLabel">Selling Price</span>
+                    <span
+                        style="display: block; font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;"
+                        id="viewPriceLabel">Selling Price</span>
                     <span id="viewItemPrice" style="font-size: 1.25rem; font-weight: 800; color: #1e293b;"></span>
                 </div>
-                
+
                 <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
                     <div>
-                        <span style="display: block; font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;" id="viewQtyLabel">Available Quantity</span>
+                        <span
+                            style="display: block; font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;"
+                            id="viewQtyLabel">Available Quantity</span>
                         <span id="viewItemQty" style="font-size: 1.1rem; font-weight: 800; color: #1e293b;"></span>
                     </div>
                     <div>
-                        <span style="display: block; font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Visibility</span>
-                        <span id="viewItemVisibility" style="font-size: 1.1rem; font-weight: 800; color: #1e293b;"></span>
+                        <span
+                            style="display: block; font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Visibility</span>
+                        <span id="viewItemVisibility"
+                            style="font-size: 1.1rem; font-weight: 800; color: #1e293b;"></span>
                     </div>
                     <div id="viewDurationContainer" style="display: none;">
-                        <span style="display: block; font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Service Duration</span>
+                        <span
+                            style="display: block; font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Service
+                            Duration</span>
                         <span id="viewItemDuration" style="font-size: 1.1rem; font-weight: 800; color: #1e293b;"></span>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="occ-modal-footer" style="padding: 1rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end;">
+        <div class="occ-modal-footer"
+            style="padding: 1rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end;">
             <button type="button" class="btn-primary-pro" onclick="window.closeModal('viewItemModal')">Close</button>
         </div>
     </div>
@@ -479,12 +557,12 @@
 
     const userEquipmentCats = [
         {% for item in items if item.item_type == 'Equipment' and item.category %}
-        {{ item.category|tojson|safe }},
+        {{ item.category | tojson | safe }},
         {% endfor %}
     ];
     const userServiceCats = [
         {% for item in items if item.item_type == 'Service' and item.category %}
-        {{ item.category|tojson|safe }},
+        {{ item.category | tojson | safe }},
         {% endfor %}
     ];
 
@@ -518,7 +596,7 @@
         // Toggle Capacity Specific Groups
         document.querySelectorAll('.staff-capacity-group').forEach(el => el.style.display = isStaff ? 'flex' : 'none');
         document.querySelectorAll('.service-capacity-group').forEach(el => el.style.display = isService ? 'block' : 'none');
-        
+
         // Staff-based specifics
         if (isStaff) {
             document.getElementById('staffRatioInput').required = true;
@@ -575,11 +653,11 @@
         const statusMap = { available: ['status-chip available', 'Available'], unavailable: ['status-chip unavailable', 'Unavailable'], maintenance: ['status-chip unavailable', 'Under Maintenance'] };
         const [cls, txt] = statusMap[el.dataset.status] || statusMap.available;
         statusSpan.className = cls; statusSpan.innerText = txt;
-        
+
         document.getElementById('viewQtyLabel').innerText = el.dataset.type === 'Equipment' ? 'Available Quantity' : 'Max Personnel Pool';
         document.getElementById('viewItemQty').innerText = el.dataset.availableQty || 'N/A';
         document.getElementById('viewItemVisibility').innerText = el.dataset.isHidden === 'true' ? 'Hidden (Package Only)' : 'Public';
-        
+
         if (el.dataset.type.startsWith('Service')) {
             document.getElementById('viewDurationContainer').style.display = 'block';
             document.getElementById('viewItemDuration').innerText = (el.dataset.baseDurationHours || '3') + ' Hours';
@@ -633,7 +711,7 @@
             form.status.value = item.status || 'available';
             if (form.visibility) form.visibility.value = item.is_hidden === 'true' ? 'hidden' : 'public';
             if (form.base_duration_hours) form.base_duration_hours.value = item.base_duration_hours;
-            
+
             if (form.staff_to_pax_ratio) form.staff_to_pax_ratio.value = el.dataset.staffToPaxRatio || 0;
             if (form.min_staff_required) form.min_staff_required.value = el.dataset.minStaffRequired || 1;
             if (form.allow_freelancers) form.allow_freelancers.checked = el.dataset.allowFreelancers === 'true';
@@ -666,7 +744,7 @@
                 try {
                     const res = await fetch(`/caterer/services/${id}/remove-image?type=${typeVal}`, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
                     if (res.ok && window.showToast) window.showToast("Image removed from database", "success");
-                } catch(e) {}
+                } catch (e) { }
             }
         }
         imagePreview.src = ''; imagePreviewContainer.style.display = 'none';
@@ -700,7 +778,7 @@
         const eTab = document.getElementById('unifiedTabEquipment');
         const activeStyle = "display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; color: #ffffff; background: var(--primary-color); box-shadow: 0 4px 10px rgba(var(--primary-color-rgb, 255, 123, 84), 0.25); transition: all 0.2s;";
         const inactiveStyle = "display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;";
-        
+
         if (sTab) {
             if (activeOfferingsTab === 'services') {
                 sTab.style.cssText = activeStyle;
@@ -760,7 +838,7 @@
         else document.getElementById('archiveDishModal').style.display = 'flex';
     }
 
-    document.getElementById('confirmArchiveBtn').onclick = async function() {
+    document.getElementById('confirmArchiveBtn').onclick = async function () {
         if (!archiveTargetId || !archiveTargetType) return;
         const btnEl = this;
         const res = await window.apiAction(`/caterer/services/${archiveTargetId}/archive?type=${archiveTargetType}`, { method: 'POST' }, btnEl);
@@ -807,8 +885,8 @@
         }
     });
 
-    document.addEventListener('DOMContentLoaded', () => { 
-        handleTypeChange(); 
+    document.addEventListener('DOMContentLoaded', () => {
+        handleTypeChange();
         const params = new URLSearchParams(window.location.search);
         const tabParam = params.get('tab');
         if (tabParam === 'services' || tabParam === 'equipment') {
@@ -822,35 +900,35 @@
         if (!e.target.closest('.card-options-glass')) document.querySelectorAll('.dropdown-menu-glass').forEach(d => d.classList.remove('active'));
     });
 
-    window.addEventListener('globalSearch', function(e) {
+    window.addEventListener('globalSearch', function (e) {
         const h = document.getElementById('menuSearchInput');
         if (h) { h.value = e.detail.value; filterMenu(); }
     });
-    
+
     // Prevent form submission on Enter key (fixes missing step content issue)
     document.addEventListener('DOMContentLoaded', () => {
         const rentalForm = document.getElementById('rentalWizardForm');
         if (rentalForm) {
-            rentalForm.addEventListener('keydown', function(e) {
+            rentalForm.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
                     e.preventDefault();
                     navigateRentalWizard(1);
                 }
             });
         }
-        
+
         const serviceForm = document.getElementById('serviceWizardForm');
         if (serviceForm) {
-            serviceForm.addEventListener('keydown', function(e) {
+            serviceForm.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
                     e.preventDefault();
                     navigateServiceWizard(1);
                 }
             });
         }
-        
+
         // Handle Mobile/Hardware Back Button
-        window.addEventListener('popstate', function(e) {
+        window.addEventListener('popstate', function (e) {
             const rModal = document.getElementById('rentalWizardModal');
             const sModal = document.getElementById('serviceWizardModal');
             let closedAny = false;
@@ -875,16 +953,16 @@
             serviceStep = 1;
             updateServiceStepUI();
         }
-        if(window.openModal) window.openModal(modalId);
+        if (window.openModal) window.openModal(modalId);
         else document.getElementById(modalId).style.display = 'flex';
-        
+
         // Push a dummy state so hardware back button can be intercepted
         if (window.history && window.history.pushState) {
-            window.history.pushState({wizardOpen: true}, '', window.location.href);
+            window.history.pushState({ wizardOpen: true }, '', window.location.href);
         }
     }
     function closeWizard(modalId) {
-        if(window.closeModal) window.closeModal(modalId);
+        if (window.closeModal) window.closeModal(modalId);
         else document.getElementById(modalId).style.display = 'none';
     }
 
@@ -893,21 +971,21 @@
     let rentalInclusions = [];
     let rentalSpecs = [];
     let rentalCharges = [];
-    
+
     function updateRentalStepUI() {
         document.querySelectorAll('#rentalWizardForm .wizard-step').forEach((el, i) => {
             el.style.display = (i + 1 === rentalStep) ? 'block' : 'none';
         });
-        
+
         // Update Stepper Line
         const line = document.getElementById('rentalStepperLine');
-        if(line) line.style.width = ((rentalStep - 1) / 3 * 100) + '%';
-        
+        if (line) line.style.width = ((rentalStep - 1) / 3 * 100) + '%';
+
         document.querySelectorAll('.rental-step-marker').forEach((marker) => {
             const stepNum = parseInt(marker.getAttribute('data-step'));
             const circle = marker.querySelector('.step-circle');
             const text = marker.querySelector('span');
-            
+
             if (stepNum < rentalStep) {
                 circle.style.background = 'var(--primary-color)';
                 circle.style.color = 'white';
@@ -934,7 +1012,7 @@
         } else {
             document.getElementById('rentalBtnPrev').style.display = 'none';
         }
-        
+
         if (rentalStep === 4) {
             document.getElementById('rentalBtnNext').style.display = 'none';
             document.getElementById('rentalBtnDraft').style.display = '';
@@ -969,7 +1047,7 @@
     function addRentalInclusion() {
         const name = document.getElementById('addIncName').value.trim();
         const qty = document.getElementById('addIncQty').value;
-        if(name) {
+        if (name) {
             rentalInclusions.push({ name, qty });
             document.getElementById('addIncName').value = '';
             document.getElementById('addIncQty').value = '1';
@@ -989,7 +1067,7 @@
     function addRentalSpec() {
         const name = document.getElementById('addSpecName').value.trim();
         const val = document.getElementById('addSpecValue').value.trim();
-        if(name && val) {
+        if (name && val) {
             rentalSpecs.push({ name, value: val });
             document.getElementById('addSpecName').value = '';
             document.getElementById('addSpecValue').value = '';
@@ -1009,7 +1087,7 @@
     function addRentalCharge() {
         const name = document.getElementById('addChargeName').value.trim();
         const price = document.getElementById('addChargePrice').value.trim();
-        if(name && price) {
+        if (name && price) {
             rentalCharges.push({ name, price });
             document.getElementById('addChargeName').value = '';
             document.getElementById('addChargePrice').value = '';
@@ -1035,7 +1113,7 @@
 
     function previewRentalImage(e) {
         const f = e.target.files[0];
-        if(f) {
+        if (f) {
             const r = new FileReader();
             r.onload = ev => {
                 document.getElementById('rentalImagePreview').src = ev.target.result;
@@ -1059,7 +1137,7 @@
             return;
         }
         document.getElementById('rentalStatusInput').value = status;
-        
+
         const details = {
             inclusions: rentalInclusions,
             specifications: rentalSpecs,
@@ -1074,14 +1152,23 @@
             additional_charges: rentalCharges,
             policies: document.getElementById('rentalPolicies').value
         };
-        
+
         document.getElementById('rentalDetailsJson').value = JSON.stringify(details);
-        
+
         const btn = status === 'Published' ? document.getElementById('rentalBtnPublish') : document.getElementById('rentalBtnDraft');
         const data = new FormData(form);
-        if(window.apiAction) {
+        if (window.apiAction) {
             const res = await window.apiAction(form.action, { method: 'POST', body: data }, btn);
-            if(res) setTimeout(() => window.location.reload(), 1000);
+            if (res) {
+                if (window._pkgInclusionReturnState && window._pkgInclusionReturnState.active) {
+                    closeWizard('rentalWizardModal');
+                    if (window.handleCatalogItemCreated) {
+                        window.handleCatalogItemCreated('Equipment', res);
+                    }
+                    return;
+                }
+                setTimeout(() => window.location.reload(), 1000);
+            }
         }
     }
 
@@ -1091,22 +1178,22 @@
     let serviceInclusions = [];
     let serviceCharges = [];
     let serviceReqs = [];
-    
+
     function updateServiceStepUI() {
         document.querySelectorAll('#serviceWizardForm .wizard-step').forEach((el, i) => {
             el.style.display = (i + 1 === serviceStep) ? 'block' : 'none';
         });
-        
+
         // Update Stepper Line
         const line = document.getElementById('serviceStepperLine');
         if (line) line.style.width = ((serviceStep - 1) / 3 * 100) + '%';
-        
+
         // Update Stepper Circles
         document.querySelectorAll('.service-step-marker').forEach((marker) => {
             const stepNum = parseInt(marker.getAttribute('data-step'));
             const circle = marker.querySelector('.step-circle');
             const text = marker.querySelector('span');
-            
+
             if (stepNum < serviceStep) {
                 circle.style.background = 'var(--primary-color)';
                 circle.style.color = 'white';
@@ -1133,7 +1220,7 @@
         } else {
             document.getElementById('serviceBtnPrev').style.display = 'none';
         }
-        
+
         if (serviceStep === 4) {
             document.getElementById('serviceBtnNext').style.display = 'none';
             document.getElementById('serviceBtnDraft').style.display = '';
@@ -1168,7 +1255,7 @@
     function addServiceInclusion() {
         const name = document.getElementById('addSvcIncName').value.trim();
         const details = document.getElementById('addSvcIncDetails').value.trim();
-        if(name) {
+        if (name) {
             serviceInclusions.push({ name, details });
             document.getElementById('addSvcIncName').value = '';
             document.getElementById('addSvcIncDetails').value = '';
@@ -1188,7 +1275,7 @@
     function addServiceCharge() {
         const name = document.getElementById('addSvcChargeName').value.trim();
         const price = document.getElementById('addSvcChargePrice').value.trim();
-        if(name && price) {
+        if (name && price) {
             serviceCharges.push({ name, price });
             document.getElementById('addSvcChargeName').value = '';
             document.getElementById('addSvcChargePrice').value = '';
@@ -1208,7 +1295,7 @@
 
     function addServiceReq() {
         const req = document.getElementById('addSvcReqName').value.trim();
-        if(req) {
+        if (req) {
             serviceReqs.push(req);
             document.getElementById('addSvcReqName').value = '';
             renderServiceReqs();
@@ -1226,7 +1313,7 @@
 
     function previewServiceImage(e) {
         const f = e.target.files[0];
-        if(f) {
+        if (f) {
             const r = new FileReader();
             r.onload = ev => {
                 document.getElementById('serviceImagePreview').src = ev.target.result;
@@ -1250,7 +1337,7 @@
             return;
         }
         document.getElementById('serviceStatusInput').value = status;
-        
+
         const details = {
             inclusions: serviceInclusions,
             min_hours: document.getElementById('serviceMinHours').value,
@@ -1259,115 +1346,68 @@
             requirements: serviceReqs,
             policies: document.getElementById('servicePolicies').value
         };
-        
+
         document.getElementById('serviceDetailsJson').value = JSON.stringify(details);
-        
+
         const btn = status === 'Published' ? document.getElementById('serviceBtnPublish') : document.getElementById('serviceBtnDraft');
         const data = new FormData(form);
-        if(window.apiAction) {
+        if (window.apiAction) {
             const res = await window.apiAction(form.action, { method: 'POST', body: data }, btn);
-            if(res) setTimeout(() => window.location.reload(), 1000);
+            if (res) {
+                if (window._pkgInclusionReturnState && window._pkgInclusionReturnState.active) {
+                    closeWizard('serviceWizardModal');
+                    if (window.handleCatalogItemCreated) {
+                        window.handleCatalogItemCreated('Service', res);
+                    }
+                    return;
+                }
+                setTimeout(() => window.location.reload(), 1000);
+            }
         }
     }
 </script>
 
-{% include "caterer/components/package_modal.html" %}
+
+
 
 <script>
-window.toggleLibItemSelectCard = function(card, id) {
-    const cb = card.querySelector('input[type="checkbox"]');
-    if (!cb) return;
-    cb.checked = !cb.checked;
+    // ==================== Services Tab Switching ====================
+    function switchServicesTab(tab) {
+        const tabPackages = document.getElementById('servicesTabPackages');
+        const tabEquipment = document.getElementById('servicesTabEquipment');
+        const contentPackages = document.getElementById('servicesContentPackages');
+        const contentEquipment = document.getElementById('servicesContentEquipment');
 
-    if (cb.checked) {
-        card.classList.add('selected');
-        card.style.background = '#f0fdf4';
-        card.style.borderColor = 'var(--primary-color)';
-        const i = card.querySelector('i');
-        if (i) {
-            i.className = 'fas fa-check-circle';
-            i.parentElement.style.color = 'var(--primary-color)';
-        }
-    } else {
-        card.classList.remove('selected');
-        card.style.background = 'white';
-        card.style.borderColor = '#e2e8f0';
-        const i = card.querySelector('i');
-        if (i) {
-            i.className = 'far fa-circle';
-            i.parentElement.style.color = '#cbd5e1';
+        const activeStyle = 'display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; cursor: pointer; color: #ffffff; background: var(--primary-color); box-shadow: 0 4px 10px rgba(var(--primary-color-rgb, 255, 123, 84), 0.25); border: none; transition: all 0.2s;';
+        const inactiveStyle = 'display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; cursor: pointer; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;';
+
+        if (tab === 'packages') {
+            tabPackages.style.cssText = activeStyle;
+            tabEquipment.style.cssText = inactiveStyle;
+            contentPackages.style.display = '';
+            contentEquipment.style.display = 'none';
+        } else {
+            tabPackages.style.cssText = inactiveStyle;
+            tabEquipment.style.cssText = activeStyle;
+            contentPackages.style.display = 'none';
+            contentEquipment.style.display = '';
         }
     }
 
-    if (card.closest('#tab-menu') || card.closest('#tab-food')) {
-        if (typeof updateSelectionRulesBuilder === 'function') {
-            updateSelectionRulesBuilder();
-        }
-    }
-    
-    if (typeof calculatePricing === 'function') {
-        calculatePricing();
-    }
-};
-
-window.toggleAllInContainer = function(checkbox, containerSelector) {
-    const container = document.querySelector(containerSelector);
-    if (!container) return;
-    
-    const cards = container.querySelectorAll('.menu-select-card');
-    cards.forEach(card => {
-        const cb = card.querySelector('input[type="checkbox"]');
-        if (!cb) return;
-        
-        if (cb.checked !== checkbox.checked) {
-            card.click();
+    // Check URL hash for tab on page load
+    document.addEventListener('DOMContentLoaded', function () {
+        const params = new URLSearchParams(window.location.search);
+        const tab = params.get('tab');
+        if (tab === 'equipment') {
+            switchServicesTab('equipment');
         }
     });
-    
-    if (typeof calculatePricing === 'function') {
-        calculatePricing();
-    }
-};
 </script>
 
-<script>
-// ==================== Services Tab Switching ====================
-function switchServicesTab(tab) {
-    const tabPackages = document.getElementById('servicesTabPackages');
-    const tabEquipment = document.getElementById('servicesTabEquipment');
-    const contentPackages = document.getElementById('servicesContentPackages');
-    const contentEquipment = document.getElementById('servicesContentEquipment');
-
-    const activeStyle = 'display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; cursor: pointer; color: #ffffff; background: var(--primary-color); box-shadow: 0 4px 10px rgba(var(--primary-color-rgb, 255, 123, 84), 0.25); border: none; transition: all 0.2s;';
-    const inactiveStyle = 'display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; border-radius: var(--border-radius, 8px); font-size: 0.875rem; font-weight: 700; text-decoration: none; cursor: pointer; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;';
-
-    if (tab === 'packages') {
-        tabPackages.style.cssText = activeStyle;
-        tabEquipment.style.cssText = inactiveStyle;
-        contentPackages.style.display = '';
-        contentEquipment.style.display = 'none';
-    } else {
-        tabPackages.style.cssText = inactiveStyle;
-        tabEquipment.style.cssText = activeStyle;
-        contentPackages.style.display = 'none';
-        contentEquipment.style.display = '';
-    }
-}
-
-// Check URL hash for tab on page load
-document.addEventListener('DOMContentLoaded', function() {
-    const params = new URLSearchParams(window.location.search);
-    const tab = params.get('tab');
-    if (tab === 'equipment') {
-        switchServicesTab('equipment');
-    }
-});
-</script>
-
-<script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v=12.9"></script>
+<script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v=20.0"></script>
 <script>
     // Listen to global header search for packages
-    window.addEventListener('globalSearch', function(e) {
+    window.addEventListener('globalSearch', function (e) {
         const hiddenInput = document.getElementById('packageSearchInput');
         if (hiddenInput && typeof window.filterPackages === 'function') {
             hiddenInput.value = e.detail.value;

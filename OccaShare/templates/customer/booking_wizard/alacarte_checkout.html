@@ -912,6 +912,41 @@ Carte Checkout') }}{% endblock %}
                                             style="font-weight: 600; color: #0f172a; font-size: 0.95rem;">-</div>
                                     </div>
                                 </div>
+
+                                <div id="payment-items-summary" style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #e2e8f0;">
+                                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem;">Payment Breakdown</div>
+                                    <div id="payment-items-list" style="display: flex; flex-direction: column; gap: 8px;">
+                                        <!-- Populated dynamically by JS -->
+                                    </div>
+                                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1; display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem;">
+                                        <div style="display: flex; justify-content: space-between; color: #475569;">
+                                            <span id="rev-base-label">Rental Subtotal</span>
+                                            <span id="rev-base-total" style="font-weight: 700; color: #0f172a;">₱0.00</span>
+                                        </div>
+                                        <div id="rev-delivery-row" style="display: flex; justify-content: space-between; color: #475569;">
+                                            <span id="rev-delivery-label">Delivery Fee</span>
+                                            <span id="rev-delivery-fee" style="font-weight: 700; color: #0f172a;">₱0.00</span>
+                                        </div>
+                                        <div id="rev-deposit-row" style="display: none; justify-content: space-between; color: #c2410c;">
+                                            <span>Refundable Security Deposit</span>
+                                            <span id="rev-deposit-fee" style="font-weight: 700; color: #c2410c;">₱0.00</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; font-size: 1.05rem; font-weight: 800; color: #0f172a; margin-top: 6px; padding-top: 6px; border-top: 1.5px solid #0f172a;">
+                                            <span>Total Amount Due</span>
+                                            <span id="rev-grand-total">₱0.00</span>
+                                        </div>
+                                        <div id="rev-downpayment-block" style="margin-top: 8px; padding: 10px 14px; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
+                                            <div style="display: flex; justify-content: space-between; font-weight: 800; color: #1e3a8a;">
+                                                <span>50% Downpayment (Pay Now)</span>
+                                                <span id="rev-downpayment-fee">₱0.00</span>
+                                            </div>
+                                            <div style="display: flex; justify-content: space-between; font-weight: 700; color: #059669; margin-top: 4px; font-size: 0.85rem;">
+                                                <span>Remaining Balance</span>
+                                                <span id="rev-remaining-fee">₱0.00</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -1063,21 +1098,30 @@ Carte Checkout') }}{% endblock %}
                 <div class="calc-divider"></div>
 
                 <div class="calc-row">
-                    <span class="calc-label">Base Total</span>
+                    <span class="calc-label" id="lbl-base-total">Base Total</span>
                     <span class="calc-val" id="sum-base-total">₱0.00</span>
                 </div>
                 <div class="calc-row" id="delivery-row">
                     <span class="calc-label">Delivery Fee</span>
-                    <span class="calc-val" id="sum-delivery-fee">TBD</span>
+                    <span class="calc-val" id="sum-delivery-fee">₱0.00</span>
                 </div>
                 <div class="calc-row" id="deposit-row" style="display: none;">
-                    <span class="calc-label">Security Deposit (Refundable)</span>
-                    <span class="calc-val" id="sum-deposit-fee">₱0.00</span>
+                    <span class="calc-label">Refundable Security Deposit</span>
+                    <span class="calc-val" id="sum-deposit-fee" style="color: #c2410c;">₱0.00</span>
                 </div>
 
                 <div class="calc-total">
                     <span class="total-label">Grand Total</span>
                     <span class="total-price" id="sum-grand-total">₱0.00</span>
+                </div>
+
+                <div class="calc-row" id="downpayment-row" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--dm-slate-200);">
+                    <span class="calc-label" style="font-weight: 700; color: var(--checkout-primary);">50% Downpayment (Pay Now)</span>
+                    <span class="calc-val" id="sum-downpayment" style="font-weight: 850; color: var(--checkout-primary);">₱0.00</span>
+                </div>
+                <div class="calc-row" id="remaining-row" style="display: none;">
+                    <span class="calc-label" style="font-weight: 700; color: #10b981;">Remaining Balance</span>
+                    <span class="calc-val" id="sum-remaining-balance" style="font-weight: 850; color: #10b981;">₱0.00</span>
                 </div>
 
                 <button type="button" class="btn-wizard-next" id="sidebar-next-btn"
@@ -1096,9 +1140,9 @@ Carte Checkout') }}{% endblock %}
     window.originalSavedAddressString = {{ ((default_address_text ~ ', Philippines') if default_address_text else '') | tojson | safe }};
     window.userSavedAddress = {
         province: {{ (user.province or '') | tojson | safe }},
-    city: { { (user.city_municipality or '') | tojson | safe } },
-    brgy: { { (user.barangay or '') | tojson | safe } },
-    street: { { (user.street_address or user.address or '') | tojson | safe } }
+        city: {{ (user.city_municipality or '') | tojson | safe }},
+        brgy: {{ (user.barangay or '') | tojson | safe }},
+        street: {{ (user.street_address or user.address or '') | tojson | safe }}
     };
 </script>
 {% endblock %}
@@ -1224,47 +1268,47 @@ Carte Checkout') }}{% endblock %}
     window.catererBankAccountNumber = "{{ caterer.bank_account_number or '' }}";
     window.backendMenuItems = [
         {% for item in menu_items %}
-    {
-        id: "{{ item.id }}",
+        {
+            id: "{{ item.id }}",
             type: "Menu",
-                name: { { (item.name or '')| tojson } },
-        price: { { item.price or 0 } },
-        pricing_unit: "{{ item.pricing_unit or 'per_tray' }}",
+            name: {{ (item.name or '') | tojson }},
+            price: {{ item.price or 0 }},
+            pricing_unit: "{{ item.pricing_unit or 'per_tray' }}",
             image_url: "{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}",
-                is_combo: { { 'true' if item.is_combo else 'false' } },
-        is_rental: { { 'true' if item.category and item.category | lower == 'rentals' else 'false' } }
-    } {% if not loop.last or equipment_items or service_items %}, {% endif %}
-    {% endfor %}
+            is_combo: {{ 'true' if item.is_combo else 'false' }},
+            is_rental: {{ 'true' if item.category and item.category | lower == 'rentals' else 'false' }}
+        }{% if not loop.last or equipment_items or service_items %}, {% endif %}
+        {% endfor %}
 
-    {% for item in equipment_items %}
-    {
-        id: "{{ item.id }}",
+        {% for item in equipment_items %}
+        {
+            id: "{{ item.id }}",
             type: "Equipment",
-                name: { { (item.name or '')| tojson } },
-        price: { { item.rental_price or 0 } },
-        cost_value: { { item.cost_value or 0 } },
-        security_deposit_pct: { { item.security_deposit_pct or 20.0 } },
-        requires_kyc: { { 'true' if item.requires_kyc else 'false' } },
-        min_quantity: { { item.min_quantity or 1 } },
-        pricing_unit: "{{ item.unit_type or 'per_unit' }}",
+            name: {{ (item.name or '') | tojson }},
+            price: {{ item.rental_price or 0 }},
+            cost_value: {{ item.cost_value or 0 }},
+            security_deposit_pct: {{ item.security_deposit_pct or 20.0 }},
+            requires_kyc: {{ 'true' if item.requires_kyc else 'false' }},
+            min_quantity: {{ item.min_quantity or 1 }},
+            pricing_unit: "{{ item.unit_type or 'per_unit' }}",
             image_url: "{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}",
-                is_combo: false,
-                    is_rental: true
-    } {% if not loop.last or service_items %}, {% endif %}
-    {% endfor %}
+            is_combo: false,
+            is_rental: true
+        }{% if not loop.last or service_items %}, {% endif %}
+        {% endfor %}
 
-    {% for item in service_items %}
-    {
-        id: "{{ item.id }}",
+        {% for item in service_items %}
+        {
+            id: "{{ item.id }}",
             type: "Service",
-                name: { { (item.name or '')| tojson } },
-        price: { { item.selling_price or 0 } },
-        pricing_unit: "{{ item.unit_type or 'per_unit' }}",
+            name: {{ (item.name or '') | tojson }},
+            price: {{ item.selling_price or 0 }},
+            pricing_unit: "{{ item.unit_type or 'per_unit' }}",
             image_url: "{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}",
-                is_combo: false,
-                    is_rental: false
-    } {% if not loop.last %}, {% endif %}
-    {% endfor %}
+            is_combo: false,
+            is_rental: false
+        }{% if not loop.last %}, {% endif %}
+        {% endfor %}
     ];
 
     // 2-step checkout flow (Step 1: Details / Step 2: Payment)

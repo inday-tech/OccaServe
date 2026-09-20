@@ -195,6 +195,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const maxM = String(maxObj.getMonth() + 1).padStart(2, '0');
             const maxD = String(maxObj.getDate()).padStart(2, '0');
             dateInput.setAttribute('max', `${maxY}-${maxM}-${maxD}`);
+
+            // Pre-fill delivery date from selected equipment rental date if present
+            const rentalWithDate = window.cartItems.find(i => i.rental_date);
+            if (rentalWithDate && rentalWithDate.rental_date && !dateInput.value) {
+                dateInput.value = rentalWithDate.rental_date;
+            }
         }
     }
 
@@ -234,12 +240,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const bItem = backendList.find(i => String(i.id) === String(cItem.id) && (cItem.type ? i.type === cItem.type : true)) || cItem;
             let itemPrice = parseFloat(cItem.price);
             if (isNaN(itemPrice) || itemPrice === 0) {
-                itemPrice = bItem ? parseFloat(bItem.price) || 0 : 0;
+                itemPrice = bItem ? (parseFloat(bItem.price) || parseFloat(bItem.rental_price) || 0) : 0;
             }
             const isFixedQty = ['whole', 'per_event', 'per event', 'package'].includes(String(bItem.pricing_unit).toLowerCase());
             const qty = isFixedQty ? 1 : (parseInt(cItem.qty) || 1);
             const itemName = cItem.name || bItem.name || 'Custom Item';
-            const unitLabel = bItem.pricing_unit ? (UNIT_MAP[bItem.pricing_unit] || ' / ' + bItem.pricing_unit) : (bItem.is_rental ? '/ Unit' : (bItem.is_combo ? '(Platter)' : '/ Tray'));
+            const unitLabel = bItem.pricing_unit ? (UNIT_MAP[bItem.pricing_unit] || ' / ' + bItem.pricing_unit) : (bItem.is_rental ? ' / Unit' : (bItem.is_combo ? '(Platter)' : '/ Tray'));
 
             baseTotal += (itemPrice * qty);
 
@@ -894,22 +900,27 @@ document.addEventListener('DOMContentLoaded', function () {
             window.cartItems.forEach(cItem => {
                 const backendList = window.backendMenuItems || [];
                 const bItem = backendList.find(i => String(i.id) === String(cItem.id) && (cItem.type ? i.type === cItem.type : true));
-                const itemPrice = parseFloat(cItem.price || (bItem && bItem.price)) || 0;
+                let itemPrice = parseFloat(cItem.price);
+                if (isNaN(itemPrice) || itemPrice === 0) {
+                    itemPrice = bItem ? (parseFloat(bItem.price) || parseFloat(bItem.rental_price) || 0) : 0;
+                }
                 const qty = parseInt(cItem.qty) || 1;
                 base += (itemPrice * qty);
             });
         }
 
-        // Always recalculate deposit
+        // Recalculate refundable security deposit for rentals
         window.cartItems.forEach(cItem => {
             const backendList = window.backendMenuItems || [];
             const bItem = backendList.find(i => String(i.id) === String(cItem.id) && (cItem.type ? i.type === cItem.type : true));
-            if (bItem && bItem.is_rental) {
-                const cost = parseFloat(bItem.cost_value) || 0;
-                const pct = parseFloat(bItem.security_deposit_pct) || 0;
+            if ((bItem && (bItem.is_rental || bItem.type === 'Equipment')) || cItem.type === 'Equipment') {
+                const cost = bItem ? (parseFloat(bItem.cost_value) || 0) : 0;
+                const pct = bItem ? (parseFloat(bItem.security_deposit_pct) || 0) : (parseFloat(cItem.deposit_pct) || 0);
+                const itemPrice = parseFloat(cItem.price) || (bItem ? (parseFloat(bItem.price) || parseFloat(bItem.rental_price) || 0) : 0);
+                const depositBase = cost > 0 ? cost : itemPrice;
                 const qty = parseInt(cItem.qty) || 1;
-                if (cost > 0 && pct > 0) {
-                    securityDepositTotal += (cost * (pct / 100)) * qty;
+                if (depositBase > 0 && pct > 0) {
+                    securityDepositTotal += (depositBase * (pct / 100)) * qty;
                 }
             }
         });
@@ -963,6 +974,38 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const grandEl = document.getElementById('sum-grand-total');
         if (grandEl) grandEl.innerText = '₱' + total.toLocaleString(undefined, { minimumFractionDigits: 2 });
+
+        // Downpayment & Remaining calculations (50% downpayment for rentals)
+        let downpayment = 0;
+        let remaining = total;
+        if (window.isRentalOnly || window.cartItems.some(i => i.type === 'Equipment' || i.is_rental)) {
+            downpayment = Math.round((base * 0.5) * 100) / 100;
+            remaining = Math.round((total - downpayment) * 100) / 100;
+        }
+        window.currentDownpayment = downpayment;
+        window.currentRemaining = remaining;
+
+        const downpaymentRow = document.getElementById('downpayment-row');
+        const sumDownpaymentEl = document.getElementById('sum-downpayment');
+        const remainingRow = document.getElementById('remaining-row');
+        const sumRemainingEl = document.getElementById('sum-remaining-balance');
+
+        if (downpaymentRow && sumDownpaymentEl) {
+            if (downpayment > 0) {
+                downpaymentRow.style.display = 'flex';
+                sumDownpaymentEl.innerText = '₱' + downpayment.toLocaleString(undefined, { minimumFractionDigits: 2 });
+            } else {
+                downpaymentRow.style.display = 'none';
+            }
+        }
+        if (remainingRow && sumRemainingEl) {
+            if (downpayment > 0) {
+                remainingRow.style.display = 'flex';
+                sumRemainingEl.innerText = '₱' + remaining.toLocaleString(undefined, { minimumFractionDigits: 2 });
+            } else {
+                remainingRow.style.display = 'none';
+            }
+        }
     };
 
     window.updateFulfillment = function (el) {
@@ -1032,6 +1075,76 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const mode = form.fulfillment.value;
         document.getElementById('rev-location').innerText = mode === 'pickup' ? (window.catererAddress || 'STORE PICKUP') : document.getElementById('address').value;
+
+        // Populate itemized payment review list
+        const listContainer = document.getElementById('payment-items-list');
+        if (listContainer) {
+            let listHtml = '';
+            window.cartItems.forEach(cItem => {
+                const backendList = window.backendMenuItems || [];
+                const bItem = backendList.find(i => String(i.id) === String(cItem.id) && (cItem.type ? i.type === cItem.type : true)) || cItem;
+                let itemPrice = parseFloat(cItem.price);
+                if (isNaN(itemPrice) || itemPrice === 0) {
+                    itemPrice = bItem ? (parseFloat(bItem.price) || parseFloat(bItem.rental_price) || 0) : 0;
+                }
+                const qty = parseInt(cItem.qty) || 1;
+                const itemSubtotal = itemPrice * qty;
+                const itemName = cItem.name || bItem.name || 'Selected Item';
+                listHtml += `
+                    <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: #1e293b;">
+                        <span><strong style="color: var(--checkout-primary);">${qty}x</strong> ${itemName} <span style="color: #64748b; font-size: 0.8rem;">(@ ₱${itemPrice.toLocaleString(undefined, {minimumFractionDigits: 2})})</span></span>
+                        <span style="font-weight: 700;">₱${itemSubtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    </div>
+                `;
+            });
+            listContainer.innerHTML = listHtml;
+        }
+
+        const revBase = document.getElementById('rev-base-total');
+        if (revBase) {
+            const sumBaseEl = document.getElementById('sum-base-total');
+            revBase.innerText = sumBaseEl ? sumBaseEl.innerText : '₱0.00';
+        }
+
+        const revDelRow = document.getElementById('rev-delivery-row');
+        const revDelFee = document.getElementById('rev-delivery-fee');
+        if (revDelFee) {
+            const sumDelEl = document.getElementById('sum-delivery-fee');
+            revDelFee.innerText = sumDelEl ? sumDelEl.innerText : '₱0.00';
+        }
+        if (revDelRow) {
+            revDelRow.style.display = mode === 'pickup' ? 'none' : 'flex';
+        }
+
+        const revDepRow = document.getElementById('rev-deposit-row');
+        const revDepFee = document.getElementById('rev-deposit-fee');
+        if (revDepRow && revDepFee) {
+            if (window.currentSecurityDeposit && window.currentSecurityDeposit > 0) {
+                revDepRow.style.display = 'flex';
+                revDepFee.innerText = '₱' + window.currentSecurityDeposit.toLocaleString(undefined, { minimumFractionDigits: 2 });
+            } else {
+                revDepRow.style.display = 'none';
+            }
+        }
+
+        const revGrand = document.getElementById('rev-grand-total');
+        if (revGrand) {
+            const sumGrandEl = document.getElementById('sum-grand-total');
+            revGrand.innerText = sumGrandEl ? sumGrandEl.innerText : '₱0.00';
+        }
+
+        const downBlock = document.getElementById('rev-downpayment-block');
+        const revDown = document.getElementById('rev-downpayment-fee');
+        const revRem = document.getElementById('rev-remaining-fee');
+        if (downBlock && revDown && revRem) {
+            if (window.currentDownpayment && window.currentDownpayment > 0) {
+                downBlock.style.display = 'block';
+                revDown.innerText = '₱' + window.currentDownpayment.toLocaleString(undefined, { minimumFractionDigits: 2 });
+                revRem.innerText = '₱' + window.currentRemaining.toLocaleString(undefined, { minimumFractionDigits: 2 });
+            } else {
+                downBlock.style.display = 'none';
+            }
+        }
     }
 
     // --- ADDRESS SYNC & DYNAMIC FEE ---
@@ -1434,10 +1547,13 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('modalContentMAYA').style.display = 'none';
         document.getElementById('modalContentBANK').style.display = 'none';
 
-        // Update AI modal amount
+        // Update AI modal amount: Pay downpayment if applicable, otherwise total
         const amountEl = document.getElementById('ai-modal-amount');
-        if (amountEl && window.lastCalculatedTotal) {
-            amountEl.innerText = window.lastCalculatedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const payAmount = (window.currentDownpayment && window.currentDownpayment > 0) 
+            ? window.currentDownpayment 
+            : (window.lastCalculatedTotal || 0);
+        if (amountEl) {
+            amountEl.innerText = payAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
         const contentEl = document.getElementById('modalContent' + method);

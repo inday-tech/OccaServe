@@ -1,6 +1,6 @@
 // Countdown Timer Logic (5 Minutes = 300 Seconds)
-let timerId;
-let timeLeft = 300;
+var timerId = window.verifyEmailTimerId || null;
+var timeLeft = window.verifyEmailTimeLeft || 300;
 
 function startTimer() {
     timeLeft = 300; // 5 minutes

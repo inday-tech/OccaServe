@@ -194,16 +194,6 @@
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem;">
-                    {% if has_packages %}
-                        <i class="fas fa-check-circle" style="color: #10b981; font-size: 1rem;"></i>
-                        <span style="font-weight: 700; color: #1e293b;">Catering Package <span style="color: #94a3b8; font-weight: 600;">(+15%)</span></span>
-                    {% else %}
-                        <i class="far fa-circle" style="color: #cbd5e1; font-size: 1rem;"></i>
-                        <a href="/caterer/packages" style="color: #64748b; text-decoration: underline; font-weight: 600;">Catering Package (+15%)</a>
-                    {% endif %}
-                </div>
-
-                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem;">
                     {% if has_portfolio %}
                         <i class="fas fa-check-circle" style="color: #10b981; font-size: 1rem;"></i>
                         <span style="font-weight: 700; color: #1e293b;">3+ Food Photos <span style="color: #94a3b8; font-weight: 600;">(+10%)</span></span>
@@ -214,31 +204,21 @@
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem;">
-                    {% if has_menu %}
-                        <i class="fas fa-check-circle" style="color: #10b981; font-size: 1rem;"></i>
-                        <span style="font-weight: 700; color: #1e293b;">Sample Menu <span style="color: #94a3b8; font-weight: 600;">(+5%)</span></span>
-                    {% else %}
-                        <i class="far fa-circle" style="color: #cbd5e1; font-size: 1rem;"></i>
-                        <a href="/caterer/menu" style="color: #64748b; text-decoration: underline; font-weight: 600;">Sample Menu (+5%)</a>
-                    {% endif %}
-                </div>
-
-                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem;">
                     {% if has_permit %}
                         <i class="fas fa-check-circle" style="color: #10b981; font-size: 1rem;"></i>
-                        <span style="font-weight: 700; color: #1e293b;">Business Permit <span style="color: #94a3b8; font-weight: 600;">(+5%)</span></span>
+                        <span style="font-weight: 700; color: #1e293b;">Business Permit <span style="color: #94a3b8; font-weight: 600;">(+10%)</span></span>
                     {% else %}
                         <i class="far fa-circle" style="color: #cbd5e1; font-size: 1rem;"></i>
-                        <a href="/caterer/profile#verification" style="color: #64748b; text-decoration: underline; font-weight: 600;">Business Permit (+5%)</a>
+                        <a href="/caterer/profile#verification" style="color: #64748b; text-decoration: underline; font-weight: 600;">Business Permit (+10%)</a>
                     {% endif %}
                 </div>
             </div>
 
             <!-- Minimum to Publish Callout Note -->
-            <div style="background: #fef2f2; border: 1px solid #fee2e2; border-radius: 8px; padding: 10px 16px; display: flex; align-items: center; gap: 8px; margin-top: 0.5rem;">
-                <i class="fas fa-triangle-exclamation" style="color: #ef4444; font-size: 0.85rem;"></i>
-                <span style="font-size: 0.8rem; color: #b91c1c; font-weight: 600;">
-                    <strong>Minimum to Publish:</strong> Identity Verification, Business Description, 1 Catering Package, 3+ Unarchived Food Photos.
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 16px; display: flex; align-items: center; gap: 8px; margin-top: 0.5rem;">
+                <i class="fas fa-info-circle" style="color: #16a34a; font-size: 0.85rem;"></i>
+                <span style="font-size: 0.8rem; color: #15803d; font-weight: 600;">
+                    <strong>Minimum to Publish:</strong> Identity Verification, Business Description.
                 </span>
             </div>
 
