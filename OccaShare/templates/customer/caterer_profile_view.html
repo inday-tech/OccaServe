@@ -2249,9 +2249,10 @@ window.checkoutOrder = function() {
     const catererId = {{ caterer.id }};
 
     const menuIds = window.selectedItems.map(i => {
-        if (i.type === 'Equipment') return 'e_' + i.id;
-        if (i.type === 'Service') return 's_' + i.id;
-        return 'm_' + i.id;
+        const qty = parseInt(i.qty) || 1;
+        if (i.type === 'Equipment') return 'e_' + i.id + ':' + qty;
+        if (i.type === 'Service') return 's_' + i.id + ':' + qty;
+        return 'm_' + i.id + ':' + qty;
     }).join(',');
     sessionStorage.setItem('alacarte_cart_' + catererId, JSON.stringify(window.selectedItems));
     localStorage.setItem('alacarte_cart_' + catererId, JSON.stringify(window.selectedItems));

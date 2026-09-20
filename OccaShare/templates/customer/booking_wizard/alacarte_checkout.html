@@ -227,6 +227,23 @@ Carte Checkout') }}{% endblock %}
         outline: none;
     }
 
+    .form-input.error {
+        border-color: #ef4444 !important;
+        background-color: #fef2f2 !important;
+    }
+
+    .field-error {
+        display: none;
+        color: #ef4444;
+        font-size: 0.78rem;
+        font-weight: 600;
+        margin-top: 4px;
+    }
+
+    .field-error.show {
+        display: block !important;
+    }
+
     /* Bill Summary Sidebar */
     .bill-item-wrap {
         display: flex;
@@ -584,9 +601,8 @@ Carte Checkout') }}{% endblock %}
                         <div class="form-group">
                             <label>Fulfillment Method</label>
                             <div class="fulfillment-selector">
-                                <label class="fulfillment-opt active">
-                                    <input type="radio" name="fulfillment" value="delivery" checked
-                                        onchange="updateFulfillment(this)" style="display: none;">
+                                <div class="fulfillment-opt active" onclick="selectFulfillmentMode('delivery', this)">
+                                    <input type="radio" name="fulfillment" id="fulfill_delivery_radio" value="delivery" checked style="display: none;">
                                     <div class="fulfillment-icon"><i
                                             class="fas {% if has_services and not has_food %}fa-map-pin{% else %}fa-bicycle{% endif %}"></i>
                                     </div>
@@ -597,18 +613,17 @@ Carte Checkout') }}{% endblock %}
                                         <div class="fulfillment-hint">Calculated based on location</div>
                                     </div>
                                     <div class="fulfillment-check"><i class="fas fa-check"></i></div>
-                                </label>
+                                </div>
                                 {% if not (has_services and not is_rental) %}
-                                <label class="fulfillment-opt">
-                                    <input type="radio" name="fulfillment" value="pickup"
-                                        onchange="updateFulfillment(this)" style="display: none;">
+                                <div class="fulfillment-opt" onclick="selectFulfillmentMode('pickup', this)">
+                                    <input type="radio" name="fulfillment" id="fulfill_pickup_radio" value="pickup" style="display: none;">
                                     <div class="fulfillment-icon"><i class="fas fa-store"></i></div>
                                     <div class="fulfillment-details">
                                         <div class="fulfillment-name" id="lbl_fulfill_pick">Self-Collect</div>
                                         <div class="fulfillment-hint">Self-collect (Free)</div>
                                     </div>
                                     <div class="fulfillment-check"><i class="fas fa-check"></i></div>
-                                </label>
+                                </div>
                                 {% endif %}
                             </div>
 
@@ -1092,18 +1107,53 @@ Carte Checkout') }}{% endblock %}
                 </h3>
 
                 <div id="dynamic-bill-items">
-                    <!-- Populated by JS -->
+                    {% for item in equipment_items %}
+                    <div class="bill-item-wrap" style="align-items: start;">
+                        <div class="bill-item-thumb">
+                            <img src="{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}" alt="{{ item.name }}">
+                        </div>
+                        <div class="bill-item-info" style="flex: 1;">
+                            <h4>{{ item.name }}</h4>
+                            <p style="margin-bottom: 0.5rem;">₱{{ "{:,.2f}".format(item.rental_price or 0) }} / {{ item.unit_type or 'Piece' }}</p>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 4px 12px; border-radius: 6px; display: inline-block;">Qty: {{ item.selected_qty or 1 }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% for item in service_items %}
+                    <div class="bill-item-wrap" style="align-items: start;">
+                        <div class="bill-item-thumb">
+                            <img src="{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}" alt="{{ item.name }}">
+                        </div>
+                        <div class="bill-item-info" style="flex: 1;">
+                            <h4>{{ item.name }}</h4>
+                            <p style="margin-bottom: 0.5rem;">₱{{ "{:,.2f}".format(item.selling_price or 0) }} / {{ item.unit_type or 'Event' }}</p>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 4px 12px; border-radius: 6px; display: inline-block;">Qty: {{ item.selected_qty or 1 }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% for item in menu_items %}
+                    <div class="bill-item-wrap" style="align-items: start;">
+                        <div class="bill-item-thumb">
+                            <img src="{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}" alt="{{ item.name }}">
+                        </div>
+                        <div class="bill-item-info" style="flex: 1;">
+                            <h4>{{ item.name }}</h4>
+                            <p style="margin-bottom: 0.5rem;">₱{{ "{:,.2f}".format(item.price or 0) }} / {{ item.pricing_unit or 'Tray' }}</p>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 4px 12px; border-radius: 6px; display: inline-block;">Qty: {{ item.selected_qty or 1 }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
 
                 <div class="calc-divider"></div>
 
                 <div class="calc-row">
                     <span class="calc-label" id="lbl-base-total">Base Total</span>
-                    <span class="calc-val" id="sum-base-total">₱0.00</span>
+                    <span class="calc-val" id="sum-base-total">₱{{ "{:,.2f}".format(server_base_total or 0.0) }}</span>
                 </div>
                 <div class="calc-row" id="delivery-row">
                     <span class="calc-label">Delivery Fee</span>
-                    <span class="calc-val" id="sum-delivery-fee">₱0.00</span>
+                    <span class="calc-val" id="sum-delivery-fee">TBD</span>
                 </div>
                 <div class="calc-row" id="deposit-row" style="display: none;">
                     <span class="calc-label">Refundable Security Deposit</span>
@@ -1112,9 +1162,19 @@ Carte Checkout') }}{% endblock %}
 
                 <div class="calc-total">
                     <span class="total-label">Grand Total</span>
-                    <span class="total-price" id="sum-grand-total">₱0.00</span>
+                    <span class="total-price" id="sum-grand-total">₱{{ "{:,.2f}".format(server_base_total or 0.0) }}</span>
                 </div>
 
+                {% if is_rental and not has_food %}
+                <div class="calc-row" id="downpayment-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--dm-slate-200);">
+                    <span class="calc-label" style="font-weight: 700; color: var(--checkout-primary);">50% Downpayment (Pay Now)</span>
+                    <span class="calc-val" id="sum-downpayment" style="font-weight: 850; color: var(--checkout-primary);">₱{{ "{:,.2f}".format((server_base_total or 0.0) * 0.5) }}</span>
+                </div>
+                <div class="calc-row" id="remaining-row">
+                    <span class="calc-label" style="font-weight: 700; color: #10b981;">Remaining Balance</span>
+                    <span class="calc-val" id="sum-remaining-balance" style="font-weight: 850; color: #10b981;">₱{{ "{:,.2f}".format((server_base_total or 0.0) * 0.5) }}</span>
+                </div>
+                {% else %}
                 <div class="calc-row" id="downpayment-row" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--dm-slate-200);">
                     <span class="calc-label" style="font-weight: 700; color: var(--checkout-primary);">50% Downpayment (Pay Now)</span>
                     <span class="calc-val" id="sum-downpayment" style="font-weight: 850; color: var(--checkout-primary);">₱0.00</span>
@@ -1123,6 +1183,7 @@ Carte Checkout') }}{% endblock %}
                     <span class="calc-label" style="font-weight: 700; color: #10b981;">Remaining Balance</span>
                     <span class="calc-val" id="sum-remaining-balance" style="font-weight: 850; color: #10b981;">₱0.00</span>
                 </div>
+                {% endif %}
 
                 <button type="button" class="btn-wizard-next" id="sidebar-next-btn"
                     onclick="nextScreen(window.currentScreen + 1)"
@@ -1257,6 +1318,8 @@ Carte Checkout') }}{% endblock %}
 <script>
     window.catererId = "{{ caterer.id }}";
     window.menuId = "{{ items_raw }}";
+    window.serverBaseTotal = {{ server_base_total or 0.0 }};
+    window.itemQuantities = {{ (item_quantities or {}) | tojson | safe }};
     window.isVerified = {% if user.is_verified %}true{% else %} false{% endif %};
     window.bookingLeadTime = {{ caterer.booking_lead_time or 7 }};
     window.catererRules = {{ (caterer.scheduling_rules or { }) | tojson | safe }};
@@ -1273,6 +1336,7 @@ Carte Checkout') }}{% endblock %}
             type: "Menu",
             name: {{ (item.name or '') | tojson }},
             price: {{ item.price or 0 }},
+            qty: {{ item.selected_qty or 1 }},
             pricing_unit: "{{ item.pricing_unit or 'per_tray' }}",
             image_url: "{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}",
             is_combo: {{ 'true' if item.is_combo else 'false' }},
@@ -1286,6 +1350,7 @@ Carte Checkout') }}{% endblock %}
             type: "Equipment",
             name: {{ (item.name or '') | tojson }},
             price: {{ item.rental_price or 0 }},
+            qty: {{ item.selected_qty or 1 }},
             cost_value: {{ item.cost_value or 0 }},
             security_deposit_pct: {{ item.security_deposit_pct or 20.0 }},
             requires_kyc: {{ 'true' if item.requires_kyc else 'false' }},
@@ -1303,6 +1368,7 @@ Carte Checkout') }}{% endblock %}
             type: "Service",
             name: {{ (item.name or '') | tojson }},
             price: {{ item.selling_price or 0 }},
+            qty: {{ item.selected_qty or 1 }},
             pricing_unit: "{{ item.unit_type or 'per_unit' }}",
             image_url: "{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}",
             is_combo: false,

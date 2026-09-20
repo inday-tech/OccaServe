@@ -630,7 +630,7 @@
                 {% endif %}
                 <tr id="booking-row-{{ booking.id }}" class="booking-row-item {% if row_is_urgent or is_past_event %}urgent-booking-row{% endif %}" 
                     data-booking-row="true"
-                    data-booking-id="BK-{{ '%06d'|format(booking.id) }}"
+                    data-booking-id="{% if booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental' %}RT-{% elif booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ '%06d'|format(booking.id) }}"
                     data-status="{{ booking.status }}" 
                     data-payment-status="{{ booking.payment_status }}"
                     data-source="{{ 'Manual Booking' if is_manual else (booking.booking_source or 'Online Booking') }}"
@@ -642,7 +642,7 @@
                     data-is-past="{{ 'true' if is_past_event else 'false' }}"
                     data-unread-chat="{{ unread_chat_map.get(booking.id, 0) if unread_chat_map else 0 }}"
                     data-phone="{{ (booking.user.phone_number if booking.user else '') or '' }}"
-                    data-search-text="BK-{{ '%06d'|format(booking.id) }} ORD-{{ '%06d'|format(booking.id) }} {{ booking.id }} {{ booking.user.first_name if booking.user else '' }} {{ booking.user.last_name if booking.user else '' }} {{ booking.customer_name if booking.customer_name else '' }} {{ booking.event_type or '' }} {{ booking.package.name if booking.package else '' }} {{ booking.user.phone_number if booking.user else '' }} {{ booking.user.email if booking.user else (booking.customer_email or '') }}"
+                    data-search-text="BK-{{ '%06d'|format(booking.id) }} RT-{{ '%06d'|format(booking.id) }} ORD-{{ '%06d'|format(booking.id) }} {{ booking.id }} {{ booking.user.first_name if booking.user else '' }} {{ booking.user.last_name if booking.user else '' }} {{ booking.customer_name if booking.customer_name else '' }} {{ booking.event_type or '' }} {{ booking.package.name if booking.package else '' }} {{ booking.user.phone_number if booking.user else '' }} {{ booking.user.email if booking.user else (booking.customer_email or '') }}"
                     style="border-bottom: 1px solid #f1f5f9; transition: all 0.15s ease;">
                     
                     <!-- REF ID & SOURCE -->
@@ -653,7 +653,7 @@
                             {% elif is_past_event %}
                                 <div class="urgent-pulse-indicator" style="background: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);" title="Event Date has Passed!"></div>
                             {% endif %}
-                            {{ 'ORD-' if booking.document_type == 'invoice' else 'BK-' }}{{ "%06d" | format(booking.id) }}
+                            {{ 'ORD-' if booking.document_type == 'invoice' else ('RT-' if (booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental') else 'BK-') }}{{ "%06d" | format(booking.id) }}
                         </div>
                         <div style="margin-top: 4px;">
                             <span class="booking-source-badge {% if is_manual %}badge-source-walkin{% else %}badge-source-online{% endif %}">

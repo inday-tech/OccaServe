@@ -31,8 +31,7 @@
             <div class="formal-doc-header">
                 <h2 class="formal-doc-main-title">{{ doc_title }}</h2>
                 <div class="formal-doc-meta">
-                    <span>Reference No: <strong>#{% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif
-                            %}{{ booking.id }}</strong></span>
+                    <span>Reference No: <strong>#{% if booking.document_type == 'invoice' %}ORD-{% elif booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental' %}RT-{% else %}BK-{% endif %}{{ booking.id }}</strong></span>
                     <span>Date generated: <strong>{{ (quotation.updated_at or quotation.created_at).strftime('%B %d,
                             %Y') }}</strong></span>
                 </div>
@@ -702,7 +701,7 @@ The Service Provider is not liable for indirect or consequential damages. The Cl
     <script>
         function downloadContractPDF() {
             const originalElement = document.querySelector('.contract-paper');
-            const refNo = "{% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ booking.id }}";
+            const refNo = "{% if booking.document_type == 'invoice' %}ORD-{% elif booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental' %}RT-{% else %}BK-{% endif %}{{ booking.id }}";
 
             const btn = document.querySelector('.pdf-action-bar button');
             if (!btn) return;

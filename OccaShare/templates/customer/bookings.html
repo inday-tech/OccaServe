@@ -303,6 +303,8 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                         <span class="type-chip">{{ booking_type_label }}</span>
                         {% if b.document_type == 'invoice' %}
                             <span class="bk-id-chip">ORD-{{ "%03d"|format(b.id) }}</span>
+                        {% elif b.document_type == 'rental_agreement' or b.event_type == 'Equipment Rental' %}
+                            <span class="bk-id-chip">RT-{{ "%03d"|format(b.id) }}</span>
                         {% else %}
                             <span class="bk-id-chip">BK-{{ "%03d"|format(b.id) }}</span>
                         {% endif %}

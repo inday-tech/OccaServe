@@ -177,31 +177,54 @@ async def alacarte_checkout_page(
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/alacarte/checkout/{caterer_id}?items={items}")
     
-    # Parse multiple IDs with type prefixes (m_ for MenuItem, e_ for Equipment, s_ for Service)
+    # Parse multiple IDs with type prefixes (m_ for MenuItem, e_ for Equipment, s_ for Service) and optional :quantity
     m_ids, e_ids, s_ids = [], [], []
+    item_quantities = {}
     if items:
-        for id_str in items.split(","):
-            id_str = id_str.strip()
-            if not id_str: continue
+        for item_part in items.split(","):
+            item_part = item_part.strip()
+            if not item_part: continue
+            qty = 1
+            if ":" in item_part:
+                id_str, qty_str = item_part.split(":", 1)
+                try:
+                    qty = max(1, int(qty_str))
+                except (ValueError, TypeError):
+                    qty = 1
+            else:
+                id_str = item_part
+
             if id_str.startswith('m_'):
-                m_ids.append(int(id_str[2:]))
+                mid = int(id_str[2:])
+                m_ids.append(mid)
+                item_quantities[f"m_{mid}"] = qty
             elif id_str.startswith('e_'):
-                e_ids.append(int(id_str[2:]))
+                eid = int(id_str[2:])
+                e_ids.append(eid)
+                item_quantities[f"e_{eid}"] = qty
             elif id_str.startswith('s_'):
-                s_ids.append(int(id_str[2:]))
+                sid = int(id_str[2:])
+                s_ids.append(sid)
+                item_quantities[f"s_{sid}"] = qty
             elif id_str.isdigit():
-                m_ids.append(int(id_str)) # legacy fallback
+                mid = int(id_str)
+                m_ids.append(mid)
+                item_quantities[f"m_{mid}"] = qty
 
     # Fallback to existing booking items if items query param was omitted (e.g. return from KYC)
     booking = db.query(models.Booking).get(booking_id) if booking_id else None
     if not (m_ids or e_ids or s_ids) and booking and booking.user_id == user.id:
         for b_item in (booking.selected_items or []):
+            b_qty = int(b_item.quantity or 1)
             if b_item.menu_item_id:
                 m_ids.append(b_item.menu_item_id)
+                item_quantities[f"m_{b_item.menu_item_id}"] = b_qty
             elif b_item.equipment_id:
                 e_ids.append(b_item.equipment_id)
+                item_quantities[f"e_{b_item.equipment_id}"] = b_qty
             elif b_item.service_id:
                 s_ids.append(b_item.service_id)
+                item_quantities[f"s_{b_item.service_id}"] = b_qty
             
     menu_items = db.query(models.MenuItem).filter(
         models.MenuItem.id.in_(m_ids),
@@ -219,8 +242,10 @@ async def alacarte_checkout_page(
 
     # Ensure all equipment items have a non-zero rental_price
     for eq in equipment_items:
-        if not getattr(eq, 'rental_price', None) or eq.rental_price == 0:
-            eq.rental_price = getattr(eq, 'cost_value', 0.0) or getattr(eq, 'price', 0.0)
+        price_val = getattr(eq, 'rental_price', None)
+        if not price_val or price_val == 0:
+            price_val = getattr(eq, 'cost_value', 0.0) or getattr(eq, 'price', 0.0) or 0.0
+        eq.rental_price = float(price_val)
     
     # Check if any e_ids were legacy equipment items stored in MenuItem
     found_e_ids = {eq.id for eq in equipment_items}
@@ -231,9 +256,9 @@ async def alacarte_checkout_page(
             models.MenuItem.available_for_order == True
         ).all()
         for leg in legacy_eq:
-            leg.rental_price = leg.price
+            leg.rental_price = float(leg.price or 0.0)
             leg.unit_type = getattr(leg, 'pricing_unit', 'piece') or 'piece'
-            leg.cost_value = leg.price
+            leg.cost_value = float(leg.price or 0.0)
             leg.security_deposit_pct = 20.0
             leg.available_qty = getattr(leg, 'max_stock_quantity', 1) or 1
             equipment_items.append(leg)
@@ -249,6 +274,18 @@ async def alacarte_checkout_page(
     
     if not caterer or (not menu_items and not equipment_items and not service_items):
         return RedirectResponse(url="/marketplace", status_code=303)
+
+    # Pre-calculate base total on server
+    server_base_total = 0.0
+    for mi in menu_items:
+        mi.selected_qty = item_quantities.get(f"m_{mi.id}", 1)
+        server_base_total += float(mi.price or 0.0) * mi.selected_qty
+    for eq in equipment_items:
+        eq.selected_qty = item_quantities.get(f"e_{eq.id}", 1)
+        server_base_total += float(eq.rental_price or 0.0) * eq.selected_qty
+    for si in service_items:
+        si.selected_qty = item_quantities.get(f"s_{si.id}", 1)
+        server_base_total += float(si.selling_price or 0.0) * si.selected_qty
         
     # Verification Matrix:
     # Menu only -> No verification required
@@ -269,6 +306,8 @@ async def alacarte_checkout_page(
         "equipment_items": equipment_items,
         "service_items": service_items,
         "items_raw": items,
+        "item_quantities": item_quantities,
+        "server_base_total": server_base_total,
         "booking": booking,
         "requires_kyc": requires_kyc,
         "is_user_verified": is_user_verified,
@@ -396,7 +435,7 @@ async def alacarte_checkout_draft(
                         e_item = db.query(models.MenuItem).get(int(item['id']))
                         actual_price = float(getattr(e_item, 'price', 0.0) or 0.0) if e_item else 0.0
                     else:
-                        actual_price = float(getattr(e_item, 'rental_price', 0.0) or getattr(e_item, 'cost_value', 0.0) or 0.0)
+                        actual_price = float(getattr(e_item, 'rental_price', 0.0) or getattr(e_item, 'cost_value', 0.0) or getattr(e_item, 'price', 0.0) or 0.0)
                     
                     if e_item:
                         # Server-side date availability check to prevent overbooking
@@ -415,6 +454,16 @@ async def alacarte_checkout_draft(
                             for si in (ab.selected_items or []):
                                 if si.equipment_id == e_item.id:
                                     res_qty += int(si.quantity or 1)
+                            if ab.package_id:
+                                try:
+                                    pkg_equip = db.query(models.PackageEquipment).filter(
+                                        models.PackageEquipment.package_id == ab.package_id,
+                                        models.PackageEquipment.equipment_id == e_item.id
+                                    ).all()
+                                    for pe in pkg_equip:
+                                        res_qty += int(pe.quantity or 1)
+                                except Exception:
+                                    pass
                         avail_units = max(0, total_inv - res_qty)
                         if qty > avail_units:
                             return {"success": False, "message": f"Only {avail_units} unit{'s are' if avail_units != 1 else ' is'} available for {e_item.name} on {event_date_obj}."}
@@ -455,32 +504,59 @@ async def alacarte_checkout_draft(
                             choices=item.get('choices')
                         ))
         elif items:
-            for id_str in items.split(","):
-                id_str = id_str.strip()
-                if not id_str: continue
+            for item_part in items.split(","):
+                item_part = item_part.strip()
+                if not item_part: continue
+                qty = 1
+                if ":" in item_part:
+                    id_str, qty_str = item_part.split(":", 1)
+                    try:
+                        qty = max(1, int(qty_str))
+                    except (ValueError, TypeError):
+                        qty = 1
+                else:
+                    id_str = item_part
+
                 if id_str.startswith('e_'):
                     e_item = db.query(models.Equipment).get(int(id_str[2:]))
                     if e_item:
-                        actual_price = float(getattr(e_item, 'rental_price', 0.0) or getattr(e_item, 'cost_value', 0.0) or 0.0)
-                        db.add(models.BookingMenuItem(booking_id=new_booking.id, equipment_id=e_item.id, price=actual_price, quantity=1, custom_name=e_item.name))
+                        actual_price = float(getattr(e_item, 'rental_price', 0.0) or getattr(e_item, 'cost_value', 0.0) or getattr(e_item, 'price', 0.0) or 0.0)
+                        db.add(models.BookingMenuItem(booking_id=new_booking.id, equipment_id=e_item.id, price=actual_price, quantity=qty, custom_name=e_item.name))
                 elif id_str.startswith('s_'):
                     s_item = db.query(models.Service).get(int(id_str[2:]))
                     if s_item:
-                        qty = 1
+                        item_qty = qty
                         if getattr(s_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(s_item, 'staff_to_pax_ratio', 0) > 0:
                             import math
-                            qty = max(getattr(s_item, 'min_staff_required', 1), math.ceil(quantity / s_item.staff_to_pax_ratio))
-                        db.add(models.BookingMenuItem(booking_id=new_booking.id, service_id=s_item.id, price=s_item.selling_price, quantity=qty))
+                            item_qty = max(getattr(s_item, 'min_staff_required', 1), math.ceil(quantity / s_item.staff_to_pax_ratio))
+                        db.add(models.BookingMenuItem(booking_id=new_booking.id, service_id=s_item.id, price=s_item.selling_price, quantity=item_qty))
                 else:
                     item_id = int(id_str[2:]) if id_str.startswith('m_') else int(id_str)
                     m_item = db.query(models.MenuItem).get(item_id)
-                    if m_item: db.add(models.BookingMenuItem(booking_id=new_booking.id, menu_item_id=m_item.id, price=m_item.price))
-            
-        db.commit()
+                    if m_item:
+                        db.add(models.BookingMenuItem(booking_id=new_booking.id, menu_item_id=m_item.id, price=m_item.price, quantity=qty))
 
+        db.flush()
+
+        # Recalculate totals for draft
+        draft_subtotal = 0.0
+        for b_item in db.query(models.BookingMenuItem).filter(models.BookingMenuItem.booking_id == new_booking.id).all():
+            draft_subtotal += float(b_item.price or 0.0) * int(b_item.quantity or 1)
+        
+        if is_rental and not has_food:
+            new_booking.reservation_fee = round(draft_subtotal * 0.5, 2)
+            new_booking.payment_plan = 'downpayment'
+        else:
+            new_booking.reservation_fee = draft_subtotal
+            new_booking.payment_plan = 'full'
+        new_booking.total_amount = draft_subtotal
+        new_booking.total_price = draft_subtotal
+
+        db.commit()
         return {"success": True, "booking_id": new_booking.id}
     except Exception as e:
         db.rollback()
+        print(f"Error saving draft: {e}")
         return {"success": False, "message": str(e)}
 
 @router.post("/alacarte/checkout/submit")
@@ -526,8 +602,10 @@ async def alacarte_checkout_submit(
         except Exception:
             pass
     elif items:
-        for id_str in items.split(","):
-            id_str = id_str.strip()
+        for item_part in items.split(","):
+            item_part = item_part.strip()
+            if not item_part: continue
+            id_str = item_part.split(":", 1)[0]
             if id_str.startswith('e_'): has_equipment = True
             elif id_str.startswith('s_'): has_service = True
 
@@ -615,8 +693,10 @@ async def alacarte_checkout_submit(
                             if item_qty < required: item_qty = required
                         requested_services.append((s_item.id, item_qty))
         elif items:
-            for id_str in items.split(","):
-                id_str = id_str.strip()
+            for item_part in items.split(","):
+                item_part = item_part.strip()
+                if not item_part: continue
+                id_str = item_part.split(":", 1)[0]
                 if id_str.startswith('s_'):
                     s_item = db.query(models.Service).get(int(id_str[2:]))
                     if s_item:
@@ -643,9 +723,10 @@ async def alacarte_checkout_submit(
                 elif i_type == 'Service': has_services = True
                 else: has_food = True
         elif items:
-            for id_str in items.split(","):
-                id_str = id_str.strip()
-                if not id_str: continue
+            for item_part in items.split(","):
+                item_part = item_part.strip()
+                if not item_part: continue
+                id_str = item_part.split(":", 1)[0]
                 if id_str.startswith('e_'): is_rental = True
                 elif id_str.startswith('s_'): has_services = True
                 else: has_food = True
@@ -830,7 +911,7 @@ async def alacarte_checkout_submit(
                         e_item = db.query(models.MenuItem).get(int(item['id']))
                         actual_price = float(getattr(e_item, 'price', 0.0) or 0.0) if e_item else 0.0
                     else:
-                        actual_price = float(getattr(e_item, 'rental_price', 0.0) or getattr(e_item, 'cost_value', 0.0) or 0.0)
+                        actual_price = float(getattr(e_item, 'rental_price', 0.0) or getattr(e_item, 'cost_value', 0.0) or getattr(e_item, 'price', 0.0) or 0.0)
                     
                     if e_item:
                         # Re-verify availability at submission to prevent race conditions / double booking
@@ -849,6 +930,16 @@ async def alacarte_checkout_submit(
                             for si in (ab.selected_items or []):
                                 if si.equipment_id == e_item.id:
                                     res_qty += int(si.quantity or 1)
+                            if ab.package_id:
+                                try:
+                                    pkg_equip = db.query(models.PackageEquipment).filter(
+                                        models.PackageEquipment.package_id == ab.package_id,
+                                        models.PackageEquipment.equipment_id == e_item.id
+                                    ).all()
+                                    for pe in pkg_equip:
+                                        res_qty += int(pe.quantity or 1)
+                                except Exception:
+                                    pass
                         avail_units = max(0, total_inv - res_qty)
                         item_qty = int(item.get('quantity', item.get('qty', 1)))
                         if item_qty > avail_units:
@@ -900,28 +991,37 @@ async def alacarte_checkout_submit(
                         )
                         db.add(booking_item)
         elif items:
-            # Legacy Fallback Parsing
-            for id_str in items.split(","):
-                id_str = id_str.strip()
-                if not id_str: continue
+            for item_part in items.split(","):
+                item_part = item_part.strip()
+                if not item_part: continue
+                qty = 1
+                if ":" in item_part:
+                    id_str, qty_str = item_part.split(":", 1)
+                    try:
+                        qty = max(1, int(qty_str))
+                    except (ValueError, TypeError):
+                        qty = 1
+                else:
+                    id_str = item_part
+
                 if id_str.startswith('e_'):
                     e_item = db.query(models.Equipment).get(int(id_str[2:]))
                     if e_item:
-                        actual_price = float(getattr(e_item, 'rental_price', 0.0) or getattr(e_item, 'cost_value', 0.0) or 0.0)
-                        db.add(models.BookingMenuItem(booking_id=booking.id, equipment_id=e_item.id, price=actual_price, quantity=1, custom_name=e_item.name))
+                        actual_price = float(getattr(e_item, 'rental_price', 0.0) or getattr(e_item, 'cost_value', 0.0) or getattr(e_item, 'price', 0.0) or 0.0)
+                        db.add(models.BookingMenuItem(booking_id=booking.id, equipment_id=e_item.id, price=actual_price, quantity=qty, custom_name=e_item.name))
                 elif id_str.startswith('s_'):
                     s_item = db.query(models.Service).get(int(id_str[2:]))
                     if s_item:
-                        qty = 1
+                        item_qty = qty
                         if getattr(s_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(s_item, 'staff_to_pax_ratio', 0) > 0:
                             import math
-                            qty = max(getattr(s_item, 'min_staff_required', 1), math.ceil(quantity / s_item.staff_to_pax_ratio))
-                        db.add(models.BookingMenuItem(booking_id=booking.id, service_id=s_item.id, price=s_item.selling_price, quantity=qty))
+                            item_qty = max(getattr(s_item, 'min_staff_required', 1), math.ceil(quantity / s_item.staff_to_pax_ratio))
+                        db.add(models.BookingMenuItem(booking_id=booking.id, service_id=s_item.id, price=s_item.selling_price, quantity=item_qty))
                 else:
                     item_id = int(id_str[2:]) if id_str.startswith('m_') else int(id_str)
                     m_item = db.query(models.MenuItem).get(item_id)
                     if m_item:
-                        db.add(models.BookingMenuItem(booking_id=booking.id, menu_item_id=m_item.id, price=m_item.price, quantity=1))
+                        db.add(models.BookingMenuItem(booking_id=booking.id, menu_item_id=m_item.id, price=m_item.price, quantity=qty))
 
         db.flush()
 
@@ -941,7 +1041,12 @@ async def alacarte_checkout_submit(
 
         booking.total_amount = recalculated_total
         booking.total_price = recalculated_total
-        booking.reservation_fee = recalculated_total
+        if is_rental and not has_food:
+            booking.reservation_fee = round(recalculated_total * 0.5, 2)
+            booking.payment_plan = "downpayment"
+        else:
+            booking.reservation_fee = recalculated_total
+            booking.payment_plan = "full"
         booking.security_deposit_amount = round(total_security_deposit, 2)
 
         db.commit()

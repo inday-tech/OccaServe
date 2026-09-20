@@ -10,19 +10,23 @@ router = APIRouter(prefix="/customer/api", tags=["customer_api"])
 
 @router.post("/check-inventory")
 async def check_inventory(request: Request, db: Session = Depends(database.get_db)):
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+        
     caterer_id = data.get("caterer_id")
     event_date_str = data.get("date")
     event_time_str = data.get("time")
-    cart_items = data.get("items", []) # List of {id: int, qty: int}
+    cart_items = data.get("items", []) # List of {id: int/str, qty: int, type: str}
 
     if not caterer_id or not event_date_str or not cart_items:
         return {"status": "success", "message": "Incomplete data for check"}
 
     # Parse date
     try:
-        event_date = datetime.strptime(event_date_str, "%Y-%m-%d").date()
-    except:
+        event_date = datetime.strptime(str(event_date_str).strip(), "%Y-%m-%d").date()
+    except Exception:
         return {"status": "success"}
 
     caterer = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id).first()
@@ -31,67 +35,122 @@ async def check_inventory(request: Request, db: Session = Depends(database.get_d
 
     turnover_hours = caterer.equipment_turnover_hours or 24
 
-    # Extract all item IDs requested
-    item_ids = [int(i["id"]) for i in cart_items if i.get("id")]
-    if not item_ids:
-        return {"status": "success"}
-
-    menu_items_db = db.query(models.MenuItem).filter(models.MenuItem.id.in_(item_ids)).all()
-    menu_item_map = {mi.id: mi for mi in menu_items_db}
-
-    # Gather required quantities for items that have max_stock_quantity
-    req_qty_map = {}
+    # Separate equipment IDs vs menu IDs
+    menu_ids = []
+    equip_ids = []
+    
     for item in cart_items:
-        i_id = int(item["id"])
-        qty = int(item["qty"])
-        db_item = menu_item_map.get(i_id)
-        if db_item and db_item.max_stock_quantity is not None:
-            req_qty_map[i_id] = req_qty_map.get(i_id, 0) + qty
+        raw_id = str(item.get("id", ""))
+        item_type = str(item.get("type", "")).lower()
+        if raw_id.startswith("e_") or item_type == "equipment":
+            try:
+                equip_ids.append(int(raw_id.replace("e_", "").replace("eq_", "")))
+            except Exception:
+                pass
+        elif raw_id.startswith("m_") or item_type == "menu":
+            try:
+                menu_ids.append(int(raw_id.replace("m_", "")))
+            except Exception:
+                pass
+        else:
+            try:
+                num_id = int(raw_id)
+                eq_exists = db.query(models.Equipment).filter(models.Equipment.id == num_id, models.Equipment.caterer_id == caterer_id).first()
+                if eq_exists:
+                    equip_ids.append(num_id)
+                else:
+                    menu_ids.append(num_id)
+            except Exception:
+                pass
 
-    if not req_qty_map:
-        return {"status": "success", "message": "No limited stock items"}
-
-    # Find overlapping bookings
-    # For simplicity, we check bookings on the exact same date and the date before (if turnover > 0)
-    overlapping_bookings = db.query(models.Booking).filter(
+    inactive_statuses = ['cancelled', 'rejected', 'declined', 'archived']
+    bookings = db.query(models.Booking).filter(
         models.Booking.caterer_id == caterer_id,
-        models.Booking.status.in_(["Approved", "Pending", "Preparing", "Out for Delivery"]),
         models.Booking.event_date.between(event_date - timedelta(days=1), event_date + timedelta(days=1))
     ).all()
+    active_bookings = [b for b in bookings if not b.status or str(b.status).lower().strip() not in inactive_statuses]
 
-    # Calculate booked stock on that date
-    booked_qty_map = {i_id: 0 for i_id in req_qty_map.keys()}
-    
-    for b in overlapping_bookings:
-        if not b.cart_items:
-            continue
-            
-        # Parse cart items if it's string (JSON)
-        items = b.cart_items
-        if isinstance(items, str):
-            try:
-                items = json.loads(items)
-            except:
-                items = []
-
-        for b_item in items:
-            b_id = int(b_item.get("id", 0))
-            if b_id in booked_qty_map:
-                booked_qty_map[b_id] += int(b_item.get("qty", 0))
-
-    # Check for conflicts
     conflicts = []
-    for i_id, req_qty in req_qty_map.items():
-        db_item = menu_item_map[i_id]
-        total_booked = booked_qty_map[i_id]
-        available = db_item.max_stock_quantity - total_booked
-        
-        if req_qty > available:
-            conflicts.append({
-                "name": db_item.name,
-                "requested": req_qty,
-                "available": available if available > 0 else 0
-            })
+
+    # Check equipment availability
+    if equip_ids:
+        equipments_db = db.query(models.Equipment).filter(models.Equipment.id.in_(equip_ids)).all()
+        equip_map = {eq.id: eq for eq in equipments_db}
+
+        for item in cart_items:
+            raw_id = str(item.get("id", ""))
+            try:
+                eid = int(raw_id.replace("e_", "").replace("eq_", ""))
+            except Exception:
+                continue
+            eq = equip_map.get(eid)
+            if not eq:
+                continue
+            total_stock = int(eq.available_qty if eq.available_qty is not None else 0)
+            req_qty = int(item.get("qty", 1) or 1)
+
+            booked_qty = 0
+            for b in active_bookings:
+                if b.selected_items:
+                    for s_item in b.selected_items:
+                        if s_item.equipment_id == eid:
+                            booked_qty += int(s_item.quantity or 1)
+                if b.package_id:
+                    try:
+                        pkg_equip = db.query(models.PackageEquipment).filter(
+                            models.PackageEquipment.package_id == b.package_id,
+                            models.PackageEquipment.equipment_id == eid
+                        ).all()
+                        for pe in pkg_equip:
+                            booked_qty += int(pe.quantity or 1)
+                    except Exception:
+                        pass
+                raw_cart = getattr(b, 'cart_items', None)
+                if raw_cart:
+                    try:
+                        parsed = json.loads(raw_cart) if isinstance(raw_cart, str) else raw_cart
+                        if isinstance(parsed, list):
+                            for c in parsed:
+                                c_id = str(c.get("id", "")).replace("e_", "").replace("eq_", "")
+                                if c_id == str(eid):
+                                    booked_qty += int(c.get("qty", c.get("quantity", 1)))
+                    except Exception:
+                        pass
+
+            available = max(0, total_stock - booked_qty)
+            if req_qty > available:
+                conflicts.append({
+                    "name": eq.name,
+                    "requested": req_qty,
+                    "available": available
+                })
+
+    # Check menu items
+    if menu_ids:
+        menu_items_db = db.query(models.MenuItem).filter(models.MenuItem.id.in_(menu_ids)).all()
+        menu_item_map = {mi.id: mi for mi in menu_items_db}
+        for item in cart_items:
+            raw_id = str(item.get("id", ""))
+            try:
+                mid = int(raw_id.replace("m_", ""))
+            except Exception:
+                continue
+            db_item = menu_item_map.get(mid)
+            if db_item and db_item.max_stock_quantity is not None:
+                req_qty = int(item.get("qty", 1) or 1)
+                booked_m_qty = 0
+                for b in active_bookings:
+                    if b.selected_items:
+                        for s_item in b.selected_items:
+                            if s_item.menu_item_id == mid:
+                                booked_m_qty += int(s_item.quantity or 1)
+                available_m = max(0, db_item.max_stock_quantity - booked_m_qty)
+                if req_qty > available_m:
+                    conflicts.append({
+                        "name": db_item.name,
+                        "requested": req_qty,
+                        "available": available_m
+                    })
 
     if conflicts:
         conflict_msgs = [f"Not enough {c['name']} (Available: {c['available']})" for c in conflicts]

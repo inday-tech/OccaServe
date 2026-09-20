@@ -238,12 +238,12 @@
                 {% elif is_food_order %} {% set booking_type_label = 'Food Order' %}
                 {% elif is_fast_track %} {% set booking_type_label = 'Custom Booking' %} {% endif %}
                 
-                <tr class="ledger-row payment-row-item" data-search="{{ (display_title or '')|lower }} {{ (booking.caterer.business_name or '')|lower }} {% if is_food_order %}ORD-{% else %}BK-{% endif %}{{ booking.id }}">
+                <tr class="ledger-row payment-row-item" data-search="{{ (display_title or '')|lower }} {{ (booking.caterer.business_name or '')|lower }} {% if is_rental_only or booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental' %}RT-{% elif is_food_order %}ORD-{% else %}BK-{% endif %}{{ booking.id }}">
                     <td>
                         <span class="event-name">{{ display_title or 'Event' }}</span>
                         <div style="font-size: 0.72rem; color: var(--dm-slate-400); font-weight: 700; margin-bottom: 4px;">{{ booking_type_label }}</div>
                         <span class="event-sub" style="display: inline-flex; align-items: center; gap: 5px;">
-                            <span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:800; color:#475569;">#{% if is_food_order %}ORD-{% else %}BK-{% endif %}{{ booking.id }}</span> 
+                            <span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:800; color:#475569;">#{% if is_rental_only or booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental' %}RT-{% elif is_food_order %}ORD-{% else %}BK-{% endif %}{{ booking.id }}</span> 
                             &bull; {{ booking.created_at.strftime('%b %d, %Y') }}
                         </span>
                     </td>

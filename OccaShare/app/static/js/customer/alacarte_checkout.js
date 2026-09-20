@@ -78,11 +78,41 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     window.cartItems = parsedCart;
 
-    // Fallback if cartItems is empty but backendMenuItems has items (e.g., direct navigation)
-    if (window.cartItems.length === 0 && window.backendMenuItems && window.backendMenuItems.length > 0) {
-        window.backendMenuItems.forEach(item => {
-            window.cartItems.push({ id: String(item.id), type: item.type, name: item.name, price: item.price, qty: 1 });
-        });
+    // Synchronize or fallback with backendMenuItems & window.itemQuantities
+    if (window.backendMenuItems && window.backendMenuItems.length > 0) {
+        if (window.cartItems.length === 0) {
+            window.backendMenuItems.forEach(item => {
+                const typePrefix = item.type === 'Equipment' ? 'e_' : (item.type === 'Service' ? 's_' : 'm_');
+                const key = typePrefix + item.id;
+                const qtyVal = (window.itemQuantities && window.itemQuantities[key]) || item.qty || 1;
+                window.cartItems.push({
+                    id: String(item.id),
+                    type: item.type,
+                    name: item.name,
+                    price: parseFloat(item.price) || 0,
+                    qty: qtyVal,
+                    pricing_unit: item.pricing_unit,
+                    is_rental: item.is_rental,
+                    cost_value: item.cost_value,
+                    security_deposit_pct: item.security_deposit_pct
+                });
+            });
+        } else {
+            // Keep price, type, and quantities synchronized
+            window.cartItems.forEach(cItem => {
+                const bItem = window.backendMenuItems.find(i => String(i.id) === String(cItem.id) && (cItem.type ? i.type === cItem.type : true));
+                if (bItem) {
+                    if (!cItem.price || cItem.price === 0) {
+                        cItem.price = parseFloat(bItem.price) || 0;
+                    }
+                    if (!cItem.name) cItem.name = bItem.name;
+                    if (!cItem.type) cItem.type = bItem.type;
+                    if (!cItem.pricing_unit) cItem.pricing_unit = bItem.pricing_unit;
+                    if (bItem.cost_value && !cItem.cost_value) cItem.cost_value = bItem.cost_value;
+                    if (bItem.security_deposit_pct && !cItem.security_deposit_pct) cItem.security_deposit_pct = bItem.security_deposit_pct;
+                }
+            });
+        }
     }
 
     // Dynamic Summary Title updater
@@ -372,20 +402,6 @@ document.addEventListener('DOMContentLoaded', function () {
             timeInputInv.parentNode.appendChild(errEl);
         }
 
-        // Standard catering operations: 6:00 AM to 9:00 PM (21:59)
-        const [hours, mins] = timeVal.split(':').map(Number);
-        if (hours < 6 || hours > 21) {
-            errEl.innerText = "Invalid Time: Please select a time between 6:00 AM and 9:00 PM.";
-            errEl.style.display = 'block';
-            timeInputInv.classList.add('is-invalid');
-            window.inventoryConflict = true;
-            return;
-        } else {
-            errEl.style.display = 'none';
-            timeInputInv.classList.remove('is-invalid');
-            window.inventoryConflict = false;
-        }
-
         try {
             const res = await fetch('/customer/api/check-inventory', {
                 method: 'POST',
@@ -394,7 +410,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     caterer_id: window.catererId,
                     date: dateVal,
                     time: timeVal,
-                    items: window.cartItems.map(i => ({ id: i.id, qty: i.qty }))
+                    items: window.cartItems.map(i => ({ id: i.id, qty: i.qty, type: i.type }))
                 })
             });
             const data = await res.json();
@@ -405,22 +421,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 errEl = document.createElement('div');
                 errEl.id = invErrId;
                 errEl.className = 'invalid-feedback';
-                // Append under time
                 timeInputInv.parentNode.appendChild(errEl);
             }
 
             if (data.status === 'error') {
-                errEl.innerText = data.error_text;
+                errEl.innerText = data.error_text || data.message || 'Inventory conflict';
                 errEl.style.display = 'block';
                 dateInputInv.classList.add('is-invalid');
                 timeInputInv.classList.add('is-invalid');
-                // Block next step if inventory conflict
                 window.inventoryConflict = true;
+                window.inventoryErrorText = data.error_text || data.message;
             } else {
                 errEl.style.display = 'none';
                 dateInputInv.classList.remove('is-invalid');
                 timeInputInv.classList.remove('is-invalid');
                 window.inventoryConflict = false;
+                window.inventoryErrorText = '';
             }
         } catch (e) {
             console.error("Inventory check failed", e);
@@ -440,9 +456,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
             if (!validateScreen(window.currentScreen)) return;
-            if (window.currentScreen === window.paymentStep && window.inventoryConflict) {
+            if (window.inventoryConflict) {
                 if (typeof Swal !== 'undefined') {
-                    Swal.fire('Inventory Conflict', 'Some items requested are out of stock for this date. Please adjust quantities or choose another date.', 'error');
+                    Swal.fire('Inventory Conflict', window.inventoryErrorText || 'Some items requested are out of stock for this date. Please adjust quantities or choose another date.', 'error');
                 } else {
                     alert('Inventory Conflict: Some items requested are out of stock for this date.');
                 }
@@ -572,7 +588,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.form-input').forEach(el => el.classList.remove('error'));
 
         if (n === 1) {
-            const fulfillment = document.querySelector('input[name="fulfillment"]:checked').value;
+            const fulfillInput = document.querySelector('input[name="fulfillment"]:checked');
+            const fulfillment = fulfillInput ? fulfillInput.value : 'delivery';
             const required = ['full_name', 'contact_number', 'delivery_date', 'delivery_time'];
             if (document.getElementById('pullout_time')) required.push('pullout_time');
             if (document.getElementById('event_duration')) required.push('event_duration');
@@ -581,7 +598,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const editSection = document.getElementById('address-edit-section');
                 if (editSection && editSection.style.display !== 'none') {
                     const brgy = document.getElementById('brgy_select');
-                    if (!brgy.value) {
+                    if (!brgy || !brgy.value) {
                         showError('brgy_select', 'err-brgy_select');
                         isValid = false;
                     }
@@ -589,7 +606,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     const addressInput = document.getElementById('address');
                     if (!addressInput || !addressInput.value.trim()) {
                         isValid = false;
-                        Swal.fire('Address Required', 'Please provide a delivery address.', 'warning');
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire('Address Required', 'Please provide a delivery address.', 'warning');
+                        }
                     }
                 }
             }
@@ -610,6 +629,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 isValid = false;
             }
 
+            const dTime = document.getElementById('delivery_time');
+            const fr = (window.catererRules && window.catererRules.food_rules) || {};
+            const er = (window.catererRules && window.catererRules.equipment_rules) || {};
+            const sr = (window.catererRules && window.catererRules.service_rules) || {};
+            const rules = window.isRentalOnly ? er : (window.isServiceOnly ? sr : fr);
+            let earliestStart = rules.earliest_delivery || rules.earliest_start || '06:00';
+            let latestEnd = rules.latest_pullout || rules.latest_end || '21:00';
+
             const pTime = document.getElementById('pullout_time');
             if (pTime && pTime.value) {
                 if (pTime.value < earliestStart || pTime.value > latestEnd) {
@@ -626,6 +653,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                     showError('pullout_time', 'err-pullout_time');
                     isValid = false;
+                } else {
+                    clearError('pullout_time', 'err-pullout_time');
                 }
             }
 
@@ -657,9 +686,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 if (firstError.tagName === 'INPUT' || firstError.tagName === 'SELECT') {
                     firstError.focus({ preventScroll: true });
-                } else if (firstError.previousElementSibling && firstError.previousElementSibling.tagName === 'INPUT') {
+                } else if (firstError.previousElementSibling && (firstError.previousElementSibling.tagName === 'INPUT' || firstError.previousElementSibling.tagName === 'SELECT')) {
                     firstError.previousElementSibling.focus({ preventScroll: true });
                 }
+            }
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Please Complete Required Details',
+                    text: 'Please fill in all highlighted fields (Contact Person, Date, Delivery Time, and Pull-out Time) to proceed.',
+                    confirmButtonColor: 'var(--checkout-primary, #f97316)'
+                });
             }
         }
 
@@ -890,23 +927,28 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    // --- SUMMARY & FULFILLMENT ---
     window.updateCheckoutSummary = function (calculatedBaseTotal = null) {
         let base = calculatedBaseTotal;
         let securityDepositTotal = 0;
 
-        if (base === null) {
-            base = 0;
-            window.cartItems.forEach(cItem => {
-                const backendList = window.backendMenuItems || [];
-                const bItem = backendList.find(i => String(i.id) === String(cItem.id) && (cItem.type ? i.type === cItem.type : true));
-                let itemPrice = parseFloat(cItem.price);
-                if (isNaN(itemPrice) || itemPrice === 0) {
-                    itemPrice = bItem ? (parseFloat(bItem.price) || parseFloat(bItem.rental_price) || 0) : 0;
-                }
-                const qty = parseInt(cItem.qty) || 1;
-                base += (itemPrice * qty);
-            });
+        if (base === null || base === 0) {
+            let tempBase = 0;
+            if (window.cartItems && window.cartItems.length > 0) {
+                window.cartItems.forEach(cItem => {
+                    const backendList = window.backendMenuItems || [];
+                    const bItem = backendList.find(i => String(i.id) === String(cItem.id) && (cItem.type ? i.type === cItem.type : true));
+                    let itemPrice = parseFloat(cItem.price);
+                    if (isNaN(itemPrice) || itemPrice === 0) {
+                        itemPrice = bItem ? (parseFloat(bItem.price) || parseFloat(bItem.rental_price) || 0) : 0;
+                    }
+                    const qty = parseInt(cItem.qty) || 1;
+                    tempBase += (itemPrice * qty);
+                });
+            }
+            if (tempBase === 0 && window.serverBaseTotal > 0) {
+                tempBase = window.serverBaseTotal;
+            }
+            base = tempBase;
         }
 
         // Recalculate refundable security deposit for rentals
@@ -1008,22 +1050,46 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    window.updateFulfillment = function (el) {
-        const selector = el.closest('.fulfillment-selector');
-        const opts = selector.querySelectorAll('.fulfillment-opt');
-        opts.forEach(o => o.classList.remove('active'));
-        el.parentElement.classList.add('active');
+    window.selectFulfillmentMode = function (mode, labelEl) {
+        const selector = labelEl ? labelEl.closest('.fulfillment-selector') : document.querySelector('.fulfillment-selector');
+        if (!selector) return;
+        const radio = selector.querySelector(`input[name="fulfillment"][value="${mode}"]`);
+        if (radio) {
+            radio.checked = true;
+            window.updateFulfillment(radio);
+        }
+    };
 
+    window.updateFulfillment = function (el) {
+        if (!el) return;
+        const radio = el.tagName === 'INPUT' ? el : el.querySelector('input[name="fulfillment"]');
+        const val = radio ? radio.value : (el.value || 'delivery');
+
+        const selector = (el.closest && el.closest('.fulfillment-selector')) || document.querySelector('.fulfillment-selector');
+        if (selector) {
+            selector.querySelectorAll('.fulfillment-opt').forEach(opt => {
+                const optRadio = opt.querySelector('input[name="fulfillment"]');
+                if (optRadio && optRadio.value === val) {
+                    opt.classList.add('active');
+                    optRadio.checked = true;
+                } else {
+                    opt.classList.remove('active');
+                }
+            });
+        }
+
+        const isPickup = (val === 'pickup');
         const addressSection = document.getElementById('address-section');
         const lblDelDate = document.getElementById('lbl_delivery_date');
         const lblDelTime = document.getElementById('lbl_delivery_time');
 
-        if (el.value === 'pickup') {
+        if (isPickup) {
             deliveryFee = 0;
-            document.getElementById('delivery-row').style.display = 'none';
+            const delRow = document.getElementById('delivery-row');
+            if (delRow) delRow.style.display = 'none';
             if (addressSection) addressSection.style.display = 'none';
-            if (lblDelDate) lblDelDate.innerText = 'Pickup Date';
-            if (lblDelTime) lblDelTime.innerText = 'Pickup Time';
+            if (lblDelDate) lblDelDate.innerText = window.isRentalOnly ? 'Pickup / Start Date' : 'Pickup Date';
+            if (lblDelTime) lblDelTime.innerText = window.isRentalOnly ? 'Pickup Time' : 'Pickup Time';
 
             const pickupInfo = document.getElementById('pickup-address-info');
             if (pickupInfo) pickupInfo.style.display = 'block';
@@ -1033,7 +1099,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (window.isServiceOnly) {
                 deliveryFee = 0;
             }
-            document.getElementById('delivery-row').style.display = 'flex';
+            const delRow = document.getElementById('delivery-row');
+            if (delRow) delRow.style.display = 'flex';
             if (addressSection) addressSection.style.display = 'block';
             if (lblDelDate) lblDelDate.innerText = window.isServiceOnly ? 'Event Date' : (window.isRentalOnly ? 'Delivery & Setup Date' : 'Delivery Date');
             if (lblDelTime) lblDelTime.innerText = window.isServiceOnly ? 'Call Time' : (window.isRentalOnly ? 'Setup Time' : 'Delivery Time');

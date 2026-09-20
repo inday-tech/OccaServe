@@ -1,6 +1,6 @@
 {% extends "customer/layout.html" %}
 
-{% block title %}{% if booking.status in ['draft', 'pending_review'] %}Inquiry Details{% else %}Manage Booking{% endif %} #{{ booking.id }} - OccaServe Elite{% endblock %}
+{% block title %}{% if booking.status in ['draft', 'pending_review'] %}Inquiry Details{% else %}Manage Booking{% endif %} #{% if booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental' %}RT-{% elif booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ "%03d" | format(booking.id) }} - OccaServe Elite{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_manage.css') }}?v=13.0">
@@ -361,7 +361,7 @@
     <div>
         <h1>{{ display_title or 'Logistic Management' }}</h1>
         <p>
-            <span style="background: var(--dm-slate-100); padding: 3px 10px; border-radius: 6px; color: var(--up-slate-900); font-weight: 850;">{% if is_food_order %}ORD-{% else %}BK-{% endif %}{{ "%03d" | format(booking.id) }}</span>
+            <span style="background: var(--dm-slate-100); padding: 3px 10px; border-radius: 6px; color: var(--up-slate-900); font-weight: 850;">{% if is_rental_only or booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental' %}RT-{% elif is_food_order %}ORD-{% else %}BK-{% endif %}{{ "%03d" | format(booking.id) }}</span>
             &bull; <span style="color: var(--up-emerald); font-weight: 750;"><i class="fas fa-shield-check"></i> Verified Transaction</span>
             &bull; <span>{{ booking.caterer.business_name }}</span>
         </p>

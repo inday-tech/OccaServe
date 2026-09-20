@@ -1311,8 +1311,10 @@ function showBookingDetails(btn) {
     var formattedTime = data.eventTime || 'TBA';
     var paxCount = data.guestCount || 0;
     var isFoodOrder = data.isFoodOrder === 'true' || data.isFoodOrder === true;
-    var formattedRefId = (isFoodOrder ? 'ORD-' : 'BK-') + String(cleanId).padStart(6, '0');
-    var titlePrefix = isFoodOrder ? 'Food Order #' : (bookingStatus === 'pending_review' || bookingStatus === 'inquiry' ? 'Inquiry Details #' : 'Booking #');
+    var isRentalOrder = data.documentType === 'rental_agreement' || data.eventType === 'Equipment Rental';
+    var refPrefix = isRentalOrder ? 'RT-' : (isFoodOrder ? 'ORD-' : 'BK-');
+    var formattedRefId = refPrefix + String(cleanId).padStart(6, '0');
+    var titlePrefix = isRentalOrder ? 'Rental Agreement #' : (isFoodOrder ? 'Food Order #' : (bookingStatus === 'pending_review' || bookingStatus === 'inquiry' ? 'Inquiry Details #' : 'Booking #'));
 
     // ─── 1. MODAL HEADER POPULATION ──────────────────────────────────────────
     var mbTitle = document.getElementById('modalBookingId');
