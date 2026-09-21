@@ -1365,7 +1365,7 @@ async def caterer_detail(
     )
 
     # Extract public portfolios
-    public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public']
+    public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public' and not getattr(p, 'is_archived', False)]
 
     # Get real completed events count
     completed_events_count = db.query(models.Booking).filter(

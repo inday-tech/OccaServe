@@ -337,6 +337,18 @@ async def alacarte_checkout_draft(
         event_date_obj = date.fromisoformat(delivery_date)
         event_time_obj = datetime.strptime(delivery_time, "%H:%M").time()
         
+        # Validate Caterer Availability (Single Source of Truth)
+        from app.services.availability_service import AvailabilityService
+        avail_check = AvailabilityService.check_caterer_availability(
+            db=db,
+            caterer_id=caterer_id,
+            event_date=event_date_obj,
+            event_time=event_time_obj,
+            exclude_booking_id=booking_id
+        )
+        if not avail_check["available"]:
+            return {"success": False, "message": avail_check["message"]}
+
         # Determine Booking Type for Draft
         is_rental = False
         has_services = False
@@ -635,6 +647,18 @@ async def alacarte_checkout_submit(
         ).count()
         if unpaid_spam_count >= 2:
             return {"success": False, "message": "Spam Protection: You have 2 or more unpaid/pending bookings. Please complete them first."}
+
+        # Validate Caterer Availability (Single Source of Truth)
+        from app.services.availability_service import AvailabilityService
+        avail_check = AvailabilityService.check_caterer_availability(
+            db=db,
+            caterer_id=caterer_id,
+            event_date=delivery_date,
+            event_time=delivery_time,
+            exclude_booking_id=booking_id
+        )
+        if not avail_check["available"]:
+            return {"success": False, "message": avail_check["message"]}
             
         booking = db.query(models.Booking).get(booking_id) if booking_id else None
         
@@ -1613,36 +1637,21 @@ async def step_details_submit(
 
     today = date.today()
     
-    # 🚨 VALIDATION 1: Strict Lead Time Validation
-    rules = caterer.scheduling_rules or {}
-    pkg_rules = rules.get("package_rules", {})
-    food_rules = rules.get("food_rules", {})
-
-    is_package = package_id_int is not None
-    if is_package:
-        lead_time = (package.booking_lead_time if package and package.booking_lead_time else (caterer.booking_lead_time or 7))
-        min_lead_date = today + timedelta(days=lead_time)
-        error_msg = f"Package bookings must be at least {lead_time} days in advance."
-    else:
-        lead_time_hours = food_rules.get("lead_time_hours", 24)
-        lead_time = max(0, lead_time_hours // 24)
-        min_lead_date = today + timedelta(days=lead_time)
-        error_msg = f"Food orders require at least {lead_time_hours} hours of preparation time."
-
-    if event_date_parsed < min_lead_date:
-        print(f"[StepDetails REJECT] Lead time constraint failed: {event_date_parsed} < {min_lead_date}")
-        return RedirectResponse(url=f"{redirect_base}?booking_error=err-date:{error_msg.replace(' ', '+')}", status_code=303)
-
-    max_advance_date = today + timedelta(days=210)
-    if event_date_parsed > max_advance_date:
-        print(f"[StepDetails REJECT] Max advance date failed: {event_date_parsed} > {max_advance_date}")
-        return RedirectResponse(url=f"{redirect_base}?booking_error=err-date:Bookings+can+only+be+made+up+to+7+months+in+advance.", status_code=303)
-
-    # 🚨 VALIDATION 1.5: Sensible Operating Hours Check
-    # Restrict events to standard operating hours (8:00 AM to 8:00 PM)
-    if event_time_parsed.hour < 8 or event_time_parsed.hour >= 21:
-        print(f"[StepDetails REJECT] Operating hours failed: {event_time_parsed.hour}")
-        return RedirectResponse(url=f"{redirect_base}?booking_error=err-time:Please+select+a+time+between+8:00+AM+and+8:00+PM.", status_code=303)
+    # 🚨 SINGLE SOURCE OF TRUTH: Caterer Availability Validation
+    from app.services.availability_service import AvailabilityService
+    avail_check = AvailabilityService.check_caterer_availability(
+        db=db,
+        caterer_id=caterer_id,
+        event_date=event_date_parsed,
+        event_time=event_time_parsed,
+        exclude_booking_id=booking_id_int
+    )
+    if not avail_check["available"]:
+        code = avail_check.get("code", "error")
+        field = "err-time" if code in ["outside_hours", "slot_conflict"] else "err-date"
+        msg = avail_check.get("message", "Selected date or time is not available.")
+        print(f"[StepDetails REJECT] Availability rule failed: {code} - {msg}")
+        return RedirectResponse(url=f"{redirect_base}?booking_error={field}:{msg.replace(' ', '+')}", status_code=303)
 
     # 🚨 VALIDATION 1.8: Unpaid Booking Spam Limit (Flow B Rule 1)
     unpaid_spam_count = db.query(models.Booking).filter(
@@ -1669,24 +1678,8 @@ async def step_details_submit(
         print(f"[StepDetails REJECT] Existing duplicate booking found: {existing_duplicate.id}")
         return RedirectResponse(url=f"{redirect_base}?booking_error=You+already+have+a+booking+request+for+this+exact+schedule+and+caterer.", status_code=303)
 
-    # 🚨 VALIDATION 3: Caterer Overlap / Time-Gap Check
-    same_day_bookings = db.query(models.Booking).filter(
-        models.Booking.caterer_id == caterer_id,
-        models.Booking.event_date == event_date_parsed,
-        models.Booking.id != (booking_id_int or 0),
-        models.Booking.status.in_(['confirmed', 'preparing', 'in_progress', 'on_the_way'])
-    ).all()
-    
-    turnover = pkg_rules.get('turnover_time_hours', caterer.equipment_turnover_hours or 6.0) if is_package else 2.0
-    for sdb in same_day_bookings:
-        if sdb.event_time:
-            dt1 = datetime.combine(today, event_time_parsed)
-            dt2 = datetime.combine(today, sdb.event_time)
-            diff_hours = abs((dt1 - dt2).total_seconds()) / 3600.0
-            if diff_hours < turnover:
-                return RedirectResponse(url=f"{redirect_base}?booking_error=The+caterer+has+another+confirmed+event+around+this+time.+Please+adjust+your+time+by+at+least+{turnover}+hours.", status_code=303)
-
     # 🚨 VALIDATION 4: Guest Count Bounds
+    is_package = package_id_int is not None
     min_guests_required = caterer.min_pax or 50 if is_package else 1
     if package:
         min_guests_required = package.min_guests or caterer.min_pax or 50
@@ -1696,17 +1689,6 @@ async def step_details_submit(
     if guest_count_int < min_guests_required:
         return RedirectResponse(url=f"{redirect_base}?booking_error=Guest+count+cannot+be+less+than+the+minimum+requirement+of+{min_guests_required}.", status_code=303)
 
-    # 1. Check Availability (Only if date changed or new booking)
-    # [Availability check logic remains same for now]
-    availability = db.query(models.Availability).filter(
-        models.Availability.caterer_id == caterer_id,
-        models.Availability.date == event_date_parsed,
-        models.Availability.is_available == False
-    ).first()
-    
-    if availability:
-        print(f"[StepDetails REJECT] Availability check failed: Caterer {caterer_id} is marked unavailable on {event_date_parsed}")
-        return RedirectResponse(url=f"{redirect_base}?booking_error=Date+unavailable", status_code=303)
 
     # 1.5. Capacity Check for Addon Services
     requested_services = []

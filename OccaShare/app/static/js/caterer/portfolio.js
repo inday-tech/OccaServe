@@ -20,6 +20,15 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
+    // Check for search query in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchQ = urlParams.get('search') || urlParams.get('q');
+    if (searchQ) {
+        filterPortfolios(searchQ);
+        const globalSearchInput = document.getElementById('globalSearchInput');
+        if (globalSearchInput) globalSearchInput.value = searchQ;
+    }
 });
 
 function openPortfolioModal() {
@@ -145,9 +154,8 @@ async function submitPortfolio(e) {
     formData.append('event_type', form.event_type.value);
     formData.append('description', form.description.value);
     
-    if (form.location.value) formData.append('location', form.location.value);
-    if (form.event_date.value) formData.append('event_date', form.event_date.value);
-    if (form.booking_id.value) formData.append('booking_id', form.booking_id.value);
+    if (form.location && form.location.value) formData.append('location', form.location.value);
+    if (form.booking_id && form.booking_id.value) formData.append('booking_id', form.booking_id.value);
     
     // Add is_featured checkbox
     const isFeatured = form.querySelector('input[name="is_featured"]').checked;
@@ -240,9 +248,8 @@ function editPortfolio(btn) {
     form.title.value = title;
     form.event_type.value = eventType;
     form.description.value = description;
-    form.location.value = location;
-    form.event_date.value = eventDate;
-    form.booking_id.value = bookingId;
+    if (form.location) form.location.value = location;
+    if (form.booking_id) form.booking_id.value = bookingId;
     form.querySelector('input[name="is_featured"]').checked = isFeatured;
 
     if (highlightsTagify) {
@@ -269,6 +276,59 @@ function editPortfolio(btn) {
     document.getElementById('portfolioModal').classList.add('active');
     document.body.style.overflow = 'hidden';
 }
+
+function filterPortfolios(query) {
+    const q = (query || '').toLowerCase().trim();
+    const cards = document.querySelectorAll('.portfolio-card');
+    let visibleCount = 0;
+
+    cards.forEach(card => {
+        const title = (card.querySelector('.portfolio-title')?.innerText || '').toLowerCase();
+        const type = (card.querySelector('.portfolio-type')?.innerText || '').toLowerCase();
+        const desc = (card.querySelector('.portfolio-desc')?.innerText || '').toLowerCase();
+        const meta = (card.querySelector('.portfolio-meta')?.innerText || '').toLowerCase();
+
+        if (!q || title.includes(q) || type.includes(q) || desc.includes(q) || meta.includes(q)) {
+            card.style.display = '';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    let emptySearch = document.getElementById('portfolioSearchEmpty');
+    const grid = document.querySelector('.portfolio-grid');
+    if (cards.length > 0 && grid) {
+        if (visibleCount === 0 && q) {
+            if (!emptySearch) {
+                emptySearch = document.createElement('div');
+                emptySearch.id = 'portfolioSearchEmpty';
+                emptySearch.className = 'packages-empty-pro text-center py-5';
+                emptySearch.style.gridColumn = '1 / -1';
+                emptySearch.style.background = 'white';
+                emptySearch.style.borderRadius = 'var(--border-radius, 1.5rem)';
+                emptySearch.style.border = '2px dashed #e2e8f0';
+                emptySearch.style.marginTop = '1rem';
+                emptySearch.innerHTML = `
+                    <div style="font-size: 2.5rem; color: #94a3b8; margin-bottom: 0.5rem;"><i class="fas fa-search"></i></div>
+                    <h3 style="color: #1e293b; font-weight: 700;">No matching portfolio items</h3>
+                    <p style="color: #64748b; font-size: 0.9rem;">No results found for "${q}".</p>
+                `;
+                grid.appendChild(emptySearch);
+            } else {
+                emptySearch.style.display = 'block';
+                emptySearch.querySelector('p').innerText = `No results found for "${q}".`;
+            }
+        } else if (emptySearch) {
+            emptySearch.style.display = 'none';
+        }
+    }
+}
+
+// Listen to header globalSearch event
+window.addEventListener('globalSearch', function(e) {
+    filterPortfolios(e.detail ? e.detail.value : '');
+});
 
 async function togglePortfolioVisibility(id) {
     try {

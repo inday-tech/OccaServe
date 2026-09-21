@@ -146,8 +146,7 @@
                         <input type="date" name="event_date" id="event_date" class="form-input"
                             value="{{ booking.event_date.isoformat() if booking and booking.event_date else '' }}"
                             required onchange="checkAvailability()">
-                        <div id="availability-chip" class="availability-chip"></div>
-                        <span class="field-error" id="err-date">Please select an event date at least {{ caterer.booking_lead_time or 3 }} days from today.</span>
+                        <span class="field-error" id="err-date">Please select a valid event date.</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="event_time">Start Time</label>
@@ -164,9 +163,10 @@
                             </div>
                         </div>
                         <input type="hidden" name="event_time" id="event_time" value="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}" data-initial="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}">
-                        <span class="field-error" id="err-time">Please choose an event start time between 8:00 AM and 8:00 PM.</span>
+                        <span class="field-error" id="err-time">Please choose an event start time within available operating hours.</span>
                     </div>
                 </div>
+                <div id="availability-chip" class="availability-chip" style="margin-top: 0.75rem; width: 100%;"></div>
             </div>
 
             <!-- Included in This Package -->

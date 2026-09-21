@@ -70,7 +70,7 @@ async function checkAvailability() {
                 submitBtn.style.opacity = '1';
             } else {
                 msg.style.color = '#ef4444';
-                msg.innerHTML = `<i class="fas fa-times-circle"></i> ${data.reason || 'Not available'}`;
+                msg.innerHTML = `<i class="fas fa-times-circle"></i> ${data.message || data.reason || 'Not available'}`;
                 submitBtn.disabled = true;
                 submitBtn.style.opacity = '0.5';
             }

@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv(override=True)
 from fastapi.staticfiles import StaticFiles
-from .db.database import engine, Base, get_db
+from .db.database import engine, Base, get_db, SessionLocal
 from .routers import website, auth, admin, bookings, social_auth, caterers, packages, caterer_dashboard, customer_dashboard, verification, kyc, quotations, payments, contact, notifications, chat, caterer_feed, inventory_api, caterer_portfolio, service_bookings, admin_caterer_verification
 from .db import models
 from sqlalchemy.orm import Session
@@ -365,6 +365,23 @@ async def lifespan(app: FastAPI):
         # booking_contracts
         "ALTER TABLE booking_contracts ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE",
         "ALTER TABLE booking_contracts ADD COLUMN IF NOT EXISTS contract_history JSONB",
+
+        # billing_invoices
+        "ALTER TABLE billing_invoices ADD COLUMN IF NOT EXISTS booking_id INTEGER REFERENCES bookings(id)",
+        "ALTER TABLE billing_invoices ADD COLUMN IF NOT EXISTS commission_rate FLOAT DEFAULT 0.10",
+        "ALTER TABLE billing_invoices ADD COLUMN IF NOT EXISTS billing_period VARCHAR",
+        "ALTER TABLE billing_invoices ADD COLUMN IF NOT EXISTS amount FLOAT DEFAULT 0.0",
+        "ALTER TABLE billing_invoices ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'pending'",
+        "ALTER TABLE billing_invoices ADD COLUMN IF NOT EXISTS due_date DATE",
+        "ALTER TABLE billing_invoices ADD COLUMN IF NOT EXISTS payment_proof_url VARCHAR",
+        "ALTER TABLE billing_invoices ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+
+        # business_expenses
+        "ALTER TABLE business_expenses ADD COLUMN IF NOT EXISTS expense_category VARCHAR",
+        "ALTER TABLE business_expenses ADD COLUMN IF NOT EXISTS description VARCHAR",
+        "ALTER TABLE business_expenses ADD COLUMN IF NOT EXISTS amount FLOAT DEFAULT 0.0",
+        "ALTER TABLE business_expenses ADD COLUMN IF NOT EXISTS date_incurred DATE",
+        "ALTER TABLE business_expenses ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
 
         # booking_payment_records
         """

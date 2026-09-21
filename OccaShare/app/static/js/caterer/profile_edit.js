@@ -5,13 +5,13 @@
 
 // ─── Section Metadata ───
 const SECTION_META = {
-    'general':          { title: 'Business Info',          subtitle: 'Core identity details of your catering business.' },
+    'general':          { title: 'Business Information',   subtitle: 'Manage the basic information customers see about your business.' },
     'location':         { title: 'Location & Contact',     subtitle: 'Your official business address used for search and bookings.' },
     'payment-methods':  { title: 'Payment Methods',        subtitle: 'Configure how customers can pay you and where you\'ll receive your earnings.' },
     'booking-policies': { title: 'Booking Policies',       subtitle: 'Set clear expectations for bookings, payments, and cancellations.' },
-    'availability':     { title: 'Booking & Availability', subtitle: 'Set clear rules for different types of services so customers know exactly when and how they can book you.' },
+    'availability':     { title: 'Booking & Event Availability', subtitle: 'Control when customers can request bookings and define the scheduling limits for your business.' },
     'delivery-settings':{ title: 'Delivery Zones & Fees',  subtitle: 'Define your delivery coverage and compute accurate travel fees for out-of-town bookings.' },
-    'brand':            { title: 'Brand Colors & Style',   subtitle: 'Customize the look and feel of your caterer portal.' },
+    'brand':            { title: 'Branding',               subtitle: 'Manage your visual identity, logo, cover image, and theme styling.' },
     'verification':     { title: 'Verification Center',    subtitle: 'Submit your compliance documents. These are private and never visible to customers.' },
     'account':          { title: 'Account & Security',     subtitle: 'Manage your personal info, notifications, and account preferences.' },
 };
@@ -678,3 +678,596 @@ async function submitVerification() {
         btn.disabled = false;
     }
 }
+
+window.handleFormSubmitState = function(event) {
+    const btn = document.querySelector('.btn-save-changes') || document.getElementById('btnSaveAllSettings');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Saving Changes...</span>';
+        btn.style.opacity = '0.85';
+    }
+};
+
+// ─── Settings Dirty State Management ───
+window.triggerSettingsDirty = function() {
+    const saveBtn = document.getElementById('btnSaveAllSettings');
+    const savedBadge = document.getElementById('settingsSavedBadge');
+    const unsavedBadge = document.getElementById('settingsUnsavedBadge');
+
+    if (saveBtn) {
+        saveBtn.disabled = false;
+    }
+    if (savedBadge) savedBadge.style.display = 'none';
+    if (unsavedBadge) unsavedBadge.style.display = 'inline-flex';
+};
+
+// ─── Business Logo & Cover Image Preview & Removal ───
+window.previewSelectedImage = function(input, type) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+
+    // Upload validation: PNG, JPG, WebP
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    const ext = file.name.split('.').pop().toLowerCase();
+    const allowedExts = ['png', 'jpg', 'jpeg', 'webp'];
+
+    if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
+        const msg = 'Invalid file format. Please upload a PNG, JPG, or WebP image.';
+        if (window.showToast) window.showToast(msg, 'warning');
+        else alert(msg);
+        input.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        const previewImg = document.getElementById(type + 'PreviewImg');
+        const placeholder = document.getElementById(type + 'Placeholder');
+        const badge = document.getElementById(type + 'StatusBadge');
+        const removeFlag = document.getElementById('remove' + (type === 'logo' ? 'Logo' : 'Cover') + 'Flag');
+        const btnRemove = document.getElementById('btnRemove' + (type === 'logo' ? 'Logo' : 'Cover'));
+        const actionText = document.getElementById(type + 'ActionText');
+
+        if (previewImg) {
+            previewImg.src = e.target.result;
+            previewImg.style.display = 'block';
+        }
+        if (placeholder) placeholder.style.display = 'none';
+        if (removeFlag) removeFlag.value = '0';
+        if (btnRemove) btnRemove.style.display = 'inline-flex';
+        if (actionText) actionText.textContent = 'Change / Replace ' + (type === 'logo' ? 'Logo' : 'Cover');
+
+        if (badge) {
+            badge.className = 'status-badge-saved';
+            badge.innerHTML = '<i class="fas fa-check-circle"></i> Ready to save';
+        }
+
+        // Live preview top sidebar logo
+        if (type === 'logo') {
+            const sidebarLogo = document.querySelector('#sidebarLogoDisplay img');
+            if (sidebarLogo) {
+                sidebarLogo.src = e.target.result;
+            }
+        }
+
+        triggerSettingsDirty();
+    };
+    reader.readAsDataURL(file);
+};
+
+window.removeImage = function(type) {
+    const previewImg = document.getElementById(type + 'PreviewImg');
+    const placeholder = document.getElementById(type + 'Placeholder');
+    const badge = document.getElementById(type + 'StatusBadge');
+    const fileInput = document.getElementById(type + 'FileInput');
+    const removeFlag = document.getElementById('remove' + (type === 'logo' ? 'Logo' : 'Cover') + 'Flag');
+    const btnRemove = document.getElementById('btnRemove' + (type === 'logo' ? 'Logo' : 'Cover'));
+    const actionText = document.getElementById(type + 'ActionText');
+
+    if (previewImg) {
+        previewImg.src = '';
+        previewImg.style.display = 'none';
+    }
+    if (placeholder) placeholder.style.display = 'block';
+    if (fileInput) fileInput.value = '';
+    if (removeFlag) removeFlag.value = '1';
+    if (btnRemove) btnRemove.style.display = 'none';
+    if (actionText) actionText.textContent = 'Upload ' + (type === 'logo' ? 'Logo' : 'Cover');
+
+    if (badge) {
+        badge.className = 'status-badge-empty';
+        badge.innerHTML = '<i class="fas fa-circle-minus"></i> Removed';
+    }
+
+    if (type === 'logo') {
+        const sidebarLogo = document.querySelector('#sidebarLogoDisplay img');
+        if (sidebarLogo) {
+            sidebarLogo.src = '/static/images/default-avatar.png';
+        }
+    }
+
+    triggerSettingsDirty();
+};
+
+window.handleImageFallback = function(img, type) {
+    if (type === 'logo') {
+        img.src = '/static/images/default-avatar.png';
+    } else {
+        img.src = 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1200';
+    }
+};
+// ─── Dropzone & Expiry Helpers ───
+window.handleDropzoneFileChange = function(input, fieldId) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const badge = document.getElementById('selected_badge_' + fieldId);
+    if (badge) {
+        const filenameSpan = badge.querySelector('.selected-filename') || badge;
+        filenameSpan.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + ' MB)';
+        badge.style.display = 'flex';
+    }
+    triggerSettingsDirty();
+};
+
+window.checkPermitExpiryWarning = function(dateStr) {
+    const warningEl = document.getElementById('permitExpiredWarning');
+    if (!warningEl) return;
+    if (!dateStr) {
+        warningEl.style.display = 'none';
+        return;
+    }
+    const expiryDate = new Date(dateStr + 'T23:59:59');
+    const now = new Date();
+    if (expiryDate < now) {
+        warningEl.style.display = 'flex';
+    } else {
+        warningEl.style.display = 'none';
+    }
+    triggerSettingsDirty();
+};
+
+window.submitVerificationDocs = async function(btn) {
+    if (!btn) return;
+    const idFront = document.getElementById('verif_id_front')?.files?.[0];
+    const selfie = document.getElementById('verif_selfie')?.files?.[0];
+    const permit = document.getElementById('verif_permit')?.files?.[0];
+
+    const hasExistingId = !!document.getElementById('card_verif_id_front');
+    const hasExistingPermit = !!document.getElementById('card_verif_permit');
+
+    if (!idFront && !hasExistingId) { 
+        if (window.showToast) window.showToast('Government ID (Front) is required.', 'warning');
+        else alert("Government ID (Front) is required."); 
+        return; 
+    }
+    if (!permit && !hasExistingPermit) { 
+        if (window.showToast) window.showToast('Business Permit is required.', 'warning');
+        else alert("Business Permit is required."); 
+        return; 
+    }
+
+    const formData = new FormData();
+    formData.append('id_type', document.getElementById('verif_id_type').value);
+    if (idFront) formData.append('id_front', idFront);
+    
+    const idBack = document.getElementById('verif_id_back')?.files?.[0];
+    if (idBack) formData.append('id_back', idBack);
+    
+    if (selfie) formData.append('selfie', selfie);
+    
+    if (permit) formData.append('permit', permit);
+    const permitExpiryVal = document.getElementById('verif_permit_expiry')?.value;
+    if (permitExpiryVal) formData.append('permit_expiry', permitExpiryVal);
+
+    const dti = document.getElementById('verif_dti')?.files?.[0];
+    if (dti) formData.append('dti', dti);
+    const bir = document.getElementById('verif_bir')?.files?.[0];
+    if (bir) formData.append('bir', bir);
+    const mayors = document.getElementById('verif_mayors')?.files?.[0];
+    if (mayors) formData.append('mayors', mayors);
+
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch('/caterer/verification/submit', { method: 'POST', body: formData });
+        const result = await response.json();
+        if (result.success) {
+            if (window.showToast) {
+                window.showToast('Verification documents submitted!', 'success');
+            } else {
+                alert('Verification documents submitted!');
+            }
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            if (window.showToast) {
+                window.showToast(result.message || "Failed to submit documents.", 'error');
+            } else {
+                alert(result.message || "Failed to submit documents.");
+            }
+        }
+    } catch (err) {
+        console.error(err);
+        if (window.showToast) {
+            window.showToast('An unexpected error occurred.', 'error');
+        } else {
+            alert('An unexpected error occurred.');
+        }
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }
+};
+
+// ─── Booking Availability Toggle & Schedule ───
+window.handleAvailToggle = function(isChecked) {
+    const statusInput = document.getElementById('availability_status_input');
+    const label = document.getElementById('availToggleLabel');
+    const badge = document.getElementById('availStatusBadge');
+    const subtext = document.getElementById('availToggleSubtext');
+    const reasonContainer = document.getElementById('unavailableReasonContainer');
+
+    if (statusInput) {
+        statusInput.value = isChecked ? 'Available' : 'Temporarily Unavailable';
+    }
+
+    if (label) {
+        label.innerHTML = isChecked ? '[ ON ] Accepting Bookings' : '[ OFF ] Bookings Paused';
+        label.style.color = isChecked ? '#15803d' : '#b91c1c';
+    }
+
+    if (badge) {
+        badge.textContent = isChecked ? 'Accepting bookings' : 'Bookings paused';
+        badge.style.background = isChecked ? '#dcfce7' : '#fee2e2';
+        badge.style.color = isChecked ? '#15803d' : '#b91c1c';
+        badge.style.borderColor = isChecked ? '#bbf7d0' : '#fecaca';
+    }
+
+    if (subtext) {
+        subtext.innerText = isChecked 
+            ? 'Customers can submit bookings based on your availability rules.' 
+            : 'New bookings are temporarily paused.';
+    }
+
+    if (reasonContainer) {
+        reasonContainer.style.display = isChecked ? 'none' : 'block';
+    }
+
+    updateAvailabilitySummary();
+    triggerSettingsDirty();
+};
+
+window.setOperatingDaysPreset = function(preset) {
+    const container = document.getElementById('operatingDaysContainer');
+    if (!container) return;
+
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+        const day = cb.value;
+        let shouldCheck = false;
+        if (preset === 'all') {
+            shouldCheck = true;
+        } else if (preset === 'weekdays') {
+            shouldCheck = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].includes(day);
+        } else if (preset === 'weekends') {
+            shouldCheck = ['Saturday', 'Sunday'].includes(day);
+        }
+        cb.checked = shouldCheck;
+        const btn = cb.parentElement.querySelector('.day-chip-btn') || cb.parentElement.querySelector('.day-chip-box');
+        if (btn) btn.classList.toggle('active', shouldCheck);
+    });
+    updateAvailabilitySummary();
+    triggerSettingsDirty();
+};
+
+window.setBookingWindowPreset = function(days) {
+    const input = document.getElementById('max_advance_booking_input');
+    if (input) {
+        input.value = days;
+        updateAvailabilitySummary();
+        triggerSettingsDirty();
+    }
+    document.querySelectorAll('#section-availability .btn-quick-pill').forEach(btn => {
+        const oc = btn.getAttribute('onclick') || '';
+        if (oc.includes(`setBookingWindowPreset(${days})`)) {
+            btn.classList.add('active');
+        } else if (oc.includes('setBookingWindowPreset')) {
+            btn.classList.remove('active');
+        }
+    });
+};
+
+window.setLeadTimePreset = function(hours) {
+    const input = document.getElementById('food_lead_time_hours');
+    const legacyInput = document.getElementById('booking_lead_time_input');
+    const helper = document.getElementById('leadTimeHelperText');
+    if (input) {
+        input.value = hours;
+    }
+    if (legacyInput) {
+        legacyInput.value = Math.max(1, Math.round(hours / 24));
+    }
+    if (helper) {
+        helper.textContent = `Customers must book at least ${hours} hours in advance of the event start time.`;
+    }
+    updateAvailabilitySummary();
+    triggerSettingsDirty();
+
+    document.querySelectorAll('#section-availability .btn-quick-pill').forEach(btn => {
+        const oc = btn.getAttribute('onclick') || '';
+        if (oc.includes(`setLeadTimePreset(${hours})`)) {
+            btn.classList.add('active');
+        } else if (oc.includes('setLeadTimePreset')) {
+            btn.classList.remove('active');
+        }
+    });
+};
+
+window.updateDescCharCounter = function(textarea) {
+    const counter = document.getElementById('descCharCounter');
+    if (!counter || !textarea) return;
+    const len = textarea.value ? textarea.value.length : 0;
+    counter.textContent = `${len} / 1000 characters`;
+    if (len > 1000) {
+        counter.style.color = '#dc2626';
+    } else {
+        counter.style.color = '#64748b';
+    }
+};
+
+// ─── Blocked / Unavailable Dates Manager ───
+window.blockedDatesList = [];
+
+window.toggleAddBlockedDateForm = function(show) {
+    const f = document.getElementById('inlineAddBlockedDateForm');
+    if (!f) return;
+    if (typeof show === 'boolean') {
+        f.style.display = show ? 'block' : 'none';
+    } else {
+        f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    }
+    if (f.style.display === 'block') {
+        const dateInput = document.getElementById('newBlockDate');
+        if (dateInput) dateInput.focus();
+    }
+};
+
+function initBlockedDates() {
+    const hiddenInput = document.getElementById('blockedDatesJson');
+    if (!hiddenInput) return;
+
+    try {
+        const raw = hiddenInput.value;
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                window.blockedDatesList = parsed.map(item => {
+                    if (typeof item === 'object' && item !== null && item.date) {
+                        return { date: String(item.date).trim(), reason: String(item.reason || 'Unavailable').trim() };
+                    } else if (typeof item === 'string') {
+                        return { date: item.trim(), reason: 'Unavailable' };
+                    }
+                    return null;
+                }).filter(Boolean);
+            }
+        }
+    } catch (e) {
+        console.error("Error parsing blocked dates JSON:", e);
+        window.blockedDatesList = [];
+    }
+    renderBlockedDates();
+}
+
+window.renderBlockedDates = function() {
+    const container = document.getElementById('blockedDatesContainer');
+    const countBadge = document.getElementById('blockedCountBadge');
+    const hiddenInput = document.getElementById('blockedDatesJson');
+
+    if (!container) return;
+
+    // Update hidden input JSON
+    if (hiddenInput) {
+        hiddenInput.value = JSON.stringify(window.blockedDatesList);
+    }
+
+    // Update count badge
+    if (countBadge) {
+        const len = window.blockedDatesList.length;
+        countBadge.textContent = len === 1 ? '1 blocked date' : `${len} blocked dates`;
+    }
+
+    if (window.blockedDatesList.length === 0) {
+        container.innerHTML = `
+            <div style="padding: 2rem 1.5rem; text-align: center; color: #94a3b8; font-size: 0.88rem;">
+                <i class="fas fa-calendar-check" style="font-size: 1.8rem; display: block; margin-bottom: 8px; color: #cbd5e1;"></i>
+                <div style="font-weight: 700; color: #475569; margin-bottom: 2px;">No Blocked Dates</div>
+                <div>All operating days are currently available for customer bookings.</div>
+            </div>
+        `;
+        return;
+    }
+
+    // Sort dates chronologically
+    window.blockedDatesList.sort((a, b) => a.date.localeCompare(b.date));
+
+    let rowsHtml = `<div style="display: flex; flex-direction: column;">`;
+    window.blockedDatesList.forEach((item, index) => {
+        let displayDate = item.date;
+        try {
+            const parts = item.date.split('-');
+            if (parts.length === 3) {
+                const dObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                displayDate = dObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+            }
+        } catch (e) {}
+
+        rowsHtml += `
+            <div class="blocked-date-item-row" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0;">
+                        <i class="fas fa-calendar-day"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight: 700; color: #1e293b; font-size: 0.88rem;">${displayDate}</div>
+                        <div style="font-size: 0.75rem; color: #64748b;">${item.reason || 'Unavailable'}</div>
+                    </div>
+                </div>
+                <button type="button" onclick="removeBlockedDate(${index})" class="btn-media-remove" style="height: 28px; padding: 0 10px; font-size: 0.75rem; color: #dc2626; border: 1px solid #fecaca; background: #ffffff; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                    <i class="fas fa-trash-can"></i> Remove
+                </button>
+            </div>
+        `;
+    });
+    rowsHtml += `</div>`;
+
+    container.innerHTML = rowsHtml;
+};
+
+window.addBlockedDate = function() {
+    const dateInput = document.getElementById('newBlockDate');
+    const reasonSelect = document.getElementById('newBlockReason');
+    if (!dateInput || !dateInput.value) {
+        if (window.showToast) window.showToast('Please select a date to block.', 'warning');
+        else alert('Please select a date to block.');
+        return;
+    }
+
+    const dateVal = dateInput.value.trim();
+    const reasonVal = reasonSelect ? reasonSelect.value.trim() : 'Other';
+
+    // Check if already blocked
+    if (window.blockedDatesList.some(item => item.date === dateVal)) {
+        const msg = 'This date (' + dateVal + ') is already marked as blocked.';
+        if (window.showToast) window.showToast(msg, 'warning');
+        else alert(msg);
+        return;
+    }
+
+    window.blockedDatesList.push({ date: dateVal, reason: reasonVal });
+    dateInput.value = '';
+    toggleAddBlockedDateForm(false);
+    renderBlockedDates();
+    triggerSettingsDirty();
+};
+
+window.removeBlockedDate = function(index) {
+    if (index >= 0 && index < window.blockedDatesList.length) {
+        window.blockedDatesList.splice(index, 1);
+        renderBlockedDates();
+        triggerSettingsDirty();
+    }
+};
+
+// ─── Live Availability Snapshot Summary ───
+window.updateAvailabilitySummary = function() {
+    // 1. Status
+    const statusEl = document.getElementById('summaryStatus');
+    const toggleSwitch = document.getElementById('availToggleSwitch');
+    if (statusEl) {
+        const isAvail = toggleSwitch ? toggleSwitch.checked : true;
+        statusEl.textContent = isAvail ? 'Accepting Bookings' : 'Bookings Paused';
+        statusEl.style.color = isAvail ? '#15803d' : '#b91c1c';
+    }
+
+    // 2. Days
+    const daysEl = document.getElementById('summaryDays');
+    if (daysEl) {
+        const checkedDays = Array.from(document.querySelectorAll('input[name="operating_days"]:checked')).map(cb => cb.value);
+        if (checkedDays.length === 7) {
+            daysEl.textContent = 'Every Day (Mon - Sun)';
+        } else if (checkedDays.length === 5 && !checkedDays.includes('Saturday') && !checkedDays.includes('Sunday')) {
+            daysEl.textContent = 'Weekdays (Mon - Fri)';
+        } else if (checkedDays.length === 2 && checkedDays.includes('Saturday') && checkedDays.includes('Sunday')) {
+            daysEl.textContent = 'Weekends (Sat - Sun)';
+        } else if (checkedDays.length === 0) {
+            daysEl.textContent = 'No Days Selected';
+        } else {
+            daysEl.textContent = checkedDays.map(d => d.slice(0, 3)).join(', ');
+        }
+    }
+
+    // 3. Operating Hours
+    const hoursEl = document.getElementById('summaryHours');
+    if (hoursEl) {
+        const openInput = document.getElementById('business_hours_open_time');
+        const closeInput = document.getElementById('business_hours_close_time');
+        const formatTime = (val) => {
+            if (!val) return '--:--';
+            const [hStr, mStr] = val.split(':');
+            let h = parseInt(hStr, 10);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12 || 12;
+            return `${String(h).padStart(2, '0')}:${mStr || '00'} ${ampm}`;
+        };
+        const openStr = openInput ? formatTime(openInput.value) : '08:00 AM';
+        const closeStr = closeInput ? formatTime(closeInput.value) : '08:00 PM';
+        hoursEl.textContent = `${openStr} - ${closeStr}`;
+    }
+
+    // 4. Booking Window
+    const windowEl = document.getElementById('summaryWindow');
+    if (windowEl) {
+        const winInput = document.getElementById('max_advance_booking_input');
+        const days = winInput && winInput.value ? winInput.value : '30';
+        windowEl.textContent = `Up to ${days} days ahead`;
+    }
+
+    // 5. Advance Notice
+    const noticeEl = document.getElementById('summaryNotice');
+    if (noticeEl) {
+        const leadInput = document.getElementById('food_lead_time_hours');
+        const hours = leadInput && leadInput.value ? parseInt(leadInput.value, 10) : 24;
+        if (hours >= 24 && hours % 24 === 0) {
+            const days = hours / 24;
+            noticeEl.textContent = `${days} day${days > 1 ? 's' : ''} (${hours}h) notice`;
+        } else {
+            noticeEl.textContent = `${hours} hours notice`;
+        }
+    }
+
+    // 6. Capacity
+    const capEl = document.getElementById('summaryCapacity');
+    if (capEl) {
+        const capInput = document.getElementById('max_events_per_day');
+        const cap = capInput && capInput.value ? capInput.value : '5';
+        capEl.textContent = `${cap} events / day max`;
+    }
+};
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initBlockedDates();
+    updateAvailabilitySummary();
+
+    // Initialize business description character counter
+    const descEl = document.getElementById('business_description');
+    if (descEl) {
+        updateDescCharCounter(descEl);
+    }
+
+    // Check initial permit expiry
+    const expiryInput = document.getElementById('verif_permit_expiry');
+    if (expiryInput && expiryInput.value) {
+        checkPermitExpiryWarning(expiryInput.value);
+    }
+
+    // Attach dirty listeners to entire form
+    const form = document.getElementById('catererSettingsForm');
+    if (form) {
+        form.addEventListener('input', function(e) {
+            triggerSettingsDirty();
+        });
+        form.addEventListener('change', function(e) {
+            triggerSettingsDirty();
+        });
+        form.addEventListener('submit', function() {
+            const saveBtn = document.getElementById('btnSaveAllSettings');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Saving Changes...</span>';
+            }
+        });
+    }
+});

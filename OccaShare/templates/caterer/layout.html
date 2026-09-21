@@ -1549,8 +1549,10 @@
             border-bottom: none;
         }
 
-        .omni-result-item:hover {
-            background: #f8fafc;
+        .omni-result-item:hover,
+        .omni-result-item.selected {
+            background: #f1f5f9;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
         }
 
         .omni-result-icon {
@@ -2223,10 +2225,20 @@
 
             configs.forEach(conf => {
                 if (!conf.input || !conf.resBox) return;
+
+                // Dispatch globalSearch on input to filter current page in real-time
                 conf.input.addEventListener('input', (e) => {
+                    const val = e.target.value;
+                    window.dispatchEvent(new CustomEvent('globalSearch', { detail: { value: val } }));
+
                     clearTimeout(timeout);
-                    const q = e.target.value.trim();
-                    if (q.length < 2) { conf.resBox.classList.remove('active'); conf.resBox.innerHTML = ''; return; }
+                    const q = val.trim();
+                    if (q.length < 2) { 
+                        conf.resBox.classList.remove('active'); 
+                        conf.resBox.innerHTML = ''; 
+                        return; 
+                    }
+
                     timeout = setTimeout(async () => {
                         try {
                             conf.resBox.innerHTML = '<div style="padding:1rem;text-align:center;color:#94a3b8;font-size:0.8rem;"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
@@ -2234,8 +2246,8 @@
                             const r = await fetch(`/caterer/api/omni-search?q=${encodeURIComponent(q)}`);
                             const data = await r.json();
                             if (data.results && data.results.length > 0) {
-                                conf.resBox.innerHTML = '<div class="results-scroller">' + data.results.map(i => `
-                                    <a href="${i.url}" class="omni-result-item">
+                                conf.resBox.innerHTML = '<div class="results-scroller">' + data.results.map((i, idx) => `
+                                    <a href="${i.url}" class="omni-result-item ${idx === 0 ? 'selected' : ''}">
                                         <div class="omni-result-icon"><i class="${i.icon}"></i></div>
                                         <div class="omni-result-content">
                                             <div class="omni-result-header">
@@ -2253,7 +2265,40 @@
                             conf.resBox.innerHTML = '<div style="padding:1rem;text-align:center;color:#ef4444;font-size:0.8rem;">Search error. Try again.</div>';
                             console.error("Search error:", e);
                         }
-                    }, 280);
+                    }, 250);
+                });
+
+                // Keyboard controls for search dropdown
+                conf.input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        conf.resBox.classList.remove('active');
+                    } else if (e.key === 'Enter') {
+                        const activeItem = conf.resBox.querySelector('.omni-result-item.selected') || conf.resBox.querySelector('.omni-result-item');
+                        if (activeItem && conf.resBox.classList.contains('active')) {
+                            e.preventDefault();
+                            activeItem.click();
+                        }
+                    } else if (e.key === 'ArrowDown') {
+                        const items = Array.from(conf.resBox.querySelectorAll('.omni-result-item'));
+                        if (items.length > 0 && conf.resBox.classList.contains('active')) {
+                            e.preventDefault();
+                            const currIdx = items.findIndex(el => el.classList.contains('selected'));
+                            items.forEach(el => el.classList.remove('selected'));
+                            const nextIdx = (currIdx + 1) % items.length;
+                            items[nextIdx].classList.add('selected');
+                            items[nextIdx].scrollIntoView({ block: 'nearest' });
+                        }
+                    } else if (e.key === 'ArrowUp') {
+                        const items = Array.from(conf.resBox.querySelectorAll('.omni-result-item'));
+                        if (items.length > 0 && conf.resBox.classList.contains('active')) {
+                            e.preventDefault();
+                            const currIdx = items.findIndex(el => el.classList.contains('selected'));
+                            items.forEach(el => el.classList.remove('selected'));
+                            const nextIdx = (currIdx - 1 + items.length) % items.length;
+                            items[nextIdx].classList.add('selected');
+                            items[nextIdx].scrollIntoView({ block: 'nearest' });
+                        }
+                    }
                 });
             });
 

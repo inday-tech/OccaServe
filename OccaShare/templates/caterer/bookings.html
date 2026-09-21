@@ -164,11 +164,104 @@
     }
     .smart-booking-list { display: none !important; }
 
+    /* ══ KPI SUMMARY CARDS & GRID ══ */
+    .kpi-grid-clean {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+    .kpi-card-clean {
+        background: #ffffff;
+        padding: 1.15rem 1.25rem;
+        border-radius: var(--border-radius, 12px);
+        border: 1px solid rgba(226, 232, 240, 0.85);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        transition: all 0.25s ease;
+        position: relative;
+    }
+    .kpi-card-clean:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.08);
+        border-color: var(--primary-color, #c2414f);
+    }
+    .kpi-filter-card { cursor: pointer; }
+    .kpi-filter-card.active-kpi { border-color: var(--primary-color, #c2414f) !important; background: #fef2f2 !important; }
+    .kpi-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .kpi-label, .kpi-info h4 {
+        font-size: 0.72rem;
+        font-weight: 750;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: 0 0 0.25rem 0;
+    }
+    .kpi-value {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.15;
+        display: block;
+    }
+    .trend-badge {
+        color: #94a3b8;
+        background: transparent;
+        padding: 0;
+        font-size: 0.68rem;
+        font-weight: 500;
+        margin-top: 5px;
+        display: block;
+    }
+    .kpi-icon, .kpi-icon-box {
+        width: 46px;
+        height: 46px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 1024px) {
+        .kpi-grid-clean {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 0.85rem !important;
+        }
+    }
+    @media (max-width: 640px) {
+        .kpi-grid-clean {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 0.65rem !important;
+        }
+        .kpi-card-clean {
+            padding: 0.85rem 0.75rem !important;
+            gap: 0.5rem !important;
+        }
+        .kpi-icon, .kpi-icon-box {
+            width: 38px !important;
+            height: 38px !important;
+            font-size: 1rem !important;
+            border-radius: 9px !important;
+        }
+        .kpi-value {
+            font-size: 1.2rem !important;
+        }
+        .kpi-label, .kpi-info h4 {
+            font-size: 0.62rem !important;
+        }
+        .trend-badge {
+            font-size: 0.6rem !important;
+            margin-top: 3px !important;
+        }
+    }
+
     /* ══ SMART BOOKING LIST ══════════════════════════════════════ */
     .smart-booking-list { display: grid; gap: 0.65rem; padding: 0.75rem; background: #f8fafc; }
-    .kpi-filter-card { cursor: pointer; transition: border-color 0.2s ease, transform 0.2s ease; }
-    .kpi-filter-card:hover { border-color: #cbd5e1; transform: translateY(-1px); }
-    .kpi-filter-card.active-kpi { border-color: var(--primary-color, #c2414f) !important; background: #fef2f2 !important; }
     .process-legend-container { display: none !important; }
     .smart-booking-card {
         display: grid;
@@ -514,34 +607,38 @@
     });
 </script>
 
-<div class="kpi-grid-clean" style="margin-bottom: var(--space-lg); display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+<div class="kpi-grid-clean">
     <div class="kpi-card-clean kpi-filter-card" id="kpi-card-online" onclick="setUniversalFilter('online')">
         <div class="kpi-info">
-            <h4 style="display: flex; align-items: center; gap: 6px;"><i class="fas fa-globe" style="color: #4338ca;"></i> ONLINE BOOKINGS</h4>
+            <span class="kpi-label">Online Bookings</span>
             <span class="kpi-value" style="color: #4338ca;">{{ online_bookings_count|default(0) }}</span>
-            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Website reservations</span>
+            <span class="trend-badge">Website reservations</span>
         </div>
+        <div class="kpi-icon" style="background: rgba(67, 56, 202, 0.1); color: #4338ca;"><i class="fas fa-globe"></i></div>
     </div>
     <div class="kpi-card-clean kpi-filter-card" id="kpi-card-walkin" onclick="setUniversalFilter('walkin')">
         <div class="kpi-info">
-            <h4 style="display: flex; align-items: center; gap: 6px;"><i class="fas fa-clipboard-list" style="color: #c2410c;"></i> MANUAL BOOKINGS</h4>
+            <span class="kpi-label">Manual Bookings</span>
             <span class="kpi-value" style="color: #c2410c;">{{ walkin_bookings_count|default(0) }}</span>
-            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Staff / manual entries</span>
+            <span class="trend-badge">Staff / manual entries</span>
         </div>
+        <div class="kpi-icon" style="background: rgba(194, 65, 12, 0.1); color: #c2410c;"><i class="fas fa-clipboard-list"></i></div>
     </div>
     <div class="kpi-card-clean kpi-filter-card" id="kpi-card-completed" onclick="setUniversalFilter('completed')">
         <div class="kpi-info">
-            <h4 style="display: flex; align-items: center; gap: 6px;"><i class="fas fa-check-circle" style="color: #16a34a;"></i> COMPLETED</h4>
+            <span class="kpi-label">Completed</span>
             <span class="kpi-value" style="color: #16a34a;">{{ completed_count|default(0) }}</span>
-            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Finished events</span>
+            <span class="trend-badge">Finished events</span>
         </div>
+        <div class="kpi-icon" style="background: rgba(22, 163, 74, 0.1); color: #16a34a;"><i class="fas fa-check-circle"></i></div>
     </div>
     <div class="kpi-card-clean kpi-filter-card" id="kpi-card-cancelled" onclick="setUniversalFilter('cancelled')">
         <div class="kpi-info">
-            <h4 style="display: flex; align-items: center; gap: 6px;"><i class="fas fa-times-circle" style="color: #dc2626;"></i> CANCELLED</h4>
+            <span class="kpi-label">Cancelled</span>
             <span class="kpi-value" style="color: #dc2626;">{{ cancelled_count|default(0) }}</span>
-            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Void / cancelled</span>
+            <span class="trend-badge">Void / cancelled</span>
         </div>
+        <div class="kpi-icon" style="background: rgba(220, 38, 38, 0.1); color: #dc2626;"><i class="fas fa-times-circle"></i></div>
     </div>
 </div>
 
@@ -1389,18 +1486,18 @@
     #bookingDetailModal h2#modalBookingId {
         color: #0f172a;
         font-weight: 800;
-        font-size: 1.85rem;
+        font-size: 1.35rem;
         letter-spacing: -0.02em;
-        line-height: 1.15;
+        line-height: 1.2;
         margin: 0;
     }
     
     #bookingDetailModal .header-action-btn {
         background: #f8fafc;
         border: 1px solid #e2e8f0;
-        width: 28px;
-        height: 28px;
-        border-radius: 6px;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -2035,80 +2132,63 @@
     <div id="bookingDetailModalBox" class="occ-modal-box modal-b-container occ-content-pop" style="padding: 0; display: flex; flex-direction: column; max-width: 1180px; width: 96%; max-height: 94vh; border-radius: 16px; overflow: hidden; background: #ffffff; box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);">
         
         <!-- ══ MODAL HEADER ══ -->
-        <div class="occ-modal-header exec-header" style="padding: 1.15rem 1.75rem 1rem; border-bottom: 1px solid #e2e8f0; background: #ffffff; flex-shrink: 0;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%; gap: 1.25rem;">
+        <div class="occ-modal-header exec-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; background: #ffffff; flex-shrink: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 1.25rem;">
                 
-                <!-- Left Title & Metadata Area -->
+                <!-- Left Title & Clean Metadata Area -->
                 <div style="display: flex; flex-direction: column; gap: 0.35rem; flex: 1; min-width: 0;">
                     <!-- Line 1: Reference ID & Badges -->
-                    <div style="display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;">
-                        <h2 id="modalBookingId" style="margin: 0; font-size: 1.55rem; font-weight: 900; color: #0f172a; letter-spacing: -0.02em; line-height: 1.15;">Booking #BK-000000</h2>
+                    <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                        <h2 id="modalBookingId" style="margin: 0; font-size: 1.35rem; font-weight: 850; color: #0f172a; letter-spacing: -0.02em; line-height: 1.2;">Booking #BK-000000</h2>
                         
                         <!-- SOURCE BADGE -->
-                        <span id="modalBookingSourceBadge" class="booking-source-badge badge-source-online" style="padding: 3.5px 10px; border-radius: 6px; font-weight: 850; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; display: inline-flex; align-items: center; gap: 5px;">
+                        <span id="modalBookingSourceBadge" class="booking-source-badge badge-source-online" style="padding: 3px 9px; border-radius: 6px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; display: inline-flex; align-items: center; gap: 4px;">
                             <i id="modalBookingSourceIcon" class="fas fa-globe"></i> <span id="modalBookingSource">ONLINE BOOKING</span>
                         </span>
                         
                         <!-- STATUS BADGE -->
-                        <span id="modalStatus" class="badge-status badge-confirmed" style="padding: 3.5px 11px; border-radius: 6px; font-weight: 800; font-size: 0.72rem; text-transform: uppercase;">CONFIRMED</span>
+                        <span id="modalStatus" class="badge-status badge-confirmed" style="padding: 3px 10px; border-radius: 6px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">CONFIRMED</span>
                         
                         <!-- PAYMENT BADGE -->
-                        <span id="modalPaymentStatusBadge" class="badge-status" style="padding: 3.5px 11px; border-radius: 6px; font-weight: 850; font-size: 0.72rem; text-transform: uppercase; background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa;">UNPAID</span>
+                        <span id="modalPaymentStatusBadge" class="badge-status" style="padding: 3px 10px; border-radius: 6px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa;">UNPAID</span>
                     </div>
 
-                    <!-- Line 2: Booking Channel & Origin & Created Date -->
-                    <div style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.8rem; color: #475569; flex-wrap: wrap; margin-top: 1px;">
-                        <span style="font-weight: 700; color: #0f172a; display: inline-flex; align-items: center; gap: 4px;">
-                            <i class="fas fa-route" style="color: #6366f1; font-size: 0.75rem;"></i>
-                            Booking Channel: <strong id="modalBookingChannel" style="color: #4338ca; font-weight: 800;">OccaServe Website</strong>
+                    <!-- Line 2: Customer Name & Event Subline -->
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.84rem; color: #475569; flex-wrap: wrap;">
+                        <span id="modalCustomerHeadline" style="font-weight: 750; color: #0f172a;">—</span>
+                        <span id="modalCustomerVerificationBadge" style="display: none; font-size: 0.68rem; font-weight: 800; background: #dcfce7; color: #166534; padding: 1px 7px; border-radius: 4px; border: 1px solid #bbf7d0;">
+                            <i class="fas fa-check-circle"></i> VERIFIED
                         </span>
                         <span style="color: #cbd5e1;">•</span>
-                        <span style="display: inline-flex; align-items: center; gap: 4px;">
-                            <i class="fas fa-user-edit" style="color: #64748b; font-size: 0.75rem;"></i>
-                            Origin: <strong id="modalAddedBy" style="color: #334155;">Customer</strong>
-                        </span>
-                        <span style="color: #cbd5e1;">•</span>
-                        <span>Created: <span id="modalCreatedDate" style="font-weight: 600; color: #334155;">—</span></span>
+                        <span id="modalEventSublineText" style="color: #64748b; font-weight: 600;">—</span>
                     </div>
 
-                    <!-- Line 3: Customer Headline & Event Subline & Location -->
-                    <div style="margin-top: 2px; display: flex; flex-direction: column; gap: 2px;">
-                        <div style="font-size: 1.05rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                            <span id="modalCustomerHeadline">—</span>
-                            <span id="modalCustomerVerificationBadge" style="display: none; font-size: 0.72rem; font-weight: 800; background: #dcfce7; color: #166534; padding: 1.5px 8px; border-radius: 4px; border: 1px solid #bbf7d0;">
-                                <i class="fas fa-check-circle"></i> VERIFIED
-                            </span>
-                        </div>
-                        <div style="font-size: 0.82rem; color: #475569; font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                            <span id="modalEventSublineText">—</span>
-                        </div>
-                        <div id="modalVenueLine" style="font-size: 0.78rem; color: #64748b; font-weight: 500; display: flex; align-items: center; gap: 4px;">
-                            <i class="fas fa-map-marker-alt" style="color: #ef4444; font-size: 0.75rem;"></i>
-                            <span id="modalVenueText">—</span>
-                        </div>
+                    <!-- Hidden bindings for JS safety -->
+                    <div style="display: none;" aria-hidden="true">
+                        <span id="modalBookingChannel"></span>
+                        <span id="modalAddedBy"></span>
+                        <span id="modalCreatedDate"></span>
+                        <span id="modalVenueText"></span>
+                        <div id="modalVenueLine"></div>
                     </div>
                 </div>
 
-                <!-- Right: Window Controls & Financial Display -->
-                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.65rem; flex-shrink: 0;">
-                    <div style="display: flex; align-items: center; gap: 0.35rem;">
-                        <button type="button" onclick="window.toggleModalFullscreen('bookingDetailModal', this)" title="Expand/Minimize" class="header-action-btn" style="background: #f8fafc; border: 1px solid #e2e8f0; width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: all 0.2s;">
-                            <i class="fas fa-expand"></i>
-                        </button>
-                        <button type="button" onclick="bk_closeBookingDetailModal()" class="header-action-btn" title="Close" style="background: #f8fafc; border: 1px solid #e2e8f0; width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: all 0.2s;">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-
+                <!-- Right: Financial Display & Close Button -->
+                <div style="display: flex; align-items: center; gap: 0.85rem; flex-shrink: 0;">
                     <!-- Financials Box -->
-                    <div style="text-align: right; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.5rem 0.85rem; min-width: 175px;">
-                        <div style="font-size: 0.65rem; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;">TOTAL AMOUNT</div>
-                        <div id="modalHeaderTotal" style="font-size: 1.45rem; font-weight: 900; color: #0f172a; line-height: 1.1; margin: 2px 0;">₱0.00</div>
-                        <div style="font-size: 0.74rem; font-weight: 700; color: #475569;">
+                    <div style="text-align: right; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.45rem 0.85rem; min-width: 155px;">
+                        <div style="font-size: 0.62rem; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">TOTAL AMOUNT</div>
+                        <div id="modalHeaderTotal" style="font-size: 1.35rem; font-weight: 900; color: #0f172a; line-height: 1.1; margin: 2px 0;">₱0.00</div>
+                        <div style="font-size: 0.72rem; font-weight: 700; color: #475569;">
                             <span id="modalHeaderPaid" style="color: #16a34a;">₱0.00 paid</span> • 
                             <span id="modalHeaderBalance" style="color: #c2410c;">₱0.00 bal</span>
                         </div>
                     </div>
+
+                    <!-- Close Button only -->
+                    <button type="button" onclick="bk_closeBookingDetailModal()" class="header-action-btn" title="Close" style="background: #f8fafc; border: 1px solid #e2e8f0; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: all 0.2s;">
+                        <i class="fas fa-times" style="font-size: 0.95rem;"></i>
+                    </button>
                 </div>
 
             </div>
@@ -2648,44 +2728,6 @@
                             </tbody>
                         </table>
                     </div>
-                </div>
-
-                <!-- Expense & Profit Tracker Card -->
-                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
-                        <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a;"><i class="fas fa-chart-line" style="color: var(--primary-color);"></i> Expense &amp; Profit Tracker</div>
-                    </div>
-                    <form id="onExpenseTrackerForm" onsubmit="submitExpenses(event)">
-                        <input type="hidden" id="expenseBookingId">
-                        <input type="hidden" id="bookingTotalAmount" value="0">
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 1rem;">
-                            <div><div style="font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Revenue</div><div id="modalBookingTotal" style="font-weight: 800; font-size: 1.1rem; color: #0f172a;">₱0.00</div></div>
-                            <div><div style="font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Est. Profit</div><div id="modalEstimateProfit" style="color: #10b981; font-weight: 800; font-size: 1.1rem;">₱0.00</div></div>
-                            <div><div style="font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Margin</div><div id="modalRoiPercent" style="display: flex; gap: 4px; align-items: center; font-weight: 800; font-size: 1.1rem;"><span>0%</span><span id="roiTrendIcon"></span></div></div>
-                        </div>
-                        <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow-x: auto; margin-bottom: 1rem;">
-                            <table class="table" style="width: 100%; border-collapse: collapse; margin-bottom: 0;">
-                                <thead style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-                                    <tr>
-                                        <th style="padding: 0.65rem 0.75rem; text-align: left; font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Description</th>
-                                        <th style="padding: 0.65rem 0.75rem; text-align: right; font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase; width: 30%;">Amount (₱)</th>
-                                        <th style="padding: 0.65rem 0.75rem; width: 44px; text-align: center;"></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="actualExpenseRows"></tbody>
-                            </table>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <button type="button" class="btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="addExpenseRow()"><i class="fas fa-plus"></i> Add Row</button>
-                            <div style="text-align: right;">
-                                <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Expenses:</span>
-                                <span id="totalActualExpenseDisplay" style="font-size: 1.1rem; font-weight: 800; color: #dc2626; margin-left: 0.5rem;">₱0.00</span>
-                            </div>
-                        </div>
-                        <div style="text-align: right; margin-top: 1rem; border-top: 1px solid #e2e8f0; padding-top: 0.75rem;">
-                            <button type="submit" id="saveExpenseBtn" class="btn-primary" style="padding: 6px 16px; font-size: 0.8rem;"><i class="fas fa-save"></i> Save Expenses</button>
-                        </div>
-                    </form>
                 </div>
             </div>
 

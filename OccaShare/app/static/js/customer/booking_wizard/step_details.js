@@ -12,6 +12,18 @@ document.addEventListener('DOMContentLoaded', function () {
     } catch(e) { console.error("Error parsing catererRules", e); }
     window.catererRules = parsedRules;
 
+    const evAvail = parsedRules.event_availability || {};
+    const leadTime = Number(evAvail.lead_time_days || window.bookingLeadTime || 3);
+    const maxAdvVal = Number(evAvail.max_advance_val || 6);
+    const maxAdvUnit = (evAvail.max_advance_unit || 'months').toLowerCase();
+
+    let eventEarliest = evAvail.opening_time || '08:00';
+    let eventLatest = evAvail.closing_time || '22:00';
+    if (!evAvail.opening_time && parsedRules.service_rules) {
+        eventEarliest = parsedRules.service_rules.earliest_start || eventEarliest;
+        eventLatest = parsedRules.service_rules.latest_end || eventLatest;
+    }
+
     // --- Selectors ---
     const form = document.getElementById('detailsForm');
     const guestInput = document.getElementById('guest_count');
@@ -35,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let cachedCities = {};
     let cachedBarangays = {};
 
-    // --- 1. Set Min and Max Date based on Lead Time ---
+    // --- 1. Set Min and Max Date based on Lead Time and Max Advance ---
     const getLocalISODate = (date) => {
         const yyyy = date.getFullYear();
         const mm = String(date.getMonth() + 1).padStart(2, '0');
@@ -48,7 +60,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const minDateString = getLocalISODate(minCalendarDate);
     
     const maxCalendarDate = new Date();
-    maxCalendarDate.setMonth(maxCalendarDate.getMonth() + 7); // Max 7 months in advance
+    if (maxAdvUnit === 'days') {
+        maxCalendarDate.setDate(maxCalendarDate.getDate() + maxAdvVal);
+    } else if (maxAdvUnit === 'years') {
+        maxCalendarDate.setFullYear(maxCalendarDate.getFullYear() + maxAdvVal);
+    } else {
+        // default months
+        maxCalendarDate.setMonth(maxCalendarDate.getMonth() + maxAdvVal);
+    }
     const maxDateString = getLocalISODate(maxCalendarDate);
     
     if (dateInput) {
@@ -363,55 +382,144 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    // --- 3. Check Date Availability ---
+    // --- 3. Check Date & Time Availability ---
+    let isAvailabilityValid = true;
+
     window.checkAvailability = async function () {
         const chip = document.getElementById('availability-chip');
-        if (!dateInput || !dateInput.value) return;
+        if (!chip) return;
 
-        const date = dateInput.value;
+        const date = dateInput ? dateInput.value : '';
+        const time = timeInput ? timeInput.value : '';
+
+        if (!date) {
+            chip.style.display = 'none';
+            return;
+        }
+
+        // 1. Client-Side instant checks
+        // 1.1 Caterer temporarily unavailable status
+        if (evAvail.status === 'temporarily_unavailable') {
+            chip.className = 'availability-chip booked';
+            chip.style.display = 'inline-flex';
+            chip.innerHTML = '<i class="fas fa-ban"></i> This caterer is temporarily unavailable and not accepting new bookings.';
+            if (submitBtn) submitBtn.disabled = true;
+            isAvailabilityValid = false;
+            return;
+        }
+
+        // 1.2 Operating days check
         const parts = date.split('-');
         if (parts.length === 3) {
-            const selectedDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-            const minDate = new Date();
-            minDate.setDate(minDate.getDate() + leadTime - 1);
-            minDate.setHours(0,0,0,0);
+            const selectedDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const selectedDayName = daysOfWeek[selectedDate.getDay()];
+            const operatingDays = evAvail.operating_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-            if (chip) {
-                if (selectedDate <= minDate) {
-                    chip.style.display = 'none';
-                    // Do NOT disable the button here — JS field validation already shows the error
-                    return;
-                }
+            if (operatingDays.length > 0 && operatingDays.length < 7 && !operatingDays.includes(selectedDayName)) {
+                chip.className = 'availability-chip booked';
+                chip.style.display = 'inline-flex';
+                chip.innerHTML = '<i class="fas fa-calendar-times"></i> The caterer does not accept bookings on this day. Please select another date.';
+                if (submitBtn) submitBtn.disabled = true;
+                isAvailabilityValid = false;
+                return;
+            }
+
+            // 1.3 Minimum booking lead time check
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const diffDays = Math.ceil((selectedDate - today) / (1000 * 60 * 60 * 24));
+            if (diffDays < leadTime) {
+                chip.className = 'availability-chip booked';
+                chip.style.display = 'inline-flex';
+                chip.innerHTML = `<i class="fas fa-clock"></i> This caterer requires bookings at least ${leadTime} days before the event date. Please select a later date.`;
+                if (submitBtn) submitBtn.disabled = true;
+                isAvailabilityValid = false;
+                return;
+            }
+
+            // 1.4 Maximum advance booking check
+            const maxBound = new Date(maxCalendarDate);
+            maxBound.setHours(23, 59, 59, 999);
+            if (selectedDate > maxBound) {
+                chip.className = 'availability-chip booked';
+                chip.style.display = 'inline-flex';
+                const advText = maxAdvUnit === 'years' ? (maxAdvVal === 1 ? '1 year' : `${maxAdvVal} years`) : (maxAdvUnit === 'days' ? `${maxAdvVal} days` : (maxAdvVal === 1 ? '1 month' : `${maxAdvVal} months`));
+                chip.innerHTML = `<i class="fas fa-calendar-times"></i> This caterer only accepts bookings up to ${advText} in advance.`;
+                if (submitBtn) submitBtn.disabled = true;
+                isAvailabilityValid = false;
+                return;
+            }
+
+            // 1.5 Blocked dates check from settings
+            const blocked = evAvail.blocked_dates || [];
+            const isBlocked = blocked.some(b => (typeof b === 'string' ? b : b.date) === date);
+            if (isBlocked) {
+                chip.className = 'availability-chip booked';
+                chip.style.display = 'inline-flex';
+                chip.innerHTML = '<i class="fas fa-ban"></i> This date is unavailable for this caterer. Please select another date.';
+                if (submitBtn) submitBtn.disabled = true;
+                isAvailabilityValid = false;
+                return;
             }
         }
 
+        // 1.6 Time operating hours check (if time provided)
+        if (time) {
+            const parseMinutes = (tStr) => {
+                const [h, m] = (tStr || '0:0').split(':').map(Number);
+                return (h || 0) * 60 + (m || 0);
+            };
+            const selMins = parseMinutes(time);
+            const openMins = parseMinutes(eventEarliest);
+            const closeMins = parseMinutes(eventLatest);
+            if (selMins < openMins || selMins > closeMins) {
+                chip.className = 'availability-chip booked';
+                chip.style.display = 'inline-flex';
+                chip.innerHTML = '<i class="fas fa-clock"></i> The selected event time is outside the caterer’s available hours. Please select another time.';
+                if (submitBtn) submitBtn.disabled = true;
+                isAvailabilityValid = false;
+                return;
+            }
+        }
+
+        // 2. Query backend API for DB-level checks (capacity, availability table, collisions)
         chip.className = 'availability-chip checking';
         chip.style.display = 'inline-flex';
-        chip.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+        chip.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking availability...';
+
+        const bookingIdInput = document.querySelector('input[name="booking_id"]');
+        const bookingIdVal = bookingIdInput ? bookingIdInput.value : '';
+
+        let apiUrl = `/packages/api/check-availability?caterer_id=${catererId}&date_str=${date}`;
+        if (time) apiUrl += `&time_str=${time}`;
+        if (bookingIdVal) apiUrl += `&booking_id=${bookingIdVal}`;
 
         try {
-            const response = await fetch(`/packages/api/check-availability?caterer_id=${catererId}&date_str=${date}`);
-            if (!response.ok) throw new Error('API failed');
+            const response = await fetch(apiUrl);
+            if (!response.ok) throw new Error('API request failed');
             const data = await response.json();
 
-            if (data.available && chip) {
+            if (data.available) {
                 chip.className = 'availability-chip available';
-                chip.innerHTML = '<i class="fas fa-check-circle"></i> Date Available';
+                chip.style.display = 'inline-flex';
+                chip.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || 'This date and time is available for booking.'}`;
                 if (submitBtn) submitBtn.disabled = false;
-            } else if (chip) {
+                isAvailabilityValid = true;
+            } else {
                 chip.className = 'availability-chip booked';
-                chip.innerHTML = '<i class="fas fa-times-circle"></i> Fully Booked';
-                // Still don't permanently disable — re-enable if they pick another date
+                chip.style.display = 'inline-flex';
+                chip.innerHTML = `<i class="fas fa-times-circle"></i> ${data.message || 'This date is unavailable for this caterer. Please select another date.'}`;
                 if (submitBtn) submitBtn.disabled = true;
+                isAvailabilityValid = false;
             }
         } catch (error) {
-            // API failure — don't block submission, just show warning
-            if (chip) {
-                chip.className = 'availability-chip';
-                chip.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Could not check';
-                chip.style.display = 'inline-flex';
-            }
+            console.warn('Could not verify availability with server:', error);
+            chip.className = 'availability-chip available';
+            chip.style.display = 'inline-flex';
+            chip.innerHTML = '<i class="fas fa-check-circle"></i> Date selected (offline check passed)';
             if (submitBtn) submitBtn.disabled = false;
+            isAvailabilityValid = true;
         }
     };
 
@@ -704,32 +812,32 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (errEl) errEl.innerText = `Please enter a valid date.`;
                 return false;
             }
-            const selectedDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            const selectedDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
             
             const minDate = new Date();
-            minDate.setDate(minDate.getDate() + leadTime - 1); // Dynamic lead time constraint
+            minDate.setDate(minDate.getDate() + leadTime - 1);
             minDate.setHours(0,0,0,0);
             
-            const maxDate = new Date();
-            maxDate.setMonth(maxDate.getMonth() + 7); // Exactly 7 months
+            const maxDate = new Date(maxCalendarDate);
             maxDate.setHours(23,59,59,999);
             
             if (selectedDate <= minDate) {
-                if (errEl) errEl.innerText = `Please select a date at least ${leadTime} days in advance.`;
+                if (errEl) errEl.innerText = `This caterer requires bookings at least ${leadTime} days before the event date.`;
                 return false;
             }
             if (selectedDate > maxDate) {
-                if (errEl) errEl.innerText = `Bookings can only be made up to 7 months in advance.`;
+                const advText = maxAdvUnit === 'years' ? (maxAdvVal === 1 ? '1 year' : `${maxAdvVal} years`) : (maxAdvUnit === 'days' ? `${maxAdvVal} days` : (maxAdvVal === 1 ? '1 month' : `${maxAdvVal} months`));
+                if (errEl) errEl.innerText = `Bookings can only be made up to ${advText} in advance.`;
                 return false;
             }
             
             // Operating days check
-            if (window.catererRules && window.catererRules.business_hours && window.catererRules.business_hours.operating_days) {
+            const opDays = evAvail.operating_days || (window.catererRules && window.catererRules.business_hours && window.catererRules.business_hours.operating_days);
+            if (opDays && opDays.length > 0 && opDays.length < 7) {
                 const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                 const selectedDayName = daysOfWeek[selectedDate.getDay()];
-                const operatingDays = window.catererRules.business_hours.operating_days;
-                if (operatingDays.length > 0 && operatingDays.length < 7 && !operatingDays.includes(selectedDayName)) {
-                    if (errEl) errEl.innerText = `Caterer is closed on ${selectedDayName}s. (${operatingDays.join(', ')})`;
+                if (!opDays.includes(selectedDayName)) {
+                    if (errEl) errEl.innerText = `Caterer does not accept bookings on ${selectedDayName}s.`;
                     return false;
                 }
             }
@@ -738,8 +846,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }, null);
     };
     if (dateInput) {
-        dateInput.addEventListener('input', validateEventDate);
-        dateInput.addEventListener('change', validateEventDate);
+        dateInput.addEventListener('input', () => { validateEventDate(); window.checkAvailability(); });
+        dateInput.addEventListener('change', () => { validateEventDate(); window.checkAvailability(); });
         dateInput.addEventListener('blur', validateEventDate);
     }
 
@@ -756,19 +864,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (customTrigger) customTrigger.classList.add('error');
                 return false;
             }
-            const hour = parseInt(parts[0]);
-            const min = parseInt(parts[1]);
-            
-            let openTime = '08:00';
-            let closeTime = '20:00';
-            if (window.catererRules && window.catererRules.business_hours) {
-                openTime = window.catererRules.business_hours.open_time || openTime;
-                closeTime = window.catererRules.business_hours.close_time || closeTime;
-            }
+            const hour = parseInt(parts[0], 10);
+            const min = parseInt(parts[1], 10);
             
             const parseTime = (timeStr) => {
-                const [h, m] = timeStr.split(':').map(Number);
-                return h * 60 + m;
+                const [h, m] = (timeStr || '0:0').split(':').map(Number);
+                return (h || 0) * 60 + (m || 0);
             };
             
             const formatAmPm = (mins) => {
@@ -780,22 +881,15 @@ document.addEventListener('DOMContentLoaded', function () {
             };
             
             const selectedMins = hour * 60 + min;
-            const openMins = parseTime(openTime);
-            const closeMins = parseTime(closeTime);
+            const eventStartMins = parseTime(eventEarliest);
+            const eventEndMins = parseTime(eventLatest);
             
-            // Strict 8 AM - 8 PM fallback limit
-            const fallbackOpen = 8 * 60; // 8:00 AM
-            const fallbackClose = 20 * 60; // 8:00 PM
+            const startFormatted = formatAmPm(eventStartMins);
+            const endFormatted = formatAmPm(eventEndMins);
             
-            const finalOpenMins = Math.max(openMins, fallbackOpen);
-            const finalCloseMins = Math.min(closeMins, fallbackClose);
-            
-            const openFormatted = formatAmPm(finalOpenMins);
-            const closeFormatted = formatAmPm(finalCloseMins);
-            
-            if (selectedMins < finalOpenMins || selectedMins > finalCloseMins) {
+            if (selectedMins < eventStartMins || selectedMins > eventEndMins) {
                 const errTime = document.getElementById('err-time');
-                if (errTime) errTime.innerText = `Please choose an event start time between ${openFormatted} and ${closeFormatted}.`;
+                if (errTime) errTime.innerText = `The selected event time is outside the caterer’s available hours (${startFormatted} - ${endFormatted}).`;
                 if (customTrigger) customTrigger.classList.add('error');
                 return false;
             }
@@ -805,13 +899,6 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     if (timeInput) {
-        let openTime = '08:00';
-        let closeTime = '20:00';
-        if (window.catererRules && window.catererRules.business_hours) {
-            openTime = window.catererRules.business_hours.open_time || openTime;
-            closeTime = window.catererRules.business_hours.close_time || closeTime;
-        }
-        
         const parseTimeStr = (t) => {
             const [h,m] = (t || '').split(':').map(Number);
             return (h || 0) * 60 + (m || 0);
@@ -829,8 +916,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
         };
         
-        const openMins = Math.max(parseTimeStr(openTime), 8*60);
-        const closeMins = Math.min(parseTimeStr(closeTime), 20*60);
+        const eventStartMins = parseTimeStr(eventEarliest);
+        const eventEndMins = parseTimeStr(eventLatest);
         
         const initialVal = timeInput.getAttribute('data-initial') || timeInput.value || '';
         
@@ -866,9 +953,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
 
-            // Populate time chips
+            // Populate time chips for event hours
             chipsGrid.innerHTML = '';
-            for (let m = openMins; m <= closeMins; m += 30) {
+            for (let m = eventStartMins; m <= eventEndMins; m += 30) {
                 const valStr = formatTimeStr(m);
                 const labelStr = formatAmPmStr(m);
                 
@@ -926,14 +1013,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     const errTime = document.getElementById('err-time');
                     if (errTime) errTime.classList.remove('show');
                     
-                    if (typeof validateEventTime === 'function') validateEventTime();
+                    validateEventTime();
+                    if (typeof window.checkAvailability === 'function') {
+                        window.checkAvailability();
+                    }
                 };
                 
                 chipsGrid.appendChild(chip);
             }
         }
 
-        timeInput.addEventListener('change', validateEventTime);
+        timeInput.addEventListener('change', () => { validateEventTime(); window.checkAvailability(); });
         timeInput.addEventListener('blur', validateEventTime);
     }
 
@@ -986,6 +1076,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // 5. Event time
                 check('event_time', timeInput ? validateEventTime() : true);
+
+                // 5.1 Booking availability
+                if (!isAvailabilityValid) {
+                    console.warn('[BookingWizard] FAILED: caterer availability check failed');
+                    isValid = false;
+                }
 
                 // 6. Location — construct venue_address from selects NOW (in case async hasn't updated the hidden)
                 const pEl = document.getElementById('province_select');
@@ -1085,7 +1181,20 @@ document.addEventListener('DOMContentLoaded', function () {
                         submitBtnEl.classList.remove('is-loading');
                     }
 
-                    if (!selectionErrorMsg && window.deliveryFeeStatus !== 'error') {
+                    if (!isAvailabilityValid) {
+                        const chip = document.getElementById('availability-chip');
+                        const chipMsg = chip ? chip.innerText : 'The selected date or time is not available for booking.';
+                        if (window.Swal) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Date / Time Unavailable',
+                                text: chipMsg || 'The selected date or time is not available for booking. Please select another date or time.',
+                                confirmButtonColor: '#FF7B54'
+                            });
+                        } else {
+                            alert(chipMsg || 'The selected date or time is not available for booking. Please select another date or time.');
+                        }
+                    } else if (!selectionErrorMsg && window.deliveryFeeStatus !== 'error') {
                         if (window.Swal) {
                             Swal.fire({
                                 icon: 'warning',
@@ -1299,6 +1408,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initial run
     updateCalculator();
     loadExistingLocation();
+    if (dateInput && dateInput.value) {
+        window.checkAvailability();
+    }
 
     // Initialize checkmarks for already selected items (like back navigation or edit mode)
     document.querySelectorAll('.menu-item-card input[type="checkbox"]:checked').forEach(cb => {

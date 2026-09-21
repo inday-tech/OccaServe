@@ -1750,39 +1750,77 @@
                     <h2 class="section-title"><i class="fas fa-camera-retro"></i> Event Portfolio</h2>
                     <p style="color: var(--hub-slate-400); font-size: 0.9rem; margin-bottom: 1.5rem;">Browse our past events and successful catering setups.</p>
                     
-                    {% set public_portfolios = caterer.portfolios | selectattr('visibility', 'equalto', 'Public') | sort(attribute='created_at', reverse=true) | list %}
+                    {% set public_portfolios = caterer.portfolios | selectattr('visibility', 'equalto', 'Public') | rejectattr('is_archived', 'equalto', True) | sort(attribute='created_at', reverse=true) | list %}
                     {% if public_portfolios %}
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
                         {% for p in public_portfolios %}
-                        <div style="background: #fff; border: 1px solid var(--hub-slate-200); border-radius: var(--hub-radius); overflow: hidden; display: flex; flex-direction: column; cursor: pointer; transition: transform 0.2s;" onclick="openPortfolioViewModal({{ p.id }})">
-                            <div style="position: relative; height: 130px; background: var(--hub-slate-50);">
+                        <div style="background: #fff; border: 1px solid var(--hub-slate-200); border-radius: var(--hub-radius); overflow: hidden; display: flex; flex-direction: column; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.03);" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.07)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 6px rgba(0,0,0,0.03)';" onclick="openPortfolioViewModal({{ p.id }})">
+                            <div style="position: relative; height: 160px; background: var(--hub-slate-50); overflow: hidden;">
                                 {% set cover = p.images | selectattr('is_cover', 'equalto', True) | first %}
+                                {% if not cover and p.images|length > 0 %}
+                                    {% set cover = p.images[0] %}
+                                {% endif %}
                                 {% if cover %}
                                 <img src="{{ cover.image_url }}" onerror="this.src='/static/images/default-portfolio.jpg'" alt="{{ p.title }}" style="width: 100%; height: 100%; object-fit: cover;">
                                 {% else %}
-                                <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--hub-slate-400);">
-                                    <i class="fas fa-image" style="font-size: 3rem;"></i>
+                                <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--hub-slate-400);">
+                                    <i class="fas fa-camera-retro" style="font-size: 2.5rem; opacity: 0.5; margin-bottom: 4px;"></i>
+                                    <span style="font-size: 0.75rem; font-weight: 600;">No Photos</span>
                                 </div>
                                 {% endif %}
                                 
-                                <div style="position: absolute; top: 10px; left: 10px; display: flex; gap: 6px;">
+                                <div style="position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; flex-wrap: wrap;">
                                     {% if p.booking_id %}
-                                    <span style="background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;"><i class="fas fa-check-circle"></i> Verified Event</span>
+                                    <span style="background: #10b981; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.15);"><i class="fas fa-check-circle"></i> Verified Event</span>
                                     {% endif %}
                                     {% if p.is_featured %}
-                                    <span style="background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;"><i class="fas fa-star"></i> Featured</span>
+                                    <span style="background: #f59e0b; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.15);"><i class="fas fa-star"></i> Featured</span>
                                     {% endif %}
+                                </div>
+
+                                <div style="position: absolute; bottom: 10px; right: 10px; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); color: white; padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="far fa-images"></i> {{ p.images|length }} Photos
                                 </div>
                             </div>
                             <div style="padding: 1.25rem; flex: 1; display: flex; flex-direction: column;">
-                                <div style="font-size: 0.75rem; color: var(--hub-primary); font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">{{ p.event_type }}</div>
-                                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--hub-text-dark); margin: 0 0 0.5rem 0;">{{ p.title }}</h3>
-                                <div style="display: flex; gap: 10px; font-size: 0.8rem; color: var(--hub-slate-600); font-weight: 600; margin-top: auto;">
-                                    <span><i class="far fa-images"></i> {{ p.images|length }} Photos</span>
-                                    {% if p.location %}
-                                    <span><i class="fas fa-map-marker-alt"></i> {{ p.location }}</span>
+                                <div style="margin-bottom: 6px;">
+                                    <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; color: var(--hub-primary, #ea580c); font-weight: 800; text-transform: uppercase; background: #fff7ed; border: 1px solid #ffedd5; padding: 2px 8px; border-radius: 6px; letter-spacing: 0.03em;">
+                                        <i class="fas fa-calendar-check" style="font-size: 0.68rem;"></i> {{ p.event_type or 'Special Event' }}
+                                    </span>
+                                </div>
+                                <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--hub-text-dark); margin: 0 0 0.35rem 0; line-height: 1.3;">{{ p.title }}</h3>
+                                
+                                {% if p.description %}
+                                <p style="color: var(--hub-slate-600); font-size: 0.85rem; line-height: 1.45; margin: 0 0 0.65rem 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ p.description }}</p>
+                                {% endif %}
+
+                                <div style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--hub-slate-600); font-weight: 600; margin-bottom: 0.75rem;">
+                                    <i class="fas fa-map-marker-alt" style="color: #ef4444; font-size: 0.85rem;"></i>
+                                    <span>{{ p.location or 'Location upon request' }}</span>
+                                </div>
+
+                                {% if p.highlights %}
+                                <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: auto; padding-top: 0.65rem; border-top: 1px solid #f1f5f9;">
+                                    {% set h_raw = p.highlights %}
+                                    {% if h_raw.startswith('[') and h_raw.endswith(']') %}
+                                        {% set h_clean = h_raw | replace('[', '') | replace(']', '') | replace('"', '') | replace('{value:', '') | replace('}', '') %}
+                                        {% set h_list = h_clean.split(',') %}
+                                    {% else %}
+                                        {% set h_list = h_raw.split(',') %}
+                                    {% endif %}
+                                    {% for h in h_list[:3] %}
+                                        {% set clean_h = h.strip().strip('"').strip("'") %}
+                                        {% if clean_h %}
+                                        <span style="background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; font-size: 0.72rem; font-weight: 600; padding: 2px 7px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;">
+                                            <i class="fas fa-check" style="font-size: 0.6rem; color: #10b981;"></i> {{ clean_h }}
+                                        </span>
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if h_list|length > 3 %}
+                                    <span style="font-size: 0.7rem; color: #94a3b8; font-weight: 700; align-self: center;">+{{ h_list|length - 3 }} more</span>
                                     {% endif %}
                                 </div>
+                                {% endif %}
                             </div>
                         </div>
                         {% endfor %}
@@ -1917,8 +1955,8 @@
                                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                                     <div
                                         style="width: 38px; height: 38px; border-radius: 10px; background: var(--hub-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900;">
-                                        {{ review.user.first_name[0] }}</div>
-                                    <div style="font-size: 0.9rem; font-weight: 800; color: var(--hub-text-dark);">{{ review.user.first_name }} {{ review.user.last_name }}</div>
+                                        {{ review.user.first_name[0] if (review.user and review.user.first_name) else 'C' }}</div>
+                                    <div style="font-size: 0.9rem; font-weight: 800; color: var(--hub-text-dark);">{{ (review.user.first_name ~ ' ' ~ review.user.last_name) if (review.user and review.user.first_name) else 'Verified Customer' }}</div>
                                 </div>
                                 <div style="color: #f59e0b; font-size: 0.8rem;">
                                     {% for i in range(review.rating) %}<i class="fas fa-star"></i>{% endfor %}
@@ -2319,30 +2357,46 @@ document.addEventListener('DOMContentLoaded', function() {
 
     <!-- PORTFOLIO VIEW MODAL -->
     <div id="portfolio-view-modal" class="oc-modal-layer" onclick="if(event.target===this)window.closePortfolioViewModal()">
-        <div class="m-box-elite" style="max-width: 800px; padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+        <div class="m-box-elite" style="max-width: 820px; width: 95%; padding: 0; overflow: hidden; display: flex; flex-direction: column; border-radius: 16px; background: #ffffff; box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);">
             <button type="button" onclick="window.closePortfolioViewModal()"
-                style="position: absolute; top: 1rem; right: 1rem; border: none; background: rgba(0,0,0,0.5); color: white; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; z-index: 10;"><i
+                style="position: absolute; top: 1rem; right: 1rem; border: none; background: rgba(0,0,0,0.6); color: white; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; z-index: 20; display: flex; align-items: center; justify-content: center; transition: background 0.2s;"><i
                     class="fas fa-times"></i></button>
             
-            <div id="portfolio-gallery" style="background: #000; height: 400px; position: relative; display: flex; align-items: center; justify-content: center;">
+            <div id="portfolio-gallery" style="background: #0f172a; height: 420px; position: relative; display: flex; align-items: center; justify-content: center;">
                 <img id="portfolio-main-img" src="" style="max-width: 100%; max-height: 100%; object-fit: contain;">
                 
-                <button type="button" id="portfolio-prev-btn" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.8); border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.2rem;"><i class="fas fa-chevron-left"></i></button>
-                <button type="button" id="portfolio-next-btn" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.8); border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.2rem;"><i class="fas fa-chevron-right"></i></button>
+                <button type="button" id="portfolio-prev-btn" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.85); border: none; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; font-size: 1.1rem; color: #0f172a; box-shadow: 0 4px 10px rgba(0,0,0,0.2);"><i class="fas fa-chevron-left"></i></button>
+                <button type="button" id="portfolio-next-btn" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.85); border: none; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; font-size: 1.1rem; color: #0f172a; box-shadow: 0 4px 10px rgba(0,0,0,0.2);"><i class="fas fa-chevron-right"></i></button>
+                
+                <div id="portfolio-photo-counter" style="position: absolute; bottom: 12px; right: 14px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">
+                    <i class="far fa-image"></i> <span id="portfolio-counter-text">1 / 1</span>
+                </div>
             </div>
 
-            <div style="padding: 1.5rem; background: white; max-height: 40vh; overflow-y: auto;">
-                <div style="display: flex; gap: 8px; margin-bottom: 0.5rem;" id="portfolio-badges-container"></div>
-                
-                <h3 id="portfolio-view-title" style="font-size: 1.5rem; font-weight: 800; color: var(--hub-text-dark); margin-bottom: 0.5rem;"></h3>
-                <div style="font-size: 0.85rem; color: var(--hub-primary); font-weight: 700; text-transform: uppercase; margin-bottom: 1rem;" id="portfolio-view-type"></div>
-                
-                <p id="portfolio-view-desc" style="color: var(--hub-slate-600); line-height: 1.6; font-size: 0.95rem; margin-bottom: 1.5rem;"></p>
-                
-                <div style="display: flex; gap: 1.5rem; font-size: 0.85rem; color: var(--hub-slate-600); font-weight: 600; border-top: 1px solid var(--hub-slate-200); padding-top: 1rem;" id="portfolio-meta-container">
+            <div style="padding: 1.75rem; background: white; max-height: 48vh; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;" id="portfolio-badges-container"></div>
+                    <span id="portfolio-view-type" style="font-size: 0.78rem; color: var(--hub-primary, #ea580c); font-weight: 800; text-transform: uppercase; background: #fff7ed; border: 1px solid #ffedd5; padding: 3px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px;">
+                        <i class="fas fa-calendar-check"></i> <span id="portfolio-type-text">Event</span>
+                    </span>
                 </div>
                 
-                <div id="portfolio-highlights" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1rem;"></div>
+                <h3 id="portfolio-view-title" style="font-size: 1.4rem; font-weight: 850; color: #0f172a; margin: 0 0 0.75rem 0; line-height: 1.25;"></h3>
+                
+                <div style="display: flex; gap: 1.25rem; font-size: 0.85rem; color: #475569; font-weight: 600; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; flex-wrap: wrap;" id="portfolio-meta-container">
+                </div>
+                
+                <div style="margin-bottom: 1.25rem;">
+                    <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; margin-bottom: 0.35rem;">About This Event</div>
+                    <p id="portfolio-view-desc" style="color: #334155; line-height: 1.6; font-size: 0.92rem; margin: 0; white-space: pre-line;"></p>
+                </div>
+                
+                <div id="portfolio-highlights-wrapper" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+                    <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-sparkles" style="color: #f59e0b;"></i> Event Highlights &amp; Features
+                    </div>
+                    <div id="portfolio-highlights" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -2407,13 +2461,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
         window.hubPortfolios = {
-            {% for p in public_portfolios %}
+            {% set public_portfolios_js = caterer.portfolios | selectattr('visibility', 'equalto', 'Public') | rejectattr('is_archived', 'equalto', True) | sort(attribute='created_at', reverse=true) | list %}
+            {% for p in public_portfolios_js %}
             "{{ p.id }}": {
                 id: {{ p.id|tojson }},
                 title: {{ p.title|tojson }},
-                event_type: {{ p.event_type|tojson }},
-                description: {{ p.description|tojson }},
-                location: {{ p.location|tojson }},
+                event_type: {{ (p.event_type or 'Special Event')|tojson }},
+                description: {{ (p.description or '')|tojson }},
+                location: {{ (p.location or '')|tojson }},
                 is_featured: {{ p.is_featured|tojson }},
                 booking_id: {{ p.booking_id|tojson }},
                 highlights: {{ (p.highlights or '')|tojson }},
@@ -2433,40 +2488,74 @@ document.addEventListener('DOMContentLoaded', function() {
             const p = window.hubPortfolios[String(id)];
             if (!p) return;
 
-            document.getElementById('portfolio-view-title').textContent = p.title;
-            document.getElementById('portfolio-view-type').textContent = p.event_type;
-            document.getElementById('portfolio-view-desc').textContent = p.description;
+            // Title & Event Type
+            document.getElementById('portfolio-view-title').textContent = p.title || 'Untitled Portfolio';
+            const typeText = document.getElementById('portfolio-type-text');
+            if (typeText) typeText.textContent = p.event_type || 'Special Event';
+
+            // Description
+            const descEl = document.getElementById('portfolio-view-desc');
+            if (descEl) descEl.textContent = p.description || 'No description provided for this portfolio entry.';
 
             // Badges
             let badgesHtml = '';
             if (p.booking_id) {
-                badgesHtml += '<span style="background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;"><i class="fas fa-check-circle"></i> Verified Event</span>';
+                badgesHtml += '<span style="background: #10b981; color: white; padding: 3px 8px; border-radius: 6px; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; display: inline-flex; align-items: center; gap: 4px;"><i class="fas fa-check-circle"></i> Verified Event</span>';
             }
             if (p.is_featured) {
-                badgesHtml += '<span style="background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;"><i class="fas fa-star"></i> Featured</span>';
+                badgesHtml += '<span style="background: #f59e0b; color: white; padding: 3px 8px; border-radius: 6px; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; display: inline-flex; align-items: center; gap: 4px;"><i class="fas fa-star"></i> Featured</span>';
             }
             document.getElementById('portfolio-badges-container').innerHTML = badgesHtml;
 
-            // Meta
+            // Metadata Row (Location, Photo count, Linked booking)
             let metaHtml = '';
-            metaHtml += '<span><i class="far fa-images"></i> ' + p.images.length + ' Photos</span>';
-            if (p.location) {
-                metaHtml += '<span><i class="fas fa-map-marker-alt"></i> ' + p.location + '</span>';
+            metaHtml += '<span style="display: inline-flex; align-items: center; gap: 5px;"><i class="fas fa-map-marker-alt" style="color: #ef4444;"></i> <span>' + (p.location || 'Location upon inquiry') + '</span></span>';
+            metaHtml += '<span style="display: inline-flex; align-items: center; gap: 5px;"><i class="far fa-images" style="color: #6366f1;"></i> <span>' + (p.images ? p.images.length : 0) + ' Photos</span></span>';
+            if (p.booking_id) {
+                metaHtml += '<span style="display: inline-flex; align-items: center; gap: 5px; color: #059669;"><i class="fas fa-shield-alt"></i> <span>Completed Booking #' + p.booking_id + '</span></span>';
             }
             document.getElementById('portfolio-meta-container').innerHTML = metaHtml;
 
-            // Highlights
+            // Highlights parsing (JSON array, Tagify array, comma separated, newline separated)
             let highlightsHtml = '';
+            let parsedTags = [];
             if (p.highlights) {
-                const tags = p.highlights.split(',').filter(Boolean);
-                tags.forEach(t => {
-                    highlightsHtml += '<span style="background: var(--hub-slate-100); color: var(--hub-slate-600); padding: 4px 10px; border-radius: 100px; font-size: 0.75rem; font-weight: 600;">' + t.trim() + '</span>';
-                });
+                if (typeof p.highlights === 'string') {
+                    const trimmedH = p.highlights.trim();
+                    if (trimmedH.startsWith('[') && trimmedH.endsWith(']')) {
+                        try {
+                            const parsed = JSON.parse(trimmedH);
+                            if (Array.isArray(parsed)) {
+                                parsedTags = parsed.map(item => (typeof item === 'object' && item.value ? item.value : String(item)));
+                            }
+                        } catch(e) {
+                            parsedTags = trimmedH.replace(/[\[\]"]/g, '').split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+                        }
+                    } else {
+                        parsedTags = trimmedH.split(/[,;\n]+/).map(s => s.trim().replace(/^[-•*]\s*/, '')).filter(Boolean);
+                    }
+                } else if (Array.isArray(p.highlights)) {
+                    parsedTags = p.highlights;
+                }
             }
-            document.getElementById('portfolio-highlights').innerHTML = highlightsHtml;
+
+            const hlWrapper = document.getElementById('portfolio-highlights-wrapper');
+            if (parsedTags && parsedTags.length > 0) {
+                if (hlWrapper) hlWrapper.style.display = 'block';
+                parsedTags.forEach(t => {
+                    const cleanTag = String(t).trim().replace(/^["']|["']$/g, '');
+                    if (cleanTag) {
+                        highlightsHtml += '<span style="background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;"><i class="fas fa-check" style="font-size: 0.65rem; color: #3b82f6;"></i> ' + cleanTag + '</span>';
+                    }
+                });
+                document.getElementById('portfolio-highlights').innerHTML = highlightsHtml;
+            } else {
+                if (hlWrapper) hlWrapper.style.display = 'none';
+                document.getElementById('portfolio-highlights').innerHTML = '';
+            }
 
             // Gallery
-            currentPortfolioImages = p.images;
+            currentPortfolioImages = (p.images && p.images.length > 0) ? p.images : ['/static/images/default-portfolio.jpg'];
             currentImageIndex = 0;
             updatePortfolioImage();
 
@@ -2483,9 +2572,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (currentPortfolioImages.length === 0) return;
             document.getElementById('portfolio-main-img').src = currentPortfolioImages[currentImageIndex];
             
+            // Photo Counter
+            const counterEl = document.getElementById('portfolio-counter-text');
+            if (counterEl) {
+                counterEl.textContent = (currentImageIndex + 1) + ' / ' + currentPortfolioImages.length;
+            }
+
             // Toggle buttons
-            document.getElementById('portfolio-prev-btn').style.display = currentPortfolioImages.length > 1 ? 'block' : 'none';
-            document.getElementById('portfolio-next-btn').style.display = currentPortfolioImages.length > 1 ? 'block' : 'none';
+            document.getElementById('portfolio-prev-btn').style.display = currentPortfolioImages.length > 1 ? 'flex' : 'none';
+            document.getElementById('portfolio-next-btn').style.display = currentPortfolioImages.length > 1 ? 'flex' : 'none';
         }
 
         document.getElementById('portfolio-prev-btn').addEventListener('click', function(e) {

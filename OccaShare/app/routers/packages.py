@@ -58,28 +58,22 @@ async def get_package_details_modal(
         "addons": addons
     })
 
+from app.services.availability_service import AvailabilityService
+
 @router.get("/api/check-availability")
 async def check_availability(
     caterer_id: int, 
     date_str: str, 
+    time_str: Optional[str] = None,
+    booking_id: Optional[int] = None,
     db: Session = Depends(database.get_db)
 ):
-    from datetime import datetime
-    try:
-        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-    except:
-        return {"available": False, "error": "Invalid date format"}
+    res = AvailabilityService.check_caterer_availability(
+        db=db,
+        caterer_id=caterer_id,
+        event_date=date_str,
+        event_time=time_str,
+        exclude_booking_id=booking_id
+    )
+    return res
 
-    # Check blocked dates
-    blocked = db.query(models.Availability).filter(
-        models.Availability.caterer_id == caterer_id,
-        models.Availability.date == target_date,
-        models.Availability.is_available == False
-    ).first()
-    
-    if blocked:
-        return {"available": False, "reason": blocked.reason or "Fully Booked"}
-    
-    # Optional: check if number of bookings on that day exceeds caterer capacity
-    # For now, let's keep it simple: if not blocked, it's available.
-    return {"available": True}

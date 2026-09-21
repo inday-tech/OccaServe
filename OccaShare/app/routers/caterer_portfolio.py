@@ -8,6 +8,7 @@ from app.db import database, models
 from app.core.security import get_current_user, RoleChecker
 from app.core.templates import templates
 from app.services.storage import upload_file_to_cloudinary, delete_file_from_cloudinary
+from app.services.realtime import manager
 
 caterer_only = RoleChecker(["caterer"])
 
@@ -111,6 +112,10 @@ async def create_portfolio(
                     count += 1
                 
     db.commit()
+    try:
+        await manager.broadcast({"type": "portfolio_updated", "action": "created", "caterer_id": profile.id, "portfolio_id": new_portfolio.id, "title": new_portfolio.title})
+    except Exception:
+        pass
     return {"status": "success", "message": "Portfolio created successfully!", "portfolio_id": new_portfolio.id}
 
 
@@ -185,6 +190,10 @@ async def update_portfolio(
                     count += 1
                     
     db.commit()
+    try:
+        await manager.broadcast({"type": "portfolio_updated", "action": "updated", "caterer_id": profile.id, "portfolio_id": portfolio.id, "title": portfolio.title})
+    except Exception:
+        pass
     return {"status": "success", "message": "Portfolio updated successfully"}
 
 
@@ -205,6 +214,10 @@ async def archive_portfolio(
         
     portfolio.is_archived = True
     db.commit()
+    try:
+        await manager.broadcast({"type": "portfolio_updated", "action": "archived", "caterer_id": profile.id, "portfolio_id": portfolio.id})
+    except Exception:
+        pass
     return {"status": "success", "message": "Portfolio archived successfully"}
 
 
@@ -225,6 +238,10 @@ async def toggle_portfolio_visibility(
         
     portfolio.visibility = "Hidden" if portfolio.visibility == "Public" else "Public"
     db.commit()
+    try:
+        await manager.broadcast({"type": "portfolio_updated", "action": "visibility_changed", "caterer_id": profile.id, "portfolio_id": portfolio.id, "visibility": portfolio.visibility})
+    except Exception:
+        pass
     return {"status": "success", "message": f"Portfolio is now {portfolio.visibility}", "visibility": portfolio.visibility}
 
 
@@ -245,4 +262,8 @@ async def toggle_portfolio_feature(
         
     portfolio.is_featured = not portfolio.is_featured
     db.commit()
+    try:
+        await manager.broadcast({"type": "portfolio_updated", "action": "feature_toggled", "caterer_id": profile.id, "portfolio_id": portfolio.id, "is_featured": portfolio.is_featured})
+    except Exception:
+        pass
     return {"status": "success", "message": f"Portfolio featured status updated", "is_featured": portfolio.is_featured}

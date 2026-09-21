@@ -67,23 +67,29 @@
             <div class="user-avatar">
                 {% if user and user.profile_image_url %}
                 <img src="{{ user.profile_image_url }}" alt="Profile">
+                {% elif user and user.first_name %}
+                <span>{{ user.first_name[0] }}{{ user.last_name[0] if user.last_name else '' }}</span>
                 {% else %}
-                <span>{{ user.first_name[0] }}{{ user.last_name[0] }}</span>
+                <span><i class="fas fa-user"></i></span>
                 {% endif %}
-                <div class="user-status-dot"></div>
+                <div class="user-status-dot" style="background: {{ '#10b981' if user else '#94a3b8' }};"></div>
             </div>
             <div class="user-identity">
-                <span class="user-name">{{ user.first_name }} {{ user.last_name }}</span>
-                {% set total_bookings = user.bookings|list|count if user and user.bookings else 0 %}
-                {% set completed_b = user.bookings|selectattr('status', 'equalto', 'completed')|list|count if user and user.bookings else 0 %}
-                {% if completed_b >= 5 %}
-                <span class="user-rank" style="color: #8b5cf6;"><i class="fas fa-crown"></i> Elite Customer</span>
-                {% elif completed_b >= 1 %}
-                <span class="user-rank" style="color: #f59e0b;"><i class="fas fa-star"></i> Loyal Customer</span>
-                {% elif total_bookings == 0 %}
-                <span class="user-rank" style="color: #3b82f6;"><i class="fas fa-sparkles"></i> New Customer</span>
+                <span class="user-name">{{ user.first_name ~ ' ' ~ user.last_name if (user and user.first_name) else 'Guest User' }}</span>
+                {% if user %}
+                    {% set total_bookings = user.bookings|list|count if user.bookings else 0 %}
+                    {% set completed_b = user.bookings|selectattr('status', 'equalto', 'completed')|list|count if user.bookings else 0 %}
+                    {% if completed_b >= 5 %}
+                    <span class="user-rank" style="color: #8b5cf6;"><i class="fas fa-crown"></i> Elite Customer</span>
+                    {% elif completed_b >= 1 %}
+                    <span class="user-rank" style="color: #f59e0b;"><i class="fas fa-star"></i> Loyal Customer</span>
+                    {% elif total_bookings == 0 %}
+                    <span class="user-rank" style="color: #3b82f6;"><i class="fas fa-sparkles"></i> New Customer</span>
+                    {% else %}
+                    <span class="user-rank"><i class="fas fa-circle-check"></i> Active Customer</span>
+                    {% endif %}
                 {% else %}
-                <span class="user-rank"><i class="fas fa-circle-check"></i> Active Customer</span>
+                    <span class="user-rank" style="color: #64748b;"><i class="fas fa-user-circle"></i> Guest</span>
                 {% endif %}
             </div>
         </div>
@@ -181,12 +187,19 @@
 
         </nav>
 
-        <!-- SIGN OUT (Fixed at bottom) -->
+        <!-- SIGN OUT / SIGN IN (Fixed at bottom) -->
         <div class="nav-signout" style="padding: 1rem; border-top: 1px solid var(--dm-slate-50); margin-top: auto;">
+            {% if user %}
             <a href="/auth/logout" class="nav-item nav-logout" onclick="confirmLogout(event)" style="margin-bottom: 0;">
                 <div class="nav-icon"><i class="fas fa-right-from-bracket"></i></div>
                 <span class="nav-label brand-text-label">Logout</span>
             </a>
+            {% else %}
+            <a href="/auth/login" class="nav-item" style="margin-bottom: 0;">
+                <div class="nav-icon"><i class="fas fa-right-to-bracket"></i></div>
+                <span class="nav-label brand-text-label">Sign In</span>
+            </a>
+            {% endif %}
         </div>
     </aside>
 
@@ -304,18 +317,21 @@
 
                 <div class="hdr-sep"></div>
 
-                <!-- Profile -->
+                <!-- Profile / Auth -->
+                {% if user %}
                 <div class="header-dropdown-wrapper" id="profileWrapper">
                     <button class="hdr-profile-chip" onclick="toggleHeaderDropdown('profileDropdown', this)">
                         <div class="hdr-chip-avatar">
-                            {% if user and user.profile_image_url %}
+                            {% if user.profile_image_url %}
                             <img src="{{ user.profile_image_url }}" alt="">
+                            {% elif user.first_name %}
+                            {{ user.first_name[0] }}
                             {% else %}
-                            {{ user.first_name[0] if user else '?' }}
+                            <i class="fas fa-user"></i>
                             {% endif %}
                         </div>
                         <div class="hdr-chip-info">
-                            <span class="hdr-chip-name">{{ user.first_name }}</span>
+                            <span class="hdr-chip-name">{{ user.first_name or 'Account' }}</span>
                             <span class="hdr-chip-role">Customer</span>
                         </div>
                         <i class="fas fa-chevron-down hdr-chip-arrow"></i>
@@ -325,8 +341,8 @@
                         <!-- Profile Header -->
                         <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--dm-slate-50);">
                             <div style="font-weight: 800; font-size: 0.9rem; color: var(--text-dark);">{{
-                                user.first_name }} {{ user.last_name }}</div>
-                            <div style="font-size: 0.72rem; color: var(--dm-slate-400); margin-top: 2px;">{{ user.email
+                                user.first_name or '' }} {{ user.last_name or '' }}</div>
+                            <div style="font-size: 0.72rem; color: var(--dm-slate-400); margin-top: 2px;">{{ user.email or ''
                                 }}</div>
                         </div>
                         <ul class="hdr-profile-links">
@@ -343,6 +359,16 @@
                         </ul>
                     </div>
                 </div>
+                {% else %}
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <a href="/auth/login" class="hdr-btn" style="padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; text-decoration: none; color: var(--text-dark); border: 1px solid #e2e8f0;">
+                        Sign In
+                    </a>
+                    <a href="/auth/register" style="padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; text-decoration: none; background: var(--primary-color, #ff7b54); color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+                        Register
+                    </a>
+                </div>
+                {% endif %}
 
             </div>
         </header>

@@ -173,39 +173,21 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
         
         p.parsed_inclusions = flat_list
 
-    public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public']
+    public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public' and not getattr(p, 'is_archived', False)]
 
-    # If the user is a logged-in customer, show the dashboard-integrated view
-    if user and user.role == "customer":
-        return templates.TemplateResponse("customer/caterer_profile_view.html", {
-            "request": request, 
-            "caterer": caterer,
-            "packages": active_packages,
-            "active_menu": active_menu,
-            "active_inventory": active_inventory,
-            "active_equipment": active_equipment,
-            "active_services": active_services,
-            "public_portfolios": public_portfolios,
-            "gallery_items": caterer.gallery_items,
-            "reviews": caterer.reviews,
-            "user": user,
-            "active_page": "marketplace",
-            "nav_page": "caterers"
-        })
-    
-    # Otherwise, show the standalone profile (e.g., for guests or other roles)
-    return templates.TemplateResponse("caterer/profile.html", {
+    return templates.TemplateResponse("customer/caterer_profile_view.html", {
         "request": request, 
         "caterer": caterer,
         "packages": active_packages,
         "active_menu": active_menu,
         "active_inventory": active_inventory,
-        "active_services": active_services,
         "active_equipment": active_equipment,
+        "active_services": active_services,
         "public_portfolios": public_portfolios,
-        "gallery_items": [g for g in caterer.gallery_items if not g.is_archived],
+        "gallery_items": [g for g in caterer.gallery_items if not getattr(g, 'is_archived', False)],
         "reviews": caterer.reviews,
         "user": user,
+        "active_page": "marketplace",
         "nav_page": "caterers"
     })
 
@@ -340,37 +322,21 @@ def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(datab
         if is_equip and not getattr(item, 'equipment_type', None):
             item.equipment_type = 'Equipment'
 
-    public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public']
+    public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public' and not getattr(p, 'is_archived', False)]
 
-    if user and user.role == "customer":
-        return templates.TemplateResponse("customer/caterer_profile_view.html", {
-            "request": request, 
-            "caterer": caterer,
-            "packages": active_packages,
-            "active_menu": active_menu,
-            "active_inventory": active_inventory,
-            "active_equipment": active_equipment,
-            "active_services": active_services,
-            "public_portfolios": public_portfolios,
-            "gallery_items": caterer.gallery_items,
-            "reviews": caterer.reviews,
-            "user": user,
-            "active_page": "marketplace",
-            "nav_page": "caterers"
-        })
-
-    return templates.TemplateResponse("caterer/profile.html", {
+    return templates.TemplateResponse("customer/caterer_profile_view.html", {
         "request": request, 
         "caterer": caterer,
         "packages": active_packages,
         "active_menu": active_menu,
         "active_inventory": active_inventory,
-        "active_services": active_services,
         "active_equipment": active_equipment,
+        "active_services": active_services,
         "public_portfolios": public_portfolios,
-        "gallery_items": [g for g in caterer.gallery_items if not g.is_archived],
+        "gallery_items": [g for g in caterer.gallery_items if not getattr(g, 'is_archived', False)],
         "reviews": caterer.reviews,
         "user": user,
+        "active_page": "marketplace",
         "nav_page": "caterers"
     })
 

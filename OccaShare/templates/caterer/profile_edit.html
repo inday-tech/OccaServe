@@ -4,6 +4,24 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/profile_edit.css') }}?v=12.9">
+<style>
+.day-chip-box.active {
+    background: var(--primary-color, #800000) !important;
+    color: #ffffff !important;
+    border-color: var(--primary-color, #800000) !important;
+    box-shadow: 0 2px 6px rgba(var(--primary-color-rgb, 128, 0, 0), 0.25);
+}
+.day-chip-box:hover {
+    border-color: var(--primary-color, #800000);
+}
+@media (max-width: 768px) {
+    .settings-card-minimal .form-row-two-col {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 1.25rem !important;
+    }
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -127,7 +145,7 @@
                         <i class="fas fa-file-signature"></i> Booking Policies
                     </button>
                     <button type="button" class="snav-item" data-section="availability">
-                        <i class="fas fa-clock"></i> Booking & Availability
+                        <i class="fas fa-calendar-check"></i> Booking/Event Availability
                     </button>
                 </div>
             </div>
@@ -210,73 +228,72 @@
                 </div>
             </div>
 
-            <form action="/caterer/profile?success_msg=Business+profile+updated+successfully" method="POST" enctype="multipart/form-data" class="profile-edit-form">
-                <!-- Section: Business Info -->
+            <form action="/caterer/profile?success_msg=Business+profile+updated+successfully" method="POST" enctype="multipart/form-data" class="profile-edit-form" id="catererSettingsForm" novalidate onsubmit="handleFormSubmitState(event)">
+                <!-- Section: Business Information -->
                 <div class="settings-section active" id="section-general">
-                    <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label><i class="fas fa-signature"></i> Business Name</label>
-                            <input type="text" name="business_name" value="{{ profile.business_name }}" placeholder="Enter your business name" required>
+                    <div class="business-details-card">
+                        <div class="business-details-header">
+                            <h4 class="business-details-title">
+                                <i class="fas fa-store" style="color: var(--primary-color);"></i> Business Details
+                            </h4>
+                            <p class="business-details-subtitle">Manage the basic identity and details customers see about your catering business.</p>
                         </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-clock"></i> Years of Experience</label>
-                            <input type="number" name="years_of_operation" value="{{ profile.years_of_operation or 0 }}" min="0" max="100" placeholder="e.g. 5">
+
+                        <div class="form-row-two-col">
+                            <div class="form-group">
+                                <label><i class="fas fa-signature"></i> Business Name</label>
+                                <input type="text" name="business_name" value="{{ profile.business_name }}" placeholder="Enter your business name" required oninput="triggerSettingsDirty()">
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-tags"></i> Business Category / Type</label>
+                                <select name="business_type" class="filter-select-pro" onchange="triggerSettingsDirty()" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.9rem; background: #ffffff;">
+                                    <option value="Full-Service Catering" {% if profile.business_type == 'Full-Service Catering' or not profile.business_type %}selected{% endif %}>Full-Service Catering</option>
+                                    <option value="Buffet & Packed Meals" {% if profile.business_type == 'Buffet & Packed Meals' %}selected{% endif %}>Buffet & Packed Meals</option>
+                                    <option value="Event Styling & Catering" {% if profile.business_type == 'Event Styling & Catering' %}selected{% endif %}>Event Styling & Catering</option>
+                                    <option value="Corporate & Party Catering" {% if profile.business_type == 'Corporate & Party Catering' %}selected{% endif %}>Corporate & Party Catering</option>
+                                    <option value="Specialty & Bespoke Cuisine" {% if profile.business_type == 'Specialty & Bespoke Cuisine' %}selected{% endif %}>Specialty & Bespoke Cuisine</option>
+                                    <option value="Food Cart & Mobile Bar" {% if profile.business_type == 'Food Cart & Mobile Bar' %}selected{% endif %}>Food Cart & Mobile Bar</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row-two-col" style="margin-top: 0.5rem;">
+                            <div class="form-group">
+                                <label><i class="fas fa-clock"></i> Years of Experience</label>
+                                <input type="number" name="years_of_operation" value="{{ profile.years_of_operation or 0 }}" min="0" max="100" placeholder="e.g. 5" oninput="triggerSettingsDirty()">
+                            </div>
+                            {% set rules = profile.scheduling_rules or {} %}
+                            {% set soc = rules.get('social_links', {}) %}
+                            <div class="form-group">
+                                <label><i class="fab fa-facebook"></i> Facebook Page <span style="font-weight: 400; color: #94a3b8; font-size: 0.75rem;">(Optional)</span></label>
+                                <input type="text" name="social_facebook" value="{{ soc.get('facebook', '') }}" placeholder="fb.com/yourbusiness" oninput="triggerSettingsDirty()">
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 0.5rem; margin-bottom: 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <label style="margin-bottom: 0;"><i class="fas fa-quote-left"></i> Business Description</label>
+                                <span id="descCharCounter" style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">0 / 1000 characters</span>
+                            </div>
+                            <textarea name="description" id="businessDescriptionInput" rows="4" maxlength="1000"
+                                placeholder="Tell customers briefly about your catering business, specialties, and event services."
+                                oninput="updateDescCharCounter(this); triggerSettingsDirty()"
+                                required>{{ profile.description }}</textarea>
                         </div>
                     </div>
 
-                    <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label><i class="fas fa-image"></i> Business Logo</label>
-                            <div class="logo-upload-box">
-                                <input type="file" name="logo" accept="image/*" class="form-file-input">
-                            </div>
-                            {% if profile.logo_url %}
-                            <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; color: #16a34a; font-size: 0.85rem; font-weight: 600;">
-                                <i class="fas fa-check-circle"></i> Logo uploaded
-                            </div>
-                            {% endif %}
-                            <span class="field-hint">Used in your public profile and digital contracts.</span>
+                    <!-- Section 2: Public Profile Preview -->
+                    <div class="business-preview-banner">
+                        <div class="business-preview-info">
+                            <h4><i class="fas fa-globe" style="color: var(--primary-color);"></i> Public Profile</h4>
+                            <p>Your business information appears on your public caterer profile.</p>
                         </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-panorama"></i> Cover Image</label>
-                            <input type="file" name="cover_image" accept="image/*" class="form-file-input">
-                            {% if profile.cover_image_url %}
-                            <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; color: #16a34a; font-size: 0.85rem; font-weight: 600;">
-                                <i class="fas fa-check-circle"></i> Cover image uploaded
-                            </div>
-                            {% endif %}
-                            <span class="field-hint">Shows at the top of your public catering page.</span>
-                        </div>
+                        <button type="button" class="btn-secondary-pro" onclick="openProfilePreviewModal('{{ profile.id }}')" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer; color: var(--primary-color); border: 1.5px solid var(--primary-color); background: #ffffff;">
+                            <i class="fas fa-arrow-up-right-from-square"></i> View Public Profile
+                        </button>
                     </div>
-
-                    <div class="form-group">
-                        <label><i class="fas fa-quote-left"></i> Business Description</label>
-                        <textarea name="description" rows="5"
-                            placeholder="Describe your catering services, specialties, and experience..."
-                            required>{{ profile.description }}</textarea>
-                    </div>
-                    
-                    {% set rules = profile.scheduling_rules or {} %}
-                    {% set pub = rules.get('public_profile', {}) %}
-                    {% set soc = rules.get('social_links', {}) %}
-                    <div class="section-header-compact" style="margin-top: 2rem;">
-                        <h3><i class="fas fa-globe"></i> Public Profile Settings</h3>
-                        <p>Extra details shown to customers to build trust and brand identity.</p>
-                    </div>
-                    
-                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                        <div class="form-group">
-                            <label><i class="fab fa-facebook"></i> Facebook Page</label>
-                            <input type="text" name="social_facebook" value="{{ soc.get('facebook', '') }}" placeholder="fb.com/yourbusiness">
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fab fa-instagram"></i> Instagram</label>
-                            <input type="text" name="social_instagram" value="{{ soc.get('instagram', '') }}" placeholder="@yourbusiness">
-                        </div>
-                    </div>
-
-            </div>
-            <!-- End Section: Business Info -->
+                </div>
+                <!-- End Section: Business Info -->
 
             <!-- Section: Location & Contact -->
             <div class="settings-section" id="section-location">
@@ -813,166 +830,450 @@
 
             <!-- Section: Booking & Availability -->
             <div class="settings-section" id="section-availability">
-                <div class="section-header-compact">
-                    <h3><i class="fas fa-clock"></i> Booking & Scheduling Rules</h3>
-                    <p>Set clear rules for different types of services so customers know exactly when and how they can book you.</p>
+                {% set event_avail = rules.get('event_availability', {}) %}
+                {% set avail_status = event_avail.get('availability_status', 'Available') %}
+                {% set op_days = event_avail.get('operating_days', bh.get('operating_days', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])) %}
+                {% set open_time_val = event_avail.get('open_time', bh.get('open_time', '08:00')) %}
+                {% set close_time_val = event_avail.get('close_time', bh.get('close_time', '20:00')) %}
+                {% set lead_time_val = event_avail.get('booking_lead_time', profile.booking_lead_time or 7) %}
+                {% set max_adv_val = event_avail.get('max_advance_booking_days', rules.get('booking_rules', {}).get('max_advance_booking_days', 365)) %}
+                {% set max_events_val = event_avail.get('max_events_per_day', profile.max_bookings_per_day or 2) %}
+                {% set blocked_dates_val = event_avail.get('blocked_dates', []) %}
+
+                <!-- Section Header -->
+                <div class="settings-section-intro">
+                    <h3><i class="fas fa-calendar-check" style="color: var(--primary-color);"></i> Booking &amp; Event Availability</h3>
+                    <p>Control when customers can request bookings and define the scheduling limits for your business.</p>
                 </div>
 
-                <!-- 0. GENERAL AVAILABILITY -->
-                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
-                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-store"></i> General Availability (Business Hours)</h4>
-                    <p class="field-hint" style="margin-bottom: 1.25rem;">Set your standard operating days and hours.</p>
-                    <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label>Operating Hours</label>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="time" name="business_hours_open_time" value="{{ bh.get('open_time', '08:00') }}" style="width: 50%;">
-                                <span style="color:#64748b;">to</span>
-                                <input type="time" name="business_hours_close_time" value="{{ bh.get('close_time', '20:00') }}" style="width: 50%;">
+                <!-- 1. Booking Status -->
+                <div class="avail-card">
+                    <div class="avail-card-header">
+                        <h4 class="avail-card-title">
+                            <i class="fas fa-power-off" style="color: var(--primary-color);"></i> Booking Status
+                        </h4>
+                        <p class="avail-card-desc">Toggle whether your business is currently open for incoming bookings.</p>
+                    </div>
+
+                    <div class="avail-toggle-bar">
+                        <div style="display: flex; align-items: center; gap: 1.25rem;">
+                            <label class="toggle-switch-ui">
+                                <input type="checkbox" id="availToggleSwitch" {% if avail_status == 'Available' %}checked{% endif %} style="display: none;" onchange="handleAvailToggle(this.checked)">
+                                <div class="toggle-switch-track">
+                                    <div class="toggle-switch-thumb"></div>
+                                </div>
+                            </label>
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <strong id="availToggleLabel" style="font-size: 1rem; font-weight: 800; color: {% if avail_status == 'Available' %}#15803d{% else %}#b91c1c{% endif %};">
+                                        {% if avail_status == 'Available' %}[ ON ] Accepting Bookings{% else %}[ OFF ] Bookings Paused{% endif %}
+                                    </strong>
+                                    <span id="availStatusBadge" style="font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: {% if avail_status == 'Available' %}#dcfce7; color: #15803d; border: 1px solid #bbf7d0;{% else %}#fee2e2; color: #b91c1c; border: 1px solid #fecaca;{% endif %}">
+                                        {% if avail_status == 'Available' %}Accepting bookings{% else %}Bookings paused{% endif %}
+                                    </span>
+                                </div>
+                                <span id="availToggleSubtext" style="font-size: 0.82rem; color: #64748b; display: block; margin-top: 2px;">
+                                    {% if avail_status == 'Available' %}Customers can submit bookings based on your availability rules.{% else %}New bookings are temporarily paused.{% endif %}
+                                </span>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label>Operating Days</label>
-                            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
-                                {% set op_days = bh.get('operating_days', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']) %}
-                                {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
-                                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem;">
-                                    <input type="checkbox" name="operating_days" value="{{ day }}" {% if day in op_days %}checked{% endif %}>
+                        <input type="hidden" name="availability_status" id="availability_status_input" value="{{ avail_status }}">
+                    </div>
+
+                    <!-- Unavailable Reason (Shown when toggle is OFF) -->
+                    <div id="unavailableReasonContainer" style="margin-top: 1rem; {% if avail_status == 'Available' %}display: none;{% endif %}">
+                        <label style="font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 4px; display: block;">Reason for Pausing Bookings</label>
+                        <input type="text" name="unavailable_reason" id="unavailable_reason_input" value="{{ event_avail.get('unavailable_reason', 'Temporarily unavailable') }}" placeholder="e.g. Fully booked for the season / Kitchen maintenance" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem;">
+                    </div>
+                </div>
+
+                <!-- 2. Booking Schedule -->
+                <div class="avail-card">
+                    <div class="avail-card-header">
+                        <h4 class="avail-card-title">
+                            <i class="fas fa-calendar-week" style="color: var(--primary-color);"></i> Booking Schedule
+                        </h4>
+                        <p class="avail-card-desc">Choose the days and hours your catering business can be booked.</p>
+                    </div>
+
+                    <!-- Available Booking Days -->
+                    <div style="margin-bottom: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 0.75rem;">
+                            <label style="font-weight: 700; font-size: 0.88rem; color: #1e293b; margin: 0;">Available Booking Days</label>
+                            <div style="display: flex; gap: 6px;">
+                                <button type="button" class="btn-xs-helper" onclick="setOperatingDaysPreset('all')" style="padding: 3px 10px; font-size: 0.75rem; font-weight: 700; border-radius: 6px; border: 1px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer;">Every Day</button>
+                                <button type="button" class="btn-xs-helper" onclick="setOperatingDaysPreset('weekdays')" style="padding: 3px 10px; font-size: 0.75rem; font-weight: 700; border-radius: 6px; border: 1px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer;">Weekdays</button>
+                                <button type="button" class="btn-xs-helper" onclick="setOperatingDaysPreset('weekends')" style="padding: 3px 10px; font-size: 0.75rem; font-weight: 700; border-radius: 6px; border: 1px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer;">Weekends</button>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;" id="operatingDaysContainer">
+                            {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                            <label class="day-chip-label" style="cursor: pointer; user-select: none;">
+                                <input type="checkbox" name="operating_days" value="{{ day }}" {% if day in op_days %}checked{% endif %} style="display: none;" onchange="this.parentElement.querySelector('.day-chip-btn').classList.toggle('active', this.checked); updateAvailabilitySummary();">
+                                <span class="day-chip-btn {% if day in op_days %}active{% endif %}">
                                     {{ day[:3] }}
-                                </label>
-                                {% endfor %}
+                                </span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Event Operating Hours -->
+                    <div>
+                        <label style="font-weight: 700; font-size: 0.88rem; color: #1e293b; margin-bottom: 6px; display: block;">Booking &amp; Operating Hours</label>
+                        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; max-width: 440px;">
+                            <div style="flex: 1; min-width: 140px;">
+                                <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 2px;">Opening Time</span>
+                                <input type="time" name="business_hours_open_time" id="business_hours_open_time" value="{{ open_time_val }}" onchange="updateAvailabilitySummary()" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.9rem;">
                             </div>
+                            <span style="color: #94a3b8; font-weight: 800; font-size: 0.85rem; align-self: flex-end; margin-bottom: 8px;">—</span>
+                            <div style="flex: 1; min-width: 140px;">
+                                <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 2px;">Closing Time</span>
+                                <input type="time" name="business_hours_close_time" id="business_hours_close_time" value="{{ close_time_val }}" onchange="updateAvailabilitySummary()" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.9rem;">
+                            </div>
+                        </div>
+                        <span style="display: block; margin-top: 6px; font-size: 0.78rem; color: #64748b;">Customers cannot select event times outside these hours.</span>
+                    </div>
+                </div>
+
+                <!-- 3. Booking Window -->
+                <div class="avail-card">
+                    <div class="avail-card-header">
+                        <h4 class="avail-card-title">
+                            <i class="fas fa-calendar-day" style="color: var(--primary-color);"></i> Booking Window
+                        </h4>
+                        <p class="avail-card-desc">Control how far in advance customers can place a reservation.</p>
+                    </div>
+
+                    <div>
+                        <label style="font-weight: 700; font-size: 0.88rem; color: #1e293b; margin-bottom: 4px; display: block;">
+                            Customers can book up to:
+                        </label>
+                        <div style="display: flex; gap: 8px; align-items: center; max-width: 240px;">
+                            <input type="number" name="max_advance_booking_days" id="max_advance_booking_input" value="{{ max_adv_val }}" min="1" max="730" oninput="updateAvailabilitySummary()" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 700; font-size: 0.95rem;">
+                            <span style="font-size: 0.88rem; font-weight: 600; color: #64748b; white-space: nowrap;">days ahead</span>
+                        </div>
+                        <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+                            <button type="button" class="btn-quick-pill {% if max_adv_val|int == 30 %}active{% endif %}" onclick="setBookingWindowPreset(30)">30 Days</button>
+                            <button type="button" class="btn-quick-pill {% if max_adv_val|int == 90 %}active{% endif %}" onclick="setBookingWindowPreset(90)">90 Days</button>
+                            <button type="button" class="btn-quick-pill {% if max_adv_val|int == 180 %}active{% endif %}" onclick="setBookingWindowPreset(180)">180 Days</button>
+                            <button type="button" class="btn-quick-pill {% if max_adv_val|int == 365 %}active{% endif %}" onclick="setBookingWindowPreset(365)">365 Days</button>
+                        </div>
+                        <span style="display: block; margin-top: 6px; font-size: 0.78rem; color: #64748b;">Prevents bookings from being placed too far into the future.</span>
+                    </div>
+                </div>
+
+                <!-- 4. Minimum Advance Notice -->
+                <div class="avail-card">
+                    <div class="avail-card-header">
+                        <h4 class="avail-card-title">
+                            <i class="fas fa-clock" style="color: var(--primary-color);"></i> Minimum Advance Notice
+                        </h4>
+                        <p class="avail-card-desc">Minimum time required before an event date to prepare staff and food.</p>
+                    </div>
+
+                    <div>
+                        <label style="font-weight: 700; font-size: 0.88rem; color: #1e293b; margin-bottom: 4px; display: block;">
+                            Required Notice Period
+                        </label>
+                        <div style="display: flex; gap: 8px; align-items: center; max-width: 260px;">
+                            <input type="number" name="food_lead_time_hours" id="food_lead_time_hours" value="{{ fr.lead_time_hours or 24 }}" min="0" max="720" oninput="updateAvailabilitySummary()" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 700; font-size: 0.95rem;">
+                            <span style="font-size: 0.88rem; font-weight: 600; color: #64748b; white-space: nowrap;">hours before event</span>
+                        </div>
+                        <!-- Hidden booking_lead_time maintained for backend compatibility -->
+                        <input type="hidden" name="booking_lead_time" id="booking_lead_time_input" value="{{ lead_time_val }}">
+                        <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+                            <button type="button" class="btn-quick-pill" onclick="setLeadTimePreset(12)">12 Hours</button>
+                            <button type="button" class="btn-quick-pill" onclick="setLeadTimePreset(24)">24 Hours (1 Day)</button>
+                            <button type="button" class="btn-quick-pill" onclick="setLeadTimePreset(48)">48 Hours (2 Days)</button>
+                            <button type="button" class="btn-quick-pill" onclick="setLeadTimePreset(72)">72 Hours (3 Days)</button>
+                            <button type="button" class="btn-quick-pill" onclick="setLeadTimePreset(168)">1 Week (7 Days)</button>
+                        </div>
+                        <span id="leadTimeHelperText" style="display: block; margin-top: 6px; font-size: 0.78rem; color: #64748b;">Customers must book at least {{ fr.lead_time_hours or 24 }} hours in advance of the event start time.</span>
+                    </div>
+                </div>
+
+                <!-- 5. Daily Booking Capacity -->
+                <div class="avail-card">
+                    <div class="avail-card-header">
+                        <h4 class="avail-card-title">
+                            <i class="fas fa-users-gear" style="color: var(--primary-color);"></i> Daily Booking Capacity
+                        </h4>
+                        <p class="avail-card-desc">Maximum number of events your team can handle simultaneously on a single calendar day.</p>
+                    </div>
+
+                    <div>
+                        <label style="font-weight: 700; font-size: 0.88rem; color: #1e293b; margin-bottom: 4px; display: block;">
+                            Maximum Events Per Day
+                        </label>
+                        <div style="display: flex; gap: 8px; align-items: center; max-width: 240px;">
+                            <input type="number" name="max_events_per_day" id="max_events_per_day" value="{{ max_events_val }}" min="1" max="20" oninput="updateAvailabilitySummary()" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 700; font-size: 0.95rem;">
+                            <span style="font-size: 0.88rem; font-weight: 600; color: #64748b; white-space: nowrap;">events / day</span>
+                        </div>
+                        <span style="display: block; margin-top: 6px; font-size: 0.78rem; color: #64748b;">New bookings are automatically blocked once this daily capacity is reached.</span>
+                    </div>
+                </div>
+
+                <!-- 6. Blocked Dates -->
+                <div class="avail-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 0.5rem;">
+                        <div>
+                            <h4 class="avail-card-title">
+                                <i class="fas fa-calendar-xmark" style="color: #dc2626;"></i> Blocked Dates
+                            </h4>
+                            <p class="avail-card-desc">Prevent customers from booking on specific holidays, maintenance days, or private events.</p>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span id="blockedCountBadge" style="font-size: 0.75rem; font-weight: 700; color: #991b1b; background: #fee2e2; border: 1px solid #fecaca; padding: 3px 10px; border-radius: 99px;">
+                                0 blocked dates
+                            </span>
+                            <button type="button" onclick="toggleAddBlockedDateForm()" class="btn-secondary-pro" style="padding: 6px 14px; font-size: 0.8rem; font-weight: 700; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--primary-color); border: 1.5px solid var(--primary-color); background: #fff;">
+                                <i class="fas fa-plus"></i> Add Blocked Date
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Inline Add Blocked Date Form (Hidden by default) -->
+                    <div id="inlineAddBlockedDateForm" style="display: none; background: #fffafb; border: 1.5px solid #fecaca; border-radius: 10px; padding: 1.25rem; margin-top: 1rem; margin-bottom: 1rem;">
+                        <div style="font-weight: 700; font-size: 0.88rem; color: #991b1b; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-calendar-plus"></i> Block a Specific Date
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 160px;">
+                                <label style="font-size: 0.75rem; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px; display: block;">Select Date</label>
+                                <input type="date" id="newBlockDate" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 7px 10px; font-weight: 600; font-size: 0.85rem; background: #fff;">
+                            </div>
+                            <div style="flex: 1; min-width: 180px;">
+                                <label style="font-size: 0.75rem; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px; display: block;">Reason</label>
+                                <select id="newBlockReason" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 7px 10px; font-weight: 600; font-size: 0.85rem; background: #fff;">
+                                    <option value="Fully Booked">Fully Booked</option>
+                                    <option value="Personal Event">Personal Event</option>
+                                    <option value="Holiday">Holiday</option>
+                                    <option value="Maintenance">Maintenance</option>
+                                    <option value="No Operations">No Operations</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" onclick="toggleAddBlockedDateForm(false)" style="padding: 7px 14px; background: #f1f5f9; color: #475569; font-weight: 700; font-size: 0.82rem; border-radius: 8px; border: 1px solid #cbd5e1; cursor: pointer;">
+                                    Cancel
+                                </button>
+                                <button type="button" onclick="addBlockedDate()" style="padding: 7px 16px; background: #dc2626; color: #fff; font-weight: 700; font-size: 0.82rem; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-lock"></i> Block Date
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden input to store JSON array of blocked dates -->
+                    <input type="hidden" name="blocked_dates" id="blockedDatesJson" value='{{ (blocked_dates_val or []) | tojson | safe }}'>
+
+                    <!-- Blocked Dates List Container -->
+                    <div id="blockedDatesContainer" style="margin-top: 1rem; border: 1.5px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #ffffff;">
+                        <!-- Injected via JavaScript renderBlockedDates() -->
+                    </div>
+                </div>
+
+                <!-- 7. Event Requirements -->
+                <div class="avail-card">
+                    <div class="avail-card-header">
+                        <h4 class="avail-card-title">
+                            <i class="fas fa-clipboard-list" style="color: var(--primary-color);"></i> Event Requirements
+                        </h4>
+                        <p class="avail-card-desc">Define operational guest counts, duration, and logistics setup requirements.</p>
+                    </div>
+
+                    <!-- Hidden minimum event duration preserved for backend compatibility -->
+                    <input type="hidden" name="package_min_duration" value="{{ pr.min_event_duration or 2 }}">
+
+                    <div class="grid-two-col">
+                        <div>
+                            <label style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 4px; display: block;">Minimum Guests</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <input type="number" name="min_pax" id="req_min_pax" value="{{ profile.min_pax or 50 }}" min="1" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.88rem;">
+                                <span style="font-size: 0.82rem; color: #64748b; font-weight: 600;">Guests</span>
+                            </div>
+                            <span style="display: block; margin-top: 4px; font-size: 0.74rem; color: #64748b;">Minimum guest count accepted for an event.</span>
+                        </div>
+
+                        <div>
+                            <label style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 4px; display: block;">Maximum Event Duration</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <input type="number" name="package_max_duration" id="req_max_duration" value="{{ pr.max_event_duration or 8 }}" min="1" max="24" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.88rem;">
+                                <span style="font-size: 0.82rem; color: #64748b; font-weight: 600;">Hours</span>
+                            </div>
+                            <span style="display: block; margin-top: 4px; font-size: 0.74rem; color: #64748b;">Maximum length of an event booking.</span>
+                        </div>
+
+                        <div>
+                            <label style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 4px; display: block;">Setup Time</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <input type="number" name="package_setup_time" id="req_setup_time" value="{{ pr.setup_time_hours or 2 }}" min="0" max="24" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.88rem;">
+                                <span style="font-size: 0.82rem; color: #64748b; font-weight: 600; white-space: nowrap;">Hours before</span>
+                            </div>
+                            <span style="display: block; margin-top: 4px; font-size: 0.74rem; color: #64748b;">Time needed on-site before guest arrival.</span>
+                        </div>
+
+                        <div>
+                            <label style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 4px; display: block;">Cleanup Time</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <input type="number" name="package_cleanup_time" id="req_cleanup_time" value="{{ pr.cleanup_time_hours or 1 }}" min="0" max="24" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.88rem;">
+                                <span style="font-size: 0.82rem; color: #64748b; font-weight: 600; white-space: nowrap;">Hours after</span>
+                            </div>
+                            <span style="display: block; margin-top: 4px; font-size: 0.74rem; color: #64748b;">Time needed after event conclusion.</span>
+                        </div>
+
+                        <div>
+                            <label style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 4px; display: block;">Turnaround Buffer</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <input type="number" name="package_turnover_time" id="req_turnover_time" value="{{ pr.get('turnover_time_hours', 2) }}" min="0" max="24" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.88rem;">
+                                <span style="font-size: 0.82rem; color: #64748b; font-weight: 600;">Hours</span>
+                            </div>
+                            <span style="display: block; margin-top: 4px; font-size: 0.74rem; color: #64748b;">Buffer between consecutive events.</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- 1. BOOKING RULES (For Packages) -->
-                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
-                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-box"></i> 1. Booking Rules (Catering Packages)</h4>
-                    <p class="field-hint">Used to check availability when a customer books a full catering package.</p>
-                    <div class="form-row-two-col" style="margin-top: 1rem;">
-                        <div class="form-group">
-                            <label>Booking Lead Time (Days)</label>
-                            <input type="number" name="booking_lead_time" value="{{ profile.booking_lead_time or 7 }}" min="1">
-                            <span class="field-hint">Days in advance a customer must book.</span>
-                        </div>
-                        <div class="form-group">
-                            <label>Minimum Guests</label>
-                            <input type="number" name="min_pax" value="{{ profile.min_pax or 50 }}" min="1">
-                            <span class="field-hint">Minimum pax for package booking.</span>
-                        </div>
+                <!-- 8. Availability Summary -->
+                <div class="avail-summary-card">
+                    <div class="avail-summary-header">
+                        <h4 class="avail-summary-title">
+                            <i class="fas fa-check-double"></i> Live Availability Snapshot
+                        </h4>
+                        <span class="avail-summary-tag"><i class="fas fa-shield-halved"></i> Active Customer Rules</span>
                     </div>
-                    <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label>Event Duration (Min-Max Hours)</label>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="number" name="package_min_duration" value="{{ pr.min_event_duration }}" min="1" style="width: 50%;">
-                                <span style="color:#64748b;">to</span>
-                                <input type="number" name="package_max_duration" value="{{ pr.max_event_duration }}" min="1" style="width: 50%;">
-                            </div>
+                    <p style="font-size: 0.82rem; color: #64748b; margin: 0 0 1rem;">These configured rules are automatically checked in real-time during customer booking checkout.</p>
+                    
+                    <div class="avail-summary-grid">
+                        <div class="avail-summary-item">
+                            <span class="avail-summary-label">Status</span>
+                            <span class="avail-summary-value" id="summaryStatus">Accepting Bookings</span>
                         </div>
-                        <div class="form-group">
-                            <label>Turnover Time (Hours)</label>
-                            <input type="number" name="package_turnover_time" value="{{ pr.get('turnover_time_hours', 6) }}" min="0">
-                            <span class="field-hint">Rest period before accepting the next event.</span>
+                        <div class="avail-summary-item">
+                            <span class="avail-summary-label">Available Days</span>
+                            <span class="avail-summary-value" id="summaryDays">Mon - Sun</span>
                         </div>
-                    </div>
-                    <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label>Setup Time (Hours before event)</label>
-                            <input type="number" name="package_setup_time" value="{{ pr.setup_time_hours }}" min="0">
+                        <div class="avail-summary-item">
+                            <span class="avail-summary-label">Operating Hours</span>
+                            <span class="avail-summary-value" id="summaryHours">08:00 AM - 08:00 PM</span>
                         </div>
-                        <div class="form-group">
-                            <label>Cleanup Time (Hours after event)</label>
-                            <input type="number" name="package_cleanup_time" value="{{ pr.cleanup_time_hours }}" min="0">
+                        <div class="avail-summary-item">
+                            <span class="avail-summary-label">Booking Window</span>
+                            <span class="avail-summary-value" id="summaryWindow">Up to 30 days ahead</span>
+                        </div>
+                        <div class="avail-summary-item">
+                            <span class="avail-summary-label">Advance Notice</span>
+                            <span class="avail-summary-value" id="summaryNotice">24 hours notice</span>
+                        </div>
+                        <div class="avail-summary-item">
+                            <span class="avail-summary-label">Daily Capacity</span>
+                            <span class="avail-summary-value" id="summaryCapacity">5 events / day max</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- 2. FOOD ORDERS -->
-                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
-                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-utensils"></i> 2. Food Orders</h4>
-                    <p class="field-hint" style="margin-bottom: 1.25rem;">Rules for a la carte food trays and packed meals.</p>
-                    <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label>Preparation Time (Hours)</label>
-                            <input type="number" name="food_lead_time_hours" value="{{ fr.lead_time_hours }}" min="0">
-                            <span class="field-hint">Notice needed to prepare a food order.</span>
-                        </div>
-                        <div class="form-group">
-                            <label>Delivery Hours</label>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="time" name="food_delivery_start" value="{{ fr.delivery_start }}" style="width: 50%;">
-                                <span style="color:#64748b;">to</span>
-                                <input type="time" name="food_delivery_end" value="{{ fr.delivery_end }}" style="width: 50%;">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3. EQUIPMENT RENTALS -->
-                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
-                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-chair"></i> 3. Equipment Rentals</h4>
-                    <p class="field-hint" style="margin-bottom: 1.25rem;">Rules for tables, chairs, chafing dishes, etc.</p>
-                    <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label>Rental Duration (Min-Max Hours)</label>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="number" name="equipment_min_rental" value="{{ er.min_rental_hours }}" min="1" style="width: 50%;">
-                                <span style="color:#64748b;">to</span>
-                                <input type="number" name="equipment_max_rental" value="{{ er.max_rental_hours }}" min="1" style="width: 50%;">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Pickup / Return Hours</label>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="time" name="equipment_pickup_start" value="{{ er.pickup_start }}" style="width: 50%;">
-                                <span style="color:#64748b;">to</span>
-                                <input type="time" name="equipment_pickup_end" value="{{ er.pickup_end }}" style="width: 50%;">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 4. ADDITIONAL SERVICES -->
-                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #e2e8f0; border-radius: 8px;">
-                    <h4 style="margin-top:0; color: #1e293b;"><i class="fas fa-user-tie"></i> 4. Additional Services</h4>
-                    <p class="field-hint" style="margin-bottom: 1.25rem;">Rules for hiring waitstaff, hosts, bartenders, etc.</p>
-                    <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label>Service Duration (Min-Max Hours)</label>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="number" name="service_min_duration" value="{{ sr.min_duration_hours }}" min="1" style="width: 50%;">
-                                <span style="color:#64748b;">to</span>
-                                <input type="number" name="service_max_duration" value="{{ sr.max_duration_hours }}" min="1" style="width: 50%;">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Service Hours</label>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="time" name="service_earliest_start" value="{{ sr.earliest_start }}" style="width: 50%;">
-                                <span style="color:#64748b;">to</span>
-                                <input type="time" name="service_latest_end" value="{{ sr.latest_end }}" style="width: 50%;">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Global Overrides -->
-                <div class="settings-card-minimal" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #fee2e2; border-radius: 8px; background: #fef2f2;">
-                    <h4 style="margin-top:0; color: #991b1b;"><i class="fas fa-umbrella-beach"></i> Holiday Schedule / Blocked Days</h4>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <input type="text" name="holiday_schedule" value="{{ bk.get('holiday_schedule', '') }}" placeholder="e.g. Dec 24, Dec 25, Jan 1">
-                        <span class="field-hint" style="color: #b91c1c;">Comma-separated list of recurring holidays where you don't accept ANY bookings.</span>
-                    </div>
-                </div>
             </div>
-            <!-- End Section: Booking & Availability -->
+            <!-- End Section: Booking/Event Availability -->
 
 
             <!-- Section: Brand Colors & Style -->
             <div class="settings-section" id="section-brand">
-                    <div class="brand-management-grid">
+                <!-- Profile Media: Business Logo & Cover Image -->
+                <div class="business-details-card" style="margin-bottom: 1.5rem;">
+                    <div class="business-details-header">
+                        <h4 class="business-details-title">
+                            <i class="fas fa-images" style="color: var(--primary-color);"></i> Profile Media &amp; Visual Assets
+                        </h4>
+                        <p class="business-details-subtitle">Manage the logo and cover image displayed on your public profile, checkout, and contracts.</p>
+                    </div>
+
+                    <div class="branding-grid">
+                        <!-- Card A: Business Logo -->
+                        <div class="branding-card">
+                            <div class="branding-card-header">
+                                <h5 class="branding-card-title">
+                                    <i class="fas fa-image" style="color: var(--primary-color);"></i> Business Logo
+                                </h5>
+                                <span id="logoStatusBadge" class="{% if profile.logo_url %}status-badge-saved{% else %}status-badge-empty{% endif %}">
+                                    {% if profile.logo_url %}<i class="fas fa-check-circle"></i> Saved{% else %}No Logo{% endif %}
+                                </span>
+                            </div>
+
+                            <div class="logo-preview-box">
+                                <img id="logoPreviewImg" 
+                                     src="{{ profile.logo_url if profile.logo_url else '' }}" 
+                                     alt="Business Logo" 
+                                     style="width: 100%; height: 100%; object-fit: cover; {% if not profile.logo_url %}display: none;{% endif %}"
+                                     onerror="handleImageFallback(this, 'logo')">
+                                <div id="logoPlaceholder" style="text-align: center; color: #94a3b8; font-size: 0.78rem; {% if profile.logo_url %}display: none;{% endif %}">
+                                    <i class="fas fa-camera" style="font-size: 1.8rem; display: block; margin-bottom: 6px; color: #cbd5e1;"></i>
+                                    Upload Logo
+                                </div>
+                            </div>
+
+                            <div class="branding-actions-row">
+                                <input type="file" name="logo" id="logoFileInput" accept=".png,.jpg,.jpeg,.webp" style="display: none;" onchange="previewSelectedImage(this, 'logo')">
+                                <input type="hidden" name="remove_logo" id="removeLogoFlag" value="0">
+                                
+                                <button type="button" class="btn-media-replace" onclick="document.getElementById('logoFileInput').click()">
+                                    <i class="fas fa-arrow-up-from-bracket"></i> <span id="logoActionText">{% if profile.logo_url %}Change / Replace Logo{% else %}Upload Logo{% endif %}</span>
+                                </button>
+
+                                <button type="button" id="btnRemoveLogo" class="btn-media-remove" onclick="removeImage('logo')" style="display: {% if profile.logo_url %}inline-flex{% else %}none{% endif %};">
+                                    <i class="fas fa-trash-can"></i> Remove Logo
+                                </button>
+                            </div>
+
+                            <div class="branding-helper-text">
+                                Used on your public profile, checkout, and contracts. <span style="font-weight: 600; color: #475569;">Accepted: PNG, JPG, WebP</span>.
+                            </div>
+                        </div>
+
+                        <!-- Card B: Cover Image -->
+                        <div class="branding-card">
+                            <div class="branding-card-header">
+                                <h5 class="branding-card-title">
+                                    <i class="fas fa-panorama" style="color: var(--primary-color);"></i> Cover Image
+                                </h5>
+                                <span id="coverStatusBadge" class="{% if profile.cover_image_url %}status-badge-saved{% else %}status-badge-empty{% endif %}">
+                                    {% if profile.cover_image_url %}<i class="fas fa-check-circle"></i> Saved{% else %}No Cover{% endif %}
+                                </span>
+                            </div>
+
+                            <div class="cover-preview-box">
+                                <img id="coverPreviewImg" 
+                                     src="{{ profile.cover_image_url if profile.cover_image_url else '' }}" 
+                                     alt="Cover Image" 
+                                     style="width: 100%; height: 100%; object-fit: cover; {% if not profile.cover_image_url %}display: none;{% endif %}"
+                                     onerror="handleImageFallback(this, 'cover')">
+                                <div id="coverPlaceholder" style="text-align: center; color: #94a3b8; font-size: 0.8rem; {% if profile.cover_image_url %}display: none;{% endif %}">
+                                    <i class="fas fa-mountain-sun" style="font-size: 2rem; display: block; margin-bottom: 6px; color: #cbd5e1;"></i>
+                                    Upload Cover Image
+                                </div>
+                            </div>
+
+                            <div class="branding-actions-row">
+                                <input type="file" name="cover_image" id="coverFileInput" accept=".png,.jpg,.jpeg,.webp" style="display: none;" onchange="previewSelectedImage(this, 'cover')">
+                                <input type="hidden" name="remove_cover_image" id="removeCoverFlag" value="0">
+
+                                <button type="button" class="btn-media-replace" onclick="document.getElementById('coverFileInput').click()">
+                                    <i class="fas fa-arrow-up-from-bracket"></i> <span id="coverActionText">{% if profile.cover_image_url %}Change / Replace Cover{% else %}Upload Cover{% endif %}</span>
+                                </button>
+
+                                <button type="button" id="btnRemoveCover" class="btn-media-remove" onclick="removeImage('cover')" style="display: {% if profile.cover_image_url %}inline-flex{% else %}none{% endif %};">
+                                    <i class="fas fa-trash-can"></i> Remove Cover
+                                </button>
+                            </div>
+
+                            <div class="branding-helper-text">
+                                Displayed at the top of your public profile. <span style="font-weight: 600; color: #475569;">Accepted: PNG, JPG, WebP</span>.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="brand-management-grid">
                         <div class="brand-config-main-col">
                             <!-- Theme & Colors Section -->
                             <div class="brand-settings-card">
@@ -1165,46 +1466,69 @@
 
             <!-- Section: Verification Center -->
             <div class="settings-section" id="section-verification">
-                    <!-- Status Section -->
-                    <div class="verification-status-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between;">
+                    
+                    <!-- Section Header -->
+                    <div class="settings-section-intro">
+                        <h3><i class="fas fa-shield-halved" style="color: var(--primary-color);"></i> Verification Center</h3>
+                        <p>Submit and manage the documents required to verify your identity and business.</p>
+                    </div>
+
+                    <!-- Top Status & Privacy Banner -->
+                    <div class="verif-summary-banner">
                         <div>
-                            <h4 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: #1e293b;">Verification Status</h4>
-                            <p style="margin: 0; font-size: 0.9rem; color: #64748b;">Current compliance standing of your business.</p>
-                            {% if profile.admin_remarks %}
-                            <div style="margin-top: 1rem; padding: 0.75rem; background: #fee2e2; border-left: 4px solid #ef4444; border-radius: 4px; font-size: 0.85rem; color: #7f1d1d;">
-                                <strong>Admin Remarks:</strong> {{ profile.admin_remarks }}
+                            <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Verification Status</div>
+                            <div style="font-size: 1.1rem; font-weight: 800; color: #1e293b;">
+                                Compliance &amp; Standing
                             </div>
-                            {% endif %}
                         </div>
                         <div>
                             {% set v_status = profile.verification_status or 'Not Submitted' %}
-                            {% set status_colors = {
-                                'Not Submitted': '#94a3b8',
-                                'Pending Review': '#eab308',
-                                'Requires Revision': 'var(--primary-color)',
-                                'Verified': 'var(--accent-color)',
-                                'Rejected': '#ef4444',
-                                'Suspended': '#7f1d1d'
-                            } %}
-                            <span style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 999px; font-weight: 700; font-size: 0.9rem; background: {{ status_colors.get(v_status, '#94a3b8') }}20; color: {{ status_colors.get(v_status, '#94a3b8') }}; border: 1px solid {{ status_colors.get(v_status, '#94a3b8') }}50;">
-                                <i class="fas fa-circle" style="font-size: 0.5rem;"></i> {{ v_status }}
-                            </span>
+                            {% if v_status == 'Verified' %}
+                                <span class="status-badge-saved" style="font-size: 0.88rem; padding: 6px 14px;">
+                                    <i class="fas fa-check-circle"></i> Verified
+                                </span>
+                            {% elif v_status == 'Pending Review' %}
+                                <span style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; font-weight: 700; padding: 6px 14px; border-radius: 99px; background: #fef9c3; color: #a16207; border: 1px solid #fde047;">
+                                    <i class="fas fa-hourglass-half"></i> Pending Review
+                                </span>
+                            {% else %}
+                                <span style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; font-weight: 700; padding: 6px 14px; border-radius: 99px; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca;">
+                                    <i class="fas fa-circle-exclamation"></i> Action Required
+                                </span>
+                            {% endif %}
                         </div>
                     </div>
 
+                    <!-- Private Document Notice -->
+                    <div class="verif-private-notice">
+                        <i class="fas fa-lock" style="font-size: 1rem; color: #15803d; flex-shrink: 0;"></i>
+                        <span>These documents are private and are only used for verification. They are not visible to customers.</span>
+                    </div>
+
+                    {% if profile.admin_remarks %}
+                    <div style="margin-bottom: 1.5rem; padding: 0.85rem 1.25rem; background: #fee2e2; border-left: 4px solid #ef4444; border-radius: 8px; font-size: 0.85rem; color: #7f1d1d;">
+                        <strong><i class="fas fa-circle-exclamation"></i> Admin Remarks:</strong> {{ profile.admin_remarks }}
+                    </div>
+                    {% endif %}
+
                     <!-- Upload Forms via AJAX -->
                     <div id="verificationFormsContainer">
-                        <div class="form-row-two-col">
-                            <!-- Identity Verification -->
-                            <div class="brand-settings-card">
-                                <div class="brand-card-header">
-                                    <i class="fas fa-id-card"></i>
-                                    <span>Identity Verification</span>
+                        <div class="grid-two-col">
+                            
+                            <!-- CARD 1: Identity Verification -->
+                            <div class="branding-card">
+                                <div class="branding-card-header">
+                                    <h5 class="branding-card-title">
+                                        <i class="fas fa-id-card" style="color: var(--primary-color);"></i> Identity Verification
+                                    </h5>
+                                    <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 99px;">Step 1 of 2</span>
                                 </div>
-                                <div class="brand-card-body">
-                                    <div class="form-group">
-                                        <label>ID Type</label>
-                                        <select id="verif_id_type" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
+
+                                <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                                    <!-- ID Type Selection -->
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">ID Type <span style="color: #ef4444;">*</span></label>
+                                        <select id="verif_id_type" class="form-control" style="width:100%; padding:0.65rem 0.85rem; border:1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #1e293b; background: #fff;">
                                             <option value="National ID">National ID</option>
                                             <option value="Driver's License">Driver's License</option>
                                             <option value="Passport">Passport</option>
@@ -1213,272 +1537,346 @@
                                             <option value="Voter's ID">Voter's ID</option>
                                         </select>
                                     </div>
+
                                     <!-- Front ID -->
-                                    <div class="form-group" id="group_verif_id_front">
-                                        <label>Front ID Image *</label>
+                                    <div class="form-group" id="group_verif_id_front" style="margin-bottom: 0;">
+                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">Front ID Image <span style="color: #ef4444;">*</span></label>
                                         {% if profile.gov_id_url or (identity and identity.document_url) %}
                                         {% set doc_url = profile.gov_id_url or (identity.document_url if identity else '') %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
-                                        <div class="existing-doc-card" id="card_verif_id_front" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;">
-                                            <div style="display: flex; align-items: center; gap: 8px;">
-                                                <i class="fas fa-check-circle" style="color: #10b981; font-size: 1.1rem;"></i>
+                                        <div class="uploaded-doc-item" id="card_verif_id_front">
+                                            <div class="uploaded-doc-info">
+                                                <div class="uploaded-doc-icon"><i class="fas fa-check-circle"></i></div>
                                                 <div>
                                                     <div style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Uploaded Document</div>
                                                     <div style="font-size: 0.75rem; color: #64748b;">Government ID (Front)</div>
                                                 </div>
                                             </div>
-                                            <div style="display: flex; align-items: center; gap: 6px;">
-                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem;">
+                                            <div class="uploaded-doc-actions">
+                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
                                                     <i class="fas fa-external-link-alt"></i> View File
                                                 </a>
-                                                <button type="button" onclick="enableFileReplacement('verif_id_front')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid #cbd5e1; font-size: 0.8rem; cursor: pointer;">
+                                                <button type="button" onclick="enableFileReplacement('verif_id_front')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
                                                     <i class="fas fa-sync-alt"></i> Replace File
                                                 </button>
                                             </div>
                                         </div>
                                         <div id="wrapper_verif_id_front" style="display: none;">
-                                            <div style="display: flex; align-items: center; gap: 6px;">
-                                                <input type="file" id="verif_id_front" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input" style="flex: 1;">
-                                                <button type="button" onclick="cancelFileReplacement('verif_id_front')" class="btn btn-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">Cancel</button>
+                                            <div class="upload-dropzone-box" onclick="document.getElementById('verif_id_front').click()">
+                                                <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+                                                <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Choose replacement front ID</span>
+                                                <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF</span>
+                                                <input type="file" id="verif_id_front" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_id_front')">
+                                                <div id="selected_badge_verif_id_front" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
+                                                    <i class="fas fa-check"></i> <span class="selected-filename"></span>
+                                                </div>
                                             </div>
+                                            <button type="button" onclick="cancelFileReplacement('verif_id_front')" class="btn btn-sm" style="margin-top: 6px; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; color: #64748b;">Keep Existing File</button>
                                         </div>
                                         {% else %}
-                                        <input type="file" id="verif_id_front" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
+                                        <div class="upload-dropzone-box" onclick="document.getElementById('verif_id_front').click()">
+                                            <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+                                            <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Upload Front ID</span>
+                                            <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF (Max 10MB)</span>
+                                            <input type="file" id="verif_id_front" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_id_front')">
+                                            <div id="selected_badge_verif_id_front" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
+                                                <i class="fas fa-check"></i> <span class="selected-filename"></span>
+                                            </div>
+                                        </div>
                                         {% endif %}
                                     </div>
 
                                     <!-- Back ID -->
-                                    <div class="form-group" id="group_verif_id_back">
-                                        <label>Back ID Image (Optional)</label>
+                                    <div class="form-group" id="group_verif_id_back" style="margin-bottom: 0;">
+                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">Back ID Image <span style="font-size: 0.75rem; color: #94a3b8; font-weight: normal;">(Optional)</span></label>
                                         {% if identity and identity.document_back_url %}
                                         {% set doc_url = identity.document_back_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
-                                        <div class="existing-doc-card" id="card_verif_id_back" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;">
-                                            <div style="display: flex; align-items: center; gap: 8px;">
-                                                <i class="fas fa-check-circle" style="color: #10b981; font-size: 1.1rem;"></i>
+                                        <div class="uploaded-doc-item" id="card_verif_id_back">
+                                            <div class="uploaded-doc-info">
+                                                <div class="uploaded-doc-icon"><i class="fas fa-check-circle"></i></div>
                                                 <div>
                                                     <div style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Uploaded Document</div>
                                                     <div style="font-size: 0.75rem; color: #64748b;">Government ID (Back)</div>
                                                 </div>
                                             </div>
-                                            <div style="display: flex; align-items: center; gap: 6px;">
-                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem;">
+                                            <div class="uploaded-doc-actions">
+                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
                                                     <i class="fas fa-external-link-alt"></i> View File
                                                 </a>
-                                                <button type="button" onclick="enableFileReplacement('verif_id_back')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid #cbd5e1; font-size: 0.8rem; cursor: pointer;">
+                                                <button type="button" onclick="enableFileReplacement('verif_id_back')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
                                                     <i class="fas fa-sync-alt"></i> Replace File
                                                 </button>
                                             </div>
                                         </div>
                                         <div id="wrapper_verif_id_back" style="display: none;">
-                                            <div style="display: flex; align-items: center; gap: 6px;">
-                                                <input type="file" id="verif_id_back" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input" style="flex: 1;">
-                                                <button type="button" onclick="cancelFileReplacement('verif_id_back')" class="btn btn-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">Cancel</button>
+                                            <div class="upload-dropzone-box" onclick="document.getElementById('verif_id_back').click()">
+                                                <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+                                                <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Choose replacement back ID</span>
+                                                <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF</span>
+                                                <input type="file" id="verif_id_back" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_id_back')">
+                                                <div id="selected_badge_verif_id_back" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
+                                                    <i class="fas fa-check"></i> <span class="selected-filename"></span>
+                                                </div>
                                             </div>
+                                            <button type="button" onclick="cancelFileReplacement('verif_id_back')" class="btn btn-sm" style="margin-top: 6px; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; color: #64748b;">Keep Existing File</button>
                                         </div>
                                         {% else %}
-                                        <input type="file" id="verif_id_back" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
+                                        <div class="upload-dropzone-box" onclick="document.getElementById('verif_id_back').click()">
+                                            <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+                                            <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Upload Back ID (Optional)</span>
+                                            <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF</span>
+                                            <input type="file" id="verif_id_back" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_id_back')">
+                                            <div id="selected_badge_verif_id_back" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
+                                                <i class="fas fa-check"></i> <span class="selected-filename"></span>
+                                            </div>
+                                        </div>
                                         {% endif %}
                                     </div>
 
-                                    <!-- Selfie Photo -->
-                                    <div class="form-group" id="group_verif_selfie">
-                                        <label>Selfie Photo (Liveness Check) *</label>
+                                    <!-- Selfie / Liveness Check -->
+                                    <div class="form-group" id="group_verif_selfie" style="margin-bottom: 0;">
+                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">Selfie / Liveness Check <span style="color: #ef4444;">*</span></label>
                                         {% if identity and identity.selfie_url %}
                                         {% set doc_url = identity.selfie_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
-                                        <div class="existing-doc-card" id="card_verif_selfie" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;">
-                                            <div style="display: flex; align-items: center; gap: 8px;">
-                                                <i class="fas fa-check-circle" style="color: #10b981; font-size: 1.1rem;"></i>
+                                        <div class="uploaded-doc-item" id="card_verif_selfie">
+                                            <div class="uploaded-doc-info">
+                                                <div class="uploaded-doc-icon"><i class="fas fa-check-circle"></i></div>
                                                 <div>
-                                                    <div style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Uploaded Selfie</div>
-                                                    <div style="font-size: 0.75rem; color: #64748b;">Liveness Photo</div>
+                                                    <div style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Uploaded Document</div>
+                                                    <div style="font-size: 0.75rem; color: #64748b;">Selfie Photo (Liveness Check)</div>
                                                 </div>
                                             </div>
-                                            <div style="display: flex; align-items: center; gap: 6px;">
-                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem;">
+                                            <div class="uploaded-doc-actions">
+                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
                                                     <i class="fas fa-external-link-alt"></i> View File
                                                 </a>
-                                                <button type="button" onclick="enableFileReplacement('verif_selfie')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid #cbd5e1; font-size: 0.8rem; cursor: pointer;">
+                                                <button type="button" onclick="enableFileReplacement('verif_selfie')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
                                                     <i class="fas fa-sync-alt"></i> Replace File
                                                 </button>
                                             </div>
                                         </div>
                                         <div id="wrapper_verif_selfie" style="display: none;">
-                                            <div style="display: flex; align-items: center; gap: 6px;">
-                                                <input type="file" id="verif_selfie" accept="image/jpeg,image/png" capture="user" class="form-file-input" style="flex: 1;">
-                                                <button type="button" onclick="cancelFileReplacement('verif_selfie')" class="btn btn-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">Cancel</button>
+                                            <div class="upload-dropzone-box" onclick="document.getElementById('verif_selfie').click()">
+                                                <i class="fas fa-camera" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+                                                <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Retake or Upload Selfie</span>
+                                                <span style="font-size: 0.72rem; color: #94a3b8;">Clear face photo, JPG or PNG</span>
+                                                <input type="file" id="verif_selfie" accept="image/jpeg,image/png" capture="user" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_selfie')">
+                                                <div id="selected_badge_verif_selfie" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
+                                                    <i class="fas fa-check"></i> <span class="selected-filename"></span>
+                                                </div>
                                             </div>
+                                            <button type="button" onclick="cancelFileReplacement('verif_selfie')" class="btn btn-sm" style="margin-top: 6px; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; color: #64748b;">Keep Existing File</button>
                                         </div>
                                         {% else %}
-                                        <input type="file" id="verif_selfie" accept="image/jpeg,image/png" capture="user" class="form-file-input">
+                                        <div class="upload-dropzone-box" onclick="document.getElementById('verif_selfie').click()">
+                                            <i class="fas fa-camera" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+                                            <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Upload Selfie / Liveness Photo</span>
+                                            <span style="font-size: 0.72rem; color: #94a3b8;">Clear face photo, JPG or PNG</span>
+                                            <input type="file" id="verif_selfie" accept="image/jpeg,image/png" capture="user" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_selfie')">
+                                            <div id="selected_badge_verif_selfie" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
+                                                <i class="fas fa-check"></i> <span class="selected-filename"></span>
+                                            </div>
+                                        </div>
                                         {% endif %}
                                     </div>
+
                                 </div>
                             </div>
 
-                            <!-- Business Verification -->
-                            <div class="brand-settings-card">
-                                <div class="brand-card-header">
-                                    <i class="fas fa-file-contract"></i>
-                                    <span>Business Verification</span>
+                            <!-- CARD 2: Business Verification -->
+                            <div class="branding-card">
+                                <div class="branding-card-header">
+                                    <h5 class="branding-card-title">
+                                        <i class="fas fa-file-contract" style="color: var(--primary-color);"></i> Business Verification
+                                    </h5>
+                                    <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 99px;">Step 2 of 2</span>
                                 </div>
-                                <div class="brand-card-body">
+
+                                <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                                    
                                     <!-- Business Permit -->
-                                    <div class="form-group" id="group_verif_permit">
-                                        <label>Business Permit *</label>
+                                    <div class="form-group" id="group_verif_permit" style="margin-bottom: 0;">
+                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">Business / Mayor's Permit <span style="color: #ef4444;">*</span></label>
                                         {% if profile.permit_url %}
                                         {% set doc_url = profile.permit_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
-                                        <div class="existing-doc-card" id="card_verif_permit" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;">
-                                            <div style="display: flex; align-items: center; gap: 8px;">
-                                                <i class="fas fa-check-circle" style="color: #10b981; font-size: 1.1rem;"></i>
+                                        <div class="uploaded-doc-item" id="card_verif_permit">
+                                            <div class="uploaded-doc-info">
+                                                <div class="uploaded-doc-icon"><i class="fas fa-check-circle"></i></div>
                                                 <div>
                                                     <div style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Uploaded Document</div>
                                                     <div style="font-size: 0.75rem; color: #64748b;">Business / Mayor's Permit</div>
                                                 </div>
                                             </div>
-                                            <div style="display: flex; align-items: center; gap: 6px;">
-                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem;">
+                                            <div class="uploaded-doc-actions">
+                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
                                                     <i class="fas fa-external-link-alt"></i> View File
                                                 </a>
-                                                <button type="button" onclick="enableFileReplacement('verif_permit')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid #cbd5e1; font-size: 0.8rem; cursor: pointer;">
+                                                <button type="button" onclick="enableFileReplacement('verif_permit')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
                                                     <i class="fas fa-sync-alt"></i> Replace File
                                                 </button>
                                             </div>
                                         </div>
                                         <div id="wrapper_verif_permit" style="display: none;">
-                                            <div style="display: flex; align-items: center; gap: 6px;">
-                                                <input type="file" id="verif_permit" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input" style="flex: 1;">
-                                                <button type="button" onclick="cancelFileReplacement('verif_permit')" class="btn btn-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">Cancel</button>
+                                            <div class="upload-dropzone-box" onclick="document.getElementById('verif_permit').click()">
+                                                <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+                                                <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Choose replacement permit</span>
+                                                <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF</span>
+                                                <input type="file" id="verif_permit" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_permit')">
+                                                <div id="selected_badge_verif_permit" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
+                                                    <i class="fas fa-check"></i> <span class="selected-filename"></span>
+                                                </div>
                                             </div>
+                                            <button type="button" onclick="cancelFileReplacement('verif_permit')" class="btn btn-sm" style="margin-top: 6px; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; color: #64748b;">Keep Existing File</button>
                                         </div>
                                         {% else %}
-                                        <input type="file" id="verif_permit" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
+                                        <div class="upload-dropzone-box" onclick="document.getElementById('verif_permit').click()">
+                                            <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+                                            <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Upload Business / Mayor's Permit</span>
+                                            <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF (Max 10MB)</span>
+                                            <input type="file" id="verif_permit" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_permit')">
+                                            <div id="selected_badge_verif_permit" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
+                                                <i class="fas fa-check"></i> <span class="selected-filename"></span>
+                                            </div>
+                                        </div>
                                         {% endif %}
                                     </div>
-                                    <div class="form-group">
-                                        <label>Permit Expiration Date</label>
-                                        <input type="date" id="verif_permit_expiry" value="{{ profile.permit_expiry_date or '' }}" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
+
+                                    <!-- Permit Expiration Date -->
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">Permit Expiration Date</label>
+                                        <input type="date" id="verif_permit_expiry" value="{{ profile.permit_expiry_date or '' }}" class="form-control" style="width:100%; padding:0.65rem 0.85rem; border:1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #1e293b; background: #fff;" onchange="checkPermitExpiryWarning(this.value)">
+                                        
+                                        <!-- Permit Expired Alert Banner -->
+                                        <div id="permitExpiredWarning" class="permit-expired-warning" style="display: none;">
+                                            <i class="fas fa-triangle-exclamation"></i>
+                                            <span>Your permit has expired. Please upload a valid document.</span>
+                                        </div>
                                     </div>
 
                                     <!-- DTI Registration -->
-                                    <div class="form-group" id="group_verif_dti">
-                                        <label>DTI Registration (Optional)</label>
+                                    <div class="form-group" id="group_verif_dti" style="margin-bottom: 0;">
+                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">DTI Registration <span style="font-size: 0.75rem; color: #94a3b8; font-weight: normal;">(Optional)</span></label>
                                         {% if profile.dti_url %}
                                         {% set doc_url = profile.dti_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
-                                        <div class="existing-doc-card" id="card_verif_dti" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;">
-                                            <div style="display: flex; align-items: center; gap: 8px;">
-                                                <i class="fas fa-check-circle" style="color: #10b981; font-size: 1.1rem;"></i>
+                                        <div class="uploaded-doc-item" id="card_verif_dti">
+                                            <div class="uploaded-doc-info">
+                                                <div class="uploaded-doc-icon"><i class="fas fa-check-circle"></i></div>
                                                 <div>
                                                     <div style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Uploaded Document</div>
-                                                    <div style="font-size: 0.75rem; color: #64748b;">DTI Registration</div>
+                                                    <div style="font-size: 0.75rem; color: #64748b;">DTI Registration Certificate</div>
                                                 </div>
                                             </div>
-                                            <div style="display: flex; align-items: center; gap: 6px;">
-                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem;">
+                                            <div class="uploaded-doc-actions">
+                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
                                                     <i class="fas fa-external-link-alt"></i> View File
                                                 </a>
-                                                <button type="button" onclick="enableFileReplacement('verif_dti')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid #cbd5e1; font-size: 0.8rem; cursor: pointer;">
+                                                <button type="button" onclick="enableFileReplacement('verif_dti')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
                                                     <i class="fas fa-sync-alt"></i> Replace File
                                                 </button>
                                             </div>
                                         </div>
                                         <div id="wrapper_verif_dti" style="display: none;">
-                                            <div style="display: flex; align-items: center; gap: 6px;">
-                                                <input type="file" id="verif_dti" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input" style="flex: 1;">
-                                                <button type="button" onclick="cancelFileReplacement('verif_dti')" class="btn btn-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">Cancel</button>
+                                            <div class="upload-dropzone-box" onclick="document.getElementById('verif_dti').click()">
+                                                <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+                                                <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Choose replacement DTI file</span>
+                                                <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF</span>
+                                                <input type="file" id="verif_dti" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_dti')">
+                                                <div id="selected_badge_verif_dti" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
+                                                    <i class="fas fa-check"></i> <span class="selected-filename"></span>
+                                                </div>
                                             </div>
+                                            <button type="button" onclick="cancelFileReplacement('verif_dti')" class="btn btn-sm" style="margin-top: 6px; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; color: #64748b;">Keep Existing File</button>
                                         </div>
                                         {% else %}
-                                        <input type="file" id="verif_dti" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
+                                        <div class="upload-dropzone-box" onclick="document.getElementById('verif_dti').click()">
+                                            <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+                                            <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Upload DTI Registration</span>
+                                            <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF (Max 10MB)</span>
+                                            <input type="file" id="verif_dti" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_dti')">
+                                            <div id="selected_badge_verif_dti" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
+                                                <i class="fas fa-check"></i> <span class="selected-filename"></span>
+                                            </div>
+                                        </div>
                                         {% endif %}
                                     </div>
 
                                     <!-- BIR Registration -->
-                                    <div class="form-group" id="group_verif_bir">
-                                        <label>BIR Registration (Optional)</label>
+                                    <div class="form-group" id="group_verif_bir" style="margin-bottom: 0;">
+                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">BIR Registration <span style="font-size: 0.75rem; color: #94a3b8; font-weight: normal;">(Optional)</span></label>
                                         {% if profile.bir_url %}
                                         {% set doc_url = profile.bir_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
-                                        <div class="existing-doc-card" id="card_verif_bir" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;">
-                                            <div style="display: flex; align-items: center; gap: 8px;">
-                                                <i class="fas fa-check-circle" style="color: #10b981; font-size: 1.1rem;"></i>
+                                        <div class="uploaded-doc-item" id="card_verif_bir">
+                                            <div class="uploaded-doc-info">
+                                                <div class="uploaded-doc-icon"><i class="fas fa-check-circle"></i></div>
                                                 <div>
                                                     <div style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Uploaded Document</div>
-                                                    <div style="font-size: 0.75rem; color: #64748b;">BIR Certificate</div>
+                                                    <div style="font-size: 0.75rem; color: #64748b;">BIR Certificate of Registration</div>
                                                 </div>
                                             </div>
-                                            <div style="display: flex; align-items: center; gap: 6px;">
-                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem;">
+                                            <div class="uploaded-doc-actions">
+                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
                                                     <i class="fas fa-external-link-alt"></i> View File
                                                 </a>
-                                                <button type="button" onclick="enableFileReplacement('verif_bir')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid #cbd5e1; font-size: 0.8rem; cursor: pointer;">
+                                                <button type="button" onclick="enableFileReplacement('verif_bir')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
                                                     <i class="fas fa-sync-alt"></i> Replace File
                                                 </button>
                                             </div>
                                         </div>
                                         <div id="wrapper_verif_bir" style="display: none;">
-                                            <div style="display: flex; align-items: center; gap: 6px;">
-                                                <input type="file" id="verif_bir" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input" style="flex: 1;">
-                                                <button type="button" onclick="cancelFileReplacement('verif_bir')" class="btn btn-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">Cancel</button>
+                                            <div class="upload-dropzone-box" onclick="document.getElementById('verif_bir').click()">
+                                                <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+                                                <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Choose replacement BIR file</span>
+                                                <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF</span>
+                                                <input type="file" id="verif_bir" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_bir')">
+                                                <div id="selected_badge_verif_bir" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
+                                                    <i class="fas fa-check"></i> <span class="selected-filename"></span>
+                                                </div>
                                             </div>
+                                            <button type="button" onclick="cancelFileReplacement('verif_bir')" class="btn btn-sm" style="margin-top: 6px; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; color: #64748b;">Keep Existing File</button>
                                         </div>
                                         {% else %}
-                                        <input type="file" id="verif_bir" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
+                                        <div class="upload-dropzone-box" onclick="document.getElementById('verif_bir').click()">
+                                            <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+                                            <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Upload BIR Registration</span>
+                                            <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF (Max 10MB)</span>
+                                            <input type="file" id="verif_bir" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_bir')">
+                                            <div id="selected_badge_verif_bir" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
+                                                <i class="fas fa-check"></i> <span class="selected-filename"></span>
+                                            </div>
+                                        </div>
                                         {% endif %}
                                     </div>
 
-                                    <!-- Mayor's Permit -->
-                                    <div class="form-group" id="group_verif_mayors">
-                                        <label>Mayor's Permit (Optional)</label>
-                                        {% if profile.mayors_permit_url %}
-                                        {% set doc_url = profile.mayors_permit_url %}
-                                        {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
-                                        <div class="existing-doc-card" id="card_verif_mayors" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;">
-                                            <div style="display: flex; align-items: center; gap: 8px;">
-                                                <i class="fas fa-check-circle" style="color: #10b981; font-size: 1.1rem;"></i>
-                                                <div>
-                                                    <div style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Uploaded Document</div>
-                                                    <div style="font-size: 0.75rem; color: #64748b;">Mayor's Permit</div>
-                                                </div>
-                                            </div>
-                                            <div style="display: flex; align-items: center; gap: 6px;">
-                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.8rem;">
-                                                    <i class="fas fa-external-link-alt"></i> View File
-                                                </a>
-                                                <button type="button" onclick="enableFileReplacement('verif_mayors')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-weight: 700; border: 1px solid #cbd5e1; font-size: 0.8rem; cursor: pointer;">
-                                                    <i class="fas fa-sync-alt"></i> Replace File
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div id="wrapper_verif_mayors" style="display: none;">
-                                            <div style="display: flex; align-items: center; gap: 6px;">
-                                                <input type="file" id="verif_mayors" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input" style="flex: 1;">
-                                                <button type="button" onclick="cancelFileReplacement('verif_mayors')" class="btn btn-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">Cancel</button>
-                                            </div>
-                                        </div>
-                                        {% else %}
-                                        <input type="file" id="verif_mayors" accept=".jpg,.jpeg,.png,.pdf" class="form-file-input">
-                                        {% endif %}
-                                    </div>
                                 </div>
                             </div>
                         </div>
                         
-                        <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
-                            <button type="button" class="btn-primary" id="btnSubmitVerification" onclick="submitVerification()" style="padding: 12px 24px; font-size: 1rem;">
-                                <i class="fas fa-paper-plane"></i> Submit Verification
+                        <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
+                            <button type="button" class="btn-primary" id="btnSubmitVerification" onclick="submitVerification()" style="padding: 10px 24px; font-size: 0.92rem; font-weight: 700; border-radius: 8px; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary-color); border: none; color: #ffffff; cursor: pointer;">
+                                <i class="fas fa-paper-plane"></i> Submit Verification Documents
                             </button>
                         </div>
                     </div>
             </div>
             <!-- End Section: Verification -->
 
-            <div class="form-footer-actions">
-                <button type="submit" class="btn-primary btn-save-changes">Save All Changes</button>
-                <a href="/caterer/dashboard" class="btn-outline btn-discard-changes">Cancel</a>
+            <!-- Sticky Bottom Action Bar -->
+            <div class="sticky-settings-action-bar">
+                <div class="changes-status-indicator" id="settingsChangesStatus">
+                    <span class="status-saved" id="settingsSavedBadge"><i class="fas fa-check-circle"></i> Changes saved successfully</span>
+                    <span class="status-unsaved" id="settingsUnsavedBadge" style="display: none;"><i class="fas fa-circle-dot"></i> Unsaved changes</span>
+                </div>
+                <div class="action-bar-buttons">
+                    <a href="/caterer/dashboard" class="btn-bar-cancel">Cancel</a>
+                    <button type="submit" id="btnSaveAllSettings" class="btn-bar-save" disabled>
+                        <i class="fas fa-floppy-disk"></i> <span>Save Changes</span>
+                    </button>
+                </div>
             </div>
             </form>
         </div>

@@ -647,5 +647,25 @@
             `WARNING: This deletion is PERMANENT and cannot be undone. Are you sure?`,
             'Delete Permanently?', 'Yes, Delete');
     }
+
+    // Global Search Filter for Archived Items
+    function filterArchives(query) {
+        const q = (query || '').toLowerCase().trim();
+        const activePane = document.querySelector('.archive-tab-pane.active') || document;
+        const cards = activePane.querySelectorAll('.archived-card, .table-pro tbody tr, .occ-card');
+
+        cards.forEach(card => {
+            const text = card.innerText.toLowerCase();
+            if (!q || text.includes(q)) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    window.addEventListener('globalSearch', function(e) {
+        filterArchives(e.detail ? e.detail.value : '');
+    });
 </script>
 {% endblock %}

@@ -2447,5 +2447,30 @@
             }
         }
     });
+
+    // Real-time live synchronization on public caterer profile
+    (function () {
+        const catererProfileId = {{ caterer.id if caterer else 0 }};
+        if (!catererProfileId) return;
+        const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const clientId = `profile_viewer_${catererProfileId}_${Math.random().toString(36).substr(2, 9)}`;
+        let ws;
+        function connectProfileWs() {
+            ws = new WebSocket(`${proto}//${location.host}/ws/${clientId}`);
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.caterer_id == catererProfileId) {
+                        if (['caterer_profile_updated', 'menu_updated', 'package_updated', 'portfolio_updated'].includes(data.type)) {
+                            // Soft refresh to show latest details/pricing/photos
+                            setTimeout(() => window.location.reload(), 1200);
+                        }
+                    }
+                } catch(e) {}
+            };
+            ws.onclose = () => setTimeout(connectProfileWs, 5000);
+        }
+        connectProfileWs();
+    })();
 </script>
 {% endblock %}

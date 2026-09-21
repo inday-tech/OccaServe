@@ -389,7 +389,8 @@ function initWebSocket() {
             // 2. Any notification-class event — instantly refresh notification badge + panel
             const notifTypes = ['notification', 'new_notification', 'Booking', 'Payment',
                                 'booking_update', 'payment_update', 'status_update',
-                                'booking_rejected', 'booking_cancelled', 'payment_rejected', 'kyc_update'];
+                                'booking_rejected', 'booking_cancelled', 'payment_rejected', 'kyc_update',
+                                'caterer_profile_updated', 'menu_updated', 'package_updated', 'portfolio_updated'];
             if (notifTypes.includes(d.type)) {
                 if (window.fetchGlobalNotifications) window.fetchGlobalNotifications(true);
             }
@@ -399,6 +400,9 @@ function initWebSocket() {
                 if (window.softRefresh) window.softRefresh();
             }, 900);
 
+            if (['caterer_profile_updated', 'menu_updated', 'package_updated', 'portfolio_updated'].includes(d.type)) {
+                refresh();
+            }
             if (d.type === 'kyc_update') {
                 if (window.showToast)
                     window.showToast(d.message || 'Your identity verification status was updated.', d.status === 'verified' ? 'success' : 'warning');

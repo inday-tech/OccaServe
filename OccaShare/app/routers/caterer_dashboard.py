@@ -445,8 +445,8 @@ async def create_manual_booking(
             else:
                 customer_name = full_name
         
-        # Address & Venue Handling with Structured Components
-        province = data.get("province", "").strip() or "Laguna"
+        # Address & Venue Handling with Structured Components (Optional for Walk-in)
+        province = data.get("province", "").strip()
         municipality = data.get("municipality", "").strip() or data.get("city_municipality", "").strip()
         barangay = data.get("barangay", "").strip()
         street_address = data.get("street_address", "").strip() or data.get("landmark", "").strip()
@@ -454,7 +454,8 @@ async def create_manual_booking(
         direct_address = data.get("address", "").strip()
         direct_venue = data.get("venue", "").strip()
 
-        # Operational Domain Check (Laguna Jurisdiction Enforcement)
+        # Venue / Address Resolution
+        clean_address = ""
         if event_type.lower() == "equipment rental":
             if not province: province = "Laguna"
             if not municipality:
@@ -463,10 +464,11 @@ async def create_manual_booking(
             if not street_address: street_address = "Caterer Premises / Walk-in Pickup"
             clean_address = direct_address or f"{street_address}, Brgy. {barangay}, {municipality}, {province}"
             venue_address = direct_venue or f"Equipment Rental — {clean_address}"
-        elif province.lower() != "laguna":
+        elif province and province.lower() != "laguna":
             raise HTTPException(status_code=400, detail="extProvince|Operational domain is restricted to Laguna Province.")
-        elif street_address and barangay and municipality and province:
-            formatted_addr_parts = [street_address, f"Brgy. {barangay}", municipality, province]
+        elif street_address and barangay and municipality:
+            prov_str = province or "Laguna"
+            formatted_addr_parts = [street_address, f"Brgy. {barangay}", municipality, prov_str]
             if postal_code:
                 formatted_addr_parts.append(postal_code)
             clean_address = ", ".join(formatted_addr_parts)
@@ -474,11 +476,14 @@ async def create_manual_booking(
         elif direct_address:
             clean_address = direct_address
             venue_address = f"{direct_venue + ' — ' if direct_venue else ''}{direct_address}"
-        elif province and municipality and barangay:
-            clean_address = f"{street_address + ', ' if street_address else ''}{barangay}, {municipality}, {province}"
+        elif municipality or barangay:
+            prov_str = province or "Laguna"
+            clean_address = f"{street_address + ', ' if street_address else ''}{barangay + ', ' if barangay else ''}{municipality}, {prov_str}"
             venue_address = f"{direct_venue + ' — ' if direct_venue else ''}{clean_address}"
         else:
-            raise HTTPException(status_code=400, detail="manAddress|Complete customer address is required.")
+            # Address is optional for walk-in; venue is used for event location
+            clean_address = ""
+            venue_address = direct_venue or "Venue to be specified"
 
         # 1. Handle User (Customer)
         target_user = None
@@ -854,6 +859,18 @@ async def create_manual_booking(
         create_default_booking_tasks(db, new_booking.id)
         
         db.commit()
+        try:
+            await manager.broadcast({
+                "type": "booking_update",
+                "booking_id": new_booking.id,
+                "caterer_id": user.caterer_profile.id,
+                "user_id": target_user.id,
+                "status": new_booking.status,
+                "message": f"Walk-in booking #{new_booking.id} created ({new_booking.event_name})"
+            })
+        except Exception as be:
+            print("Realtime broadcast error:", be)
+
         return {
             "status": "success",
             "booking_id": new_booking.id,
@@ -1626,7 +1643,7 @@ async def caterer_omni_search(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    import time
+    import urllib.parse
     query = q.lower().strip()
     if not query:
         return {"results": []}
@@ -1636,22 +1653,23 @@ async def caterer_omni_search(
     if not profile:
         return {"results": []}
 
-    # 1. Search Bookings (Reference ID, Customer Name, Event Type, Status)
+    # 1. Search Bookings (Reference ID, Customer Name, Event Type, Status, Venue)
     bookings = db.query(models.Booking).filter(
         models.Booking.caterer_id == profile.id
-    ).all()
+    ).order_by(models.Booking.event_date.desc()).all()
     
     for b in bookings:
         b_ref = str(b.id)
         b_name = f"{b.user.first_name} {b.user.last_name}".lower() if b.user else ""
         b_type = b.event_type.lower() if b.event_type else ""
         b_status = b.status.lower() if b.status else ""
+        b_venue = (b.event_address or "").lower()
         
-        if query in b_ref or query in b_name or query in b_type or query in b_status:
+        if query in b_ref or query in b_name or query in b_type or query in b_status or query in b_venue:
             results.append({
                 "type": "Booking",
-                "title": f"Booking #{b_ref} - {b_name.title()}",
-                "subtitle": f"{b.event_type.capitalize() if b.event_type else 'Event'} • {b.status.upper() if b.status else 'UNKNOWN'}",
+                "title": f"Booking #{b_ref} - {b_name.title() if b_name else 'Client'}",
+                "subtitle": f"{b.event_type.capitalize() if b.event_type else 'Event'} • {b.status.replace('_', ' ').title() if b.status else 'UNKNOWN'}",
                 "url": f"/caterer/bookings?focus={b.id}",
                 "icon": "fas fa-calendar-check"
             })
@@ -1663,12 +1681,14 @@ async def caterer_omni_search(
     ).all()
     for item in menu_items:
         i_name = item.name.lower() if item.name else ""
-        if query in i_name:
+        i_cat = (item.category or "").lower()
+        i_desc = (item.description or "").lower()
+        if query in i_name or query in i_cat or query in i_desc:
             results.append({
-                "type": "Menu Item",
+                "type": "Dish / Menu",
                 "title": item.name,
-                "subtitle": f"₱{item.price:,.2f} • {item.category}",
-                "url": "/caterer/menu",
+                "subtitle": f"₱{item.price:,.2f} • {item.category or 'General'}",
+                "url": f"/caterer/services?tab=dishes&search={urllib.parse.quote(item.name)}",
                 "icon": "fas fa-utensils"
             })
 
@@ -1679,12 +1699,13 @@ async def caterer_omni_search(
     ).all()
     for pkg in packages:
         p_name = pkg.name.lower() if pkg.name else ""
-        if query in p_name:
+        p_type = (pkg.event_type or "").lower()
+        if query in p_name or query in p_type:
             results.append({
                 "type": "Package",
                 "title": pkg.name,
-                "subtitle": f"₱{pkg.price_per_head:,.2f}/head",
-                "url": "/caterer/packages",
+                "subtitle": f"₱{pkg.price_per_head:,.2f}/head • {pkg.event_type or 'General'}",
+                "url": f"/caterer/packages?search={urllib.parse.quote(pkg.name)}",
                 "icon": "fas fa-box"
             })
             
@@ -1694,29 +1715,98 @@ async def caterer_omni_search(
     ).distinct().all()
     for c in customers:
         c_name = f"{c.first_name} {c.last_name}".lower()
-        c_email = c.email.lower()
-        if query in c_name or query in c_email:
+        c_email = (c.email or "").lower()
+        c_phone = (c.contact_number or "").lower()
+        if query in c_name or query in c_email or query in c_phone:
             results.append({
                 "type": "Customer",
                 "title": f"{c.first_name} {c.last_name}",
-                "subtitle": c.email,
-                "url": "/caterer/customers",
+                "subtitle": c.email or c.contact_number or "Customer",
+                "url": f"/caterer/customers?search={urllib.parse.quote(c.first_name)}",
                 "icon": "fas fa-user-tag"
             })
 
-    # 5. Search System Modules/Pages
+    # 5. Search Portfolio Projects
+    portfolios = db.query(models.Portfolio).filter(
+        models.Portfolio.caterer_id == profile.id,
+        models.Portfolio.is_archived == False
+    ).all()
+    for port in portfolios:
+        port_title = (port.title or "").lower()
+        port_type = (port.event_type or "").lower()
+        port_desc = (port.description or "").lower()
+        port_loc = (port.location or "").lower()
+        if query in port_title or query in port_type or query in port_desc or query in port_loc:
+            results.append({
+                "type": "Portfolio",
+                "title": port.title,
+                "subtitle": f"{port.event_type} • {port.location or 'Showcase'}",
+                "url": f"/caterer/portfolio?search={urllib.parse.quote(port.title)}",
+                "icon": "fas fa-camera-retro"
+            })
+
+    # 6. Search Ingredients & Inventory
+    try:
+        ingredients = db.query(models.Ingredient).filter(
+            models.Ingredient.caterer_id == profile.id
+        ).all()
+        for ing in ingredients:
+            ing_name = (ing.name or "").lower()
+            ing_cat = (ing.category or "").lower()
+            if query in ing_name or query in ing_cat:
+                results.append({
+                    "type": "Inventory",
+                    "title": ing.name,
+                    "subtitle": f"{ing.category or 'Ingredient'} • Stock: {ing.current_stock or 0} {ing.unit or ''}",
+                    "url": f"/caterer/ingredients?search={urllib.parse.quote(ing.name)}",
+                    "icon": "fas fa-boxes-stacked"
+                })
+    except Exception:
+        pass
+
+    # 7. Search Reviews
+    try:
+        reviews = db.query(models.Review).filter(
+            models.Review.caterer_id == profile.id
+        ).all()
+        for rev in reviews:
+            rev_comment = (rev.comment or "").lower()
+            rev_user = f"{rev.customer.first_name} {rev.customer.last_name}".lower() if rev.customer else ""
+            if query in rev_comment or query in rev_user:
+                results.append({
+                    "type": "Review",
+                    "title": f"Review by {rev.customer.first_name if rev.customer else 'Customer'} ({rev.rating}★)",
+                    "subtitle": (rev.comment[:45] + '...') if rev.comment and len(rev.comment) > 45 else (rev.comment or "Rating"),
+                    "url": "/caterer/reviews",
+                    "icon": "fas fa-star"
+                })
+    except Exception:
+        pass
+
+    # 8. Search System Modules/Pages
     pages = [
-        {"name": "Dashboard & Analytics", "url": "/caterer/dashboard", "icon": "fas fa-chart-line"},
+        {"name": "Dashboard & Overview", "url": "/caterer/dashboard", "icon": "fas fa-chart-line"},
         {"name": "Calendar & Schedule", "url": "/caterer/calendar", "icon": "fas fa-calendar-alt"},
         {"name": "Booking Management", "url": "/caterer/bookings", "icon": "fas fa-book-open"},
-        {"name": "Financials & Payouts", "url": "/caterer/financials", "icon": "fas fa-wallet"},
-        {"name": "Payments & Invoices", "url": "/caterer/payments", "icon": "fas fa-file-invoice-dollar"},
-        {"name": "Customers Database", "url": "/caterer/customers", "icon": "fas fa-users"},
-        {"name": "Menu Builder", "url": "/caterer/menu", "icon": "fas fa-utensils"},
+        {"name": "Walk-in Bookings", "url": "/caterer/bookings", "icon": "fas fa-walking"},
+        {"name": "Orders & Fulfillment", "url": "/caterer/orders", "icon": "fas fa-clipboard-list"},
+        {"name": "Services & Menu Catalog", "url": "/caterer/services", "icon": "fas fa-utensils"},
+        {"name": "Dishes & Food Menu", "url": "/caterer/menu", "icon": "fas fa-bowl-food"},
         {"name": "Package Management", "url": "/caterer/packages", "icon": "fas fa-box-open"},
+        {"name": "Portfolio & Showcase", "url": "/caterer/portfolio", "icon": "fas fa-camera-retro"},
+        {"name": "Customers Database", "url": "/caterer/customers", "icon": "fas fa-users"},
+        {"name": "Financials & Revenue", "url": "/caterer/financials", "icon": "fas fa-wallet"},
+        {"name": "Payments & Invoices", "url": "/caterer/payments", "icon": "fas fa-file-invoice-dollar"},
         {"name": "Reviews & Feedback", "url": "/caterer/reviews", "icon": "fas fa-star"},
-        {"name": "Brand Profile Settings", "url": "/caterer/profile", "icon": "fas fa-store"},
-        {"name": "Message Center", "url": "/caterer/messages", "icon": "fas fa-comments"}
+        {"name": "Business Reports & Summary", "url": "/caterer/reports", "icon": "fas fa-chart-pie"},
+        {"name": "Activity Wall & Posts", "url": "/caterer/wall", "icon": "fas fa-stream"},
+        {"name": "Ingredients & Stock", "url": "/caterer/ingredients", "icon": "fas fa-boxes-stacked"},
+        {"name": "Compliance & Verification", "url": "/caterer/compliance", "icon": "fas fa-shield-alt"},
+        {"name": "Archives & Trash", "url": "/caterer/archives", "icon": "fas fa-archive"},
+        {"name": "Brand Profile & Page", "url": "/caterer/profile", "icon": "fas fa-store"},
+        {"name": "Profile Edit & Settings", "url": "/caterer/profile/edit", "icon": "fas fa-cog"},
+        {"name": "Messages & Chat", "url": "/caterer/messages", "icon": "fas fa-comments"},
+        {"name": "Notifications", "url": "/caterer/notifications", "icon": "fas fa-bell"}
     ]
     
     for p in pages:
@@ -1724,13 +1814,13 @@ async def caterer_omni_search(
             results.append({
                 "type": "Module",
                 "title": p["name"],
-                "subtitle": "System Page",
+                "subtitle": "Caterer Navigation",
                 "url": p["url"],
                 "icon": p["icon"]
             })
 
-    # Limit results to 8 to avoid overwhelming the UI
-    return {"results": results[:8]}
+    # Return top 15 results
+    return {"results": results[:15]}
 
 @router.get("/api/dashboard-overview")
 async def dashboard_overview_api(
@@ -2724,6 +2814,7 @@ async def get_booking_details_api(
                 "name": s.get("name"),
                 "price": float(s.get("price", 0) or 0),
                 "category": s.get("category") or "Service",
+                "notes": s.get("notes") or s.get("text") or s.get("description") or "",
                 "is_selected": True
             })
     for item in (booking.selected_items or []):
@@ -4747,21 +4838,55 @@ async def validate_dish_name(
         return JSONResponse({"valid": True}) # Default to true on error so we don't block
 
 
+@router.post("/settings/remove-image")
+async def remove_profile_image(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    try:
+        data = await request.json()
+        image_type = data.get("image_type")
+        profile = user.caterer_profile
+        if not profile:
+            return JSONResponse({"success": False, "message": "Profile not found"}, status_code=404)
+        
+        if image_type == "logo":
+            profile.logo_url = None
+            db_user = db.query(models.User).filter(models.User.id == user.id).first()
+            if db_user:
+                db_user.profile_image_url = None
+        elif image_type == "cover_image":
+            profile.cover_image_url = None
+        else:
+            return JSONResponse({"success": False, "message": "Invalid image type"}, status_code=400)
+            
+        db.commit()
+        return JSONResponse({"success": True, "message": f"{image_type.replace('_', ' ').title()} removed successfully"})
+    except Exception as e:
+        db.rollback()
+        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+
 @router.post("/profile")
+@router.post("/settings")
 async def update_profile(
     request: Request,
-    business_name: str = Form(...),
-    description: str = Form(...),
+    business_name: Optional[str] = Form(None),
+    business_type: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
     city: Optional[str] = Form(None),
-    contact_phone: str = Form(...),
-    first_name: str = Form(...),
-    last_name: str = Form(...),
+    contact_phone: Optional[str] = Form(None),
+    first_name: Optional[str] = Form(None),
+    last_name: Optional[str] = Form(None),
     middle_name: Optional[str] = Form(None),
-    dob: Optional[date] = Form(None),
+    dob: Optional[str] = Form(None),
     personal_address: Optional[str] = Form(None),
     logo: Optional[UploadFile] = File(None),
     logo_brand: Optional[UploadFile] = File(None),
     cover_image: Optional[UploadFile] = File(None),
+    remove_logo: Optional[str] = Form(None),
+    remove_cover_image: Optional[str] = Form(None),
     gcash_number: Optional[str] = Form(None),
     gcash_qr: Optional[UploadFile] = File(None),
     maya_number: Optional[str] = Form(None),
@@ -4783,20 +4908,20 @@ async def update_profile(
     default_labor_cost: Optional[str] = Form("0.0"),
     default_utility_cost: Optional[str] = Form("0.0"),
     default_transport_cost: Optional[str] = Form("0.0"),
-    default_reservation_type: str = Form("fixed"),
+    default_reservation_type: Optional[str] = Form("fixed"),
     default_reservation_value: Optional[str] = Form("0.0"),
     primary_color: Optional[str] = Form(None),
     secondary_color: Optional[str] = Form(None),
     accent_color: Optional[str] = Form(None),
     highlight_color: Optional[str] = Form(None),
     font_family: Optional[str] = Form(None),
-    border_radius: str = Form("12"),
-    sidebar_mode: str = Form("full"),
-    show_platform_logo: bool = Form(True),
-    dashboard_texture: str = Form("none"),
+    border_radius: Optional[str] = Form("12"),
+    sidebar_mode: Optional[str] = Form("full"),
+    show_platform_logo: Optional[bool] = Form(True),
+    dashboard_texture: Optional[str] = Form("none"),
     latitude: Optional[str] = Form(None),
     longitude: Optional[str] = Form(None),
-    years_of_operation: Optional[int] = Form(None),
+    years_of_operation: Optional[str] = Form(None),
     contact_address: Optional[str] = Form(None),
     payout_method: Optional[str] = Form(None),
     province: Optional[str] = Form(None),
@@ -4805,29 +4930,32 @@ async def update_profile(
     province_code: Optional[str] = Form(None),
     city_code: Optional[str] = Form(None),
     brgy_code: Optional[str] = Form(None),
-    base_delivery_fee: Optional[float] = Form(150.0),
+    base_delivery_fee: Optional[str] = Form("150.0"),
     out_of_coverage_action: Optional[str] = Form("reject"),
     gallery: List[UploadFile] = File(default=[]),
     permit_file: Optional[UploadFile] = File(None),
+    availability_status: Optional[str] = Form("Available"),
     business_hours_open_time: Optional[str] = Form("08:00"),
     business_hours_close_time: Optional[str] = Form("20:00"),
     operating_days: List[str] = Form(default=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]),
+    blocked_dates: Optional[str] = Form(None),
+    max_events_per_day: Optional[str] = Form("1"),
     food_delivery_start: Optional[str] = Form("09:00"),
     food_delivery_end: Optional[str] = Form("19:00"),
-    food_lead_time_hours: Optional[int] = Form(24),
+    food_lead_time_hours: Optional[str] = Form("24"),
     equipment_pickup_start: Optional[str] = Form("08:00"),
     equipment_pickup_end: Optional[str] = Form("18:00"),
-    equipment_min_rental: Optional[int] = Form(24),
-    equipment_max_rental: Optional[int] = Form(72),
+    equipment_min_rental: Optional[str] = Form("24"),
+    equipment_max_rental: Optional[str] = Form("72"),
     service_earliest_start: Optional[str] = Form("08:00"),
     service_latest_end: Optional[str] = Form("22:00"),
-    service_min_duration: Optional[int] = Form(3),
-    service_max_duration: Optional[int] = Form(8),
-    package_min_duration: Optional[int] = Form(4),
-    package_max_duration: Optional[int] = Form(6),
-    package_setup_time: Optional[int] = Form(2),
-    package_cleanup_time: Optional[int] = Form(1),
-    package_turnover_time: Optional[int] = Form(6),
+    service_min_duration: Optional[str] = Form("3"),
+    service_max_duration: Optional[str] = Form("8"),
+    package_min_duration: Optional[str] = Form("4"),
+    package_max_duration: Optional[str] = Form("6"),
+    package_setup_time: Optional[str] = Form("2"),
+    package_cleanup_time: Optional[str] = Form("1"),
+    package_turnover_time: Optional[str] = Form("6"),
     refund_policy: Optional[str] = Form(None),
     reschedule_policy: Optional[str] = Form(None),
     late_payment_policy: Optional[str] = Form(None),
@@ -4836,7 +4964,7 @@ async def update_profile(
     social_instagram: Optional[str] = Form(None),
     social_website: Optional[str] = Form(None),
     holiday_schedule: Optional[str] = Form(None),
-    max_advance_booking_days: Optional[int] = Form(365),
+    max_advance_booking_days: Optional[str] = Form("365"),
     business_tags: Optional[str] = Form(None),
     specialties: Optional[str] = Form(None),
     languages: Optional[str] = Form(None),
@@ -4845,31 +4973,133 @@ async def update_profile(
     user: models.User = Depends(caterer_only)
 ):
     profile = user.caterer_profile
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    def _to_int(val, default=0):
+        if val is None: return default
+        try:
+            s = str(val).strip()
+            return int(s) if s else default
+        except (ValueError, TypeError):
+            return default
+
+    def _to_float(val, default=0.0):
+        if val is None: return default
+        try:
+            s = str(val).strip()
+            return float(s) if s else default
+        except (ValueError, TypeError):
+            return default
+
+    # Handle image removals if requested
+    if remove_logo in ("1", "true", "True"):
+        profile.logo_url = None
+        db_user = db.query(models.User).filter(models.User.id == user.id).first()
+        if db_user:
+            db_user.profile_image_url = None
+    if remove_cover_image in ("1", "true", "True"):
+        profile.cover_image_url = None
+
+    import json
+    from datetime import datetime as _dt
+    parsed_blocked_dates = []
+    if blocked_dates:
+        try:
+            s_val = str(blocked_dates).strip()
+            if s_val.startswith('[') or s_val.startswith('{'):
+                parsed = json.loads(s_val)
+                if isinstance(parsed, list):
+                    for item in parsed:
+                        if isinstance(item, dict) and item.get("date"):
+                            parsed_blocked_dates.append({
+                                "date": str(item["date"]).strip(),
+                                "reason": str(item.get("reason") or "Unavailable").strip()
+                            })
+                        elif isinstance(item, str) and item.strip():
+                            parsed_blocked_dates.append({
+                                "date": item.strip(),
+                                "reason": "Unavailable"
+                            })
+            else:
+                for d in s_val.split(','):
+                    d_clean = d.strip()
+                    if d_clean:
+                        parsed_blocked_dates.append({
+                            "date": d_clean,
+                            "reason": "Unavailable"
+                        })
+        except Exception as e:
+            print(f"[BLOCKED DATES PARSE ERROR] {e}")
+
+    # Synchronize blocked dates to models.Availability table
+    try:
+        db.query(models.Availability).filter(
+            models.Availability.caterer_id == profile.id,
+            models.Availability.is_available == False
+        ).delete()
+
+        for b_item in parsed_blocked_dates:
+            try:
+                b_date = _dt.strptime(b_item["date"], "%Y-%m-%d").date()
+                new_avail = models.Availability(
+                    caterer_id=profile.id,
+                    date=b_date,
+                    is_available=False,
+                    reason=b_item.get("reason", "Unavailable")
+                )
+                db.add(new_avail)
+            except Exception:
+                pass
+    except Exception as e:
+        print(f"[AVAILABILITY DB SYNC ERROR] {e}")
 
     # Update Universal Scheduling Rules
+    existing_rules = profile.scheduling_rules or {}
+    
+    event_avail = {
+        "availability_status": availability_status or "Available",
+        "operating_days": operating_days or ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        "open_time": business_hours_open_time or "08:00",
+        "close_time": business_hours_close_time or "20:00",
+        "booking_lead_time": _to_int(booking_lead_time, 3),
+        "max_advance_booking_days": _to_int(max_advance_booking_days, 180),
+        "blocked_dates": parsed_blocked_dates,
+        "max_events_per_day": _to_int(max_events_per_day, 1)
+    }
+
+    profile.booking_lead_time = _to_int(booking_lead_time, 3)
+    profile.max_bookings_per_day = _to_int(max_events_per_day, 1)
+
     profile.scheduling_rules = {
-        "business_hours": {"open_time": business_hours_open_time, "close_time": business_hours_close_time, "operating_days": operating_days},
+        **existing_rules,
+        "event_availability": event_avail,
+        "business_hours": {
+            "open_time": business_hours_open_time or "08:00", 
+            "close_time": business_hours_close_time or "20:00", 
+            "operating_days": operating_days or ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        },
         "food_rules": {
             "delivery_available": True, "pickup_available": True, 
-            "delivery_start": food_delivery_start, "delivery_end": food_delivery_end, 
-            "lead_time_hours": food_lead_time_hours
+            "delivery_start": food_delivery_start or "09:00", "delivery_end": food_delivery_end or "19:00", 
+            "lead_time_hours": _to_int(food_lead_time_hours, 24)
         },
         "equipment_rules": {
-            "pickup_start": equipment_pickup_start, "pickup_end": equipment_pickup_end, 
-            "return_start": equipment_pickup_start, "return_end": equipment_pickup_end, 
-            "min_rental_hours": equipment_min_rental, "max_rental_hours": equipment_max_rental
+            "pickup_start": equipment_pickup_start or "08:00", "pickup_end": equipment_pickup_end or "18:00", 
+            "return_start": equipment_pickup_start or "08:00", "return_end": equipment_pickup_end or "18:00", 
+            "min_rental_hours": _to_int(equipment_min_rental, 24), "max_rental_hours": _to_int(equipment_max_rental, 72)
         },
         "service_rules": {
-            "min_duration_hours": service_min_duration, "max_duration_hours": service_max_duration, 
-            "earliest_start": service_earliest_start, "latest_end": service_latest_end
+            "min_duration_hours": _to_int(service_min_duration, 3), "max_duration_hours": _to_int(service_max_duration, 8), 
+            "earliest_start": service_earliest_start or "08:00", "latest_end": service_latest_end or "22:00"
         },
         "package_rules": {
-            "min_event_duration": package_min_duration, "max_event_duration": package_max_duration, 
-            "setup_time_hours": package_setup_time, "cleanup_time_hours": package_cleanup_time,
-            "turnover_time_hours": package_turnover_time
+            "min_event_duration": _to_int(package_min_duration, 4), "max_event_duration": _to_int(package_max_duration, 6), 
+            "setup_time_hours": _to_int(package_setup_time, 2), "cleanup_time_hours": _to_int(package_cleanup_time, 1),
+            "turnover_time_hours": _to_int(package_turnover_time, 6)
         },
         "booking_rules": {
-            "max_advance_booking_days": max_advance_booking_days,
+            "max_advance_booking_days": _to_int(max_advance_booking_days, 365),
             "holiday_schedule": holiday_schedule
         },
         "policies": {
@@ -4891,25 +5121,42 @@ async def update_profile(
     }
 
     # Update User Info
-    user.first_name = first_name
-    user.last_name = last_name
-    user.middle_name = middle_name
-    if dob:
-        user.dob = dob
-    user.address = personal_address
+    if first_name is not None and first_name.strip():
+        user.first_name = first_name.strip()
+    if last_name is not None and last_name.strip():
+        user.last_name = last_name.strip()
+    if middle_name is not None:
+        user.middle_name = middle_name.strip() if middle_name.strip() else None
+    
+    if dob and str(dob).strip():
+        try:
+            from datetime import datetime as _dt
+            user.dob = _dt.strptime(str(dob).strip(), "%Y-%m-%d").date()
+        except Exception:
+            pass
+
+    if personal_address is not None:
+        user.address = personal_address.strip() if personal_address.strip() else None
 
     # Update Profile Info
-    profile.business_name = business_name
-    profile.description = description
-    if years_of_operation is not None:
-        profile.years_of_operation = years_of_operation
-    if city:
-        profile.city = city
-    if contact_address:
-        profile.contact_address = contact_address
-    profile.contact_phone = contact_phone
-    profile.payout_method = payout_method
-    profile.accepted_payment_terms = payment_terms
+    if business_name is not None and business_name.strip():
+        profile.business_name = business_name.strip()
+    if business_type is not None:
+        profile.business_type = business_type.strip()
+    if description is not None:
+        profile.description = description.strip()
+    if years_of_operation is not None and str(years_of_operation).strip():
+        profile.years_of_operation = _to_int(years_of_operation, 0)
+    if city is not None:
+        profile.city = city.strip()
+    if contact_address is not None:
+        profile.contact_address = contact_address.strip()
+    if contact_phone is not None and contact_phone.strip():
+        profile.contact_phone = contact_phone.strip()
+    if payout_method is not None:
+        profile.payout_method = payout_method
+    if payment_terms:
+        profile.accepted_payment_terms = payment_terms
 
     # Update address components
     if province_code:
@@ -4949,26 +5196,20 @@ async def update_profile(
     profile.card_holder_name = card_holder_name
     profile.card_number = card_number
     profile.cash_instructions = cash_instructions
-    try:
-        profile.booking_lead_time = int(booking_lead_time) if booking_lead_time else 7
-        profile.equipment_turnover_hours = int(package_turnover_time) if package_turnover_time else 6
-        profile.min_pax = int(min_pax) if min_pax else 50
-        profile.starting_price = float(starting_price) if starting_price else 0.0
-    except ValueError:
-        pass
+    profile.booking_lead_time = _to_int(booking_lead_time, 7)
+    profile.equipment_turnover_hours = _to_int(package_turnover_time, 6)
+    profile.min_pax = _to_int(min_pax, 50)
+    profile.starting_price = _to_float(starting_price, 0.0)
     profile.terms_and_conditions = terms_and_conditions
     profile.general_terms = general_terms
-    try:
-        profile.default_labor_cost = float(default_labor_cost) if default_labor_cost else 0.0
-        profile.default_utility_cost = float(default_utility_cost) if default_utility_cost else 0.0
-        profile.default_transport_cost = float(default_transport_cost) if default_transport_cost else 0.0
-        profile.default_reservation_value = float(default_reservation_value) if default_reservation_value else 0.0
-    except ValueError:
-        pass
-    profile.default_reservation_type = default_reservation_type
+    profile.default_labor_cost = _to_float(default_labor_cost, 0.0)
+    profile.default_utility_cost = _to_float(default_utility_cost, 0.0)
+    profile.default_transport_cost = _to_float(default_transport_cost, 0.0)
+    profile.default_reservation_value = _to_float(default_reservation_value, 0.0)
+    profile.default_reservation_type = default_reservation_type or "fixed"
     
     if base_delivery_fee is not None:
-        profile.base_delivery_fee = base_delivery_fee
+        profile.base_delivery_fee = _to_float(base_delivery_fee, 150.0)
     if out_of_coverage_action:
         profile.out_of_coverage_action = out_of_coverage_action
 
@@ -4978,13 +5219,10 @@ async def update_profile(
     profile.accent_color = accent_color
     profile.highlight_color = highlight_color
     profile.font_family = font_family
-    try:
-        profile.border_radius = int(border_radius) if border_radius else 12
-    except ValueError:
-        pass
-    profile.sidebar_mode = sidebar_mode
-    profile.show_platform_logo = show_platform_logo
-    profile.dashboard_texture = dashboard_texture
+    profile.border_radius = _to_int(border_radius, 12)
+    profile.sidebar_mode = sidebar_mode or "full"
+    profile.show_platform_logo = bool(show_platform_logo) if show_platform_logo is not None else True
+    profile.dashboard_texture = dashboard_texture or "none"
 
     if latitude and latitude.strip() != "":
         try:
@@ -8400,3 +8638,130 @@ async def set_schedule_reminder(schedule_id: int, db: Session = Depends(database
         'count': db.query(models.Notification).filter(models.Notification.user_id == user.id, models.Notification.is_read == False).count()
     })
     return {'status': 'success'}
+
+
+# ---------------------------------------------------------
+# Quick Service & Inclusion Management Endpoints
+# ---------------------------------------------------------
+
+class QuickServicePayload(BaseModel):
+    name: str
+    price: float = 0.0
+    notes: Optional[str] = None
+    category: Optional[str] = "Service"
+
+@router.post("/api/services/quick-save")
+async def quick_save_service(
+    payload: QuickServicePayload,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    caterer = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == user.id).first()
+    if not caterer:
+        raise HTTPException(status_code=403, detail="Unauthorized caterer access")
+
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Service / Inclusion name is required.")
+    
+    price = max(0.0, float(payload.price or 0.0))
+    notes = payload.notes.strip() if payload.notes else None
+    category = payload.category.strip() if payload.category else "Service"
+
+    new_service = models.Service(
+        caterer_id=caterer.id,
+        name=name,
+        selling_price=price,
+        cost=0.0,
+        description=notes,
+        category=category,
+        unit_type="per_event",
+        status="available",
+        is_archived=False,
+        is_hidden=False
+    )
+    db.add(new_service)
+    db.commit()
+    db.refresh(new_service)
+
+    return {
+        "success": True,
+        "message": "Service added successfully.",
+        "service": {
+            "id": new_service.id,
+            "name": new_service.name,
+            "selling_price": new_service.selling_price,
+            "category": new_service.category,
+            "description": new_service.description or ""
+        }
+    }
+
+@router.post("/api/services/{service_id}/quick-update")
+async def quick_update_service(
+    service_id: int,
+    payload: QuickServicePayload,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    caterer = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == user.id).first()
+    if not caterer:
+        raise HTTPException(status_code=403, detail="Unauthorized caterer access")
+
+    service = db.query(models.Service).filter(
+        models.Service.id == service_id,
+        models.Service.caterer_id == caterer.id
+    ).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Service / Inclusion name is required.")
+
+    service.name = name
+    service.selling_price = max(0.0, float(payload.price or 0.0))
+    service.description = payload.notes.strip() if payload.notes else None
+    if payload.category:
+        service.category = payload.category.strip()
+
+    db.commit()
+    db.refresh(service)
+
+    return {
+        "success": True,
+        "message": "Service updated successfully.",
+        "service": {
+            "id": service.id,
+            "name": service.name,
+            "selling_price": service.selling_price,
+            "category": service.category,
+            "description": service.description or ""
+        }
+    }
+
+@router.post("/api/services/{service_id}/quick-delete")
+async def quick_delete_service(
+    service_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    caterer = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == user.id).first()
+    if not caterer:
+        raise HTTPException(status_code=403, detail="Unauthorized caterer access")
+
+    service = db.query(models.Service).filter(
+        models.Service.id == service_id,
+        models.Service.caterer_id == caterer.id
+    ).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    # Mark as archived so existing bookings aren't broken
+    service.is_archived = True
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Service deleted successfully."
+    }
+

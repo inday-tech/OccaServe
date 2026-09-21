@@ -1813,11 +1813,11 @@ function validateSchedulingRules() {
 
     if (deliveryTimeInput && deliveryTimeInput.value) {
         resetError('delivery_time');
-        const dt = deliveryTimeInput.value;
-        const bh = rules.business_hours || {};
+        const earliestTime = (rules.food_rules && rules.food_rules.delivery_start) || (rules.service_rules && rules.service_rules.earliest_start) || '06:00';
+        const latestTime = (rules.food_rules && rules.food_rules.delivery_end) || (rules.service_rules && rules.service_rules.latest_end) || '22:00';
 
-        if (bh.open_time && dt < bh.open_time) showError('delivery_time', `Time is before operating hours (${format12Hour(bh.open_time)})`);
-        if (bh.close_time && dt > bh.close_time) showError('delivery_time', `Time is after operating hours (${format12Hour(bh.close_time)})`);
+        if (dt < earliestTime) showError('delivery_time', `Time must be at or after ${format12Hour(earliestTime)}`);
+        if (dt > latestTime) showError('delivery_time', `Time must be at or before ${format12Hour(latestTime)}`);
 
         if (deliveryDateInput && deliveryDateInput.value) {
             // Validate operating days
