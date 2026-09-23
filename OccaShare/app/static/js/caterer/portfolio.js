@@ -29,7 +29,20 @@ document.addEventListener("DOMContentLoaded", () => {
         const globalSearchInput = document.getElementById('globalSearchInput');
         if (globalSearchInput) globalSearchInput.value = searchQ;
     }
+
+    window.addEventListener('globalSearch', (e) => {
+        filterPortfolios(e.detail?.value || '');
+    });
 });
+
+function filterPortfolios(query) {
+    const q = (query || '').toLowerCase().trim();
+    const cards = document.querySelectorAll('.portfolio-card');
+    cards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = (!q || text.includes(q)) ? '' : 'none';
+    });
+}
 
 function openPortfolioModal() {
     const form = document.getElementById('portfolioForm');

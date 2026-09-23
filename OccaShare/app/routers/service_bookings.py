@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.db import database, models
 from app.core import security as auth
+from app.core.utils import is_customer_profile_complete
 from app.routers.bookings import get_current_user_from_session
 from app.core.templates import templates
 
@@ -30,6 +31,14 @@ async def service_checkout_page(
     user = get_current_user_from_session(request, db)
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/services/checkout/{caterer_id}?service_id={service_id}")
+    
+    if user.role == 'customer':
+        is_complete, _, missing = is_customer_profile_complete(user)
+        if not is_complete:
+            return RedirectResponse(
+                url=f"/customer/profile?alert=incomplete_profile&msg=Please+complete+your+profile+before+booking.",
+                status_code=303
+            )
     
     caterer = db.query(models.CatererProfile).filter(
         models.CatererProfile.id == caterer_id, 
@@ -74,6 +83,11 @@ async def service_checkout_draft(
     """
     user = get_current_user_from_session(request, db)
     if not user: return {"success": False, "message": "Unauthorized"}
+    
+    if user.role == 'customer':
+        is_complete, _, missing = is_customer_profile_complete(user)
+        if not is_complete:
+            return {"success": False, "message": f"Please complete your profile before booking. Required: {', '.join(missing)}"}
     
     try:
         service = db.query(models.Service).get(service_id)

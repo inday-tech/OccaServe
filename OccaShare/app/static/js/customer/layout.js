@@ -123,35 +123,64 @@ function initSearch() {
     let highlighted = -1;
 
     input.addEventListener('input', () => {
-        const q = input.value.trim();
+        const q = input.value;
+        const trimmed = q.trim();
+
+        // 1. Dispatch real-time globalSearch event so current page can react immediately
+        window.dispatchEvent(new CustomEvent('globalSearch', { detail: { value: q } }));
+
         clearTimeout(timer);
 
-        if (q.length < 2) { closeSearch(); return; }
-        if (q === lastQuery) return;
+        if (trimmed.length < 1) { 
+            closeSearch(); 
+            return; 
+        }
+        if (trimmed === lastQuery && panel.classList.contains('open')) return;
 
         // Show loading state immediately
         scroller.innerHTML = renderLoading();
         openPanel();
 
-        timer = setTimeout(() => runSearch(q), 200);
+        timer = setTimeout(() => runSearch(trimmed), 180);
     });
 
     input.addEventListener('keydown', e => {
-        if (!panel.classList.contains('open')) return;
-        const items = panel.querySelectorAll('.search-result-item');
-        if (!items.length) return;
+        const items = panel.querySelectorAll('.search-result-item, .search-result-action');
+
+        if (e.key === 'Escape') {
+            closeSearch();
+            input.blur();
+            return;
+        }
 
         if (e.key === 'ArrowDown') {
             e.preventDefault();
-            highlighted = Math.min(highlighted + 1, items.length - 1);
-            updateHighlight(items);
+            if (!panel.classList.contains('open')) {
+                openPanel();
+            }
+            if (items.length) {
+                highlighted = Math.min(highlighted + 1, items.length - 1);
+                updateHighlight(items);
+            }
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
-            highlighted = Math.max(highlighted - 1, 0);
-            updateHighlight(items);
-        } else if (e.key === 'Enter' && highlighted >= 0) {
-            e.preventDefault();
-            items[highlighted].click();
+            if (items.length) {
+                highlighted = Math.max(highlighted - 1, 0);
+                updateHighlight(items);
+            }
+        } else if (e.key === 'Enter') {
+            const q = input.value.trim();
+            if (highlighted >= 0 && items[highlighted]) {
+                e.preventDefault();
+                items[highlighted].click();
+            } else if (q.length > 0) {
+                if (!window.location.pathname.includes('/customer/marketplace')) {
+                    e.preventDefault();
+                    window.location.href = `/customer/marketplace?q=${encodeURIComponent(q)}`;
+                } else {
+                    closeSearch();
+                }
+            }
         }
     });
 
@@ -177,34 +206,73 @@ function initSearch() {
 
     function renderResults(results, q) {
         if (!results || results.length === 0) {
-            scroller.innerHTML = `<div class="search-no-results">
-                <i class="fas fa-magnifying-glass"></i>
-                <p>No results for "<strong>${escHtml(q)}</strong>"</p>
+            scroller.innerHTML = `
+            <div class="search-no-results" style="padding: 2rem 1.25rem; text-align: center;">
+                <i class="fas fa-magnifying-glass" style="font-size: 2rem; color: #cbd5e1; margin-bottom: 0.5rem; display: block;"></i>
+                <p style="font-size: 0.85rem; color: #64748b; margin: 0 0 1rem;">No direct matches for "<strong>${escHtml(q)}</strong>"</p>
+                <div class="search-result-action" data-href="/customer/marketplace?q=${encodeURIComponent(q)}" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0.65rem 1rem; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; color: var(--primary-color, #ff7b54); font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;">
+                    <span>Explore Marketplace for "${escHtml(q)}"</span>
+                    <i class="fas fa-arrow-right"></i>
+                </div>
             </div>`;
+            attachClickListeners();
             return;
         }
 
         // Group by type
+        const modules  = results.filter(r => r.type === 'module');
         const caterers = results.filter(r => r.type === 'caterer');
+        const packages = results.filter(r => r.type === 'package');
+        const dishes   = results.filter(r => r.type === 'dish');
+        const services = results.filter(r => r.type === 'service');
         const bookings = results.filter(r => r.type === 'booking');
+
         let html = '';
 
+        if (modules.length) {
+            html += `<div class="search-section-label">Quick Navigation</div>`;
+            html += modules.map(r => resultItem(r, 'sri-default', 'fas fa-compass')).join('');
+        }
         if (caterers.length) {
-            html += `<div class="search-section-label">Caterers</div>`;
-            html += caterers.map(r => resultItem(r, 'sri-caterer', 'fas fa-utensils')).join('');
+            html += `<div class="search-section-label">Catering Partners</div>`;
+            html += caterers.map(r => resultItem(r, 'sri-caterer', 'fas fa-store')).join('');
+        }
+        if (packages.length) {
+            html += `<div class="search-section-label">Packages</div>`;
+            html += packages.map(r => resultItem(r, 'sri-package', 'fas fa-box-open')).join('');
+        }
+        if (dishes.length) {
+            html += `<div class="search-section-label">Dishes & Menu</div>`;
+            html += dishes.map(r => resultItem(r, 'sri-dish', 'fas fa-bowl-food')).join('');
+        }
+        if (services.length) {
+            html += `<div class="search-section-label">Services</div>`;
+            html += services.map(r => resultItem(r, 'sri-service', 'fas fa-concierge-bell')).join('');
         }
         if (bookings.length) {
-            html += `<div class="search-section-label">My Bookings</div>`;
+            html += `<div class="search-section-label">My Events & Orders</div>`;
             html += bookings.map(r => resultItem(r, 'sri-booking', 'fas fa-calendar-check')).join('');
         }
 
-        scroller.innerHTML = html;
+        // Search in marketplace link footer
+        html += `
+        <div class="search-result-action" data-href="/customer/marketplace?q=${encodeURIComponent(q)}" style="padding: 0.85rem 1.25rem; border-top: 1px solid #f1f5f9; background: #fafafa; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; font-weight: 700; color: var(--primary-color, #ff7b54); transition: background 0.15s;">
+            <span><i class="fas fa-magnifying-glass" style="margin-right: 6px;"></i> View full marketplace results for "<b>${escHtml(q)}</b>"</span>
+            <i class="fas fa-chevron-right" style="font-size: 0.75rem;"></i>
+        </div>`;
 
-        // Attach click
-        panel.querySelectorAll('.search-result-item').forEach(el => {
+        scroller.innerHTML = html;
+        attachClickListeners();
+    }
+
+    function attachClickListeners() {
+        panel.querySelectorAll('.search-result-item, .search-result-action').forEach(el => {
             el.addEventListener('click', () => {
-                closeSearch();
-                window.location.href = el.dataset.href;
+                const href = el.dataset.href;
+                if (href) {
+                    closeSearch();
+                    window.location.href = href;
+                }
             });
         });
     }
@@ -230,7 +298,7 @@ function initSearch() {
 
     function updateHighlight(items) {
         items.forEach((el, i) => el.classList.toggle('highlighted', i === highlighted));
-        if (highlighted >= 0) items[highlighted].scrollIntoView({ block: 'nearest' });
+        if (highlighted >= 0 && items[highlighted]) items[highlighted].scrollIntoView({ block: 'nearest' });
     }
 
     function openPanel() { panel.classList.add('open'); }

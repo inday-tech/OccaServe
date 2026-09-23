@@ -446,4 +446,59 @@
         }
     }
 </script>
-{% endblock %}
+
+{# Real-time listener: only needed when customer signed but caterer hasn't yet (waiting state) #}
+{% if quotation.customer_signature and not quotation.caterer_signature %}
+<script>
+(function initCatererSignWatcher() {
+    const bookingId = {{ quotation.booking_id }};
+    const userId    = {{ user.id }};
+
+    // Create the waiting banner (hidden by default)
+    const banner = document.createElement('div');
+    banner.id = 'catererSignBanner';
+    banner.style.cssText = [
+        'position:fixed', 'top:0', 'left:0', 'right:0', 'z-index:99999',
+        'background:#16a34a', 'color:#fff',
+        'padding:0.9rem 1.5rem',
+        'font-size:0.95rem', 'font-weight:700',
+        'text-align:center',
+        'display:none',
+        'align-items:center', 'justify-content:center', 'gap:0.65rem',
+        'box-shadow:0 4px 20px rgba(0,0,0,0.18)'
+    ].join(';');
+    banner.innerHTML = '<i class="fas fa-check-circle"></i> <span>The caterer has signed the contract! Updating your page...</span>';
+    document.body.appendChild(banner);
+
+    function showBannerAndReload() {
+        banner.style.display = 'flex';
+        setTimeout(() => window.location.reload(), 2500);
+    }
+
+    function connect() {
+        try {
+            const proto    = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const clientId = `cust_${userId}_qstep_${bookingId}_${Math.random().toString(36).substr(2,9)}`;
+            const ws       = new WebSocket(`${proto}//${location.host}/ws/${clientId}`);
+
+            ws.onmessage = function(evt) {
+                try {
+                    const d = JSON.parse(evt.data);
+                    if (d.type === 'signature_update' && d.booking_id == bookingId && d.role === 'caterer') {
+                        showBannerAndReload();
+                    }
+                } catch (_) {}
+            };
+
+            // Auto-reconnect if connection drops while customer is on this page
+            ws.onclose = () => setTimeout(connect, 5000);
+        } catch (err) {
+            console.warn('[OccaServe] Real-time caterer sign watcher failed to connect:', err);
+        }
+    }
+
+    connect();
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -175,7 +175,8 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
 
     public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public' and not getattr(p, 'is_archived', False)]
 
-    return templates.TemplateResponse("customer/caterer_profile_view.html", {
+    db.refresh(caterer)
+    response = templates.TemplateResponse("caterer/profile.html", {
         "request": request, 
         "caterer": caterer,
         "packages": active_packages,
@@ -187,9 +188,11 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
         "gallery_items": [g for g in caterer.gallery_items if not getattr(g, 'is_archived', False)],
         "reviews": caterer.reviews,
         "user": user,
-        "active_page": "marketplace",
+        "active_page": "caterers",
         "nav_page": "caterers"
     })
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
 
 @router.get("/caterer/{slug}", response_class=HTMLResponse)
 def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(database.get_db)):
@@ -324,7 +327,8 @@ def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(datab
 
     public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public' and not getattr(p, 'is_archived', False)]
 
-    return templates.TemplateResponse("customer/caterer_profile_view.html", {
+    db.refresh(caterer)
+    response = templates.TemplateResponse("caterer/profile.html", {
         "request": request, 
         "caterer": caterer,
         "packages": active_packages,
@@ -336,9 +340,11 @@ def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(datab
         "gallery_items": [g for g in caterer.gallery_items if not getattr(g, 'is_archived', False)],
         "reviews": caterer.reviews,
         "user": user,
-        "active_page": "marketplace",
+        "active_page": "caterers",
         "nav_page": "caterers"
     })
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
 
 @router.get("/api/search", response_class=HTMLResponse)
 def unified_search_api(request: Request, q: str = "", lat: Optional[float] = None, lon: Optional[float] = None, db: Session = Depends(database.get_db)):

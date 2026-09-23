@@ -1826,11 +1826,30 @@
     window.MAX_BOOKING_DATE = "{{ max_booking_date.strftime('%Y-%m-%d') }}";
 </script>
 <script src="{{ url_for('static', path='/js/caterer/calendar.js') }}?v={{ range(1, 10000) | random }}"></script>
-
-
-
-
-
+<script>
+    window.addEventListener('globalSearch', (e) => {
+        const q = (e.detail?.value || '').toLowerCase().trim();
+        const eventEls = document.querySelectorAll('.fc-event');
+        eventEls.forEach(el => {
+            const text = el.textContent.toLowerCase();
+            if (!q) {
+                el.style.opacity = '1';
+                el.style.filter = '';
+            } else if (text.includes(q)) {
+                el.style.opacity = '1';
+                el.style.filter = 'drop-shadow(0 0 6px rgba(255, 123, 84, 0.8))';
+            } else {
+                el.style.opacity = '0.2';
+                el.style.filter = '';
+            }
+        });
+        const sideItems = document.querySelectorAll('.schedule-item, .cal-event-item, .upcoming-event-item');
+        sideItems.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            item.style.display = (!q || text.includes(q)) ? '' : 'none';
+        });
+    });
+</script>
 {% endblock %}
 
 

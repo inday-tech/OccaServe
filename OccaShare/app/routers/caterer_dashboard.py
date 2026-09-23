@@ -2051,9 +2051,9 @@ async def manage_bookings(
     
     # 4 Requested Summary Card Counts
     online_bookings_count = sum(1 for item in booking_list if item["source_kind"] == "online")
-    walkin_bookings_count = sum(1 for item in booking_list if item["source_kind"] == "walkin")
+    walkin_bookings_count = sum(1 for item in booking_list if item["source_kind"] in ["manual", "walkin"])
     completed_count = sum(1 for b in all_bookings if b.status == 'completed')
-    cancelled_count = sum(1 for b in all_bookings if b.status == 'cancelled')
+    cancelled_count = sum(1 for b in all_bookings if b.status in ['cancelled', 'rejected'])
     
     # Preserved backward-compatible counts if needed
     needs_action_count = sum(1 for item in booking_list if item["needs_action"])
@@ -3312,76 +3312,187 @@ async def update_actual_cost(
 async def business_summary(
     request: Request,
     timeframe: str = 'month',
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
     profile = user.caterer_profile
-    
-    # We only care about completed bookings for Business Summary
-    completed_bookings = [b for b in profile.bookings if b.status == 'completed' and not getattr(b, 'is_archived', False)]
-    
+    if not profile:
+        raise HTTPException(status_code=403, detail="Caterer profile not found")
+
     from datetime import date, datetime, timedelta
     from dateutil.relativedelta import relativedelta
+
     today = date.today()
-    
-    stats_start = today.replace(day=1)
-    stats_end = (stats_start + relativedelta(months=1)) - timedelta(days=1)
-    
+    stats_start = None
+    stats_end = None
+
     if timeframe == 'today':
         stats_start = today
         stats_end = today
     elif timeframe == 'week':
         stats_start = today - timedelta(days=today.weekday())
         stats_end = stats_start + timedelta(days=6)
+    elif timeframe == 'month':
+        stats_start = today.replace(day=1)
+        stats_end = (stats_start + relativedelta(months=1)) - timedelta(days=1)
+    elif timeframe == 'last_month':
+        prev_month_end = today.replace(day=1) - timedelta(days=1)
+        stats_start = prev_month_end.replace(day=1)
+        stats_end = prev_month_end
+    elif timeframe == 'last_3_months':
+        stats_start = (today - relativedelta(months=3)).replace(day=1)
+        stats_end = today
     elif timeframe == 'year':
         stats_start = today.replace(month=1, day=1)
         stats_end = today.replace(month=12, day=31)
-    
-    total_completed = 0
-    total_revenue = 0.0
-    total_estimated_cost = 0.0
-    
-    analytics_data = []
-    
-    for b in completed_bookings:
-        if b.event_date and stats_start <= b.event_date <= stats_end:
-            total_completed += 1
-            rev = float(b.total_amount or b.total_price or 0.0)
-            cost = float(b.actual_cost or 0.0)
-            
-            total_revenue += rev
-            total_estimated_cost += cost
-            
-            profit = rev - cost
-            margin = (profit / rev * 100) if rev > 0 else 0
-            
-            analytics_data.append({
-                "booking_id": b.id,
-                "document_type": b.document_type,
-                "transaction_type": getattr(b, 'transaction_type', 'contract_track'),
-                "customer_name": f"{b.user.first_name} {b.user.last_name}" if b.user else "Walk-in",
-                "event_date": b.event_date,
-                "completion_date": b.updated_at or b.event_date,
-                "revenue": rev,
-                "cost": cost,
-                "profit": profit,
-                "margin": margin
-            })
-            
-    total_profit = total_revenue - total_estimated_cost
-    avg_margin = (total_profit / total_revenue * 100) if total_revenue > 0 else 0
-    
+    elif timeframe == 'custom' and start_date and end_date:
+        try:
+            stats_start = datetime.strptime(start_date, '%Y-%m-%d').date()
+            stats_end = datetime.strptime(end_date, '%Y-%m-%d').date()
+        except Exception:
+            stats_start = today.replace(day=1)
+            stats_end = (stats_start + relativedelta(months=1)) - timedelta(days=1)
+    elif timeframe == 'all_time':
+        stats_start = None
+        stats_end = None
+    else:
+        timeframe = 'month'
+        stats_start = today.replace(day=1)
+        stats_end = (stats_start + relativedelta(months=1)) - timedelta(days=1)
+
+    all_bookings = [b for b in (profile.bookings or []) if not getattr(b, 'is_archived', False)]
+
+    def is_in_timeframe(b):
+        if stats_start is None and stats_end is None:
+            return True
+        b_date = b.event_date or (b.created_at.date() if getattr(b, 'created_at', None) else None)
+        if not b_date:
+            return False
+        return stats_start <= b_date <= stats_end
+
+    period_bookings = [b for b in all_bookings if is_in_timeframe(b)]
+
+    # 1. Top Summary Cards
+    total_bookings = len(period_bookings)
+
+    active_statuses = ['confirmed', 'preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'in_progress', 'setup_ongoing']
+    upcoming_events_all = [
+        b for b in all_bookings 
+        if b.event_date and b.event_date >= today and b.status in active_statuses
+    ]
+    upcoming_events_all.sort(key=lambda x: (x.event_date, x.event_time or datetime.min.time()))
+    upcoming_events_count = len(upcoming_events_all)
+    upcoming_events_display = upcoming_events_all[:6]
+
+    completed_events_count = sum(1 for b in period_bookings if b.status == 'completed')
+
+    pending_statuses = ['pending', 'pending_review', 'inquiry', 'awaiting_payment', 'awaiting_caterer', 'pending_payment', 'draft']
+    pending_bookings_count = sum(1 for b in all_bookings if b.status in pending_statuses)
+
+    valid_period_bookings = [b for b in period_bookings if b.status not in ['cancelled', 'rejected']]
+    total_revenue = sum(float(b.total_amount or b.total_price or 0.0) for b in valid_period_bookings)
+    total_paid = sum(float(b.amount_paid or 0.0) for b in valid_period_bookings)
+    pending_balance = max(0.0, total_revenue - total_paid)
+
+    # 2. Booking Status Breakdown
+    status_counts = {
+        "pending": sum(1 for b in all_bookings if b.status in ['pending', 'pending_review', 'inquiry']),
+        "awaiting": sum(1 for b in all_bookings if b.status in ['awaiting_payment', 'awaiting_caterer', 'pending_payment', 'draft']),
+        "confirmed": sum(1 for b in all_bookings if b.status == 'confirmed'),
+        "preparing": sum(1 for b in all_bookings if b.status in ['preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'in_progress', 'setup_ongoing']),
+        "completed": sum(1 for b in all_bookings if b.status == 'completed'),
+        "cancelled": sum(1 for b in all_bookings if b.status in ['cancelled', 'rejected']),
+    }
+
+    # 3. Package Performance
+    package_stats = {}
+    for b in valid_period_bookings:
+        pkg_name = None
+        if b.package:
+            pkg_name = b.package.name
+        elif b.event_type and b.document_type != 'invoice':
+            pkg_name = f"{b.event_type} Catering"
+        elif b.document_type == 'invoice':
+            pkg_name = "Food Order (Ala Carte)"
+
+        if pkg_name:
+            if pkg_name not in package_stats:
+                package_stats[pkg_name] = {"name": pkg_name, "bookings": 0, "revenue": 0.0}
+            package_stats[pkg_name]["bookings"] += 1
+            package_stats[pkg_name]["revenue"] += float(b.total_amount or b.total_price or 0.0)
+
+    for pkg in (profile.packages or []):
+        if not getattr(pkg, 'is_archived', False) and pkg.name not in package_stats:
+            package_stats[pkg.name] = {"name": pkg.name, "bookings": 0, "revenue": 0.0}
+
+    top_packages = sorted(package_stats.values(), key=lambda x: (x["bookings"], x["revenue"]), reverse=True)[:5]
+
+    # 4. Customer Engagement
+    profile_views = int(profile.profile_views or 0)
+    booking_requests = len(period_bookings)
+    confirmed_count = sum(1 for b in period_bookings if b.status in ['confirmed', 'completed', 'preparing', 'in_progress', 'ready_for_delivery', 'on_the_way'])
+    conversion_rate = round((confirmed_count / booking_requests * 100), 1) if booking_requests > 0 else 0.0
+
+    # 5. Customer Feedback
+    all_reviews = profile.reviews or []
+    total_reviews = len(all_reviews)
+    avg_rating = round(sum(r.rating for r in all_reviews) / total_reviews, 1) if total_reviews > 0 else 0.0
+    recent_reviews = sorted(all_reviews, key=lambda r: r.created_at or datetime.min, reverse=True)[:3]
+
+    # 6. Recent Bookings Table
+    recent_bookings_data = []
+    for b in sorted(period_bookings, key=lambda x: x.event_date or date.min, reverse=True)[:15]:
+        cust_name = "Walk-in Customer"
+        if b.user:
+            first = b.user.first_name or ''
+            last = b.user.last_name or ''
+            full = f"{first} {last}".strip()
+            cust_name = full if full else "Customer"
+        elif b.customer_name:
+            cust_name = b.customer_name
+
+        pkg_title = b.package.name if b.package else (b.event_type or "Custom Catering")
+
+        recent_bookings_data.append({
+            "id": b.id,
+            "event_type": b.event_type or "Booking",
+            "customer_name": cust_name,
+            "event_date": b.event_date,
+            "guest_count": b.guest_count or 0,
+            "package_name": pkg_title,
+            "amount": float(b.total_amount or b.total_price or 0.0),
+            "amount_paid": float(b.amount_paid or 0.0),
+            "status": b.status or "pending",
+            "payment_status": b.payment_status or "unpaid"
+        })
+
     return templates.TemplateResponse("caterer/business_summary.html", {
         "request": request,
         "user": user,
         "active_page": "business-summary",
         "timeframe": timeframe,
-        "total_completed": total_completed,
+        "start_date": start_date or (stats_start.isoformat() if stats_start else ""),
+        "end_date": end_date or (stats_end.isoformat() if stats_end else ""),
+        "total_bookings": total_bookings,
+        "upcoming_events_count": upcoming_events_count,
+        "upcoming_events": upcoming_events_display,
+        "completed_events_count": completed_events_count,
+        "pending_bookings_count": pending_bookings_count,
         "total_revenue": total_revenue,
-        "total_estimated_cost": total_estimated_cost,
-        "total_profit": total_profit,
-        "avg_margin": avg_margin,
-        "analytics_data": sorted(analytics_data, key=lambda x: x["event_date"], reverse=True)
+        "total_paid": total_paid,
+        "pending_balance": pending_balance,
+        "status_counts": status_counts,
+        "top_packages": top_packages,
+        "profile_views": profile_views,
+        "booking_requests": booking_requests,
+        "confirmed_bookings": confirmed_count,
+        "conversion_rate": conversion_rate,
+        "avg_rating": avg_rating,
+        "total_reviews": total_reviews,
+        "recent_reviews": recent_reviews,
+        "recent_bookings": recent_bookings_data
     })
 
 @router.get("/reviews", response_class=HTMLResponse)
@@ -4889,12 +5000,15 @@ async def update_profile(
     remove_cover_image: Optional[str] = Form(None),
     gcash_number: Optional[str] = Form(None),
     gcash_qr: Optional[UploadFile] = File(None),
+    remove_gcash_qr: Optional[str] = Form(None),
     maya_number: Optional[str] = Form(None),
     maya_qr: Optional[UploadFile] = File(None),
+    remove_maya_qr: Optional[str] = Form(None),
     bank_name: Optional[str] = Form(None),
     bank_account_name: Optional[str] = Form(None),
     bank_account_number: Optional[str] = Form(None),
     bank_qr: Optional[UploadFile] = File(None),
+    remove_bank_qr: Optional[str] = Form(None),
     card_bank: Optional[str] = Form(None),
     card_holder_name: Optional[str] = Form(None),
     card_number: Optional[str] = Form(None),
@@ -5000,6 +5114,12 @@ async def update_profile(
             db_user.profile_image_url = None
     if remove_cover_image in ("1", "true", "True"):
         profile.cover_image_url = None
+    if remove_gcash_qr in ("1", "true", "True"):
+        profile.gcash_qr_url = None
+    if remove_maya_qr in ("1", "true", "True"):
+        profile.maya_qr_url = None
+    if remove_bank_qr in ("1", "true", "True"):
+        profile.bank_qr_url = None
 
     import json
     from datetime import datetime as _dt
@@ -6910,7 +7030,12 @@ async def archive_booking(
         "message": "Booking has been archived successfully."
     })
     
-    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+    is_json = (
+        request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        or "application/json" in request.headers.get("Accept", "")
+        or "application/json" in request.headers.get("Content-Type", "")
+    )
+    if is_json:
         return JSONResponse({"status": "success", "message": "Booking archived successfully", "booking_id": numeric_id})
 
     # Allow redirecting back to where the request came from (e.g., payments page)
@@ -6938,7 +7063,47 @@ async def restore_booking(
     
     booking.is_archived = False
     db.commit()
+
+    is_json = (
+        request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        or "application/json" in request.headers.get("Accept", "")
+        or "application/json" in request.headers.get("Content-Type", "")
+    )
+    if is_json:
+        return JSONResponse({"status": "success", "message": "Booking restored successfully", "booking_id": numeric_id})
+
     return RedirectResponse(url="/caterer/archives?success_msg=Booking+restored+successfully", status_code=303)
+
+@router.post("/bookings/{booking_id}/delete")
+async def delete_archived_booking(
+    booking_id: str,
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).filter(
+        models.Booking.id == numeric_id,
+        models.Booking.caterer_id == user.caterer_profile.id
+    ).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    if not booking.is_archived:
+        raise HTTPException(status_code=400, detail="Only archived bookings can be permanently deleted.")
+
+    db.delete(booking)
+    db.commit()
+
+    is_json = (
+        request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        or "application/json" in request.headers.get("Accept", "")
+        or "application/json" in request.headers.get("Content-Type", "")
+    )
+    if is_json:
+        return JSONResponse({"status": "success", "message": "Booking deleted permanently", "booking_id": numeric_id})
+
+    return RedirectResponse(url="/caterer/archives?success_msg=Booking+deleted+permanently", status_code=303)
 
 @router.post("/gallery/{item_id}/restore")
 async def restore_gallery_item(
@@ -8594,7 +8759,8 @@ async def record_manual_payment(
     if not booking.amount_paid: booking.amount_paid = 0
     booking.amount_paid += amount
     
-    if booking.amount_paid >= booking.total_amount:
+    total = float(booking.total_price or booking.total_amount or 0)
+    if total > 0 and booking.amount_paid >= total:
         booking.payment_status = "fully_paid"
         if booking.status in ["inquiry", "tentative", "pending"]:
             booking.status = "confirmed"
@@ -8612,7 +8778,13 @@ async def record_manual_payment(
     db.add(history)
     db.commit()
     
-    return {"success": True}
+    return {
+        "success": True,
+        "message": "Payment recorded successfully",
+        "new_paid": booking.amount_paid,
+        "new_balance": max(0.0, total - booking.amount_paid),
+        "new_payment_status": booking.payment_status
+    }
 
 
 @router.post('/api/schedule/{schedule_id}/reminders')

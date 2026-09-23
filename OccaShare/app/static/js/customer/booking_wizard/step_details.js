@@ -1,79 +1,95 @@
 document.addEventListener('DOMContentLoaded', function () {
     try {
         const pricePerHead = Number(window.pricePerHead || 0);
-    const catererId = Number(window.catererId || 0);
-    const minGuests = Number(window.minGuests || 1);
-    const leadTime = Number(window.bookingLeadTime || 3);
-    const phCities = window.PH_CITIES || [];
-    
-    let parsedRules = {};
-    try {
-        parsedRules = typeof window.catererRules === 'string' ? JSON.parse(window.catererRules) : (window.catererRules || {});
-    } catch(e) { console.error("Error parsing catererRules", e); }
-    window.catererRules = parsedRules;
+        const catererId = Number(window.catererId || 0);
+        let minGuests = Number(window.minGuests || 1);
+        let maxGuests = Number(window.maxGuests || 0);
+        const phCities = window.PH_CITIES || [];
+        
+        let parsedRules = {};
+        try {
+            parsedRules = typeof window.catererRules === 'string' ? JSON.parse(window.catererRules) : (window.catererRules || {});
+        } catch(e) { console.error("Error parsing catererRules", e); }
+        window.catererRules = parsedRules;
 
-    const evAvail = parsedRules.event_availability || {};
-    const leadTime = Number(evAvail.lead_time_days || window.bookingLeadTime || 3);
-    const maxAdvVal = Number(evAvail.max_advance_val || 6);
-    const maxAdvUnit = (evAvail.max_advance_unit || 'months').toLowerCase();
+        const evAvail = parsedRules.event_availability || {};
+        const bh = parsedRules.business_hours || {};
 
-    let eventEarliest = evAvail.opening_time || '08:00';
-    let eventLatest = evAvail.closing_time || '22:00';
-    if (!evAvail.opening_time && parsedRules.service_rules) {
-        eventEarliest = parsedRules.service_rules.earliest_start || eventEarliest;
-        eventLatest = parsedRules.service_rules.latest_end || eventLatest;
-    }
+        let rulesLeadTime = evAvail.lead_time_days || evAvail.booking_lead_time;
+        if (!rulesLeadTime && parsedRules.food_rules && parsedRules.food_rules.lead_time_hours) {
+            rulesLeadTime = Math.ceil(Number(parsedRules.food_rules.lead_time_hours) / 24);
+        }
 
-    // --- Selectors ---
-    const form = document.getElementById('detailsForm');
-    const guestInput = document.getElementById('guest_count');
-    const guestDisplay = document.getElementById('guest_count_display');
-    const dateInput = document.getElementById('event_date');
-    const timeInput = document.getElementById('event_time');
-    const provinceSelect = document.getElementById('province_select');
-    const citySelect = document.getElementById('city_select');
-    const barangaySelect = document.getElementById('barangay_select');
-    const venueHidden = document.getElementById('venue_address_hidden');
-    const eventTypeSelect = document.getElementById('event_type_select');
-    const otherEventWrap = document.getElementById('other-event-wrap');
-    const otherEventInput = document.getElementById('other_event_type');
-    const submitBtn = document.getElementById('submitBtn');
+        let effectiveLeadTime = Number(
+            (window.packagesMap && window.currentPackageId && window.packagesMap[window.currentPackageId] && window.packagesMap[window.currentPackageId].booking_lead_time) ||
+            rulesLeadTime ||
+            window.bookingLeadTime ||
+            3
+        );
+        if (effectiveLeadTime < 0) effectiveLeadTime = 0;
 
-    // --- Dynamic Location Data via PSGC ---
-    const PROVINCE_CODES = {
-        "Laguna": "043400000"
-    };
+        const maxAdvVal = Number(evAvail.max_advance_booking_days || evAvail.max_advance_val || (parsedRules.booking_rules && parsedRules.booking_rules.max_advance_booking_days) || 180);
+        const maxAdvUnit = (evAvail.max_advance_unit || ((evAvail.max_advance_booking_days || (parsedRules.booking_rules && parsedRules.booking_rules.max_advance_booking_days)) ? 'days' : 'months')).toLowerCase();
 
-    let cachedCities = {};
-    let cachedBarangays = {};
+        let eventEarliest = evAvail.open_time || evAvail.opening_time || bh.open_time || '08:00';
+        let eventLatest = evAvail.close_time || evAvail.closing_time || bh.close_time || '22:00';
+        if (!evAvail.open_time && !evAvail.opening_time && parsedRules.service_rules) {
+            eventEarliest = parsedRules.service_rules.earliest_start || eventEarliest;
+            eventLatest = parsedRules.service_rules.latest_end || eventLatest;
+        }
 
-    // --- 1. Set Min and Max Date based on Lead Time and Max Advance ---
-    const getLocalISODate = (date) => {
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
-    };
+        // --- Selectors ---
+        const form = document.getElementById('detailsForm');
+        const guestInput = document.getElementById('guest_count');
+        const guestDisplay = document.getElementById('guest_count_display');
+        const dateInput = document.getElementById('event_date');
+        const timeInput = document.getElementById('event_time');
+        const provinceSelect = document.getElementById('province_select');
+        const citySelect = document.getElementById('city_select');
+        const barangaySelect = document.getElementById('barangay_select');
+        const venueHidden = document.getElementById('venue_address_hidden');
+        const eventTypeSelect = document.getElementById('event_type_select');
+        const otherEventWrap = document.getElementById('other-event-wrap');
+        const otherEventInput = document.getElementById('other_event_type');
+        const submitBtn = document.getElementById('submitBtn');
 
-    const minCalendarDate = new Date();
-    minCalendarDate.setDate(minCalendarDate.getDate() + leadTime); // Using lead time dynamically
-    const minDateString = getLocalISODate(minCalendarDate);
-    
-    const maxCalendarDate = new Date();
-    if (maxAdvUnit === 'days') {
-        maxCalendarDate.setDate(maxCalendarDate.getDate() + maxAdvVal);
-    } else if (maxAdvUnit === 'years') {
-        maxCalendarDate.setFullYear(maxCalendarDate.getFullYear() + maxAdvVal);
-    } else {
-        // default months
-        maxCalendarDate.setMonth(maxCalendarDate.getMonth() + maxAdvVal);
-    }
-    const maxDateString = getLocalISODate(maxCalendarDate);
-    
-    if (dateInput) {
-        dateInput.setAttribute('min', minDateString);
-        dateInput.setAttribute('max', maxDateString);
-    }
+        // --- 1. Set Min and Max Date based on Lead Time and Max Advance ---
+        const getLocalISODate = (date) => {
+            const yyyy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        };
+
+        const getMinCalendarDate = () => {
+            const d = new Date();
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() + effectiveLeadTime);
+            return d;
+        };
+
+        let minCalendarDate = getMinCalendarDate();
+        let minDateString = getLocalISODate(minCalendarDate);
+        
+        let maxCalendarDate = new Date();
+        if (maxAdvUnit === 'days') {
+            maxCalendarDate.setDate(maxCalendarDate.getDate() + maxAdvVal);
+        } else if (maxAdvUnit === 'years') {
+            maxCalendarDate.setFullYear(maxCalendarDate.getFullYear() + maxAdvVal);
+        } else {
+            maxCalendarDate.setMonth(maxCalendarDate.getMonth() + maxAdvVal);
+        }
+        let maxDateString = getLocalISODate(maxCalendarDate);
+        
+        const updateDateBounds = () => {
+            minCalendarDate = getMinCalendarDate();
+            minDateString = getLocalISODate(minCalendarDate);
+            if (dateInput) {
+                dateInput.setAttribute('min', minDateString);
+                dateInput.setAttribute('max', maxDateString);
+            }
+        };
+        updateDateBounds();
 
     // --- 1.5 Format Guest Count ---
     window.formatGuestCount = function (input) {
@@ -137,7 +153,15 @@ document.addEventListener('DOMContentLoaded', function () {
         // 5. Update Inclusions Section
         window.renderInclusions(pkg.grouped_inclusions || { food: [], services: [], equipment: [] });
 
-        // 6. Recalculate Total
+        // 6. Update lead time & date bounds if package specifies it
+        if (pkg.booking_lead_time) {
+            effectiveLeadTime = Number(pkg.booking_lead_time);
+            updateDateBounds();
+            if (typeof validateEventDate === 'function') validateEventDate();
+        }
+        if (typeof validateGuestCount === 'function') validateGuestCount();
+
+        // 7. Recalculate Total
         window.updateCalculator();
     };
 
@@ -429,10 +453,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const diffDays = Math.ceil((selectedDate - today) / (1000 * 60 * 60 * 24));
-            if (diffDays < leadTime) {
+            if (diffDays < effectiveLeadTime) {
                 chip.className = 'availability-chip booked';
                 chip.style.display = 'inline-flex';
-                chip.innerHTML = `<i class="fas fa-clock"></i> This caterer requires bookings at least ${leadTime} days before the event date. Please select a later date.`;
+                chip.innerHTML = `<i class="fas fa-clock"></i> This caterer requires bookings at least ${effectiveLeadTime} days before the event date. Please select a later date.`;
                 if (submitBtn) submitBtn.disabled = true;
                 isAvailabilityValid = false;
                 return;
@@ -539,107 +563,103 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // --- 5. Cascading Location Choice (PSGC API) ---
-    async function populateCities(province, selectedCity = null, selectedBrgy = null) {
-        citySelect.innerHTML = '<option value="" disabled selected hidden>-- Select City --</option>';
-        barangaySelect.innerHTML = '<option value="" disabled selected hidden>-- Select Barangay --</option>';
-        barangaySelect.disabled = true;
+    // --- 5. Laguna Location Data & Cascading Dropdowns ---
+    const LAGUNA_LOCATION_DATA = {
+        "Alaminos": ["Barangay I (Pob.)", "Barangay II (Pob.)", "Barangay III (Pob.)", "Barangay IV (Pob.)", "Del Carmen", "Palma", "San Agustin", "San Andres", "San Benito", "San Gregorio", "San Ildefonso", "San Juan", "San Miguel", "San Roque", "Santa Rosa", "Victoria"],
+        "Bay": ["Bitin", "Calo", "Dila", "Maitim", "Masaya", "Paciano Rizal", "Puypuy", "San Agustin (Pob.)", "San Antonio", "San Isidro", "San Nicolas (Pob.)", "Santa Cruz", "Santo Domingo", "Tagumpay", "Tranca"],
+        "Biñan": ["Biñan (Poblacion)", "Bungahan", "Canlalay", "Casile", "De La Paz", "Dela Paz", "Ganado", "Langkiwa", "Loma", "Malaban", "Malamig", "Mamplasan", "Platero", "Poblacion", "San Antonio", "San Francisco", "San Jose", "San Vicente", "Santo Niño", "Santo Tomas", "Soro-soro", "Timbao", "Tubigan", "Zapote"],
+        "Cabuyao": ["Baclaran", "Banay-Banay", "Banlic", "Bigaa", "Butong", "Casile", "Diezmo", "Gulod", "Mamatid", "Marinig", "Niugan", "Pittland", "Pulo", "Sala", "San Isidro"],
+        "Calamba": ["Bagong Kalsada", "Bañadero", "Banlic", "Barandal", "Barangay 1", "Barangay 2", "Barangay 3", "Barangay 4", "Barangay 5", "Barangay 6", "Barangay 7", "Batino", "Bubuyan", "Bucal", "Bunggo", "Burol", "Camaligan", "Canlubang", "Halang", "Hornalan", "Kay-Anlog", "La Mesa", "Laguerta", "Lawa", "Lecheria", "Lingga", "Looc", "Mabato", "Majada Labas", "Makiling", "Mapagong", "Masili", "Maunong", "Mayapa", "Milagrosa", "Paciano Rizal", "Palingon", "Palo-Alto", "Pansol", "Parian", "Prinza", "Punta", "Puting Lupa", "Real", "Saimsim", "Sampiruhan", "San Cristobal", "San Jose", "San Juan", "Sirang Lupa", "Sucol", "Turbina", "Uwisan"],
+        "Calauan": ["Balayhangin", "Bangyas", "Dayap", "Hanggan", "Imok", "Kanluran (Pob.)", "Lamot 1", "Lamot 2", "Limao", "Mabacan", "Masiit", "Paliparan", "Perez", "Prinza", "San Isidro", "Santo Tomas", "Silangan (Pob.)"],
+        "Cavinti": ["Anglas", "Bangco", "Bukal", "Bulajo", "Cansuso", "Duhat", "Inao-Awan", "Kanluran Talaongan", "Labayo", "Layasin", "Layug", "Mahipon", "Paowin", "Poblacion", "Silangan Talaongan", "Sisilmin", "Sumucab", "Tibatib", "Udia"],
+        "Famy": ["Asana (Pob.)", "Bacong-Sigsigan", "Bagong Pag-Asa (Pob.)", "Balitoc", "Cuevas", "Damayan (Pob.)", "Katumpapan (Pob.)", "Liyang", "Maquling", "Minayutan", "Salangbato", "San Antonio", "Tunhac"],
+        "Kalayaan": ["Longos", "San Antonio", "San Juan (Pob.)"],
+        "Liliw": ["Bagong Formas", "Bayate", "Bongkol", "Cabuyew", "Calumpang", "Dita", "Ibabang Palina", "Ibabang San Roque", "Ibabang Sungi", "Ilayang Palina", "Ilayang San Roque", "Ilayang Sungi", "Luquin", "Malabo-Kalantukan", "Maslun (Pob.)", "Mojon", "Novaliches", "Oples", "Pag-Asa (Pob.)", "Palayan", "Rizal (Pob.)", "San Isidro", "Santo Niño (Pob.)", "Tuyu-Tuyu", "Tuyupan", "Vitas"],
+        "Los Baños": ["Anos", "Bagong Silang", "Bambang", "Batong Malake", "Baybayin", "Bayog", "Lalakay", "Maahas", "Malinta", "Mayondon", "Putho Tuntungin", "San Antonio", "Tadlac", "Timugan"],
+        "Luisiana": ["De La Paz", "Barangay Zone I (Pob.)", "Barangay Zone II (Pob.)", "Barangay Zone III (Pob.)", "Barangay Zone IV (Pob.)", "Barangay Zone V (Pob.)", "Barangay Zone VI (Pob.)", "Barangay Zone VII (Pob.)", "Barangay Zone VIII (Pob.)", "San Buenaventura", "San Diego", "San Jose", "San Luis", "San Pablo", "San Pedro", "San Rafael", "San Roque", "Santo Domingo", "Santo Tomas"],
+        "Lumban": ["Bagong Silang", "Balmis", "Cabuyao", "Caliraya", "Concepcion", "Lewin", "Maracta (Pob.)", "Maytalang I", "Maytalang II", "Nagcarlan", "Salac (Pob.)", "San Jose (Pob.)", "Santo Niño (Pob.)"],
+        "Mabitac": ["Amuyong", "Bayanihan (Pob.)", "Libis ng Nayon (Pob.)", "Luang", "Maligaya (Pob.)", "Matalatala", "Nanguma", "Pag-Asa (Pob.)", "San Antonio", "San Jose", "San Miguel", "Sinagtala (Pob.)", "Sipit", "Tulaoc"],
+        "Magdalena": ["Alipata", "Baanan", "Balanac", "Bucal", "Buenavista", "Bungkol", "Burol", "Ibabang Atingay", "Ilayang Atingay", "Ilog", "Malaking Ambling", "Malinao", "Maravilla", "Muncada", "Poblacion", "Salapungan", "San Francisco", "San Jose", "Santa Maria", "Villa Magsaysay"],
+        "Majayjay": ["Ameca", "Bakia", "Balanac", "Balayhangin", "Banilad", "Bumbungan", "Burgos", "Burol", "Gagalot", "Ibabang Banga", "Ilayang Banga", "Isabang", "Malinao", "May-It", "Moolin", "Olla", "Oobi", "Origuel (Pob.)", "Panalaban", "Pangil", "Panglan", "Piit", "Poblacion", "San Francisco", "San Isidro", "San Miguel", "San Roque", "Santa Catalina", "Suba", "Talortor", "Tanawan", "Taytay"],
+        "Nagcarlan": ["Abo", "Alibungbungan", "Allagao", "Balayhangin", "Balinacon", "Bambang", "Banago", "Banca-Banca", "Bangcuro", "Banilad", "Bayaquitos", "Buboy", "Buenavista", "Buhanginan", "Bukal", "Bunga", "Cabubuhayan", "Calumpang", "Kanluran Kabubuhayan", "Kanluran Pob.", "Katuwiran", "Lawi", "Luria", "Maiit", "Malaya", "Malinao", "Manaol", "Maravilla", "Nagcalbang", "Oples", "Palayan", "Palina", "Sabang", "San Francisco", "Sibulan", "Silangan Kabubuhayan", "Silangan Pob.", "Sinipian", "Santa Lucia", "Talahib", "Talangan", "Taytay", "Tipacan", "Wakat"],
+        "Paete": ["Bagumbayan (Pob.)", "Bangkusay (Pob.)", "Ermita (Pob.)", "Ibaba del Sur (Pob.)", "Ibaba del Norte (Pob.)", "Ilaya del Sur (Pob.)", "Ilaya del Norte (Pob.)", "Maytoong (Pob.)", "Quinale (Pob.)"],
+        "Pagsanjan": ["Anibong", "Barangay I (Pob.)", "Barangay II (Pob.)", "Cabuyao", "Calusiche", "Dingin", "Lambac", "Layugan", "Magdapio", "Maulawin", "Pinagsanjan", "Sampaloc", "San Isidro"],
+        "Pakil": ["Baño (Pob.)", "Burgos (Pob.)", "Casa Real (Pob.)", "Casinsin", "Dorado", "Gonzales (Pob.)", "Kabulusan", "Matikiw", "Rizal (Pob.)", "Saray", "Taft (Pob.)", "Tavera (Pob.)", "Vargas (Pob.)"],
+        "Pangil": ["Balian", "Dambo", "Galalan", "Isla (Pob.)", "Mabato-Azufre", "Natividad (Pob.)", "San Jose (Pob.)", "Sulib (Pob.)"],
+        "Pila": ["Aplaya", "Bagong Pook", "Bukal", "Bulilan Sur", "Bulilan Norte", "Concepcion", "Labuin", "Linga", "Masico", "Mojon", "Pansol", "Pinagbayanan", "Poblacion", "San Antonio", "San Lorenzo", "Santa Clara Norte", "Santa Clara Sur", "Tubuan"],
+        "Rizal": ["Antipolo", "Entablado", "Laguan", "Paule 1", "Paule 2", "Poblacion", "Pook", "Tala", "Talaga"],
+        "San Pablo": ["Bagong Bayan", "Barangay I-A", "Barangay I-B", "Barangay II-A", "Barangay II-B", "Barangay II-C", "Barangay II-D", "Barangay II-E", "Barangay II-F", "Barangay III-A", "Barangay III-B", "Barangay III-C", "Barangay III-D", "Barangay III-E", "Barangay III-F", "Barangay IV-A", "Barangay IV-B", "Barangay IV-C", "Barangay V-A", "Barangay V-B", "Barangay VI-A", "Barangay VI-B", "Barangay VII-A", "Barangay VII-B", "Barangay VII-C", "Barangay VII-D", "Barangay VII-E", "Bautista", "Concepcion", "Del Remedio", "Dolores", "San Bartolome", "San Cristobal", "San Francisco", "San Gabriel", "San Gregorio", "San Ignacio", "San Isidro", "San Jose", "San Juan", "San Lucas 1", "San Lucas 2", "San Marcos", "San Mateo", "San Miguel", "San Nicolas", "San Pedro", "San Rafael", "San Roque", "San Vicente", "Santa Ana", "Santa Cruz", "Santa Maria", "Santa Maria Magdalena", "Santa Veronica", "Santiago", "Santisimo Rosario", "Soledad"],
+        "San Pedro": ["Bagong Silang", "Calendola", "Chrysanthemum", "Cuyab", "Estrella", "Fatima", "G.S.I.S.", "Holiday Hills", "Landayan", "Langgam", "Laram", "Magsaysay", "Maharlika", "Narra", "Nueva", "Pacita 1", "Pacita 2", "Poblacion", "Riverside", "Sampaguita Village", "San Antonio", "San Roque", "San Vicente", "Santa Felomina", "Santo Niño", "United Bayanihan", "United Better Living", "Vicente Leyos"],
+        "Santa Cruz": ["Alipit", "Bagumbayan", "Bubukal", "Calios", "Duhat", "Gatid", "Jasaan", "Labuin", "Malinao", "Oogong", "Pagsawitan", "Palasan", "Patimbao", "Poblacion I", "Poblacion II", "Poblacion III", "Poblacion IV", "Poblacion V", "San Jose", "San Juan", "San Pablo Norte", "San Pablo Sur", "Santisima Cruz", "Santo Angel Central", "Santo Angel Norte", "Santo Angel Sur"],
+        "Santa Maria": ["Bagong Pook", "Bagumbayan", "Bubucal", "Cabooan", "Calangay", "Cambuja", "Coralan", "Cansuso", "Inocencio", "J. Santiago", "Lauravel", "Macasipac", "Masinao", "Matalinting", "Pao-o", "Parang Ng Buho", "Poblacion I", "Poblacion II", "Poblacion III", "Poblacion IV", "Real Velasquez", "San Antonio", "Santa Ines"],
+        "Santa Rosa": ["Aplaya", "Balibago", "Caingin", "Dila", "Dita", "Don Jose", "Ibaba", "Kanluran (Pob.)", "Labas", "Macabling", "Malitlit", "Malusak (Pob.)", "Market Area (Pob.)", "Pook", "Pulong Santa Cruz", "Santo Domingo", "Sinalhan", "Tagapo"],
+        "Siniloan": ["Acevida", "Baguio", "Bagumbarangay (Pob.)", "Buhay", "G. Redor (Pob.)", "Gen. Luna", "Halayhayin", "Laguio", "Liyang", "Lluisma", "Mendiola", "Macatad", "P. Burgos", "Pandeño", "Salubungan", "Wawa"],
+        "Victoria": ["Bañaga", "Bankanca", "Daniw", "Masapang", "Nanhaya (Pob.)", "Pagalangan", "San Benito", "San Felix", "San Francisco", "San Roque"]
+    };
 
-        if (PROVINCE_CODES[province]) {
+    function populateCities(province, selectedCity = null, selectedBrgy = null) {
+        if (!citySelect) return;
+        citySelect.innerHTML = '<option value="" disabled selected hidden>-- Select City / Municipality --</option>';
+        if (barangaySelect) {
+            barangaySelect.innerHTML = '<option value="" disabled selected hidden>-- Select Barangay --</option>';
+            barangaySelect.disabled = true;
+        }
+
+        if (!province) {
             citySelect.disabled = true;
-            try {
-                const code = PROVINCE_CODES[province];
-                let cities = cachedCities[code];
-                if (!cities) {
-                    const cityEl = document.getElementById('city_select');
-                    if(cityEl.tagName !== 'SELECT') return; // already fallback
-                    
-                    cityEl.innerHTML = '<option value="" disabled selected hidden>Loading cities...</option>';
-                    let url = `https://psgc.gitlab.io/api/provinces/${code}/cities-municipalities/`;
-                    if (code === '130000000') {
-                        url = `https://psgc.gitlab.io/api/regions/${code}/cities-municipalities/`;
-                    }
-                    
-                    const res = await fetch(url);
-                    if (!res.ok) throw new Error('API failed');
-                    
-                    cities = await res.json();
-                    cities.sort((a, b) => a.name.localeCompare(b.name));
-                    cachedCities[code] = cities;
-                }
-                
-                const cityEl = document.getElementById('city_select');
-                if(cityEl.tagName !== 'SELECT') return;
-                
-                cityEl.innerHTML = '<option value="" disabled selected hidden>-- Select City --</option>';
-                cities.forEach(city => {
-                    const opt = document.createElement('option');
-                    opt.value = city.name;
-                    opt.textContent = city.name;
-                    opt.dataset.code = city.code;
-                    if (city.name === selectedCity) opt.selected = true;
-                    citySelect.appendChild(opt);
-                });
-                citySelect.disabled = false;
-                
-                if (selectedCity) {
-                    const matchedCity = cities.find(c => c.name === selectedCity);
-                    if (matchedCity) {
-                        populateBarangays(matchedCity.code, selectedBrgy);
-                    }
-                }
-            } catch (e) {
-                console.warn('API Error, keeping dropdowns empty:', e);
-                const cityEl = document.getElementById('city_select');
-                if(cityEl && cityEl.tagName === 'SELECT') {
-                    cityEl.innerHTML = '<option value="" disabled selected hidden>Error Loading</option>';
-                    cityEl.disabled = false;
-                }
+            return;
+        }
+
+        const cityNames = Object.keys(LAGUNA_LOCATION_DATA).sort();
+        cityNames.forEach(cityName => {
+            const opt = document.createElement('option');
+            opt.value = cityName;
+            opt.textContent = cityName;
+            if (selectedCity && (selectedCity.toLowerCase() === cityName.toLowerCase() || selectedCity.toLowerCase().includes(cityName.toLowerCase()))) {
+                opt.selected = true;
             }
-        } else {
-            const cityEl = document.getElementById('city_select');
-            if(cityEl && cityEl.tagName === 'SELECT') cityEl.disabled = true;
+            citySelect.appendChild(opt);
+        });
+
+        citySelect.disabled = false;
+
+        const effectiveCity = citySelect.value || selectedCity;
+        if (effectiveCity) {
+            const matchedKey = Object.keys(LAGUNA_LOCATION_DATA).find(k => k.toLowerCase() === effectiveCity.toLowerCase() || effectiveCity.toLowerCase().includes(k.toLowerCase()));
+            if (matchedKey) {
+                populateBarangays(matchedKey, selectedBrgy);
+            }
         }
     }
 
-    async function populateBarangays(cityCode, selectedBrgy = null) {
-        const brgyEl = document.getElementById('barangay_select');
-        if(!brgyEl) return;
-        if(brgyEl.tagName !== 'SELECT') return;
-        
-        brgyEl.innerHTML = '<option value="" disabled selected hidden>-- Select Barangay --</option>';
-        if (cityCode) {
-            brgyEl.disabled = true;
-            try {
-                let brgys = cachedBarangays[cityCode];
-                if (!brgys) {
-                    brgyEl.innerHTML = '<option value="" disabled selected hidden>Loading barangays...</option>';
-                    
-                    const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays/`);
-                    if (!res.ok) throw new Error('API failed');
-                    
-                    brgys = await res.json();
-                    brgys.sort((a, b) => a.name.localeCompare(b.name));
-                    cachedBarangays[cityCode] = brgys;
-                }
-                
-                brgyEl.innerHTML = '<option value="" disabled selected hidden>-- Select Barangay --</option>';
-                brgys.forEach(b => {
-                    const opt = document.createElement('option');
-                    opt.value = b.name;
-                    opt.textContent = b.name;
-                    if (b.name === selectedBrgy) opt.selected = true;
-                    brgyEl.appendChild(opt);
-                });
-                brgyEl.disabled = false;
-            } catch (e) {
-                console.warn('API Error, keeping dropdowns empty:', e);
-                brgyEl.innerHTML = '<option value="" disabled selected hidden>Error Loading</option>';
-                brgyEl.disabled = false;
-            }
-        } else {
-            brgyEl.disabled = true;
+    function populateBarangays(cityName, selectedBrgy = null) {
+        if (!barangaySelect) return;
+        barangaySelect.innerHTML = '<option value="" disabled selected hidden>-- Select Barangay --</option>';
+
+        if (!cityName) {
+            barangaySelect.disabled = true;
+            return;
         }
+
+        const matchedKey = Object.keys(LAGUNA_LOCATION_DATA).find(k => k.toLowerCase() === cityName.toLowerCase() || cityName.toLowerCase().includes(k.toLowerCase()));
+        const brgyList = matchedKey ? LAGUNA_LOCATION_DATA[matchedKey] : [];
+
+        if (brgyList.length === 0) {
+            barangaySelect.disabled = true;
+            return;
+        }
+
+        brgyList.forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b;
+            opt.textContent = b;
+            if (selectedBrgy && selectedBrgy.toLowerCase() === b.toLowerCase()) {
+                opt.selected = true;
+            }
+            barangaySelect.appendChild(opt);
+        });
+
+        barangaySelect.disabled = false;
     }
 
     window.currentDeliveryFee = 0;
@@ -650,12 +670,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const cityEl = document.getElementById('city_select');
         const brgyEl = document.getElementById('barangay_select');
         
-        const p = provEl ? (provEl.tagName === 'SELECT' ? (provEl.options[provEl.selectedIndex]?.text || '') : provEl.value) : '';
-        const c = cityEl ? (cityEl.tagName === 'SELECT' ? (cityEl.options[cityEl.selectedIndex]?.text || '') : cityEl.value) : '';
-        const b = brgyEl ? (brgyEl.tagName === 'SELECT' ? (brgyEl.options[brgyEl.selectedIndex]?.text || '') : brgyEl.value) : '';
+        const p = provEl ? (provEl.tagName === 'SELECT' ? (provEl.options[provEl.selectedIndex]?.value || provEl.value || '') : provEl.value) : '';
+        const c = cityEl ? (cityEl.tagName === 'SELECT' ? (cityEl.options[cityEl.selectedIndex]?.value || cityEl.value || '') : cityEl.value) : '';
+        const b = brgyEl ? (brgyEl.tagName === 'SELECT' ? (brgyEl.options[brgyEl.selectedIndex]?.value || brgyEl.value || '') : brgyEl.value) : '';
         
-        if (p && c && b && p !== '-- Province --' && c !== '-- Select City --' && b !== '-- Select Barangay --') {
-            venueHidden.value = `${b}, ${c}, ${p}`;
+        if (p && c && b && !p.startsWith('--') && !c.startsWith('--') && !b.startsWith('--')) {
+            if (venueHidden) venueHidden.value = `${b}, ${c}, ${p}`;
             
             // Fetch dynamic delivery fee
             try {
@@ -689,7 +709,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             updateCalculator();
         } else {
-            venueHidden.value = "";
+            if (venueHidden) venueHidden.value = "";
             window.currentDeliveryFee = 0;
             window.deliveryFeeStatus = "pending";
             updateCalculator();
@@ -697,25 +717,11 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     window.updateHiddenVenue = updateHiddenVenue;
 
-    if (provinceSelect) {
-        provinceSelect.addEventListener('change', function () {
-            populateCities(this.value);
-            updateHiddenVenue();
-        });
-
-        citySelect.addEventListener('change', function () {
-            const selOpt = this.options[this.selectedIndex];
-            const code = selOpt ? selOpt.dataset.code : null;
-            populateBarangays(code);
-            updateHiddenVenue();
-        });
-
-        barangaySelect.addEventListener('change', updateHiddenVenue);
-    }
-
-    // --- 5.1 Load Existing Location Data ---
     function loadExistingLocation() {
-        const existing = venueHidden.value; // Format: "Barangay, City, Province"
+        if (provinceSelect && !provinceSelect.value) {
+            provinceSelect.value = "Laguna";
+        }
+        const existing = venueHidden ? venueHidden.value : '';
         if (existing && existing.includes(',')) {
             const parts = existing.split(',').map(s => s.trim());
             if (parts.length >= 3) {
@@ -723,19 +729,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 const city = parts[1];
                 const prov = parts[2];
 
-                for (let i = 0; i < provinceSelect.options.length; i++) {
-                    if (provinceSelect.options[i].value === prov) {
-                        provinceSelect.selectedIndex = i;
-                        break;
+                if (provinceSelect) {
+                    for (let i = 0; i < provinceSelect.options.length; i++) {
+                        if (provinceSelect.options[i].value === prov) {
+                            provinceSelect.selectedIndex = i;
+                            break;
+                        }
                     }
                 }
 
                 populateCities(prov, city, brgy);
+                return;
             }
-        } else if (provinceSelect.value) {
+        }
+        if (provinceSelect && provinceSelect.value) {
             populateCities(provinceSelect.value);
         }
     }
+    loadExistingLocation();
 
     // --- 6. Form Validation & Real-time Feedback ---
     function validateField(input, errorId, validationFn, customErrorText = null) {
@@ -744,11 +755,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const isValid = validationFn(input.value);
         if (isValid) {
             input.classList.remove('error');
+            input.classList.add('is-valid');
             if (errSpan) {
                 errSpan.classList.remove('show');
             }
         } else {
             input.classList.add('error');
+            input.classList.remove('is-valid');
             if (errSpan) {
                 if (customErrorText) errSpan.innerText = customErrorText;
                 errSpan.classList.add('show');
@@ -758,10 +771,33 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const eventName = document.getElementById('event_name');
+    function validateEventName() {
+        if (!eventName) return true;
+        const val = (eventName.value || '').trim();
+        const errSpan = document.getElementById('err-name');
+        if (val.length < 3) {
+            eventName.classList.add('error');
+            eventName.classList.remove('is-valid');
+            if (errSpan) {
+                errSpan.innerText = val.length === 0
+                    ? 'Please enter a name for your event.'
+                    : 'Event name must be at least 3 characters.';
+                errSpan.classList.add('show');
+            }
+            return false;
+        } else {
+            eventName.classList.remove('error');
+            eventName.classList.add('is-valid');
+            if (errSpan) errSpan.classList.remove('show');
+            return true;
+        }
+    }
+
     if (eventName) {
-        eventName.addEventListener('input', () => validateField(eventName, 'err-name', v => v.trim().length > 0));
-        eventName.addEventListener('change', () => validateField(eventName, 'err-name', v => v.trim().length > 0));
-        eventName.addEventListener('blur', () => validateField(eventName, 'err-name', v => v.trim().length > 0));
+        eventName.addEventListener('input', validateEventName);
+        eventName.addEventListener('keyup', validateEventName);
+        eventName.addEventListener('change', validateEventName);
+        eventName.addEventListener('blur', validateEventName);
     }
 
     if (eventTypeSelect) {
@@ -784,143 +820,228 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const validateGuestCount = () => {
         if (!guestDisplay) return true;
-        const g = parseInt(guestDisplay.value.replace(/,/g, '')) || 0;
-        let valid = g >= window.minGuests;
-        if (window.maxGuests > 0) valid = valid && g <= window.maxGuests;
-        
-        let errorText = `Min: ${window.minGuests} pax.`;
-        if (window.maxGuests > 0 && g > window.maxGuests) errorText = `Max: ${window.maxGuests} pax.`;
-        
-        return validateField(guestDisplay, 'err-guests', () => valid, errorText);
+        const raw = (guestDisplay.value || '').replace(/,/g, '').trim();
+        const g = parseInt(raw, 10);
+        const errSpan = document.getElementById('err-guests');
+
+        if (isNaN(g) || raw === '' || g <= 0) {
+            guestDisplay.classList.add('error');
+            guestDisplay.classList.remove('is-valid');
+            if (errSpan) {
+                errSpan.innerText = `Please enter the number of guests.`;
+                errSpan.classList.add('show');
+            }
+            return false;
+        }
+
+        if (g < window.minGuests) {
+            guestDisplay.classList.add('error');
+            guestDisplay.classList.remove('is-valid');
+            if (errSpan) {
+                errSpan.innerText = `Please enter at least ${window.minGuests} guests for this package.`;
+                errSpan.classList.add('show');
+            }
+            return false;
+        }
+
+        if (window.maxGuests > 0 && g > window.maxGuests) {
+            guestDisplay.classList.add('error');
+            guestDisplay.classList.remove('is-valid');
+            if (errSpan) {
+                errSpan.innerText = `Maximum guest capacity is ${window.maxGuests} guests for this package.`;
+                errSpan.classList.add('show');
+            }
+            return false;
+        }
+
+        guestDisplay.classList.remove('error');
+        guestDisplay.classList.add('is-valid');
+        if (errSpan) errSpan.classList.remove('show');
+        return true;
     };
     if (guestDisplay) {
-        guestDisplay.addEventListener('input', validateGuestCount);
+        guestDisplay.addEventListener('input', () => {
+            validateGuestCount();
+        });
+        guestDisplay.addEventListener('keyup', validateGuestCount);
         guestDisplay.addEventListener('change', validateGuestCount);
         guestDisplay.addEventListener('blur', validateGuestCount);
     }
 
+    // --- Real-time Date Validation ---
     const validateEventDate = () => {
         if (!dateInput) return true;
-        return validateField(dateInput, 'err-date', v => {
-            const errEl = document.getElementById('err-date');
-            if (!v) {
-                if (errEl) errEl.innerText = `Please select an event date.`;
-                return false;
+        const errEl = document.getElementById('err-date');
+        const v = (dateInput.value || '').trim();
+
+        if (!v) {
+            dateInput.classList.add('error');
+            dateInput.classList.remove('is-valid');
+            if (errEl) {
+                errEl.innerText = 'Please select an event date.';
+                errEl.classList.add('show');
             }
-            const parts = v.split('-');
-            if(parts.length !== 3) {
-                if (errEl) errEl.innerText = `Please enter a valid date.`;
-                return false;
+            return false;
+        }
+
+        const parts = v.split('-');
+        if (parts.length !== 3) {
+            dateInput.classList.add('error');
+            dateInput.classList.remove('is-valid');
+            if (errEl) {
+                errEl.innerText = 'Please enter a valid date.';
+                errEl.classList.add('show');
             }
-            const selectedDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-            
-            const minDate = new Date();
-            minDate.setDate(minDate.getDate() + leadTime - 1);
-            minDate.setHours(0,0,0,0);
-            
-            const maxDate = new Date(maxCalendarDate);
-            maxDate.setHours(23,59,59,999);
-            
-            if (selectedDate <= minDate) {
-                if (errEl) errEl.innerText = `This caterer requires bookings at least ${leadTime} days before the event date.`;
-                return false;
+            return false;
+        }
+
+        const selectedDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        selectedDate.setHours(0, 0, 0, 0);
+
+        const minDate = getMinCalendarDate();
+        minDate.setHours(0, 0, 0, 0);
+
+        const maxDate = new Date(maxCalendarDate);
+        maxDate.setHours(23, 59, 59, 999);
+
+        if (selectedDate < minDate) {
+            dateInput.classList.add('error');
+            dateInput.classList.remove('is-valid');
+            const daysWord = effectiveLeadTime === 1 ? '1 day' : `${effectiveLeadTime} days`;
+            if (errEl) {
+                errEl.innerText = `This caterer requires at least ${daysWord} advance notice. Earliest available date is ${minDateString}.`;
+                errEl.classList.add('show');
             }
-            if (selectedDate > maxDate) {
-                const advText = maxAdvUnit === 'years' ? (maxAdvVal === 1 ? '1 year' : `${maxAdvVal} years`) : (maxAdvUnit === 'days' ? `${maxAdvVal} days` : (maxAdvVal === 1 ? '1 month' : `${maxAdvVal} months`));
-                if (errEl) errEl.innerText = `Bookings can only be made up to ${advText} in advance.`;
-                return false;
+            return false;
+        }
+
+        if (selectedDate > maxDate) {
+            dateInput.classList.add('error');
+            dateInput.classList.remove('is-valid');
+            const advText = maxAdvUnit === 'years' ? (maxAdvVal === 1 ? '1 year' : `${maxAdvVal} years`) : (maxAdvUnit === 'days' ? `${maxAdvVal} days` : (maxAdvVal === 1 ? '1 month' : `${maxAdvVal} months`));
+            if (errEl) {
+                errEl.innerText = `Bookings can only be made up to ${advText} in advance.`;
+                errEl.classList.add('show');
             }
-            
-            // Operating days check
-            const opDays = evAvail.operating_days || (window.catererRules && window.catererRules.business_hours && window.catererRules.business_hours.operating_days);
-            if (opDays && opDays.length > 0 && opDays.length < 7) {
-                const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                const selectedDayName = daysOfWeek[selectedDate.getDay()];
-                if (!opDays.includes(selectedDayName)) {
-                    if (errEl) errEl.innerText = `Caterer does not accept bookings on ${selectedDayName}s.`;
-                    return false;
+            return false;
+        }
+
+        // Operating days check
+        const opDays = evAvail.operating_days || (window.catererRules && window.catererRules.business_hours && window.catererRules.business_hours.operating_days);
+        if (opDays && opDays.length > 0 && opDays.length < 7) {
+            const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const selectedDayName = daysOfWeek[selectedDate.getDay()];
+            if (!opDays.includes(selectedDayName)) {
+                dateInput.classList.add('error');
+                dateInput.classList.remove('is-valid');
+                if (errEl) {
+                    errEl.innerText = `Caterer does not accept bookings on ${selectedDayName}s.`;
+                    errEl.classList.add('show');
                 }
+                return false;
             }
-            
-            return true;
-        }, null);
+        }
+
+        dateInput.classList.remove('error');
+        dateInput.classList.add('is-valid');
+        if (errEl) errEl.classList.remove('show');
+        return true;
     };
+
     if (dateInput) {
-        dateInput.addEventListener('input', () => { validateEventDate(); window.checkAvailability(); });
-        dateInput.addEventListener('change', () => { validateEventDate(); window.checkAvailability(); });
+        dateInput.addEventListener('input', () => {
+            validateEventDate();
+            if (typeof window.checkAvailability === 'function') window.checkAvailability();
+        });
+        dateInput.addEventListener('change', () => {
+            validateEventDate();
+            if (typeof window.checkAvailability === 'function') window.checkAvailability();
+        });
         dateInput.addEventListener('blur', validateEventDate);
     }
 
+    // --- Time Parsing & Helpers ---
+    const parseTimeStr = (t) => {
+        if (!t || typeof t !== 'string' || !t.includes(':')) return null;
+        const parts = t.split(':').map(Number);
+        if (isNaN(parts[0]) || isNaN(parts[1])) return null;
+        return parts[0] * 60 + parts[1];
+    };
+    const formatTimeStr = (mins) => {
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    };
+    const formatAmPmStr = (mins) => {
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
+    };
+
+    let eventStartMins = parseTimeStr(eventEarliest);
+    let eventEndMins = parseTimeStr(eventLatest);
+    if (eventStartMins === null) eventStartMins = 8 * 60; // 08:00 AM
+    if (eventEndMins === null) eventEndMins = 22 * 60; // 10:00 PM
+    if (eventEndMins <= eventStartMins) eventEndMins = Math.min(eventStartMins + 12 * 60, 23 * 60 + 30);
+
+    // --- Real-time Time Validation ---
     const validateEventTime = () => {
         if (!timeInput) return true;
-        return validateField(timeInput, 'err-time', v => {
-            const customTrigger = document.getElementById('time-trigger-btn') || document.querySelector('#custom-time-select .form-input');
-            if (!v) {
-                if (customTrigger) customTrigger.classList.add('error');
-                return false;
+        const triggerBtn = document.getElementById('time-trigger-btn');
+        const errEl = document.getElementById('err-time');
+        const v = (timeInput.value || '').trim();
+
+        if (!v) {
+            if (triggerBtn) {
+                triggerBtn.classList.add('error');
+                triggerBtn.classList.remove('is-valid');
             }
-            const parts = v.split(':');
-            if (parts.length !== 2) {
-                if (customTrigger) customTrigger.classList.add('error');
-                return false;
+            if (errEl) {
+                errEl.innerText = 'Please select a start time for your event.';
+                errEl.classList.add('show');
             }
-            const hour = parseInt(parts[0], 10);
-            const min = parseInt(parts[1], 10);
-            
-            const parseTime = (timeStr) => {
-                const [h, m] = (timeStr || '0:0').split(':').map(Number);
-                return (h || 0) * 60 + (m || 0);
-            };
-            
-            const formatAmPm = (mins) => {
-                const h = Math.floor(mins / 60);
-                const m = mins % 60;
-                const ampm = h >= 12 ? 'PM' : 'AM';
-                const h12 = h % 12 || 12;
-                return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
-            };
-            
-            const selectedMins = hour * 60 + min;
-            const eventStartMins = parseTime(eventEarliest);
-            const eventEndMins = parseTime(eventLatest);
-            
-            const startFormatted = formatAmPm(eventStartMins);
-            const endFormatted = formatAmPm(eventEndMins);
-            
-            if (selectedMins < eventStartMins || selectedMins > eventEndMins) {
-                const errTime = document.getElementById('err-time');
-                if (errTime) errTime.innerText = `The selected event time is outside the caterer’s available hours (${startFormatted} - ${endFormatted}).`;
-                if (customTrigger) customTrigger.classList.add('error');
-                return false;
+            return false;
+        }
+
+        const mins = parseTimeStr(v);
+        if (mins === null) {
+            if (triggerBtn) {
+                triggerBtn.classList.add('error');
+                triggerBtn.classList.remove('is-valid');
             }
-            if (customTrigger) customTrigger.classList.remove('error');
-            return true;
-        }, "Please select a valid time.");
+            if (errEl) {
+                errEl.innerText = 'Please choose a valid time.';
+                errEl.classList.add('show');
+            }
+            return false;
+        }
+
+        if (mins < eventStartMins || mins > eventEndMins) {
+            const startFormatted = formatAmPmStr(eventStartMins);
+            const endFormatted = formatAmPmStr(eventEndMins);
+            if (triggerBtn) {
+                triggerBtn.classList.add('error');
+                triggerBtn.classList.remove('is-valid');
+            }
+            if (errEl) {
+                errEl.innerText = `The selected event time is outside caterer's available hours (${startFormatted} - ${endFormatted}).`;
+                errEl.classList.add('show');
+            }
+            return false;
+        }
+
+        if (triggerBtn) {
+            triggerBtn.classList.remove('error');
+            triggerBtn.classList.add('is-valid');
+        }
+        if (errEl) errEl.classList.remove('show');
+        return true;
     };
 
     if (timeInput) {
-        const parseTimeStr = (t) => {
-            const [h,m] = (t || '').split(':').map(Number);
-            return (h || 0) * 60 + (m || 0);
-        };
-        const formatTimeStr = (mins) => {
-            const h = Math.floor(mins / 60);
-            const m = mins % 60;
-            return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-        };
-        const formatAmPmStr = (mins) => {
-            const h = Math.floor(mins / 60);
-            const m = mins % 60;
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            const h12 = h % 12 || 12;
-            return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
-        };
-        
-        const eventStartMins = parseTimeStr(eventEarliest);
-        const eventEndMins = parseTimeStr(eventLatest);
-        
         const initialVal = timeInput.getAttribute('data-initial') || timeInput.value || '';
-        
         const triggerBtn = document.getElementById('time-trigger-btn');
         const triggerText = document.getElementById('time-trigger-text');
         const triggerIcon = document.getElementById('time-trigger-icon');
@@ -930,8 +1051,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (triggerBtn && dropdownMenu && chipsGrid) {
             if (initialVal) {
                 timeInput.value = initialVal;
-                if (triggerText) {
-                    triggerText.innerText = formatAmPmStr(parseTimeStr(initialVal));
+                const mInitial = parseTimeStr(initialVal);
+                if (triggerText && mInitial !== null) {
+                    triggerText.innerText = formatAmPmStr(mInitial);
                     triggerText.style.color = '#0f172a';
                 }
             }
@@ -944,12 +1066,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (triggerIcon) triggerIcon.className = isVisible ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
             };
 
-            // Close on outside click
+            // Prevent dropdown clicks from bubbling
+            dropdownMenu.onclick = (e) => {
+                e.stopPropagation();
+            };
+
+            // Close on outside click and validate
             document.addEventListener('click', (e) => {
                 const customSelect = document.getElementById('custom-time-select');
                 if (customSelect && !customSelect.contains(e.target)) {
-                    dropdownMenu.style.display = 'none';
-                    if (triggerIcon) triggerIcon.className = 'fas fa-chevron-down';
+                    if (dropdownMenu.style.display === 'block') {
+                        dropdownMenu.style.display = 'none';
+                        if (triggerIcon) triggerIcon.className = 'fas fa-chevron-down';
+                        validateEventTime();
+                    }
                 }
             });
 
@@ -958,7 +1088,7 @@ document.addEventListener('DOMContentLoaded', function () {
             for (let m = eventStartMins; m <= eventEndMins; m += 30) {
                 const valStr = formatTimeStr(m);
                 const labelStr = formatAmPmStr(m);
-                
+
                 const chip = document.createElement('button');
                 chip.type = 'button';
                 chip.className = 'time-chip';
@@ -974,71 +1104,142 @@ document.addEventListener('DOMContentLoaded', function () {
                 chip.style.fontWeight = '600';
                 chip.style.textAlign = 'center';
                 chip.style.transition = 'all 0.15s ease';
-                
-                chip.onmouseenter = function() {
+
+                chip.onmouseenter = function () {
                     if (timeInput.value !== valStr) {
                         this.style.background = '#e2e8f0';
                     }
                 };
-                chip.onmouseleave = function() {
+                chip.onmouseleave = function () {
                     if (timeInput.value !== valStr) {
                         this.style.background = '#f8fafc';
                     }
                 };
-                
-                chip.onclick = function(e) {
+
+                chip.onclick = function (e) {
                     e.stopPropagation();
-                    
+
                     Array.from(chipsGrid.children).forEach(c => {
                         c.style.background = '#f8fafc';
                         c.style.color = '#475569';
                         c.style.borderColor = '#cbd5e1';
                     });
-                    
+
                     this.style.background = 'var(--wiz-primary, #ff7b54)';
                     this.style.color = '#fff';
                     this.style.borderColor = 'var(--wiz-primary, #ff7b54)';
-                    
+
                     timeInput.value = valStr;
                     if (triggerText) {
                         triggerText.innerText = labelStr;
                         triggerText.style.color = '#0f172a';
                     }
-                    
+
                     dropdownMenu.style.display = 'none';
                     if (triggerIcon) triggerIcon.className = 'fas fa-chevron-down';
-                    
-                    if (triggerBtn) triggerBtn.classList.remove('error');
-                    timeInput.classList.remove('error');
-                    const errTime = document.getElementById('err-time');
-                    if (errTime) errTime.classList.remove('show');
-                    
+
                     validateEventTime();
                     if (typeof window.checkAvailability === 'function') {
                         window.checkAvailability();
                     }
                 };
-                
+
                 chipsGrid.appendChild(chip);
             }
         }
 
-        timeInput.addEventListener('change', () => { validateEventTime(); window.checkAvailability(); });
+        timeInput.addEventListener('change', () => {
+            validateEventTime();
+            if (typeof window.checkAvailability === 'function') window.checkAvailability();
+        });
         timeInput.addEventListener('blur', validateEventTime);
     }
 
+    // --- Real-time Location Validation ---
+    const validateProvince = () => {
+        if (!provinceSelect) return true;
+        const v = (provinceSelect.value || '').trim();
+        const isValid = !!v && !v.startsWith('--');
+        const errEl = document.getElementById('err-province');
+        if (isValid) {
+            provinceSelect.classList.remove('error');
+            provinceSelect.classList.add('is-valid');
+            if (errEl) errEl.classList.remove('show');
+        } else {
+            provinceSelect.classList.add('error');
+            provinceSelect.classList.remove('is-valid');
+            if (errEl) {
+                errEl.innerText = 'Please select the province of your event venue.';
+                errEl.classList.add('show');
+            }
+        }
+        return isValid;
+    };
+
+    const validateCity = () => {
+        if (!citySelect) return true;
+        const v = (citySelect.value || '').trim();
+        const isValid = !!v && !v.startsWith('--');
+        const errEl = document.getElementById('err-city');
+        if (isValid) {
+            citySelect.classList.remove('error');
+            citySelect.classList.add('is-valid');
+            if (errEl) errEl.classList.remove('show');
+        } else {
+            citySelect.classList.add('error');
+            citySelect.classList.remove('is-valid');
+            if (errEl) {
+                errEl.innerText = 'Please select the city or municipality of your event venue.';
+                errEl.classList.add('show');
+            }
+        }
+        return isValid;
+    };
+
+    const validateBarangay = () => {
+        if (!barangaySelect) return true;
+        const v = (barangaySelect.value || '').trim();
+        const isValid = !!v && !v.startsWith('--');
+        const errEl = document.getElementById('err-barangay');
+        if (isValid) {
+            barangaySelect.classList.remove('error');
+            barangaySelect.classList.add('is-valid');
+            if (errEl) errEl.classList.remove('show');
+        } else {
+            barangaySelect.classList.add('error');
+            barangaySelect.classList.remove('is-valid');
+            if (errEl) {
+                errEl.innerText = 'Please select the barangay of your event venue.';
+                errEl.classList.add('show');
+            }
+        }
+        return isValid;
+    };
+
     if (provinceSelect) {
-        provinceSelect.addEventListener('change', () => validateField(provinceSelect, 'err-province', v => v !== ''));
-        provinceSelect.addEventListener('blur', () => validateField(provinceSelect, 'err-province', v => v !== ''));
+        provinceSelect.addEventListener('change', () => {
+            populateCities(provinceSelect.value);
+            updateHiddenVenue();
+            validateProvince();
+        });
+        provinceSelect.addEventListener('blur', validateProvince);
     }
     if (citySelect) {
-        citySelect.addEventListener('change', () => validateField(citySelect, 'err-city', v => v !== ''));
-        citySelect.addEventListener('blur', () => validateField(citySelect, 'err-city', v => v !== ''));
+        citySelect.addEventListener('change', () => {
+            populateBarangays(citySelect.value);
+            updateHiddenVenue();
+            validateCity();
+        });
+        citySelect.addEventListener('blur', validateCity);
     }
     if (barangaySelect) {
-        barangaySelect.addEventListener('change', () => validateField(barangaySelect, 'err-barangay', v => v !== ''));
-        barangaySelect.addEventListener('blur', () => validateField(barangaySelect, 'err-barangay', v => v !== ''));
+        barangaySelect.addEventListener('change', () => {
+            updateHiddenVenue();
+            validateBarangay();
+        });
+        barangaySelect.addEventListener('blur', validateBarangay);
     }
+
 
     if (form) {
         form.addEventListener('submit', function (e) {
@@ -1055,7 +1256,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 };
 
                 // 1. Event name
-                check('event_name', eventName ? validateField(eventName, 'err-name', v => (v || '').trim().length > 0) : true);
+                check('event_name', validateEventName());
 
                 // 2. Event type (locked from package — hidden input)
                 const eventTypeHidden = document.getElementById('event_type_hidden');
@@ -1069,13 +1270,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 // 3. Guest count
-                check('guest_count', guestDisplay ? validateGuestCount() : true);
+                check('guest_count', validateGuestCount());
 
                 // 4. Event date
-                check('event_date', dateInput ? validateEventDate() : true);
+                check('event_date', validateEventDate());
 
                 // 5. Event time
-                check('event_time', timeInput ? validateEventTime() : true);
+                check('event_time', validateEventTime());
 
                 // 5.1 Booking availability
                 if (!isAvailabilityValid) {
@@ -1083,7 +1284,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     isValid = false;
                 }
 
-                // 6. Location — construct venue_address from selects NOW (in case async hasn't updated the hidden)
+                // 6. Location — construct venue_address from selects NOW
+                const isProvValid = validateProvince();
+                const isCityValid = validateCity();
+                const isBrgyValid = validateBarangay();
+                check('province', isProvValid);
+                check('city', isCityValid);
+                check('barangay', isBrgyValid);
+
                 const pEl = document.getElementById('province_select');
                 const cEl = document.getElementById('city_select');
                 const bEl = document.getElementById('barangay_select');
@@ -1092,28 +1300,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 const bVal = bEl ? (bEl.options[bEl.selectedIndex] ? bEl.options[bEl.selectedIndex].value : '') : '';
 
                 if (pVal && pVal !== '' && cVal && cVal !== '' && bVal && bVal !== '') {
-                    // Update the hidden venue_address right now before submission
                     if (venueHidden) venueHidden.value = `${bVal}, ${cVal}, ${pVal}`;
-                }
-
-                const hasProvince = pVal && pVal !== '';
-                const hasCity = cVal && cVal !== '';
-                const hasBarangay = bVal && bVal !== '';
-
-                if (!hasProvince) {
-                    console.warn('[BookingWizard] FAILED: province');
-                    if (provinceSelect) validateField(provinceSelect, 'err-province', v => v !== '');
-                    isValid = false;
-                } else if (!hasCity) {
-                    console.warn('[BookingWizard] FAILED: city');
-                    if (citySelect) validateField(citySelect, 'err-city', v => v !== '');
-                    isValid = false;
-                } else if (!hasBarangay) {
-                    console.warn('[BookingWizard] FAILED: barangay');
-                    if (barangaySelect) validateField(barangaySelect, 'err-barangay', v => v !== '');
-                    isValid = false;
-                } else {
                     console.log('[BookingWizard] OK: location =', venueHidden ? venueHidden.value : 'n/a');
+                } else {
+                    isValid = false;
                 }
 
                 // 7. Delivery fee coverage

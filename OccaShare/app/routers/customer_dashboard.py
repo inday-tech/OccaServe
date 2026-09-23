@@ -11,6 +11,7 @@ import uuid
 import time
 from ..db import database, models
 from ..core import security as auth
+from ..core.utils import is_customer_profile_complete
 from ..services.storage import upload_file_to_cloudinary, delete_file_from_cloudinary
 
 router = APIRouter(prefix="/customer", tags=["customer"])
@@ -170,11 +171,7 @@ async def customer_dashboard(
     ).order_by(models.Booking.created_at.desc()).first()
 
     # Calculate Profile Completion
-    completion_points = 0
-    if user.first_name and user.last_name and user.dob: completion_points += 1
-    if user.phone_number: completion_points += 1
-    if user.province and user.city_municipality and user.barangay and user.street_address: completion_points += 1
-    profile_completion = int((completion_points / 3) * 100)
+    _, profile_completion, _ = is_customer_profile_complete(user)
     
     # Featured Caterers to explore in Quick Actions / Explore Caterers section
     featured_caterers = db.query(models.CatererProfile).filter(
@@ -756,16 +753,13 @@ async def customer_profile(
     user: models.User = Depends(customer_only)
 ):
     # Calculate Profile Completion
-    completion_points = 0
-    if user.first_name and user.last_name and user.dob: completion_points += 1
-    if user.phone_number: completion_points += 1
-    if user.province and user.city_municipality and user.barangay and user.street_address: completion_points += 1
-    profile_completion = int((completion_points / 3) * 100)
+    _, profile_completion, missing_fields = is_customer_profile_complete(user)
     
     return templates.TemplateResponse("customer/profile.html", {
         "request": request,
         "user": user,
         "profile_completion": profile_completion,
+        "missing_fields": missing_fields,
         "active_page": "profile"
     })
 
@@ -1677,33 +1671,38 @@ async def customer_omni_search(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
-    if not q or len(q) < 2:
+    if not q or len(q.strip()) < 1:
         return []
 
-    search_filter = f"%{q}%"
+    clean_q = q.strip()
+    search_filter = f"%{clean_q}%"
     results = []
     
-    # 0. Search Modules (Hardcoded)
+    # 0. Navigation Modules & Pages
     modules = [
-        {"name": "Marketplace", "link": "/customer/marketplace", "icon": "fas fa-store"},
-        {"name": "My Bookings (Events)", "link": "/customer/bookings", "icon": "fas fa-calendar-check"},
-        {"name": "Food Orders", "link": "/customer/orders", "icon": "fas fa-utensils"},
-        {"name": "Payments & Billing", "link": "/customer/payments", "icon": "fas fa-file-invoice-dollar"},
-        {"name": "Messages", "link": "/customer/messages", "icon": "fas fa-envelope"},
-        {"name": "Profile Settings", "link": "/customer/profile", "icon": "fas fa-user-cog"}
+        {"name": "Marketplace (Find Caterers)", "link": "/customer/marketplace", "icon": "fas fa-store", "subtitle": "Explore all catering partners"},
+        {"name": "My Bookings & Events", "link": "/customer/bookings", "icon": "fas fa-calendar-check", "subtitle": "Track your booked events"},
+        {"name": "Food Orders", "link": "/customer/orders", "icon": "fas fa-utensils", "subtitle": "View food deliveries & trays"},
+        {"name": "Payments & Billing", "link": "/customer/payments", "icon": "fas fa-file-invoice-dollar", "subtitle": "Invoices and payment receipts"},
+        {"name": "My Reviews", "link": "/customer/reviews", "icon": "fas fa-star", "subtitle": "Your feedback for caterers"},
+        {"name": "Messages & Chat", "link": "/customer/messages", "icon": "fas fa-envelope", "subtitle": "Conversations with caterers"},
+        {"name": "Profile & Settings", "link": "/customer/profile", "icon": "fas fa-user-cog", "subtitle": "Update account details"},
+        {"name": "Dashboard Overview", "link": "/customer/dashboard", "icon": "fas fa-house", "subtitle": "Main customer dashboard"},
+        {"name": "Archived Bookings", "link": "/customer/archives", "icon": "fas fa-archive", "subtitle": "Past and archived events"}
     ]
     for mod in modules:
-        if q.lower() in mod["name"].lower():
+        if clean_q.lower() in mod["name"].lower() or clean_q.lower() in mod["subtitle"].lower():
             results.append({
                 "title": mod["name"],
-                "subtitle": "Customer Module",
+                "subtitle": mod["subtitle"],
                 "icon": mod["icon"],
                 "link": mod["link"],
                 "type": "module"
             })
-            if len(results) >= 3: break # Limit modules in results
+            if len(results) >= 3:
+                break
 
-    # 1. Search Caterers (Name and Location)
+    # 1. Search Caterers
     caterers = db.query(models.CatererProfile).filter(
         models.CatererProfile.status == "Published",
         models.CatererProfile.verification_status == 'Verified',
@@ -1712,37 +1711,119 @@ async def customer_omni_search(
             models.CatererProfile.business_name.ilike(search_filter),
             models.CatererProfile.city.ilike(search_filter),
             models.CatererProfile.contact_address.ilike(search_filter),
-            models.CatererProfile.address_details.ilike(search_filter)
+            models.CatererProfile.address_details.ilike(search_filter),
+            models.CatererProfile.description.ilike(search_filter)
         )
     ).limit(5).all()
 
     for c in caterers:
-        rating_str = f"{float(c.rating):.1f} ⭐" if getattr(c, 'rating', 0) else "New Partner"
+        rating_str = f"{float(c.rating):.1f} ★" if (getattr(c, 'rating', None) and getattr(c, 'review_count', 0) > 0) else "New Partner"
         results.append({
             "title": c.business_name,
-            "subtitle": f"{c.city or 'Various Locations'} • {rating_str}",
-            "icon": "fas fa-store-alt",
-            "link": f"/customer/marketplace/{c.id}",
+            "subtitle": f"{c.city or 'Quezon'} • {rating_str}",
+            "icon": "fas fa-store",
+            "link": f"/caterers/{c.id}",
             "type": "caterer"
         })
 
-    # 2. Search My Bookings (ID, Event Name, Event Type)
-    q_is_id = q.replace("BK-", "").replace("ORD-", "").replace("#", "").isdigit()
-    booking_id_filter = int(q.replace("BK-", "").replace("ORD-", "").replace("#", "")) if q_is_id else 0
+    # 2. Search Catering Packages
+    try:
+        packages = db.query(models.CateringPackage).join(
+            models.CatererProfile, models.CateringPackage.caterer_id == models.CatererProfile.id
+        ).filter(
+            models.CatererProfile.status == "Published",
+            models.CateringPackage.status != "archived",
+            or_(
+                models.CateringPackage.name.ilike(search_filter),
+                models.CateringPackage.description.ilike(search_filter),
+                models.CateringPackage.event_type.ilike(search_filter)
+            )
+        ).limit(4).all()
+
+        for p in packages:
+            caterer_name = p.caterer.business_name if p.caterer else "Caterer"
+            results.append({
+                "title": p.name,
+                "subtitle": f"Package • ₱{float(p.price_per_head or 0):,.2f}/head • {caterer_name}",
+                "icon": "fas fa-box-open",
+                "link": f"/caterers/{p.caterer_id}#packages",
+                "type": "package"
+            })
+    except Exception as e:
+        pass
+
+    # 3. Search Menu Items / Dishes
+    try:
+        dishes = db.query(models.MenuItem).join(
+            models.CatererProfile, models.MenuItem.caterer_id == models.CatererProfile.id
+        ).filter(
+            models.CatererProfile.status == "Published",
+            models.MenuItem.is_archived == False,
+            or_(
+                models.MenuItem.name.ilike(search_filter),
+                models.MenuItem.category.ilike(search_filter),
+                models.MenuItem.description.ilike(search_filter)
+            )
+        ).limit(4).all()
+
+        for d in dishes:
+            caterer_name = d.caterer.business_name if d.caterer else "Caterer"
+            results.append({
+                "title": d.name,
+                "subtitle": f"Dish • ₱{float(d.price or 0):,.2f} ({d.category or 'Menu'}) • {caterer_name}",
+                "icon": "fas fa-bowl-food",
+                "link": f"/caterers/{d.caterer_id}#menu",
+                "type": "dish"
+            })
+    except Exception as e:
+        pass
+
+    # 4. Search Services
+    try:
+        services = db.query(models.Service).join(
+            models.CatererProfile, models.Service.caterer_id == models.CatererProfile.id
+        ).filter(
+            models.CatererProfile.status == "Published",
+            models.Service.is_archived == False,
+            or_(
+                models.Service.name.ilike(search_filter),
+                models.Service.category.ilike(search_filter),
+                models.Service.description.ilike(search_filter)
+            )
+        ).limit(4).all()
+
+        for s in services:
+            caterer_name = s.caterer.business_name if s.caterer else "Caterer"
+            results.append({
+                "title": s.name,
+                "subtitle": f"Service • ₱{float(s.price or 0):,.2f} • {caterer_name}",
+                "icon": "fas fa-concierge-bell",
+                "link": f"/caterers/{s.caterer_id}#services",
+                "type": "service"
+            })
+    except Exception as e:
+        pass
+
+    # 5. Search My Bookings (ID, Event Name, Event Type, Caterer)
+    raw_digits = "".join(filter(str.isdigit, clean_q))
+    booking_id_filter = int(raw_digits) if raw_digits else 0
     
+    booking_filters = [
+        models.Booking.event_name.ilike(search_filter),
+        models.Booking.event_type.ilike(search_filter)
+    ]
+    if booking_id_filter > 0:
+        booking_filters.append(models.Booking.id == booking_id_filter)
+
     bookings = db.query(models.Booking).filter(
         models.Booking.user_id == user.id,
-        or_(
-            models.Booking.event_name.ilike(search_filter),
-            models.Booking.event_type.ilike(search_filter),
-            models.Booking.id == booking_id_filter
-        )
-    ).limit(5).all()
+        or_(*booking_filters)
+    ).order_by(models.Booking.id.desc()).limit(4).all()
 
     for b in bookings:
         prefix = "ORD-" if b.document_type == 'invoice' else "BK-"
         results.append({
-            "title": b.event_name or b.event_type or "Booking",
+            "title": b.event_name or b.event_type or f"Booking {prefix}{b.id}",
             "subtitle": f"ID: {prefix}{b.id} • {b.status.replace('_', ' ').title()}",
             "icon": "fas fa-calendar-check" if b.document_type != 'invoice' else "fas fa-shopping-bag",
             "link": f"/customer/bookings/manage/{b.id}",

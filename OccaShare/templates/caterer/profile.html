@@ -43,37 +43,10 @@
 </style>
 <style>
     :root {
-        --brand-primary: {
-                {
-                caterer.primary_color if caterer.primary_color else "var(--primary-color)"
-            }
-        }
-
-        ;
-
-        --brand-secondary: {
-                {
-                caterer.secondary_color if caterer.secondary_color else "#334155"
-            }
-        }
-
-        ;
-
-        --brand-accent: {
-                {
-                caterer.accent_color if caterer.accent_color else "var(--primary-color)"
-            }
-        }
-
-        ;
-
-        --brand-highlight: {
-                {
-                caterer.highlight_color if caterer.highlight_color else "#fdba74"
-            }
-        }
-
-        ;
+        --brand-primary: {{ caterer.primary_color if caterer.primary_color else "var(--primary-color)" }};
+        --brand-secondary: {{ caterer.secondary_color if caterer.secondary_color else "#334155" }};
+        --brand-accent: {{ caterer.accent_color if caterer.accent_color else "var(--primary-color)" }};
+        --brand-highlight: {{ caterer.highlight_color if caterer.highlight_color else "#fdba74" }};
     }
 
     body {

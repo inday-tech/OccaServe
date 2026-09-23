@@ -648,49 +648,98 @@
                     <div class="payment-methods-tabs-grid">
                         <!-- GCash -->
                         <div class="payment-box-compact">
-                            <h4><i class="fas fa-mobile-alt"></i> GCash</h4>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                                <h4 style="margin: 0;"><i class="fas fa-mobile-alt"></i> GCash</h4>
+                                <span id="gcash_qrStatusBadge" class="{% if profile.gcash_qr_url %}status-badge-saved{% else %}status-badge-empty{% endif %}">
+                                    {% if profile.gcash_qr_url %}<i class="fas fa-check-circle"></i> QR Saved{% else %}No QR{% endif %}
+                                </span>
+                            </div>
                             <div class="form-group">
-                                <label>Number</label>
+                                <label>GCash Number</label>
                                 <input type="text" name="gcash_number" value="{{ profile.gcash_number or '' }}" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '');"
                                     placeholder="09123456789" pattern="^(09|\+639)\d{9}$"
                                     title="Must be a valid 11-digit mobile number starting with 09 or +6399">
                             </div>
-                            <div class="form-group">
-                                <label>QR Code</label>
-                                <input type="file" name="gcash_qr" accept="image/*" class="form-file-input">
-                                {% if profile.gcash_qr_url %}
-                                <div class="qr-preview-tiny">
-                                    <img src="{{ profile.gcash_qr_url }}" alt="GCash QR">
-                                    <span>Current QR</span>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label>GCash QR Code</label>
+                                <div class="payment-qr-wrap">
+                                    <div class="qr-preview-box" id="gcash_qrPreviewBox">
+                                        <img id="gcash_qrPreviewImg" 
+                                             src="{{ profile.gcash_qr_url if profile.gcash_qr_url else '' }}" 
+                                             alt="GCash QR" 
+                                             style="{% if not profile.gcash_qr_url %}display: none;{% endif %}"
+                                             onerror="this.style.display='none'; document.getElementById('gcash_qrPlaceholder').style.display='flex';">
+                                        <div id="gcash_qrPlaceholder" style="display: {% if profile.gcash_qr_url %}none{% else %}flex{% endif %}; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #94a3b8; font-size: 0.75rem;">
+                                            <i class="fas fa-qrcode" style="font-size: 1.8rem; margin-bottom: 4px; color: #cbd5e1;"></i>
+                                            No QR
+                                        </div>
+                                    </div>
+                                    <div class="payment-qr-actions">
+                                        <input type="file" name="gcash_qr" id="gcash_qrFileInput" accept=".png,.jpg,.jpeg,.webp" style="display: none;" onchange="previewSelectedImage(this, 'gcash_qr')">
+                                        <input type="hidden" name="remove_gcash_qr" id="remove_gcash_qr_flag" value="0">
+                                        <button type="button" class="btn-media-replace" onclick="document.getElementById('gcash_qrFileInput').click()">
+                                            <i class="fas fa-arrow-up-from-bracket"></i> <span id="gcash_qrActionText">{% if profile.gcash_qr_url %}Change QR{% else %}Upload QR{% endif %}</span>
+                                        </button>
+                                        <button type="button" id="btnRemove_gcash_qr" class="btn-media-remove" onclick="removeImage('gcash_qr')" style="display: {% if profile.gcash_qr_url %}inline-flex{% else %}none{% endif %};">
+                                            <i class="fas fa-trash-can"></i> Remove QR
+                                        </button>
+                                    </div>
+                                    <span style="font-size: 0.72rem; color: #64748b; margin-top: 0.2rem; display: block; text-align: center;">Accepted: PNG, JPG, WebP</span>
                                 </div>
-                                {% endif %}
                             </div>
                         </div>
 
                         <!-- Maya -->
                         <div class="payment-box-compact">
-                            <h4><i class="fas fa-wallet"></i> Maya</h4>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                                <h4 style="margin: 0;"><i class="fas fa-wallet"></i> Maya</h4>
+                                <span id="maya_qrStatusBadge" class="{% if profile.maya_qr_url %}status-badge-saved{% else %}status-badge-empty{% endif %}">
+                                    {% if profile.maya_qr_url %}<i class="fas fa-check-circle"></i> QR Saved{% else %}No QR{% endif %}
+                                </span>
+                            </div>
                             <div class="form-group">
-                                <label>Number</label>
+                                <label>Maya Number</label>
                                 <input type="text" name="maya_number" value="{{ profile.maya_number or '' }}" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '');"
                                     placeholder="09123456789" pattern="^(09|\+639)\d{9}$"
                                     title="Must be a valid 11-digit mobile number starting with 09 or +6399">
                             </div>
-                            <div class="form-group">
-                                <label>QR Code</label>
-                                <input type="file" name="maya_qr" accept="image/*" class="form-file-input">
-                                {% if profile.maya_qr_url %}
-                                <div class="qr-preview-tiny">
-                                    <img src="{{ profile.maya_qr_url }}" alt="Maya QR">
-                                    <span>Current QR</span>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label>Maya QR Code</label>
+                                <div class="payment-qr-wrap">
+                                    <div class="qr-preview-box" id="maya_qrPreviewBox">
+                                        <img id="maya_qrPreviewImg" 
+                                             src="{{ profile.maya_qr_url if profile.maya_qr_url else '' }}" 
+                                             alt="Maya QR" 
+                                             style="{% if not profile.maya_qr_url %}display: none;{% endif %}"
+                                             onerror="this.style.display='none'; document.getElementById('maya_qrPlaceholder').style.display='flex';">
+                                        <div id="maya_qrPlaceholder" style="display: {% if profile.maya_qr_url %}none{% else %}flex{% endif %}; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #94a3b8; font-size: 0.75rem;">
+                                            <i class="fas fa-qrcode" style="font-size: 1.8rem; margin-bottom: 4px; color: #cbd5e1;"></i>
+                                            No QR
+                                        </div>
+                                    </div>
+                                    <div class="payment-qr-actions">
+                                        <input type="file" name="maya_qr" id="maya_qrFileInput" accept=".png,.jpg,.jpeg,.webp" style="display: none;" onchange="previewSelectedImage(this, 'maya_qr')">
+                                        <input type="hidden" name="remove_maya_qr" id="remove_maya_qr_flag" value="0">
+                                        <button type="button" class="btn-media-replace" onclick="document.getElementById('maya_qrFileInput').click()">
+                                            <i class="fas fa-arrow-up-from-bracket"></i> <span id="maya_qrActionText">{% if profile.maya_qr_url %}Change QR{% else %}Upload QR{% endif %}</span>
+                                        </button>
+                                        <button type="button" id="btnRemove_maya_qr" class="btn-media-remove" onclick="removeImage('maya_qr')" style="display: {% if profile.maya_qr_url %}inline-flex{% else %}none{% endif %};">
+                                            <i class="fas fa-trash-can"></i> Remove QR
+                                        </button>
+                                    </div>
+                                    <span style="font-size: 0.72rem; color: #64748b; margin-top: 0.2rem; display: block; text-align: center;">Accepted: PNG, JPG, WebP</span>
                                 </div>
-                                {% endif %}
                             </div>
                         </div>
 
                         <!-- Bank Transfer -->
                         <div class="payment-box-compact full-width">
-                            <h4><i class="fas fa-university"></i> Bank Transfer</h4>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                                <h4 style="margin: 0;"><i class="fas fa-university"></i> Bank Transfer</h4>
+                                <span id="bank_qrStatusBadge" class="{% if profile.bank_qr_url %}status-badge-saved{% else %}status-badge-empty{% endif %}">
+                                    {% if profile.bank_qr_url %}<i class="fas fa-check-circle"></i> QR Saved{% else %}No QR{% endif %}
+                                </span>
+                            </div>
                             <div class="form-row-three-col">
                                 <div class="form-group">
                                     <label>Bank Name</label>
@@ -715,13 +764,30 @@
                             </div>
                             <div class="form-group" style="margin-top: 1rem;">
                                 <label>Bank QR Code (Optional)</label>
-                                <input type="file" name="bank_qr" accept="image/*" class="form-file-input">
-                                {% if profile.bank_qr_url %}
-                                <div class="qr-preview-tiny">
-                                    <img src="{{ profile.bank_qr_url }}" alt="Bank QR">
-                                    <span>Current QR</span>
+                                <div class="payment-qr-wrap">
+                                    <div class="qr-preview-box" id="bank_qrPreviewBox">
+                                        <img id="bank_qrPreviewImg" 
+                                             src="{{ profile.bank_qr_url if profile.bank_qr_url else '' }}" 
+                                             alt="Bank QR" 
+                                             style="{% if not profile.bank_qr_url %}display: none;{% endif %}"
+                                             onerror="this.style.display='none'; document.getElementById('bank_qrPlaceholder').style.display='flex';">
+                                        <div id="bank_qrPlaceholder" style="display: {% if profile.bank_qr_url %}none{% else %}flex{% endif %}; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #94a3b8; font-size: 0.75rem;">
+                                            <i class="fas fa-qrcode" style="font-size: 1.8rem; margin-bottom: 4px; color: #cbd5e1;"></i>
+                                            No QR
+                                        </div>
+                                    </div>
+                                    <div class="payment-qr-actions">
+                                        <input type="file" name="bank_qr" id="bank_qrFileInput" accept=".png,.jpg,.jpeg,.webp" style="display: none;" onchange="previewSelectedImage(this, 'bank_qr')">
+                                        <input type="hidden" name="remove_bank_qr" id="remove_bank_qr_flag" value="0">
+                                        <button type="button" class="btn-media-replace" onclick="document.getElementById('bank_qrFileInput').click()">
+                                            <i class="fas fa-arrow-up-from-bracket"></i> <span id="bank_qrActionText">{% if profile.bank_qr_url %}Change QR{% else %}Upload QR{% endif %}</span>
+                                        </button>
+                                        <button type="button" id="btnRemove_bank_qr" class="btn-media-remove" onclick="removeImage('bank_qr')" style="display: {% if profile.bank_qr_url %}inline-flex{% else %}none{% endif %};">
+                                            <i class="fas fa-trash-can"></i> Remove QR
+                                        </button>
+                                    </div>
+                                    <span style="font-size: 0.72rem; color: #64748b; margin-top: 0.2rem; display: block; text-align: center;">Accepted: PNG, JPG, WebP</span>
                                 </div>
-                                {% endif %}
                             </div>
                         </div>
 
@@ -1867,13 +1933,9 @@
 
             <!-- Sticky Bottom Action Bar -->
             <div class="sticky-settings-action-bar">
-                <div class="changes-status-indicator" id="settingsChangesStatus">
-                    <span class="status-saved" id="settingsSavedBadge"><i class="fas fa-check-circle"></i> Changes saved successfully</span>
-                    <span class="status-unsaved" id="settingsUnsavedBadge" style="display: none;"><i class="fas fa-circle-dot"></i> Unsaved changes</span>
-                </div>
-                <div class="action-bar-buttons">
+                <div class="action-bar-buttons" style="margin-left: auto;">
                     <a href="/caterer/dashboard" class="btn-bar-cancel">Cancel</a>
-                    <button type="submit" id="btnSaveAllSettings" class="btn-bar-save" disabled>
+                    <button type="submit" id="btnSaveAllSettings" class="btn-bar-save">
                         <i class="fas fa-floppy-disk"></i> <span>Save Changes</span>
                     </button>
                 </div>

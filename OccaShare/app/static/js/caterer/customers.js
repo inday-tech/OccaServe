@@ -39,8 +39,22 @@ document.addEventListener('click', function(e) {
     }
 });
 
+window.addEventListener('globalSearch', (e) => {
+    window.filterCustomerTable(e.detail?.value || '');
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchParam = urlParams.get('search');
+    const globalSearchInput = document.getElementById('globalSearchInput');
+    if (searchParam) {
+        if (globalSearchInput) globalSearchInput.value = searchParam;
+        window.filterCustomerTable(searchParam);
+    }
+});
+
 window.filterCustomerTable = function(searchQuery = null) {
-    const filterText = (typeof searchQuery === 'string') ? searchQuery : (document.getElementById('globalSearchInput') ? document.getElementById('globalSearchInput').value.toLowerCase() : '');
+    const filterText = (typeof searchQuery === 'string') ? searchQuery.toLowerCase() : (document.getElementById('globalSearchInput') ? document.getElementById('globalSearchInput').value.toLowerCase() : '');
     
     const statusSelect = document.getElementById('tableFilterStatus');
     const statusFilter = statusSelect ? statusSelect.value : 'All';

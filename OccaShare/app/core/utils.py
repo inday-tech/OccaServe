@@ -215,3 +215,43 @@ def background_geocode(caterer_id: int):
             db.close()
     except Exception as e:
         print(f"[Geocode] Exception during geocoding: {e}")
+
+def is_customer_profile_complete(user) -> tuple:
+    """
+    Validates if a customer has completed all required profile fields.
+    Returns (is_complete: bool, percentage: int, missing_fields: list[str]).
+    Required:
+      1. Personal Info: first_name, last_name, dob
+      2. Contact: phone_number
+      3. Address: province, city_municipality, barangay, street_address (or legacy address)
+    """
+    if not user:
+        return False, 0, ["User session not found"]
+    
+    missing = []
+    points = 0
+    
+    # 1. Personal Details
+    if user.first_name and user.last_name and user.dob:
+        points += 1
+    else:
+        if not user.first_name: missing.append("First Name")
+        if not user.last_name: missing.append("Last Name")
+        if not user.dob: missing.append("Date of Birth")
+        
+    # 2. Contact Number
+    if user.phone_number and len(str(user.phone_number).strip()) >= 10:
+        points += 1
+    else:
+        missing.append("Contact Number")
+        
+    # 3. Address
+    has_full_address = bool(user.province and user.city_municipality and user.barangay and user.street_address)
+    if has_full_address or (user.address and len(str(user.address).strip()) > 5):
+        points += 1
+    else:
+        missing.append("Address (Province, City, Barangay, Street)")
+        
+    percent = int((points / 3) * 100)
+    return (percent >= 100, percent, missing)
+

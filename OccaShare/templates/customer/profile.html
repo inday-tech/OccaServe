@@ -268,6 +268,27 @@
     </div>
 </div>
 
+{% if request.query_params.get('alert') == 'incomplete_profile' or profile_completion < 100 %}
+<div id="incomplete-profile-banner" style="background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 1px solid #fde68a; border-left: 5px solid #f59e0b; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.08);">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(245, 158, 11, 0.15); display: flex; align-items: center; justify-content: center; color: #d97706; font-size: 1.15rem; flex-shrink: 0;">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div>
+            <div style="font-weight: 800; font-size: 0.95rem; color: #92400e; margin-bottom: 2px;">
+                Complete Profile Required to Book
+            </div>
+            <div style="font-size: 0.82rem; color: #b45309; line-height: 1.4;">
+                Caterers require your full name, birth date, valid 10+ digit contact number, and complete address before accepting bookings.
+                {% if missing_fields %}
+                <span style="font-weight: 700; display: inline-block; margin-top: 2px;">Missing: {{ missing_fields|join(', ') }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Tabs Navigation -->
 <div class="profile-tabs">
     <div class="profile-tab active" onclick="switchTab('personal', this)"><i class="fas fa-user-circle"></i> Personal Info</div>
@@ -710,6 +731,24 @@
                     matchStatus.innerHTML = '<i class="fas fa-times-circle" style="color: #ef4444;"></i><span style="color: #ef4444;">Passwords do not match</span>';
                     confPwd.style.borderColor = '#ef4444';
                 }
+            }
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('alert') === 'incomplete_profile') {
+            const missing = urlParams.get('missing');
+            let text = 'Please complete your profile details before booking a caterer.';
+            if (missing) {
+                text = `Please fill in the following required field(s) first: ${missing}.`;
+            }
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Profile Incomplete',
+                    text: text,
+                    confirmButtonColor: '#f59e0b',
+                    confirmButtonText: 'Complete Now'
+                });
             }
         }
     });

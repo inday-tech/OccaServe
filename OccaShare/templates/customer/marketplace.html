@@ -419,16 +419,51 @@
     let abortController;
 
     document.addEventListener('DOMContentLoaded', () => {
-        // Initialization code if needed later
+        const urlParams = new URLSearchParams(window.location.search);
+        const qParam = urlParams.get('q');
+        const globalSearch = document.getElementById('globalSearchInput');
+        if (qParam && globalSearch) {
+            globalSearch.value = qParam;
+            filterMarketplaceInPage(qParam);
+            runFilters();
+        }
+
+        // Real-time in-page search listener
+        window.addEventListener('globalSearch', (e) => {
+            const val = e.detail?.value || '';
+            filterMarketplaceInPage(val);
+            debounceRunFilters();
+        });
+
+        if (globalSearch) {
+            globalSearch.addEventListener('input', () => {
+                filterMarketplaceInPage(globalSearch.value);
+                debounceRunFilters();
+            });
+        }
     });
+
+    function filterMarketplaceInPage(query) {
+        const q = (query || '').toLowerCase().trim();
+        const cards = document.querySelectorAll('#catererResults .caterer-card-premium');
+        cards.forEach(card => {
+            const text = (card.textContent || '').toLowerCase();
+            if (!q || text.includes(q)) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
 
     function debounceRunFilters() {
         clearTimeout(filterTimeout);
-        filterTimeout = setTimeout(runFilters, 300);
+        filterTimeout = setTimeout(runFilters, 400);
     }
 
     async function runFilters() {
-        const query = document.getElementById('searchInput')?.value || '';
+        const globalSearch = document.getElementById('globalSearchInput');
+        const query = globalSearch ? globalSearch.value.trim() : (document.getElementById('searchInput')?.value || '');
         const city = document.getElementById('cityInput')?.value || '';
         const type = document.getElementById('typeSelect')?.value || '';
 

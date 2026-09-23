@@ -785,12 +785,13 @@
                             {% endif %}
                         </div>
                         <div style="font-size: 0.74rem; color: #64748b; font-weight: 500; margin-top: 3px; line-height: 1.2; word-break: break-all;">
-                            {% if booking.user %}
-                            {{ booking.user.email }}
-                            {% elif booking.customer_email and booking.customer_email != 'None' %}
-                            {{ booking.customer_email }}
+                            {% set raw_email = (booking.user.email if booking.user else (booking.customer_email or ''))|string %}
+                            {% if not raw_email or raw_email == 'None' or '@guest.occashare.com' in raw_email.lower() or raw_email.lower().startswith('walkin') or (is_manual and ('@guest' in raw_email.lower() or 'walkin' in raw_email.lower() or not raw_email)) %}
+                                <span style="display: inline-flex; align-items: center; gap: 4px; color: #ea580c; background: #fff7ed; border: 1px solid #ffedd5; padding: 1px 7px; border-radius: 4px; font-size: 0.69rem; font-weight: 700;">
+                                    <i class="fas fa-user-tag" style="font-size: 0.65rem;"></i> Manual / Walk-in
+                                </span>
                             {% else %}
-                            N/A
+                                <span>{{ raw_email }}</span>
                             {% endif %}
                         </div>
                     </td>
@@ -2674,8 +2675,11 @@
                         </div>
                         <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                             <span id="paymentTabBadge" style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; background: #fff7ed; color: #c2410c;">UNPAID</span>
-                            <button type="button" id="btnPaymentRecordAction" onclick="openRecordPaymentModal()" class="btn-primary" style="background: #16a34a; color: white; border: none; padding: 0.4rem 0.95rem; font-size: 0.78rem; font-weight: 700; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                            <button type="button" id="btnPaymentRecordAction" onclick="openRecordPaymentModal()" class="btn-primary" style="display: none; background: #16a34a; color: white; border: none; padding: 0.4rem 0.95rem; font-size: 0.78rem; font-weight: 700; border-radius: 6px; cursor: pointer; align-items: center; gap: 5px;">
                                 <i class="fas fa-plus-circle"></i> Record Payment
+                            </button>
+                            <button type="button" id="btnVerifyBalanceProofAction" onclick="verifyPayment(currentBookingId, true)" class="btn-primary" style="display: none; background: #0284c7; color: white; border: none; padding: 0.4rem 0.95rem; font-size: 0.78rem; font-weight: 700; border-radius: 6px; cursor: pointer; align-items: center; gap: 5px;">
+                                <i class="fas fa-shield-alt"></i> Verify Balance Proof
                             </button>
                             <button type="button" id="btnPaymentTabCopyLink" onclick="window.copyInvoiceLink(currentBookingId)" class="btn-secondary-pro" style="padding: 0.4rem 0.85rem; font-size: 0.78rem; font-weight: 700; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
                                 <i class="fas fa-link"></i> Copy Link
@@ -2770,8 +2774,11 @@
         <!-- ══ FIXED FOOTER ACTIONS ══ -->
         <div class="occ-modal-footer" style="flex-shrink: 0; padding: 1rem 1.5rem; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
             <div id="modalFooterLeftActions" style="display: flex; align-items: center; gap: 0.75rem;">
-                <button type="button" id="btnFooterCancelBooking" onclick="confirmRejectBooking(currentBookingId)" class="btn-secondary-pro" style="padding: 0.6rem 1.1rem; font-size: 0.85rem; font-weight: 700; color: #dc2626; border-color: #fecaca; background: #fef2f2; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                <button type="button" id="btnFooterCancelBooking" onclick="confirmRejectBooking(currentBookingId)" class="btn-secondary-pro" style="display: none; padding: 0.6rem 1.1rem; font-size: 0.85rem; font-weight: 700; color: #dc2626; border-color: #fecaca; background: #fef2f2; border-radius: 8px; cursor: pointer; align-items: center; gap: 6px;">
                     <i class="fas fa-ban"></i> Cancel Booking
+                </button>
+                <button type="button" id="btnFooterArchiveBooking" onclick="confirmArchiveBooking(currentBookingId)" class="btn-secondary-pro" style="display: none; padding: 0.6rem 1.1rem; font-size: 0.85rem; font-weight: 700; color: #475569; border-color: #cbd5e1; background: #f8fafc; border-radius: 8px; cursor: pointer; align-items: center; gap: 6px;">
+                    <i class="fas fa-box-archive"></i> Archive Booking
                 </button>
             </div>
             
@@ -2787,8 +2794,8 @@
 </div>
 
 <!-- ══ POPUP: RECORD PAYMENT MODAL ══ -->
-<div id="recordPaymentModal" class="occ-modal-overlay" style="z-index: 1200; display: none;">
-    <div class="occ-modal-box sz-sm occ-content-pop" style="max-width: 480px; width: 95%; background: #ffffff; border-radius: 12px; overflow: hidden;">
+<div id="recordPaymentModal" class="occ-modal-overlay" style="z-index: 10005; display: none;">
+    <div class="occ-modal-box sz-sm occ-content-pop" style="max-width: 480px; width: 95%; background: #ffffff; border-radius: 12px; overflow: hidden; position: relative; z-index: 10006; box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);">
         <div class="occ-modal-header glass-header" style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
             <div>
                 <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a;"><i class="fas fa-cash-register" style="color: #16a34a; margin-right: 6px;"></i> Record Payment</h3>

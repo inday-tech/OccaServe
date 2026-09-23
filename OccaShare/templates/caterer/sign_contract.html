@@ -1453,7 +1453,10 @@
             btn.onclick = handleModalClose;
         }
 
-        // 6. Notify parent window if inside iframe
+        // 6. Show success toast notification
+        showSignToast('✅ Contract signed successfully! The customer has been notified.');
+
+        // 7. Notify parent window if inside iframe
         if (window.parent && typeof window.parent.bk_fetchBookings === 'function') {
             try {
                 window.parent.bk_fetchBookings();
@@ -1461,6 +1464,48 @@
                 console.warn('Could not refresh parent bookings table:', e);
             }
         }
+    }
+
+    // Toast notification helper
+    function showSignToast(message) {
+        const existing = document.getElementById('signToastNotif');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.id = 'signToastNotif';
+        toast.style.cssText = [
+            'position:fixed',
+            'top:1.25rem',
+            'left:50%',
+            'transform:translateX(-50%)',
+            'z-index:99999',
+            'background:#16a34a',
+            'color:#fff',
+            'padding:0.9rem 1.75rem',
+            'border-radius:12px',
+            'font-size:0.95rem',
+            'font-weight:700',
+            'display:flex',
+            'align-items:center',
+            'gap:0.65rem',
+            'box-shadow:0 8px 30px rgba(0,0,0,0.22)',
+            'max-width:92vw',
+            'animation:signToastIn 0.35s cubic-bezier(0.34,1.56,0.64,1)'
+        ].join(';');
+        toast.textContent = message;
+
+        if (!document.getElementById('signToastStyles')) {
+            const s = document.createElement('style');
+            s.id = 'signToastStyles';
+            s.textContent = '@keyframes signToastIn{from{opacity:0;transform:translateX(-50%) translateY(-18px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}@keyframes signToastOut{from{opacity:1}to{opacity:0;transform:translateX(-50%) translateY(-10px)}}';
+            document.head.appendChild(s);
+        }
+
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.animation = 'signToastOut 0.4s ease forwards';
+            setTimeout(() => toast.remove(), 400);
+        }, 4500);
     }
 
     function viewSignedDocument() {
@@ -1478,13 +1523,18 @@
             const ws = new WebSocket(`${protocol}//${window.location.host}/ws/${clientId}`);
 
             ws.onmessage = function(event) {
-                const data = JSON.parse(event.data);
-                if (data.type === 'signature_update' && data.booking_id == bookingId) {
-                    if (data.role === 'customer') {
-                        window.location.reload();
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'signature_update' && data.booking_id == bookingId) {
+                        if (data.role === 'customer') {
+                            // Customer just signed — show notification then reload to reflect latest state
+                            showSignToast('📝 Customer has signed the contract! Refreshing...');
+                            setTimeout(() => window.location.reload(), 2200);
+                        }
                     }
-                }
+                } catch (_) {}
             };
+            ws.onclose = () => setTimeout(initWebSocket, 5000);
         } catch (err) {
             console.warn('WebSocket init warning:', err);
         }

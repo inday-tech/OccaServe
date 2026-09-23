@@ -271,7 +271,26 @@
     document.addEventListener('DOMContentLoaded', () => {
         rvFiltered = Array.from(document.querySelectorAll('.review-card-elite'));
         updatePagination();
+
+        const inp = document.getElementById('globalSearchInput');
+        if (inp) {
+            inp.addEventListener('input', (e) => filterReviews(e.target.value));
+            inp.placeholder = "Search reviews, caterers...";
+        }
+        window.addEventListener('globalSearch', (e) => filterReviews(e.detail?.value || ''));
     });
+
+    function filterReviews(q) {
+        const query = (q || '').toLowerCase().trim();
+        const all = Array.from(document.querySelectorAll('.review-card-elite'));
+        if (!query) {
+            rvFiltered = all;
+        } else {
+            rvFiltered = all.filter(card => card.textContent.toLowerCase().includes(query));
+        }
+        rvCurrentPage = 1;
+        updatePagination();
+    }
 
     function updatePagination() {
         const total = rvFiltered.length;

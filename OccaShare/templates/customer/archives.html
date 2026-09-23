@@ -412,6 +412,11 @@ document.addEventListener('DOMContentLoaded', () => {
             else applyFilter(); // reset to filter-only view
         });
     }
+    window.addEventListener('globalSearch', (e) => {
+        const q = (e.detail?.value || '').toLowerCase();
+        if (q.length >= 1) onGlobalSearch(q);
+        else applyFilter();
+    });
 
     // Initial render
     visibleRows = getAllRows();

@@ -275,8 +275,8 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">City / Municipality</label>
-                        <select name="city" id="city_select" class="filter-select-pro">
-                            <option value="" disabled selected hidden>-- Select City --</option>
+                        <select name="city" id="city_select" class="filter-select-pro form-input">
+                            <option value="" disabled selected hidden>-- Select City / Municipality --</option>
                         </select>
                         <span class="field-error" id="err-city">Please select the city or municipality of your event venue.</span>
                     </div>
@@ -284,7 +284,7 @@
 
                 <div class="form-group">
                     <label class="form-label">Barangay</label>
-                    <select name="barangay" id="barangay_select" class="filter-select-pro">
+                    <select name="barangay" id="barangay_select" class="filter-select-pro form-input">
                         <option value="" disabled selected hidden>-- Select Barangay --</option>
                     </select>
                     <span class="field-error" id="err-barangay">Please select the barangay of your event venue.</span>
@@ -457,7 +457,7 @@
     window.maxGuests = 0;
     {% endif %}
     window.catererId = "{{ caterer.id }}";
-    window.bookingLeadTime = parseInt("{{ caterer.booking_lead_time or 3 }}") || 3;
+    window.bookingLeadTime = parseInt("{{ (package.booking_lead_time if package and package.booking_lead_time else caterer.booking_lead_time) or 3 }}") || 3;
     window.catererRules = {{ (caterer.scheduling_rules or {}) | tojson | safe }};
 </script>
 <script

@@ -725,8 +725,8 @@ window.previewSelectedImage = function(input, type) {
         const previewImg = document.getElementById(type + 'PreviewImg');
         const placeholder = document.getElementById(type + 'Placeholder');
         const badge = document.getElementById(type + 'StatusBadge');
-        const removeFlag = document.getElementById('remove' + (type === 'logo' ? 'Logo' : 'Cover') + 'Flag');
-        const btnRemove = document.getElementById('btnRemove' + (type === 'logo' ? 'Logo' : 'Cover'));
+        const removeFlag = document.getElementById('remove_' + type + '_flag') || document.getElementById('remove' + (type === 'logo' ? 'Logo' : 'Cover') + 'Flag');
+        const btnRemove = document.getElementById('btnRemove_' + type) || document.getElementById('btnRemove' + (type === 'logo' ? 'Logo' : 'Cover'));
         const actionText = document.getElementById(type + 'ActionText');
 
         if (previewImg) {
@@ -736,7 +736,10 @@ window.previewSelectedImage = function(input, type) {
         if (placeholder) placeholder.style.display = 'none';
         if (removeFlag) removeFlag.value = '0';
         if (btnRemove) btnRemove.style.display = 'inline-flex';
-        if (actionText) actionText.textContent = 'Change / Replace ' + (type === 'logo' ? 'Logo' : 'Cover');
+        if (actionText) {
+            const label = type === 'logo' ? 'Logo' : (type === 'cover' ? 'Cover' : 'QR');
+            actionText.textContent = 'Change / Replace ' + label;
+        }
 
         if (badge) {
             badge.className = 'status-badge-saved';
@@ -761,19 +764,22 @@ window.removeImage = function(type) {
     const placeholder = document.getElementById(type + 'Placeholder');
     const badge = document.getElementById(type + 'StatusBadge');
     const fileInput = document.getElementById(type + 'FileInput');
-    const removeFlag = document.getElementById('remove' + (type === 'logo' ? 'Logo' : 'Cover') + 'Flag');
-    const btnRemove = document.getElementById('btnRemove' + (type === 'logo' ? 'Logo' : 'Cover'));
+    const removeFlag = document.getElementById('remove_' + type + '_flag') || document.getElementById('remove' + (type === 'logo' ? 'Logo' : 'Cover') + 'Flag');
+    const btnRemove = document.getElementById('btnRemove_' + type) || document.getElementById('btnRemove' + (type === 'logo' ? 'Logo' : 'Cover'));
     const actionText = document.getElementById(type + 'ActionText');
 
     if (previewImg) {
         previewImg.src = '';
         previewImg.style.display = 'none';
     }
-    if (placeholder) placeholder.style.display = 'block';
+    if (placeholder) placeholder.style.display = 'flex';
     if (fileInput) fileInput.value = '';
     if (removeFlag) removeFlag.value = '1';
     if (btnRemove) btnRemove.style.display = 'none';
-    if (actionText) actionText.textContent = 'Upload ' + (type === 'logo' ? 'Logo' : 'Cover');
+    if (actionText) {
+        const label = type === 'logo' ? 'Logo' : (type === 'cover' ? 'Cover' : 'QR');
+        actionText.textContent = 'Upload ' + label;
+    }
 
     if (badge) {
         badge.className = 'status-badge-empty';

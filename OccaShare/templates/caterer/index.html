@@ -77,7 +77,7 @@
 <!-- Page Header -->
 <div class="page-header">
     <div class="header-title-group">
-        <h1>Overview</h1>
+        <h1>Dashboard</h1>
         <p>Good afternoon, {{ user.first_name }}. Here's what needs your attention today.</p>
     </div>
 </div>
@@ -510,6 +510,16 @@
                 }
             });
         }
+
+        // Global search filtering on Caterer Dashboard
+        window.addEventListener('globalSearch', (e) => {
+            const q = (e.detail?.value || '').toLowerCase().trim();
+            const items = document.querySelectorAll('.dash-card .list-item');
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = (!q || text.includes(q)) ? '' : 'none';
+            });
+        });
     });
 </script>
 {% endblock %}

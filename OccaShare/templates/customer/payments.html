@@ -372,8 +372,10 @@
     // Connect to the Global Search Bar in the Header
     const globalSearch = document.getElementById('globalSearchInput');
     if (globalSearch) {
+        globalSearch.addEventListener('input', (e) => filterLedger(e.target.value));
         globalSearch.addEventListener('keyup', (e) => filterLedger(e.target.value));
         globalSearch.placeholder = "Search payments or ID...";
     }
+    window.addEventListener('globalSearch', (e) => filterLedger(e.detail?.value || ''));
 </script>
 {% endblock %}

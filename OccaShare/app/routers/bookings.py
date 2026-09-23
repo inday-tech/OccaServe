@@ -19,6 +19,7 @@ from ..services.realtime import manager
 from ..services.notification import NotificationService
 from ..services.payment_verification import payment_verification_service
 from ..services.booking_validator import BookingValidator
+from ..core.utils import is_customer_profile_complete
 from PIL import Image
 try:
     import pytesseract
@@ -177,6 +178,15 @@ async def alacarte_checkout_page(
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/alacarte/checkout/{caterer_id}?items={items}")
     
+    if user.role == 'customer':
+        is_complete, _, missing = is_customer_profile_complete(user)
+        if not is_complete:
+            missing_text = "+".join(["- " + m for m in missing])
+            return RedirectResponse(
+                url=f"/customer/profile?alert=incomplete_profile&msg=Please+complete+your+profile+before+booking.+Missing:+{missing_text}",
+                status_code=303
+            )
+    
     # Parse multiple IDs with type prefixes (m_ for MenuItem, e_ for Equipment, s_ for Service) and optional :quantity
     m_ids, e_ids, s_ids = [], [], []
     item_quantities = {}
@@ -332,6 +342,11 @@ async def alacarte_checkout_draft(
 ):
     user = get_current_user_from_session(request, db)
     if not user: return {"success": False, "message": "Unauthorized"}
+    
+    if user.role == 'customer':
+        is_complete, _, missing = is_customer_profile_complete(user)
+        if not is_complete:
+            return {"success": False, "message": f"Please complete your profile before booking. Required: {', '.join(missing)}"}
     
     try:
         event_date_obj = date.fromisoformat(delivery_date)
@@ -1099,6 +1114,15 @@ async def start_booking(request: Request, caterer_id: int, package_id: Optional[
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/start/{caterer_id}")
     
+    if user.role == 'customer':
+        is_complete, _, missing = is_customer_profile_complete(user)
+        if not is_complete:
+            missing_text = "+".join(["- " + m for m in missing])
+            return RedirectResponse(
+                url=f"/customer/profile?alert=incomplete_profile&msg=Please+complete+your+profile+before+booking.+Missing:+{missing_text}",
+                status_code=303
+            )
+    
     force_new = request.query_params.get("force_new")
     
     if package_id and not force_new:
@@ -1148,6 +1172,15 @@ async def custom_booking_request_form(request: Request, caterer_id: int, db: Ses
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/custom/request/{caterer_id}")
     
+    if user.role == 'customer':
+        is_complete, _, missing = is_customer_profile_complete(user)
+        if not is_complete:
+            missing_text = "+".join(["- " + m for m in missing])
+            return RedirectResponse(
+                url=f"/customer/profile?alert=incomplete_profile&msg=Please+complete+your+profile+before+requesting+a+booking.+Missing:+{missing_text}",
+                status_code=303
+            )
+    
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer:
         return RedirectResponse(url="/customer/marketplace", status_code=303)
@@ -1178,6 +1211,14 @@ async def custom_booking_submit(
     user = get_current_user_from_session(request, db)
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/custom/request/{caterer_id}", status_code=303)
+    
+    if user.role == 'customer':
+        is_complete, _, missing = is_customer_profile_complete(user)
+        if not is_complete:
+            return RedirectResponse(
+                url=f"/customer/profile?alert=incomplete_profile&msg=Please+complete+your+profile+before+booking.",
+                status_code=303
+            )
     
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer:
@@ -1373,6 +1414,15 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
     if not user:
         next_url = f"/bookings/step/details/{booking_id}" if booking_id else "/bookings/step/details"
         return RedirectResponse(url=f"/auth/login?next={next_url}")
+        
+    if user.role == 'customer':
+        is_complete, _, missing = is_customer_profile_complete(user)
+        if not is_complete:
+            missing_text = "+".join(["- " + m for m in missing])
+            return RedirectResponse(
+                url=f"/customer/profile?alert=incomplete_profile&msg=Please+complete+your+profile+before+booking.+Missing:+{missing_text}",
+                status_code=303
+            )
         
     data = request.session.get("booking_data", {})
     
@@ -1606,6 +1656,14 @@ async def step_details_submit(
     if not user:
         print("[StepDetails REJECT] User not logged in, redirecting to /auth/login")
         return RedirectResponse(url=f"/auth/login?next={redirect_base}", status_code=303)
+
+    if user.role == 'customer':
+        is_complete, _, missing = is_customer_profile_complete(user)
+        if not is_complete:
+            return RedirectResponse(
+                url=f"/customer/profile?alert=incomplete_profile&msg=Please+complete+your+profile+before+booking.",
+                status_code=303
+            )
 
     if booking_id_int:
         existing_booking = db.query(models.Booking).get(booking_id_int)

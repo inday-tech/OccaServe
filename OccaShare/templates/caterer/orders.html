@@ -423,10 +423,13 @@
                             {% endif %}
                         </div>
                         <div style="font-size: var(--text-xs); color: #94a3b8; font-weight: 500; margin-top: 0.1rem; letter-spacing: 0.02em;">
-                            {% if booking.user %}
-                            {{ booking.user.email }}
+                            {% set raw_email = (booking.user.email if booking.user else (booking.customer_email or ''))|string %}
+                            {% if not raw_email or raw_email == 'None' or '@guest.occashare.com' in raw_email.lower() or raw_email.lower().startswith('walkin') %}
+                                <span style="display: inline-flex; align-items: center; gap: 4px; color: #ea580c; background: #fff7ed; border: 1px solid #ffedd5; padding: 1px 7px; border-radius: 4px; font-size: 0.69rem; font-weight: 700;">
+                                    <i class="fas fa-user-tag" style="font-size: 0.65rem;"></i> Manual / Walk-in
+                                </span>
                             {% else %}
-                            N/A
+                                <span>{{ raw_email }}</span>
                             {% endif %}
                         </div>
                     </td>

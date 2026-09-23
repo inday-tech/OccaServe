@@ -267,6 +267,9 @@ html, body {
 }
 .sri-caterer  { background: rgba(255,123,84,0.1); color: var(--primary-color); }
 .sri-booking  { background: rgba(59,130,246,0.1); color: #3b82f6; }
+.sri-package  { background: rgba(245,158,11,0.1); color: #f59e0b; }
+.sri-dish     { background: rgba(16,185,129,0.1); color: #10b981; }
+.sri-service  { background: rgba(139,92,246,0.1); color: #8b5cf6; }
 .sri-default  { background: var(--dm-slate-50); color: var(--dm-slate-400); }
 .sri-info h4  { font-size: 0.88rem; font-weight: 800; color: var(--text-dark); margin: 0; }
 .sri-info p   { font-size: 0.72rem; color: var(--dm-slate-400); margin: 2px 0 0; font-weight: 500; }

@@ -1750,7 +1750,7 @@
                     <li>
                         <a href="/caterer/business-summary" class="nav-item {{ 'active' if active_page == 'business-summary' }}">
                             <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
-                            <span class="nav-label">Business Summary</span>
+                            <span class="nav-label">Business Overview</span>
                         </a>
                     </li>
                     <li>
@@ -2257,9 +2257,23 @@
                                             <span class="omni-result-subtitle">${i.subtitle}</span>
                                         </div>
                                     </a>
-                                `).join('') + '</div>';
+                                `).join('') + `
+                                    <a href="/caterer/bookings?search=${encodeURIComponent(q)}" class="omni-result-action" style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:0.8rem;font-weight:700;color:var(--primary-color);text-decoration:none;">
+                                        <span><i class="fas fa-magnifying-glass" style="margin-right:6px;"></i> Search all bookings for "<b>${q}</b>"</span>
+                                        <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i>
+                                    </a>
+                                </div>`;
                             } else {
-                                conf.resBox.innerHTML = '<div style="padding:1.5rem;text-align:center;color:#94a3b8;font-size:0.8rem;"><i class="fas fa-search" style="display:block;font-size:1.5rem;margin-bottom:0.5rem;opacity:0.4;"></i>No results found for "<b>' + q + '</b>"</div>';
+                                conf.resBox.innerHTML = `
+                                <div style="padding:1.5rem;text-align:center;color:#94a3b8;font-size:0.8rem;">
+                                    <i class="fas fa-search" style="display:block;font-size:1.5rem;margin-bottom:0.5rem;opacity:0.4;"></i>
+                                    No direct matches for "<b>${q}</b>"
+                                    <div style="margin-top:0.75rem;">
+                                        <a href="/caterer/bookings?search=${encodeURIComponent(q)}" style="color:var(--primary-color);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+                                            Search in Bookings &rarr;
+                                        </a>
+                                    </div>
+                                </div>`;
                             }
                         } catch (e) {
                             conf.resBox.innerHTML = '<div style="padding:1rem;text-align:center;color:#ef4444;font-size:0.8rem;">Search error. Try again.</div>';
@@ -2277,6 +2291,9 @@
                         if (activeItem && conf.resBox.classList.contains('active')) {
                             e.preventDefault();
                             activeItem.click();
+                        } else if (conf.input.value.trim().length > 0) {
+                            e.preventDefault();
+                            window.location.href = `/caterer/bookings?search=${encodeURIComponent(conf.input.value.trim())}`;
                         }
                     } else if (e.key === 'ArrowDown') {
                         const items = Array.from(conf.resBox.querySelectorAll('.omni-result-item'));

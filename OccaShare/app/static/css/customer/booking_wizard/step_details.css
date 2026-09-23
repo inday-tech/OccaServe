@@ -192,6 +192,21 @@ textarea.form-input {
     color: #ef4444;
 }
 
+/* ===== INPUT VALIDATION STATES ===== */
+.form-input.error,
+.filter-select-pro.error,
+#time-trigger-btn.error {
+    border-color: #ef4444 !important;
+    background-color: #fff8f8 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+.form-input.is-valid,
+.filter-select-pro.is-valid,
+#time-trigger-btn.is-valid {
+    border-color: #10b981;
+}
+
 /* ===== GRID REFINEMENTS ===== */
 .grid-2-col {
     display: grid;
