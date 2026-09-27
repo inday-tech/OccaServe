@@ -2740,6 +2740,22 @@ window.openQuickEditModal = function (type, id, event) {
     if (priceInput) priceInput.value = price.toFixed(2);
     if (descInput) descInput.value = item.description || '';
 
+    // Populate existing photo preview
+    const photoPreview = document.getElementById('quickEditOptionPhotoPreview');
+    const photoHint    = document.getElementById('quickEditOptionPhotoHint');
+    if (photoPreview) {
+        if (item.image_url) {
+            photoPreview.innerHTML = `<img src="${item.image_url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.parentElement.innerHTML='<i class=\'fas fa-camera\'></i>'"`  + '>';
+        } else {
+            photoPreview.innerHTML = '<i class="fas fa-camera"></i>';
+        }
+    }
+    if (photoHint) photoHint.textContent = item.image_url ? 'Click to replace photo' : 'Upload or replace photo';
+
+    // Clear any previously-selected file
+    const fileInput = document.getElementById('quickEditOptionImage');
+    if (fileInput) fileInput.value = '';
+
     safeOpenModal('quickEditOptionModal', true);
 };
 
@@ -2769,21 +2785,22 @@ window.submitQuickEditOption = async function (e) {
     }
 
     try {
-        const payload = {
-            name: name,
-            category: category,
-            price: price,
-            unit_type: unit,
-            description: desc
-        };
+        // Use FormData so image file can be included
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('category', category);
+        formData.append('price', price);
+        formData.append('unit_type', unit);
+        formData.append('description', desc);
+        const fileInput = document.getElementById('quickEditOptionImage');
+        if (fileInput && fileInput.files && fileInput.files[0]) {
+            formData.append('image', fileInput.files[0]);
+        }
 
         const res = await fetch(`/caterer/api/catalogs/quick-edit/${type}/${id}`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify(payload)
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
         });
 
         const data = await res.json();
@@ -2817,6 +2834,24 @@ window.submitQuickEditOption = async function (e) {
             btn.innerHTML = '<i class="fas fa-check"></i> <span>Save Changes</span>';
         }
     }
+};
+
+// ---- Photo preview handler for add/edit catalog item modals ----
+window.previewQuickCatalogPhoto = function (mode, event) {
+    const file = event && event.target && event.target.files && event.target.files[0];
+    if (!file) return;
+    const previewId = mode === 'edit' ? 'quickEditOptionPhotoPreview' : 'quickAddOptionPhotoPreview';
+    const hintId    = mode === 'edit' ? 'quickEditOptionPhotoHint'    : 'quickAddOptionPhotoHint';
+    const preview = document.getElementById(previewId);
+    const hint    = document.getElementById(hintId);
+    const reader  = new FileReader();
+    reader.onload = function (e) {
+        if (preview) {
+            preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
+        }
+        if (hint) hint.textContent = file.name;
+    };
+    reader.readAsDataURL(file);
 };
 
 window.quickDeleteCatalogItem = async function (type, id, event) {

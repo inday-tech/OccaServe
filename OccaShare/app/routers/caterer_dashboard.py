@@ -6582,12 +6582,6 @@ async def quick_edit_catalog_item(
 async def quick_delete_catalog_item_placeholder_skip(
     item_type: str,
     item_id: int,
-):
-    # Placeholder replaced below — keep linter quiet during edit
-    raise HTTPException(status_code=501, detail="replaced")
-
-    item_type: str,
-    item_id: int,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):

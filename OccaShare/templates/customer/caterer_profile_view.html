@@ -1585,13 +1585,18 @@
             }
 
             const contentHtml = `
+                ${pkg.image_url ? `
+                <div style="margin: -2.5rem -2.5rem 1.25rem -2.5rem; height: 180px; overflow: hidden; border-radius: 24px 24px 0 0; position: relative;">
+                    <img src="${pkg.image_url}" onerror="this.parentElement.style.display='none'" style="width:100%; height:100%; object-fit:cover;">
+                    <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(15,23,42,0.6) 0%,transparent 60%);"></div>
+                </div>` : ''}
                 <div style="margin-bottom:1.25rem;">
                     <div style="font-size:0.7rem;font-weight:800;color:var(--hub-primary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Package Details</div>
                     <h2 style="font-size:1.3rem;font-weight:900;color:var(--hub-text-dark);margin-bottom:0.25rem;">${pkg.name}</h2>
                     <div style="font-size:1.5rem;font-weight:900;color:var(--hub-primary);">${pkg.price}</div>
                 </div>
                 ${pkg.desc ? `<p style="font-size:0.85rem;color:var(--hub-slate-600);line-height:1.65;margin-bottom:1.25rem;">${pkg.desc}</p>` : ''}
-                ${(pkg.gallery_images && pkg.gallery_images.length > 0) ? `
+                ${(pkg.gallery_images && pkg.gallery_images.length > 1) ? `
                 <div style="margin-bottom:1.25rem; display:flex; gap:8px; overflow-x:auto; padding-bottom:8px;">
                     ${pkg.gallery_images.map(img => `<img src="${img}" style="width:100px; height:75px; object-fit:cover; border-radius:8px; border:1px solid #e2e8f0; flex-shrink:0;">`).join('')}
                 </div>` : ''}
@@ -2158,6 +2163,17 @@ window.hubPkgs = {
         additional_guest_price: {{ (pkg.additional_guest_price or 0)|tojson }},
         overtime_fee: {{ (pkg.overtime_fee or 0)|tojson }},
         inclusions: {{ (pkg.inclusions)|tojson if pkg.inclusions else '[]' }},
+        image_url: {{ (pkg.image_url or '')|tojson }},
+        gallery_images: (function() {
+            const primary = {{ (pkg.image_url or '')|tojson }};
+            const extra = {{ (pkg.gallery_images or [])|tojson }};
+            const normalized = (Array.isArray(extra) ? extra : []).map(function(g) {
+                if (typeof g === 'string') return g;
+                return g && (g.url || g.image_url || g.src || '');
+            }).filter(Boolean);
+            if (primary && !normalized.includes(primary)) normalized.unshift(primary);
+            return normalized;
+        })(),
         linked_inventory: [
             {% for item in pkg.menu_items %}{% if item.category in ['Rentals', 'Services'] %}{{ item.name|tojson }},{% endif %}{% endfor %}
             {% if pkg.equipment_links %}{% for el in pkg.equipment_links %}{{ el.equipment.name|tojson }},{% endfor %}{% endif %}
@@ -2168,6 +2184,7 @@ window.hubPkgs = {
     }{{ ',' if not loop.last }}
     {% endfor %}
 };
+
 
 // ---- Cart State ----
 window.selectedItems = [];
