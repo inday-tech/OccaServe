@@ -300,15 +300,19 @@ function toggleActionMenuBookings(id, event) {
                 });
             }
 
-            // 4. Preparation Checklist
+            // 4. Preparation Status
             if (['confirmed', 'preparing', 'setup_ongoing', 'in_progress', 'ready_for_delivery', 'ready_for_pickup', 'arrived'].includes(status)) {
-                addAction('Preparation Checklist', 'fa-tasks', function() {
+                addAction('Event Preparation', 'fa-clipboard-check', function() {
                     const viewBtn = target.querySelector('.view-details');
                     if (viewBtn) {
                         window.showBookingDetails(viewBtn);
                         setTimeout(function() {
-                            const chk = document.getElementById('modalChecklistSection');
-                            if (chk) chk.scrollIntoView({ behavior: 'smooth' });
+                            const prepBtn = document.getElementById('tabBtnPreparation');
+                            if (prepBtn && typeof switchBookingTab === 'function') {
+                                switchBookingTab('preparation', prepBtn);
+                            }
+                            const card = document.querySelector('#btab-preparation .prep-status-card');
+                            if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                             if (typeof window.loadBookingTasks === 'function') {
                                 window.loadBookingTasks(bid);
                             }
@@ -1216,6 +1220,11 @@ function hydrateButtonDataset(btn, detail) {
         guestCount: detail.guest_count || btn.dataset.guestCount || 0,
         totalRawAmount: detail.total_amount != null ? detail.total_amount : (btn.dataset.totalRawAmount || 0),
         amountPaid: detail.amount_paid != null ? detail.amount_paid : (btn.dataset.amountPaid || 0),
+        pendingAmount: detail.pending_amount != null ? detail.pending_amount : (btn.dataset.pendingAmount || 0),
+        remainingAfterVerification: detail.remaining_after_verification != null ? detail.remaining_after_verification : (btn.dataset.remainingAfterVerification || 0),
+        isUnderReview: String(Boolean(detail.is_under_review || detail.needs_verification || ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested'].includes(detail.payment_status))),
+        needsVerification: String(Boolean(detail.needs_verification || detail.is_under_review)),
+        canStartPreparation: String(Boolean(detail.can_start_preparation)),
         paymentMethod: detail.payment_method || btn.dataset.paymentMethod || 'Not specified',
         paymentPlan: detail.payment_plan || btn.dataset.paymentPlan || 'downpayment',
         paymentRef: detail.payment_reference || btn.dataset.paymentRef || '',
@@ -1240,6 +1249,7 @@ function hydrateButtonDataset(btn, detail) {
         proofUrl: detail.payment_proof_url || '',
         balanceProofUrl: detail.balance_proof_url || '',
         hasMenu: String(Boolean(detail.package || (detail.selected_items && detail.selected_items.length))),
+        customRequirementsJson: JSON.stringify(detail.custom_requirements || {}),
         catererNotes: detail.caterer_notes || ''
     };
     Object.entries(fields).forEach(([key, value]) => {
@@ -1250,45 +1260,53 @@ function hydrateButtonDataset(btn, detail) {
 
 
 // ─── HELPER: Sync Left-Footer Buttons to Booking Status ─────────────────────
-// Single source of truth for Cancel vs Archive visibility in the modal footer.
-// Called immediately on open AND after background hydration to prevent flicker.
+// Simple rule — never both at once:
+//   Active booking  → Cancel Booking
+//   Closed booking  → Archive Booking
+// NOTE: .occ-modal-footer .btn-secondary-pro uses display:inline-flex !important,
+// so we must hide via class (.is-footer-btn-hidden) not style.display.
 function _syncFooterButtons(cleanId, normStatus) {
     var cancelBtn = document.getElementById('btnFooterCancelBooking');
     var archiveBtn = document.getElementById('btnFooterArchiveBooking');
     if (!cancelBtn && !archiveBtn) return;
 
     var s = String(normStatus || '').toLowerCase().trim();
+    var id = String(cleanId || currentBookingId || '').replace(/\D/g, '') || cleanId;
 
-    // Explicit terminal statuses: booking lifecycle is permanently closed
-    var TERMINAL = ['cancelled', 'canceled', 'rejected', 'declined',
-                    'completed', 'expired', 'archived', 'void', 'released'];
-    // Explicit active statuses: booking is in flight, cancel is still valid
-    var ACTIVE   = ['draft', 'inquiry', 'pending', 'pending_review', 'under_review',
-                    'pending_quotation', 'awaiting_caterer', 'awaiting_customer',
-                    'awaiting_payment', 'pending_payment', 'tentative',
-                    'confirmed', 'preparing',
-                    'ready_for_delivery', 'ready_for_pickup',
-                    'on_the_way', 'arrived', 'setup_ongoing', 'in_progress'];
+    // Closed / terminal — Archive only
+    var CLOSED = {
+        completed: 1, cancelled: 1, canceled: 1, rejected: 1,
+        declined: 1, expired: 1, archived: 1, void: 1, released: 1
+    };
+    var canArchive = !!CLOSED[s];
+    var canCancel = !canArchive;
 
-    // A status is terminal if it is in the TERMINAL list OR contains 'cancel'/'reject'
-    // AND it is NOT explicitly in the ACTIVE list (safety guard)
-    var looksTerminal = TERMINAL.indexOf(s) !== -1 ||
-                        s.indexOf('cancel') !== -1 ||
-                        s.indexOf('reject') !== -1;
-    var looksActive   = ACTIVE.indexOf(s) !== -1;
-
-    // Active wins over terminal if explicitly present in both (shouldn't happen, but be safe)
-    var showArchive = looksTerminal && !looksActive;
-
-    if (cancelBtn) {
-        cancelBtn.style.display = showArchive ? 'none' : 'inline-flex';
-    }
-    if (archiveBtn) {
-        archiveBtn.style.display = showArchive ? 'inline-flex' : 'none';
-        if (showArchive) {
-            // Re-bind onclick so the correct bookingId is always captured
-            archiveBtn.onclick = function() { confirmArchiveBooking(cleanId); };
+    function setFooterBtnVisible(btn, visible) {
+        if (!btn) return;
+        btn.classList.toggle('is-footer-btn-hidden', !visible);
+        btn.setAttribute('aria-hidden', visible ? 'false' : 'true');
+        btn.tabIndex = visible ? 0 : -1;
+        if (visible) {
+            btn.style.setProperty('display', 'inline-flex', 'important');
+        } else {
+            btn.style.setProperty('display', 'none', 'important');
         }
+    }
+
+    setFooterBtnVisible(cancelBtn, canCancel);
+    if (cancelBtn) {
+        cancelBtn.onclick = function (e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            confirmRejectBooking(id);
+        };
+    }
+
+    setFooterBtnVisible(archiveBtn, canArchive);
+    if (archiveBtn) {
+        archiveBtn.onclick = function (e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            confirmArchiveBooking(id);
+        };
     }
 }
 
@@ -1313,9 +1331,23 @@ function showBookingDetails(btn) {
     }
     var balanceValue = Math.max(parseFloat(data.balance) || (totalAmountValue - paidAmountValue), 0);
 
+    // Under-review: trust API flag first, then payment_status, then proof+unpaid heuristic
+    var reviewStatuses = ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested', 'pending_verification'];
+    var isUnderReview = (
+        data.isUnderReview === 'true' ||
+        data.needsVerification === 'true' ||
+        reviewStatuses.includes(paymentStatus) ||
+        (Boolean(data.proofUrl || data.balanceProofUrl) && paidAmountValue <= 0 && ['pending', 'awaiting_payment', 'pending_payment'].includes(bookingStatus) && !['deposit_paid', 'paid', 'fully_paid'].includes(paymentStatus))
+    );
+    var pendingReviewAmount = Math.max(parseFloat(data.pendingAmount) || 0, 0);
+    var remainingAfterVerif = Math.max(parseFloat(data.remainingAfterVerification) || 0, 0);
+    data.isUnderReview = isUnderReview ? 'true' : 'false';
+    data.needsVerification = isUnderReview ? 'true' : 'false';
+
     var formattedTotal = '₱' + totalAmountValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     var formattedPaid = '₱' + paidAmountValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     var formattedBalance = '₱' + balanceValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    var formattedPending = '₱' + pendingReviewAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     data.amount = formattedTotal;
     data.totalRawAmount = String(totalAmountValue);
@@ -1403,9 +1435,19 @@ function showBookingDetails(btn) {
             stBg = '#f0fdf4'; stColor = '#15803d'; stBorder = '#86efac';
         } else if (bookingStatus === 'cancelled') {
             stBg = '#fee2e2'; stColor = '#b91c1c'; stBorder = '#fecaca';
-        } else if (bookingStatus === 'pending' || bookingStatus === 'pending_review' || bookingStatus === 'inquiry') {
+        } else if (isUnderReview) {
+            stBg = '#fef3c7'; stColor = '#92400e'; stBorder = '#fde68a';
+            if (paymentStatus === 'cash_payment_requested' || paymentStatus === 'cash_balance_requested') {
+                statusLabel = 'CONFIRM CASH';
+            } else if (paymentStatus === 'balance_proof_submitted') {
+                statusLabel = 'VERIFY BALANCE';
+            } else {
+                statusLabel = 'VERIFY PAYMENT';
+            }
+        } else if (bookingStatus === 'pending' || bookingStatus === 'pending_review' || bookingStatus === 'inquiry' || bookingStatus === 'awaiting_payment') {
             stBg = '#fef3c7'; stColor = '#92400e'; stBorder = '#fde68a';
             if (bookingStatus === 'pending_review') statusLabel = 'NEW INQUIRY';
+            else if (bookingStatus === 'pending' || bookingStatus === 'awaiting_payment') statusLabel = 'PENDING PAY';
         }
         stBadge.innerText = statusLabel;
         stBadge.style.background = stBg;
@@ -1413,13 +1455,17 @@ function showBookingDetails(btn) {
         stBadge.style.borderColor = stBorder;
     }
 
-    // Payment Status Badge
+    // Payment Status Badge — amounts win over stale payment_status flags
     var payBadge = document.getElementById('modalPaymentStatusBadge');
     if (payBadge) {
-        if (totalAmountValue > 0 && (paidAmountValue >= totalAmountValue || paymentStatus === 'paid' || paymentStatus === 'fully_paid')) {
+        var isFullyPaidNow = totalAmountValue > 0 && paidAmountValue >= totalAmountValue - 0.009 && balanceValue <= 0.009;
+        if (isFullyPaidNow) {
             payBadge.innerText = 'FULLY PAID';
             payBadge.style.background = '#dcfce7'; payBadge.style.color = '#166534'; payBadge.style.borderColor = '#bbf7d0';
-        } else if (totalAmountValue > 0 && (paidAmountValue > 0 || paymentStatus.includes('partial') || paymentStatus.includes('downpayment'))) {
+        } else if (isUnderReview) {
+            payBadge.innerText = 'PAYMENT UNDER REVIEW';
+            payBadge.style.background = '#fef3c7'; payBadge.style.color = '#92400e'; payBadge.style.borderColor = '#fde68a';
+        } else if (totalAmountValue > 0 && (paidAmountValue > 0 || paymentStatus.includes('partial') || paymentStatus.includes('downpayment') || paymentStatus === 'deposit_paid')) {
             payBadge.innerText = 'PARTIALLY PAID';
             payBadge.style.background = '#e0f2fe'; payBadge.style.color = '#0369a1'; payBadge.style.borderColor = '#bae6fd';
         } else {
@@ -1528,17 +1574,41 @@ function showBookingDetails(btn) {
     var ovChan = document.getElementById('ovBookingChannel'); if (ovChan) ovChan.innerText = data.bookingChannel || (isManual ? 'Manual / Direct Inquiry' : 'OccaServe Website');
     var ovAdd = document.getElementById('ovAddedBy'); if (ovAdd) ovAdd.innerText = data.addedBy || (isManual ? 'Caterer' : 'Customer');
     var ovCreated = document.getElementById('ovCreatedDate'); if (ovCreated) ovCreated.innerText = data.bookedOn || '—';
-    var ovSt = document.getElementById('ovStatusText'); if (ovSt) ovSt.innerText = (bookingStatus || 'pending').replace(/_/g, ' ').toUpperCase();
+    var ovSt = document.getElementById('ovStatusText');
+    if (ovSt) {
+        if (isUnderReview) {
+            ovSt.innerText = (paymentStatus === 'cash_payment_requested' || paymentStatus === 'cash_balance_requested')
+                ? 'CONFIRM CASH'
+                : (paymentStatus === 'balance_proof_submitted' ? 'VERIFY BALANCE' : 'VERIFY PAYMENT');
+        } else if (bookingStatus === 'pending' || bookingStatus === 'awaiting_payment') {
+            ovSt.innerText = 'PENDING PAY';
+        } else {
+            ovSt.innerText = (bookingStatus || 'pending').replace(/_/g, ' ').toUpperCase();
+        }
+    }
 
     // Financial Overview Box
     var ovTot = document.getElementById('ovTotalDisplay'); if (ovTot) ovTot.innerText = formattedTotal;
-    var ovPd = document.getElementById('ovPaidDisplay'); if (ovPd) ovPd.innerText = formattedPaid;
     var ovBal = document.getElementById('ovBalanceDisplay'); if (ovBal) ovBal.innerText = formattedBalance;
     var ovPaySt = document.getElementById('ovPaymentStatusDisplay');
+
+    // Paid display: show submitted-under-review vs verified-paid
+    var ovPd = document.getElementById('ovPaidDisplay');
+    if (ovPd) {
+        if (isUnderReview && pendingReviewAmount > 0) {
+            ovPd.innerHTML = `<span style="color:#92400e; font-weight:700;">Submitted: ${formattedPending}</span> <span style="color:#94a3b8; font-size:0.78em;">(Under Review)</span><br><span style="color:#16a34a; font-size:0.85em;">Verified: ${formattedPaid}</span>`;
+        } else {
+            ovPd.innerText = formattedPaid;
+        }
+    }
+
     if (ovPaySt) {
-        if (totalAmountValue > 0 && (paidAmountValue >= totalAmountValue || paymentStatus === 'paid' || paymentStatus === 'fully_paid')) {
+        var isFullyPaidOv = totalAmountValue > 0 && paidAmountValue >= totalAmountValue - 0.009 && balanceValue <= 0.009;
+        if (isFullyPaidOv) {
             ovPaySt.innerText = 'FULLY PAID'; ovPaySt.style.color = '#10b981';
-        } else if (totalAmountValue > 0 && (paidAmountValue > 0 || paymentStatus.includes('partial'))) {
+        } else if (isUnderReview) {
+            ovPaySt.innerText = 'UNDER REVIEW'; ovPaySt.style.color = '#d97706';
+        } else if (totalAmountValue > 0 && (paidAmountValue > 0 || paymentStatus.includes('partial') || paymentStatus === 'deposit_paid')) {
             ovPaySt.innerText = 'PARTIALLY PAID'; ovPaySt.style.color = '#38bdf8';
         } else {
             ovPaySt.innerText = 'UNPAID'; ovPaySt.style.color = '#f59e0b';
@@ -1688,29 +1758,86 @@ function showBookingDetails(btn) {
 
         var onInclusions = document.getElementById('onPkgInclusionsContainer');
         if (onInclusions) {
-            var selectedItems = [];
-            try { selectedItems = JSON.parse(data.selectedServicesJson || '[]'); } catch(e) {}
-            if (selectedItems && selectedItems.length > 0) {
+            var customReqs = {};
+            try { customReqs = JSON.parse(data.customRequirementsJson || '{}'); } catch(e){}
+            var custPayload = customReqs.customization || null;
+
+            if (custPayload && custPayload.menu_groups && custPayload.menu_groups.length > 0) {
                 onInclusions.innerHTML = '';
-                selectedItems.forEach(function(item) {
-                    var incRow = document.createElement('div');
-                    incRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.85rem;';
-                    incRow.innerHTML = `
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-check-circle" style="color: #16a34a;"></i>
-                            <span style="font-weight: 700; color: #0f172a;">${item.name}</span>
-                            ${item.quantity > 1 ? `<span style="font-size: 0.75rem; color: #64748b;">(x${item.quantity})</span>` : ''}
-                        </div>
-                        <span style="font-weight: 800; color: #0f172a;">₱${Number(item.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                    `;
-                    onInclusions.appendChild(incRow);
+                var badgeDiv = document.createElement('div');
+                badgeDiv.style.cssText = 'padding: 0.5rem 0.75rem; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; margin-bottom: 0.75rem; font-size: 0.8rem; font-weight: 800; color: #c2410c; display: flex; align-items: center; gap: 6px;';
+                badgeDiv.innerHTML = '<i class="fas fa-sliders-h"></i> Customer Selected Menu Options';
+                onInclusions.appendChild(badgeDiv);
+
+                custPayload.menu_groups.forEach(function(group) {
+                    var gBox = document.createElement('div');
+                    gBox.style.cssText = 'margin-bottom: 0.75rem; background: #ffffff; border: 1px solid #fed7aa; border-radius: 8px; padding: 0.65rem 0.85rem;';
+                    var gTitle = document.createElement('div');
+                    gTitle.style.cssText = 'font-size: 0.78rem; font-weight: 800; color: #9a3412; text-transform: uppercase; margin-bottom: 0.35rem;';
+                    gTitle.innerText = group.group_name;
+                    gBox.appendChild(gTitle);
+
+                    var dList = document.createElement('div');
+                    dList.style.cssText = 'display: flex; flex-wrap: wrap; gap: 0.4rem;';
+                    (group.selected_dishes || []).forEach(function(d) {
+                        var dSpan = document.createElement('span');
+                        dSpan.style.cssText = 'font-size: 0.8rem; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #e2e8f0; padding: 2px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;';
+                        var priceTag = '';
+                        if (d.pricing_type === 'per_pax' && d.price > 0) priceTag = ` (+₱${d.price}/pax)`;
+                        else if (d.pricing_type === 'fixed' && d.price > 0) priceTag = ` (+₱${d.price})`;
+                        dSpan.innerHTML = `<i class="fas fa-check text-success" style="font-size: 0.7rem;"></i> ${d.name}${priceTag}`;
+                        dList.appendChild(dSpan);
+                    });
+                    gBox.appendChild(dList);
+                    onInclusions.appendChild(gBox);
                 });
+
+                if (custPayload.optional_services && custPayload.optional_services.length > 0) {
+                    var sBox = document.createElement('div');
+                    sBox.style.cssText = 'background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 0.65rem 0.85rem;';
+                    var sTitle = document.createElement('div');
+                    sTitle.style.cssText = 'font-size: 0.78rem; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 0.35rem;';
+                    sTitle.innerText = 'Selected Optional Services';
+                    sBox.appendChild(sTitle);
+
+                    var sList = document.createElement('div');
+                    sList.style.cssText = 'display: flex; flex-wrap: wrap; gap: 0.4rem;';
+                    custPayload.optional_services.forEach(function(svc) {
+                        var sSpan = document.createElement('span');
+                        sSpan.style.cssText = 'font-size: 0.8rem; font-weight: 700; color: #1e3a8a; background: #ffffff; border: 1px solid #bfdbfe; padding: 2px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;';
+                        var pTag = '';
+                        if (svc.price > 0) pTag = ` (₱${svc.price})`;
+                        sSpan.innerHTML = `<i class="fas fa-plus-circle text-primary" style="font-size: 0.7rem;"></i> ${svc.name}${pTag}`;
+                        sList.appendChild(sSpan);
+                    });
+                    sBox.appendChild(sList);
+                    onInclusions.appendChild(sBox);
+                }
             } else {
-                onInclusions.innerHTML = `
-                    <div style="padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; color: #475569; font-size: 0.85rem;">
-                        <i class="fas fa-info-circle" style="color: #0284c7; margin-right: 6px;"></i> Includes full setup, buffet station, service staff, dinnerware, and standard decor package.
-                    </div>
-                `;
+                var selectedItems = [];
+                try { selectedItems = JSON.parse(data.selectedServicesJson || '[]'); } catch(e) {}
+                if (selectedItems && selectedItems.length > 0) {
+                    onInclusions.innerHTML = '';
+                    selectedItems.forEach(function(item) {
+                        var incRow = document.createElement('div');
+                        incRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.85rem;';
+                        incRow.innerHTML = `
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-check-circle" style="color: #16a34a;"></i>
+                                <span style="font-weight: 700; color: #0f172a;">${item.name}</span>
+                                ${item.quantity > 1 ? `<span style="font-size: 0.75rem; color: #64748b;">(x${item.quantity})</span>` : ''}
+                            </div>
+                            <span style="font-weight: 800; color: #0f172a;">₱${Number(item.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                        `;
+                        onInclusions.appendChild(incRow);
+                    });
+                } else {
+                    onInclusions.innerHTML = `
+                        <div style="padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; color: #475569; font-size: 0.85rem;">
+                            <i class="fas fa-info-circle" style="color: #0284c7; margin-right: 6px;"></i> Includes full setup, buffet station, service staff, dinnerware, and standard decor package.
+                        </div>
+                    `;
+                }
             }
         }
     }
@@ -1766,19 +1893,33 @@ function showBookingDetails(btn) {
 
     // ─── 8. TAB 6: PAYMENT ───────────────────────────────────────────────────
     var pTot = document.getElementById('payTotalAmount'); if (pTot) pTot.innerText = formattedTotal;
-    var pPaid = document.getElementById('payTotalPaid'); if (pPaid) pPaid.innerText = formattedPaid;
     var pBal = document.getElementById('payBalance'); if (pBal) pBal.innerText = formattedBalance;
+
+    // Show submitted/verified breakdown in the Paid cell
+    var pPaid = document.getElementById('payTotalPaid');
+    if (pPaid) {
+        if (isUnderReview && pendingReviewAmount > 0) {
+            pPaid.innerHTML = `${formattedPaid} <span style="color:#92400e; font-size:0.82em; background:#fef3c7; border:1px solid #fde68a; padding:1px 6px; border-radius:4px; margin-left:4px;">(${formattedPending} Under Review)</span>`;
+        } else {
+            pPaid.innerText = formattedPaid;
+        }
+    }
 
     var pBadge = document.getElementById('paymentTabBadge');
     if (pBadge) {
         if (balanceValue <= 0) {
             pBadge.innerText = 'FULLY PAID'; pBadge.style.background = '#dcfce7'; pBadge.style.color = '#166534';
+        } else if (isUnderReview) {
+            pBadge.innerText = 'UNDER REVIEW'; pBadge.style.background = '#fef3c7'; pBadge.style.color = '#92400e';
         } else if (paidAmountValue > 0) {
             pBadge.innerText = 'PARTIALLY PAID'; pBadge.style.background = '#e0f2fe'; pBadge.style.color = '#0369a1';
         } else {
             pBadge.innerText = 'UNPAID'; pBadge.style.background = '#fff7ed'; pBadge.style.color = '#c2410c';
         }
     }
+
+    var balanceReviewStatuses = ['balance_proof_submitted', 'cash_balance_requested'];
+    var isBalanceUnderReview = balanceReviewStatuses.includes(String(paymentStatus || '').toLowerCase());
 
     var btnCopyLink = document.getElementById('btnPaymentTabCopyLink');
     if (btnCopyLink) {
@@ -1787,14 +1928,40 @@ function showBookingDetails(btn) {
 
     var btnRecPay = document.getElementById('btnPaymentRecordAction');
     if (btnRecPay) {
-        // Strictly only show Record Payment for Manual/Walk-in bookings when there is remaining balance
-        btnRecPay.style.display = (isManual && balanceValue > 0) ? 'inline-flex' : 'none';
+        // Online + Manual: allow recording Cash/GCash/Bank when remaining balance exists
+        // Hide while customer proof/cash request is awaiting verification
+        btnRecPay.style.display = (balanceValue > 0 && !isBalanceUnderReview) ? 'inline-flex' : 'none';
+        if (balanceValue > 0 && !isBalanceUnderReview) {
+            btnRecPay.innerHTML = '<i class="fas fa-plus-circle"></i> Record Payment (Cash / GCash / Bank)';
+        }
     }
 
     var btnVerifyBal = document.getElementById('btnVerifyBalanceProofAction');
     if (btnVerifyBal) {
-        // Show Verify Balance Proof when customer submitted their balance proof online
-        btnVerifyBal.style.display = (!isManual && data.paymentStatus === 'balance_proof_submitted') ? 'inline-flex' : 'none';
+        btnVerifyBal.style.display = (paymentStatus === 'balance_proof_submitted') ? 'inline-flex' : 'none';
+    }
+
+    var btnConfirmCashBal = document.getElementById('btnConfirmCashBalanceAction');
+    if (btnConfirmCashBal) {
+        btnConfirmCashBal.style.display = (paymentStatus === 'cash_balance_requested') ? 'inline-flex' : 'none';
+    }
+
+    var balGuide = document.getElementById('paymentBalanceSettleGuide');
+    if (balGuide) {
+        if (balanceValue > 0 && !isBalanceUnderReview) {
+            balGuide.style.display = 'block';
+            balGuide.innerHTML = isManual
+                ? '<i class="fas fa-info-circle" style="color:#0284c7;"></i> Record Cash, GCash, or Bank payment received for the remaining balance.'
+                : '<i class="fas fa-info-circle" style="color:#0284c7;"></i> Customer can upload GCash/Bank proof or request Cash via the payment link. Or record payment here if they already paid you offline.';
+        } else if (paymentStatus === 'balance_proof_submitted') {
+            balGuide.style.display = 'block';
+            balGuide.innerHTML = '<i class="fas fa-shield-alt" style="color:#0284c7;"></i> Customer uploaded a balance payment proof. Verify it to mark Fully Paid.';
+        } else if (paymentStatus === 'cash_balance_requested') {
+            balGuide.style.display = 'block';
+            balGuide.innerHTML = '<i class="fas fa-money-bill-wave" style="color:#16a34a;"></i> Customer requested cash for the remaining balance. Confirm only after you received the cash.';
+        } else {
+            balGuide.style.display = 'none';
+        }
     }
 
     // Receipts / Uploaded Proofs
@@ -1839,14 +2006,20 @@ function showBookingDetails(btn) {
                 var rDate = rec.payment_date ? new Date(rec.payment_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
                 var rRow = document.createElement('tr');
                 rRow.style.borderBottom = '1px solid #f1f5f9';
+                var recStatusUpper = (rec.status || 'VERIFIED').toUpperCase();
+                var recIsUnderReview = recStatusUpper === 'UNDER REVIEW';
+                var recStatusBg = recIsUnderReview ? '#fef3c7' : '#dcfce7';
+                var recStatusColor = recIsUnderReview ? '#92400e' : '#166534';
+                var recAmtColor = recIsUnderReview ? '#92400e' : '#166534';
+                var refText = rec.reference_notes || rec.reference_number || rec.notes || '—';
                 rRow.innerHTML = `
                     <td style="padding: 0.75rem 1rem; font-weight: 600; color: #0f172a;">${rDate}</td>
                     <td style="padding: 0.75rem 1rem; color: #334155; text-transform: capitalize;">${rec.payment_method || 'Offline Payment'}</td>
                     <td style="padding: 0.75rem 1rem; color: #64748b;">${rec.recorded_by_type === 'caterer' ? 'Caterer' : 'Customer'}</td>
-                    <td style="padding: 0.75rem 1rem; color: #64748b; font-family: monospace; font-size: 0.78rem;">${rec.reference_number || rec.notes || '—'}</td>
-                    <td style="padding: 0.75rem 1rem; text-align: right; font-weight: 800; color: #166534;">₱${Number(rec.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                    <td style="padding: 0.75rem 1rem; color: #64748b; font-family: monospace; font-size: 0.78rem;">${refText}</td>
+                    <td style="padding: 0.75rem 1rem; text-align: right; font-weight: 800; color: ${recAmtColor};">₱${Number(rec.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                     <td style="padding: 0.75rem 1rem; text-align: center;">
-                        <span style="font-size: 0.7rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; background: #dcfce7; color: #166534;">${(rec.status || 'VERIFIED').toUpperCase()}</span>
+                        <span style="font-size: 0.7rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; background: ${recStatusBg}; color: ${recStatusColor};">${recStatusUpper}</span>
                     </td>
                 `;
                 pRows.appendChild(rRow);
@@ -1921,24 +2094,41 @@ function showBookingDetails(btn) {
         var actionButtonsHtml = '';
         if (bookingStatus === 'pending_review' || bookingStatus === 'inquiry') {
             actionButtonsHtml += `<button type="button" onclick="confirmBookingDirect('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-check"></i> Accept Booking</button>`;
-        } else if (bookingStatus === 'pending' || bookingStatus === 'awaiting_payment') {
-            if (data.proofUrl && data.paymentStatus === 'proof_submitted') {
-                actionButtonsHtml += `<button type="button" onclick="window.verifyPayment('${cleanId}', false)" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-shield-alt"></i> Verify Payment Proof</button>`;
+        } else if (bookingStatus === 'pending' || bookingStatus === 'awaiting_payment' || bookingStatus === 'pending_payment') {
+            if (isUnderReview || paymentStatus === 'proof_submitted' || (data.proofUrl && paidAmountValue <= 0)) {
+                if (paymentStatus === 'cash_payment_requested') {
+                    actionButtonsHtml += `<button type="button" onclick="window.confirmCashPayment('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-money-bill-wave"></i> Confirm Cash Received</button>`;
+                } else {
+                    actionButtonsHtml += `<button type="button" onclick="window.verifyPayment('${cleanId}', false)" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-shield-alt"></i> Verify Payment Proof</button>`;
+                }
             } else if (isManual) {
                 actionButtonsHtml += `<button type="button" onclick="openRecordPaymentModal()" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-plus-circle"></i> Record Payment</button>`;
             } else {
                 actionButtonsHtml += `<button type="button" onclick="window.copyInvoiceLink('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #ea580c; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-link"></i> Copy Payment Link</button>`;
             }
-        } else if (data.paymentStatus === 'balance_proof_submitted') {
-            actionButtonsHtml += `<button type="button" onclick="window.verifyPayment('${cleanId}', true)" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-shield-alt"></i> Verify Balance Proof</button>`;
+        } else if (data.paymentStatus === 'balance_proof_submitted' || data.paymentStatus === 'cash_balance_requested') {
+            if (data.paymentStatus === 'cash_balance_requested') {
+                actionButtonsHtml += `<button type="button" onclick="window.confirmCashPayment('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-money-bill-wave"></i> Confirm Cash Balance</button>`;
+            } else {
+                actionButtonsHtml += `<button type="button" onclick="window.verifyPayment('${cleanId}', true)" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-shield-alt"></i> Verify Balance Proof</button>`;
+            }
         } else if (bookingStatus === 'confirmed') {
             actionButtonsHtml += `<button type="button" onclick="updateBookingStage('${cleanId}', 'preparing')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: var(--primary-color, #800020); color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-utensils"></i> Start Preparation</button>`;
         } else if (bookingStatus === 'preparing') {
-            actionButtonsHtml += `<button type="button" onclick="updateBookingStage('${cleanId}', 'ready_for_delivery')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-truck"></i> Ready for Delivery / Pickup</button>`;
+            actionButtonsHtml += `<button type="button" onclick="window.requestReadyForDelivery('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-truck"></i> Ready for Delivery / Pickup</button>`;
         } else if (bookingStatus === 'arrived') {
             actionButtonsHtml += `<button type="button" onclick="updateBookingStage('${cleanId}', 'setup_ongoing')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-tools"></i> Start Setup</button>`;
         } else if (['ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'in_progress', 'setup_ongoing'].includes(bookingStatus)) {
-            actionButtonsHtml += `<button type="button" onclick="updateBookingStage('${cleanId}', 'completed')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-flag-checkered"></i> Mark as Completed</button>`;
+            var canCompleteNow = totalAmountValue > 0 && paidAmountValue >= (totalAmountValue - 0.009) && balanceValue <= 0.009;
+            if (canCompleteNow) {
+                actionButtonsHtml += `<button type="button" onclick="window.confirmCompleteBooking('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-flag-checkered"></i> Mark as Completed</button>`;
+            } else if (paymentStatus === 'balance_proof_submitted') {
+                actionButtonsHtml += `<button type="button" onclick="window.verifyPayment('${cleanId}', true)" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-shield-alt"></i> Verify Balance Proof</button>`;
+            } else if (paymentStatus === 'cash_balance_requested') {
+                actionButtonsHtml += `<button type="button" onclick="window.confirmCashPayment('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-money-bill-wave"></i> Confirm Cash Balance</button>`;
+            } else {
+                actionButtonsHtml += `<button type="button" onclick="window.openBalanceSettlement('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #ea580c; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-wallet"></i> Settle Remaining Balance First</button>`;
+            }
         }
 
         rightActions.innerHTML = actionButtonsHtml + `
@@ -2142,14 +2332,14 @@ function renderOverviewWorkspace(data, context) {
 
     if (status === 'cancelled' || status === 'canceled' || status === 'rejected') {
         primaryTitle = 'Booking Cancelled';
-        primaryDesc = 'This booking has been cancelled and closed. You can archive it to remove it from your active bookings table.';
-        primaryBtnText = '<i class="fas fa-box-archive"></i> Archive Booking';
-        primaryBtnAction = `confirmArchiveBooking(${cleanId})`;
+        primaryDesc = 'This booking is closed. Use Archive Booking below to remove it from your active list.';
+        primaryBtnText = '';
+        primaryBtnAction = '';
     } else if (status === 'completed') {
         primaryTitle = 'Event Completed';
-        primaryDesc = 'All services for this event have been successfully fulfilled. You can archive this booking.';
-        primaryBtnText = '<i class="fas fa-box-archive"></i> Archive Booking';
-        primaryBtnAction = `confirmArchiveBooking(${cleanId})`;
+        primaryDesc = 'All services for this event have been fulfilled. Use Archive Booking below to move it out of your active list.';
+        primaryBtnText = '';
+        primaryBtnAction = '';
     } else if (isManual) {
         // Manual booking workflow
         if (status === 'draft' || status === 'inquiry') {
@@ -2220,29 +2410,51 @@ function renderOverviewWorkspace(data, context) {
             primaryDesc = 'Customer needs to sign the agreement to proceed.';
             primaryBtnText = '';
             primaryBtnAction = '';
-        } else if (status === 'pending') {
-            if (data.paymentStatus === 'proof_submitted') {
-                primaryTitle = 'Customer Submitted Payment Proof';
-                primaryDesc = 'Verify payment receipt and confirm booking.';
-                primaryBtnText = 'Verify & Confirm';
-                primaryBtnAction = `window.confirmAcceptBooking(${cleanId}, true, ${data.isVerified === 'true'}, ${data.isPackage === 'true'})`;
+        } else if (status === 'pending' || status === 'awaiting_payment' || status === 'pending_payment') {
+            const ps = (data.paymentStatus || '').toLowerCase();
+            const underReview = data.isUnderReview === 'true' || ['proof_submitted', 'cash_payment_requested', 'pending_verification'].includes(ps) || Boolean(data.proofUrl);
+            if (underReview) {
+                if (ps === 'cash_payment_requested') {
+                    primaryTitle = 'Customer Requested Cash Payment';
+                    primaryDesc = 'Confirm only after you have physically received the cash payment.';
+                    primaryBtnText = 'Confirm Cash Received';
+                    primaryBtnAction = `window.confirmCashPayment(${cleanId})`;
+                } else {
+                    primaryTitle = 'Customer Submitted Payment Proof';
+                    primaryDesc = 'Verify payment receipt and confirm booking. Deposit verification secures the booking and allows preparation.';
+                    primaryBtnText = 'Verify & Confirm';
+                    primaryBtnAction = `window.verifyPayment(${cleanId}, false)`;
+                }
             } else {
-                primaryTitle = 'Customer Booking Request';
-                primaryDesc = 'Review customer booking details and verify downpayment.';
-                primaryBtnText = 'Review Details';
-                primaryBtnAction = `switchBookingTab('customer', document.getElementById('tabBtnCustomer'))`;
+                primaryTitle = 'Payment Required';
+                primaryDesc = 'Customer has not submitted payment yet. Share the payment link or wait for proof upload.';
+                primaryBtnText = 'Copy Payment Link';
+                primaryBtnAction = `window.copyInvoiceLink('${cleanId}')`;
             }
         } else if (status === 'confirmed') {
             if (data.paymentStatus === 'balance_proof_submitted') {
                 primaryTitle = 'Customer Submitted Balance Proof';
-                primaryDesc = 'Customer uploaded remaining balance proof. Please verify receipt to mark fully paid.';
+                primaryDesc = 'Customer uploaded remaining balance proof (GCash/Bank). Verify receipt to mark Fully Paid.';
                 primaryBtnText = 'Verify Balance Proof';
                 primaryBtnAction = `window.verifyPayment(${cleanId}, true)`;
+            } else if (data.paymentStatus === 'cash_balance_requested') {
+                primaryTitle = 'Customer Requested Cash for Balance';
+                primaryDesc = 'Confirm only after you have physically received the remaining cash payment.';
+                primaryBtnText = 'Confirm Cash Balance';
+                primaryBtnAction = `window.confirmCashPayment(${cleanId})`;
             } else {
-                primaryTitle = 'Customer Booking: Confirmed & Ready';
-                primaryDesc = 'Booking is confirmed. Review requirements before starting preparation.';
-                primaryBtnText = 'Start Preparation';
-                primaryBtnAction = `window.updateBookingStage(${cleanId}, 'preparing')`;
+                const remBal = Math.max(total - Math.max(parseFloat(data.amountPaid) || 0, 0), 0);
+                if (remBal > 0.009) {
+                    primaryTitle = 'Outstanding Balance Remaining';
+                    primaryDesc = 'Customer may pay via GCash, Bank, or Cash. Record payment if already received, or share the payment link.';
+                    primaryBtnText = 'Record / Settle Balance';
+                    primaryBtnAction = `window.openBalanceSettlement('${cleanId}')`;
+                } else {
+                    primaryTitle = 'Booking Confirmed & Ready for Preparation';
+                    primaryDesc = 'Required deposit has been verified. The booking is secured and preparation can begin.';
+                    primaryBtnText = 'Start Preparation';
+                    primaryBtnAction = `window.updateBookingStage(${cleanId}, 'preparing')`;
+                }
             }
         } else if (status === 'preparing') {
             primaryTitle = 'Customer Booking: Preparation in Progress';
@@ -2277,6 +2489,16 @@ function renderOverviewWorkspace(data, context) {
         }
     }
 
+    // Block Mark Completed in overview until remaining balance is fully settled
+    const paidAmt = Math.max(parseFloat(data.amountPaid) || 0, 0);
+    const isFullyPaidOverview = total > 0 && paidAmt >= (total - 0.009);
+    if (String(primaryBtnAction || '').includes('confirmCompleteBooking') && !isFullyPaidOverview) {
+        primaryTitle = 'Outstanding Balance Remaining';
+        primaryDesc = 'Settle via GCash, Bank, or Cash before marking Completed. Record payment if already received.';
+        primaryBtnText = 'Settle Remaining Balance First';
+        primaryBtnAction = `window.openBalanceSettlement('${cleanId}')`;
+    }
+
     const eyebrow = document.getElementById('modalOverviewActionEyebrow');
     if (eyebrow) eyebrow.innerHTML = `<i class="fas ${isManual ? 'fa-store' : 'fa-globe'}"></i> ${primaryEyebrow}`;
     const title = document.getElementById('modalOverviewActionTitle');
@@ -2285,13 +2507,116 @@ function renderOverviewWorkspace(data, context) {
     if (desc) desc.innerText = primaryDesc;
     const btnWrap = document.getElementById('modalOverviewActionBtnWrap');
     if (btnWrap) {
+        // Lifecycle Archive/Cancel live only in the footer — overview shows next operational step only
+        const btnBg = String(primaryBtnAction || '').includes('openBalanceSettlement') ? '#ea580c' : '#16a34a';
         btnWrap.innerHTML = primaryBtnText ? `
-            <button type="button" class="btn-primary" style="background:#16a34a; color:white; border:none; padding:8px 18px; border-radius:8px; font-weight:700; font-size:0.85rem; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(22,163,74,0.25);" onclick="${primaryBtnAction}">
+            <button type="button" class="btn-primary overview-next-action-btn" style="background:${btnBg}; color:white; border:none; padding:8px 18px; border-radius:8px; font-weight:700; font-size:0.85rem; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(0,0,0,0.15);" onclick="${primaryBtnAction}">
                 ${primaryBtnText}
             </button>
         ` : '';
     }
+
+    // Keep footer Cancel/Archive in sync with the same status used by the advisory
+    _syncFooterButtons(cleanId, status);
 }
+
+// ─── REALTIME BOOKING ACTION FEEDBACK ─────────────────────────────────────────
+const BOOKING_ACTION_TOASTS = {
+    preparing: 'Preparation started. Customer notified.',
+    ready_for_delivery: 'Marked ready for delivery. Customer notified.',
+    ready_for_pickup: 'Marked ready for pickup. Customer notified.',
+    on_the_way: 'Out for delivery. Customer notified.',
+    arrived: 'Marked arrived at venue. Customer notified.',
+    setup_ongoing: 'Setup started. Customer notified.',
+    in_progress: 'Event service started. Customer notified.',
+    completed: 'Booking marked as Completed!',
+    archive: 'Booking moved to archives.',
+    verify_payment: 'Payment verified successfully!',
+    verify_balance: 'Balance verified — booking is Fully Paid!',
+    cash_received: 'Cash payment confirmed!',
+    cancel: 'Booking successfully cancelled.',
+    accept: 'Booking confirmed successfully!',
+    copy_link: 'Payment link copied to clipboard!'
+};
+
+async function refreshBookingUiRealtime(bookingId, opts = {}) {
+    const cleanId = String(bookingId || currentBookingId || '').replace(/\D/g, '');
+    const {
+        toast,
+        toastType = 'success',
+        newStatus = null,
+        newPaymentStatus = null,
+        closeModal = false,
+        removeRow = false
+    } = opts;
+
+    if (toast && typeof window.showToast === 'function') {
+        window.showToast(toast, toastType);
+    }
+
+    if (removeRow && cleanId) {
+        const row = document.querySelector(`.view-details[data-id="${cleanId}"]`)?.closest('tr');
+        if (row) row.remove();
+    }
+
+    let btn = cleanId ? document.querySelector(`.view-details[data-id="${cleanId}"]`) : null;
+    if (btn) {
+        if (newStatus) btn.dataset.status = newStatus;
+        if (newPaymentStatus) btn.dataset.paymentStatus = newPaymentStatus;
+        btn.dataset.workspaceHydrated = '';
+    }
+
+    if (closeModal) {
+        if (typeof bk_closeBookingDetailModal === 'function') bk_closeBookingDetailModal();
+        else if (typeof bk_closeModal === 'function') bk_closeModal('bookingDetailModal');
+    }
+
+    if (typeof window.refreshDashboardData === 'function') {
+        try { window.refreshDashboardData(); } catch (e) {}
+    }
+
+    if (typeof window.refreshBookingsTable === 'function') {
+        try { await window.refreshBookingsTable(); } catch (e) {}
+    }
+
+    if (!closeModal && !removeRow && cleanId) {
+        const modal = document.getElementById('bookingDetailModal');
+        btn = document.querySelector(`.view-details[data-id="${cleanId}"]`);
+        if (modal && modal.classList.contains('active') && btn) {
+            btn.dataset.workspaceHydrated = '';
+            showBookingDetails(btn);
+        } else if (newStatus && modal && modal.classList.contains('active')) {
+            window.currentBookingStatus = newStatus;
+            _syncFooterButtons(cleanId, newStatus);
+        }
+    }
+}
+window.refreshBookingUiRealtime = refreshBookingUiRealtime;
+
+// ═══ BALANCE SETTLEMENT HELPER ═══
+window.openBalanceSettlement = function(bookingId) {
+    const cleanId = String(bookingId || currentBookingId || '').replace(/\D/g, '');
+    const viewBtn = cleanId ? document.querySelector(`.view-details[data-id="${cleanId}"]`) : null;
+    const ps = String(viewBtn?.dataset?.paymentStatus || '').toLowerCase();
+
+    if (typeof window.switchBookingTab === 'function') {
+        window.switchBookingTab('payment', document.getElementById('tabBtnPayment'));
+    }
+
+    setTimeout(function() {
+        if (ps === 'balance_proof_submitted' && typeof window.verifyPayment === 'function') {
+            window.verifyPayment(cleanId, true);
+            return;
+        }
+        if (ps === 'cash_balance_requested' && typeof window.confirmCashPayment === 'function') {
+            window.confirmCashPayment(cleanId);
+            return;
+        }
+        if (typeof window.openRecordPaymentModal === 'function') {
+            window.openRecordPaymentModal();
+        }
+    }, 180);
+};
 
 // ═══ RECORD PAYMENT MODAL LOGIC ═══
 window.openRecordPaymentModal = function() {
@@ -2451,13 +2776,18 @@ function resetBookingTabs() {
 // Global copy payment link function
 window.copyInvoiceLink = function(bookingId) {
     const url = window.location.origin + '/customer/booking/' + bookingId + '/invoice';
+    const toastMsg = BOOKING_ACTION_TOASTS.copy_link;
+
+    const onCopied = () => {
+        if (window.showToast) window.showToast(toastMsg, 'success');
+        else if (window.showSuccess) window.showSuccess(toastMsg);
+        else alert(toastMsg);
+    };
     
     if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(url).then(() => {
-            if (window.showSuccess) window.showSuccess('Payment link copied to clipboard!');
-            else alert('Payment link copied to clipboard!');
-        }).catch(err => {
-            alert('Failed to copy: ' + url);
+        navigator.clipboard.writeText(url).then(onCopied).catch(() => {
+            if (window.showToast) window.showToast('Failed to copy payment link.', 'error');
+            else alert('Failed to copy: ' + url);
         });
     } else {
         const el = document.createElement('textarea');
@@ -2466,10 +2796,8 @@ window.copyInvoiceLink = function(bookingId) {
         el.select();
         document.execCommand('copy');
         document.body.removeChild(el);
-        if (window.showSuccess) window.showSuccess('Payment link copied to clipboard!');
-        else alert('Payment link copied to clipboard!');
+        onCopied();
     }
-
 };
 
 // ─── NEW: AUDIT HISTORY ──────────────────────────────────────────────────────
@@ -2831,11 +3159,14 @@ async function proceedWithAcceptance(bookingId, isPayment) {
     window.showConfirm(confirmMsg,
         async function() {
             var url = isPayment ? '/caterer/payments/' + bookingId + '/confirm' : '/caterer/bookings/' + bookingId + '/accept';
-            var result = await window.apiAction(url, { method: 'POST' });
+            var result = await window.apiAction(url, { method: 'POST', muteToast: true });
             if (result && result.status === 'success') {
-                bk_closeBookingDetailModal();
-                if (typeof window.refreshDashboardData === 'function') window.refreshDashboardData();
-                if (window.refreshBookingsTable) window.refreshBookingsTable();
+                await refreshBookingUiRealtime(bookingId, {
+                    toast: isPayment ? BOOKING_ACTION_TOASTS.verify_payment : BOOKING_ACTION_TOASTS.accept,
+                    newStatus: 'confirmed',
+                    newPaymentStatus: isPayment ? 'paid' : null,
+                    closeModal: false
+                });
             }
         },
         confirmTitle, confirmBtn, 'success'
@@ -2879,11 +3210,13 @@ async function submitRejectionWithReason() {
         });
         
         if (data && (data.status === 'success' || data.success)) {
-            window.showToast('Booking successfully cancelled.', 'success');
+            await refreshBookingUiRealtime(targetId, {
+                toast: BOOKING_ACTION_TOASTS.cancel,
+                newStatus: 'cancelled',
+                closeModal: true,
+                removeRow: false
+            });
             bk_closeModal('rejectReasonModal');
-            bk_closeModal('bookingDetailModal');
-            if (window.refreshBookingsTable) window.refreshBookingsTable();
-            if (window.fetchRealtimeUpdates) window.fetchRealtimeUpdates();
         }
     } finally {
         if (btn) {
@@ -2893,12 +3226,29 @@ async function submitRejectionWithReason() {
     }
 }
 
+function isBookingFullyPaidFromDom(bookingId) {
+    const cleanId = String(bookingId || currentBookingId || '').replace(/\D/g, '');
+    const viewBtn = cleanId ? document.querySelector(`.view-details[data-id="${cleanId}"]`) : null;
+    const total = Math.max(parseFloat(viewBtn?.dataset?.totalRawAmount) || parseFloat(document.getElementById('modalHeaderTotal')?.dataset?.raw) || 0, 0);
+    let paid = Math.max(parseFloat(viewBtn?.dataset?.amountPaid) || 0, 0);
+    // Fallback: parse header paid text
+    if (!paid) {
+        const paidEl = document.getElementById('modalHeaderPaid');
+        if (paidEl) paid = parseFloat(String(paidEl.innerText).replace(/[^0-9.-]+/g, '')) || 0;
+    }
+    let totalVal = total;
+    if (!totalVal) {
+        const totalEl = document.getElementById('modalHeaderTotal');
+        if (totalEl) totalVal = parseFloat(String(totalEl.innerText).replace(/[^0-9.-]+/g, '')) || 0;
+    }
+    const balEl = document.getElementById('modalHeaderBalance');
+    const bal = balEl ? (parseFloat(String(balEl.innerText).replace(/[^0-9.-]+/g, '')) || 0) : Math.max(totalVal - paid, 0);
+    return totalVal > 0 && paid >= (totalVal - 0.009) && bal <= 0.009;
+}
+
 function confirmCompleteBooking(bookingId) {
-    const viewBtn = document.querySelector(`.view-details[data-id="${bookingId}"]`);
-    const isPaid = viewBtn && viewBtn.dataset.paymentStatus === 'paid';
-    
-    if (!isPaid) {
-        window.showError("Booking cannot be completed. Payment status must be 'Paid' first.");
+    if (!isBookingFullyPaidFromDom(bookingId)) {
+        window.showError('Cannot mark as Completed while there is still a remaining balance. Settle and verify the full payment first.');
         return;
     }
 
@@ -2906,19 +3256,16 @@ function confirmCompleteBooking(bookingId) {
         async function() {
             var result = await window.apiAction('/caterer/bookings/' + bookingId + '/update-status', { 
                 method: 'POST', 
-                body: JSON.stringify({status: 'completed'}) 
+                body: JSON.stringify({status: 'completed'}),
+                muteToast: true
             });
 
             if (result && result.status === 'success') {
-                window.showToast('Booking successfully marked as Completed! Great job!', 'success');
-                if (window.refreshBookingsTable) window.refreshBookingsTable();
-                
-                setTimeout(() => {
-                    const btn = document.querySelector(`.view-details[data-id="${bookingId}"]`);
-                    if (btn && document.getElementById('bookingDetailModal').classList.contains('active')) {
-                        window.showBookingDetails(btn);
-                    }
-                }, 500);
+                await refreshBookingUiRealtime(bookingId, {
+                    toast: BOOKING_ACTION_TOASTS.completed,
+                    newStatus: 'completed',
+                    newPaymentStatus: 'paid'
+                });
             }
         },
         'Mark as Completed?', 'Yes, Event Finished', 'success'
@@ -2926,24 +3273,43 @@ function confirmCompleteBooking(bookingId) {
 }
 
 window.validateAndProceed = function(bookingId, stage) {
-    console.log('[BookingsJS] validateAndProceed triggered', {bookingId, stage});
-    const progressEl = document.getElementById('checklistProgressText');
-    const tasksCount = document.querySelectorAll('.task-item-pro').length;
-    console.log('[BookingsJS] Checklist progress:', progressEl ? progressEl.innerText : 'null', 'Tasks:', tasksCount);
-    
-    if (tasksCount > 0 && progressEl && progressEl.innerText.trim() !== '100%') {
-        alert('Operations Checklist must be 100% complete before you can dispatch the order.');
+    if (stage === 'ready_for_delivery' || stage === 'ready_for_pickup') {
+        if (typeof window.requestReadyForDelivery === 'function') {
+            window.requestReadyForDelivery(bookingId);
+        } else {
+            updateBookingStage(bookingId, stage);
+        }
         return;
     }
-    
-    console.log('[BookingsJS] Validation passed. Opening dispatchProofModal.');
-    
-    // Panel Defense: Enforce Photographic Evidence
-    document.getElementById('dispatchProofBookingId').value = bookingId;
-    document.getElementById('dispatchProofStage').value = stage;
-    document.getElementById('dispatchProofImage').value = '';
-    bk_openModal('dispatchProofModal');
-}
+
+    const proofBooking = document.getElementById('dispatchProofBookingId');
+    const proofStage = document.getElementById('dispatchProofStage');
+    if (proofBooking && proofStage) {
+        proofBooking.value = bookingId;
+        proofStage.value = stage;
+        const img = document.getElementById('dispatchProofImage');
+        if (img) img.value = '';
+        bk_openModal('dispatchProofModal');
+    } else {
+        updateBookingStage(bookingId, stage);
+    }
+};
+
+window.requestReadyForDelivery = async function(bookingId) {
+    const cleanId = String(bookingId || currentBookingId || '').replace(/\D/g, '');
+    if (!cleanId) return;
+
+    // Keep preparation status in sync with the footer action
+    try {
+        await fetch('/caterer/api/bookings/' + cleanId + '/preparation-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ status: 'ready_for_delivery' })
+        });
+    } catch (e) {}
+
+    updateBookingStage(cleanId, 'ready_for_delivery');
+};
 
 function closeDispatchProofModal() {
     bk_closeModal('dispatchProofModal');
@@ -3000,6 +3366,11 @@ window.submitDispatchProof = async function(event) {
 }
 
 function updateBookingStage(bookingId, status) {
+    if (status === 'completed') {
+        confirmCompleteBooking(bookingId);
+        return;
+    }
+
     const labels = {
         'preparing': 'Start cooking and preparation?',
         'ready_for_delivery': 'Is the order packed and ready for delivery?',
@@ -3023,20 +3394,15 @@ function updateBookingStage(bookingId, status) {
         async function() {
             var result = await window.apiAction('/caterer/bookings/' + bookingId + '/update-status', { 
                 method: 'POST', 
-                body: JSON.stringify({ status: status }) 
+                body: JSON.stringify({ status: status }),
+                muteToast: true
             });
 
             if (result && result.status === 'success') {
-                window.showToast('Status updated successfully and customer notified.', 'success');
-                if (window.refreshBookingsTable) window.refreshBookingsTable();
-                
-                // Re-open modal if it was open
-                setTimeout(() => {
-                    const btn = document.querySelector(`.view-details[data-id="${bookingId}"]`);
-                    if (btn && document.getElementById('bookingDetailModal').classList.contains('active')) {
-                        window.showBookingDetails(btn);
-                    }
-                }, 500);
+                await refreshBookingUiRealtime(bookingId, {
+                    toast: BOOKING_ACTION_TOASTS[status] || 'Status updated successfully.',
+                    newStatus: status
+                });
             }
         },
         titles[status] || 'Update Status', 'Yes, Proceed', 'primary'
@@ -3051,18 +3417,14 @@ function requestNewProof(bookingId) {
         async function() {
             var result = await window.apiAction('/caterer/bookings/' + bookingId + '/request-new-proof', {
                 method: 'POST',
-                body: JSON.stringify({ reason: reason })
+                body: JSON.stringify({ reason: reason }),
+                muteToast: true
             });
             if (result && result.status === 'success') {
-                window.showToast('Notification sent to customer.', 'success');
-                if (window.refreshBookingsTable) window.refreshBookingsTable();
-                
-                setTimeout(() => {
-                    const btn = document.querySelector(`.view-details[data-id="${bookingId}"]`);
-                    if (btn && document.getElementById('bookingDetailModal').classList.contains('active')) {
-                        window.showBookingDetails(btn);
-                    }
-                }, 500);
+                await refreshBookingUiRealtime(bookingId, {
+                    toast: 'Notification sent to customer.',
+                    newPaymentStatus: 'unpaid'
+                });
             }
         },
         'Request New Proof?', 'Yes, Notify Customer', 'warning'
@@ -3077,27 +3439,21 @@ function confirmArchiveBooking(bookingId) {
         'This booking will be moved to the Archive Center and removed from your active bookings table. You can review, restore, or permanently delete it from Archives anytime.',
         async function() {
             try {
-                const res = await fetch('/caterer/bookings/' + cleanId + '/archive', {
+                const result = await window.apiAction('/caterer/bookings/' + cleanId + '/archive', {
                     method: 'POST',
-                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+                    muteToast: true
                 });
-                const data = await res.json();
-                if (res.ok && (data.status === 'success' || data.success)) {
-                    if (window.showToast) window.showToast('Booking moved to archives.', 'success');
-                    bk_closeModal('bookingDetailModal');
-                    if (window.refreshBookingsTable) {
-                        window.refreshBookingsTable();
-                    } else {
-                        setTimeout(() => window.location.reload(), 800);
-                    }
-                } else {
-                    const msg = data.detail || data.message || 'Could not archive booking.';
-                    if (window.showError) window.showError(msg);
-                    else alert(msg);
+                if (result && (result.status === 'success' || result.success)) {
+                    await refreshBookingUiRealtime(cleanId, {
+                        toast: BOOKING_ACTION_TOASTS.archive,
+                        newStatus: 'archived',
+                        closeModal: true,
+                        removeRow: true
+                    });
                 }
-            } catch(e) {
+            } catch (e) {
                 console.error(e);
-                window.location.reload();
+                if (window.showError) window.showError('Could not archive booking. Please try again.');
             }
         },
         'Archive Booking #' + cleanId, 'Yes, Archive', 'danger'
@@ -3124,19 +3480,61 @@ function verifyPayment(bookingId, isBalance) {
     window.showConfirm(msg,
         async function() {
             var url = '/caterer/payments/' + cleanId + '/confirm';
-            var result = await window.apiAction(url, { method: 'POST' });
+            var result = await window.apiAction(url, { method: 'POST', muteToast: true });
             if (result && (result.status === 'success' || result.success)) {
-                if (window.showToast) window.showToast(result.message || 'Payment verified successfully!', 'success');
-                bk_closeModal('bookingDetailModal');
-                if (typeof window.refreshDashboardData === 'function') window.refreshDashboardData();
-                if (window.refreshBookingsTable) {
-                    window.refreshBookingsTable();
-                } else {
-                    setTimeout(() => window.location.reload(), 800);
-                }
+                await refreshBookingUiRealtime(cleanId, {
+                    toast: isBal ? BOOKING_ACTION_TOASTS.verify_balance : BOOKING_ACTION_TOASTS.verify_payment,
+                    newStatus: 'confirmed',
+                    newPaymentStatus: isBal ? 'paid' : 'deposit_paid'
+                });
             }
         },
         title, 'Yes, Verify & Accept', 'success'
+    );
+}
+
+function confirmCashPayment(bookingId, customerName, amount, paymentStatus) {
+    const cleanId = String(bookingId || currentBookingId || window.currentBookingId).replace(/\D/g, '') || String(bookingId);
+    if (!cleanId) return;
+
+    // Resolve amount from args, modal dataset, or 0 (backend will default)
+    let amountVal = parseFloat(amount);
+    if (!amountVal || isNaN(amountVal)) {
+        const btn = document.querySelector(`.view-details[data-id="${cleanId}"]`);
+        if (btn) {
+            amountVal = parseFloat(btn.dataset.pendingAmount) || parseFloat(btn.dataset.verifiedPaid) || 0;
+            const total = parseFloat(btn.dataset.totalRawAmount) || 0;
+            const paid = parseFloat(btn.dataset.amountPaid) || 0;
+            if (!amountVal) amountVal = Math.max(total - paid, 0) || total;
+        }
+    }
+    if (!amountVal || isNaN(amountVal)) amountVal = 0;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const label = customerName ? ` from ${customerName}` : '';
+
+    window.showConfirm(
+        `Confirm that you have physically received ₱${Number(amountVal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} cash${label}?`,
+        async function() {
+            var result = await window.apiAction('/caterer/payments/' + cleanId + '/confirm-cash', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    amount_received: amountVal,
+                    payment_date: today,
+                    notes: ''
+                }),
+                muteToast: true
+            });
+            if (result && (result.status === 'success' || result.success)) {
+                await refreshBookingUiRealtime(cleanId, {
+                    toast: BOOKING_ACTION_TOASTS.cash_received,
+                    newStatus: 'confirmed',
+                    newPaymentStatus: 'paid'
+                });
+            }
+        },
+        'Confirm Cash Payment', 'Yes, Cash Received', 'success'
     );
 }
 
@@ -3168,7 +3566,9 @@ window.confirmCompleteBooking = confirmCompleteBooking;
 window.updateBookingStage = updateBookingStage;
 window.requestNewProof = requestNewProof;
 window.verifyPayment = verifyPayment;
+window.confirmCashPayment = confirmCashPayment;
 window.confirmArchiveBooking = confirmArchiveBooking;
+window.requestReadyForDelivery = window.requestReadyForDelivery;
 
 function initWalkinDetection() {
     let timeoutId;
@@ -3293,222 +3693,170 @@ function recalculateBookingTotal() {
     }
 }
 
-/* ─── OPERATIONS CHECKLIST ─── */
+/* ─── PREPARATION STATUS TRACKER ─── */
+
+window._prepCache = { status: 'not_started', progress: 0, label: 'Not Started', statuses: [] };
+
+const PREP_PROGRESS_FALLBACK = {
+    not_started: 0,
+    preparing: 40,
+    ready_for_delivery: 60,
+    setup_in_progress: 80,
+    ready_for_event: 90,
+    completed: 100
+};
+
+function _prepFormatUpdated(iso) {
+    if (!iso) return '—';
+    try {
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '—';
+        return d.toLocaleString('en-US', {
+            month: 'long', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: '2-digit'
+        });
+    } catch (e) { return '—'; }
+}
+
+function _renderPrepStatusUI(prep) {
+    if (!prep) return;
+    window._prepCache = Object.assign({}, window._prepCache, prep);
+
+    const badge = document.getElementById('prepCurrentStatusBadge');
+    const pctEl = document.getElementById('prepProgressPercent');
+    const bar = document.getElementById('prepProgressBar');
+    const updated = document.getElementById('prepLastUpdated');
+
+    const emoji = prep.emoji || '⚪';
+    const label = prep.label || 'Not Started';
+    const progress = (prep.progress != null) ? prep.progress : (PREP_PROGRESS_FALLBACK[prep.status] || 0);
+
+    if (badge) {
+        badge.innerText = emoji + ' ' + label;
+        badge.style.background = prep.bg || '#f1f5f9';
+        badge.style.color = prep.color || '#475569';
+    }
+    if (pctEl) pctEl.innerText = progress + '%';
+    if (bar) bar.style.width = progress + '%';
+    if (updated) updated.innerText = _prepFormatUpdated(prep.last_updated);
+}
 
 async function loadBookingTasks(bookingId) {
-    const listContainer = document.getElementById('modalChecklistSection') || document.getElementById('bookingTasksList');
-    const progressText = document.getElementById('prepProgressPercent') || document.getElementById('checklistProgressText');
-    const progressBar = document.getElementById('prepProgressBar') || document.getElementById('checklistProgressBar');
-    
-    if (!listContainer) return;
-    
-    // Status-dependent checklist titles and static tasks
-    let status = window.currentBookingStatus || 'confirmed';
-    let checklistTitle = 'Checklist';
-    
-    const staticChecklists = {
-        'inquiry': {
-            title: 'Inquiry Checklist',
-            tasks: ['Customer details', 'Event details', 'Availability checked', 'Quoted Package', 'Follow-up sent']
-        },
-        'tentative': {
-            title: 'Confirmation Checklist',
-            tasks: ['Quote accepted', 'Contract signed', 'Deposit received', 'Hold expiration check']
-        },
-        'setup_ongoing': {
-            title: 'Setup Checklist',
-            tasks: ['Venue Arrival', 'Tables & Chairs', 'Equipment', 'Buffet Area', 'Food Setup']
-        },
-        'in_progress': {
-            title: 'Event Monitoring',
-            tasks: ['Event started', 'Issues monitored', 'Special requests handled', 'Completion confirmed']
-        },
-        'completed': {
-            title: 'Post-Event',
-            tasks: ['Final payment collected', 'Expenses recorded', 'Completion report', 'Customer feedback']
-        },
-        'cancelled': {
-            title: 'Cancellation',
-            tasks: ['Archived']
-        }
-    };
-
-    const sectionTitleContainer = document.getElementById('modalChecklistSection');
-    const titleEl = sectionTitleContainer ? sectionTitleContainer.previousElementSibling.querySelector('.exec-title') : null;
-
-    if (staticChecklists[status]) {
-        // Render static visual checklist
-        const cl = staticChecklists[status];
-        if (titleEl) titleEl.innerText = cl.title;
-        
-        let checkedCount = 0;
-        let html = '';
-        cl.tasks.forEach((t, i) => {
-            let isChecked = false;
-            // visually check everything for past/ongoing states, keep unchecked for tentative/inquiry
-            if (status === 'completed' || status === 'setup_ongoing' || status === 'in_progress' || status === 'cancelled') isChecked = true;
-            if (isChecked) checkedCount++;
-            html += `
-            <div class="task-item-pro ${isChecked ? 'completed' : ''}" style="cursor: default;">
-                <div class="task-checkbox-pro">
-                    ${isChecked ? '<i class="fas fa-check"></i>' : ''}
-                </div>
-                <div class="task-title" style="flex:1;">${t}</div>
-            </div>`;
-        });
-        
-        const progress = Math.round((checkedCount / cl.tasks.length) * 100);
-        if (progressText) progressText.innerText = progress + '%';
-        if (progressBar) progressBar.style.width = progress + '%';
-        
-        listContainer.innerHTML = html;
-        return;
-    }
-
-    // Default to dynamic API tasks for Confirmed/Preparing
-    if (titleEl) titleEl.innerText = (status === 'preparing') ? 'Preparation Checklist' : 'Pre-Event Checklist';
-    listContainer.innerHTML = '<div style="text-align:center;padding:1rem;color:#94a3b8;"><i class="fas fa-circle-notch fa-spin"></i> Loading tasks...</div>';
-
+    // Kept name for compatibility with existing callers — loads preparation STATUS only
     const cleanId = String(bookingId || currentBookingId || '').replace(/\D/g, '');
-    try {
-        const res = await fetch(`/caterer/api/bookings/${cleanId}/tasks`);
-        if (!res.ok) throw new Error('Failed to load tasks');
-        
-        const tasks = await res.json();
-        
-        if (tasks.length === 0) {
-            listContainer.innerHTML = '<p style="text-align:center;color:#94a3b8;font-size:0.85rem;padding:2rem;">No operational tasks found for this booking.</p>';
-            if (progressText) progressText.innerText = '0%';
-            if (progressBar) progressBar.style.width = '0%';
-            return;
-        }
-
-        const completedCount = tasks.filter(t => t.is_completed).length;
-        const progress = Math.round((completedCount / tasks.length) * 100);
-
-        if (progressText) progressText.innerText = progress + '%';
-        if (progressBar) progressBar.style.width = progress + '%';
-
-        listContainer.innerHTML = tasks.map(task => `
-            <div class="task-item-pro ${task.is_completed ? 'completed' : ''}" data-task-id="${task.id}">
-                <div class="task-checkbox-pro" onclick="toggleTaskStatus(${task.id})">
-                    ${task.is_completed ? '<i class="fas fa-check"></i>' : ''}
-                </div>
-                <div class="task-title" onclick="toggleTaskStatus(${task.id})">${task.title}</div>
-                <div class="btn-delete-task" onclick="deleteTask(${task.id})">
-                    <i class="fas fa-trash-alt"></i>
-                </div>
-            </div>
-        `).join('');
-
-    } catch (err) {
-        console.error('Error loading tasks:', err);
-        listContainer.innerHTML = '<p style="text-align:center;color:#ef4444;font-size:0.85rem;">Failed to load checklist.</p>';
-    }
-}
-
-async function addNewCustomTask() {
-    const cleanId = String(currentBookingId || '').replace(/\D/g, '');
     if (!cleanId) return;
-    
-    const rawTitle = prompt("Enter task description (e.g., Finalize flower arrangements):");
-    if (!rawTitle) return;
-    const title = rawTitle.trim().replace(/<[^>]*>?/gm, '');
-    if (title === "") {
-        window.showError("Please enter a valid task description.");
-        return;
-    }
-    if (title.length < 3) {
-        window.showError("Task description is too short (min 3 characters).");
-        return;
-    }
-    if (title.length > 120) {
-        window.showError("Task description exceeds 120 characters.");
-        return;
-    }
+
+    const badge = document.getElementById('prepCurrentStatusBadge');
+    if (badge) badge.innerText = 'Loading…';
 
     try {
-        const res = await fetch(`/caterer/api/bookings/${cleanId}/tasks`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: title })
+        const res = await fetch('/caterer/api/bookings/' + cleanId + '/preparation', {
+            headers: { 'Accept': 'application/json' }
         });
-        
-        if (res.ok) {
-            window.showSuccess("Custom task added successfully.");
-            loadBookingTasks(cleanId);
-        } else {
-            window.showError('Failed to add task.');
-        }
+        if (!res.ok) throw new Error('Failed to load preparation status');
+        const prep = await res.json();
+        _renderPrepStatusUI(prep);
     } catch (err) {
-        window.showError('Error adding task.');
+        console.error('Error loading preparation status:', err);
+        if (badge) badge.innerText = '⚪ Not Started';
     }
 }
 
-async function addBookingTaskFromInput() {
+window.openPrepStatusModal = function() {
+    const modal = document.getElementById('prepStatusModal');
+    const list = document.getElementById('prepStatusOptions');
+    if (!modal || !list) return;
+
+    const current = (window._prepCache && window._prepCache.status) || 'not_started';
+    const statuses = (window._prepCache && window._prepCache.statuses && window._prepCache.statuses.length)
+        ? window._prepCache.statuses
+        : [
+            { key: 'not_started', label: 'Not Started', progress: 0, emoji: '⚪' },
+            { key: 'preparing', label: 'Preparing', progress: 40, emoji: '🟡' },
+            { key: 'ready_for_delivery', label: 'Ready for Delivery / Pickup', progress: 60, emoji: '🔵' },
+            { key: 'setup_in_progress', label: 'Setup in Progress', progress: 80, emoji: '🟠' },
+            { key: 'ready_for_event', label: 'Ready for Event', progress: 90, emoji: '🟣' },
+            { key: 'completed', label: 'Completed', progress: 100, emoji: '🟢' }
+        ];
+
+    list.innerHTML = statuses.map(function(s) {
+        const active = s.key === current ? ' active' : '';
+        return '<button type="button" class="prep-status-option' + active + '" onclick="selectPrepStatus(\'' + s.key + '\')">' +
+            '<span>' + (s.emoji || '') + ' ' + s.label + '</span>' +
+            '<span class="pct">' + s.progress + '%</span></button>';
+    }).join('');
+
+    if (typeof bk_openModal === 'function') bk_openModal('prepStatusModal');
+    else modal.style.display = 'flex';
+};
+
+window.closePrepStatusModal = function() {
+    if (typeof bk_closeModal === 'function') bk_closeModal('prepStatusModal');
+    else {
+        const modal = document.getElementById('prepStatusModal');
+        if (modal) modal.style.display = 'none';
+    }
+};
+
+window.selectPrepStatus = async function(statusKey) {
     const cleanId = String(currentBookingId || '').replace(/\D/g, '');
-    if (!cleanId) return;
-    const inputEl = document.getElementById('newTaskInput');
-    if (!inputEl) return;
-    const rawTitle = inputEl.value;
-    if (!rawTitle || !rawTitle.trim()) {
-        window.showError("Please enter a task description in the input field.");
-        return;
-    }
-    const title = rawTitle.trim().replace(/<[^>]*>?/gm, '');
-    if (title.length < 3) {
-        window.showError("Task description is too short (min 3 characters).");
-        return;
-    }
-    if (title.length > 120) {
-        window.showError("Task description exceeds 120 characters.");
-        return;
-    }
+    if (!cleanId || !statusKey) return;
 
     try {
-        const res = await fetch(`/caterer/api/bookings/${cleanId}/tasks`, {
+        const res = await fetch('/caterer/api/bookings/' + cleanId + '/preparation-status', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: title })
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ status: statusKey })
         });
-        
-        if (res.ok) {
-            inputEl.value = '';
-            window.showSuccess("Task added successfully.");
-            loadBookingTasks(cleanId);
-        } else {
-            window.showError('Failed to add task.');
-        }
-    } catch (err) {
-        window.showError('Error adding task.');
-    }
-}
+        const data = await res.json().catch(function() { return {}; });
+        if (!res.ok) throw new Error(data.detail || 'Failed to update preparation status');
 
-async function toggleTaskStatus(taskId) {
+        if (data.preparation) _renderPrepStatusUI(data.preparation);
+        if (data.booking_status) window.currentBookingStatus = data.booking_status;
+
+        closePrepStatusModal();
+        if (window.showToast) window.showToast(data.message || 'Preparation status updated.', 'success');
+
+        if (window.refreshBookingsTable) window.refreshBookingsTable();
+        setTimeout(function() {
+            const btn = document.querySelector('.view-details[data-id="' + cleanId + '"]');
+            const modalEl = document.getElementById('bookingDetailModal');
+            if (btn && modalEl && modalEl.classList.contains('active')) {
+                if (data.booking_status) btn.dataset.status = data.booking_status;
+                if (typeof showBookingDetails === 'function') showBookingDetails(btn);
+            }
+        }, 400);
+    } catch (err) {
+        if (window.showError) window.showError(err.message || 'Error updating status');
+    }
+};
+
+window.requestReadyForDelivery = async function(bookingId) {
+    const cleanId = String(bookingId || currentBookingId || '').replace(/\D/g, '');
+    if (!cleanId) return;
+
     try {
-        const res = await fetch(`/caterer/api/tasks/${taskId}/toggle`, { method: 'POST' });
-        if (res.ok) {
-            loadBookingTasks(currentBookingId);
-        }
-    } catch (err) {
-        console.error('Error toggling task:', err);
-    }
-}
+        await fetch('/caterer/api/bookings/' + cleanId + '/preparation-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ status: 'ready_for_delivery' })
+        });
+    } catch (e) {}
 
-async function deleteTask(taskId) {
-    if (!confirm('Are you sure you want to remove this task?')) return;
+    updateBookingStage(cleanId, 'ready_for_delivery');
+};
 
-    try {
-        const res = await fetch(`/caterer/api/tasks/${taskId}`, { method: 'DELETE' });
-        if (res.ok) {
-            loadBookingTasks(currentBookingId);
-        } else {
-            window.showError('Failed to delete task');
-        }
-    } catch (err) {
-        window.showError('Error deleting task');
-    }
-}
+// Compatibility stubs (old checklist helpers no longer used by Preparation tab)
+async function addNewCustomTask() { openPrepStatusModal(); }
+async function addBookingTaskFromInput() { openPrepStatusModal(); }
+async function toggleTaskStatus() {}
+async function deleteTask() {}
+
+window.loadBookingTasks = loadBookingTasks;
+window.addNewCustomTask = addNewCustomTask;
+window.toggleTaskStatus = toggleTaskStatus;
+window.deleteTask = deleteTask;
+
 function initWalkinLocation() {
     const provSelect = document.getElementById('bookProvince');
     const citySelect = document.getElementById('bookCity');

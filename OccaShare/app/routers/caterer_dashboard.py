@@ -40,21 +40,8 @@ def sanitize_booking_id(val) -> int:
 
 
 def create_default_booking_tasks(db: Session, booking_id: int):
-    # Idempotency check: Don't add if tasks already exist
-    existing_count = db.query(models.BookingTask).filter(models.BookingTask.booking_id == booking_id).count()
-    if existing_count > 0:
-        return
-
-    default_tasks = [
-        "Ingredient Sourcing & Procurement",
-        "Kitchen Preparation & Prep-work",
-        "Equipment & Logistics Loading",
-        "On-site Setup & Table Management",
-        "Service Execution & Food Serving",
-        "Post-event Cleanup & Packing"
-    ]
-    for title in default_tasks:
-        db.add(models.BookingTask(booking_id=booking_id, title=title))
+    """No-op: Preparation tab is now a simple status tracker (no checklist seeding)."""
+    return
 
 
 @router.post("/platform-feedback")
@@ -1038,27 +1025,27 @@ async def update_booking_status(
         if new_status not in allowed_next:
             raise HTTPException(status_code=400, detail=f"Cannot transition directly from '{current_status}' to '{new_status}'. Please follow proper status progression.")
 
-    # --- PAYMENT VERIFICATION & CASH HANDLING ---
-    if new_status == "completed":
-        has_equipment = any(getattr(item, 'equipment_id', None) for item in booking.selected_items)
-        has_food = True if booking.package_id else any(getattr(item, 'menu_item_id', None) for item in booking.selected_items)
-        if has_equipment and not booking.return_photo_url:
-            raise HTTPException(status_code=400, detail="Cannot complete booking: Equipment Return Inspection (Photo) is required.")
-        if has_food and not booking.dispatch_proof_url:
-            raise HTTPException(status_code=400, detail="Cannot complete booking: Food Dispatch/Setup verification (Photo) is required.")
+    # Gate removed: preparation is status-based, not checklist-based
+    if new_status == "ready_for_delivery":
+        booking.preparation_status = "ready_for_delivery"
 
-        if booking.payment_method == "Cash":
-            # For Cash payments, caterer completing it implies they collected the physical cash
-            booking.payment_status = "paid"
-            cash_log = models.AuditLog(
-                user_id=user.id,
-                action="CASH_RECEIVED_ACKNOWLEDGED",
-                notes=f"Caterer marked booking #{booking.id} completed, acknowledging receipt of Cash/COD."
-            )
-            db.add(cash_log)
-        elif booking.payment_status != "paid":
-            # Removed the `payment_plan != "full"` loophole that allowed bypassing verification
-            raise HTTPException(status_code=400, detail="You can only mark this as Completed once the booking is Fully Paid and verified by Admin.")
+    # --- COMPLETION GATE: must be Fully Paid (no remaining balance), all methods ---
+    if new_status == "completed":
+        from app.services.payment_service import PaymentService
+        gate = PaymentService.assert_can_mark_completed(booking)
+        if not gate["ok"]:
+            raise HTTPException(status_code=400, detail=gate["message"])
+        # Align status flag once amounts confirm full settlement
+        booking.payment_status = "paid"
+
+    if new_status == "preparing":
+        booking.preparation_status = "preparing"
+
+    if new_status == "setup_ongoing":
+        booking.preparation_status = "setup_in_progress"
+
+    if new_status == "completed":
+        booking.preparation_status = "completed"
 
     old_status = booking.status
     booking.status = new_status
@@ -1451,8 +1438,10 @@ async def check_urgent_bookings(
         if b.payment_status in ['reupload_requested', 'balance_reupload_requested']:
             caterer_action_needed = False
             
-        # If customer submitted initial proof and it's still in early stages, caterer MUST act
-        if b.payment_status == 'proof_submitted' and is_early_stage:
+        # If customer submitted proof / cash request and it's still early, caterer MUST act
+        if b.payment_status in ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested'] and is_early_stage:
+            caterer_action_needed = True
+        elif (b.payment_proof_url or b.balance_proof_url) and is_early_stage and float(b.amount_paid or 0) <= 0:
             caterer_action_needed = True
             
         if not b.is_archived and caterer_action_needed and b.event_date:
@@ -1949,12 +1938,20 @@ def build_booking_list_projection(booking, today):
     else:
         booking_kind, type_label, type_icon = "catering", "Catering", "fa-utensils"
 
-    total = float(booking.total_price or booking.total_amount or 0)
-    paid = min(max(float(booking.amount_paid or 0), 0), max(total, 0))
+    from app.services.payment_service import PaymentService
+    pay_summary = PaymentService.get_payment_summary(booking)
+    total = pay_summary["total_amount"]
+    paid = pay_summary["verified_paid"]
+    pending = pay_summary["pending_review"]
     payment_status = booking.payment_status or "no_payment"
     has_quote = bool(booking.quotation or total > 0)
     if not has_quote:
         payment_label = "Not quoted"
+    elif pay_summary.get("is_under_review"):
+        if payment_status in ("balance_proof_submitted", "cash_balance_requested"):
+            payment_label = f"Balance ₱{pending:,.2f} (Under Review)"
+        else:
+            payment_label = f"Submitted ₱{pending:,.2f} (Under Review)"
     elif paid >= total and total > 0:
         payment_label = "Paid"
     elif paid > 0:
@@ -1977,8 +1974,17 @@ def build_booking_list_projection(booking, today):
         attention, next_action, needs_action = "Quotation needed", "Prepare Quotation", True
     elif booking.status in ["pending_quotation", "awaiting_customer"]:
         attention, next_action, needs_action = "Waiting for customer", "Wait for Customer", False
-    elif booking.status in ["pending", "awaiting_payment"] and payment_status not in ["paid", "fully_paid"]:
-        attention, next_action, needs_action = "Payment pending", "Verify Payment", True
+    elif pay_summary.get("is_under_review") or payment_status in (
+        "proof_submitted", "balance_proof_submitted", "cash_payment_requested", "cash_balance_requested"
+    ):
+        if payment_status in ("balance_proof_submitted", "cash_balance_requested"):
+            attention, next_action, needs_action = "Balance under review", "Verify Balance", True
+        elif payment_status == "cash_payment_requested":
+            attention, next_action, needs_action = "Cash payment requested", "Confirm Cash", True
+        else:
+            attention, next_action, needs_action = "Payment under review", "Verify Payment", True
+    elif booking.status in ["pending", "awaiting_payment"] and payment_status not in ["paid", "fully_paid", "deposit_paid"]:
+        attention, next_action, needs_action = "Payment pending", "Pending Pay", False
     elif booking.status == "confirmed" and (booking.event_address or booking.venue_address or booking.event_location) is None:
         attention, next_action, needs_action = "Venue details needed", "Request Venue", True
     elif booking.status == "preparing":
@@ -2045,6 +2051,27 @@ async def manage_bookings(
 ):
     all_bookings = [b for b in user.caterer_profile.bookings if b.status != 'draft' and not b.is_archived]
     all_bookings.sort(key=lambda x: x.id, reverse=True)
+
+    # Heal drifted payment statuses so list/modal stay in sync with customer submissions
+    from app.services.payment_service import PaymentService
+    healed = False
+    for b in all_bookings:
+        if PaymentService.sync_review_status(b, db):
+            healed = True
+    if healed:
+        db.commit()
+
+    # Attach unified payment summary for template (source of truth)
+    for b in all_bookings:
+        summary = PaymentService.get_payment_summary(b)
+        b._pay_summary = summary
+        b._pay_is_under_review = summary.get("is_under_review", False)
+        b._pay_verified = summary.get("verified_paid", 0)
+        b._pay_pending = summary.get("pending_review", 0)
+        b._pay_balance = summary.get("remaining_balance", 0)
+        b._pay_remaining_after = summary.get("remaining_after_verification", 0)
+        b._pay_label = PaymentService.display_payment_label(b, summary)
+        b._action_label = PaymentService.display_booking_action_label(b, summary)
     
     booking_list = [build_booking_list_projection(b, today=date.today()) for b in all_bookings]
     total_bookings = len(all_bookings)
@@ -2275,6 +2302,7 @@ async def confirm_caterer_payment_get(booking_id: str):
 async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_user: models.User, is_manual_accept: bool = False):
     """Shared logic for confirming a booking via payment verification or manual acceptance."""
     from ..services.notification import NotificationService
+    from app.services.payment_service import PaymentService
     import asyncio
     
     if booking.is_archived:
@@ -2288,15 +2316,47 @@ async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_u
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
 
+    # Heal drifted payment_status so verification works when customer already submitted
+    PaymentService.sync_review_status(booking, db)
+
     old_payment_status = booking.payment_status
+    if old_payment_status in ['deposit_paid', 'paid', 'fully_paid'] and booking.status == 'confirmed':
+        raise HTTPException(status_code=400, detail="This payment has already been processed.")
+
     history_note = "Booking confirmed by caterer."
+    pay_summary = PaymentService.get_payment_summary(booking)
     
-    # CASE 1: Downpayment Verification or Initial Acceptance
-    if booking.payment_status in ['proof_submitted', 'reupload_requested', 'pending'] or booking.status == 'pending':
-        if booking.payment_plan == 'full':
+    # CASE 1: Downpayment Verification or Initial Acceptance (including Cash)
+    initial_review_statuses = [
+        'proof_submitted', 'reupload_requested', 'pending',
+        'cash_payment_requested', 'pending_verification', 'unpaid'
+    ]
+    if (
+        booking.payment_status in initial_review_statuses
+        or booking.status == 'pending'
+        or pay_summary.get("is_under_review")
+    ) and booking.payment_status not in ['balance_proof_submitted', 'balance_reupload_requested', 'cash_balance_requested']:
+        total_amt = float(booking.total_amount or booking.total_price or 0)
+        customer_deposit_amt = 0.0
+        for r in (booking.payment_records or []):
+            rec_type = (r.payment_type or "").strip().lower()
+            if (r.recorded_by or "").lower() == "customer" and rec_type in ["deposit", "full", "downpayment"]:
+                customer_deposit_amt = max(customer_deposit_amt, float(r.amount or 0))
+
+        # Prefer pending_review amount from summary, then reservation fee
+        verify_amt = (
+            customer_deposit_amt
+            or pay_summary.get("pending_review")
+            or float(booking.reservation_fee or 0)
+            or PaymentService.required_deposit(booking)
+        )
+
+        if booking.payment_plan == 'full' or verify_amt >= total_amt > 0:
             booking.payment_status = 'paid'
+            booking.amount_paid = verify_amt or total_amt
         else:
             booking.payment_status = 'deposit_paid'
+            booking.amount_paid = verify_amt or float(booking.reservation_fee or (total_amt * 0.5))
         booking.status = 'confirmed'
         
         # Initialize operations checklist
@@ -2332,9 +2392,10 @@ async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_u
             f"/customer/bookings/manage/{booking.id}"
         )
 
-    # CASE 2: Final Balance Verification
-    elif booking.payment_status in ['balance_proof_submitted', 'balance_reupload_requested']:
+    # CASE 2: Final Balance Verification (including Cash Balance)
+    elif booking.payment_status in ['balance_proof_submitted', 'balance_reupload_requested', 'cash_balance_requested']:
         booking.payment_status = 'paid'
+        booking.amount_paid = float(booking.total_amount or booking.total_price or 0)
         history_note = "Final balance verified. Booking is now FULLY PAID."
         
         await NotificationService.notify_status_update(
@@ -2478,6 +2539,163 @@ async def confirm_caterer_payment(
         })
         
     return RedirectResponse(url="/caterer/payments?success_msg=Payment+confirmed+successfully", status_code=303)
+
+@router.post("/payments/{booking_id}/confirm-cash")
+async def confirm_cash_payment(
+    booking_id: str,
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    """Caterer confirms that cash was physically received from the customer."""
+    from ..services.notification import NotificationService
+    from app.services.payment_service import PaymentService
+    from datetime import datetime, timezone
+    import asyncio
+
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    if booking.is_archived:
+        raise HTTPException(status_code=400, detail="Cannot confirm payment for an archived booking.")
+    if booking.status in ['cancelled', 'completed']:
+        raise HTTPException(status_code=400, detail=f"Cannot modify a booking that is already {booking.status}.")
+
+    # Heal drifted cash rows (e.g. Cash method but payment_status not cash_*)
+    PaymentService.sync_review_status(booking, db)
+    if (
+        booking.payment_status not in ['cash_payment_requested', 'cash_balance_requested']
+        and (booking.payment_method or "").lower() == "cash"
+        and booking.payment_status in ['pending', 'unpaid', 'proof_submitted', 'pending_verification']
+        and float(booking.amount_paid or 0) <= 0
+    ):
+        booking.payment_status = 'cash_payment_requested'
+
+    if booking.payment_status not in ['cash_payment_requested', 'cash_balance_requested']:
+        raise HTTPException(
+            status_code=400,
+            detail="This booking is not awaiting cash payment confirmation."
+        )
+
+    # Body is optional — modal may POST without JSON
+    data = {}
+    try:
+        raw = await request.body()
+        if raw:
+            import json
+            data = json.loads(raw.decode("utf-8"))
+            if not isinstance(data, dict):
+                data = {}
+    except Exception:
+        data = {}
+
+    is_balance = booking.payment_status == 'cash_balance_requested'
+    pay_summary = PaymentService.get_payment_summary(booking)
+    total_amt = float(booking.total_amount or booking.total_price or 0)
+    default_amount = (
+        pay_summary.get("pending_review")
+        or (max(0.0, total_amt - float(booking.amount_paid or 0)) if is_balance else PaymentService.required_deposit(booking))
+        or total_amt
+    )
+
+    try:
+        amount_received = float(data.get("amount_received") if data.get("amount_received") is not None else default_amount)
+    except (TypeError, ValueError):
+        amount_received = float(default_amount or 0)
+    if amount_received <= 0:
+        amount_received = float(default_amount or 0)
+
+    payment_date = data.get("payment_date") or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    caterer_notes = data.get("notes") or ""
+
+    if is_balance:
+        booking.payment_status = 'paid'
+        booking.amount_paid = total_amt
+        history_note = f"Cash balance payment confirmed by caterer. Amount received: ₱{amount_received:,.2f}."
+        if caterer_notes:
+            history_note += f" Notes: {caterer_notes}"
+        notification_title = "Cash Balance Confirmed!"
+        notification_msg = f"Your remaining cash balance for '{booking.event_name}' has been confirmed by {booking.caterer.business_name}. Your booking is now fully paid."
+        payment_type = "Balance"
+    else:
+        if booking.payment_plan == 'full' or amount_received >= total_amt > 0:
+            booking.payment_status = 'paid'
+            booking.amount_paid = amount_received if amount_received >= total_amt else total_amt
+        else:
+            booking.payment_status = 'deposit_paid'
+            booking.amount_paid = amount_received
+        booking.status = 'confirmed'
+        history_note = f"Cash payment confirmed by caterer. Amount received: ₱{amount_received:,.2f}."
+        if caterer_notes:
+            history_note += f" Notes: {caterer_notes}"
+        notification_title = "Cash Payment Confirmed!"
+        notification_msg = f"Your cash payment for '{booking.event_name}' has been confirmed by {booking.caterer.business_name}. Your booking is now confirmed."
+        payment_type = "Full" if booking.payment_status == 'paid' else "Deposit"
+        create_default_booking_tasks(db, booking.id)
+
+    # Persist a verified cash payment record (source of truth)
+    existing = db.query(models.BookingPaymentRecord).filter(
+        models.BookingPaymentRecord.booking_id == booking.id,
+        models.BookingPaymentRecord.recorded_by == "Customer",
+        models.BookingPaymentRecord.payment_type == payment_type
+    ).first()
+    if existing:
+        existing.amount = amount_received
+        existing.payment_method = "Cash"
+        existing.payment_date = datetime.now(timezone.utc)
+        existing.reference_notes = f"Cash confirmed by caterer. {caterer_notes}".strip()
+        existing.recorded_by = "Caterer"
+    else:
+        db.add(models.BookingPaymentRecord(
+            booking_id=booking.id,
+            amount=amount_received,
+            payment_date=datetime.now(timezone.utc),
+            payment_method="Cash",
+            payment_type=payment_type,
+            reference_notes=f"Cash confirmed by caterer. {caterer_notes}".strip(),
+            recorded_by="Caterer"
+        ))
+
+    note_line = f"[Cash Payment] Date: {payment_date} | Amount: ₱{amount_received:,.2f}"
+    if caterer_notes:
+        note_line += f" | Note: {caterer_notes}"
+    booking.caterer_notes = (booking.caterer_notes or "") + f"\n{note_line}"
+
+    history = models.BookingHistory(
+        booking_id=booking.id,
+        status=booking.status,
+        notes=history_note
+    )
+    db.add(history)
+    db.commit()
+
+    # Notify customer (skip safely if no linked user)
+    if booking.user_id:
+        await NotificationService.notify_status_update(
+            db, booking.user_id,
+            notification_title,
+            notification_msg,
+            f"/customer/bookings/manage/{booking.id}"
+        )
+        asyncio.create_task(manager.broadcast_to_user(booking.user_id, {
+            "type": "payment_update",
+            "message": f"Cash payment confirmed for {booking.event_name}",
+            "booking_id": booking.id,
+            "status": booking.status,
+            "payment_status": booking.payment_status
+        }))
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JSONResponse({
+            "status": "success",
+            "message": history_note,
+            "new_status": booking.status,
+            "new_payment_status": booking.payment_status
+        })
+
+    return RedirectResponse(url="/caterer/payments?success_msg=Cash+payment+confirmed+successfully", status_code=303)
 
 @router.post("/bookings/{booking_id}/request-new-proof")
 async def request_new_proof(
@@ -2836,17 +3054,20 @@ async def get_booking_details_api(
                 "quantity": int(eq.get("qty", 1) or 1)
             })
 
-    # Accurate payment calculations
-    paid_from_records = sum(float(r.amount or 0) for r in (booking.payment_records or []))
-    actual_paid = max(float(booking.amount_paid or 0), paid_from_records)
-    balance_amount = max(0.0, total_price - actual_paid)
-    
-    if total_price > 0 and actual_paid >= total_price:
-        computed_payment_status = 'fully_paid'
-    elif actual_paid > 0:
-        computed_payment_status = 'partially_paid'
-    else:
-        computed_payment_status = 'unpaid'
+    # Accurate payment calculations using unified PaymentService
+    from app.services.payment_service import PaymentService
+    from app.services.preparation_service import build_prep_summary
+    # Heal drifted rows so caterer can review payments the customer already submitted
+    if PaymentService.sync_review_status(booking, db):
+        db.commit()
+        db.refresh(booking)
+
+    pay_summary = PaymentService.get_payment_summary(booking)
+    actual_paid = pay_summary["verified_paid"]
+    pending_amount = pay_summary["pending_review"]
+    balance_amount = pay_summary["remaining_balance"]
+    remaining_after_verification = pay_summary["remaining_after_verification"]
+    computed_payment_status = pay_summary["computed_payment_status"]
 
     return {
         "id": booking.id,
@@ -2874,7 +3095,10 @@ async def get_booking_details_api(
         "total_amount": total_price,
         "total_price": total_price,
         "amount_paid": actual_paid,
+        "pending_amount": pending_amount,
         "balance_amount": balance_amount,
+        "remaining_after_verification": remaining_after_verification,
+        "payment_summary": pay_summary,
         "commission": round(commission, 2),
         "net_amount": round(net_amount, 2),
         "commission_rate": comm_rate,
@@ -2889,6 +3113,7 @@ async def get_booking_details_api(
         "payment_verification_data": booking.payment_verification_data,
         "preparation_status": booking.preparation_status,
         "preparation_date": booking.preparation_date.isoformat() if booking.preparation_date else None,
+        "preparation": build_prep_summary(booking),
         "actual_cost": float(booking.actual_cost or 0),
         "created_at": booking.created_at.isoformat() if booking.created_at else None,
         "updated_at": booking.updated_at.isoformat() if booking.updated_at else None,
@@ -2896,6 +3121,8 @@ async def get_booking_details_api(
         "package": {
             "id": booking.package.id,
             "name": booking.package.name,
+            "pricing_mode": booking.package.pricing_mode,
+            "selection_rules": booking.package.selection_rules,
             "price": float(booking.package.price or 0) if getattr(booking.package, "price", None) is not None else None,
             "min_guests": getattr(booking.package, "min_guests", None)
         } if booking.package else None,
@@ -2912,8 +3139,23 @@ async def get_booking_details_api(
             "payment_method": record.payment_method,
             "payment_type": record.payment_type,
             "reference_notes": record.reference_notes,
-            "recorded_by": record.recorded_by or "Caterer"
+            "reference_number": record.reference_notes,
+            "notes": record.reference_notes,
+            "recorded_by": record.recorded_by or "Caterer",
+            "recorded_by_type": (record.recorded_by or "caterer").lower(),
+            "status": (
+                "UNDER REVIEW"
+                if (
+                    pay_summary.get("is_under_review")
+                    and (record.recorded_by or '').lower() == 'customer'
+                )
+                else "VERIFIED"
+            )
         } for record in payment_records],
+        "is_under_review": pay_summary.get("is_under_review", False),
+        "needs_verification": pay_summary.get("needs_verification", False),
+        "can_start_preparation": pay_summary.get("can_start_preparation", False),
+        "required_deposit": pay_summary.get("required_deposit", 0),
         "quotation_id": booking.quotation.id if booking.quotation else None,
         "contract_url": booking.quotation.contract_url if booking.quotation else None,
         "contract_status": (contract_info["status"] if contract_info else None),
@@ -3164,34 +3406,21 @@ async def complete_booking(
     if booking.status not in ['confirmed', 'paid', 'setup_ongoing', 'arrived', 'on_the_way', 'ready_for_delivery', 'preparing']:
         raise HTTPException(status_code=400, detail="Only active confirmed bookings can be marked as completed")
 
-    # --- PHASE 3: COMPLETION GATING LOGIC ---
-    has_equipment = any(getattr(item, 'equipment_id', None) for item in booking.selected_items)
-    has_food = True if booking.package_id else any(getattr(item, 'menu_item_id', None) for item in booking.selected_items)
-    
-    if has_equipment and not booking.return_photo_url:
+    # --- COMPLETION GATING: Fully Paid required (Cash included; no remaining balance) ---
+    from app.services.payment_service import PaymentService
+    from urllib.parse import quote
+    gate = PaymentService.assert_can_mark_completed(booking)
+    if not gate["ok"]:
         if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.headers.get("Content-Type") == "application/json":
-            return JSONResponse(status_code=400, content={"status": "error", "message": "Cannot complete booking: Equipment Return Inspection (Photo) is required."})
-        return RedirectResponse(url=f"/caterer/bookings?error_msg=Cannot+complete+booking:+Equipment+Return+Inspection+is+required.", status_code=303)
-        
-    if has_food and not booking.dispatch_proof_url:
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.headers.get("Content-Type") == "application/json":
-            return JSONResponse(status_code=400, content={"status": "error", "message": "Cannot complete booking: Food Dispatch/Setup verification (Photo) is required."})
-        return RedirectResponse(url=f"/caterer/bookings?error_msg=Cannot+complete+booking:+Food+Dispatch+verification+is+required.", status_code=303)
-
-    if booking.payment_method == "Cash":
-        booking.payment_status = "paid"
-        cash_log = models.AuditLog(
-            user_id=user.id,
-            action="CASH_RECEIVED_ACKNOWLEDGED",
-            notes=f"Caterer marked booking #{booking.id} completed via /complete endpoint, acknowledging receipt of Cash/COD."
+            return JSONResponse(status_code=400, content={"status": "error", "message": gate["message"]})
+        return RedirectResponse(
+            url=f"/caterer/bookings?error_msg={quote(gate['message'])}",
+            status_code=303,
         )
-        db.add(cash_log)
-    elif booking.payment_status != "paid":
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.headers.get("Content-Type") == "application/json":
-            return JSONResponse(status_code=400, content={"status": "error", "message": "Cannot complete booking: You can only mark this as Completed once the booking is Fully Paid and verified."})
-        return RedirectResponse(url=f"/caterer/bookings?error_msg=Cannot+complete+booking:+Booking+must+be+Fully+Paid+first.", status_code=303)
+    booking.payment_status = "paid"
 
     booking.status = 'completed'
+    booking.preparation_status = 'completed'
     snapshot_booking_actual_cost(booking)
 
     history = models.BookingHistory(
@@ -4634,9 +4863,22 @@ async def add_package(
     
     if not name.strip():
         errors.append("Package name is required.")
-    # Removed mandatory menu item selection to allow optional packages
-    if price_per_head <= 0:
-        errors.append("Price per head must be greater than 0.")
+
+    if pricing_mode == 'customizable':
+        price_per_head = 0.0
+        reservation_fee_value = 0.0
+        if not service_type or not service_type.strip():
+            service_type = "Customizable"
+    else:
+        if price_per_head <= 0:
+            errors.append("Price per head must be greater than 0.")
+        if reservation_fee_value <= 0 and price_per_head > 0:
+            pass # Optional warning: errors.append("Reservation fee must be greater than 0.")
+        elif reservation_fee_type == 'fixed' and price_per_head > 0 and min_guests > 0 and pricing_mode == 'per_pax':
+            max_allowed_fee = (price_per_head * min_guests) * 0.5
+            if reservation_fee_value > max_allowed_fee:
+                errors.append(f"Reservation fee cannot exceed 50% of the total base package cost.")
+
     global_min_pax = user.caterer_profile.min_pax or 20
     if min_guests < global_min_pax:
         errors.append(f"Minimum guests cannot be lower than your global setting of {global_min_pax}.")
@@ -4644,12 +4886,6 @@ async def add_package(
     global_lead_time = user.caterer_profile.booking_lead_time or 7
     if booking_lead_time < global_lead_time:
         errors.append(f"Booking lead time cannot be lower than your global setting of {global_lead_time} days.")
-    if reservation_fee_value <= 0 and price_per_head > 0:
-        pass # Optional warning: errors.append("Reservation fee must be greater than 0.")
-    elif reservation_fee_type == 'fixed' and price_per_head > 0 and min_guests > 0 and pricing_mode == 'per_pax':
-        max_allowed_fee = (price_per_head * min_guests) * 0.5
-        if reservation_fee_value > max_allowed_fee:
-            errors.append(f"Reservation fee cannot exceed 50% of the total base package cost.")
 
 
     # Smart Validation: Detect existing package with the same name
@@ -4720,13 +4956,12 @@ async def add_package(
         
     # Save addons
     try:
-        import json
         if menu_addons:
             for ma in json.loads(menu_addons):
                 db.add(models.PackageMenuAddon(package_id=new_pkg.id, menu_item_id=int(str(ma['id']).replace('leg_', '')), price=float(ma['price']), selection_type=ma.get('selection_type', 'single'), min_quantity=ma.get('min_quantity', 1), max_quantity=ma.get('max_quantity')))
         if service_addons:
             for sa in json.loads(service_addons):
-                db.add(models.PackageServiceAddon(package_id=new_pkg.id, service_id=int(str(sa['id']).replace('svc_', '')), price=float(sa['price']), selection_type=ma.get('selection_type', 'single'), min_quantity=sa.get('min_quantity', 1), max_quantity=sa.get('max_quantity')))
+                db.add(models.PackageServiceAddon(package_id=new_pkg.id, service_id=int(str(sa['id']).replace('svc_', '')), price=float(sa['price']), selection_type=sa.get('selection_type', 'single'), min_quantity=sa.get('min_quantity', 1), max_quantity=sa.get('max_quantity')))
         if equipment_addons:
             for ea in json.loads(equipment_addons):
                 db.add(models.PackageEquipmentAddon(package_id=new_pkg.id, equipment_id=int(str(ea['id']).replace('eq_', '')), price=float(ea['price']), min_quantity=ea.get('min_quantity', 1), max_quantity=ea.get('max_quantity')))
@@ -5559,7 +5794,8 @@ async def get_package_details_api(
         "reservation_fee_type": package.reservation_fee_type,
         "reservation_fee_value": package.reservation_fee_value,
         "booking_lead_time": package.booking_lead_time,
-        "additional_guest_price": package.additional_guest_price
+        "additional_guest_price": package.additional_guest_price,
+        "selection_rules": package.selection_rules
     }
 
 @router.post("/packages/{package_id}/update")
@@ -5622,8 +5858,22 @@ async def update_package(
     
     if not name.strip():
         errors.append("Package name is required.")
-    if price_per_head <= 0:
-        errors.append("Price per head must be greater than 0.")
+
+    if pricing_mode == 'customizable':
+        price_per_head = 0.0
+        reservation_fee_value = 0.0
+        if not service_type or not service_type.strip():
+            service_type = "Customizable"
+    else:
+        if price_per_head <= 0:
+            errors.append("Price per head must be greater than 0.")
+        if reservation_fee_value <= 0 and price_per_head > 0:
+            pass
+        elif reservation_fee_type == 'fixed' and price_per_head > 0 and min_guests > 0 and pricing_mode == 'per_pax':
+            max_allowed_fee = (price_per_head * min_guests) * 0.5
+            if reservation_fee_value > max_allowed_fee:
+                errors.append(f"Reservation fee cannot exceed 50% of the total base package cost.")
+
     global_min_pax = user.caterer_profile.min_pax or 20
     if min_guests < global_min_pax:
         errors.append(f"Minimum guests cannot be lower than your global setting of {global_min_pax}.")
@@ -5631,12 +5881,6 @@ async def update_package(
     global_lead_time = user.caterer_profile.booking_lead_time or 7
     if booking_lead_time < global_lead_time:
         errors.append(f"Booking lead time cannot be lower than your global setting of {global_lead_time} days.")
-    if reservation_fee_value <= 0 and price_per_head > 0:
-        pass
-    elif reservation_fee_type == 'fixed' and price_per_head > 0 and min_guests > 0 and pricing_mode == 'per_pax':
-        max_allowed_fee = (price_per_head * min_guests) * 0.5
-        if reservation_fee_value > max_allowed_fee:
-            errors.append(f"Reservation fee cannot exceed 50% of the total base package cost.")
             
     # Smart Validation: Detect other package with the same name
     existing_pkg = db.query(models.CateringPackage).filter(
@@ -6060,6 +6304,267 @@ async def get_catalogs_inclusions(
             } for s in services
         ]
     }
+
+class QuickCatalogItemPayload(BaseModel):
+    item_type: str  # 'menu', 'service', 'equipment'
+    name: str
+    category: Optional[str] = None
+    price: float = 0.0
+    unit_type: Optional[str] = None
+    description: Optional[str] = None
+    available_qty: Optional[int] = 100
+
+@router.post("/api/catalogs/quick-add")
+async def quick_add_catalog_item(
+    payload: QuickCatalogItemPayload,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    if not profile:
+        raise HTTPException(status_code=403, detail="Unauthorized caterer access")
+
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Item name is required.")
+
+    item_type = (payload.item_type or 'menu').lower()
+    price = max(0.0, float(payload.price or 0.0))
+    desc = payload.description.strip() if payload.description else None
+
+    if item_type == 'menu':
+        cat = payload.category.strip() if payload.category else "Main Course"
+        unit = payload.unit_type.strip() if payload.unit_type else "per_pax"
+        new_item = models.MenuItem(
+            caterer_id=profile.id,
+            name=name,
+            category=cat,
+            price=price,
+            pricing_unit=unit,
+            description=desc,
+            usage_type="both",
+            available_for_package=True,
+            available_for_order=True,
+            pricing_type="fixed",
+            status="available",
+            is_archived=False,
+            is_hidden=False
+        )
+        db.add(new_item)
+        db.commit()
+        db.refresh(new_item)
+        return {
+            "status": "success",
+            "type": "menu",
+            "item": {
+                "id": new_item.id,
+                "name": new_item.name,
+                "category": new_item.category,
+                "unit_type": new_item.pricing_unit or "per_pax",
+                "price": new_item.price or 0.0,
+                "description": new_item.description or "",
+                "image_url": ""
+            }
+        }
+    elif item_type == 'service':
+        cat = payload.category.strip() if payload.category else "Service"
+        unit = payload.unit_type.strip() if payload.unit_type else "per_event"
+        new_service = models.Service(
+            caterer_id=profile.id,
+            name=name,
+            category=cat,
+            selling_price=price,
+            unit_type=unit,
+            description=desc,
+            status="available",
+            is_archived=False,
+            is_hidden=False
+        )
+        db.add(new_service)
+        db.commit()
+        db.refresh(new_service)
+        return {
+            "status": "success",
+            "type": "service",
+            "item": {
+                "id": new_service.id,
+                "name": new_service.name,
+                "category": new_service.category,
+                "unit_type": new_service.unit_type or "service",
+                "price": new_service.selling_price or 0.0,
+                "selling_price": new_service.selling_price or 0.0,
+                "description": new_service.description or "",
+                "image_url": ""
+            }
+        }
+    elif item_type == 'equipment':
+        cat = payload.category.strip() if payload.category else "Equipment"
+        unit = payload.unit_type.strip() if payload.unit_type else "piece"
+        qty = int(payload.available_qty or 100)
+        new_equip = models.Equipment(
+            caterer_id=profile.id,
+            name=name,
+            equipment_type="Equipment",
+            category=cat,
+            rental_price=price,
+            unit_type=unit,
+            available_qty=qty,
+            description=desc,
+            status="available",
+            usage_type="both",
+            is_archived=False,
+            is_hidden=False
+        )
+        db.add(new_equip)
+        db.commit()
+        db.refresh(new_equip)
+        return {
+            "status": "success",
+            "type": "equipment",
+            "item": {
+                "id": new_equip.id,
+                "name": new_equip.name,
+                "category": new_equip.category,
+                "unit_type": new_equip.unit_type or "piece",
+                "rental_price": new_equip.rental_price or 0.0,
+                "price": new_equip.rental_price or 0.0,
+                "available_qty": new_equip.available_qty or 0,
+                "description": new_equip.description or "",
+                "image_url": ""
+            }
+        }
+    else:
+        raise HTTPException(status_code=400, detail="Invalid item type.")
+
+class QuickEditCatalogItemPayload(BaseModel):
+    name: str
+    category: Optional[str] = None
+    price: float = 0.0
+    unit_type: Optional[str] = None
+    description: Optional[str] = None
+
+@router.post("/api/catalogs/quick-edit/{item_type}/{item_id}")
+async def quick_edit_catalog_item(
+    item_type: str,
+    item_id: int,
+    payload: QuickEditCatalogItemPayload,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    if not profile:
+        raise HTTPException(status_code=403, detail="Unauthorized caterer access")
+
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Item name is required.")
+
+    item_type = (item_type or 'menu').lower()
+    price = max(0.0, float(payload.price or 0.0))
+    desc = payload.description.strip() if payload.description else None
+
+    if item_type == 'menu':
+        item = db.query(models.MenuItem).filter(
+            models.MenuItem.id == item_id,
+            models.MenuItem.caterer_id == profile.id
+        ).first()
+        if not item:
+            raise HTTPException(status_code=404, detail="Menu item not found")
+
+        item.name = name
+        if payload.category:
+            item.category = payload.category.strip()
+        item.price = price
+        if payload.unit_type:
+            item.pricing_unit = payload.unit_type.strip()
+        item.description = desc
+        db.commit()
+        db.refresh(item)
+
+        return {
+            "status": "success",
+            "type": "menu",
+            "item": {
+                "id": item.id,
+                "name": item.name,
+                "category": item.category,
+                "unit_type": item.pricing_unit or "per_pax",
+                "price": item.price or 0.0,
+                "description": item.description or "",
+                "image_url": item.image_url or ""
+            }
+        }
+    elif item_type == 'service':
+        svc = db.query(models.Service).filter(
+            models.Service.id == item_id,
+            models.Service.caterer_id == profile.id
+        ).first()
+        if not svc:
+            raise HTTPException(status_code=404, detail="Service not found")
+
+        svc.name = name
+        if payload.category:
+            svc.category = payload.category.strip()
+        svc.selling_price = price
+        if payload.unit_type:
+            svc.unit_type = payload.unit_type.strip()
+        svc.description = desc
+        db.commit()
+        db.refresh(svc)
+
+        return {
+            "status": "success",
+            "type": "service",
+            "item": {
+                "id": svc.id,
+                "name": svc.name,
+                "category": svc.category,
+                "unit_type": svc.unit_type or "service",
+                "price": svc.selling_price or 0.0,
+                "selling_price": svc.selling_price or 0.0,
+                "description": svc.description or "",
+                "image_url": svc.image_url or ""
+            }
+        }
+    else:
+        raise HTTPException(status_code=400, detail="Invalid item type")
+
+@router.post("/api/catalogs/quick-delete/{item_type}/{item_id}")
+async def quick_delete_catalog_item(
+    item_type: str,
+    item_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    if not profile:
+        raise HTTPException(status_code=403, detail="Unauthorized caterer access")
+
+    item_type = (item_type or 'menu').lower()
+    if item_type == 'menu':
+        item = db.query(models.MenuItem).filter(
+            models.MenuItem.id == item_id,
+            models.MenuItem.caterer_id == profile.id
+        ).first()
+        if not item:
+            raise HTTPException(status_code=404, detail="Menu item not found")
+        item.is_archived = True
+        item.status = "archived"
+        db.commit()
+        return {"status": "success", "type": "menu", "item_id": item_id}
+    elif item_type == 'service':
+        svc = db.query(models.Service).filter(
+            models.Service.id == item_id,
+            models.Service.caterer_id == profile.id
+        ).first()
+        if not svc:
+            raise HTTPException(status_code=404, detail="Service not found")
+        svc.is_archived = True
+        svc.status = "archived"
+        db.commit()
+        return {"status": "success", "type": "service", "item_id": item_id}
+    else:
+        raise HTTPException(status_code=400, detail="Invalid item type")
 
 @router.post("/packages/{package_id}/menu/link")
 async def link_menu_to_package(
@@ -6772,12 +7277,105 @@ async def set_booking_reminder(
     return {"status": "success", "message": "Email reminder sent and push notification scheduled."}
 
 
+@router.get("/api/bookings/{booking_id}/preparation")
+async def get_booking_preparation(
+    booking_id: str,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    from app.services.preparation_service import build_prep_summary
+
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).filter(
+        models.Booking.id == numeric_id,
+        models.Booking.caterer_id == user.caterer_profile.id
+    ).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return build_prep_summary(booking)
+
+
+@router.post("/api/bookings/{booking_id}/preparation-status")
+async def update_booking_preparation_status(
+    booking_id: str,
+    data: dict = Body(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    """Update overall preparation status (simple tracker — no checklist)."""
+    from app.services.preparation_service import (
+        PREP_STATUS_KEYS, get_prep_meta, build_prep_summary, normalize_prep_status
+    )
+
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).filter(
+        models.Booking.id == numeric_id,
+        models.Booking.caterer_id == user.caterer_profile.id
+    ).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.is_archived or booking.status in ["cancelled", "expired"]:
+        raise HTTPException(status_code=400, detail="Cannot update preparation on this booking.")
+
+    new_key = str(data.get("status") or data.get("preparation_status") or "").strip().lower()
+    if new_key not in PREP_STATUS_KEYS:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid preparation status. Choose one of the available options."
+        )
+
+    old_key = normalize_prep_status(booking.preparation_status, booking.status)
+    old_meta = get_prep_meta(old_key)
+    new_meta = get_prep_meta(new_key)
+
+    booking.preparation_status = new_key
+
+    # Sync related booking lifecycle status when safe / meaningful
+    mapped_booking_status = new_meta.get("booking_status")
+    old_booking_status = booking.status
+    if mapped_booking_status and mapped_booking_status != booking.status:
+        # Allow forward-ish operational updates without forcing completed
+        allowed_from = {
+            "preparing": ["confirmed", "preparing", "awaiting_payment", "pending"],
+            "ready_for_delivery": ["preparing", "confirmed", "ready_for_delivery", "ready_for_pickup"],
+            "setup_ongoing": [
+                "ready_for_delivery", "ready_for_pickup", "on_the_way",
+                "arrived", "setup_ongoing", "preparing"
+            ],
+        }
+        sources = allowed_from.get(mapped_booking_status, [])
+        if not sources or booking.status in sources or booking.status == mapped_booking_status:
+            booking.status = mapped_booking_status
+
+    history = models.BookingHistory(
+        booking_id=booking.id,
+        status=booking.status,
+        notes=(
+            f"Preparation status changed: {old_meta['label']} → {new_meta['label']} "
+            f"(by caterer)."
+        )
+    )
+    db.add(history)
+    db.commit()
+    db.refresh(booking)
+
+    return {
+        "status": "success",
+        "message": f"Preparation status updated to {new_meta['label']}.",
+        "preparation": build_prep_summary(booking),
+        "booking_status": booking.status,
+        "previous_preparation_status": old_key,
+        "previous_booking_status": old_booking_status,
+    }
+
+
 @router.get("/api/bookings/{booking_id}/tasks")
 async def get_booking_tasks(
     booking_id: str,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    """Legacy task list endpoint (kept for compatibility; Preparation tab no longer uses it)."""
     numeric_id = sanitize_booking_id(booking_id)
     booking = db.query(models.Booking).filter(
         models.Booking.id == numeric_id,
@@ -6786,9 +7384,28 @@ async def get_booking_tasks(
     
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
-        
-    tasks = db.query(models.BookingTask).filter(models.BookingTask.booking_id == numeric_id).order_by(models.BookingTask.created_at.asc()).all()
-    return tasks
+
+    tasks = (
+        db.query(models.BookingTask)
+        .filter(models.BookingTask.booking_id == numeric_id)
+        .order_by(models.BookingTask.created_at.asc())
+        .all()
+    )
+    return [
+        {
+            "id": t.id,
+            "booking_id": t.booking_id,
+            "title": t.title,
+            "is_completed": bool(t.is_completed),
+            "status": getattr(t, "status", None) or ("completed" if t.is_completed else "not_started"),
+            "stage": getattr(t, "stage", None),
+            "assigned_to": getattr(t, "assigned_to", None),
+            "due_at": t.due_at.isoformat() if getattr(t, "due_at", None) else None,
+            "notes": getattr(t, "notes", None),
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+        }
+        for t in tasks
+    ]
 
 @router.post("/api/bookings/{booking_id}/tasks")
 async def add_booking_task(
@@ -6797,6 +7414,9 @@ async def add_booking_task(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    """Legacy custom task create (Preparation tab no longer uses checklist UI)."""
+    from datetime import datetime, timezone
+
     numeric_id = sanitize_booking_id(booking_id)
     booking = db.query(models.Booking).filter(
         models.Booking.id == numeric_id,
@@ -6807,15 +7427,113 @@ async def add_booking_task(
         raise HTTPException(status_code=404, detail="Booking not found")
     if booking.is_archived or booking.status == 'cancelled':
         raise HTTPException(status_code=400, detail="Cannot modify tasks on an archived or cancelled booking.")
-        
+
+    title = str(data.get("title") or "").strip()
+    if len(title) < 3:
+        raise HTTPException(status_code=400, detail="Task name is required (min 3 characters).")
+
+    status = str(data.get("status") or "not_started").strip().lower()
     task = models.BookingTask(
         booking_id=numeric_id,
-        title=str(data.get("title", "New Task"))[:200]
+        title=title[:200],
+        stage=(str(data.get("stage") or "").strip() or None),
+        assigned_to=(str(data.get("assigned_to") or "").strip() or None),
+        notes=(str(data.get("notes") or "").strip() or None),
+        status=status,
+        is_completed=(status == "completed"),
+        is_custom=True,
+        is_required=False,
     )
+    due_raw = data.get("due_at") or data.get("due_date")
+    if due_raw:
+        try:
+            due_str = str(due_raw).strip()
+            if data.get("due_time") and "T" not in due_str:
+                due_str = f"{due_str}T{str(data.get('due_time')).strip()}"
+            due_at = datetime.fromisoformat(due_str.replace("Z", "+00:00"))
+            if due_at.tzinfo is None:
+                due_at = due_at.replace(tzinfo=timezone.utc)
+            task.due_at = due_at
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid due date/time.")
+
     db.add(task)
     db.commit()
     db.refresh(task)
-    return task
+    return {
+        "id": task.id,
+        "title": task.title,
+        "is_completed": task.is_completed,
+        "status": task.status,
+        "stage": task.stage,
+    }
+
+@router.patch("/api/tasks/{task_id}")
+@router.post("/api/tasks/{task_id}/update")
+async def update_booking_task(
+    task_id: int,
+    data: dict = Body(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    """Legacy task update endpoint."""
+    from datetime import datetime, timezone
+
+    task = db.query(models.BookingTask).join(models.Booking).filter(
+        models.BookingTask.id == task_id,
+        models.Booking.caterer_id == user.caterer_profile.id
+    ).first()
+
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.booking.is_archived or task.booking.status == 'cancelled':
+        raise HTTPException(status_code=400, detail="Cannot modify tasks on an archived or cancelled booking.")
+
+    if "title" in data and data["title"] is not None:
+        title = str(data["title"]).strip()
+        if len(title) < 3:
+            raise HTTPException(status_code=400, detail="Task name is required (min 3 characters).")
+        task.title = title[:200]
+
+    if "stage" in data:
+        task.stage = (str(data.get("stage") or "").strip() or None)
+    if "assigned_to" in data:
+        task.assigned_to = (str(data.get("assigned_to") or "").strip() or None)
+    if "notes" in data:
+        task.notes = (str(data.get("notes") or "").strip() or None)
+    if "status" in data and data["status"] is not None:
+        status = str(data["status"]).strip().lower()
+        task.status = status
+        task.is_completed = (status == "completed")
+
+    if "due_at" in data or "due_date" in data or "due_time" in data:
+        due_raw = data.get("due_at") if "due_at" in data else data.get("due_date")
+        if due_raw in (None, ""):
+            task.due_at = None
+        else:
+            try:
+                due_str = str(due_raw).strip()
+                if data.get("due_time") and "T" not in due_str:
+                    due_str = f"{due_str}T{str(data.get('due_time')).strip()}"
+                due_at = datetime.fromisoformat(due_str.replace("Z", "+00:00"))
+                if due_at.tzinfo is None:
+                    due_at = due_at.replace(tzinfo=timezone.utc)
+                task.due_at = due_at
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid due date/time.")
+
+    db.commit()
+    db.refresh(task)
+    return {
+        "id": task.id,
+        "title": task.title,
+        "is_completed": task.is_completed,
+        "status": task.status,
+        "stage": task.stage,
+        "assigned_to": task.assigned_to,
+        "notes": task.notes,
+        "due_at": task.due_at.isoformat() if task.due_at else None,
+    }
 
 @router.post("/api/tasks/{task_id}/toggle")
 async def toggle_booking_task(
@@ -6832,10 +7550,12 @@ async def toggle_booking_task(
         raise HTTPException(status_code=404, detail="Task not found")
     if task.booking.is_archived or task.booking.status == 'cancelled':
         raise HTTPException(status_code=400, detail="Cannot modify tasks on an archived or cancelled booking.")
-        
-    task.is_completed = not task.is_completed
+
+    task.is_completed = not bool(task.is_completed)
+    task.status = "completed" if task.is_completed else "not_started"
     db.commit()
-    return {"is_completed": task.is_completed}
+    db.refresh(task)
+    return {"id": task.id, "is_completed": task.is_completed, "status": task.status}
 
 @router.delete("/api/tasks/{task_id}")
 async def delete_booking_task(
@@ -6852,8 +7572,16 @@ async def delete_booking_task(
         raise HTTPException(status_code=404, detail="Task not found")
     if task.booking.is_archived or task.booking.status == 'cancelled':
         raise HTTPException(status_code=400, detail="Cannot modify tasks on an archived or cancelled booking.")
-        
+
+    booking_id = task.booking_id
+    booking_status = task.booking.status
+    title = task.title
     db.delete(task)
+    db.add(models.BookingHistory(
+        booking_id=booking_id,
+        status=booking_status,
+        notes=f"Preparation task removed: {title}"
+    ))
     db.commit()
     return {"status": "success"}
 
@@ -8761,11 +9489,11 @@ async def record_manual_payment(
     
     total = float(booking.total_price or booking.total_amount or 0)
     if total > 0 and booking.amount_paid >= total:
-        booking.payment_status = "fully_paid"
-        if booking.status in ["inquiry", "tentative", "pending"]:
+        booking.payment_status = "paid"
+        if booking.status in ["inquiry", "tentative", "pending", "awaiting_payment", "pending_payment"]:
             booking.status = "confirmed"
     else:
-        booking.payment_status = "partially_paid"
+        booking.payment_status = "deposit_paid" if booking.amount_paid > 0 else "partially_paid"
         if booking.status == "inquiry":
             booking.status = "tentative"
             

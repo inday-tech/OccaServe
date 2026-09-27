@@ -397,9 +397,15 @@
         {% set status_cfg = status_cfg_map.get(booking.status, (default_status_label, '#f1f5f9', '#475569', 'fa-circle-info')) %}
         {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
             {% set status_cfg = ('Action Required: Receipt Rejected', '#fef2f2', '#dc2626', 'fa-triangle-exclamation') %}
+        {% elif booking.payment_status in ['proof_submitted', 'cash_payment_requested', 'pending_verification'] %}
+            {% set status_cfg = ('Payment Under Review', '#eff6ff', '#2563eb', 'fa-receipt') %}
+        {% elif booking.payment_status in ['balance_proof_submitted', 'cash_balance_requested'] %}
+            {% set status_cfg = ('Balance Under Review', '#eff6ff', '#2563eb', 'fa-receipt') %}
+        {% elif booking.payment_status == 'deposit_paid' and booking.status == 'confirmed' %}
+            {% set status_cfg = ('Booking Confirmed — Deposit Paid', '#ecfdf5', '#059669', 'fa-check-double') %}
         {% endif %}
         
-        <span class="status-badge-elite {% if 'Action' in status_cfg[0] or booking.status in ['overdue', 'expired', 'cancelled'] %}badge-pulse-red{% elif booking.status in ['pending', 'awaiting_customer', 'awaiting_payment', 'pending_payment'] %}badge-pulse-amber{% endif %}" 
+        <span class="status-badge-elite {% if 'Action' in status_cfg[0] or booking.status in ['overdue', 'expired', 'cancelled'] %}badge-pulse-red{% elif booking.payment_status in ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested'] or booking.status in ['pending', 'awaiting_customer', 'awaiting_payment', 'pending_payment'] %}badge-pulse-amber{% endif %}" 
               style="background: {{ status_cfg[1] }}; color: {{ status_cfg[2] }}; border-color: {{ status_cfg[2] }}40; box-shadow: 0 4px 12px {{ status_cfg[2] }}20;">
             <i class="fas {{ status_cfg[3] }}"></i> {{ status_cfg[0] }}
         </span>
@@ -417,10 +423,11 @@
 <!-- ── TAB 1: OVERVIEW & LOGISTICS ── -->
 <div id="tab-overview" class="tab-pane active">
     <!-- ── OUTSTANDING BALANCE BANNER ── -->
-    {% if booking.status == 'confirmed' and booking.payment_plan != 'full' and booking.balance_due_date and booking.payment_status not in ['paid', 'proof_submitted', 'balance_reupload_requested'] %}
+    {% if booking.status in ['confirmed', 'preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress'] and booking.payment_plan != 'full' and booking.balance_due_date and booking.payment_status not in ['paid', 'fully_paid', 'proof_submitted', 'balance_proof_submitted', 'cash_balance_requested', 'balance_reupload_requested'] %}
         {% set total_val = booking.total_amount|float %}
         {% set res_fee = booking.reservation_fee|float if booking.reservation_fee else 0.0 %}
-        {% set balance_val = total_val - res_fee %}
+        {% set paid_now = booking.amount_paid|float if booking.amount_paid else res_fee %}
+        {% set balance_val = total_val - paid_now %}
         
         {% if balance_val > 0 %}
         <div style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-left: 4px solid #f97316; border-radius: 14px; padding: 1.25rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 6px 20px rgba(249, 115, 22, 0.1); flex-wrap: wrap; gap: 1rem;">
@@ -432,7 +439,7 @@
                     <h3 style="margin: 0 0 4px 0; color: #9a3412; font-size: 1.05rem; font-weight: 850;">Action Required: Outstanding Balance</h3>
                     <p style="margin: 0; color: #c2410c; font-size: 0.85rem; font-weight: 500;">
                         You have a remaining balance of <strong style="font-weight: 850;">₱{{ "{:,.2f}".format(balance_val) }}</strong>. 
-                        Please settle this amount on or before <strong style="font-weight: 850;">{{ booking.balance_due_date.strftime('%B %d, %Y') }}</strong>.
+                        Pay via GCash, Bank, or Cash on or before <strong style="font-weight: 850;">{{ booking.balance_due_date.strftime('%B %d, %Y') }}</strong>.
                     </p>
                     <div id="deadlineCountdownPkg" style="margin-top: 6px; font-size: 0.75rem; font-weight: 800; color: #ea580c; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(234, 88, 12, 0.12); border-radius: 20px;">
                         <i class="fas fa-clock"></i> Calculating time remaining...
@@ -675,10 +682,24 @@
                     <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);">
                         Re-upload Balance Proof <i class="fas fa-file-upload"></i>
                     </a>
-                {% elif balance_val > 0 and booking.payment_plan != 'full' and booking.status == 'confirmed' %}
+                {% elif booking.payment_status in ['balance_proof_submitted', 'cash_balance_requested'] %}
+                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 0.85rem; margin-bottom: 0.25rem;">
+                        <div style="color: #1d4ed8; font-size: 0.8rem; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-clock"></i> Balance Under Review
+                        </div>
+                        <p style="color: #1e40af; font-size: 0.75rem; margin: 4px 0 0; font-weight: 500;">
+                            {% if booking.payment_status == 'cash_balance_requested' %}
+                            Waiting for your caterer to confirm they received your cash payment.
+                            {% else %}
+                            Your balance payment proof was submitted. Waiting for caterer verification.
+                            {% endif %}
+                        </p>
+                    </div>
+                {% elif balance_val > 0 and booking.payment_plan != 'full' and booking.status in ['confirmed', 'preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress'] and booking.payment_status not in ['paid', 'fully_paid'] %}
                     <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange">
                         Pay Remaining Balance <i class="fas fa-wallet"></i>
                     </a>
+                    <p style="font-size: 0.72rem; color: #64748b; margin: 0.35rem 0 0; text-align: center;">Pay via GCash, Bank Transfer, or Cash</p>
                 {% elif not booking.review and (booking.status == 'completed' or (is_food_order and booking.status == 'arrived')) %}
                     <a href="/customer/feedback/{{ booking.id }}" class="btn-action-elite" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);">
                         Rate & Review Caterer <i class="fas fa-star"></i>
@@ -971,20 +992,51 @@
                 <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
                     <span class="fin-label" style="margin-bottom: 0.75rem;">Quotation Itemized Breakdown</span>
                     <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem; color: rgba(255,255,255,0.85);">
-                        {% if booking.quotation.package_details and booking.quotation.package_details.base_amount|float > 0 %}
-                        <div style="display: flex; justify-content: space-between;">
-                            <span>Base Package: {{ booking.quotation.package_details.name }}</span>
-                            <b>₱{{ "{:,.2f}".format(booking.quotation.package_details.base_amount|float) }}</b>
-                        </div>
-                        {% endif %}
-                        
-                        {% if booking.quotation.addons %}
-                            {% for addon in booking.quotation.addons %}
+                        {% set is_cust_manage = (booking.quotation.package_details and booking.quotation.package_details.get('package_type') == 'customizable') or (booking.package and booking.package.pricing_mode == 'customizable') or (booking.custom_requirements and booking.custom_requirements.get('package_type') == 'customizable') %}
+                        {% if is_cust_manage %}
+                            <div style="font-weight: 800; color: #a5b4fc; margin-bottom: 4px;">
+                                {{ booking.quotation.package_details.name or (booking.package.name if booking.package else 'Customized Package') }}
+                            </div>
+                            {% for f in (booking.quotation.package_details.selected_food or []) %}
                             <div style="display: flex; justify-content: space-between;">
-                                <span>{{ addon.name }} <span style="font-size: 0.75rem; opacity: 0.7;">(x{{ addon.quantity if addon.quantity else 1 }})</span></span>
-                                <b>₱{{ "{:,.2f}".format(addon.price|float) }}</b>
+                                <span>{{ f.name }} <small style="opacity: 0.7;">({{ f.qty or f.quantity }} pax)</small></span>
+                                <b>₱{{ "{:,.2f}".format(f.subtotal|float) }}</b>
                             </div>
                             {% endfor %}
+                            {% for s in (booking.quotation.package_details.selected_services or []) %}
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>{{ s.name }} <small style="opacity: 0.7;">(Service)</small></span>
+                                <b>₱{{ "{:,.2f}".format(s.subtotal|float) }}</b>
+                            </div>
+                            {% endfor %}
+                            {% for eq in (booking.quotation.package_details.selected_equipment or []) %}
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>{{ eq.name }} <small style="opacity: 0.7;">(x{{ eq.qty or eq.quantity or 1 }})</small></span>
+                                <b>₱{{ "{:,.2f}".format(eq.subtotal|float) }}</b>
+                            </div>
+                            {% endfor %}
+                            {% if booking.travel_fee and booking.travel_fee|float > 0 %}
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Delivery &amp; Travel Fee</span>
+                                <b>₱{{ "{:,.2f}".format(booking.travel_fee|float) }}</b>
+                            </div>
+                            {% endif %}
+                        {% else %}
+                            {% if booking.quotation.package_details and booking.quotation.package_details.base_amount|float > 0 %}
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Base Package: {{ booking.quotation.package_details.name }}</span>
+                                <b>₱{{ "{:,.2f}".format(booking.quotation.package_details.base_amount|float) }}</b>
+                            </div>
+                            {% endif %}
+                            
+                            {% if booking.quotation.addons %}
+                                {% for addon in booking.quotation.addons %}
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span>{{ addon.name }} <span style="font-size: 0.75rem; opacity: 0.7;">(x{{ addon.quantity if addon.quantity else 1 }})</span></span>
+                                    <b>₱{{ "{:,.2f}".format(addon.price|float) }}</b>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
                         {% endif %}
                     </div>
                 </div>
@@ -1016,7 +1068,7 @@
                 {% endif %}
             </div>
 
-            {% if balance_val > 0 and booking.status == 'confirmed' and booking.payment_status not in ['paid', 'proof_submitted', 'balance_proof_submitted'] %}
+            {% if balance_val > 0 and booking.status in ['confirmed', 'preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress'] and booking.payment_status not in ['paid', 'fully_paid', 'proof_submitted', 'balance_proof_submitted', 'cash_balance_requested'] %}
             <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
                 <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange" style="width: 100%; box-shadow: 0 6px 20px rgba(249, 115, 22, 0.35);">
                     Settle Remaining Balance Now <i class="fas fa-wallet"></i>
