@@ -143,14 +143,26 @@ document.addEventListener('DOMContentLoaded', function () {
         // 4. Update sidebar price row
         const calcPkgPriceLabel = document.getElementById('calc-pkg-price-label');
         if (calcPkgPriceLabel) {
-            if (window.pricingMode === 'per_pax' || pkg.price_unit === 'per_guest') {
+            if (window.pricingMode === 'customizable') {
+                const custTotal = window.customization && parseFloat(window.customization.estimated_total || 0);
+                if (custTotal > 0) {
+                    calcPkgPriceLabel.innerText = `₱${custTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })} (Customization)`;
+                } else {
+                    calcPkgPriceLabel.innerText = 'See choices above';
+                }
+            } else if (window.pricingMode === 'per_pax' || pkg.price_unit === 'per_guest') {
                 calcPkgPriceLabel.innerText = `₱${window.pricePerHead.toLocaleString(undefined, { minimumFractionDigits: 2 })}/pax`;
             } else {
                 calcPkgPriceLabel.innerText = `₱${window.basePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })} total`;
             }
         }
 
-        // 5. Update Inclusions Section
+        // 5. Update Inclusions Section & Customizable choices card
+        const choicesCard = document.getElementById('customizable-package-choices-card');
+        const isCustomizable = window.pricingMode === 'customizable';
+        if (choicesCard) {
+            choicesCard.style.display = isCustomizable ? 'block' : 'none';
+        }
         window.renderInclusions(pkg.grouped_inclusions || { food: [], services: [], equipment: [] });
 
         // 6. Update lead time & date bounds if package specifies it
@@ -223,8 +235,9 @@ document.addEventListener('DOMContentLoaded', function () {
                        (inclusions.services && inclusions.services.length > 0) ||
                        (inclusions.equipment && inclusions.equipment.length > 0);
 
+        const isCustomizable = window.pricingMode === 'customizable';
         if (card) {
-            card.style.display = hasAny ? 'block' : 'none';
+            card.style.display = (!isCustomizable && hasAny) ? 'block' : 'none';
         }
     };
 
@@ -258,6 +271,44 @@ document.addEventListener('DOMContentLoaded', function () {
                 excessGuestsTotal = (guests - activeMinGuests) * activeAddPrice;
             }
             total = basePackageTotal + excessGuestsTotal;
+        } else if (window.pricingMode === 'customizable') {
+            // For customizable packages, compute strictly from customer's selected food, services, and equipment
+            if (window.customization && Array.isArray(window.customization.selected_food) && window.customization.selected_food.length > 0) {
+                let foodTot = 0;
+                window.customization.selected_food.forEach(f => {
+                    const price = parseFloat(f.price || f.unit_price || 0);
+                    const unit = String(f.unit || 'pax').toLowerCase();
+                    const qty = (unit.includes('pax') || unit.includes('guest') || !f.qty || f.qty === 1) ? guests : (parseInt(f.qty) || guests);
+                    foodTot += price * qty;
+                });
+                let srvTot = 0;
+                (window.customization.selected_services || []).forEach(s => {
+                    const price = parseFloat(s.price || s.unit_price || 0);
+                    const qty = parseInt(s.qty) || 1;
+                    srvTot += price * qty;
+                });
+                let eqTot = 0;
+                (window.customization.selected_equipment || []).forEach(e => {
+                    const price = parseFloat(e.price || e.unit_price || 0);
+                    const qty = parseInt(e.qty) || 1;
+                    eqTot += price * qty;
+                });
+                basePackageTotal = foodTot + srvTot + eqTot;
+            } else if (window.customization && window.customization.estimated_total > 0) {
+                basePackageTotal = parseFloat(window.customization.estimated_total) || 0;
+            } else {
+                basePackageTotal = activeBasePrice;
+            }
+
+            total = basePackageTotal;
+
+            // Update Package Price label in sidebar to show the customization total
+            const calcPkgLabel = document.getElementById('calc-pkg-price-label');
+            if (calcPkgLabel && basePackageTotal > 0) {
+                calcPkgLabel.innerText = '₱' + basePackageTotal.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' (Customization)';
+            } else if (calcPkgLabel && basePackageTotal === 0) {
+                calcPkgLabel.innerText = 'See choices above';
+            }
         } else {
             total = guests * activePricePerHead;
         }

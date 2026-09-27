@@ -73,7 +73,7 @@
                     <select name="package_id" id="package_id_select" class="filter-select-pro form-input" onchange="switchPackage(this.value)" required>
                         {% for pkg in caterer_packages %}
                         <option value="{{ pkg.id }}" {% if package and package.id == pkg.id %}selected{% endif %}>
-                            {{ pkg.name }} — ₱{{ "{:,.2f}".format(pkg.price_per_head or pkg.price or 0) }}{% if pkg.pricing_mode == 'per_pax' or pkg.price_unit == 'per_guest' %}/pax{% else %} total{% endif %} ({{ pkg.service_type or 'General' }})
+                            {{ pkg.name }} — {% if pkg.pricing_mode == 'customizable' %}Pay Per Selection (Customizable){% else %}₱{{ "{:,.2f}".format(pkg.price_per_head or pkg.price or 0) }}{% if pkg.pricing_mode == 'per_pax' or pkg.price_unit == 'per_guest' %}/pax{% else %} total{% endif %} ({{ pkg.service_type or 'General' }}){% endif %}
                         </option>
                         {% endfor %}
                     </select>
@@ -85,7 +85,7 @@
                         <div>
                             <strong id="single_package_name" style="color: #0f172a; font-size: 0.95rem;">{{ package.name }}</strong>
                             <span id="single_package_price" style="display: block; font-size: 0.78rem; color: #64748b; margin-top: 2px;">
-                                ₱{{ "{:,.2f}".format(package.price_per_head or package.price or 0) }}{% if package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest' %}/pax{% else %} total{% endif %}
+                                {% if package.pricing_mode == 'customizable' %}Pay Per Selection (Customizable Choices){% else %}₱{{ "{:,.2f}".format(package.price_per_head or package.price or 0) }}{% if package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest' %}/pax{% else %} total{% endif %}{% endif %}
                             </span>
                         </div>
                         <span style="font-size: 0.72rem; font-weight: 700; color: #047857; background: #d1fae5; padding: 3px 9px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px;">
@@ -169,13 +169,174 @@
                 <div id="availability-chip" class="availability-chip" style="margin-top: 0.75rem; width: 100%;"></div>
             </div>
 
-            <!-- Included in This Package -->
-            <div class="c-card-premium" id="package-inclusions-card" style="margin-bottom: 1.5rem; {% if not package or (not grouped_inclusions.food and not grouped_inclusions.services and not grouped_inclusions.equipment) %}display: none;{% endif %}">
+            <!-- CUSTOMIZABLE PACKAGE CHOICES (If Customizable) -->
+            {% if package and package.pricing_mode == 'customizable' %}
+            <div class="c-card-premium" id="customizable-package-choices-card" style="margin-bottom: 1.5rem; border-color: #fdba74; background: #fffcf9;">
+                <div class="section-header-wrap" style="margin-bottom: 0.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="section-icon-wrap" style="background: rgba(234, 88, 12, 0.12); color: #ea580c;"><i class="fas fa-sliders-h"></i></div>
+                        <div>
+                            <h3 class="form-section-title" style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 0;">Your Selected Menu Choices &amp; Add-ons</h3>
+                            <p class="form-subtitle" style="font-size: 0.8rem; color: #64748b; margin: 2px 0 0 0;">Custom choices configured for this package</p>
+                        </div>
+                    </div>
+                    <a href="/bookings/customize/{{ caterer.id }}?package_id={{ package.id }}" 
+                       style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: #fff7ed; border: 1.5px solid #fed7aa; border-radius: 8px; font-size: 0.82rem; font-weight: 800; color: #c2410c; text-decoration: none; transition: all 0.2s ease;">
+                        <i class="fas fa-pen" style="font-size: 0.75rem;"></i> Modify Choices
+                    </a>
+                </div>
+
+                {% if customization and (customization.selected_food or customization.selected_services or customization.selected_equipment) %}
+                <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.85rem;">
+                    <!-- Selected Food / Menu -->
+                    {% if customization.selected_food and customization.selected_food|length > 0 %}
+                    <div style="background: #ffffff; border: 1.5px solid #fed7aa; border-radius: 10px; padding: 0.85rem 1rem;">
+                        <div style="font-size: 0.82rem; font-weight: 800; color: #9a3412; text-transform: uppercase; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+                            <span><i class="fas fa-utensils" style="color: #ea580c; margin-right: 6px;"></i> Menu / Food ({{ customization.selected_food|length }})</span>
+                            {% if customization.food_total is defined %}
+                            <span style="font-size: 0.8rem; color: #c2410c; font-weight: 800;">₱{{ "{:,.2f}".format(customization.food_total) }}</span>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                            {% for dish in customization.selected_food %}
+                            <div style="display: inline-flex; align-items: center; gap: 6px; background: #fff7ed; border: 1px solid #ffedd5; padding: 4px 10px; border-radius: 6px; font-size: 0.84rem; font-weight: 700; color: #1e293b;">
+                                <i class="fas fa-check" style="color: #ea580c; font-size: 0.75rem;"></i>
+                                <span>{{ dish.name }}</span>
+                                {% if dish.price and dish.price > 0 %}
+                                <span style="font-size: 0.72rem; color: #c2410c; background: #ffedd5; padding: 1px 6px; border-radius: 4px;">
+                                    ₱{{ "{:,.2f}".format(dish.price) }}/{{ dish.unit or 'pax' }}
+                                    {% if dish.subtotal %} (₱{{ "{:,.2f}".format(dish.subtotal) }}){% endif %}
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Selected Services -->
+                    {% if customization.selected_services and customization.selected_services|length > 0 %}
+                    <div style="background: #ffffff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 0.85rem 1rem;">
+                        <div style="font-size: 0.82rem; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+                            <span><i class="fas fa-concierge-bell" style="color: #2563eb; margin-right: 6px;"></i> Services ({{ customization.selected_services|length }})</span>
+                            {% if customization.services_total is defined %}
+                            <span style="font-size: 0.8rem; color: #1e40af; font-weight: 800;">₱{{ "{:,.2f}".format(customization.services_total) }}</span>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                            {% for svc in customization.selected_services %}
+                            <div style="display: inline-flex; align-items: center; gap: 6px; background: #eff6ff; border: 1px solid #dbeafe; padding: 4px 10px; border-radius: 6px; font-size: 0.84rem; font-weight: 700; color: #1e3a8a;">
+                                <i class="fas fa-check" style="color: #2563eb; font-size: 0.75rem;"></i>
+                                <span>{{ svc.name }}</span>
+                                {% if svc.price and svc.price > 0 %}
+                                <span style="font-size: 0.72rem; color: #1e40af; background: #dbeafe; padding: 1px 6px; border-radius: 4px;">
+                                    ₱{{ "{:,.2f}".format(svc.price) }}{% if svc.unit and svc.unit != 'fixed' %}/{{ svc.unit }}{% endif %}
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Selected Equipment -->
+                    {% if customization.selected_equipment and customization.selected_equipment|length > 0 %}
+                    <div style="background: #ffffff; border: 1.5px solid #fed7aa; border-radius: 10px; padding: 0.85rem 1rem;">
+                        <div style="font-size: 0.82rem; font-weight: 800; color: #9a3412; text-transform: uppercase; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+                            <span><i class="fas fa-chair" style="color: #ea580c; margin-right: 6px;"></i> Equipment &amp; Rentals ({{ customization.selected_equipment|length }})</span>
+                            {% if customization.equipment_total is defined %}
+                            <span style="font-size: 0.8rem; color: #c2410c; font-weight: 800;">₱{{ "{:,.2f}".format(customization.equipment_total) }}</span>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                            {% for eq in customization.selected_equipment %}
+                            <div style="display: inline-flex; align-items: center; gap: 6px; background: #fff7ed; border: 1px solid #fed7aa; padding: 4px 10px; border-radius: 6px; font-size: 0.84rem; font-weight: 700; color: #9a3412;">
+                                <i class="fas fa-check" style="color: #ea580c; font-size: 0.75rem;"></i>
+                                <span>{{ eq.name }}</span>
+                                <span style="font-size: 0.72rem; color: #c2410c; background: #ffedd5; padding: 1px 6px; border-radius: 4px;">
+                                    Qty: {{ eq.qty or 1 }} &times; ₱{{ "{:,.2f}".format(eq.price or 0) }} = ₱{{ "{:,.2f}".format(eq.subtotal or ((eq.qty or 1) * (eq.price or 0))) }}
+                                </span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if customization.estimated_total is defined and customization.estimated_total > 0 %}
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; margin-top: 0.25rem;">
+                        <span style="font-size: 0.88rem; font-weight: 800; color: #0f172a;">Customization Estimated Total:</span>
+                        <span style="font-size: 1.1rem; font-weight: 900; color: #ea580c;">₱{{ "{:,.2f}".format(customization.estimated_total) }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% elif customization and customization.menu_groups and customization.menu_groups|length > 0 %}
+                <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.85rem;">
+                    {% for group in customization.menu_groups %}
+                    <div style="background: #ffffff; border: 1px solid #fed7aa; border-radius: 10px; padding: 0.85rem 1rem;">
+                        <div style="font-size: 0.82rem; font-weight: 800; color: #9a3412; text-transform: uppercase; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-utensils" style="font-size: 0.75rem; color: #ea580c;"></i>
+                            <span>{{ group.group_name }}</span>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                            {% for dish in group.selected_dishes %}
+                            <div style="display: inline-flex; align-items: center; gap: 6px; background: #fff7ed; border: 1px solid #ffedd5; padding: 4px 10px; border-radius: 6px; font-size: 0.84rem; font-weight: 700; color: #1e293b;">
+                                <i class="fas fa-check" style="color: #ea580c; font-size: 0.75rem;"></i>
+                                <span>{{ dish.name }}</span>
+                                {% if dish.pricing_type == 'per_pax' and dish.price > 0 %}
+                                <span style="font-size: 0.72rem; color: #c2410c; background: #ffedd5; padding: 1px 6px; border-radius: 4px;">+₱{{ "{:,.2f}".format(dish.price) }}/pax</span>
+                                {% elif dish.pricing_type == 'fixed' and dish.price > 0 %}
+                                <span style="font-size: 0.72rem; color: #c2410c; background: #ffedd5; padding: 1px 6px; border-radius: 4px;">+₱{{ "{:,.2f}".format(dish.price) }}</span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    {% if customization.optional_services and customization.optional_services|length > 0 %}
+                    <div style="background: #ffffff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 0.85rem 1rem;">
+                        <div style="font-size: 0.82rem; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-concierge-bell" style="font-size: 0.75rem; color: #2563eb;"></i>
+                            <span>Optional Services Selected</span>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                            {% for svc in customization.optional_services %}
+                            <div style="display: inline-flex; align-items: center; gap: 6px; background: #eff6ff; border: 1px solid #dbeafe; padding: 4px 10px; border-radius: 6px; font-size: 0.84rem; font-weight: 700; color: #1e3a8a;">
+                                <i class="fas fa-plus-circle" style="color: #2563eb; font-size: 0.75rem;"></i>
+                                <span>{{ svc.name }}</span>
+                                {% if svc.price and svc.price > 0 %}
+                                <span style="font-size: 0.72rem; color: #1e40af; background: #dbeafe; padding: 1px 6px; border-radius: 4px;">
+                                    {% if svc.pricing_type == 'per_pax' %}+₱{{ "{:,.2f}".format(svc.price) }}/pax{% elif svc.pricing_type == 'starting' %}Starting ₱{{ "{:,.2f}".format(svc.price) }}{% else %}₱{{ "{:,.2f}".format(svc.price) }}{% endif %}
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div style="margin-top: 1rem; padding: 1.25rem; background: #fff7ed; border: 1px dashed #fdba74; border-radius: 10px; text-align: center;">
+                    <p style="font-size: 0.88rem; color: #9a3412; font-weight: 700; margin-bottom: 0.5rem;">You haven't customized this package yet. Choose your food, services, and equipment now.</p>
+                    <a href="/bookings/customize/{{ caterer.id }}?package_id={{ package.id }}" class="btn btn-sm" style="background: #ea580c; color: white; font-weight: 800; border-radius: 8px; padding: 6px 16px; text-decoration: none;">
+                        <i class="fas fa-sliders-h mr-1"></i> Customize Package Now
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Included in This Package (Fixed Packages ONLY) -->
+            <div class="c-card-premium" id="package-inclusions-card" style="margin-bottom: 1.5rem; {% if not package or package.pricing_mode == 'customizable' or (not grouped_inclusions.food and not grouped_inclusions.services and not grouped_inclusions.equipment) %}display: none;{% endif %}">
                 <div class="section-header-wrap" style="margin-bottom: 0.25rem;">
                     <div class="section-icon-wrap" style="background: rgba(255, 123, 84, 0.12); color: var(--wiz-primary, #FF7B54);"><i class="fas fa-boxes-packing"></i></div>
                     <h3 class="form-section-title" style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">Included in This Package</h3>
                 </div>
-                <p class="form-subtitle" style="font-size: 0.82rem; color: #64748b; margin-bottom: 1.25rem;">Food, services, and equipment included with your selected package</p>
+                <p class="form-subtitle" style="font-size: 0.82rem; color: #64748b; margin-bottom: 0.6rem;">Food, services, and equipment included with your selected package</p>
+                <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px 10px; border-radius: 6px; margin-bottom: 1.25rem; font-weight: 600;">
+                    <i class="fas fa-lock" style="color: var(--wiz-primary, #FF7B54); font-size: 0.75rem;"></i>
+                    <span>These inclusions are fixed and cannot be changed by customers.</span>
+                </div>
                 
                 <div id="package-inclusions-content" style="display: flex; flex-direction: column; gap: 1.25rem;">
                     
@@ -306,7 +467,7 @@
 
                 <div class="calc-row">
                     <span class="calc-label">Package Price</span>
-                    <span class="calc-val" id="calc-pkg-price-label">₱{{ "{:,.2f}".format(package.price_per_head if package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest' else package.price or 0) }}{% if package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest' %}/pax{% else %} total{% endif %}</span>
+                    <span class="calc-val" id="calc-pkg-price-label">{% if package and package.pricing_mode == 'customizable' %}{% if customization and customization.estimated_total is defined and customization.estimated_total > 0 %}₱{{ "{:,.2f}".format(customization.estimated_total) }} (Customization){% else %}See choices above{% endif %}{% elif package and (package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest') %}₱{{ "{:,.2f}".format(package.price_per_head or 0) }}/pax{% else %}₱{{ "{:,.2f}".format(package.price or 0) }} total{% endif %}</span>
                 </div>
                 <div class="calc-row">
                     <span class="calc-label">Estimated Guests</span>
@@ -459,6 +620,7 @@
     window.catererId = "{{ caterer.id }}";
     window.bookingLeadTime = parseInt("{{ (package.booking_lead_time if package and package.booking_lead_time else caterer.booking_lead_time) or 3 }}") || 3;
     window.catererRules = {{ (caterer.scheduling_rules or {}) | tojson | safe }};
+    window.customization = {{ (customization or {}) | tojson | safe }};
 </script>
 <script
     src="{{ url_for('static', path='/js/customer/booking_wizard/step_details.js') }}?v={{ range(1, 9999) | random }}"></script>

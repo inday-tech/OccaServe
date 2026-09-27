@@ -220,44 +220,112 @@
             </tr>
         </thead>
         <tbody>
-            {% if quotation and quotation.package_details and quotation.package_details.base_amount > 0 %}
-            <tr>
-                <td>
-                    <div class="item-name">{{ quotation.package_details.name }}</div>
-                    <div class="item-desc">{{ quotation.package_details.description or 'Core service package.' }}</div>
-                </td>
-                <td style="text-align: center; font-weight: 600; color: var(--color-neutral-600);">
-                    {{ quotation.package_details.guest_count or 1 }}
-                </td>
-                <td style="text-align: right; color: var(--color-neutral-600);">
-                    ₱{{ "{:,.2f}".format(quotation.package_details.unit_price) }}
-                </td>
-                <td style="text-align: right; font-weight: 700;">₱{{ "{:,.2f}".format(quotation.package_details.base_amount) }}</td>
-            </tr>
-            {% endif %}
-            
-            {% if quotation and quotation.addons %}
-                {% for addon in quotation.addons %}
+            {% set is_cust_inv = (quotation.package_details and quotation.package_details.get('package_type') == 'customizable') or (booking.package and booking.package.pricing_mode == 'customizable') or (booking.custom_requirements and booking.custom_requirements.get('package_type') == 'customizable') %}
+            {% if is_cust_inv %}
+                <!-- CUSTOMIZABLE PACKAGE INVOICE ITEMS -->
+                {% set c_food = quotation.package_details.selected_food if quotation.package_details and quotation.package_details.selected_food else [] %}
+                {% for f in c_food %}
                 <tr>
                     <td>
-                        <div class="item-name">{{ addon.name }}</div>
-                        <div class="item-desc">
-                            {% if addon.category == 'food' %}Ala Carte / Add-on Food
-                            {% elif addon.category == 'equipment' %}Equipment Rental
-                            {% elif addon.category == 'service' %}Service Assignment
-                            {% elif addon.category == 'fee' %}Surcharge / Fee
-                            {% else %}Additional Component{% endif %}
-                        </div>
+                        <div class="item-name">{{ f.name if f.name is defined else f.menu_item.name }}</div>
+                        <div class="item-desc">Custom Dish / Beverage ({{ f.category if f.category is defined else (f.menu_item.category if f.menu_item else 'Menu') }})</div>
                     </td>
                     <td style="text-align: center; font-weight: 600; color: var(--color-neutral-600);">
-                        {{ addon.quantity if addon.quantity else 1 }}
+                        {{ f.qty or f.quantity or quotation.package_details.guest_count or booking.guest_count }}
                     </td>
                     <td style="text-align: right; color: var(--color-neutral-600);">
-                        ₱{{ "{:,.2f}".format(addon.unit_price if addon.unit_price else addon.price) }}
+                        ₱{{ "{:,.2f}".format((f.unit_price if f.unit_price is defined else (f.price if f.price is defined else 0))|float) }}
                     </td>
-                    <td style="text-align: right; font-weight: 700;">₱{{ "{:,.2f}".format(addon.price) }}</td>
+                    <td style="text-align: right; font-weight: 700;">₱{{ "{:,.2f}".format((f.subtotal if f.subtotal is defined else ((f.price|float) * (quotation.package_details.guest_count or booking.guest_count|float)))|float) }}</td>
                 </tr>
                 {% endfor %}
+
+                {% set c_srv = quotation.package_details.selected_services if quotation.package_details and quotation.package_details.selected_services else [] %}
+                {% for s in c_srv %}
+                <tr>
+                    <td>
+                        <div class="item-name">{{ s.name if s.name is defined else s.service.name }}</div>
+                        <div class="item-desc">Custom Selected Service ({{ s.unit if s.unit is defined else 'Per Event' }})</div>
+                    </td>
+                    <td style="text-align: center; font-weight: 600; color: var(--color-neutral-600);">
+                        {{ s.qty or s.quantity or 1 }}
+                    </td>
+                    <td style="text-align: right; color: var(--color-neutral-600);">
+                        ₱{{ "{:,.2f}".format((s.unit_price if s.unit_price is defined else (s.price if s.price is defined else 0))|float) }}
+                    </td>
+                    <td style="text-align: right; font-weight: 700;">₱{{ "{:,.2f}".format((s.subtotal if s.subtotal is defined else (s.price if s.price is defined else 0))|float) }}</td>
+                </tr>
+                {% endfor %}
+
+                {% set c_eq = quotation.package_details.selected_equipment if quotation.package_details and quotation.package_details.selected_equipment else [] %}
+                {% for eq in c_eq %}
+                <tr>
+                    <td>
+                        <div class="item-name">{{ eq.name if eq.name is defined else eq.equipment.name }}</div>
+                        <div class="item-desc">Custom Selected Equipment</div>
+                    </td>
+                    <td style="text-align: center; font-weight: 600; color: var(--color-neutral-600);">
+                        {{ eq.qty or eq.quantity or 1 }}
+                    </td>
+                    <td style="text-align: right; color: var(--color-neutral-600);">
+                        ₱{{ "{:,.2f}".format((eq.unit_price if eq.unit_price is defined else (eq.price if eq.price is defined else 0))|float) }}
+                    </td>
+                    <td style="text-align: right; font-weight: 700;">₱{{ "{:,.2f}".format((eq.subtotal if eq.subtotal is defined else (eq.price if eq.price is defined else 0))|float) }}</td>
+                </tr>
+                {% endfor %}
+
+                {% if booking.travel_fee and booking.travel_fee|float > 0 %}
+                <tr>
+                    <td>
+                        <div class="item-name">Delivery &amp; Travel Fee</div>
+                        <div class="item-desc">Venue logistics and transportation</div>
+                    </td>
+                    <td style="text-align: center; font-weight: 600; color: var(--color-neutral-600);">1</td>
+                    <td style="text-align: right; color: var(--color-neutral-600);">₱{{ "{:,.2f}".format(booking.travel_fee|float) }}</td>
+                    <td style="text-align: right; font-weight: 700;">₱{{ "{:,.2f}".format(booking.travel_fee|float) }}</td>
+                </tr>
+                {% endif %}
+            {% else %}
+                <!-- FIXED PACKAGE INVOICE ITEMS (UNTOUCHED) -->
+                {% if quotation and quotation.package_details and quotation.package_details.base_amount > 0 %}
+                <tr>
+                    <td>
+                        <div class="item-name">{{ quotation.package_details.name }}</div>
+                        <div class="item-desc">{{ quotation.package_details.description or 'Core service package.' }}</div>
+                    </td>
+                    <td style="text-align: center; font-weight: 600; color: var(--color-neutral-600);">
+                        {{ quotation.package_details.guest_count or 1 }}
+                    </td>
+                    <td style="text-align: right; color: var(--color-neutral-600);">
+                        ₱{{ "{:,.2f}".format(quotation.package_details.unit_price) }}
+                    </td>
+                    <td style="text-align: right; font-weight: 700;">₱{{ "{:,.2f}".format(quotation.package_details.base_amount) }}</td>
+                </tr>
+                {% endif %}
+                
+                {% if quotation and quotation.addons %}
+                    {% for addon in quotation.addons %}
+                    <tr>
+                        <td>
+                            <div class="item-name">{{ addon.name }}</div>
+                            <div class="item-desc">
+                                {% if addon.category == 'food' %}Ala Carte / Add-on Food
+                                {% elif addon.category == 'equipment' %}Equipment Rental
+                                {% elif addon.category == 'service' %}Service Assignment
+                                {% elif addon.category == 'fee' %}Surcharge / Fee
+                                {% else %}Additional Component{% endif %}
+                            </div>
+                        </td>
+                        <td style="text-align: center; font-weight: 600; color: var(--color-neutral-600);">
+                            {{ addon.quantity if addon.quantity else 1 }}
+                        </td>
+                        <td style="text-align: right; color: var(--color-neutral-600);">
+                            ₱{{ "{:,.2f}".format(addon.unit_price if addon.unit_price else addon.price) }}
+                        </td>
+                        <td style="text-align: right; font-weight: 700;">₱{{ "{:,.2f}".format(addon.price) }}</td>
+                    </tr>
+                    {% endfor %}
+                {% endif %}
             {% endif %}
             
             {% if not quotation %}

@@ -13,6 +13,20 @@
         from { opacity: 0; transform: scale(0.96); }
         to { opacity: 1; transform: scale(1); }
     }
+
+    /* Cash Badge */
+    .brand-badge-cash {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+        color: white;
+        font-weight: 800;
+        font-size: 0.82rem;
+        padding: 6px 14px;
+        border-radius: 50px;
+        box-shadow: 0 4px 12px rgba(22,163,74,0.3);
+    }
 </style>
 {% endblock %}
 
@@ -246,6 +260,15 @@
                             <span class="method-sub-clean">Send online via InstaPay or PESONet</span>
                         </div>
                         {% endif %}
+
+                        <!-- Cash Payment Option -->
+                        <div class="method-card-clean" onclick="openPaymentModal('Cash')">
+                            <div class="method-logo-box">
+                                <div class="brand-badge-cash"><i class="fas fa-money-bill-wave"></i> Cash</div>
+                            </div>
+                            <span class="method-label-clean">Cash</span>
+                            <span class="method-sub-clean">Pay in person to the caterer</span>
+                        </div>
                     </div>
                 </div>
 
@@ -416,6 +439,51 @@
                         <div class="inst-step"><i class="fas fa-camera"></i> 3. Take a clear screenshot of your transfer receipt</div>
                     </div>
                 </div>
+
+                <!-- Cash Payment Channel Sheet -->
+                <div id="modalContentCash" style="display: none;">
+                    <div class="payment-channel-box" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #86efac; border-radius: 12px; padding: 1.5rem; text-align: center; margin-bottom: 1rem;">
+                        <div style="width: 64px; height: 64px; background: #16a34a; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 2rem; color: white; margin-bottom: 0.75rem; box-shadow: 0 4px 15px rgba(22, 163, 74, 0.3);">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                        <h4 class="channel-name" style="color: #14532d; margin-bottom: 0.5rem;">Cash Payment Request</h4>
+                        <p style="font-size: 0.82rem; color: #166534; margin: 0;">You will pay the caterer directly in cash. No upload required.</p>
+                    </div>
+
+                    <!-- Cash Payment Summary -->
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <span style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Payment Type</span>
+                            <span id="cashPaymentTypeLabel" style="font-size: 0.82rem; font-weight: 800; color: #0f172a; background: #f1f5f9; padding: 3px 10px; border-radius: 20px;">—</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <span style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Amount to Pay</span>
+                            <span id="cashAmountLabel" style="font-size: 1.1rem; font-weight: 900; color: #16a34a;">₱0.00</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 0.5rem;">
+                            <span style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Caterer</span>
+                            <span style="font-size: 0.82rem; font-weight: 800; color: #0f172a;">{{ profile.business_name }}</span>
+                        </div>
+                    </div>
+
+                    <div class="instruction-steps-clean mb-3">
+                        <div class="inst-step"><i class="fas fa-hand-holding-usd" style="color: #16a34a;"></i> 1. Coordinate with <strong>{{ profile.business_name }}</strong> on the collection schedule</div>
+                        <div class="inst-step"><i class="fas fa-clock" style="color: #f59e0b;"></i> 2. The caterer will confirm receipt once cash is received</div>
+                        <div class="inst-step"><i class="fas fa-check-circle" style="color: #16a34a;"></i> 3. Your booking becomes <strong>Confirmed</strong> only after caterer confirms</div>
+                    </div>
+
+                    <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 0.85rem; margin-bottom: 1rem; font-size: 0.78rem; color: #78350f; font-weight: 600;">
+                        <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
+                        <strong>Important:</strong> Selecting Cash does <em>not</em> automatically confirm your booking. The caterer must physically receive the cash and confirm it in their dashboard.
+                    </div>
+
+                    <!-- Hidden cash form fields baked into main wizard form -->
+                    <input type="hidden" id="cashMethodInput" name="_cash_method_marker" value="1">
+
+                    <button type="button" id="cashSubmitBtn" class="btn-submit-modal" style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); box-shadow: 0 6px 20px rgba(22,163,74,0.35);" onclick="submitCashPayment()">
+                        <i class="fas fa-hand-holding-usd"></i> Request Cash Payment
+                    </button>
+                </div>
                 
                 <!-- Receipt Upload Box -->
                 <div id="uploadSection" class="upload-box-clean">
@@ -508,12 +576,44 @@
         document.getElementById('modalContentGCash').style.display = 'none';
         document.getElementById('modalContentMaya').style.display = 'none';
         document.getElementById('modalContentBank').style.display = 'none';
+        document.getElementById('modalContentCash').style.display = 'none';
         
         const targetContent = document.getElementById('modalContent' + method);
         if(targetContent) targetContent.style.display = 'block';
-        
-        const fileInput = document.getElementById('proofImageInput');
-        if(fileInput) fileInput.setAttribute('required', 'required');
+
+        if (method === 'Cash') {
+            // Populate Cash modal with live plan amounts
+            const planVal = document.getElementById('selected-plan').value;
+            const totalAmt = {{ booking.total_amount or 0 }};
+            const resFee = {{ booking.reservation_fee|float if booking.reservation_fee else 0.0 }};
+            let cashAmt = 0;
+            let cashType = 'Downpayment';
+
+            if (planVal === 'balance') {
+                cashAmt = totalAmt - resFee;
+                cashType = 'Remaining Balance';
+            } else if (planVal === 'full') {
+                cashAmt = totalAmt;
+                cashType = 'Full Payment (100%)';
+            } else if (!isNaN(parseFloat(planVal))) {
+                cashAmt = totalAmt * (parseFloat(planVal) / 100);
+                cashType = planVal + '% Downpayment';
+            } else {
+                cashAmt = resFee;
+            }
+
+            const amtEl = document.getElementById('cashAmountLabel');
+            const typeEl = document.getElementById('cashPaymentTypeLabel');
+            if (amtEl) amtEl.textContent = '₱' + cashAmt.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (typeEl) typeEl.textContent = cashType;
+
+            // For Cash: remove file required attr
+            const fileInput = document.getElementById('proofImageInput');
+            if(fileInput) fileInput.removeAttribute('required');
+        } else {
+            const fileInput = document.getElementById('proofImageInput');
+            if(fileInput) fileInput.setAttribute('required', 'required');
+        }
     }
 
     function closePaymentModal() {
@@ -608,5 +708,31 @@
             });
         }
     });
+    // ── CASH PAYMENT SUBMISSION ───────────────────────────────────────────────
+    function submitCashPayment() {
+        const form = document.getElementById('wizard-payment-form');
+        if (!form) return;
+
+        const methodInput = document.getElementById('selected-method');
+        if (methodInput) methodInput.value = 'Cash';
+
+        // Remove required from file input so form submits without proof
+        const fileInput = document.getElementById('proofImageInput');
+        if (fileInput) fileInput.removeAttribute('required');
+
+        const termsCheckbox = document.getElementById('termsAgreementCheckbox');
+        if (termsCheckbox && !termsCheckbox.checked) {
+            Swal.fire('Terms Required', 'Please agree to the payment terms before submitting.', 'warning');
+            return;
+        }
+
+        const cashBtn = document.getElementById('cashSubmitBtn');
+        if (cashBtn) {
+            cashBtn.disabled = true;
+            cashBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting Cash Request...';
+        }
+        form.submit();
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 </script>
 {% endblock %}

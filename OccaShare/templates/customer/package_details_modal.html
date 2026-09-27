@@ -6,12 +6,18 @@
     <!-- Header Section -->
     <div class="modal-pkg-header">
         <div class="modal-pkg-header-content">
-            <span class="modal-pkg-category-badge">{{ package.service_type or 'Catering Package' }}</span>
-            <h2 class="modal-pkg-title">{{ package.name }}</h2>
+            <span class="modal-pkg-category-badge" {% if package.pricing_mode == 'customizable' %}style="background: #ea580c;"{% endif %}>
+                {% if package.pricing_mode == 'customizable' %}
+                    <i class="fas fa-sliders-h" style="margin-right: 4px;"></i> Build Your Own Catering Package
+                {% else %}
+                    {{ package.service_type or 'Fixed Package' }}
+                {% endif %}
+            </span>
+            <h2 class="modal-pkg-title">{% if package.pricing_mode == 'customizable' %}{{ package.name or 'Build Your Own Catering Package' }}{% else %}{{ package.name }}{% endif %}</h2>
             <div class="modal-pkg-meta-row">
                 <div class="meta-item">
                     <i class="fas fa-users"></i>
-                    <span>{{ package.min_guests }} - {{ package.max_guests or '500+' }} Pax</span>
+                    <span>{{ package.min_guests or 50 }} - {{ package.max_guests or '500+' }} Pax</span>
                 </div>
                 <div class="meta-item">
                     <i class="fas fa-clock"></i>
@@ -30,8 +36,15 @@
     <!-- Single Package Pricing Section -->
     <div class="modal-pkg-pricing" style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.75rem; background: #fff; border-bottom: 1px solid #f1f5f9;">
         <div>
-            <span style="display: block; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Package Price</span>
-            {% if package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest' %}
+            <span style="display: block; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">
+                {% if package.pricing_mode == 'customizable' %}Pricing Mode{% else %}Package Price{% endif %}
+            </span>
+            {% if package.pricing_mode == 'customizable' %}
+            <div style="font-size: 1.35rem; font-weight: 900; color: #16a34a;">
+                Pay Per Selection
+                <span style="font-size: 0.78rem; font-weight: 600; color: #64748b; display: block;">Calculated from your chosen menu, services &amp; equipment</span>
+            </div>
+            {% elif package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest' %}
             <div style="font-size: 1.75rem; font-weight: 900; color: #FF6B00;">
                 ₱{{ "{:,.2f}".format(package.price_per_head or package.price or 0) }}
                 <span style="font-size: 0.85rem; font-weight: 600; color: #64748b;">/ person</span>
@@ -43,7 +56,7 @@
             </div>
             {% endif %}
         </div>
-        {% if package.additional_guest_price and package.additional_guest_price > 0 %}
+        {% if package.additional_guest_price and package.additional_guest_price > 0 and package.pricing_mode != 'customizable' %}
         <div style="text-align: right; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.5rem 1rem;">
             <span style="display: block; font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Excess Pax Rate</span>
             <span style="font-size: 1rem; font-weight: 800; color: #0f172a;">+₱{{ "{:,.2f}".format(package.additional_guest_price) }}/pax</span>
@@ -53,24 +66,78 @@
 
     <!-- Scrollable Content Section -->
     <div class="modal-pkg-body">
-        {% if package.description %}
+        {% if package.pricing_mode == 'customizable' %}
+        <!-- Customizable Package Highlight Banner -->
+        <div class="body-section" style="margin-bottom: 1.5rem; background: #fff7ed; border: 1.5px solid #fed7aa; border-radius: 12px; padding: 1.25rem;">
+            <div style="display: flex; gap: 12px; align-items: flex-start;">
+                <div style="width: 40px; height: 40px; border-radius: 10px; background: #ea580c; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.1rem;">
+                    <i class="fas fa-sliders-h"></i>
+                </div>
+                <div>
+                    <h4 style="margin: 0 0 4px 0; font-size: 1.05rem; font-weight: 800; color: #9a3412;">Build Your Own Catering Package</h4>
+                    <p style="margin: 0; font-size: 0.9rem; color: #475569; line-height: 1.5; font-weight: 500;">
+                        Choose the food, services, and equipment that best fit your event.
+                    </p>
+                </div>
+            </div>
+            {% if package.description %}
+            <p style="font-size: 0.85rem; color: #64748b; line-height: 1.5; margin: 0.75rem 0 0 0; padding-top: 0.75rem; border-top: 1px dashed #fed7aa;">
+                {{ package.description }}
+            </p>
+            {% endif %}
+        </div>
+
+        <!-- Customization Highlights Card -->
+        <div class="body-section" style="margin-bottom: 1.5rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem;">
+            <h4 style="margin: 0 0 0.85rem 0; font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-check-circle" style="color: #16a34a;"></i> What you can customize:
+            </h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 10px; padding: 0.75rem; background: #f8fafc; border-radius: 8px; border: 1px solid #f1f5f9;">
+                    <span style="font-size: 1.25rem;">🍽️</span>
+                    <div>
+                        <strong style="display: block; font-size: 0.85rem; color: #0f172a;">Menu &amp; Dishes</strong>
+                        <span style="font-size: 0.75rem; color: #64748b;">Select dishes per guest</span>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 0.75rem; background: #f8fafc; border-radius: 8px; border: 1px solid #f1f5f9;">
+                    <span style="font-size: 1.25rem;">🛎️</span>
+                    <div>
+                        <strong style="display: block; font-size: 0.85rem; color: #0f172a;">Event Services</strong>
+                        <span style="font-size: 0.75rem; color: #64748b;">Waitstaff, bar, setup</span>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 0.75rem; background: #f8fafc; border-radius: 8px; border: 1px solid #f1f5f9;">
+                    <span style="font-size: 1.25rem;">🪑</span>
+                    <div>
+                        <strong style="display: block; font-size: 0.85rem; color: #0f172a;">Equipment</strong>
+                        <span style="font-size: 0.75rem; color: #64748b;">Tables, chairs, sound</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% elif package.description %}
         <div class="body-section" style="margin-bottom: 1.5rem;">
             <p style="font-size: 0.9rem; color: #475569; line-height: 1.6; margin: 0;">{{ package.description }}</p>
         </div>
         {% endif %}
 
-        <!-- Package Inclusions Section -->
-        {% if grouped_inclusions and (grouped_inclusions.food or grouped_inclusions.services or grouped_inclusions.equipment) %}
+        <!-- Package Inclusions Section (Section A / Mandatory Inclusions) - ONLY DISPLAYED FOR FIXED PACKAGES -->
+        {% if package.pricing_mode != 'customizable' and grouped_inclusions and (grouped_inclusions.food or grouped_inclusions.services or grouped_inclusions.equipment) %}
         <div class="body-section" style="margin-bottom: 2rem;">
             <div style="margin-bottom: 1.25rem;">
                 <h3 class="section-title" style="margin-bottom: 0.25rem; font-size: 1.15rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
                     <i class="fas fa-boxes-packing" style="color: #FF6B00;"></i> PACKAGE INCLUSIONS
                 </h3>
-                <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Food, services, and equipment included in this package</p>
+                <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Food, services, and equipment included automatically in this package</p>
+                <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px 10px; border-radius: 6px; margin-top: 6px; font-weight: 600;">
+                    <i class="fas fa-lock" style="color: #FF6B00; font-size: 0.75rem;"></i>
+                    <span>These inclusions are fixed and cannot be removed or changed by customers.</span>
+                </div>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-                
                 <!-- 1. FOOD & BEVERAGES -->
                 {% if grouped_inclusions.food and grouped_inclusions.food|length > 0 %}
                 <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
@@ -171,9 +238,15 @@
 
     <!-- Sticky Bottom CTA -->
     <div class="modal-pkg-footer">
+        {% if package.pricing_mode == 'customizable' %}
+        <a href="/bookings/customize/{{ package.caterer.id }}?package_id={{ package.id }}" class="btn-book-full" style="background: #ea580c; box-shadow: 0 6px 20px rgba(234, 88, 12, 0.3);">
+            <i class="fas fa-sliders-h" style="margin-right: 8px;"></i> Customize Package
+        </a>
+        {% else %}
         <a href="/bookings/start/{{ package.caterer.id }}?package_id={{ package.id }}" class="btn-book-full">
             <i class="fas fa-calendar-check" style="margin-right: 8px;"></i> BOOK THIS PACKAGE
         </a>
+        {% endif %}
     </div>
 </div>
 

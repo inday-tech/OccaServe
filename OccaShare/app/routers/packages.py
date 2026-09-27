@@ -46,6 +46,7 @@ async def get_package_details_modal(
 
     from app.routers.bookings import get_package_grouped_inclusions
     grouped_inclusions = get_package_grouped_inclusions(package)
+    custom_inclusions_grouped = grouped_inclusions
 
     return templates.TemplateResponse("customer/package_details_modal.html", {
         "request": request,
@@ -55,6 +56,7 @@ async def get_package_details_modal(
         "package_equipment": package_equipment,
         "grouped_inclusions": grouped_inclusions,
         "custom_inclusions_grouped": custom_inclusions_grouped,
+        "selection_rules": package.selection_rules or {},
         "addons": addons
     })
 

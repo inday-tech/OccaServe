@@ -106,11 +106,24 @@ async def payment_webhook(
                      return {"error": "Booking not found"}
 
                 # 1. Update Booking Status
+                # Record the payment in BookingPaymentRecord for audit and status computation
+                from ..db.models import BookingPaymentRecord
+                payment_record = BookingPaymentRecord(
+                    booking_id=booking.id,
+                    amount=amount_paid,
+                    payment_method=payment_data.get("source", "Paymongo"),
+                    payment_type="Deposit" if pay_type == "dp" else "Full",
+                    reference_notes=remarks,
+                    recorded_by="System"
+                )
+                db.add(payment_record)
+                # Use centralized payment service to derive the correct payment_status
+                from ..services.payment_service import PaymentService
+                PaymentService.update_payment_status(booking, db)
+                # Preserve legacy status fields for backward compatibility
                 if pay_type == "dp":
-                    booking.payment_status = "deposit_paid"
                     booking.status = "confirmed"
-                else:
-                    booking.payment_status = "paid"
+                # Note: booking.payment_status is now set by the service
                 
                 booking.payment_reference = external_ref
 

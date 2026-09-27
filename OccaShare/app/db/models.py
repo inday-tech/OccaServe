@@ -1223,6 +1223,15 @@ class BookingTask(Base):
     title = Column(String)
     is_completed = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    # Preparation tracker fields
+    stage = Column(String, nullable=True)  # event_confirmation | ingredient_food | equipment_logistics | venue_setup | post_event | custom
+    status = Column(String, default="not_started")  # not_started | in_progress | completed | delayed
+    assigned_to = Column(String, nullable=True)
+    due_at = Column(DateTime(timezone=True), nullable=True)
+    notes = Column(Text, nullable=True)
+    is_required = Column(Boolean, default=True)
+    is_custom = Column(Boolean, default=False)
+    sort_order = Column(Integer, default=0)
 
     booking = relationship("Booking", back_populates="tasks")
 

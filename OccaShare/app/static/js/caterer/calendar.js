@@ -2821,52 +2821,7 @@ window.handleCurrencyBlur = function(input) {
 
 window.switchWalkinTab = function(tab) {
     const tabCatering = document.getElementById('walkinTabCatering');
-    const tabEquipment = document.getElementById('walkinTabEquipment');
-    const btnCatering = document.getElementById('walkinTabBtnCatering');
-    const btnEquipment = document.getElementById('walkinTabBtnEquipment');
-
-    if (tab === 'catering') {
-        if (tabCatering) tabCatering.style.display = 'flex';
-        if (tabEquipment) tabEquipment.style.display = 'none';
-
-        if (btnCatering) {
-            btnCatering.classList.add('active');
-            btnCatering.style.background = 'var(--primary-color, #f97316)';
-            btnCatering.style.color = '#ffffff';
-            btnCatering.style.boxShadow = '0 1px 3px rgba(249, 115, 22, 0.28)';
-        }
-        if (btnEquipment) {
-            btnEquipment.classList.remove('active');
-            btnEquipment.style.background = '#ffffff';
-            btnEquipment.style.color = '#475569';
-            btnEquipment.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.04)';
-        }
-    } else {
-        if (tabCatering) tabCatering.style.display = 'none';
-        if (tabEquipment) tabEquipment.style.display = 'flex';
-
-        if (btnEquipment) {
-            btnEquipment.classList.add('active');
-            btnEquipment.style.background = 'var(--primary-color, #f97316)';
-            btnEquipment.style.color = '#ffffff';
-            btnEquipment.style.boxShadow = '0 1px 3px rgba(249, 115, 22, 0.28)';
-        }
-        if (btnCatering) {
-            btnCatering.classList.remove('active');
-            btnCatering.style.background = '#ffffff';
-            btnCatering.style.color = '#475569';
-            btnCatering.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.04)';
-        }
-
-        const eqDateInput = document.getElementById('eqRentalDate');
-        if (eqDateInput && !eqDateInput.value && window.MIN_BOOKING_DATE) {
-            eqDateInput.value = window.MIN_BOOKING_DATE;
-            eqDateInput.min = window.MIN_BOOKING_DATE;
-        }
-        if (window.recalcEquipRentalTotals) {
-            window.recalcEquipRentalTotals();
-        }
-    }
+    if (tabCatering) tabCatering.style.display = 'flex';
 };
 
 window.toggleWalkinDownpayment = function(isChecked) {

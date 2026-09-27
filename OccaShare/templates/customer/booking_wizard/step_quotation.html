@@ -72,9 +72,190 @@
             </div>
             <div class="q-top-grid-clean">
                 <!-- COLUMN 1: PACKAGE & ORDER SUMMARY -->
+                {% set is_customizable = (quotation.package_details and quotation.package_details.get('package_type') == 'customizable') or (package and package.pricing_mode == 'customizable') or (booking.custom_requirements and booking.custom_requirements.get('package_type') == 'customizable') %}
                 {% set p_mode = quotation.package_details.pricing_mode if quotation.package_details and 'pricing_mode' in quotation.package_details else (package.pricing_mode if package else 'per_pax') %}
                 {% set p_unit = quotation.package_details.price_unit if quotation.package_details and 'price_unit' in quotation.package_details else (package.price_unit if package else 'per_guest') %}
                 {% set is_fixed = (p_mode == 'fixed' or p_unit != 'per_guest') %}
+
+                {% if is_customizable %}
+                <!-- ══════════════════════════════════════════════════════════ -->
+                <!-- CUSTOMIZABLE PACKAGE QUOTATION (SEPARATED FLOW)           -->
+                <!-- ══════════════════════════════════════════════════════════ -->
+                <section class="card-clean col-summary animate-up">
+                    <div class="card-clean-header">
+                        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                            <div>
+                                <h3 class="card-clean-title">Customized Catering Order</h3>
+                                <span class="card-clean-subtitle">Review your chosen dishes, services, and pricing breakdown</span>
+                            </div>
+                            <span class="q-badge" style="background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; font-size: 0.72rem; padding: 4px 10px; border-radius: 9999px; font-weight: 700;">
+                                <i class="fas fa-sliders-h mr-1"></i> Pay Per Selection
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- 1. CUSTOM HERO CARD -->
+                    <div class="pkg-hero-distinct mb-4" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-left: 4px solid #4338ca;">
+                        <div class="pkg-title-row-minimal">
+                            <h4 class="pkg-name-minimal">{{ quotation.package_details.name or (package.name if package else 'Customizable Package') }}</h4>
+                            <span class="guest-pill-minimal" style="background: #e0e7ff; color: #3730a3; font-weight: 800;">
+                                <i class="fas fa-users mr-1"></i> {{ quotation.package_details.guest_count or booking.guest_count }} Guests
+                            </span>
+                        </div>
+                        <p class="pkg-rate-subtitle" style="color: #64748b; font-size: 0.8rem; margin-top: 4px;">
+                            Price computed directly from your customized food and event service selections.
+                        </p>
+                    </div>
+
+                    <!-- 2. CUSTOMER CHOSEN FOOD ITEMS -->
+                    {% set cust_food = quotation.package_details.selected_food if quotation.package_details and quotation.package_details.selected_food else [] %}
+                    {% if not cust_food and booking.selected_items %}
+                        {% set cust_food = booking.selected_items | rejectattr('menu_item_id', 'none') | list %}
+                    {% endif %}
+                    {% if cust_food %}
+                    <div class="summary-box-distinct mb-4">
+                        <div class="box-header-distinct" style="display: flex; justify-content: space-between; align-items: center; background: #fafaf9; border-bottom: 1.5px solid #f5f5f4;">
+                            <span class="box-title-distinct"><i class="fas fa-utensils text-amber-600 mr-2"></i>Selected Dishes &amp; Beverages</span>
+                            <span class="box-badge-distinct" style="background: #fef3c7; color: #92400e;">{{ cust_food|length }} Selected</span>
+                        </div>
+                        <div class="box-content-distinct" style="padding: 0.85rem 1rem;">
+                            <div class="clean-2col-list" style="display: flex; flex-direction: column; gap: 0.6rem;">
+                                {% for f in cust_food %}
+                                <div class="list-item-minimal" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #e2e8f0;">
+                                    <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                        <span class="dot-minimal" style="background: #d97706; margin-top: 6px;"></span>
+                                        <div class="item-text-wrapper">
+                                            <span class="item-name-minimal" style="font-weight: 700; color: #0f172a;">{{ f.name if f.name is defined else f.menu_item.name }}</span>
+                                            <small style="display: block; color: #64748b; font-size: 0.73rem;">
+                                                {{ f.category if f.category is defined else (f.menu_item.category if f.menu_item else 'Menu') }} • ₱{{ "{:,.2f}".format((f.unit_price if f.unit_price is defined else (f.price if f.price is defined else 0))|float) }} / pax
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <span style="font-weight: 700; font-size: 0.85rem; color: #0f172a;">
+                                            ₱{{ "{:,.2f}".format((f.subtotal if f.subtotal is defined else ((f.price|float) * (quotation.package_details.guest_count or booking.guest_count|float)))|float) }}
+                                        </span>
+                                        <small style="display: block; color: #94a3b8; font-size: 0.7rem;">({{ f.qty or f.quantity or quotation.package_details.guest_count or booking.guest_count }} pax)</small>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- 3. CUSTOMER CHOSEN SERVICES -->
+                    {% set cust_services = quotation.package_details.selected_services if quotation.package_details and quotation.package_details.selected_services else [] %}
+                    {% if not cust_services and booking.selected_items %}
+                        {% set cust_services = booking.selected_items | rejectattr('service_id', 'none') | list %}
+                    {% endif %}
+                    {% if cust_services %}
+                    <div class="summary-box-distinct mb-4">
+                        <div class="box-header-distinct" style="display: flex; justify-content: space-between; align-items: center; background: #f0fdf4; border-bottom: 1.5px solid #dcfce7;">
+                            <span class="box-title-distinct"><i class="fas fa-concierge-bell text-emerald-600 mr-2"></i>Selected Event Services</span>
+                            <span class="box-badge-distinct" style="background: #dcfce7; color: #166534;">{{ cust_services|length }} Selected</span>
+                        </div>
+                        <div class="box-content-distinct" style="padding: 0.85rem 1rem;">
+                            <div class="clean-2col-list" style="display: flex; flex-direction: column; gap: 0.6rem;">
+                                {% for s in cust_services %}
+                                <div class="list-item-minimal" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #e2e8f0;">
+                                    <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                        <span class="dot-minimal" style="background: #16a34a; margin-top: 6px;"></span>
+                                        <div class="item-text-wrapper">
+                                            <span class="item-name-minimal" style="font-weight: 700; color: #0f172a;">{{ s.name if s.name is defined else s.service.name }}</span>
+                                            <small style="display: block; color: #64748b; font-size: 0.73rem;">
+                                                Service • {{ s.unit if s.unit is defined else 'Per Event' }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <span style="font-weight: 700; font-size: 0.85rem; color: #0f172a;">
+                                            ₱{{ "{:,.2f}".format((s.subtotal if s.subtotal is defined else (s.price if s.price is defined else 0))|float) }}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- 4. CUSTOMER CHOSEN EQUIPMENT (IF ANY) -->
+                    {% set cust_equip = quotation.package_details.selected_equipment if quotation.package_details and quotation.package_details.selected_equipment else [] %}
+                    {% if not cust_equip and booking.selected_items %}
+                        {% set cust_equip = booking.selected_items | rejectattr('equipment_id', 'none') | list %}
+                    {% endif %}
+                    {% if cust_equip %}
+                    <div class="summary-box-distinct mb-4">
+                        <div class="box-header-distinct" style="display: flex; justify-content: space-between; align-items: center; background: #fff7ed; border-bottom: 1.5px solid #fed7aa;">
+                            <span class="box-title-distinct"><i class="fas fa-chair text-orange-600 mr-2"></i>Selected Equipment &amp; Rentals</span>
+                            <span class="box-badge-distinct" style="background: #ffedd5; color: #9a3412;">{{ cust_equip|length }} Selected</span>
+                        </div>
+                        <div class="box-content-distinct" style="padding: 0.85rem 1rem;">
+                            <div class="clean-2col-list" style="display: flex; flex-direction: column; gap: 0.6rem;">
+                                {% for eq in cust_equip %}
+                                <div class="list-item-minimal" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #e2e8f0;">
+                                    <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                        <span class="dot-minimal" style="background: #ea580c; margin-top: 6px;"></span>
+                                        <div class="item-text-wrapper">
+                                            <span class="item-name-minimal" style="font-weight: 700; color: #0f172a;">{{ eq.name if eq.name is defined else eq.equipment.name }}</span>
+                                            <small style="display: block; color: #64748b; font-size: 0.73rem;">
+                                                Qty: {{ eq.qty or eq.quantity or 1 }} • ₱{{ "{:,.2f}".format((eq.unit_price if eq.unit_price is defined else (eq.price if eq.price is defined else 0))|float) }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <span style="font-weight: 700; font-size: 0.85rem; color: #0f172a;">
+                                            ₱{{ "{:,.2f}".format((eq.subtotal if eq.subtotal is defined else (eq.price if eq.price is defined else 0))|float) }}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- ITEMIZED FINANCIAL LINES FOR CUSTOMIZABLE -->
+                    <div class="order-lines-clean">
+                        {% if quotation.package_details.food_total is defined and quotation.package_details.food_total|float > 0 %}
+                        <div class="order-line">
+                            <span class="order-label">Dishes &amp; Beverages Subtotal</span>
+                            <span class="order-val">₱{{ "{:,.2f}".format(quotation.package_details.food_total|float) }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if quotation.package_details.services_total is defined and quotation.package_details.services_total|float > 0 %}
+                        <div class="order-line">
+                            <span class="order-label">Event Services Subtotal</span>
+                            <span class="order-val">₱{{ "{:,.2f}".format(quotation.package_details.services_total|float) }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if quotation.package_details.equipment_total is defined and quotation.package_details.equipment_total|float > 0 %}
+                        <div class="order-line">
+                            <span class="order-label">Equipment Subtotal</span>
+                            <span class="order-val">₱{{ "{:,.2f}".format(quotation.package_details.equipment_total|float) }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if booking.travel_fee and booking.travel_fee|float > 0 %}
+                        <div class="order-line">
+                            <span class="order-label">Delivery &amp; Travel Fee</span>
+                            <span class="order-val">+₱{{ "{:,.2f}".format(booking.travel_fee|float) }}</span>
+                        </div>
+                        {% endif %}
+
+                        <div class="order-total-clean">
+                            <span class="total-label-clean">Total Customized Amount</span>
+                            <span class="total-val-clean">₱{{ "{:,.2f}".format(quotation.total_amount) }}</span>
+                        </div>
+                    </div>
+                </section>
+                {% else %}
+                <!-- ══════════════════════════════════════════════════════════ -->
+                <!-- FIXED PACKAGE QUOTATION FLOW (EXISTING UNTOUCHED FLOW)     -->
+                <!-- ══════════════════════════════════════════════════════════ -->
                 <section class="card-clean col-summary animate-up">
                     <div class="card-clean-header">
                         <h3 class="card-clean-title">Selected Package &amp; Items</h3>
@@ -144,7 +325,10 @@
 
                     <div class="summary-box-distinct mb-4">
                         <div class="box-header-distinct inclusions-header">
-                            <span class="box-title-distinct"><i class="fas fa-check-circle text-emerald-600 mr-2"></i>What's Included in Your Package</span>
+                            <div>
+                                <span class="box-title-distinct"><i class="fas fa-check-circle text-emerald-600 mr-2"></i>What's Included in Your Package</span>
+                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-top: 3px;">These inclusions are fixed and cannot be changed by customers.</div>
+                            </div>
                             <span class="box-badge-distinct inclusions-badge">Included Free</span>
                         </div>
                         <div class="box-content-distinct">
@@ -211,6 +395,7 @@
                         </div>
                     </div>
                 </section>
+                {% endif %}
 
                 <!-- COLUMN 2: DOWNPAYMENT SELECTION & PAYMENT TERMS -->
                 <section class="card-clean col-config animate-up" style="animation-delay: 0.1s;">

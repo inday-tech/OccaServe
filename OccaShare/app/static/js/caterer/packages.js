@@ -71,19 +71,100 @@ function getActivePackageId() {
 
 window.togglePricingMode = function (mode) {
     const isFixed = mode === 'fixed';
+    const isCustomizable = mode === 'customizable';
 
+    // 1. Category Field: Only visible for Fixed packages, hidden for Customizable
+    const categoryGroup = document.getElementById('pkgCategoryGroup');
+    const serviceTypeSelect = document.getElementById('pkgServiceTypeSelect');
+    const pricingModeGroup = document.getElementById('pkgPricingModeGroup');
+
+    if (categoryGroup) {
+        categoryGroup.style.display = isCustomizable ? 'none' : 'block';
+    }
+    if (serviceTypeSelect) {
+        serviceTypeSelect.required = !isCustomizable;
+        if (isCustomizable && (!serviceTypeSelect.value || serviceTypeSelect.value === '')) {
+            serviceTypeSelect.value = 'General';
+        }
+    }
+    if (pricingModeGroup) {
+        if (isCustomizable) {
+            pricingModeGroup.classList.add('form-grid-full');
+        } else {
+            pricingModeGroup.classList.remove('form-grid-full');
+        }
+    }
+
+    // 2. Package Pricing Details (Fixed package price & Reservation fee)
+    // Only visible for Fixed packages, completely removed/hidden for Customizable
+    const pricingCard = document.getElementById('pkgPricingCard');
+    const priceInput = document.getElementById('pkgManualPriceInput');
+    const resFeeInput = document.getElementById('pkgReservationFeeInput') || document.querySelector('input[name="reservation_fee"]');
+
+    if (pricingCard) {
+        pricingCard.style.display = isCustomizable ? 'none' : 'block';
+    }
+
+    if (priceInput) {
+        if (isCustomizable) {
+            priceInput.required = false;
+            priceInput.value = '0.00';
+        } else {
+            priceInput.required = true;
+            if (priceInput.value === '0.00' || priceInput.value === '0') {
+                priceInput.value = '';
+            }
+        }
+    }
+
+    if (resFeeInput && isCustomizable) {
+        resFeeInput.value = '0';
+    }
+
+    // 3. Show/hide capacity sections
     document.querySelectorAll('.capacity-per-pax').forEach(el => el.style.display = isFixed ? 'none' : 'block');
     document.querySelectorAll('.capacity-fixed').forEach(el => el.style.display = isFixed ? 'block' : 'none');
 
-    const priceLabel = document.getElementById('lblPricingMain');
-    const estContainer = document.getElementById('estStartingPriceContainer');
-
-    if (priceLabel) {
-        priceLabel.innerText = isFixed ? 'Package Price (₱) *' : 'Price Per Guest (₱) *';
+    // 4. Step 2 sidebar title
+    const sidebarTitle = document.getElementById('step2SidebarTitle');
+    if (sidebarTitle) {
+        sidebarTitle.innerText = isCustomizable ? '2. Available Options' : '2. Package Inclusions';
     }
 
+    // 5. Step 2 containers
+    const fixedCont = document.getElementById('step2FixedContainer');
+    const custCont = document.getElementById('step2CustomizableContainer');
+    if (fixedCont) fixedCont.style.display = isCustomizable ? 'none' : 'block';
+    if (custCont) custCont.style.display = isCustomizable ? 'flex' : 'none';
+
+    const estContainer = document.getElementById('estStartingPriceContainer');
     if (estContainer) {
-        estContainer.style.display = isFixed ? 'none' : 'block';
+        estContainer.style.display = (isFixed || isCustomizable) ? 'none' : 'block';
+    }
+
+    // 6. Help text under Package Type select
+    const typeDesc = document.getElementById('pkgTypeDescription');
+    if (typeDesc) {
+        if (isCustomizable) {
+            typeDesc.innerText = 'Customer builds their own package from the food and services you make available.';
+            typeDesc.style.display = 'block';
+        } else if (isFixed) {
+            typeDesc.innerText = 'Predefined package with fixed inclusions. Customers cannot modify the included items.';
+            typeDesc.style.display = 'block';
+        } else {
+            typeDesc.innerText = 'Tiered pricing calculated per attending guest.';
+            typeDesc.style.display = 'block';
+        }
+    }
+
+    if (isCustomizable) {
+        if (window.fetchInclusionsCatalog) {
+            window.fetchInclusionsCatalog().then(() => {
+                if (typeof window.renderCustomizableCatalogs === 'function') {
+                    window.renderCustomizableCatalogs();
+                }
+            });
+        }
     }
 
     calculatePricing();
@@ -100,10 +181,10 @@ window.openAddPackageModal = function () {
     form.reset();
 
     // Reset new fields to defaults
-    if (form.pricing_mode) form.pricing_mode.value = 'per_pax';
+    if (form.pricing_mode) form.pricing_mode.value = 'fixed';
     if (form.status) form.status.value = 'active';
 
-    window.togglePricingMode('per_pax');
+    window.togglePricingMode('fixed');
 
     // Reset Image Preview
     const preview = document.getElementById('pkgImagePreview');
@@ -119,6 +200,19 @@ window.openAddPackageModal = function () {
     packageInclusions = [];
     renderInclusionsList();
     syncInclusionsHidden();
+
+    // Reset customizable package state
+    customizableMenuIds = new Set();
+    customizableServiceIds = new Set();
+    customizableEquipmentIds = new Set();
+    lastMenuQuery = '';
+    lastServiceQuery = '';
+    const mSearch = document.getElementById('custMenuSearchInput');
+    const sSearch = document.getElementById('custServiceSearchInput');
+    if (mSearch) mSearch.value = '';
+    if (sSearch) sSearch.value = '';
+    if (typeof renderCustomizableCatalogs === 'function') renderCustomizableCatalogs();
+    if (typeof syncCustomizableSelectionRules === 'function') syncCustomizableSelectionRules();
 
     // Fetch catalog in background
     if (window.fetchInclusionsCatalog) window.fetchInclusionsCatalog();
@@ -153,7 +247,7 @@ window.editPackage = async function (pkgId) {
         if (form.name) form.name.value = pkg.name || '';
         if (form.description) form.description.value = pkg.description || '';
         if (form.service_type) form.service_type.value = pkg.service_type || 'General';
-        if (form.pricing_mode) form.pricing_mode.value = pkg.pricing_mode || 'per_pax';
+        if (form.pricing_mode) form.pricing_mode.value = pkg.pricing_mode || 'fixed';
         if (form.price_per_head) form.price_per_head.value = pkg.price_per_head || pkg.price || '';
         if (form.min_guests) form.min_guests.value = pkg.min_guests || 50;
         if (form.max_guests) form.max_guests.value = pkg.max_guests || '';
@@ -167,7 +261,7 @@ window.editPackage = async function (pkgId) {
             if (form.policies_internal) form.policies_internal.value = pkg.policies.internal || '';
         }
 
-        window.togglePricingMode(form.pricing_mode ? form.pricing_mode.value : 'per_pax');
+        window.togglePricingMode(form.pricing_mode ? form.pricing_mode.value : 'fixed');
 
         // Image Preview Handling
         const preview = document.getElementById('pkgImagePreview');
@@ -215,6 +309,37 @@ window.editPackage = async function (pkgId) {
         }
         renderInclusionsList();
         syncInclusionsHidden();
+
+        // Load Customizable Package State
+        customizableMenuIds = new Set();
+        customizableServiceIds = new Set();
+        customizableEquipmentIds = new Set();
+        lastMenuQuery = '';
+        lastServiceQuery = '';
+        const mSearchEdit = document.getElementById('custMenuSearchInput');
+        const sSearchEdit = document.getElementById('custServiceSearchInput');
+        if (mSearchEdit) mSearchEdit.value = '';
+        if (sSearchEdit) sSearchEdit.value = '';
+
+        if (pkg.selection_rules) {
+            let rules = pkg.selection_rules;
+            if (typeof rules === 'string') {
+                try { rules = JSON.parse(rules); } catch(e) { rules = {}; }
+            }
+            if (rules && typeof rules === 'object') {
+                if (Array.isArray(rules.available_menu_ids)) {
+                    rules.available_menu_ids.forEach(id => customizableMenuIds.add(Number(id)));
+                }
+                if (Array.isArray(rules.available_service_ids)) {
+                    rules.available_service_ids.forEach(id => customizableServiceIds.add(Number(id)));
+                }
+                if (Array.isArray(rules.available_equipment_ids)) {
+                    rules.available_equipment_ids.forEach(id => customizableEquipmentIds.add(Number(id)));
+                }
+            }
+        }
+        if (typeof renderCustomizableCatalogs === 'function') renderCustomizableCatalogs();
+        if (typeof syncCustomizableSelectionRules === 'function') syncCustomizableSelectionRules();
 
         // Open modal immediately, load addon library in background
         switchPackageTab(document.getElementById('step-btn-basic'), 'basic');
@@ -350,9 +475,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (form.price_per_head) form.price_per_head.addEventListener('input', calculatePricing);
         if (form.min_guests) form.min_guests.addEventListener('input', calculatePricing);
 
-        // Guarantee inclusions are serialized right before form submit
+        // Guarantee inclusions and customizable selection rules are serialized right before form submit
         form.addEventListener('submit', () => {
             syncInclusionsHidden();
+            if (typeof syncCustomizableSelectionRules === 'function') {
+                syncCustomizableSelectionRules();
+            }
         });
     }
 });
@@ -464,32 +592,44 @@ function validateTab(tabName) {
         const nameVal = form.name.value.trim();
         if (!nameVal) addError(form.name, "Package Name is required.");
 
-        const mode = form.pricing_mode.value;
-        if (mode === 'per_pax') {
+        const mode = form.pricing_mode ? form.pricing_mode.value : 'fixed';
+        if (mode === 'per_pax' || mode === 'customizable') {
             const minG = parseInt(form.min_guests.value);
             if (isNaN(minG) || minG < 1) addError(form.min_guests, "Minimum guests must be at least 1.");
         }
 
-        if (form.price_per_head) {
-            const rawPrice = form.price_per_head.value.replace(/,/g, '');
-            const price = parseFloat(rawPrice);
-            if (isNaN(price) || price <= 0) {
-                addError(form.price_per_head, "Selling price must be greater than 0.");
+        if (mode === 'customizable') {
+            // Price & reservation fee are removed for customizable packages
+            if (form.price_per_head) form.price_per_head.value = '0.00';
+            if (form.reservation_fee) form.reservation_fee.value = '0';
+        } else {
+            if (form.price_per_head) {
+                const rawPrice = (form.price_per_head.value || '').replace(/,/g, '');
+                const price = parseFloat(rawPrice);
+                if (isNaN(price) || price <= 0) {
+                    addError(form.price_per_head, "Selling price must be greater than 0.");
+                }
             }
-        }
 
-        if (form.reservation_fee && form.reservation_fee.value) {
-            const resFee = parseFloat(form.reservation_fee.value);
-            const price = parseFloat((form.price_per_head.value || '0').replace(/,/g, ''));
-            if (resFee > price) {
-                addError(form.reservation_fee, "Reservation fee cannot exceed selling price.");
+            if (form.reservation_fee && form.reservation_fee.value) {
+                const resFee = parseFloat(form.reservation_fee.value);
+                const price = parseFloat((form.price_per_head.value || '0').replace(/,/g, ''));
+                if (resFee > price) {
+                    addError(form.reservation_fee, "Reservation fee cannot exceed selling price.");
+                }
             }
         }
     }
 
     if (tabName === 'inclusions') {
-        // Inclusions are optional in the new unlimited freeform system
-        // No mandatory validation
+        const mode = form.pricing_mode ? form.pricing_mode.value : 'fixed';
+        if (mode === 'customizable') {
+            const total = customizableMenuIds.size + customizableServiceIds.size;
+            if (total === 0) {
+                alert("Please select at least one menu item or service for customers to choose from.");
+                return false;
+            }
+        }
     }
 
     return isValid;
@@ -511,6 +651,13 @@ function updateReviewTab() {
 
     if (dName) dName.innerText = form.name.value || 'Untitled Package';
 
+    const mode = form.pricing_mode ? form.pricing_mode.value : 'fixed';
+
+    const catRow = document.getElementById('reviewCategoryRow');
+    if (catRow) {
+        catRow.style.display = (mode === 'customizable') ? 'none' : 'block';
+    }
+
     let catText = 'General';
     if (form.service_type) {
         const opt = form.service_type.options[form.service_type.selectedIndex];
@@ -518,19 +665,23 @@ function updateReviewTab() {
     }
     if (dType) dType.innerText = catText;
 
-    const mode = form.pricing_mode ? form.pricing_mode.value : 'per_pax';
-    if (dMode) dMode.innerText = mode === 'per_pax' ? 'Per Pax' : 'Fixed Package';
+    if (dMode) {
+        if (mode === 'customizable') dMode.innerText = 'Customizable Package';
+        else if (mode === 'fixed') dMode.innerText = 'Fixed Package';
+        else dMode.innerText = 'Per Pax';
+    }
 
     if (dCap) {
         const excessRow = document.getElementById('reviewExcessRow');
         const excessRate = document.getElementById('reviewExcessRate');
 
-        if (mode === 'per_pax') {
-            const max = form.max_guests.value ? ` to ${form.max_guests.value}` : '+';
-            dCap.innerText = `${form.min_guests.value || 0}${max} Guests`;
+        if (mode === 'customizable' || mode === 'per_pax') {
+            const minVal = form.min_guests ? form.min_guests.value : 50;
+            const max = form.max_guests && form.max_guests.value ? ` to ${form.max_guests.value}` : '+';
+            dCap.innerText = `${minVal || 0}${max} Guests`;
             if (excessRow) excessRow.style.display = 'none';
         } else {
-            dCap.innerText = form.base_pax.value ? `Good for ${form.base_pax.value} Guests` : 'N/A';
+            dCap.innerText = form.base_pax && form.base_pax.value ? `Good for ${form.base_pax.value} Guests` : 'N/A';
             if (excessRow && form.additional_guest_price && form.additional_guest_price.value) {
                 excessRow.style.display = 'block';
                 excessRate.innerText = `₱${form.additional_guest_price.value} / head`;
@@ -541,42 +692,62 @@ function updateReviewTab() {
     }
 
     if (dPrice) {
-        const val = form.price_per_head.value || '0';
-        dPrice.innerText = `₱${val} ${mode === 'per_pax' ? '/ pax' : 'total'}`;
+        if (mode === 'customizable') {
+            dPrice.innerHTML = '<span style="color: #16a34a; font-weight: 800; font-size: 0.95rem;">Calculated per customer choice</span><div style="font-size: 0.72rem; color: #64748b; font-weight: 500; margin-top: 2px;">(No fixed package price or reservation fee)</div>';
+        } else if (mode === 'fixed') {
+            const val = form.price_per_head.value || '0';
+            dPrice.innerText = `₱${val} total`;
+        } else {
+            const val = form.price_per_head.value || '0';
+            dPrice.innerText = `₱${val} / pax`;
+        }
     }
 
-    // Counts from inclusions state
-    const dishCount = packageInclusions.filter(i => i.category === 'Menu / Food' || i.category === 'Menu' || i.type === 'Menu').length;
-    const svcCount = packageInclusions.filter(i => i.category === 'Service' || i.type === 'Service').length;
-    const eqCount = packageInclusions.filter(i => i.category === 'Equipment' || i.type === 'Equipment').length;
+    // Toggle Review Blocks
+    const fixedReview = document.getElementById('reviewFixedPackageBlock');
+    const custReview = document.getElementById('reviewCustomizablePackageBlock');
 
-    const rd = document.getElementById('reviewDishesCount');
-    const rs = document.getElementById('reviewServicesCount');
-    const re = document.getElementById('reviewEquipmentCount');
-    if (rd) rd.innerText = dishCount;
-    if (rs) rs.innerText = svcCount;
-    if (re) re.innerText = eqCount;
+    if (mode === 'customizable') {
+        if (fixedReview) fixedReview.style.display = 'none';
+        if (custReview) custReview.style.display = 'flex';
+        renderReviewCustomizable();
+    } else {
+        if (fixedReview) fixedReview.style.display = 'block';
+        if (custReview) custReview.style.display = 'none';
 
-    // Show review inclusions detail list
-    const reviewInclusionsDetail = document.getElementById('reviewInclusionsDetail');
-    if (reviewInclusionsDetail) {
-        if (packageInclusions.length === 0) {
-            reviewInclusionsDetail.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem; font-style:italic;">No inclusions added yet.</div>';
-        } else {
-            const grouped = {};
-            packageInclusions.forEach(inc => {
-                const cat = inc.category || 'Other';
-                if (!grouped[cat]) grouped[cat] = [];
-                grouped[cat].push(inc);
-            });
-            const catIcons = { 'Menu / Food': '🍽️', 'Service': '🛎️', 'Equipment': '🪑', 'Other': '📦' };
-            let html = '';
-            for (const [cat, items] of Object.entries(grouped)) {
-                html += `<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:0.35rem;">${catIcons[cat] || '•'} ${cat}</div>`;
-                html += items.map(i => `<div style="font-size:0.85rem;color:#1e293b;display:flex;gap:6px;align-items:flex-start;margin-bottom:4px;"><i class="fas fa-check-circle" style="color:#16a34a;margin-top:3px;flex-shrink:0;"></i><span><strong>${i.name}</strong>${i.quantity ? ' — ' + i.quantity : ''}${i.description ? '<br><span style="color:#64748b;font-size:0.78rem;">' + i.description + '</span>' : ''}</span></div>`).join('');
-                html += '</div>';
+        // Counts from inclusions state
+        const dishCount = packageInclusions.filter(i => i.category === 'Menu / Food' || i.category === 'Menu' || i.type === 'Menu').length;
+        const svcCount = packageInclusions.filter(i => i.category === 'Service' || i.type === 'Service').length;
+        const eqCount = packageInclusions.filter(i => i.category === 'Equipment' || i.type === 'Equipment').length;
+
+        const rd = document.getElementById('reviewDishesCount');
+        const rs = document.getElementById('reviewServicesCount');
+        const re = document.getElementById('reviewEquipmentCount');
+        if (rd) rd.innerText = dishCount;
+        if (rs) rs.innerText = svcCount;
+        if (re) re.innerText = eqCount;
+
+        // Show review inclusions detail list
+        const reviewInclusionsDetail = document.getElementById('reviewInclusionsDetail');
+        if (reviewInclusionsDetail) {
+            if (packageInclusions.length === 0) {
+                reviewInclusionsDetail.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem; font-style:italic;">No inclusions added yet.</div>';
+            } else {
+                const grouped = {};
+                packageInclusions.forEach(inc => {
+                    const cat = inc.category || 'Other';
+                    if (!grouped[cat]) grouped[cat] = [];
+                    grouped[cat].push(inc);
+                });
+                const catIcons = { 'Menu / Food': '🍽️', 'Service': '🛎️', 'Equipment': '🪑', 'Other': '📦' };
+                let html = '';
+                for (const [cat, items] of Object.entries(grouped)) {
+                    html += `<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:0.35rem;">${catIcons[cat] || '•'} ${cat}</div>`;
+                    html += items.map(i => `<div style="font-size:0.85rem;color:#1e293b;display:flex;gap:6px;align-items:flex-start;margin-bottom:4px;"><i class="fas fa-check-circle" style="color:#16a34a;margin-top:3px;flex-shrink:0;"></i><span><strong>${escapeHtml(i.name)}</strong>${i.quantity ? ' — ' + escapeHtml(i.quantity) : ''}${i.description ? '<br><span style="color:#64748b;font-size:0.78rem;">' + escapeHtml(i.description) + '</span>' : ''}</span></div>`).join('');
+                    html += '</div>';
+                }
+                reviewInclusionsDetail.innerHTML = html;
             }
-            reviewInclusionsDetail.innerHTML = html;
         }
     }
 }
@@ -1574,12 +1745,14 @@ window.saveInclusion = function (addAnother = false) {
         packageInclusions[editIndex] = itemObj;
         syncInclusionsHidden();
         renderInclusionsList();
+        if (typeof renderCustInclusionsList === 'function') renderCustInclusionsList();
         safeCloseModal('addInclusionModal');
     } else {
         // Add Mode
         packageInclusions.push(itemObj);
         syncInclusionsHidden();
         renderInclusionsList();
+        if (typeof renderCustInclusionsList === 'function') renderCustInclusionsList();
 
         if (addAnother) {
             if (alertBox) {
@@ -1616,6 +1789,7 @@ window.removeInclusion = function (index) {
     packageInclusions.splice(index, 1);
     syncInclusionsHidden();
     renderInclusionsList();
+    if (typeof renderCustInclusionsList === 'function') renderCustInclusionsList();
 };
 
 // Sync packageInclusions array to the hidden form field
@@ -1757,7 +1931,8 @@ function renderInclusionsList() {
                     <i class="fas fa-layer-group"></i>
                 </div>
                 <h4 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin: 0 0 0.4rem 0;">No inclusions added yet</h4>
-                <p style="font-size: 0.85rem; color: #64748b; max-width: 420px; margin: 0 auto 1.5rem auto; line-height: 1.5;">Add the menu, services, and equipment included in this package.</p>
+                <p style="font-size: 0.85rem; color: #64748b; max-width: 420px; margin: 0 auto 0.4rem auto; line-height: 1.5;">Add the menu, services, and equipment included in this package.</p>
+                <p style="font-size: 0.8rem; color: #64748b; font-weight: 600; margin: 0 auto 1.5rem auto;"><i class="fas fa-info-circle" style="color: var(--primary-color, #f97316); margin-right: 4px;"></i>These inclusions are fixed and cannot be changed by customers.</p>
                 <button type="button" class="btn-primary-pro" onclick="window.openAddInclusionModal()"
                     style="display: inline-flex; align-items: center; gap: 8px; padding: 0.65rem 1.25rem; font-size: 0.875rem; font-weight: 800; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                     <i class="fas fa-plus"></i>
@@ -1928,4 +2103,744 @@ window.filterPackages = function () {
     }
 };
 
+// ==========================================
+// CUSTOMIZABLE PACKAGE: AVAILABLE OPTIONS
+// ==========================================
+let customizableMenuIds = new Set();
+let customizableServiceIds = new Set();
+let customizableEquipmentIds = new Set();
 
+let lastMenuQuery = '';
+let lastServiceQuery = '';
+
+window.toggleCustomizableItem = function (type, id, checked) {
+    const numId = Number(id);
+    if (type === 'menu') {
+        if (checked) customizableMenuIds.add(numId);
+        else customizableMenuIds.delete(numId);
+        updateCustomizableCounters('menu');
+    } else if (type === 'service') {
+        if (checked) customizableServiceIds.add(numId);
+        else customizableServiceIds.delete(numId);
+        updateCustomizableCounters('service');
+    }
+    syncCustomizableSelectionRules();
+};
+
+window.toggleAllCustomizableCatalog = function (type, selectAll) {
+    const catalog = window.inclusionsCatalog[type] || [];
+    if (type === 'menu') {
+        if (selectAll) catalog.forEach(i => customizableMenuIds.add(Number(i.id)));
+        else customizableMenuIds.clear();
+        renderCustomizableMenu(lastMenuQuery);
+        updateCustomizableCounters('menu');
+    } else if (type === 'service') {
+        if (selectAll) catalog.forEach(i => customizableServiceIds.add(Number(i.id)));
+        else customizableServiceIds.clear();
+        renderCustomizableServices(lastServiceQuery);
+        updateCustomizableCounters('service');
+    }
+    syncCustomizableSelectionRules();
+};
+
+window.filterCustomizableCatalog = function (type, query) {
+    if (type === 'menu') {
+        lastMenuQuery = query;
+        renderCustomizableMenu(query);
+    } else if (type === 'service') {
+        lastServiceQuery = query;
+        renderCustomizableServices(query);
+    }
+};
+
+function updateCustomizableCounters(type) {
+    const menuBadge = document.getElementById('custMenuCountBadge');
+    const serviceBadge = document.getElementById('custServiceCountBadge');
+    const totalBadge = document.getElementById('custTotalAvailableBadge');
+
+    if (menuBadge) menuBadge.innerText = `${customizableMenuIds.size} Selected`;
+    if (serviceBadge) serviceBadge.innerText = `${customizableServiceIds.size} Selected`;
+
+    if (totalBadge) {
+        const total = customizableMenuIds.size + customizableServiceIds.size;
+        totalBadge.innerText = `${total} Option${total === 1 ? '' : 's'} Available`;
+    }
+}
+
+window.renderCustomizableCatalogs = function () {
+    renderCustomizableMenu(lastMenuQuery);
+    renderCustomizableServices(lastServiceQuery);
+    updateCustomizableCounters();
+};
+
+function renderCustomizableMenu(query = '') {
+    const container = document.getElementById('customizableMenuList');
+    if (!container) return;
+
+    const items = window.inclusionsCatalog.menu || [];
+    const q = (query || '').toLowerCase().trim();
+    const filtered = q ? items.filter(i => (i.name || '').toLowerCase().includes(q) || (i.category || '').toLowerCase().includes(q)) : items;
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; padding: 2rem; text-align: center; color: #94a3b8; font-size: 0.85rem; background: #f8fafc; border-radius: 8px; border: 1.5px dashed #cbd5e1;">
+                ${q ? 'No menu items matching search query.' : 'No menu items found in your catalog. Click "+ Quick Add Food" above to add items.'}
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = filtered.map(item => {
+        const id = Number(item.id);
+        const isChecked = customizableMenuIds.has(id);
+        const price = parseFloat(item.price || 0);
+        let unitText = item.unit_type || item.pricing_unit || 'pax';
+        if (unitText.startsWith('per_')) unitText = unitText.replace('per_', '');
+
+        return `
+            <div style="display: flex; align-items: center; gap: 9px; padding: 0.7rem 0.85rem; background: ${isChecked ? '#f0fdf4' : '#ffffff'}; border: 1.5px solid ${isChecked ? '#86efac' : '#e2e8f0'}; border-radius: 10px; transition: all 0.15s ease;"
+                 class="catalog-option-card">
+                <input type="checkbox" ${isChecked ? 'checked' : ''} 
+                       onchange="window.toggleCustomizableItem('menu', ${id}, this.checked); const c = this.closest('.catalog-option-card'); c.style.background = this.checked ? '#f0fdf4' : '#ffffff'; c.style.borderColor = this.checked ? '#86efac' : '#e2e8f0';"
+                       style="width: 17px; height: 17px; accent-color: #16a34a; cursor: pointer; flex-shrink: 0;" />
+                <div style="flex: 1; min-width: 0; cursor: pointer;" onclick="const cb = this.previousElementSibling; cb.checked = !cb.checked; cb.dispatchEvent(new Event('change'));">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 6px;">
+                        <strong style="color: #0f172a; font-size: 0.88rem; line-height: 1.3;">${escapeHtml(item.name)}</strong>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+                        ${item.category ? `<span style="font-size: 0.7rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 1px 6px; border-radius: 4px;">${escapeHtml(item.category)}</span>` : ''}
+                        ${item.description ? `<span style="font-size: 0.75rem; color: #94a3b8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.description)}</span>` : ''}
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px; margin-left: 2px; flex-shrink: 0;">
+                    <button type="button" title="Edit Dish" onclick="window.openQuickEditModal('menu', ${id}, event)"
+                            style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; background: #f8fafc; color: #475569; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;"
+                            onmouseover="this.style.background='#f1f5f9'; this.style.color='#0f172a'; this.style.borderColor='#cbd5e1';"
+                            onmouseout="this.style.background='#f8fafc'; this.style.color='#475569'; this.style.borderColor='#e2e8f0';">
+                        <i class="fas fa-edit" style="font-size: 0.75rem;"></i>
+                    </button>
+                    <button type="button" title="Delete Dish" onclick="window.quickDeleteCatalogItem('menu', ${id}, event)"
+                            style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #fee2e2; background: #fef2f2; color: #dc2626; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;"
+                            onmouseover="this.style.background='#fee2e2'; this.style.borderColor='#fca5a5';"
+                            onmouseout="this.style.background='#fef2f2'; this.style.borderColor='#fee2e2';">
+                        <i class="fas fa-trash-alt" style="font-size: 0.75rem;"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderCustomizableServices(query = '') {
+    const container = document.getElementById('customizableServiceList');
+    if (!container) return;
+
+    const items = window.inclusionsCatalog.service || [];
+    const q = (query || '').toLowerCase().trim();
+    const filtered = q ? items.filter(i => (i.name || '').toLowerCase().includes(q) || (i.category || '').toLowerCase().includes(q)) : items;
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; padding: 2rem; text-align: center; color: #94a3b8; font-size: 0.85rem; background: #f8fafc; border-radius: 8px; border: 1.5px dashed #cbd5e1;">
+                ${q ? 'No services matching search query.' : 'No services found in your catalog. Click "+ Quick Add Service" above to add services.'}
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = filtered.map(item => {
+        const id = Number(item.id);
+        const isChecked = customizableServiceIds.has(id);
+        const price = parseFloat(item.price || item.selling_price || 0);
+        let unitText = item.unit_type || 'service';
+        if (unitText.startsWith('per_')) unitText = unitText.replace('per_', '');
+
+        return `
+            <div style="display: flex; align-items: center; gap: 9px; padding: 0.7rem 0.85rem; background: ${isChecked ? '#eff6ff' : '#ffffff'}; border: 1.5px solid ${isChecked ? '#93c5fd' : '#e2e8f0'}; border-radius: 10px; transition: all 0.15s ease;"
+                 class="catalog-option-card">
+                <input type="checkbox" ${isChecked ? 'checked' : ''} 
+                       onchange="window.toggleCustomizableItem('service', ${id}, this.checked); const c = this.closest('.catalog-option-card'); c.style.background = this.checked ? '#eff6ff' : '#ffffff'; c.style.borderColor = this.checked ? '#93c5fd' : '#e2e8f0';"
+                       style="width: 17px; height: 17px; accent-color: #2563eb; cursor: pointer; flex-shrink: 0;" />
+                <div style="flex: 1; min-width: 0; cursor: pointer;" onclick="const cb = this.previousElementSibling; cb.checked = !cb.checked; cb.dispatchEvent(new Event('change'));">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 6px;">
+                        <strong style="color: #0f172a; font-size: 0.88rem; line-height: 1.3;">${escapeHtml(item.name)}</strong>
+                        <span style="font-size: 0.75rem; font-weight: 800; color: #1e40af; background: #dbeafe; padding: 2px 7px; border-radius: 6px; white-space: nowrap;">
+                            ₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}${unitText && unitText !== 'fixed' ? '/' + escapeHtml(unitText) : ''}
+                        </span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+                        ${item.category ? `<span style="font-size: 0.7rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 1px 6px; border-radius: 4px;">${escapeHtml(item.category)}</span>` : ''}
+                        ${item.description ? `<span style="font-size: 0.75rem; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.description)}</span>` : ''}
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px; margin-left: 2px; flex-shrink: 0;">
+                    <button type="button" title="Edit Service" onclick="window.openQuickEditModal('service', ${id}, event)"
+                            style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; background: #f8fafc; color: #475569; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;"
+                            onmouseover="this.style.background='#f1f5f9'; this.style.color='#0f172a'; this.style.borderColor='#cbd5e1';"
+                            onmouseout="this.style.background='#f8fafc'; this.style.color='#475569'; this.style.borderColor='#e2e8f0';">
+                        <i class="fas fa-edit" style="font-size: 0.75rem;"></i>
+                    </button>
+                    <button type="button" title="Delete Service" onclick="window.quickDeleteCatalogItem('service', ${id}, event)"
+                            style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #fee2e2; background: #fef2f2; color: #dc2626; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;"
+                            onmouseover="this.style.background='#fee2e2'; this.style.borderColor='#fca5a5';"
+                            onmouseout="this.style.background='#fef2f2'; this.style.borderColor='#fee2e2';">
+                        <i class="fas fa-trash-alt" style="font-size: 0.75rem;"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function syncCustomizableSelectionRules() {
+    const jsonInput = document.getElementById('package_selection_rules_json');
+    if (jsonInput) {
+        const payload = {
+            package_type: 'customizable',
+            available_menu_ids: Array.from(customizableMenuIds),
+            available_service_ids: Array.from(customizableServiceIds),
+            available_equipment_ids: []
+        };
+        jsonInput.value = JSON.stringify(payload);
+    }
+}
+
+function renderReviewCustomizable() {
+    // 1. Available Menu / Food
+    const menuList = document.getElementById('reviewCustMenuList');
+    const menuCountBadge = document.getElementById('reviewCustMenuCount');
+    const menuCatalog = window.inclusionsCatalog.menu || [];
+    const selectedMenuItems = menuCatalog.filter(i => customizableMenuIds.has(Number(i.id)));
+
+    if (menuCountBadge) menuCountBadge.innerText = `${selectedMenuItems.length} item${selectedMenuItems.length === 1 ? '' : 's'}`;
+    if (menuList) {
+        if (selectedMenuItems.length === 0) {
+            menuList.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem; font-style:italic;">No menu items selected. Customers will not have food options to choose from.</div>';
+        } else {
+            menuList.innerHTML = selectedMenuItems.map(i => {
+                const price = parseFloat(i.price || 0);
+                const unit = (i.unit_type || i.pricing_unit || 'pax').replace('per_', '');
+                return `
+                    <div style="font-size:0.85rem; color:#1e293b; display:flex; justify-content:space-between; align-items:center; padding:3px 0; border-bottom:1px dashed #f1f5f9;">
+                        <span><i class="fas fa-check" style="color:#16a34a; font-size:0.75rem; margin-right:6px;"></i><strong>${escapeHtml(i.name)}</strong>${i.category ? ' (' + escapeHtml(i.category) + ')' : ''}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    // 2. Available Services
+    const svcList = document.getElementById('reviewCustServicesList');
+    const svcCountBadge = document.getElementById('reviewCustServicesCount');
+    const svcCatalog = window.inclusionsCatalog.service || [];
+    const selectedSvcItems = svcCatalog.filter(i => customizableServiceIds.has(Number(i.id)));
+
+    if (svcCountBadge) svcCountBadge.innerText = `${selectedSvcItems.length} item${selectedSvcItems.length === 1 ? '' : 's'}`;
+    if (svcList) {
+        if (selectedSvcItems.length === 0) {
+            svcList.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem; font-style:italic;">No services selected.</div>';
+        } else {
+            svcList.innerHTML = selectedSvcItems.map(i => {
+                const price = parseFloat(i.price || i.selling_price || 0);
+                const unit = (i.unit_type || 'service').replace('per_', '');
+                return `
+                    <div style="font-size:0.85rem; color:#1e293b; display:flex; justify-content:space-between; align-items:center; padding:3px 0; border-bottom:1px dashed #f1f5f9;">
+                        <span><i class="fas fa-check" style="color:#2563eb; font-size:0.75rem; margin-right:6px;"></i><strong>${escapeHtml(i.name)}</strong></span>
+                        <span style="font-weight:700; color:#1e40af; font-size:0.78rem;">₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}${unit && unit !== 'fixed' ? '/' + escapeHtml(unit) : ''}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+}
+
+// -------------------------------------------------------------
+// Quick Add Options for Customizable Packages (Food, Service, Equipment)
+// -------------------------------------------------------------
+window.openQuickAddOptionModal = function (type) {
+    const modal = document.getElementById('quickAddOptionModal');
+    if (!modal) return;
+
+    const form = document.getElementById('quickAddOptionForm');
+    if (form) form.reset();
+
+    const hiddenType = document.getElementById('quickAddOptionType');
+    if (hiddenType) hiddenType.value = type;
+
+    const titleEl = document.getElementById('quickAddOptionModalTitle');
+    const nameLabel = document.getElementById('quickAddOptionNameLabel');
+    const nameInput = document.getElementById('quickAddOptionName');
+    const catSelect = document.getElementById('quickAddOptionCategory');
+    const unitLabel = document.getElementById('quickAddOptionUnitLabel');
+    const unitSelect = document.getElementById('quickAddOptionUnit');
+    const priceLabel = document.getElementById('quickAddOptionPriceLabel');
+    const priceInput = document.getElementById('quickAddOptionPrice');
+    const qtyWrapper = document.getElementById('quickAddOptionQtyWrapper');
+
+    const priceRow = document.getElementById('quickAddOptionPriceRow');
+    const priceWrapper = document.getElementById('quickAddOptionPriceWrapper');
+
+    if (type === 'menu') {
+        if (titleEl) titleEl.innerHTML = '<i class="fas fa-utensils" style="color: #16a34a; margin-right: 6px;"></i> Quick Add Food / Dish';
+        if (nameLabel) nameLabel.innerHTML = 'Dish / Menu Item Name <span style="color: #ef4444;">*</span>';
+        if (nameInput) nameInput.placeholder = 'e.g. Sweet & Sour Pork, Roast Beef, Lechon Belly';
+        if (unitLabel) unitLabel.innerText = 'Serving Unit';
+        if (priceRow) priceRow.style.display = 'none';
+        if (priceWrapper) priceWrapper.style.display = 'none';
+        if (priceInput) {
+            priceInput.value = '0.00';
+            priceInput.required = false;
+        }
+        if (qtyWrapper) qtyWrapper.style.display = 'none';
+
+        if (catSelect) {
+            catSelect.innerHTML = `
+                <option value="Main Course">Main Course</option>
+                <option value="Beef">Beef</option>
+                <option value="Pork">Pork</option>
+                <option value="Chicken">Chicken</option>
+                <option value="Seafood">Seafood</option>
+                <option value="Pasta & Noodles">Pasta & Noodles</option>
+                <option value="Vegetables">Vegetables</option>
+                <option value="Buffet Menu">Buffet Menu</option>
+                <option value="Dessert">Dessert</option>
+                <option value="Beverage">Beverage</option>
+                <option value="Appetizer">Appetizer</option>
+                <option value="Other">Other</option>
+            `;
+        }
+        if (unitSelect) {
+            unitSelect.innerHTML = `
+                <option value="per_pax">Per Pax / Guest</option>
+                <option value="per_tray">Per Tray / Pan</option>
+                <option value="per_serving">Per Serving</option>
+                <option value="per_order">Per Order</option>
+            `;
+        }
+    } else if (type === 'service') {
+        if (titleEl) titleEl.innerHTML = '<i class="fas fa-concierge-bell" style="color: #2563eb; margin-right: 6px;"></i> Quick Add Service';
+        if (nameLabel) nameLabel.innerHTML = 'Service Name <span style="color: #ef4444;">*</span>';
+        if (nameInput) nameInput.placeholder = 'e.g. Trained Waitstaff, Event Setup & Cleanup, Bartender';
+        if (unitLabel) unitLabel.innerText = 'Service Rate Type';
+        if (priceRow) {
+            priceRow.style.display = 'grid';
+            priceRow.style.gridTemplateColumns = '1fr';
+        }
+        if (priceWrapper) priceWrapper.style.display = 'block';
+        if (priceLabel) priceLabel.innerHTML = 'Service Fee (₱) <span style="color: #ef4444;">*</span>';
+        if (priceInput) {
+            priceInput.required = true;
+        }
+        if (qtyWrapper) qtyWrapper.style.display = 'none';
+
+        if (catSelect) {
+            catSelect.innerHTML = `
+                <option value="Waitstaff & Servers">Waitstaff & Servers</option>
+                <option value="Bartender / Barista">Bartender / Barista</option>
+                <option value="Chef / Cook On-Site">Chef / Cook On-Site</option>
+                <option value="Buffet Management">Buffet Management</option>
+                <option value="Event Setup & Cleanup">Event Setup & Cleanup</option>
+                <option value="Sound & Lighting">Sound & Lighting</option>
+                <option value="Decoration / Styling">Decoration / Styling</option>
+                <option value="Coordinator">Coordinator</option>
+                <option value="General Service">General Service</option>
+            `;
+        }
+        if (unitSelect) {
+            unitSelect.innerHTML = `
+                <option value="per_event">Per Event (Flat Rate)</option>
+                <option value="per_hour">Per Hour</option>
+                <option value="per_staff">Per Staff Member</option>
+                <option value="per_pax">Per Pax / Guest</option>
+            `;
+        }
+    } else if (type === 'equipment') {
+        if (titleEl) titleEl.innerHTML = '<i class="fas fa-chair" style="color: #ea580c; margin-right: 6px;"></i> Quick Add Equipment';
+        if (nameLabel) nameLabel.innerHTML = 'Equipment / Item Name <span style="color: #ef4444;">*</span>';
+        if (nameInput) nameInput.placeholder = 'e.g. Tiffany Chairs, Round Banquet Table, Chafing Dish';
+        if (priceRow) {
+            priceRow.style.display = 'grid';
+            priceRow.style.gridTemplateColumns = '1fr 1fr';
+        }
+        if (priceWrapper) priceWrapper.style.display = 'block';
+        if (priceLabel) priceLabel.innerHTML = 'Rental Rate (₱) <span style="color: #ef4444;">*</span>';
+        if (priceInput) {
+            priceInput.required = true;
+        }
+        if (qtyWrapper) qtyWrapper.style.display = 'block';
+
+        if (catSelect) {
+            catSelect.innerHTML = `
+                <option value="Chairs & Seating">Chairs & Seating</option>
+                <option value="Tables & Linens">Tables & Linens</option>
+                <option value="Dinnerware & Cutlery">Dinnerware & Cutlery</option>
+                <option value="Glassware & Bar">Glassware & Bar</option>
+                <option value="Buffet & Warming Equipment">Buffet & Warming Equipment</option>
+                <option value="Tents & Canopies">Tents & Canopies</option>
+                <option value="Audio & Lighting Gear">Audio & Lighting Gear</option>
+                <option value="Decorative Amenities">Decorative Amenities</option>
+                <option value="Other Equipment">Other Equipment</option>
+            `;
+        }
+        if (unitSelect) {
+            unitSelect.innerHTML = `
+                <option value="piece">Per Piece</option>
+                <option value="set">Per Set</option>
+                <option value="pair">Per Pair</option>
+                <option value="lot">Per Lot / Package</option>
+            `;
+        }
+    }
+
+    if (priceInput) priceInput.value = '0.00';
+    safeOpenModal('quickAddOptionModal', true);
+};
+
+window.closeQuickAddOptionModal = function () {
+    safeCloseModal('quickAddOptionModal');
+};
+
+window.submitQuickAddOption = async function (e) {
+    e.preventDefault();
+    const type = document.getElementById('quickAddOptionType')?.value || 'menu';
+    const name = (document.getElementById('quickAddOptionName')?.value || '').trim();
+    const category = document.getElementById('quickAddOptionCategory')?.value || '';
+    const unit = document.getElementById('quickAddOptionUnit')?.value || '';
+    const price = type === 'menu' ? 0 : (parseFloat(document.getElementById('quickAddOptionPrice')?.value || 0) || 0);
+    const qty = parseInt(document.getElementById('quickAddOptionQty')?.value || 100, 10) || 100;
+    const desc = (document.getElementById('quickAddOptionDescription')?.value || '').trim();
+
+    if (!name) {
+        alert('Please enter an item name.');
+        return;
+    }
+
+    const btn = document.getElementById('btnQuickOptionSubmit');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Saving...</span>';
+    }
+
+    try {
+        const payload = {
+            item_type: type,
+            name: name,
+            category: category,
+            price: price,
+            unit_type: unit,
+            description: desc,
+            available_qty: qty
+        };
+
+        const res = await fetch('/caterer/api/catalogs/quick-add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok || data.status !== 'success') {
+            throw new Error(data.detail || data.message || 'Failed to save item');
+        }
+
+        const newItem = data.item;
+        if (!window.inclusionsCatalog[type]) {
+            window.inclusionsCatalog[type] = [];
+        }
+        // Unshift so new item appears at the top
+        window.inclusionsCatalog[type].unshift(newItem);
+
+        // Pre-select the new item in customizable package
+        const newId = Number(newItem.id);
+        if (type === 'menu') customizableMenuIds.add(newId);
+        else if (type === 'service') customizableServiceIds.add(newId);
+        else if (type === 'equipment') customizableEquipmentIds.add(newId);
+
+        // Update UI
+        renderCustomizableCatalogs();
+        syncCustomizableSelectionRules();
+        renderReviewCustomizable();
+
+        // Close modal
+        safeCloseModal('quickAddOptionModal');
+
+        if (window.showToast) {
+            window.showToast(`Added "${newItem.name}" and selected for this package!`, 'success');
+        }
+    } catch (err) {
+        console.error('submitQuickAddOption error:', err);
+        alert(err.message || 'An error occurred while saving.');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> <span>Save &amp; Select</span>';
+        }
+    }
+};
+
+// -------------------------------------------------------------
+// Quick Edit & Delete for Catalog Items (Food & Services)
+// -------------------------------------------------------------
+window.openQuickEditModal = function (type, id, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const modal = document.getElementById('quickEditOptionModal');
+    if (!modal) return;
+
+    const list = window.inclusionsCatalog[type] || [];
+    const item = list.find(i => Number(i.id) === Number(id));
+    if (!item) {
+        alert('Item not found in catalog.');
+        return;
+    }
+
+    const form = document.getElementById('quickEditOptionForm');
+    if (form) form.reset();
+
+    const hiddenType = document.getElementById('quickEditOptionType');
+    const hiddenId = document.getElementById('quickEditOptionId');
+    if (hiddenType) hiddenType.value = type;
+    if (hiddenId) hiddenId.value = id;
+
+    const titleEl = document.getElementById('quickEditOptionModalTitle');
+    const nameLabel = document.getElementById('quickEditOptionNameLabel');
+    const nameInput = document.getElementById('quickEditOptionName');
+    const catSelect = document.getElementById('quickEditOptionCategory');
+    const unitLabel = document.getElementById('quickEditOptionUnitLabel');
+    const unitSelect = document.getElementById('quickEditOptionUnit');
+    const priceLabel = document.getElementById('quickEditOptionPriceLabel');
+    const priceInput = document.getElementById('quickEditOptionPrice');
+    const descInput = document.getElementById('quickEditOptionDescription');
+
+    const price = parseFloat(item.price || item.selling_price || 0);
+
+    const priceWrapper = document.getElementById('quickEditOptionPriceWrapper');
+
+    if (type === 'menu') {
+        if (titleEl) titleEl.innerHTML = '<i class="fas fa-edit" style="color: #16a34a; margin-right: 6px;"></i> Edit Food / Dish';
+        if (nameLabel) nameLabel.innerHTML = 'Dish / Menu Item Name <span style="color: #ef4444;">*</span>';
+        if (unitLabel) unitLabel.innerText = 'Serving Unit';
+        if (priceWrapper) priceWrapper.style.display = 'none';
+        if (priceInput) {
+            priceInput.value = '0.00';
+            priceInput.required = false;
+        }
+
+        if (catSelect) {
+            catSelect.innerHTML = `
+                <option value="Main Course">Main Course</option>
+                <option value="Beef">Beef</option>
+                <option value="Pork">Pork</option>
+                <option value="Chicken">Chicken</option>
+                <option value="Seafood">Seafood</option>
+                <option value="Pasta & Noodles">Pasta & Noodles</option>
+                <option value="Vegetables">Vegetables</option>
+                <option value="Buffet Menu">Buffet Menu</option>
+                <option value="Dessert">Dessert</option>
+                <option value="Beverage">Beverage</option>
+                <option value="Appetizer">Appetizer</option>
+                <option value="Other">Other</option>
+            `;
+            if (item.category) {
+                const exists = Array.from(catSelect.options).some(o => o.value.toLowerCase() === item.category.toLowerCase());
+                if (!exists) {
+                    const opt = document.createElement('option');
+                    opt.value = item.category;
+                    opt.innerText = item.category;
+                    catSelect.appendChild(opt);
+                }
+                catSelect.value = item.category;
+            }
+        }
+        if (unitSelect) {
+            unitSelect.innerHTML = `
+                <option value="per_pax">Per Pax / Guest</option>
+                <option value="per_tray">Per Tray / Pan</option>
+                <option value="per_serving">Per Serving</option>
+                <option value="per_order">Per Order</option>
+            `;
+            const u = item.unit_type || item.pricing_unit || 'per_pax';
+            unitSelect.value = u;
+        }
+    } else if (type === 'service') {
+        if (titleEl) titleEl.innerHTML = '<i class="fas fa-edit" style="color: #2563eb; margin-right: 6px;"></i> Edit Service';
+        if (nameLabel) nameLabel.innerHTML = 'Service Name <span style="color: #ef4444;">*</span>';
+        if (unitLabel) unitLabel.innerText = 'Service Rate Type';
+        if (priceWrapper) priceWrapper.style.display = 'block';
+        if (priceLabel) priceLabel.innerHTML = 'Service Fee (₱) <span style="color: #ef4444;">*</span>';
+        if (priceInput) priceInput.required = true;
+
+        if (catSelect) {
+            catSelect.innerHTML = `
+                <option value="Waitstaff & Servers">Waitstaff & Servers</option>
+                <option value="Bartender / Barista">Bartender / Barista</option>
+                <option value="Chef / Cook On-Site">Chef / Cook On-Site</option>
+                <option value="Buffet Management">Buffet Management</option>
+                <option value="Event Setup & Cleanup">Event Setup & Cleanup</option>
+                <option value="Sound & Lighting">Sound & Lighting</option>
+                <option value="Decoration / Styling">Decoration / Styling</option>
+                <option value="Coordinator">Coordinator</option>
+                <option value="General Service">General Service</option>
+            `;
+            if (item.category) {
+                const exists = Array.from(catSelect.options).some(o => o.value.toLowerCase() === item.category.toLowerCase());
+                if (!exists) {
+                    const opt = document.createElement('option');
+                    opt.value = item.category;
+                    opt.innerText = item.category;
+                    catSelect.appendChild(opt);
+                }
+                catSelect.value = item.category;
+            }
+        }
+        if (unitSelect) {
+            unitSelect.innerHTML = `
+                <option value="per_event">Per Event (Flat Rate)</option>
+                <option value="per_hour">Per Hour</option>
+                <option value="per_staff">Per Staff Member</option>
+                <option value="per_pax">Per Pax / Guest</option>
+            `;
+            if (item.unit_type) {
+                unitSelect.value = item.unit_type;
+            }
+        }
+    }
+
+    if (nameInput) nameInput.value = item.name || '';
+    if (priceInput) priceInput.value = price.toFixed(2);
+    if (descInput) descInput.value = item.description || '';
+
+    safeOpenModal('quickEditOptionModal', true);
+};
+
+window.closeQuickEditOptionModal = function () {
+    safeCloseModal('quickEditOptionModal');
+};
+
+window.submitQuickEditOption = async function (e) {
+    e.preventDefault();
+    const type = document.getElementById('quickEditOptionType')?.value || 'menu';
+    const id = parseInt(document.getElementById('quickEditOptionId')?.value || 0, 10);
+    const name = (document.getElementById('quickEditOptionName')?.value || '').trim();
+    const category = document.getElementById('quickEditOptionCategory')?.value || '';
+    const unit = document.getElementById('quickEditOptionUnit')?.value || '';
+    const price = type === 'menu' ? 0 : (parseFloat(document.getElementById('quickEditOptionPrice')?.value || 0) || 0);
+    const desc = (document.getElementById('quickEditOptionDescription')?.value || '').trim();
+
+    if (!name || !id) {
+        alert('Please enter an item name.');
+        return;
+    }
+
+    const btn = document.getElementById('btnQuickEditSubmit');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Saving...</span>';
+    }
+
+    try {
+        const payload = {
+            name: name,
+            category: category,
+            price: price,
+            unit_type: unit,
+            description: desc
+        };
+
+        const res = await fetch(`/caterer/api/catalogs/quick-edit/${type}/${id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok || data.status !== 'success') {
+            throw new Error(data.detail || data.message || 'Failed to update item');
+        }
+
+        const updatedItem = data.item;
+        const list = window.inclusionsCatalog[type] || [];
+        const idx = list.findIndex(i => Number(i.id) === Number(id));
+        if (idx !== -1) {
+            list[idx] = { ...list[idx], ...updatedItem };
+        }
+
+        // Update UI
+        renderCustomizableCatalogs();
+        renderReviewCustomizable();
+
+        // Close modal
+        safeCloseModal('quickEditOptionModal');
+
+        if (window.showToast) {
+            window.showToast(`Updated "${updatedItem.name}" successfully!`, 'success');
+        }
+    } catch (err) {
+        console.error('submitQuickEditOption error:', err);
+        alert(err.message || 'An error occurred while updating.');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> <span>Save Changes</span>';
+        }
+    }
+};
+
+window.quickDeleteCatalogItem = async function (type, id, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const list = window.inclusionsCatalog[type] || [];
+    const item = list.find(i => Number(i.id) === Number(id));
+    const itemName = item ? item.name : 'this item';
+
+    if (!confirm(`Are you sure you want to remove "${itemName}" from your catalog?`)) {
+        return;
+    }
+
+    try {
+        const res = await fetch(`/caterer/api/catalogs/quick-delete/${type}/${id}`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        const data = await res.json();
+        if (!res.ok || data.status !== 'success') {
+            throw new Error(data.detail || data.message || 'Failed to delete item');
+        }
+
+        // Remove from local catalog
+        const idx = list.findIndex(i => Number(i.id) === Number(id));
+        if (idx !== -1) {
+            list.splice(idx, 1);
+        }
+
+        // Unselect if selected
+        const numId = Number(id);
+        if (type === 'menu') customizableMenuIds.delete(numId);
+        else if (type === 'service') customizableServiceIds.delete(numId);
+
+        // Update UI
+        renderCustomizableCatalogs();
+        syncCustomizableSelectionRules();
+        renderReviewCustomizable();
+
+        if (window.showToast) {
+            window.showToast(`"${itemName}" removed from catalog.`, 'info');
+        }
+    } catch (err) {
+        console.error('quickDeleteCatalogItem error:', err);
+        alert(err.message || 'An error occurred while deleting.');
+    }
+};

@@ -323,14 +323,18 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                 <td>
                     {% if ps in ['reupload_requested','balance_reupload_requested'] %}
                         <span class="bk-badge badge-reupload badge-pulse">⚠ Re-upload Proof</span>
+                    {% elif ps in ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested', 'pending_verification'] %}
+                        <span class="bk-badge badge-pending">Under Review</span>
                     {% elif bs in ['pending_payment','awaiting_payment'] %}
                         <span class="bk-badge badge-pay-now badge-pulse">Pay Now</span>
                     {% elif bs == 'confirmed' %}
                         <span class="bk-badge badge-confirmed">Confirmed</span>
                     {% elif bs == 'completed' %}
                         <span class="bk-badge badge-completed">Completed</span>
+                    {% elif bs == 'pending' and ps in ['deposit_paid', 'paid', 'fully_paid'] %}
+                        <span class="bk-badge badge-confirmed">Confirmed</span>
                     {% elif bs == 'pending' %}
-                        <span class="bk-badge badge-pending">Under Review</span>
+                        <span class="bk-badge badge-pay-now">Awaiting Payment</span>
                     {% elif bs in ['cancelled', 'expired'] %}
                         <span class="bk-badge badge-cancelled">{{ 'Overdue / Expired' if bs == 'expired' else 'Cancelled' }}</span>
                     {% elif bs == 'draft' %}

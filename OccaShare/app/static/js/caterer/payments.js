@@ -527,6 +527,38 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, "Are you sure?", "Yes, Verify Payment", "success");
     };
+
+    window.confirmCashPayment = function(bookingId, customerName, amount, paymentStatus) {
+        const amountVal = parseFloat(amount) || 0;
+        const today = new Date().toISOString().slice(0, 10);
+        const label = customerName ? ` from <strong>${customerName}</strong>` : '';
+        const amtLabel = amountVal
+            ? `₱${amountVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : 'the cash payment';
+
+        window.showConfirm(
+            `Confirm that you have physically received ${amtLabel} cash${label}?`,
+            function() {
+                if (!window.apiAction) return;
+                window.apiAction(`/caterer/payments/${bookingId}/confirm-cash`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        amount_received: amountVal,
+                        payment_date: today,
+                        notes: ''
+                    })
+                }).then(res => {
+                    if (res && res.status === 'success') {
+                        setTimeout(() => window.location.reload(), 600);
+                    }
+                }).catch(err => console.error('Cash confirm error:', err));
+            },
+            'Confirm Cash Payment',
+            'Yes, Cash Received',
+            'success'
+        );
+    };
     
     window.archivePayment = function(bookingId) {
         const row = document.getElementById('payment-row-' + bookingId);

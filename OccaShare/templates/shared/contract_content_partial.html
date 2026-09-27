@@ -122,6 +122,85 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {% set is_cust_contract = (quotation.package_details and quotation.package_details.get('package_type') == 'customizable') or (booking.package and booking.package.pricing_mode == 'customizable') or (booking.custom_requirements and booking.custom_requirements.get('package_type') == 'customizable') %}
+                    {% if is_cust_contract %}
+                    <!-- CUSTOMIZABLE PACKAGE FINANCIAL BREAKDOWN -->
+                    <tr class="summary-row-item">
+                        <td class="summary-td-desc" colspan="2" style="background: #f8fafc; font-weight: 800; color: #1e293b; padding: 12px 16px;">
+                            <strong>Customized Catering Selections — {{ quotation.package_details.name or (booking.package.name if booking.package else 'Customizable Package') }}</strong><br>
+                            <span class="summary-desc-subtext" style="font-weight: normal; color: #64748b;">
+                                Client-configured menu and service choices for {{ quotation.package_details.guest_count or booking.guest_count }} guests
+                            </span>
+                        </td>
+                    </tr>
+                    {% set c_food = quotation.package_details.selected_food if quotation.package_details and quotation.package_details.selected_food else [] %}
+                    {% if not c_food and booking.selected_items %}
+                        {% set c_food = booking.selected_items | rejectattr('menu_item_id', 'none') | list %}
+                    {% endif %}
+                    {% for f in c_food %}
+                    <tr class="addon-row-item">
+                        <td class="addon-td-desc">
+                            <strong>{{ f.name if f.name is defined else f.menu_item.name }}</strong> <span style="font-size: 0.8rem; color: #64748b;">({{ f.category if f.category is defined else (f.menu_item.category if f.menu_item else 'Menu') }})</span><br>
+                            <span class="summary-desc-subtext">
+                                Qty: {{ f.qty or f.quantity or quotation.package_details.guest_count or booking.guest_count }} pax &times; ₱{{ "{:,.2f}".format((f.unit_price if f.unit_price is defined else (f.price if f.price is defined else 0))|float) }}
+                            </span>
+                        </td>
+                        <td class="summary-td-amount">
+                            ₱{{ "{:,.2f}".format((f.subtotal if f.subtotal is defined else ((f.price|float) * (quotation.package_details.guest_count or booking.guest_count|float)))|float) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    {% set c_srv = quotation.package_details.selected_services if quotation.package_details and quotation.package_details.selected_services else [] %}
+                    {% if not c_srv and booking.selected_items %}
+                        {% set c_srv = booking.selected_items | rejectattr('service_id', 'none') | list %}
+                    {% endif %}
+                    {% for s in c_srv %}
+                    <tr class="addon-row-item">
+                        <td class="addon-td-desc">
+                            <strong>{{ s.name if s.name is defined else s.service.name }}</strong> <span style="font-size: 0.8rem; color: #64748b;">(Service)</span><br>
+                            <span class="summary-desc-subtext">
+                                Qty: {{ s.qty or s.quantity or 1 }} &times; ₱{{ "{:,.2f}".format((s.unit_price if s.unit_price is defined else (s.price if s.price is defined else 0))|float) }}
+                            </span>
+                        </td>
+                        <td class="summary-td-amount">
+                            ₱{{ "{:,.2f}".format((s.subtotal if s.subtotal is defined else (s.price if s.price is defined else 0))|float) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    {% set c_eq = quotation.package_details.selected_equipment if quotation.package_details and quotation.package_details.selected_equipment else [] %}
+                    {% if not c_eq and booking.selected_items %}
+                        {% set c_eq = booking.selected_items | rejectattr('equipment_id', 'none') | list %}
+                    {% endif %}
+                    {% for eq in c_eq %}
+                    <tr class="addon-row-item">
+                        <td class="addon-td-desc">
+                            <strong>{{ eq.name if eq.name is defined else eq.equipment.name }}</strong> <span style="font-size: 0.8rem; color: #64748b;">(Equipment)</span><br>
+                            <span class="summary-desc-subtext">
+                                Qty: {{ eq.qty or eq.quantity or 1 }} &times; ₱{{ "{:,.2f}".format((eq.unit_price if eq.unit_price is defined else (eq.price if eq.price is defined else 0))|float) }}
+                            </span>
+                        </td>
+                        <td class="summary-td-amount">
+                            ₱{{ "{:,.2f}".format((eq.subtotal if eq.subtotal is defined else (eq.price if eq.price is defined else 0))|float) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    {% if booking.travel_fee and booking.travel_fee|float > 0 %}
+                    <tr class="addon-row-item">
+                        <td class="addon-td-desc">
+                            <strong>Delivery &amp; Travel Fee</strong><br>
+                            <span class="summary-desc-subtext">Venue transportation and logistics</span>
+                        </td>
+                        <td class="summary-td-amount">
+                            ₱{{ "{:,.2f}".format(booking.travel_fee|float) }}
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    {% else %}
+                    <!-- FIXED PACKAGE FINANCIAL BREAKDOWN (UNTOUCHED) -->
                     {% if quotation and quotation.package_details and quotation.package_details.base_amount|float > 0 %}
                     <tr class="summary-row-item">
                         <td class="summary-td-desc">
@@ -151,6 +230,7 @@
                         </td>
                     </tr>
                     {% endfor %}
+                    {% endif %}
                     {% endif %}
                 </tbody>
                 <tfoot class="summary-tfoot">

@@ -104,30 +104,63 @@ async def calculate_quotation(
         raise HTTPException(status_code=404, detail="Booking not found")
     
     package = booking.package
+    is_customizable = (package and getattr(package, 'pricing_mode', '') == 'customizable') or (booking.custom_requirements and booking.custom_requirements.get('package_type') == 'customizable') or (booking.quotation and booking.quotation.package_details and booking.quotation.package_details.get('package_type') == 'customizable')
     
-    # Calculate base amount
-    actual_unit_price = package.price_per_head if hasattr(package, 'price_per_head') and package.price_per_head else package.price
-    unit_price = Decimal(str(actual_unit_price))
-    base_amount = unit_price * Decimal(str(guest_count))
-    
-    # Calculate addon total
-    addon_total = db.query(func.sum(BookingMenuItem.price)).filter(
-        BookingMenuItem.booking_id == booking_id,
-        BookingMenuItem.is_add_on == True
-    ).scalar() or 0.0
-    
-    total_amount = base_amount + Decimal(str(addon_total))
-    deposit_amount = total_amount * (Decimal(str(downpayment_percent)) / Decimal("100"))
-    
-    return {
-        "success": True,
-        "base_amount": float(base_amount),
-        "total_amount": float(total_amount),
-        "deposit_amount": float(deposit_amount),
-        "guest_count": guest_count,
-        "downpayment_percent": downpayment_percent,
-        "unit_price": float(unit_price)
-    }
+    if is_customizable:
+        # CUSTOMIZABLE PACKAGE: Compute customized total directly from selections
+        if booking.custom_requirements and "customization" in booking.custom_requirements:
+            cust = booking.custom_requirements["customization"]
+            cust["guest_count"] = guest_count
+            booking.custom_requirements["customization"] = cust
+        booking.guest_count = guest_count
+        quotation = quotation_service.create_quotation(db, booking, downpayment_percent)
+        
+        return {
+            "success": True,
+            "package_type": "customizable",
+            "base_amount": float(quotation.package_details.get("customized_total", quotation.total_amount)),
+            "total_amount": float(quotation.total_amount),
+            "deposit_amount": float(booking.reservation_fee),
+            "guest_count": guest_count,
+            "downpayment_percent": downpayment_percent,
+            "unit_price": 0.0
+        }
+    else:
+        # FIXED PACKAGE: Keep existing fixed package rate & inclusion logic
+        p_mode = getattr(package, 'pricing_mode', 'per_pax') if package else 'per_pax'
+        p_unit = getattr(package, 'price_unit', 'per_guest') if package else 'per_guest'
+        
+        actual_unit_price = (package.price_per_head if hasattr(package, 'price_per_head') and package.price_per_head else package.price) if package else 0
+        unit_price = Decimal(str(actual_unit_price or 0))
+        
+        if p_mode == 'fixed' or p_unit != 'per_guest':
+            base_amount = Decimal(str(package.price or actual_unit_price or 0))
+            min_guests = getattr(package, 'min_guests', 0) or 0
+            add_price = Decimal(str(getattr(package, 'additional_guest_price', 0) or 0))
+            if guest_count > min_guests and add_price > 0:
+                base_amount += Decimal(str(guest_count - min_guests)) * add_price
+        else:
+            base_amount = unit_price * Decimal(str(guest_count))
+        
+        # Calculate addon total
+        addon_total = db.query(func.sum(BookingMenuItem.price)).filter(
+            BookingMenuItem.booking_id == booking_id,
+            BookingMenuItem.is_add_on == True
+        ).scalar() or 0.0
+        
+        total_amount = base_amount + Decimal(str(addon_total))
+        deposit_amount = total_amount * (Decimal(str(downpayment_percent)) / Decimal("100"))
+        
+        return {
+            "success": True,
+            "package_type": "fixed",
+            "base_amount": float(base_amount),
+            "total_amount": float(total_amount),
+            "deposit_amount": float(deposit_amount),
+            "guest_count": guest_count,
+            "downpayment_percent": downpayment_percent,
+            "unit_price": float(unit_price)
+        }
 
 @router.post("/{booking_id}/quotation")
 async def generate_quotation(
@@ -195,23 +228,40 @@ async def sign_contract(
     
     # Sync guest count if adjusted
     guest_count = data.get("guest_count")
+    is_customizable = (quotation.package_details and quotation.package_details.get("package_type") == "customizable") or (booking.package and getattr(booking.package, "pricing_mode", "") == "customizable") or (booking.custom_requirements and booking.custom_requirements.get("package_type") == "customizable")
+    
     if guest_count and guest_count != quotation.package_details.get("guest_count"):
-        unit_price = Decimal(str(quotation.package_details.get("unit_price", 0)))
         new_guest_count = int(guest_count)
-        new_base_amount = unit_price * new_guest_count
-        
-        addon_total = sum(Decimal(str(a.get("price", 0))) for a in (quotation.addons or []))
-        new_total = new_base_amount + addon_total
-        
-        details = quotation.package_details.copy()
-        details["guest_count"] = new_guest_count
-        details["base_amount"] = float(new_base_amount)
-        quotation.package_details = details
-        quotation.total_amount = float(new_total)
-        
         booking.guest_count = new_guest_count
-        booking.total_amount = float(new_total)
-        booking.reservation_fee = new_total * dp_factor
+        
+        if is_customizable:
+            # Recompute customizable quotation with new guest count
+            quotation = quotation_service.create_quotation(db, booking, quotation.downpayment_percent or 30)
+            new_total = Decimal(str(quotation.total_amount))
+            booking.reservation_fee = new_total * dp_factor
+        else:
+            # Fixed package calculation
+            unit_price = Decimal(str(quotation.package_details.get("unit_price", 0)))
+            p_mode = quotation.package_details.get("pricing_mode", "per_pax")
+            p_unit = quotation.package_details.get("price_unit", "per_guest")
+            
+            if p_mode == "fixed" or p_unit != "per_guest":
+                new_base_amount = Decimal(str(quotation.package_details.get("base_amount", 0)))
+            else:
+                new_base_amount = unit_price * new_guest_count
+            
+            addon_total = sum(Decimal(str(a.get("price", 0))) for a in (quotation.addons or []))
+            new_total = new_base_amount + addon_total
+            
+            details = quotation.package_details.copy()
+            details["guest_count"] = new_guest_count
+            details["base_amount"] = float(new_base_amount)
+            quotation.package_details = details
+            quotation.total_amount = float(new_total)
+            
+            booking.guest_count = new_guest_count
+            booking.total_amount = float(new_total)
+            booking.reservation_fee = new_total * dp_factor
     else:
         # Use 0 as default if total_amount is somehow None to avoid crash
         base_total = quotation.total_amount if quotation.total_amount is not None else 0

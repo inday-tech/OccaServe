@@ -1196,28 +1196,15 @@
                 <!-- Left: Title & Subtitle -->
                 <div class="walkin-header-left">
                     <h3 class="occ-modal-title" style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem; line-height: 1.2;">
-                        <i class="fas fa-walking" style="color: var(--primary-color, #f97316);"></i> Walk-in Transaction
+                        <i class="fas fa-walking" style="color: var(--primary-color, #f97316);"></i> Walk-in Booking
                     </h3>
                     <div class="occ-modal-subtitle" style="margin-top: 0.25rem; font-size: 0.82rem; color: #64748b;">
-                        Create a walk-in catering booking or independent equipment rental.
+                        Create a walk-in catering booking.
                     </div>
                 </div>
 
-                <!-- Right: Segmented Tab Selector & Close Button -->
+                <!-- Right: Close Button -->
                 <div class="walkin-header-right">
-                    <!-- Segmented Control Tab Selector -->
-                    <div id="walkinTabSwitcher" class="walkin-segmented-control">
-                        <button type="button" onclick="switchWalkinTab('catering')" id="walkinTabBtnCatering" class="walkin-seg-btn active" title="Catering Booking">
-                            <i class="fas fa-utensils"></i>
-                            <span>Catering Booking</span>
-                        </button>
-                        <button type="button" onclick="switchWalkinTab('equipment')" id="walkinTabBtnEquipment" class="walkin-seg-btn" title="Equipment Rental">
-                            <i class="fas fa-building"></i>
-                            <span>Equipment Rental</span>
-                        </button>
-                    </div>
-
-                    <!-- Separate Close X Button -->
                     <button type="button" onclick="closeModal('externalBookingModal')" class="walkin-modal-close-btn" title="Close Modal" aria-label="Close">
                         <i class="fas fa-times"></i>
                     </button>
@@ -1692,104 +1679,7 @@
             </form>
         </div>
 
-        <!-- ═══════════════ TAB 2: EQUIPMENT RENTAL ═══════════════ -->
-        <div id="walkinTabEquipment" style="display: none; flex-direction: column; flex: 1; min-height: 0;">
-            <form id="equipRentalForm" onsubmit="submitWalkinEquipmentRental(event)" novalidate style="display: flex; flex-direction: column; flex: 1; min-height: 0; margin: 0;">
-                <div class="compact-body" style="padding: 1.5rem 1.75rem; flex: 1; overflow-y: auto; background: #f8fafc;">
-                    <div id="equipRentalFormError" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 12px 16px; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 600; font-size: 0.9rem;"></div>
 
-                    <!-- Customer Info for Equipment Rental -->
-                    <div class="walkin-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                        <div style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
-                            <i class="fas fa-user" style="color: var(--primary-color, #f97316);"></i> Customer & Rental Information
-                        </div>
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
-                            <div class="form-group-pro">
-                                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
-                                    Customer Full Name <span style="color: #ef4444;">*</span>
-                                </label>
-                                <input type="text" id="eqRentalName" class="control-pro" placeholder="e.g. Juan Dela Cruz" required>
-                                <div class="field-error-msg" id="error-eqRentalName" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
-                            </div>
-                            <div class="form-group-pro">
-                                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
-                                    Mobile No. <span style="color: #ef4444;">*</span>
-                                </label>
-                                <input type="tel" id="eqRentalContact" class="control-pro" placeholder="09XXXXXXXXX" required oninput="formatWalkinPhone(this)">
-                                <div class="field-error-msg" id="error-eqRentalContact" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
-                            </div>
-                            <div class="form-group-pro" style="grid-column: span 2;">
-                                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
-                                    Rental Date <span style="color: #ef4444;">*</span>
-                                </label>
-                                <input type="date" id="eqRentalDate" class="control-pro" required min="{{ min_booking_date.strftime('%Y-%m-%d') }}" onchange="onEquipRentalDateChange()">
-                                <div class="field-error-msg" id="error-eqRentalDate" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Equipment Selection -->
-                    <div class="walkin-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                        <div style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
-                            <i class="fas fa-chair" style="color: #8b5cf6;"></i> Select Equipment to Rent
-                        </div>
-                        <div class="field-error-msg" id="error-eqRentalItems" style="color: #ef4444; font-size: 0.8rem; margin-bottom: 0.75rem; display: none; background: #fef2f2; border: 1px solid #fee2e2; padding: 8px 12px; border-radius: 6px; font-weight: 600;"></div>
-                        <div id="eqRentalItemsGrid" style="display: grid; grid-template-columns: 1fr; gap: 0.6rem;">
-                            {% for eq in equipment_items if not eq.is_archived and eq.status == 'available' %}
-                            <div class="eq-rental-row" data-eq-id="{{ eq.id }}" data-eq-name="{{ eq.name }}" data-eq-price="{{ eq.rental_price or 0 }}" data-eq-stock="{{ eq.available_qty or 0 }}" data-eq-unit="{{ eq.unit_type or 'piece' }}" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; transition: all 0.2s;">
-                                <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1;">
-                                    <input type="checkbox" class="eq-rental-checkbox" onchange="handleEqRentalToggle(this)" style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary-color, #f97316);">
-                                    <div>
-                                        <div style="font-size: 0.85rem; font-weight: 700; color: #1e293b;">{{ eq.name }}</div>
-                                        <div style="font-size: 0.75rem; color: #64748b;">₱{{ '{:,.2f}'.format(eq.rental_price or 0) }} / {{ eq.unit_type or 'piece' }} · {{ eq.available_qty or 0 }} in stock</div>
-                                    </div>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <label style="font-size: 0.75rem; font-weight: 700; color: #64748b;">Qty:</label>
-                                    <input type="number" class="eq-rental-qty control-pro" min="1" max="{{ eq.available_qty or 1 }}" value="1" disabled onchange="recalcEquipRentalTotals()" style="width: 70px; text-align: center; font-weight: 700; padding: 4px 6px; background: #e2e8f0; color: #94a3b8;">
-                                    <div class="eq-avail-badge" style="font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: #f1f5f9; color: #64748b; display: none;"></div>
-                                </div>
-                            </div>
-                            {% endfor %}
-                            {% if not equipment_items %}
-                            <div style="text-align: center; color: #94a3b8; padding: 2rem; font-size: 0.9rem;">No equipment items available for rental.</div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <!-- Equipment Rental Payment Summary -->
-                    <div class="walkin-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                        <div style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
-                            <i class="fas fa-calculator" style="color: var(--primary-color, #f97316);"></i> Payment Computation
-                        </div>
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
-                                <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Rental Subtotal</div>
-                                <div id="eqRentalSubtotal" style="font-size: 1.4rem; font-weight: 800; color: #0f172a; margin-top: 0.25rem;">₱0.00</div>
-                            </div>
-                            <div style="background: #fef9c3; border: 1px solid #fde68a; border-radius: 8px; padding: 0.9rem 1rem;">
-                                <div style="font-size: 0.75rem; font-weight: 700; color: #854d0e; text-transform: uppercase;">50% Downpayment</div>
-                                <div id="eqRentalDownpayment" style="font-size: 1.4rem; font-weight: 800; color: #854d0e; margin-top: 0.25rem;">₱0.00</div>
-                            </div>
-                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
-                                <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Remaining Balance</div>
-                                <div id="eqRentalBalance" style="font-size: 1.4rem; font-weight: 800; color: #2563eb; margin-top: 0.25rem;">₱0.00</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Equipment Rental Footer -->
-                <div class="occ-modal-footer" style="flex-shrink: 0; padding: 1.25rem 1.75rem; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 1rem; align-items: center;">
-                    <button type="button" onclick="closeModal('externalBookingModal')" class="btn-secondary-pro" style="padding: 0.65rem 1.25rem; font-size: 0.9rem; font-weight: 600;">
-                        Cancel
-                    </button>
-                    <button type="submit" id="eqRentalBtnSubmit" class="btn-primary-pro" style="padding: 0.65rem 1.5rem; font-size: 0.9rem; font-weight: 700; background: var(--primary-color, #f97316); border-color: var(--primary-color, #f97316); display: inline-flex; align-items: center; gap: 0.5rem;">
-                        <i class="fas fa-check"></i> Save Equipment Rental
-                    </button>
-                </div>
-            </form>
-        </div>
     </div>
 </div>
 
