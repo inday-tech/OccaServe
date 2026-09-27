@@ -1,0 +1,789 @@
+{% extends "customer/booking_wizard/wizard_base.html" %}
+
+{% block wizard_title %}Customize Package - {{ package.name }}{% endblock %}
+
+{% block step_css %}
+<style>
+    .cust-wizard-header {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-radius: 16px;
+        padding: 2rem 2.25rem;
+        color: white;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15);
+    }
+    .cust-badge-type {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #ea580c;
+        color: white;
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        margin-bottom: 0.75rem;
+    }
+    .cust-header-title {
+        font-size: 1.75rem;
+        font-weight: 900;
+        color: #ffffff;
+        margin: 0 0 0.5rem 0;
+        line-height: 1.2;
+    }
+    .cust-header-meta {
+        display: flex;
+        gap: 1.5rem;
+        font-size: 0.85rem;
+        color: #94a3b8;
+        font-weight: 600;
+        flex-wrap: wrap;
+    }
+    .cust-header-meta span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .cust-layout-grid {
+        display: grid;
+        grid-template-columns: 1fr 350px;
+        gap: 2rem;
+        align-items: start;
+    }
+    @media (max-width: 992px) {
+        .cust-layout-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .cust-section-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 1.75rem;
+        margin-bottom: 1.75rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    }
+    .cust-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.85rem;
+        border-bottom: 1px solid #f1f5f9;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .cust-section-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .cust-tag-section {
+        font-size: 0.7rem;
+        font-weight: 800;
+        padding: 3px 8px;
+        border-radius: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Option item card */
+    .cust-item-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 1rem 1.15rem;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 12px;
+        background: #ffffff;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+    .cust-item-card:hover {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+    }
+    .cust-item-card.selected {
+        border-color: #ea580c;
+        background: #fff7ed;
+        box-shadow: 0 2px 8px rgba(234, 88, 12, 0.08);
+    }
+    .cust-item-checkbox {
+        width: 19px;
+        height: 19px;
+        accent-color: #ea580c;
+        margin-top: 3px;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    /* Price badges */
+    .price-badge-pax {
+        font-size: 0.78rem;
+        font-weight: 800;
+        color: #c2410c;
+        background: #ffedd5;
+        border: 1px solid #fed7aa;
+        padding: 3px 9px;
+        border-radius: 6px;
+        white-space: nowrap;
+    }
+    .price-badge-service {
+        font-size: 0.78rem;
+        font-weight: 800;
+        color: #1e40af;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        padding: 3px 9px;
+        border-radius: 6px;
+        white-space: nowrap;
+    }
+    .price-badge-equip {
+        font-size: 0.78rem;
+        font-weight: 800;
+        color: #9a3412;
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        padding: 3px 9px;
+        border-radius: 6px;
+        white-space: nowrap;
+    }
+
+    .subtotal-pill {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #15803d;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        padding: 2px 8px;
+        border-radius: 6px;
+        display: inline-block;
+        margin-top: 4px;
+    }
+
+    /* Quantity Stepper for Equipment */
+    .qty-stepper-wrap {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+    }
+    .qty-stepper-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #0f172a;
+        font-weight: 800;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .qty-stepper-btn:hover {
+        background: #f1f5f9;
+        border-color: #94a3b8;
+    }
+    .qty-stepper-input {
+        width: 60px;
+        height: 28px;
+        border-radius: 6px;
+        border: 1.5px solid #cbd5e1;
+        text-align: center;
+        font-weight: 800;
+        font-size: 0.85rem;
+        color: #0f172a;
+    }
+    .qty-stepper-input:focus {
+        border-color: #ea580c;
+        outline: none;
+    }
+
+    /* Summary Sidebar */
+    .cust-summary-card {
+        background: #ffffff;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        position: sticky;
+        top: 2rem;
+    }
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.85rem;
+        color: #475569;
+        margin-bottom: 0.75rem;
+    }
+    .summary-total-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding-top: 1rem;
+        margin-top: 1rem;
+        border-top: 2px solid #f1f5f9;
+    }
+    .btn-continue-cust {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 0.9rem 1.25rem;
+        background: #ea580c;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 4px 12px rgba(234, 88, 12, 0.25);
+        margin-top: 1.25rem;
+    }
+    .btn-continue-cust:hover {
+        background: #c2410c;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(234, 88, 12, 0.35);
+    }
+    .btn-continue-cust:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+</style>
+{% endblock %}
+
+{% block wizard_content %}
+<!-- Package Header Banner -->
+<div class="cust-wizard-header">
+    <span class="cust-badge-type">
+        <i class="fas fa-sliders-h"></i> Build Your Own Catering Package
+    </span>
+    <h1 class="cust-header-title">{{ package.name or 'Custom Catering Package' }}</h1>
+    <div class="cust-header-meta">
+        <span><i class="fas fa-utensils" style="color: #ea580c;"></i> {{ caterer.business_name }}</span>
+        <span><i class="fas fa-users" style="color: #3b82f6;"></i> Min {{ package.min_guests or caterer.min_pax or 50 }}{% if package.max_guests %} - Max {{ package.max_guests }}{% endif %} Pax</span>
+        <span><i class="fas fa-clock" style="color: #10b981;"></i> {{ package.service_duration or 4 }} Hours Service</span>
+    </div>
+</div>
+
+<form id="customizationForm" method="POST" action="/bookings/customize/save">
+    <input type="hidden" name="caterer_id" value="{{ caterer.id }}">
+    <input type="hidden" name="package_id" value="{{ package.id }}">
+    <input type="hidden" name="customization_json" id="customization_json" value="">
+
+    <div class="cust-layout-grid">
+        <!-- Main Customization Options Column -->
+        <div class="cust-main-col">
+
+            <!-- SECTION 0: GUEST CAPACITY SELECTION -->
+            <div class="cust-section-card" style="border-color: #fed7aa; background: #fffcf9;">
+                <div class="cust-section-header" style="border-bottom-color: #fed7aa;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="cust-tag-section" style="background: #ffedd5; color: #9a3412;">Step 1</span>
+                        <h3 class="cust-section-title">
+                            <i class="fas fa-users" style="color: #ea580c;"></i> Event Guest Count
+                        </h3>
+                    </div>
+                    <span style="font-size: 0.8rem; font-weight: 700; color: #9a3412;">
+                        Minimum: {{ package.min_guests or caterer.min_pax or 50 }} Pax
+                    </span>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="custGuestCount" style="display: block; font-size: 0.85rem; font-weight: 800; color: #0f172a; margin-bottom: 0.35rem;">
+                            Expected Number of Guests *
+                        </label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="number" 
+                                   id="custGuestCount" 
+                                   name="guest_count"
+                                   class="form-input" 
+                                   value="{{ initial_guest_count }}" 
+                                   min="{{ package.min_guests or caterer.min_pax or 10 }}" 
+                                   max="{{ package.max_guests or 1000 }}" 
+                                   step="1"
+                                   oninput="handleGuestCountChange(this.value)"
+                                   style="width: 140px; font-size: 1.1rem; font-weight: 800; padding: 0.6rem 0.9rem; border: 1.5px solid #cbd5e1; border-radius: 10px;">
+                            <span style="font-size: 0.9rem; font-weight: 700; color: #64748b;">guests / persons</span>
+                        </div>
+                    </div>
+                    <div style="flex: 2; min-width: 250px; font-size: 0.82rem; color: #64748b; line-height: 1.5; background: #ffffff; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid #fed7aa;">
+                        <i class="fas fa-calculator" style="color: #ea580c; margin-right: 4px;"></i>
+                        Per-guest food items and catering packages will automatically multiply by this number to give you an accurate real-time estimate.
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION A: MENU / FOOD -->
+            <div class="cust-section-card">
+                <div class="cust-section-header">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="cust-tag-section" style="background: #f0fdf4; color: #166534;">Menu &amp; Food</span>
+                        <h3 class="cust-section-title">
+                            <i class="fas fa-utensils" style="color: #16a34a;"></i> Available Food Options
+                        </h3>
+                    </div>
+                    <span id="badgeMenuSelectedCount" style="font-size: 0.78rem; font-weight: 800; color: #15803d; background: #dcfce7; padding: 3px 10px; border-radius: 20px;">
+                        0 Selected
+                    </span>
+                </div>
+
+                <p style="font-size: 0.85rem; color: #64748b; margin-top: -0.5rem; margin-bottom: 1.25rem;">
+                    Select the dishes and beverages you would like included in your catering service.
+                </p>
+
+                {% if categorized_available_menu and categorized_available_menu|length > 0 %}
+                <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    {% for category, items in categorized_available_menu.items() %}
+                    <div class="menu-cat-group">
+                        <div style="font-size: 0.88rem; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.65rem; display: flex; align-items: center; gap: 8px; border-bottom: 1.5px solid #f1f5f9; padding-bottom: 0.4rem;">
+                            <span style="color: #ea580c;">•</span>
+                            <span>{{ category }}</span>
+                            <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; margin-left: auto;">{{ items|length }} available</span>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.75rem;">
+                            {% for item in items %}
+                            {% set unit_text = (item.pricing_unit or 'per_pax')|replace('per_', '') %}
+                            {% set is_pax = (item.pricing_unit == 'per_pax' or not item.pricing_unit or item.pricing_unit == 'pax') %}
+                            <label class="cust-item-card" id="card_food_{{ item.id }}">
+                                <input type="checkbox" 
+                                       class="cust-item-checkbox food-checkbox"
+                                       name="food_items"
+                                       value="{{ item.id }}"
+                                       data-id="{{ item.id }}"
+                                       data-name="{{ item.name }}"
+                                       data-category="{{ category }}"
+                                       data-price="{{ item.price or 0 }}"
+                                       data-unit="{{ unit_text }}"
+                                       data-is-pax="{{ 1 if is_pax else 0 }}"
+                                       onchange="handleFoodItemToggle(this)">
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                                        <strong style="color: #0f172a; font-size: 0.92rem; line-height: 1.3;">{{ item.name }}</strong>
+                                        {% if (item.price or 0) > 0 %}
+                                        <span class="price-badge-pax">
+                                            ₱{{ "{:,.2f}".format(item.price) }}/{{ unit_text }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    {% if item.description %}
+                                    <div style="font-size: 0.78rem; color: #64748b; margin-top: 4px; line-height: 1.4;">
+                                        {{ item.description }}
+                                    </div>
+                                    {% endif %}
+                                    {% if (item.price or 0) > 0 %}
+                                    <div class="subtotal-pill" id="subtotal_food_{{ item.id }}" style="display: none;">
+                                        ₱0.00
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div style="padding: 2rem; text-align: center; color: #94a3b8; font-size: 0.9rem; background: #f8fafc; border-radius: 12px; border: 1.5px dashed #cbd5e1;">
+                    <i class="fas fa-utensils" style="font-size: 1.75rem; margin-bottom: 0.5rem; display: block; color: #cbd5e1;"></i>
+                    No menu items have been made available by the caterer for this customizable package.
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- SECTION B: SERVICES -->
+            <div class="cust-section-card">
+                <div class="cust-section-header">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="cust-tag-section" style="background: #eff6ff; color: #1d4ed8;">Services</span>
+                        <h3 class="cust-section-title">
+                            <i class="fas fa-concierge-bell" style="color: #2563eb;"></i> Available Catering Services
+                        </h3>
+                    </div>
+                    <span id="badgeServicesSelectedCount" style="font-size: 0.78rem; font-weight: 800; color: #1e40af; background: #dbeafe; padding: 3px 10px; border-radius: 20px;">
+                        0 Selected
+                    </span>
+                </div>
+
+                <p style="font-size: 0.85rem; color: #64748b; margin-top: -0.5rem; margin-bottom: 1.25rem;">
+                    Select professional staff, bar service, setup, or specialized event services.
+                </p>
+
+                {% if available_services and available_services|length > 0 %}
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.75rem;">
+                    {% for svc in available_services %}
+                    {% set unit_text = (svc.unit_type or 'service')|replace('per_', '') %}
+                    <label class="cust-item-card" id="card_svc_{{ svc.id }}">
+                        <input type="checkbox" 
+                               class="cust-item-checkbox service-checkbox"
+                               name="services"
+                               value="{{ svc.id }}"
+                               data-id="{{ svc.id }}"
+                               data-name="{{ svc.name }}"
+                               data-category="{{ svc.category or 'Service' }}"
+                               data-price="{{ svc.selling_price or 0 }}"
+                               data-unit="{{ unit_text }}"
+                               onchange="handleServiceItemToggle(this)">
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                                <strong style="color: #0f172a; font-size: 0.92rem; line-height: 1.3;">{{ svc.name }}</strong>
+                                <span class="price-badge-service">
+                                    ₱{{ "{:,.2f}".format(svc.selling_price or 0) }}{% if unit_text and unit_text != 'fixed' and unit_text != 'service' %}/{{ unit_text }}{% endif %}
+                                </span>
+                            </div>
+                            {% if svc.description %}
+                            <div style="font-size: 0.78rem; color: #64748b; margin-top: 4px; line-height: 1.4;">
+                                {{ svc.description }}
+                            </div>
+                            {% endif %}
+                            <div class="subtotal-pill" id="subtotal_svc_{{ svc.id }}" style="display: none;">
+                                ₱{{ "{:,.2f}".format(svc.selling_price or 0) }}
+                            </div>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div style="padding: 1.75rem; text-align: center; color: #94a3b8; font-size: 0.88rem; background: #f8fafc; border-radius: 12px; border: 1.5px dashed #cbd5e1;">
+                    <i class="fas fa-concierge-bell" style="font-size: 1.5rem; margin-bottom: 0.5rem; display: block; color: #cbd5e1;"></i>
+                    No additional services have been made available for customization.
+                </div>
+                {% endif %}
+            </div>
+
+
+
+            <!-- SECTION D: SPECIAL REQUESTS -->
+            <div class="cust-section-card">
+                <h3 class="cust-section-title" style="margin-bottom: 0.75rem;">
+                    <i class="fas fa-comment-alt" style="color: #ea580c;"></i> Special Requests &amp; Notes
+                </h3>
+                <textarea name="special_requests" id="custSpecialRequests" class="form-input" rows="3" 
+                          placeholder="Let the caterer know about allergies, dietary preferences, or specific preparation instructions..."
+                          style="width: 100%; border-radius: 10px; border: 1.5px solid #cbd5e1; padding: 0.75rem 1rem; font-size: 0.88rem;">{{ saved_customization.special_requests or '' }}</textarea>
+            </div>
+        </div>
+
+        <!-- Sticky Summary Sidebar -->
+        <div class="cust-sidebar-col">
+            <div class="cust-summary-card">
+                <h3 style="font-size: 1.1rem; font-weight: 900; color: #0f172a; margin: 0 0 1rem 0; padding-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9;">
+                    <i class="fas fa-receipt" style="color: #ea580c; margin-right: 6px;"></i> Live Estimate
+                </h3>
+
+                <div class="summary-row">
+                    <span>Guest Count:</span>
+                    <strong id="summaryGuestCountDisplay" style="color: #0f172a;">{{ initial_guest_count }} Pax</strong>
+                </div>
+
+                <div class="summary-row" id="rowBasePrice" style="{% if not (package.price_per_head or package.price) %}display: none;{% endif %}">
+                    <span>Base Package Price:</span>
+                    <strong style="color: #0f172a;">₱{{ "{:,.2f}".format(package.price_per_head or package.price or 0) }}</strong>
+                </div>
+
+                <div class="summary-row" id="rowFoodSubtotal">
+                    <span id="lblFoodSummary">Food (0 items):</span>
+                    <strong id="valFoodSummary" style="color: #15803d;">₱0.00</strong>
+                </div>
+
+                <div class="summary-row" id="rowServicesSubtotal">
+                    <span id="lblServicesSummary">Services (0 items):</span>
+                    <strong id="valServicesSummary" style="color: #1e40af;">₱0.00</strong>
+                </div>
+
+
+
+                <div class="summary-total-row">
+                    <div>
+                        <span style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Estimated Total</span>
+                        <div id="summaryEstimatedTotal" style="font-size: 1.65rem; font-weight: 900; color: #ea580c; line-height: 1.1;">
+                            ₱0.00
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Validation Alert Box -->
+                <div id="validationAlert" style="display: none; margin-top: 1rem; padding: 0.75rem 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #b91c1c; font-size: 0.8rem; font-weight: 600;">
+                    <i class="fas fa-exclamation-triangle" style="margin-right: 4px;"></i>
+                    <span id="validationAlertText">Please select at least one item.</span>
+                </div>
+
+                <button type="button" id="btnSubmitCustomization" class="btn-continue-cust" onclick="validateAndSubmitCustomization()">
+                    <span>Continue to Event Details</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+
+                <a href="/customer/caterer/{{ caterer.id }}" style="display: block; text-align: center; margin-top: 0.85rem; font-size: 0.82rem; font-weight: 700; color: #64748b; text-decoration: none;">
+                    <i class="fas fa-arrow-left" style="margin-right: 4px;"></i> Back to Profile
+                </a>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block step_js %}
+<script>
+const basePackagePrice = {{ (package.price_per_head or package.price or 0) | tojson }};
+const minGuestCapacity = {{ (package.min_guests or caterer.min_pax or 10) | tojson }};
+let currentGuestCount = parseInt(document.getElementById('custGuestCount')?.value, 10) || minGuestCapacity;
+
+function handleGuestCountChange(val) {
+    let parsed = parseInt(val, 10);
+    if (isNaN(parsed) || parsed < 1) parsed = 1;
+    currentGuestCount = parsed;
+    
+    const display = document.getElementById('summaryGuestCountDisplay');
+    if (display) display.innerText = `${currentGuestCount} Pax`;
+
+    // Recompute all per-pax items and live estimate
+    updateCustomizationState();
+}
+
+function handleFoodItemToggle(input) {
+    const card = document.getElementById(`card_food_${input.value}`);
+    if (card) {
+        if (input.checked) card.classList.add('selected');
+        else card.classList.remove('selected');
+    }
+    updateCustomizationState();
+}
+
+function handleServiceItemToggle(input) {
+    const card = document.getElementById(`card_svc_${input.value}`);
+    if (card) {
+        if (input.checked) card.classList.add('selected');
+        else card.classList.remove('selected');
+    }
+    updateCustomizationState();
+}
+
+
+function updateCustomizationState() {
+    let foodSubtotal = 0;
+    let foodSelectedCount = 0;
+
+    let servicesSubtotal = 0;
+    let servicesSelectedCount = 0;
+
+    // 1. Food Calculation
+    document.querySelectorAll('.food-checkbox').forEach(cb => {
+        const id = cb.value;
+        const subtotalPill = document.getElementById(`subtotal_food_${id}`);
+        const price = parseFloat(cb.dataset.price) || 0;
+        const isPax = cb.dataset.isPax === '1';
+
+        if (cb.checked) {
+            foodSelectedCount++;
+            let itemTotal = isPax ? (price * currentGuestCount) : price;
+            foodSubtotal += itemTotal;
+
+            if (subtotalPill && price > 0) {
+                subtotalPill.style.display = 'inline-block';
+                subtotalPill.innerText = `₱${itemTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })} (${isPax ? currentGuestCount + ' pax' : cb.dataset.unit})`;
+            }
+        } else {
+            if (subtotalPill) subtotalPill.style.display = 'none';
+        }
+    });
+
+    // 2. Services Calculation
+    document.querySelectorAll('.service-checkbox').forEach(cb => {
+        const id = cb.value;
+        const subtotalPill = document.getElementById(`subtotal_svc_${id}`);
+        const price = parseFloat(cb.dataset.price) || 0;
+
+        if (cb.checked) {
+            servicesSelectedCount++;
+            servicesSubtotal += price;
+
+            if (subtotalPill) {
+                subtotalPill.style.display = 'inline-block';
+                subtotalPill.innerText = `₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+            }
+        } else {
+            if (subtotalPill) subtotalPill.style.display = 'none';
+        }
+    });
+
+    // 3. Update Header Badges
+    const badgeFood = document.getElementById('badgeMenuSelectedCount');
+    if (badgeFood) badgeFood.innerText = `${foodSelectedCount} Selected`;
+
+    const badgeSvc = document.getElementById('badgeServicesSelectedCount');
+    if (badgeSvc) badgeSvc.innerText = `${servicesSelectedCount} Selected`;
+
+    // 4. Update Sidebar Summary Rows
+    const lblFood = document.getElementById('lblFoodSummary');
+    const valFood = document.getElementById('valFoodSummary');
+    if (lblFood && valFood) {
+        lblFood.innerText = `Food (${foodSelectedCount} items):`;
+        valFood.innerText = `₱${foodSubtotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+    }
+
+    const lblSvc = document.getElementById('lblServicesSummary');
+    const valSvc = document.getElementById('valServicesSummary');
+    if (lblSvc && valSvc) {
+        lblSvc.innerText = `Services (${servicesSelectedCount} items):`;
+        valSvc.innerText = `₱${servicesSubtotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+    }
+
+    // 5. Grand Estimated Total
+    const grandTotal = basePackagePrice + foodSubtotal + servicesSubtotal;
+    const txtTotal = document.getElementById('summaryEstimatedTotal');
+    if (txtTotal) {
+        txtTotal.innerText = `₱${grandTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+    }
+}
+
+function validateAndSubmitCustomization() {
+    const alertBox = document.getElementById('validationAlert');
+    const alertText = document.getElementById('validationAlertText');
+    if (alertBox) alertBox.style.display = 'none';
+
+    // Verify at least one item is chosen across food or services
+    const selectedFoodBoxes = Array.from(document.querySelectorAll('.food-checkbox:checked'));
+    const selectedServiceBoxes = Array.from(document.querySelectorAll('.service-checkbox:checked'));
+
+    const totalSelected = selectedFoodBoxes.length + selectedServiceBoxes.length;
+
+    if (totalSelected === 0) {
+        if (alertBox && alertText) {
+            alertText.innerText = 'Please select at least one menu item or service to customize your package.';
+            alertBox.style.display = 'block';
+            alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            alert('Please select at least one menu item or service to customize your package.');
+        }
+        return;
+    }
+
+    // Check guest count minimum
+    const guestInput = document.getElementById('custGuestCount');
+    const guestVal = parseInt(guestInput?.value, 10) || minGuestCapacity;
+    if (guestVal < minGuestCapacity) {
+        if (alertBox && alertText) {
+            alertText.innerText = `The minimum guest count for this caterer is ${minGuestCapacity} guests.`;
+            alertBox.style.display = 'block';
+            alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            alert(`The minimum guest count for this caterer is ${minGuestCapacity} guests.`);
+        }
+        return;
+    }
+
+    // Build itemized payloads
+    let foodSubtotal = 0;
+    const foodPayload = selectedFoodBoxes.map(cb => {
+        const id = parseInt(cb.value, 10);
+        const price = parseFloat(cb.dataset.price) || 0;
+        const isPax = cb.dataset.isPax === '1';
+        const qty = isPax ? guestVal : 1;
+        const subtotal = price * qty;
+        foodSubtotal += subtotal;
+
+        return {
+            id: id,
+            name: cb.dataset.name,
+            category: cb.dataset.category || 'Menu',
+            price: price,
+            unit: cb.dataset.unit || 'pax',
+            qty: qty,
+            subtotal: subtotal
+        };
+    });
+
+    let servicesSubtotal = 0;
+    const servicesPayload = selectedServiceBoxes.map(cb => {
+        const id = parseInt(cb.value, 10);
+        const price = parseFloat(cb.dataset.price) || 0;
+        servicesSubtotal += price;
+
+        return {
+            id: id,
+            name: cb.dataset.name,
+            category: cb.dataset.category || 'Service',
+            price: price,
+            unit: cb.dataset.unit || 'service',
+            qty: 1,
+            subtotal: price
+        };
+    });
+
+    const grandTotal = basePackagePrice + foodSubtotal + servicesSubtotal;
+    const specialReq = document.getElementById('custSpecialRequests')?.value || '';
+
+    const finalPayload = {
+        package_id: {{ package.id }},
+        package_name: {{ package.name|tojson }},
+        pricing_mode: 'customizable',
+        guest_count: guestVal,
+        base_price: basePackagePrice,
+        selected_food: foodPayload,
+        selected_services: servicesPayload,
+        food_total: foodSubtotal,
+        services_total: servicesSubtotal,
+        estimated_total: grandTotal,
+        special_requests: specialReq
+    };
+
+    document.getElementById('customization_json').value = JSON.stringify(finalPayload);
+    document.getElementById('customizationForm').submit();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Restore pre-selected items if user navigated back
+    {% if saved_customization %}
+    try {
+        const saved = {{ saved_customization | tojson }};
+        if (saved && typeof saved === 'object') {
+            if (saved.selected_food) {
+                saved.selected_food.forEach(f => {
+                    const cb = document.querySelector(`.food-checkbox[value="${f.id}"]`);
+                    if (cb) {
+                        cb.checked = true;
+                        handleFoodItemToggle(cb);
+                    }
+                });
+            }
+            if (saved.selected_services) {
+                saved.selected_services.forEach(s => {
+                    const cb = document.querySelector(`.service-checkbox[value="${s.id}"]`);
+                    if (cb) {
+                        cb.checked = true;
+                        handleServiceItemToggle(cb);
+                    }
+                });
+            }
+
+        }
+    } catch(err) {
+        console.warn('Could not restore saved customization:', err);
+    }
+    {% endif %}
+
+    updateCustomizationState();
+});
+</script>
+{% endblock %}

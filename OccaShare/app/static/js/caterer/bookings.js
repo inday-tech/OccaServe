@@ -2619,6 +2619,21 @@ window.openBalanceSettlement = function(bookingId) {
 };
 
 // ═══ RECORD PAYMENT MODAL LOGIC ═══
+window.toggleRecordPaymentRefField = function() {
+    const methodEl = document.getElementById('recPayMethod');
+    const wrap = document.getElementById('recPayRefWrap');
+    const refInput = document.getElementById('recPayRef');
+    const reqMark = document.getElementById('recPayRefRequiredMark');
+    if (!methodEl || !wrap || !refInput) return;
+
+    const method = String(methodEl.value || 'Cash').toLowerCase();
+    const needsRef = ['gcash', 'bank transfer', 'bank', 'maya', 'check'].includes(method);
+    wrap.style.display = needsRef ? 'block' : 'none';
+    refInput.required = needsRef;
+    if (reqMark) reqMark.style.display = needsRef ? 'inline' : 'none';
+    if (!needsRef) refInput.value = '';
+};
+
 window.openRecordPaymentModal = function() {
     const modal = document.getElementById('recordPaymentModal');
     if (!modal) return;
@@ -2640,10 +2655,15 @@ window.openRecordPaymentModal = function() {
         amountInput.value = balanceVal > 0 ? balanceVal : '';
     }
 
+    const methodInput = document.getElementById('recPayMethod');
+    if (methodInput) methodInput.value = 'Cash';
+
     const refInput = document.getElementById('recPayRef') || document.getElementById('payReference');
     if (refInput) refInput.value = '';
     const notesInput = document.getElementById('recPayNotes') || document.getElementById('payNotes');
     if (notesInput) notesInput.value = '';
+
+    window.toggleRecordPaymentRefField();
 
     modal.style.zIndex = '10005';
     modal.style.display = 'flex';
@@ -2666,7 +2686,13 @@ window.closeRecordPaymentModal = function() {
 
 window.submitRecordPayment = async function(event) {
     if (event && event.preventDefault) event.preventDefault();
-    if (!currentBookingId) return;
+    if (event && event.stopPropagation) event.stopPropagation();
+
+    const bookingId = String(currentBookingId || window.currentBookingId || '').replace(/\D/g, '');
+    if (!bookingId) {
+        if (window.showError) window.showError('No booking selected.');
+        return false;
+    }
 
     const amountInput = document.getElementById('recPayAmount') || document.getElementById('payAmount');
     const methodInput = document.getElementById('recPayMethod') || document.getElementById('payMethod');
@@ -2675,16 +2701,24 @@ window.submitRecordPayment = async function(event) {
 
     const amount = parseFloat(amountInput?.value || 0);
     const method = methodInput?.value || 'Cash';
-    const reference = refInput?.value || '';
-    const notes = notesInput?.value || '';
+    const reference = (refInput?.value || '').trim();
+    const notes = (notesInput?.value || '').trim();
+    const methodL = String(method).toLowerCase();
+    const needsRef = ['gcash', 'bank transfer', 'bank', 'maya', 'check'].includes(methodL);
 
     if (amount <= 0 || isNaN(amount)) {
         if (typeof window.showError === 'function') window.showError('Payment amount must be greater than zero.');
         else alert('Payment amount must be greater than zero.');
-        return;
+        return false;
+    }
+    if (needsRef && !reference) {
+        if (typeof window.showError === 'function') window.showError('Reference number is required for GCash / Bank / Maya.');
+        else alert('Reference number is required for GCash / Bank / Maya.');
+        if (refInput) refInput.focus();
+        return false;
     }
 
-    const submitBtn = document.getElementById('btnSubmitRecPay') || event?.target?.querySelector('button[type="submit"]');
+    const submitBtn = document.getElementById('btnSubmitRecPay') || event?.target?.querySelector?.('button[type="submit"]');
     const originalText = submitBtn ? submitBtn.innerHTML : 'Save Payment';
     if (submitBtn) {
         submitBtn.disabled = true;
@@ -2692,11 +2726,12 @@ window.submitRecordPayment = async function(event) {
     }
 
     try {
-        const response = await fetch(`/caterer/api/bookings/${currentBookingId}/record-payment`, {
+        const response = await fetch(`/caterer/api/bookings/${bookingId}/record-payment`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify({
                 amount: amount,
@@ -2706,38 +2741,27 @@ window.submitRecordPayment = async function(event) {
             })
         });
 
-        const result = await response.json();
-        if (response.ok && result.success) {
+        let result = {};
+        try { result = await response.json(); } catch (e) {}
+
+        if (response.ok && (result.success || result.status === 'success')) {
             if (typeof window.showToast === 'function') {
                 window.showToast(result.message || 'Payment recorded successfully', 'success');
             } else if (typeof window.showSuccess === 'function') {
                 window.showSuccess(result.message || 'Payment recorded successfully');
-            } else {
-                alert(result.message || 'Payment recorded successfully');
             }
 
             const form = document.getElementById('recordPaymentForm');
             if (form) form.reset();
             window.closeRecordPaymentModal();
 
-            // Refresh the current open modal
-            const btn = document.querySelector(`.view-details[data-id="${currentBookingId}"]`) || document.getElementById(`btn-view-${currentBookingId}`);
-            if (btn) btn.dataset.workspaceHydrated = 'false';
-
-            const res = await fetch(`/caterer/api/bookings/${currentBookingId}/details`, { headers: { 'Accept': 'application/json' } });
-            if (res.ok) {
-                const detail = await res.json();
-                if (detail && btn) {
-                    hydrateButtonDataset(btn, detail);
-                    showBookingDetails(btn);
-                }
-            }
-
-            if (window.refreshBookingsTable) {
-                window.refreshBookingsTable();
-            }
+            await refreshBookingUiRealtime(bookingId, {
+                newPaymentStatus: result.new_payment_status || null,
+                closeModal: false
+            });
         } else {
-            const msg = result.detail || result.message || 'Failed to record payment.';
+            const msg = (Array.isArray(result.detail) ? result.detail.map(d => d.msg || d).join(', ') : null)
+                || result.detail || result.message || 'Failed to record payment.';
             if (typeof window.showError === 'function') window.showError(msg);
             else alert(msg);
         }
@@ -2751,6 +2775,7 @@ window.submitRecordPayment = async function(event) {
             submitBtn.innerHTML = originalText;
         }
     }
+    return false;
 };
 
 
@@ -2774,9 +2799,25 @@ function resetBookingTabs() {
 }
 
 // Global copy payment link function
+// Global copy payment link function — customer payment page (deposit or remaining balance)
 window.copyInvoiceLink = function(bookingId) {
-    const url = window.location.origin + '/customer/booking/' + bookingId + '/invoice';
-    const toastMsg = BOOKING_ACTION_TOASTS.copy_link;
+    const cleanId = String(bookingId || currentBookingId || '').replace(/\D/g, '');
+    if (!cleanId) {
+        if (window.showError) window.showError('No booking selected.');
+        return;
+    }
+
+    const viewBtn = document.querySelector(`.view-details[data-id="${cleanId}"]`);
+    const total = Math.max(parseFloat(viewBtn?.dataset?.totalRawAmount) || 0, 0);
+    const paid = Math.max(parseFloat(viewBtn?.dataset?.amountPaid) || 0, 0);
+    const hasRemaining = total > 0 && paid < (total - 0.009);
+    const path = hasRemaining
+        ? `/bookings/step/payment/${cleanId}?balance=true`
+        : `/bookings/step/payment/${cleanId}`;
+    const url = window.location.origin + path;
+    const toastMsg = hasRemaining
+        ? 'Remaining balance payment link copied!'
+        : 'Payment link copied to clipboard!';
 
     const onCopied = () => {
         if (window.showToast) window.showToast(toastMsg, 'success');
@@ -4449,27 +4490,7 @@ window.closeIframeModal = function() {
 
 
 window.sendPaymentReminder = function(bookingId) {
-    if (!bookingId) return;
-    const url = window.location.origin + '/customer/booking/' + bookingId + '/invoice';
-    
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(url).then(() => {
-            if (window.showSuccess) window.showSuccess('Payment link copied to clipboard!');
-            else alert('Payment link copied to clipboard!');
-        }).catch(err => {
-            alert('Failed to copy: ' + url);
-        });
-    } else {
-        const el = document.createElement('textarea');
-        el.value = url;
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
-        if (window.showSuccess) window.showSuccess('Payment link copied to clipboard!');
-        else alert('Payment link copied to clipboard!');
-    }
-
+    window.copyInvoiceLink(bookingId);
 };
 
 window.recordOfflinePayment = function(bookingId) {

@@ -396,3 +396,51 @@ class PaymentService:
                 "summary": summary,
             }
         return {"ok": True, "message": "", "summary": summary}
+
+    @staticmethod
+    def heal_premature_completion(booking: models.Booking, db: Session) -> bool:
+        """Reopen bookings that were marked completed while a balance still remains.
+
+        Returns True if the booking status was corrected.
+        """
+        if not booking or (booking.status or "").lower() != "completed":
+            return False
+
+        summary = PaymentService.get_payment_summary(booking)
+        if summary.get("is_fully_paid"):
+            # Align stale flags if amounts already cover the total
+            if (booking.payment_status or "").lower() not in {"paid", "fully_paid"}:
+                booking.payment_status = "paid"
+                db.commit()
+            return False
+
+        prep = (booking.preparation_status or "").lower()
+        if prep in {"preparing", "in_progress", "ready_for_delivery", "setup_in_progress", "setup_ongoing"}:
+            reopen_status = "preparing"
+        else:
+            reopen_status = "confirmed"
+            if prep in {"", "not_started", "completed"}:
+                booking.preparation_status = "not_started" if reopen_status == "confirmed" else prep
+
+        old_status = booking.status
+        booking.status = reopen_status
+
+        ps = (booking.payment_status or "").lower()
+        if ps in {"paid", "fully_paid"}:
+            booking.payment_status = (
+                "deposit_paid" if float(summary.get("verified_paid") or 0) > 0 else "partially_paid"
+            )
+
+        remaining = summary.get("remaining_balance", 0)
+        history = models.BookingHistory(
+            booking_id=booking.id,
+            status=reopen_status,
+            notes=(
+                f"System reopened booking from '{old_status}' because remaining balance "
+                f"₱{remaining:,.2f} was still unpaid. Settle balance before completing."
+            ),
+            entry_type="system_change",
+        )
+        db.add(history)
+        db.commit()
+        return True

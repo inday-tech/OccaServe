@@ -1155,11 +1155,157 @@ async def start_booking(request: Request, caterer_id: int, package_id: Optional[
         "user_id": user.id
     }
     
-    # If no package selected, go to Menu Selection first
-    if not package_id:
-        return RedirectResponse(url=f"/bookings/step/menu/{caterer_id}", status_code=303)
-    
+    # Check if package is customizable
+    if package_id:
+        pkg = db.query(models.CateringPackage).get(package_id)
+        if pkg and pkg.pricing_mode == 'customizable':
+            return RedirectResponse(url=f"/bookings/customize/{caterer_id}?package_id={package_id}", status_code=303)
+
     # Always go to Phase 1 (Details) if package is already selected
+    return RedirectResponse(url="/bookings/step/details", status_code=303)
+
+@router.get("/customize/{caterer_id}", response_class=HTMLResponse)
+async def customize_package_page(
+    request: Request,
+    caterer_id: int,
+    package_id: Optional[int] = None,
+    db: Session = Depends(database.get_db)
+):
+    caterer = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id).first()
+    if not caterer or caterer.verification_status != 'Verified' or not caterer.user.is_verified:
+        return RedirectResponse(url="/customer/marketplace?error_msg=This partner is not currently authorized to accept bookings.")
+
+    user = get_current_user_from_session(request, db)
+    if not user:
+        return RedirectResponse(url=f"/auth/login?next=/bookings/customize/{caterer_id}?package_id={package_id or ''}")
+
+    if user.role == 'customer':
+        is_complete, _, missing = is_customer_profile_complete(user)
+        if not is_complete:
+            missing_text = "+".join(["- " + m for m in missing])
+            return RedirectResponse(
+                url=f"/customer/profile?alert=incomplete_profile&msg=Please+complete+your+profile+before+booking.+Missing:+{missing_text}",
+                status_code=303
+            )
+
+    sess_data = request.session.get("booking_data", {})
+    actual_pkg_id = package_id or sess_data.get("package_id")
+    if not actual_pkg_id:
+        return RedirectResponse(url=f"/customer/caterer/{caterer_id}", status_code=303)
+
+    package = db.query(models.CateringPackage).get(actual_pkg_id)
+    if not package or package.caterer_id != caterer.id:
+        return RedirectResponse(url=f"/customer/caterer/{caterer_id}", status_code=303)
+
+    rules = package.selection_rules or {}
+    if isinstance(rules, str):
+        try:
+            rules = json.loads(rules)
+        except Exception:
+            rules = {}
+
+    available_menu_ids = rules.get("available_menu_ids", [])
+    available_service_ids = rules.get("available_service_ids", [])
+    available_equipment_ids = rules.get("available_equipment_ids", [])
+
+    # Fetch available menu items from database
+    available_menu_items = []
+    if available_menu_ids:
+        available_menu_items = db.query(models.MenuItem).filter(
+            models.MenuItem.id.in_(available_menu_ids),
+            models.MenuItem.caterer_id == caterer.id,
+            models.MenuItem.is_archived == False
+        ).order_by(models.MenuItem.category.asc(), models.MenuItem.name.asc()).all()
+
+    # Group available menu items by category
+    categorized_available_menu = {}
+    for item in available_menu_items:
+        cat = item.category or "Others"
+        if cat not in categorized_available_menu:
+            categorized_available_menu[cat] = []
+        categorized_available_menu[cat].append(item)
+
+    # Fetch available services from database
+    available_services = []
+    if available_service_ids:
+        available_services = db.query(models.Service).filter(
+            models.Service.id.in_(available_service_ids),
+            models.Service.caterer_id == caterer.id,
+            models.Service.is_archived == False
+        ).order_by(models.Service.name.asc()).all()
+
+    # Fetch available equipment from database
+    available_equipment = []
+    if available_equipment_ids:
+        available_equipment = db.query(models.Equipment).filter(
+            models.Equipment.id.in_(available_equipment_ids),
+            models.Equipment.caterer_id == caterer.id,
+            models.Equipment.is_archived == False
+        ).order_by(models.Equipment.name.asc()).all()
+
+    # Backward compatibility: legacy menu_groups & optional_services
+    menu_groups = rules.get("menu_groups", [])
+    optional_services = rules.get("optional_services", [])
+    grouped_inclusions = get_package_grouped_inclusions(package)
+
+    # Initial guest count from session or package min_guests or caterer min_pax
+    initial_guest_count = sess_data.get("guest_count") or package.min_guests or caterer.min_pax or 50
+    saved_customization = sess_data.get("customization", {})
+
+    return templates.TemplateResponse("customer/booking_wizard/customizable_package.html", {
+        "request": request,
+        "caterer": caterer,
+        "package": package,
+        "available_menu_items": available_menu_items,
+        "categorized_available_menu": categorized_available_menu,
+        "available_services": available_services,
+        "available_equipment": available_equipment,
+        "menu_groups": menu_groups,
+        "optional_services": optional_services,
+        "grouped_inclusions": grouped_inclusions,
+        "initial_guest_count": initial_guest_count,
+        "saved_customization": saved_customization,
+        "user": user,
+        "current_step": 1,
+        "active_page": "bookings"
+    })
+
+@router.post("/customize/save")
+async def save_customization_selection(
+    request: Request,
+    caterer_id: int = Form(...),
+    package_id: int = Form(...),
+    customization_json: str = Form(...),
+    db: Session = Depends(database.get_db)
+):
+    user = get_current_user_from_session(request, db)
+    if not user:
+        return RedirectResponse(url=f"/auth/login?next=/bookings/customize/{caterer_id}?package_id={package_id}", status_code=303)
+
+    parsed_customization = {}
+    if customization_json:
+        try:
+            parsed_customization = json.loads(customization_json)
+        except Exception as e:
+            print(f"[CustomizeSave] Error parsing JSON: {e}")
+
+    booking_data = request.session.get("booking_data", {})
+    booking_data["caterer_id"] = caterer_id
+    booking_data["package_id"] = package_id
+    booking_data["user_id"] = user.id
+    booking_data["customization"] = parsed_customization
+    if "guest_count" in parsed_customization:
+        try:
+            booking_data["guest_count"] = int(parsed_customization["guest_count"])
+        except (ValueError, TypeError):
+            pass
+    if "estimated_total" in parsed_customization:
+        try:
+            booking_data["custom_estimated_total"] = float(parsed_customization["estimated_total"])
+        except (ValueError, TypeError):
+            pass
+    request.session["booking_data"] = booking_data
+
     return RedirectResponse(url="/bookings/step/details", status_code=303)
 
 @router.get("/custom/request/{caterer_id}")
@@ -1518,11 +1664,16 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
 
     grouped_inclusions = get_package_grouped_inclusions(package) if package else {"food": [], "services": [], "equipment": []}
 
+    customization = data.get("customization")
+    if not customization and booking and booking.custom_requirements:
+        customization = booking.custom_requirements.get("customization")
+
     return templates.TemplateResponse("customer/booking_wizard/step_details.html", {
         "request": request,
         "booking_data": data,
         "booking": booking,
         "package": package,
+        "customization": customization,
         "caterer_packages": caterer_packages,
         "packages_map": packages_map,
         "grouped_inclusions": grouped_inclusions,
@@ -1793,12 +1944,25 @@ async def step_details_submit(
         
         custom_reqs = booking.custom_requirements or {}
         if theme_motif: custom_reqs["theme_motif"] = theme_motif
+        sess_cust = request.session.get("booking_data", {}).get("customization")
+        if not sess_cust and booking.custom_requirements:
+            sess_cust = booking.custom_requirements.get("customization")
+        if sess_cust:
+            custom_reqs["package_type"] = "customizable"
+            custom_reqs["customization"] = sess_cust
         booking.custom_requirements = custom_reqs
         
         # Clear old items to re-save
         db.query(models.BookingMenuItem).filter(models.BookingMenuItem.booking_id == booking.id).delete()
     else:
         # Create New Draft
+        sess_cust = request.session.get("booking_data", {}).get("customization")
+        new_custom_reqs = {}
+        if theme_motif: new_custom_reqs["theme_motif"] = theme_motif
+        if sess_cust:
+            new_custom_reqs["package_type"] = "customizable"
+            new_custom_reqs["customization"] = sess_cust
+
         booking = models.Booking(
             user_id=user.id,
             caterer_id=caterer_id,
@@ -1817,7 +1981,7 @@ async def step_details_submit(
             special_requests=special_requests,
             status="draft",
             document_type="booking_agreement",
-            custom_requirements={"theme_motif": theme_motif} if theme_motif else None
+            custom_requirements=new_custom_reqs if new_custom_reqs else None
         )
         db.add(booking)
     
@@ -1850,9 +2014,10 @@ async def step_details_submit(
 
     # 3. Save Selected Items and Validate Rules
     package = db.query(models.CateringPackage).get(package_id_int) if package_id_int else None
-    
-    # Selection Rule Validation
-    if package and package.selection_rules:
+    is_customizable_package = bool((package and getattr(package, 'pricing_mode', '') == 'customizable') or (sess_cust and isinstance(sess_cust, dict)))
+
+    # Selection Rule Validation (Only for fixed packages with category limits)
+    if not is_customizable_package and package and package.selection_rules and isinstance(package.selection_rules, dict):
         category_counts = {}
         for item_id in selected_items:
             mi = db.query(models.MenuItem).get(item_id)
@@ -1862,67 +2027,142 @@ async def step_details_submit(
                 
         for cat, count in category_counts.items():
             allowed = package.selection_rules.get(cat)
-            if allowed is not None and count > int(allowed):
+            if allowed is not None and isinstance(allowed, (int, str)) and str(allowed).isdigit() and count > int(allowed):
                 # Rollback draft if validation fails
                 db.delete(booking)
                 db.commit()
                 return RedirectResponse(url=f"{redirect_base}?booking_error=You+selected+too+many+items+in+{cat}", status_code=303)
 
-    all_items = selected_items + selected_addons
-    if not selected_items and package and package.menu_items:
-        default_pkg_items = [mi.id for mi in package.menu_items if getattr(mi, 'category', '') not in ["Rentals", "Services"] and not getattr(mi, 'is_addon', False)]
-        all_items = default_pkg_items + selected_addons
+    if is_customizable_package and sess_cust:
+        # Sync guest count into customization payload
+        sess_cust["guest_count"] = guest_count_int
+        food_tot = 0.0
+        # Save customizable selected food items
+        for food in sess_cust.get("selected_food", []):
+            f_id = food.get("id")
+            f_price = float(food.get("price", 0))
+            f_qty = guest_count_int if (food.get("unit") in ["pax", "per_pax", "per guest", "per_guest"] or not food.get("qty") or food.get("qty") == 1) else int(food.get("qty", guest_count_int))
+            food["qty"] = f_qty
+            f_sub = f_price * f_qty
+            food["subtotal"] = f_sub
+            food_tot += f_sub
+            mi = db.query(models.MenuItem).get(f_id)
+            if mi:
+                db.add(models.BookingMenuItem(
+                    booking_id=booking.id,
+                    menu_item_id=f_id,
+                    is_add_on=False,
+                    price=f_price,
+                    quantity=f_qty
+                ))
 
-    for item_id in all_items:
-        menu_item = db.query(models.MenuItem).get(item_id)
-        if menu_item:
-            item_price = menu_item.addon_price if menu_item.is_addon else (getattr(menu_item, 'upgrade_fee', 0.0) or 0.0)
-            booking_item = models.BookingMenuItem(
-                booking_id=booking.id,
-                menu_item_id=item_id,
-                is_add_on=menu_item.is_addon,
-                price=item_price,
-                quantity=guest_count_int
-            )
-            db.add(booking_item)
-            
-    for equip_id in selected_equipment_addons:
-        equip_item = db.query(models.Equipment).get(equip_id)
-        if equip_item:
-            booking_item = models.BookingMenuItem(
-                booking_id=booking.id,
-                equipment_id=equip_id,
-                is_add_on=True,
-                price=equip_item.addon_price or 0.0
-            )
-            db.add(booking_item)
+        # Save customizable selected services
+        srv_tot = 0.0
+        for svc in sess_cust.get("selected_services", []):
+            s_id = svc.get("id")
+            s_price = float(svc.get("price", 0))
+            s_qty = int(svc.get("qty", 1))
+            srv_tot += s_price * s_qty
+            si = db.query(models.Service).get(s_id)
+            if si:
+                db.add(models.BookingMenuItem(
+                    booking_id=booking.id,
+                    service_id=s_id,
+                    is_add_on=False,
+                    price=s_price,
+                    quantity=s_qty
+                ))
 
-    for serv_id in selected_service_addons:
-        serv_item = db.query(models.Service).get(serv_id)
-        if serv_item:
-            # --- Smart Capacity Phase 2 ---
-            qty = 1
-            if getattr(serv_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(serv_item, 'staff_to_pax_ratio', 0) > 0:
-                import math
-                qty = max(getattr(serv_item, 'min_staff_required', 1), math.ceil(guest_count_int / serv_item.staff_to_pax_ratio))
+        # Save customizable selected equipment
+        eq_tot = 0.0
+        for eq in sess_cust.get("selected_equipment", []):
+            e_id = eq.get("id")
+            e_price = float(eq.get("price", 0))
+            e_qty = int(eq.get("qty", 1))
+            eq_tot += e_price * e_qty
+            ei = db.query(models.Equipment).get(e_id)
+            if ei:
+                db.add(models.BookingMenuItem(
+                    booking_id=booking.id,
+                    equipment_id=e_id,
+                    is_add_on=False,
+                    price=e_price,
+                    quantity=e_qty
+                ))
+
+        sess_cust["food_total"] = food_tot
+        sess_cust["services_total"] = srv_tot
+        sess_cust["equipment_total"] = eq_tot
+        computed_total = food_tot + srv_tot + eq_tot + float(booking.travel_fee or 0.0)
+        sess_cust["estimated_total"] = computed_total
+        
+        c_req = booking.custom_requirements or {}
+        c_req["package_type"] = "customizable"
+        c_req["customization"] = sess_cust
+        booking.custom_requirements = c_req
+        booking.total_amount = computed_total
+        booking.total_price = computed_total
+        booking.reservation_fee = computed_total * 0.30
+    else:
+        # Standard Fixed Package flow (Unchanged)
+        all_items = selected_items + selected_addons
+        if not selected_items and package and package.menu_items:
+            default_pkg_items = [mi.id for mi in package.menu_items if getattr(mi, 'category', '') not in ["Rentals", "Services"] and not getattr(mi, 'is_addon', False)]
+            all_items = default_pkg_items + selected_addons
+
+        for item_id in all_items:
+            menu_item = db.query(models.MenuItem).get(item_id)
+            if menu_item:
+                item_price = menu_item.addon_price if menu_item.is_addon else (getattr(menu_item, 'upgrade_fee', 0.0) or 0.0)
+                booking_item = models.BookingMenuItem(
+                    booking_id=booking.id,
+                    menu_item_id=item_id,
+                    is_add_on=menu_item.is_addon,
+                    price=item_price,
+                    quantity=guest_count_int
+                )
+                db.add(booking_item)
                 
-            booking_item = models.BookingMenuItem(
-                booking_id=booking.id,
-                service_id=serv_id,
-                is_add_on=True,
-                price=serv_item.addon_price or 0.0,
-                quantity=qty
-            )
-            db.add(booking_item)
+        for equip_id in selected_equipment_addons:
+            equip_item = db.query(models.Equipment).get(equip_id)
+            if equip_item:
+                booking_item = models.BookingMenuItem(
+                    booking_id=booking.id,
+                    equipment_id=equip_id,
+                    is_add_on=True,
+                    price=equip_item.addon_price or 0.0
+                )
+                db.add(booking_item)
+
+        for serv_id in selected_service_addons:
+            serv_item = db.query(models.Service).get(serv_id)
+            if serv_item:
+                # --- Smart Capacity Phase 2 ---
+                qty = 1
+                if getattr(serv_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(serv_item, 'staff_to_pax_ratio', 0) > 0:
+                    import math
+                    qty = max(getattr(serv_item, 'min_staff_required', 1), math.ceil(guest_count_int / serv_item.staff_to_pax_ratio))
+                    
+                booking_item = models.BookingMenuItem(
+                    booking_id=booking.id,
+                    service_id=serv_id,
+                    is_add_on=True,
+                    price=serv_item.addon_price or 0.0,
+                    quantity=qty
+                )
+                db.add(booking_item)
     
     db.commit()
 
     # Update session
-    request.session["booking_data"] = {
+    sess_update = {
         "booking_id": booking.id,
         "caterer_id": caterer_id,
         "package_id": package_id_int
     }
+    if sess_cust:
+        sess_update["customization"] = sess_cust
+    request.session["booking_data"] = sess_update
 
     # Requirement #14 & #15: Transaction History != Verified. Only successful KYC makes customer verified.
     if user.is_verified and user.is_kyc_complete:
@@ -1990,13 +2230,13 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
         booking.status = 'pending_quotation'
         db.commit()
     
-    # Ensure quotation exists or create one (default 30% downpayment)
+    # Ensure quotation exists or create/refresh one (default 30% downpayment)
     from ..services.quotation import quotation_service
     quotation = quotation_service.get_quotation_by_booking(db, booking_id)
-    if not quotation:
-        if booking.is_custom_event or booking.travel_fee_status == "manual_quote":
-            return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?msg=Waiting+for+caterer+proposal", status_code=303)
-        quotation = quotation_service.create_quotation(db, booking, 30)
+    if not quotation or quotation.status == 'draft':
+        if not (booking.is_custom_event or booking.travel_fee_status == "manual_quote"):
+            dp_percent = quotation.downpayment_percent if quotation and quotation.downpayment_percent else 30
+            quotation = quotation_service.create_quotation(db, booking, dp_percent)
     
     return templates.TemplateResponse("customer/booking_wizard/step_quotation.html", {
         "request": request,
@@ -2104,6 +2344,11 @@ async def step_payment_page(booking_id: str, request: Request, db: Session = Dep
     booking = db.query(models.Booking).get(booking_id_int)
     if not booking: raise HTTPException(status_code=404)
 
+    # Heal premature completion (completed while balance still unpaid)
+    from ..services.payment_service import PaymentService
+    PaymentService.heal_premature_completion(booking, db)
+    db.refresh(booking)
+
     # CONTINUOUS REVALIDATION: Block loading payment page if expired
     is_valid, error_msg = BookingValidator.validate_booking_state(db, booking, update_if_expired=True)
     if not is_valid:
@@ -2169,6 +2414,11 @@ async def step_payment_submit(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
+    # Heal premature completion before validating / accepting payment
+    from ..services.payment_service import PaymentService
+    PaymentService.heal_premature_completion(booking, db)
+    db.refresh(booking)
+
     # CONTINUOUS REVALIDATION: Block submitting payment if expired
     is_valid, error_msg = BookingValidator.validate_booking_state(db, booking, update_if_expired=True)
     if not is_valid:
@@ -2186,6 +2436,48 @@ async def step_payment_submit(
     user = get_current_user_from_session(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
+
+    # ── CASH PAYMENT: Separate flow (no proof required) ──────────────────────
+    if payment_method == 'Cash':
+        booking.payment_method = 'Cash'
+
+        # Compute expected fee for reservation_fee tracking
+        if payment_plan == 'balance':
+            expected_fee = float(booking.total_amount or 0) - float(booking.reservation_fee or 0)
+        elif payment_plan == 'full':
+            expected_fee = float(booking.total_amount or 0)
+            booking.reservation_fee = expected_fee
+        elif payment_plan.isdigit():
+            percent = float(payment_plan)
+            expected_fee = float(booking.total_amount or 0) * (percent / 100.0)
+            booking.reservation_fee = expected_fee
+        else:
+            expected_fee = float(booking.reservation_fee or 0)
+
+        if payment_plan == 'balance':
+            booking.payment_status = 'cash_balance_requested'
+            history_note = f"Customer requested to pay remaining balance of \u20b1{expected_fee:,.2f} via Cash. Awaiting caterer confirmation."
+        else:
+            booking.payment_status = 'cash_payment_requested'
+            booking.status = 'pending'
+            history_note = f"Customer requested Cash payment of \u20b1{expected_fee:,.2f}. Awaiting caterer confirmation."
+
+        history = models.BookingHistory(
+            booking_id=booking.id,
+            status=booking.status,
+            notes=history_note
+        )
+        db.add(history)
+        db.commit()
+
+        # Notify caterer about cash payment request
+        await NotificationService.notify_new_booking(db, booking)
+
+        if payment_plan == 'balance':
+            return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?cash_requested=1", status_code=303)
+        else:
+            return RedirectResponse(url=f"/bookings/success/{booking.id}?cash_requested=1", status_code=303)
+    # ─────────────────────────────────────────────────────────────────────────
 
     # Validation: Reference Number
     if reference_no:
@@ -2229,19 +2521,34 @@ async def step_payment_submit(
             raise HTTPException(status_code=500, detail="Failed to upload payment proof to Cloudinary.")
 
             
-        # --- AI RECEIPT VALIDATION (GEMINI / OCR) ---
-        if payment_plan == 'balance':
-            expected_fee = float(booking.total_amount or 0) - float(booking.reservation_fee or 0)
-        elif payment_plan == 'full':
-            expected_fee = float(booking.total_amount or 0)
-            booking.reservation_fee = expected_fee # Update reservation fee to reflect the selected full amount
-        elif payment_plan.isdigit():
-            # Support dynamic percentage plans (e.g., '30', '50')
-            percent = float(payment_plan)
-            expected_fee = float(booking.total_amount or 0) * (percent / 100.0)
-            booking.reservation_fee = expected_fee # Update reservation fee to reflect the selected tier
+        # --- DYNAMIC AMOUNT CALCULATION (DO NOT TRUST FRONTEND) ---
+        total_amt = float(booking.total_amount or booking.total_price or 0.0)
+        
+        # Determine downpayment percentage: respect quotation if present, default 50%
+        dp_percent = 50.0
+        if booking.quotation and booking.quotation.downpayment_percent:
+            dp_percent = float(booking.quotation.downpayment_percent)
+        elif booking.reservation_fee and total_amt > 0 and float(booking.reservation_fee) < total_amt:
+            dp_percent = (float(booking.reservation_fee) / total_amt) * 100.0
+
+        plan_key = str(payment_plan or "").strip().lower()
+        if plan_key == 'balance':
+            paid_or_res = float(booking.reservation_fee or (total_amt * (dp_percent / 100.0)))
+            expected_fee = round(max(0.0, total_amt - paid_or_res), 2)
+            payment_type = "Balance"
+        elif plan_key in ['full', '100']:
+            expected_fee = round(total_amt, 2)
+            booking.reservation_fee = expected_fee
+            payment_type = "Full"
+        elif plan_key.isdigit():
+            percent = float(plan_key)
+            expected_fee = round(total_amt * (percent / 100.0), 2)
+            booking.reservation_fee = expected_fee
+            payment_type = "Deposit" if percent < 100.0 else "Full"
         else:
-            expected_fee = float(booking.reservation_fee or 0)
+            expected_fee = round(total_amt * (dp_percent / 100.0), 2)
+            booking.reservation_fee = expected_fee
+            payment_type = "Deposit"
             
         is_valid_receipt = await _validate_receipt_with_gemini(proof_url, payment_method, expected_amount=expected_fee)
 
@@ -2258,7 +2565,7 @@ async def step_payment_submit(
         if reference_no:
             booking.special_requests = (booking.special_requests or "") + f"\n[Payment Ref: {reference_no}]"
 
-    if not proof_url:
+    if not proof_url and payment_method != 'Cash':
         request.session["flash_error"] = "Payment proof is required for online booking."
         return RedirectResponse(url=f"/bookings/step/payment/{booking.id}?error=missing_proof", status_code=303)
 
@@ -2279,16 +2586,44 @@ async def step_payment_submit(
     else:
         booking.payment_status = "proof_submitted"
         booking.status = "pending"
+
+        # Create or update ONE BookingPaymentRecord (prevent duplicates on double submit)
+        existing_record = db.query(models.BookingPaymentRecord).filter(
+            models.BookingPaymentRecord.booking_id == booking.id,
+            models.BookingPaymentRecord.recorded_by == "Customer",
+            models.BookingPaymentRecord.payment_type == payment_type
+        ).first()
+
+        ref_notes = f"Payment proof submitted via {payment_method}. Ref: {reference_no or 'N/A'}"
+        from datetime import datetime, timezone
+        if existing_record:
+            existing_record.amount = expected_fee
+            existing_record.payment_method = payment_method
+            existing_record.payment_type = payment_type
+            existing_record.payment_date = datetime.now(timezone.utc)
+            existing_record.reference_notes = ref_notes
+        else:
+            payment_record = models.BookingPaymentRecord(
+                booking_id=booking.id,
+                amount=expected_fee,
+                payment_date=datetime.now(timezone.utc),
+                payment_method=payment_method,
+                payment_type=payment_type,
+                reference_notes=ref_notes,
+                recorded_by="Customer"
+            )
+            db.add(payment_record)
+
         history = models.BookingHistory(
             booking_id=booking.id,
             status="pending",
-            notes=f"Downpayment proof submitted via {payment_method}. Awaiting caterer verification."
+            notes=f"{payment_type} proof submitted via {payment_method}. Awaiting caterer verification."
         )
         db.add(history)
         db.commit()
         await NotificationService.notify_new_booking(db, booking)
         if proof_url:
-            await NotificationService.notify_payment_received(db, booking, expected_fee, "Downpayment Proof")
+            await NotificationService.notify_payment_received(db, booking, expected_fee, f"{payment_type} Proof")
         return RedirectResponse(url=f"/bookings/success/{booking.id}", status_code=303)
 
 
@@ -2352,8 +2687,41 @@ async def alacarte_manage_payment_submit(
     booking.payment_proof_url = proof_url
     booking.payment_method = payment_method
     booking.payment_status = "proof_submitted"
-    if booking.status in ['draft', 'pending_payment', 'awaiting_payment']:
-        booking.status = "pending"
+    booking.status = "pending"
+
+    # Calculate expected amount
+    total_amt = float(booking.total_amount or booking.total_price or 0.0)
+    expected_fee = float(booking.reservation_fee or total_amt)
+    if expected_fee <= 0:
+        expected_fee = total_amt
+    payment_type = "Full" if (expected_fee >= total_amt and total_amt > 0) else "Deposit"
+
+    # Create or update BookingPaymentRecord (prevent duplicates)
+    from datetime import datetime, timezone
+    existing_record = db.query(models.BookingPaymentRecord).filter(
+        models.BookingPaymentRecord.booking_id == booking.id,
+        models.BookingPaymentRecord.recorded_by == "Customer",
+        models.BookingPaymentRecord.payment_type == payment_type
+    ).first()
+
+    ref_notes = f"Ala Carte payment proof submitted via {payment_method}. Ref: {extracted_ref or 'N/A'}"
+    if existing_record:
+        existing_record.amount = expected_fee
+        existing_record.payment_method = payment_method
+        existing_record.payment_type = payment_type
+        existing_record.payment_date = datetime.now(timezone.utc)
+        existing_record.reference_notes = ref_notes
+    else:
+        new_record = models.BookingPaymentRecord(
+            booking_id=booking.id,
+            amount=expected_fee,
+            payment_date=datetime.now(timezone.utc),
+            payment_method=payment_method,
+            payment_type=payment_type,
+            reference_notes=ref_notes,
+            recorded_by="Customer"
+        )
+        db.add(new_record)
         
     # History
     history = models.BookingHistory(
@@ -2438,7 +2806,49 @@ async def reupload_proof_submit(
     booking.payment_proof_url = proof_url
     booking.payment_method = payment_method
     booking.payment_status = "proof_submitted"
+    booking.status = "pending"
 
+    total_amt = float(booking.total_amount or booking.total_price or 0.0)
+    dp_percent = 50.0
+    if booking.quotation and booking.quotation.downpayment_percent:
+        dp_percent = float(booking.quotation.downpayment_percent)
+    elif booking.reservation_fee and total_amt > 0 and float(booking.reservation_fee) < total_amt:
+        dp_percent = (float(booking.reservation_fee) / total_amt) * 100.0
+
+    plan_key = str(booking.payment_plan or "").strip().lower()
+    if plan_key in ['full', '100']:
+        expected_fee = round(total_amt, 2)
+        payment_type = "Full"
+    else:
+        expected_fee = round(total_amt * (dp_percent / 100.0), 2)
+        payment_type = "Deposit"
+    booking.reservation_fee = expected_fee
+
+    from datetime import datetime, timezone
+    existing_record = db.query(models.BookingPaymentRecord).filter(
+        models.BookingPaymentRecord.booking_id == booking.id,
+        models.BookingPaymentRecord.recorded_by == "Customer",
+        models.BookingPaymentRecord.payment_type == payment_type
+    ).first()
+
+    ref_notes = f"Re-uploaded payment proof submitted via {payment_method}."
+    if existing_record:
+        existing_record.amount = expected_fee
+        existing_record.payment_method = payment_method
+        existing_record.payment_type = payment_type
+        existing_record.payment_date = datetime.now(timezone.utc)
+        existing_record.reference_notes = ref_notes
+    else:
+        new_record = models.BookingPaymentRecord(
+            booking_id=booking.id,
+            amount=expected_fee,
+            payment_date=datetime.now(timezone.utc),
+            payment_method=payment_method,
+            payment_type=payment_type,
+            reference_notes=ref_notes,
+            recorded_by="Customer"
+        )
+        db.add(new_record)
 
     history = models.BookingHistory(
         booking_id=booking.id,
@@ -2512,6 +2922,30 @@ async def pay_balance_submit(
         booking.balance_proof_url = proof_url
         booking.payment_method = payment_method
         booking.payment_status = "balance_proof_submitted"
+
+        # Create payment record so caterer pending_review stays in sync
+        from datetime import datetime, timezone
+        existing_balance = db.query(models.BookingPaymentRecord).filter(
+            models.BookingPaymentRecord.booking_id == booking.id,
+            models.BookingPaymentRecord.recorded_by == "Customer",
+            models.BookingPaymentRecord.payment_type == "Balance"
+        ).first()
+        ref_notes = f"Balance proof submitted via {payment_method}."
+        if existing_balance:
+            existing_balance.amount = outstanding_balance
+            existing_balance.payment_method = payment_method
+            existing_balance.payment_date = datetime.now(timezone.utc)
+            existing_balance.reference_notes = ref_notes
+        else:
+            db.add(models.BookingPaymentRecord(
+                booking_id=booking.id,
+                amount=outstanding_balance,
+                payment_date=datetime.now(timezone.utc),
+                payment_method=payment_method,
+                payment_type="Balance",
+                reference_notes=ref_notes,
+                recorded_by="Customer"
+            ))
 
         history = models.BookingHistory(
             booking_id=booking.id,

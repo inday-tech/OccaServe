@@ -19,10 +19,22 @@ class BookingValidator:
         if not booking:
             return False, "Booking not found."
 
-        # 1. If already expired or cancelled or completed, don't allow transitions
+        # 1. Terminal statuses — but allow "completed" with unpaid remaining balance
+        #    (premature completion); payment settlement must still be possible.
         terminal_statuses = ["expired", "cancelled", "completed", "rejected"]
         if booking.status in terminal_statuses:
-            return False, f"Booking cannot be modified because its status is '{booking.status}'."
+            if booking.status == "completed":
+                try:
+                    from app.services.payment_service import PaymentService
+                    if not PaymentService.is_fully_paid(booking):
+                        # Not truly settled — allow balance payment / reopen flows
+                        pass
+                    else:
+                        return False, f"Booking cannot be modified because its status is '{booking.status}'."
+                except Exception:
+                    return False, f"Booking cannot be modified because its status is '{booking.status}'."
+            else:
+                return False, f"Booking cannot be modified because its status is '{booking.status}'."
 
         now = datetime.now()
         current_date = now.date()

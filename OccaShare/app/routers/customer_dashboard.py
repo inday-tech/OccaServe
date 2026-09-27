@@ -415,6 +415,11 @@ async def manage_booking(
     booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.user_id != user.id:
         raise HTTPException(status_code=404, detail="Booking not found")
+
+    # Reopen if completed while remaining balance is still unpaid
+    from ..services.payment_service import PaymentService
+    if PaymentService.heal_premature_completion(booking, db):
+        db.refresh(booking)
     
     # Calculate status progress for timeline
     current_status = (booking.status or "pending").lower()
@@ -645,8 +650,52 @@ async def upload_public_proof_of_payment(
         booking.special_requests = (booking.special_requests or "") + f"\n[Payment Ref: {reference_no}]"
         
     booking.payment_status = 'proof_submitted'
-    if booking.status in ['pending', 'draft', 'pending_payment']:
-        booking.status = 'awaiting_payment' # To signify it's waiting for caterer verification
+    booking.status = 'pending'
+
+    # Calculate expected amount dynamically
+    total_amt = float(booking.total_amount or booking.total_price or 0.0)
+    dp_percent = 50.0
+    if booking.quotation and booking.quotation.downpayment_percent:
+        dp_percent = float(booking.quotation.downpayment_percent)
+    elif booking.reservation_fee and total_amt > 0 and float(booking.reservation_fee) < total_amt:
+        dp_percent = (float(booking.reservation_fee) / total_amt) * 100.0
+
+    plan_key = str(booking.payment_plan or "").strip().lower()
+    if plan_key in ['full', '100']:
+        expected_fee = round(total_amt, 2)
+        payment_type = "Full"
+    else:
+        expected_fee = round(total_amt * (dp_percent / 100.0), 2)
+        payment_type = "Deposit"
+    booking.reservation_fee = expected_fee
+
+    # Create or update BookingPaymentRecord (prevent duplicates)
+    from datetime import datetime, timezone
+    existing_record = db.query(models.BookingPaymentRecord).filter(
+        models.BookingPaymentRecord.booking_id == booking.id,
+        models.BookingPaymentRecord.recorded_by == "Customer",
+        models.BookingPaymentRecord.payment_type == payment_type
+    ).first()
+
+    method_label = booking.payment_method or "Online Payment"
+    ref_notes = f"Payment proof submitted via {method_label}. Ref: {reference_no or 'N/A'}"
+    if existing_record:
+        existing_record.amount = expected_fee
+        existing_record.payment_method = method_label
+        existing_record.payment_type = payment_type
+        existing_record.payment_date = datetime.now(timezone.utc)
+        existing_record.reference_notes = ref_notes
+    else:
+        new_record = models.BookingPaymentRecord(
+            booking_id=booking.id,
+            amount=expected_fee,
+            payment_date=datetime.now(timezone.utc),
+            payment_method=method_label,
+            payment_type=payment_type,
+            reference_notes=ref_notes,
+            recorded_by="Customer"
+        )
+        db.add(new_record)
         
     db.commit()
     

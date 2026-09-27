@@ -423,7 +423,7 @@
 <!-- ── TAB 1: OVERVIEW & LOGISTICS ── -->
 <div id="tab-overview" class="tab-pane active">
     <!-- ── OUTSTANDING BALANCE BANNER ── -->
-    {% if booking.status in ['confirmed', 'preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress'] and booking.payment_plan != 'full' and booking.balance_due_date and booking.payment_status not in ['paid', 'fully_paid', 'proof_submitted', 'balance_proof_submitted', 'cash_balance_requested', 'balance_reupload_requested'] %}
+    {% if booking.status in ['confirmed', 'preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress', 'completed'] and booking.payment_plan != 'full' and booking.balance_due_date and booking.payment_status not in ['paid', 'fully_paid', 'proof_submitted', 'balance_proof_submitted', 'cash_balance_requested', 'balance_reupload_requested'] %}
         {% set total_val = booking.total_amount|float %}
         {% set res_fee = booking.reservation_fee|float if booking.reservation_fee else 0.0 %}
         {% set paid_now = booking.amount_paid|float if booking.amount_paid else res_fee %}
@@ -695,12 +695,16 @@
                             {% endif %}
                         </p>
                     </div>
-                {% elif balance_val > 0 and booking.payment_plan != 'full' and booking.status in ['confirmed', 'preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress'] and booking.payment_status not in ['paid', 'fully_paid'] %}
+                {% elif balance_val > 0 and booking.payment_plan != 'full' and booking.status in ['confirmed', 'preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress', 'completed'] and booking.payment_status not in ['paid', 'fully_paid'] %}
                     <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange">
                         Pay Remaining Balance <i class="fas fa-wallet"></i>
                     </a>
                     <p style="font-size: 0.72rem; color: #64748b; margin: 0.35rem 0 0; text-align: center;">Pay via GCash, Bank Transfer, or Cash</p>
-                {% elif not booking.review and (booking.status == 'completed' or (is_food_order and booking.status == 'arrived')) %}
+                {% elif not booking.review and booking.status == 'completed' and booking.payment_status in ['paid', 'fully_paid'] %}
+                    <a href="/customer/feedback/{{ booking.id }}" class="btn-action-elite" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);">
+                        Rate & Review Caterer <i class="fas fa-star"></i>
+                    </a>
+                {% elif not booking.review and (is_food_order and booking.status == 'arrived') %}
                     <a href="/customer/feedback/{{ booking.id }}" class="btn-action-elite" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);">
                         Rate & Review Caterer <i class="fas fa-star"></i>
                     </a>
@@ -848,17 +852,58 @@
             {% if booking.package and booking.package.inclusions %}
             <div style="margin-bottom: 2rem;">
                 <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase; margin-bottom: 0.75rem;"><i class="fas fa-box-open" style="margin-right: 6px;"></i> Package Core Inclusions</h4>
-                <div style="background: var(--dm-slate-50); border: 1px solid var(--dm-slate-200); border-radius: 12px; padding: 1rem; display: flex; flex-wrap: wrap; gap: 8px;">
-                    {% if booking.package.inclusions is mapping %}
-                        {% for key, val in booking.package.inclusions.items() %}
+                <div style="background: var(--dm-slate-50); border: 1px solid var(--dm-slate-200); border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 0.65rem;">
+                    {% set raw_incs = booking.package.inclusions %}
+                    {% if raw_incs is string %}
+                        {% set raw_incs = [] %}
+                    {% endif %}
+
+                    {% if raw_incs is mapping %}
+                        {% for key, val in raw_incs.items() %}
                             {% if val %}
-                            <span style="background: white; border: 1px solid var(--dm-slate-200); padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: var(--up-slate-900); display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                                <i class="fas fa-check-circle" style="color: var(--up-emerald); font-size: 0.75rem;"></i> {{ key }}
-                            </span>
+                            <div style="background: white; border: 1px solid var(--dm-slate-200); padding: 0.75rem 1rem; border-radius: 10px; display: flex; align-items: center; gap: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                                <i class="fas fa-check-circle" style="color: var(--up-emerald); font-size: 0.85rem;"></i>
+                                <span style="font-size: 0.88rem; font-weight: 700; color: var(--up-slate-900);">{{ key }}</span>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% elif raw_incs is iterable %}
+                        {% for inc in raw_incs %}
+                            {% if inc is mapping %}
+                                {% set inc_name = inc.get('name') or inc.get('item_name') or 'Inclusion' %}
+                                {% set inc_cat = inc.get('category') or inc.get('item_type') or '' %}
+                                {% set inc_type = (inc.get('item_type') or inc.get('type') or '')|string|lower %}
+                                {% set is_menu = inc_type in ['menu', 'food'] or ('menu' in (inc_cat|lower)) or ('food' in (inc_cat|lower)) %}
+                                {% set inc_qty = '' %}
+                                {% if not is_menu %}
+                                    {% set inc_qty = inc.get('quantity') or '' %}
+                                    {% if not inc_qty and inc.get('quantity_num') %}
+                                        {% set inc_qty = (inc.get('quantity_num')|string) ~ (' ' ~ (inc.get('unit') or '') if inc.get('unit') else '') %}
+                                    {% endif %}
+                                {% endif %}
+                                <div style="background: white; border: 1px solid var(--dm-slate-200); padding: 0.75rem 1rem; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                                    <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                                        <i class="fas fa-check-circle" style="color: var(--up-emerald); font-size: 0.85rem; flex-shrink: 0;"></i>
+                                        <div style="min-width: 0;">
+                                            <div style="font-size: 0.88rem; font-weight: 750; color: var(--up-slate-900);">{{ inc_name }}</div>
+                                            {% if inc_cat and not is_menu %}
+                                            <div style="font-size: 0.72rem; color: #64748b; font-weight: 600; margin-top: 2px;">{{ inc_cat }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% if inc_qty %}
+                                    <span style="font-size: 0.75rem; font-weight: 800; color: var(--up-orange); background: rgba(249,115,22,0.1); padding: 3px 10px; border-radius: 20px; white-space: nowrap;">{{ inc_qty }}</span>
+                                    {% endif %}
+                                </div>
+                            {% elif inc %}
+                            <div style="background: white; border: 1px solid var(--dm-slate-200); padding: 0.75rem 1rem; border-radius: 10px; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-check-circle" style="color: var(--up-emerald); font-size: 0.85rem;"></i>
+                                <span style="font-size: 0.88rem; font-weight: 700; color: var(--up-slate-900);">{{ inc }}</span>
+                            </div>
                             {% endif %}
                         {% endfor %}
                     {% else %}
-                        <span style="font-size: 0.85rem; color: var(--up-slate-900);">{{ booking.package.inclusions }}</span>
+                        <span style="font-size: 0.85rem; color: var(--dm-slate-500);">No structured inclusions listed.</span>
                     {% endif %}
                 </div>
             </div>

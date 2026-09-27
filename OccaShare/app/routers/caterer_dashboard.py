@@ -2307,6 +2307,11 @@ async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_u
     
     if booking.is_archived:
         raise HTTPException(status_code=400, detail="Cannot confirm or accept an archived booking.")
+
+    # Reopen if wrongly completed with unpaid balance (allows verifying balance proof)
+    PaymentService.heal_premature_completion(booking, db)
+    db.refresh(booking)
+
     if booking.status in ['cancelled', 'completed', 'expired']:
         raise HTTPException(status_code=400, detail=f"Cannot confirm or accept a booking that is already {booking.status}.")
 
@@ -2888,6 +2893,11 @@ async def get_booking_details_api(
     booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
+
+    # Reopen premature completions so remaining-balance settlement works
+    from app.services.payment_service import PaymentService
+    if PaymentService.heal_premature_completion(booking, db):
+        db.refresh(booking)
 
     # Fetch commission settings
     config = db.query(models.WebsiteConfig).first()
@@ -9466,29 +9476,53 @@ async def record_manual_payment(
         
     data = await request.json()
     amount = float(data.get("amount", 0))
-    method = data.get("payment_method", "cash")
-    reference = data.get("reference_number", "")
-    notes = data.get("notes", "")
+    method = (data.get("payment_method") or "Cash").strip()
+    reference = (data.get("reference_number") or data.get("reference_notes") or "").strip()
+    notes = (data.get("notes") or "").strip()
     
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be greater than zero.")
-        
+
+    method_l = method.lower()
+    needs_ref = method_l in {"gcash", "bank transfer", "bank", "maya", "check"}
+    if needs_ref and not reference:
+        raise HTTPException(status_code=400, detail="Reference number is required for GCash / Bank / Maya payments.")
+
+    total = float(booking.total_price or booking.total_amount or 0)
+    already_paid = float(booking.amount_paid or 0)
+    remaining = max(0.0, total - already_paid)
+    if remaining <= 0:
+        raise HTTPException(status_code=400, detail="This booking is already fully paid.")
+    if amount > remaining + 0.01:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Amount exceeds remaining balance of ₱{remaining:,.2f}."
+        )
+
+    note_parts = []
+    if reference:
+        note_parts.append(f"Ref: {reference}")
+    if notes:
+        note_parts.append(notes)
+    combined_notes = " | ".join(note_parts) if note_parts else f"{method} payment recorded by caterer."
+
+    payment_type = "Balance" if already_paid > 0 else "Deposit"
+    if total > 0 and (already_paid + amount) >= total - 0.009:
+        payment_type = "Full" if already_paid <= 0 else "Balance"
+
     record = models.BookingPaymentRecord(
         booking_id=booking.id,
         amount=amount,
         payment_method=method,
-        reference_number=reference,
-        notes=notes,
-        recorded_by=user.id
+        payment_type=payment_type,
+        reference_notes=combined_notes,
+        recorded_by="Caterer",
     )
     db.add(record)
     
-    # Update booking amount paid
-    if not booking.amount_paid: booking.amount_paid = 0
-    booking.amount_paid += amount
+    booking.amount_paid = already_paid + amount
     
-    total = float(booking.total_price or booking.total_amount or 0)
-    if total > 0 and booking.amount_paid >= total:
+    if total > 0 and booking.amount_paid >= total - 0.009:
         booking.payment_status = "paid"
         if booking.status in ["inquiry", "tentative", "pending", "awaiting_payment", "pending_payment"]:
             booking.status = "confirmed"
@@ -9500,7 +9534,7 @@ async def record_manual_payment(
     history = models.BookingHistory(
         booking_id=booking.id,
         status=booking.status,
-        notes=f"Recorded manual payment: P{amount:,.2f} via {method}",
+        notes=f"Recorded {method} payment: ₱{amount:,.2f}" + (f" ({reference})" if reference else ""),
         entry_type="payment"
     )
     db.add(history)
@@ -9508,6 +9542,7 @@ async def record_manual_payment(
     
     return {
         "success": True,
+        "status": "success",
         "message": "Payment recorded successfully",
         "new_paid": booking.amount_paid,
         "new_balance": max(0.0, total - booking.amount_paid),

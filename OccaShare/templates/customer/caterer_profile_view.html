@@ -1172,7 +1172,6 @@
     <!-- TABS NAVIGATION -->
     <div class="hub-tabs">
         <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-packages')" class="tab-btn active"><i class="fas fa-gift" style="margin-right: 4px;"></i> Packages</a>
-        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-equipment')" class="tab-btn"><i class="fas fa-chair" style="margin-right: 4px;"></i> Equipment Rentals</a>
         <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-portfolio')" class="tab-btn"><i class="fas fa-camera-retro" style="margin-right: 4px;"></i> Gallery</a>
         <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-policies')" class="tab-btn"><i class="fas fa-star" style="margin-right: 4px;"></i> Reviews &amp; Rules</a>
         <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-overview')" class="tab-btn"><i class="fas fa-info-circle" style="margin-right: 4px;"></i> About Us</a>
@@ -1477,9 +1476,70 @@
                     ${overtimeHtml}
                 </div>`;
 
-            // Selection Limits
+            // Selection Limits & Customizable Options
             let dishHtml = '';
-            if (pkg.selection_rules && Object.keys(pkg.selection_rules).length > 0) {
+            if (pkg.pricing_mode === 'customizable' && pkg.selection_rules) {
+                let sRules = pkg.selection_rules;
+                if (typeof sRules === 'string') {
+                    try { sRules = JSON.parse(sRules); } catch(e) { sRules = {}; }
+                }
+                const mGroups = (sRules && sRules.menu_groups) ? sRules.menu_groups : [];
+                const oServices = (sRules && sRules.optional_services) ? sRules.optional_services : [];
+
+                if (mGroups.length > 0) {
+                    dishHtml += `
+                    <div style="margin-bottom:1.25rem;">
+                        <h4 style="font-size:0.75rem;font-weight:800;color:var(--hub-slate-400);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
+                            <i class="fas fa-utensils" style="color:#ea580c;margin-right:6px;"></i>Customer Menu Choices
+                        </h4>
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                            ${mGroups.map(g => {
+                                const ruleText = g.rule_type === 'exact' ? `Choose ${g.rule_count}` : (g.rule_type === 'min' ? `Choose at least ${g.rule_count}` : `Choose up to ${g.rule_count}`);
+                                const opts = (g.options || []).map(o => {
+                                    let pText = 'Included';
+                                    if (o.pricing_type === 'per_pax' && o.price > 0) pText = `+₱${Number(o.price).toLocaleString()}/pax`;
+                                    else if (o.pricing_type === 'fixed' && o.price > 0) pText = `+₱${Number(o.price).toLocaleString()}`;
+                                    return `<span style="font-size:0.75rem;background:#fff7ed;color:#9a3412;padding:2px 8px;border-radius:4px;border:1px solid #fed7aa;">${o.name} <strong style="color:#c2410c;">(${pText})</strong></span>`;
+                                }).join(' ');
+                                return `
+                                    <div style="background:#ffffff;border:1px solid #fed7aa;border-radius:8px;padding:0.6rem 0.85rem;">
+                                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                                            <strong style="font-size:0.85rem;color:#0f172a;">${g.name}</strong>
+                                            <span style="font-size:0.7rem;font-weight:800;color:#c2410c;background:#ffedd5;padding:2px 6px;border-radius:4px;">${ruleText}</span>
+                                        </div>
+                                        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">
+                                            ${opts || '<span style="font-size:0.75rem;color:#94a3b8;font-style:italic;">No dishes specified yet</span>'}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>`;
+                }
+
+                if (oServices.length > 0) {
+                    dishHtml += `
+                    <div style="margin-bottom:1.25rem;">
+                        <h4 style="font-size:0.75rem;font-weight:800;color:var(--hub-slate-400);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
+                            <i class="fas fa-concierge-bell" style="color:#2563eb;margin-right:6px;"></i>Available Optional Services
+                        </h4>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            ${oServices.map(s => {
+                                let pStr = s.pricing_type === 'custom_quote' ? 'Custom Quote' : (s.pricing_type === 'starting' ? `Starting at ₱${Number(s.price).toLocaleString()}` : (s.pricing_type === 'per_pax' ? `+₱${Number(s.price).toLocaleString()}/pax` : `₱${Number(s.price).toLocaleString()} fixed`));
+                                return `
+                                    <div style="display:flex;justify-content:space-between;align-items:center;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:0.5rem 0.75rem;">
+                                        <div>
+                                            <strong style="font-size:0.82rem;color:#1e3a8a;">${s.name}</strong>
+                                            ${s.description ? `<span style="font-size:0.75rem;color:#64748b;display:block;">${s.description}</span>` : ''}
+                                        </div>
+                                        <span style="font-size:0.75rem;font-weight:800;color:#1d4ed8;background:#dbeafe;padding:2px 6px;border-radius:4px;white-space:nowrap;">${pStr}</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>`;
+                }
+            } else if (pkg.selection_rules && Object.keys(pkg.selection_rules).length > 0) {
                 dishHtml += `
                 <div style="margin-bottom:1.25rem;">
                     <h4 style="font-size:0.72rem;font-weight:800;color:var(--hub-slate-400);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
@@ -1506,7 +1566,10 @@
                 ${incHtml}
                 ${dishHtml}
                 ${window.catererAvailable
-                    ? `<a href="/bookings/start/{{ caterer.id }}?package_id=${id}" class="btn-hub-main" style="margin-top:0.5rem;display:flex;text-align:center;text-decoration:none;"><i class="fas fa-calendar-check"></i> Select this Package</a>`
+                    ? (pkg.pricing_mode === 'customizable'
+                        ? `<a href="/bookings/customize/{{ caterer.id }}?package_id=${id}" class="btn-hub-main" style="margin-top:0.5rem;display:flex;text-align:center;text-decoration:none;background:#ea580c;border-color:#ea580c;justify-content:center;"><i class="fas fa-sliders-h"></i> Customize this Package</a>`
+                        : `<a href="/bookings/start/{{ caterer.id }}?package_id=${id}" class="btn-hub-main" style="margin-top:0.5rem;display:flex;text-align:center;text-decoration:none;justify-content:center;"><i class="fas fa-calendar-check"></i> Select this Package</a>`
+                      )
                     : `<div class="btn-hub-main" style="margin-top:0.5rem;opacity:0.5;cursor:not-allowed;justify-content:center;"><i class="fas fa-ban"></i> Caterer Unavailable</div>`
                 }`;
 
@@ -1647,9 +1710,21 @@
                                 <img src="{{ pkg.image_url if pkg.image_url else 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400' }}" onerror="this.src='https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400'" class="ei-img">
                             </div>
                             <div class="ei-body">
-                                <span class="ei-cat">{{ pkg.service_type or 'General' }}</span>
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px; flex-wrap: wrap;">
+                                    {% if pkg.pricing_mode == 'customizable' %}
+                                    <span style="font-size:0.65rem;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:4px;padding:2px 8px;font-weight:800;letter-spacing:0.3px;">
+                                        <i class="fas fa-sliders-h" style="margin-right:2px;"></i> Customizable Package
+                                    </span>
+                                    {% else %}
+                                    <span class="ei-cat">{{ pkg.service_type or 'General' }}</span>
+                                    {% endif %}
+                                </div>
                                 <span class="ei-name">{{ pkg.name }}</span>
-                                {% if pkg.pricing_mode == 'fixed' or pkg.price_unit == 'total' %}
+                                {% if pkg.pricing_mode == 'customizable' %}
+                                <span class="ei-price" style="color: #16a34a; font-size: 0.95rem; font-weight: 800;">
+                                    Pay Per Selection
+                                </span>
+                                {% elif pkg.pricing_mode == 'fixed' or pkg.price_unit == 'total' %}
                                 <span class="ei-price">₱{{ "{:,.2f}".format(pkg.price if pkg.price else (pkg.price_per_head if pkg.price_per_head else 0)) }}<span style="font-size:0.65rem;font-weight:600;color:var(--hub-slate-400)"> total</span></span>
                                 {% else %}
                                 <span class="ei-price">₱{{ "{:,.2f}".format(pkg.price_per_head if pkg.price_per_head else (pkg.price if pkg.price else 0)) }}<span style="font-size:0.65rem;font-weight:600;color:var(--hub-slate-400)">/pax</span></span>
@@ -1681,6 +1756,10 @@
                                     <span class="btn-hub-main" style="font-size:0.78rem;padding:0.7rem;text-align:center;opacity:0.5;cursor:not-allowed;justify-content:center;">
                                         <i class="fas fa-ban"></i> Unavailable
                                     </span>
+                                    {% elif pkg.pricing_mode == 'customizable' %}
+                                    <a href="/bookings/customize/{{ caterer.id }}?package_id={{ pkg.id }}" class="btn-hub-main" style="font-size:0.78rem;padding:0.7rem;text-decoration:none;text-align:center;background:#ea580c;border-color:#ea580c;">
+                                        <i class="fas fa-sliders-h"></i> Customize Package
+                                    </a>
                                     {% else %}
                                     <a href="/bookings/start/{{ caterer.id }}?package_id={{ pkg.id }}" class="btn-hub-main" style="font-size:0.78rem;padding:0.7rem;text-decoration:none;text-align:center;">
                                         <i class="fas fa-calendar-plus"></i> Select Package
@@ -1698,51 +1777,6 @@
                 </div>
                 {% endif %}
             </div> <!-- Closes hub-tab-packages -->
-
-            <!-- EQUIPMENT RENTALS TAB -->
-            <div id="hub-tab-equipment" class="tab-content">
-                <div class="intel-card" style="padding: 1.75rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-                        <div>
-                            <h2 class="section-title" style="margin-bottom: 0.25rem;"><i class="fas fa-chair"></i> Equipment Rentals</h2>
-                            <p style="color: var(--hub-slate-600); font-size: 0.88rem; margin: 0;">Rent tables, chairs, party equipment, and dinnerware independently without booking a catering package. Select rental date to check real-time availability.</p>
-                        </div>
-                    </div>
-                    
-                    {% set equipment_items_to_display = active_equipment if (active_equipment is defined and active_equipment) else (active_inventory if active_inventory is defined else []) %}
-                    {% if equipment_items_to_display %}
-                    <div class="dish-grid">
-                        {% for item in equipment_items_to_display %}
-                        {% set item_price = (item.display_price if item.display_price is defined and item.display_price is not none and item.display_price > 0 else (item.rental_price if item.rental_price is defined and item.rental_price is not none and item.rental_price > 0 else (item.selling_price if item.selling_price is defined and item.selling_price is not none and item.selling_price > 0 else (item.price if item.price is defined and item.price is not none else 0)))) %}
-                        <div class="elite-item-card">
-                            <div class="ei-img-box">
-                                <img src="{{ item.image_url if item.image_url else 'https://ui-avatars.com/api/?name=' ~ (item.name|urlencode) ~ '&background=f1f5f9&color=10b981' }}" class="ei-img">
-                            </div>
-                            <div class="ei-body" style="padding: 1rem;">
-                                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                                    <span class="ei-cat">{{ item.category or 'Equipment' }}</span>
-                                    {% if item.average_rating and item.average_rating > 0 %}
-                                    <span style="font-size:0.65rem; font-weight:800; color:#b45309; background:rgba(245, 158, 11, 0.1); padding:2px 6px; border-radius:100px;">
-                                        <i class="fas fa-star"></i> {{ "%.1f"|format(item.average_rating) }} ({{ item.review_count }})
-                                    </span>
-                                    {% endif %}
-                                </div>
-                                <span class="ei-name" style="min-height: auto; margin-top: 4px;">{{ item.name }}</span>
-                                <span class="ei-price" style="font-size: 1rem; margin-top: 4px;">₱{{ "{:,.2f}".format(item_price or 0) }} <span style="font-size: 0.72rem; color: var(--hub-slate-500); font-weight: 600;">/ {{ item.unit_type or 'unit' }}</span></span>
-                                
-                                <button type="button" onclick="window.openInventoryDetails({{ item.id }})" class="btn-elite-sm" style="margin-top:auto;">
-                                    View Details
-                                </button>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <p style="color: var(--hub-slate-400); font-size: 0.9rem;">No equipment rentals available.</p>
-                    {% endif %}
-                </div>
-            </div> <!-- Closes hub-tab-equipment -->
-
 
             <!-- PORTFOLIO TAB -->
             <div id="hub-tab-portfolio" class="tab-content">
@@ -2081,7 +2115,7 @@ window.hubPkgs = {
         id: {{ pkg.id }},
         name: {{ pkg.name|tojson }},
         desc: {{ (pkg.description or '')|tojson }},
-        price: "₱{{ '{:,.2f}'.format(pkg.price if pkg.price else (pkg.price_per_head if pkg.price_per_head else 0)) if (pkg.pricing_mode == 'fixed' or pkg.price_unit == 'total') else '{:,.2f}'.format(pkg.price_per_head if pkg.price_per_head else (pkg.price if pkg.price else 0)) }}{{ ' total' if (pkg.pricing_mode == 'fixed' or pkg.price_unit == 'total') else '/pax' }}",
+        price: "{% if pkg.pricing_mode == 'customizable' %}Pay Per Selection{% elif (pkg.pricing_mode == 'fixed' or pkg.price_unit == 'total') %}₱{{ '{:,.2f}'.format(pkg.price if pkg.price else (pkg.price_per_head if pkg.price_per_head else 0)) }} total{% else %}₱{{ '{:,.2f}'.format(pkg.price_per_head if pkg.price_per_head else (pkg.price if pkg.price else 0)) }}/pax{% endif %}",
         price_raw: {{ (pkg.price_per_head if pkg.price_per_head else (pkg.price or 0))|tojson }},
         price_unit: {{ (pkg.price_unit or 'per_guest')|tojson }},
         pricing_mode: {{ (pkg.pricing_mode or 'per_pax')|tojson }},
