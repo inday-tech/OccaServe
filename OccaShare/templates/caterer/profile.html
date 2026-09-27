@@ -353,6 +353,8 @@
                 </h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {% for pkg in packages %}
+                    {% set pkg_mode = (pkg.pricing_mode or 'fixed')|lower %}
+                    {% set is_custom_pkg = pkg_mode == 'customizable' %}
                     <div
                         class="border border-slate-200 rounded-3xl overflow-hidden flex flex-col group transition-all hover:shadow-xl hover:border-brand/30 bg-white">
                         <div class="relative h-48 overflow-hidden bg-slate-50">
@@ -369,12 +371,21 @@
                                     {{ pkg.service_type if pkg.service_type else 'Premium' }}
                                 </span>
                             </div>
+                            <div class="absolute top-4 right-4">
+                                <span class="backdrop-blur px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm text-white border border-white/20"
+                                    style="background: {% if is_custom_pkg %}rgba(37, 99, 235, 0.92){% else %}rgba(15, 23, 42, 0.85){% endif %};">
+                                    <i class="fas {% if is_custom_pkg %}fa-sliders-h{% else %}fa-lock{% endif %}" style="font-size: 0.6rem; margin-right: 3px;"></i>
+                                    {{ 'Customizable' if is_custom_pkg else 'Fixed' }}
+                                </span>
+                            </div>
                         </div>
                         <div class="p-6 flex-1 flex flex-col">
                             <h3 class="text-base font-black text-slate-800 uppercase mb-2 leading-tight">{{ pkg.name }}
                             </h3>
                             <div class="text-brand font-black text-xl mb-4">
-                                {% if pkg.pricing_mode == 'per_pax' or pkg.price_unit == 'per_guest' %}
+                                {% if is_custom_pkg %}
+                                <span style="color: #16a34a;">Pay Per Selection</span>
+                                {% elif pkg.pricing_mode == 'per_pax' or pkg.price_unit == 'per_guest' %}
                                 ₱{{ "{:,.2f}".format(pkg.price_per_head if pkg.price_per_head else (pkg.price if
                                 pkg.price else 0)) }}<span class="text-[10px] text-slate-400 font-bold ml-1">/pax</span>
                                 {% else %}
@@ -383,8 +394,10 @@
                                     total</span>
                                 {% endif %}
                             </div>
+                            {% if pkg.description and pkg.description|trim|length > 2 %}
                             <p class="text-xs text-slate-500 mb-4 flex-1 line-clamp-3 leading-relaxed">{{
                                 pkg.description }}</p>
+                            {% endif %}
 
                             {% if pkg.inclusions %}
                             <div class="flex flex-wrap gap-1 mb-4 max-h-12 overflow-hidden">
@@ -419,153 +432,6 @@
             <!-- Gallery Section -->
             
 
-
-            <!-- Rentals & Equipment Section -->
-            {% set display_equipment = active_equipment if (active_equipment is defined and active_equipment) else (active_inventory if active_inventory is defined else []) %}
-
-            {% if display_equipment %}
-            <section class="card-premium p-6 mt-6">
-                <div class="flex items-center justify-between mb-6">
-                    <div>
-                        <h2 class="font-black text-slate-400 uppercase flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 0.25rem !important;">
-                            <span class="w-8 h-[1px] bg-slate-200"></span> Equipment Rentals
-                        </h2>
-                        <p class="text-xs text-slate-500">Rent event tables, chairs, dinnerware, and catering equipment independently.</p>
-                    </div>
-                    <span class="text-[10px] font-black text-brand uppercase bg-brand/10 px-2.5 py-1 rounded-full">
-                        {{ display_equipment|length }} Items Available
-                    </span>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                    {% for item in display_equipment %}
-                    {% set item_price = (item.rental_price if (item.rental_price is defined and item.rental_price is not none and item.rental_price > 0) else (item.display_price if (item.display_price is defined and item.display_price is not none and item.display_price > 0) else (item.price if (item.price is defined and item.price is not none) else 0))) %}
-                    {% set item_unit = item.unit_type or 'Piece' %}
-                    <div class="group border border-slate-200 rounded-3xl overflow-hidden flex flex-col bg-white transition-all hover:shadow-xl hover:border-brand/30">
-                        <div class="relative h-44 overflow-hidden bg-slate-100">
-                            {% if item.image_url %}
-                            <img src="{{ item.image_url }}" alt="{{ item.name }}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
-                            {% else %}
-                            <div class="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-300">
-                                <i class="fas fa-chair text-4xl mb-1 text-slate-300"></i>
-                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Equipment</span>
-                            </div>
-                            {% endif %}
-                            <div class="absolute top-3 left-3">
-                                <span class="bg-white/90 backdrop-blur px-2.5 py-1 rounded-full text-[9px] font-black text-slate-700 uppercase tracking-widest shadow-sm">
-                                    {{ item.category or 'Equipment' }}
-                                </span>
-                            </div>
-                            <div class="absolute bottom-3 right-3">
-                                <span class="bg-emerald-500/90 text-white backdrop-blur px-2.5 py-0.5 rounded-full text-[9px] font-bold shadow-sm">
-                                    ✓ {{ item.available_qty or 1 }} in stock
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="p-5 flex-1 flex flex-col">
-                            <h3 class="text-sm font-black text-slate-800 uppercase mb-1 leading-snug line-clamp-1">{{ item.name }}</h3>
-                            <div class="text-brand font-black text-lg mb-2">
-                                ₱{{ "{:,.2f}".format(item_price) }} <span class="text-[10px] text-slate-400 font-bold ml-0.5">/ {{ item_unit }}</span>
-                            </div>
-                            <p class="text-xs text-slate-500 mb-4 flex-1 line-clamp-2 leading-relaxed">
-                                {{ item.description or 'High-quality catering and event equipment for rent.' }}
-                            </p>
-
-                            <div class="flex gap-2 pt-2 border-t border-slate-100">
-                                <button type="button" onclick="openPublicEquipmentModal({{ item.id }})" class="w-full py-2.5 bg-brand text-white hover:bg-brand/90 rounded-xl text-xs font-black transition-all shadow-sm flex items-center justify-center gap-1.5 uppercase tracking-wider">
-                                    <i class="fas fa-chair text-[11px]"></i> Rent Equipment
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </section>
-            {% endif %}
-            
-{% if active_services %}
-            <section class="card-premium p-6 mt-6">
-                <div class="flex items-center justify-between mb-8">
-                    <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
-                        <span class="w-8 h-[1px] bg-slate-200"></span> Services
-                    </h2>
-                    <span class="text-[10px] font-black text-brand uppercase bg-brand/10 px-2.5 py-1 rounded-full">
-                        {{ active_services|length }} Items Available
-                    </span>
-                </div>
-
-                {% set inventory_categories = [] %}
-                {% for item in active_services %}
-                {% set cat_name = item.category if item.category else ('Equipment' if item.equipment_type else
-                'Service') %}
-                {% if cat_name not in inventory_categories %}
-                {% set _ = inventory_categories.append(cat_name) %}
-                {% endif %}
-                {% endfor %}
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                    {% for cat in inventory_categories %}
-                    {% set cat_items = [] %}
-                    {% for item in active_services %}
-                    {% set item_cat = item.category if item.category else ('Equipment' if item.equipment_type else
-                    'Service') %}
-                    {% if item_cat == cat %}
-                    {% set _ = cat_items.append(item) %}
-                    {% endif %}
-                    {% endfor %}
-
-                    {# Extract first active item with valid image in this category #}
-                    {% set active_photo = namespace(url='') %}
-                    {% for item in cat_items %}
-                    {% if item.image_url and not active_photo.url %}
-                    {% set active_photo.url = item.image_url %}
-                    {% endif %}
-                    {% endfor %}
-                    {% set cat_cover_image = active_photo.url if active_photo.url else
-                    'https://ui-avatars.com/api/?name=' ~ (cat|urlencode) ~
-                    '&background=f1f5f9&color=64748b&size=400&font-size=0.2' %}
-
-                    <div class="group relative rounded-3xl overflow-hidden border border-slate-200 bg-white transition-all duration-300 hover:shadow-xl hover:border-brand/30 flex flex-col cursor-pointer"
-                        onclick='openInventoryShowcase({{ cat|tojson|safe }})'>
-
-                        <div
-                            class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent z-10 pointer-events-none opacity-100 transition-opacity">
-                        </div>
-
-                        <div class="h-32 w-full bg-slate-100 relative overflow-hidden">
-                            <img src="{{ cat_cover_image }}"
-                                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                alt="{{ cat }}">
-                            <div class="absolute inset-0 bg-black/10 transition-opacity opacity-100"></div>
-                        </div>
-
-                        <div
-                            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center z-20 border-2 border-white text-slate-400 group-hover:text-brand transition-colors">
-                            <i class="fas fa-concierge-bell text-xl"></i>
-                        </div>
-
-                        <div class="p-6 pt-10 text-center flex-1 flex flex-col">
-                            <div class="flex flex-col items-center mb-3">
-                                <h3
-                                    class="text-sm font-black text-slate-800 uppercase tracking-widest mb-1.5 truncate max-w-full px-2">
-                                    {{ cat }}</h3>
-                                <span
-                                    class="text-[9px] font-bold text-slate-400 bg-slate-100 group-hover:bg-brand group-hover:text-white px-3 py-1 rounded-full transition-colors flex-shrink-0">
-                                    {{ cat_items|length }} Items
-                                </span>
-                            </div>
-
-                            <div
-                                class="mt-auto flex items-center justify-center gap-1.5 text-[9px] font-black text-brand uppercase tracking-wider opacity-100 transition-opacity">
-                                Explore Items <i class="fas fa-arrow-right text-[8px] mt-0.5 animate-bounce"></i>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </section>
-            {% endif %}
             
 <!-- Overview Section (Upgraded) -->
             <section class="{% if caterer.glass_mode %}glass-card{% else %}card-premium{% endif %} p-6">
@@ -1158,10 +1024,16 @@
 
     const publicPackages = {
         {% for pkg in packages %}
+        {% set pkg_mode = (pkg.pricing_mode or 'fixed')|lower %}
+        {% set is_custom_pkg = pkg_mode == 'customizable' %}
         "{{ pkg.id }}": {
             name: {{ pkg.name|tojson }},
             desc: {{ (pkg.description or '')|tojson }},
-            {% if pkg.pricing_mode == 'per_pax' or pkg.price_unit == 'per_guest' %}
+            pricing_mode: {{ pkg_mode|tojson }},
+            is_customizable: {{ 'true' if is_custom_pkg else 'false' }},
+            {% if is_custom_pkg %}
+            price: '<span style="color:#16a34a;">Pay Per Selection</span>',
+            {% elif pkg.pricing_mode == 'per_pax' or pkg.price_unit == 'per_guest' %}
             price: '₱{{ "{:,.2f}".format(pkg.price_per_head if pkg.price_per_head else (pkg.price if pkg.price else 0)) }} <span class="text-[10px] text-slate-400 font-bold ml-1">/pax</span>',
             {% else %}
             price: '₱{{ "{:,.2f}".format(pkg.price if pkg.price else (pkg.price_per_head if pkg.price_per_head else 0)) }} <span class="text-[10px] text-slate-400 font-bold ml-1">total</span>',
@@ -1182,6 +1054,73 @@
         },
         {% endfor %}
     };
+
+    const publicCatalog = {
+        menu: {
+            {% for item in caterer.menu_items if not item.is_archived %}
+            "{{ item.id }}": {
+                name: {{ item.name|tojson }},
+                category: {{ (item.category or '')|tojson }},
+                description: {{ (item.description or '')|tojson }},
+                image_url: {{ (item.image_url or '')|tojson }}
+            },
+            {% endfor %}
+        },
+        service: {
+            {% for item in (active_services or []) %}
+            "{{ item.id }}": {
+                name: {{ item.name|tojson }},
+                category: {{ (item.category or '')|tojson }},
+                description: {{ (item.description or '')|tojson }},
+                image_url: {{ (item.image_url or '')|tojson }}
+            },
+            {% endfor %}
+            {% if caterer.service_items is defined %}
+            {% for item in caterer.service_items if not item.is_archived %}
+            "{{ item.id }}": {
+                name: {{ item.name|tojson }},
+                category: {{ (item.category or '')|tojson }},
+                description: {{ (item.description or '')|tojson }},
+                image_url: {{ (item.image_url or '')|tojson }}
+            },
+            {% endfor %}
+            {% endif %}
+        }
+    };
+
+    function lookupPublicCatalogByName(name) {
+        const key = String(name || '').trim().toLowerCase();
+        if (!key) return null;
+        for (const bucket of [publicCatalog.menu, publicCatalog.service]) {
+            for (const item of Object.values(bucket || {})) {
+                if (String(item.name || '').trim().toLowerCase() === key) return item;
+            }
+        }
+        return null;
+    }
+
+    function renderOfferMediaCard(item, accentColor, fallbackIcon) {
+        const esc = (s) => String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const img = (item && item.image_url) ? String(item.image_url) : '';
+        const desc = String((item && item.description) || '').trim();
+        const showDesc = desc.length > 2;
+        const icon = fallbackIcon || 'fa-utensils';
+        return `
+            <div style="display:flex;gap:12px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:0.75rem;align-items:flex-start;">
+                <div style="width:64px;height:64px;border-radius:10px;overflow:hidden;background:#f1f5f9;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#cbd5e1;">
+                    ${img
+                        ? `<img src="${esc(img)}" alt="" onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas ${icon}\\'></i>';" style="width:100%;height:100%;object-fit:cover;">`
+                        : `<i class="fas ${icon}"></i>`}
+                </div>
+                <div style="min-width:0;flex:1;">
+                    <div style="font-size:0.88rem;font-weight:800;color:#0f172a;line-height:1.3;">${esc(item.name || '')}</div>
+                    ${item.category ? `<div style="font-size:0.68rem;font-weight:700;color:${accentColor || '#64748b'};margin-top:3px;text-transform:uppercase;letter-spacing:0.03em;">${esc(item.category)}</div>` : ''}
+                    ${showDesc ? `<p style="font-size:0.78rem;color:#64748b;line-height:1.45;margin:6px 0 0;">${esc(desc)}</p>` : ''}
+                </div>
+            </div>
+        `;
+    }
 
     const menuDishes = {
         {% set js_categories = [] %}
@@ -1910,6 +1849,30 @@
         const pkg = publicPackages[id];
         if (!pkg) return;
 
+        const esc = (s) => String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+        const normalizeCat = (raw) => {
+            const c = String(raw || '').trim().toLowerCase();
+            if (!c || c.includes('menu') || c.includes('food') || c.includes('dish')) return 'Menu / Food';
+            if (c.includes('service') || c.includes('staff') || c.includes('coverage')) return 'Service';
+            if (c.includes('equip') || c.includes('rental') || c.includes('chair') || c.includes('table')) return 'Equipment';
+            return 'Other';
+        };
+
+        const isMeaningfulQty = (qty, cat) => {
+            if (!qty) return false;
+            if (cat === 'Menu / Food') return false;
+            const q = String(qty).trim().toLowerCase();
+            if (!q || q === '0' || q === '1' || q === '1 single' || /^\d+\s*single$/.test(q)) return false;
+            return true;
+        };
+
+        const isUsefulDesc = (d) => {
+            const t = String(d || '').trim();
+            return t.length > 2;
+        };
+
         let addGuestHtml = '';
         if (pkg.additional_guest_price > 0) {
             addGuestHtml = `
@@ -1936,144 +1899,203 @@
                         ${pkg.min_guests > 0 ? 'Min. '+pkg.min_guests : '—'}${pkg.max_guests > 0 ? ' · Max. '+pkg.max_guests : ''} pax
                     </span>
                 </div>
-                <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.5rem 0;border-bottom:1px solid #f1f5f9;">
+                <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.5rem 0;${(addGuestHtml || overtimeHtml) ? 'border-bottom:1px solid #f1f5f9;' : ''}">
                     <span style="color:#94a3b8;font-weight:700;">SERVICE DURATION</span>
-                    <span style="font-weight:800;color:#1e293b;">${pkg.duration}</span>
+                    <span style="font-weight:800;color:#1e293b;">${esc(pkg.duration)}</span>
                 </div>
                 ${addGuestHtml}
                 ${overtimeHtml}
             </div>`;
 
-        // Parse & normalize inclusions into categorized objects
-        let normalizedInclusions = [];
-        try {
-            let raw = pkg.inclusions;
-            if (typeof raw === 'string') {
-                try { raw = JSON.parse(raw); } catch(e) { raw = raw.split(',').map(s => s.trim()).filter(Boolean); }
-            }
-            if (Array.isArray(raw)) {
-                raw.forEach(item => {
-                    if (!item) return;
-                    if (typeof item === 'string') {
-                        normalizedInclusions.push({ category: 'Menu / Food', name: item, quantity: '', description: '' });
-                    } else if (typeof item === 'object') {
+        // Fixed-package inclusions only (customizable uses selection catalog below)
+        let incHtml = '';
+        if (!pkg.is_customizable) {
+            let normalizedInclusions = [];
+            try {
+                let raw = pkg.inclusions;
+                if (typeof raw === 'string') {
+                    try { raw = JSON.parse(raw); } catch(e) { raw = raw.split(',').map(s => s.trim()).filter(Boolean); }
+                }
+                if (Array.isArray(raw)) {
+                    raw.forEach(item => {
+                        if (!item) return;
+                        if (typeof item === 'string') {
+                        const fromCatalog = lookupPublicCatalogByName(item);
                         normalizedInclusions.push({
-                            category: item.category || 'Menu / Food',
-                            name: item.name || '',
-                            quantity: item.quantity || item.qty || '',
-                            description: item.description || item.details || ''
+                            category: 'Menu / Food',
+                            name: item,
+                            quantity: '',
+                            description: (fromCatalog && fromCatalog.description) || '',
+                            image_url: (fromCatalog && fromCatalog.image_url) || '',
+                            catalog_category: (fromCatalog && fromCatalog.category) || ''
+                        });
+                    } else if (typeof item === 'object') {
+                            const name = item.name || item.item_name || '';
+                            if (!name) return;
+                            const cat = normalizeCat(item.category || item.item_type || 'Menu / Food');
+                            const fromCatalog = (item.item_id && (publicCatalog.menu[String(item.item_id)] || publicCatalog.service[String(item.item_id)]))
+                                || lookupPublicCatalogByName(name);
+                            normalizedInclusions.push({
+                                category: cat,
+                                name,
+                                quantity: item.quantity || item.qty || '',
+                                description: item.description || item.details || (fromCatalog && fromCatalog.description) || '',
+                                image_url: item.image_url || (fromCatalog && fromCatalog.image_url) || '',
+                                catalog_category: (fromCatalog && fromCatalog.category) || item.category || ''
+                            });
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error('Error parsing inclusions:', err);
+            }
+
+            if (pkg.linked_inventory && Array.isArray(pkg.linked_inventory)) {
+                pkg.linked_inventory.forEach(invName => {
+                    if (invName && !normalizedInclusions.some(i => i.name.toLowerCase() === String(invName).toLowerCase())) {
+                        normalizedInclusions.push({ category: 'Equipment', name: invName, quantity: '', description: '' });
+                    }
+                });
+            }
+            if (pkg.dishes && Array.isArray(pkg.dishes)) {
+                pkg.dishes.forEach(dishName => {
+                    if (dishName && !normalizedInclusions.some(i => i.name.toLowerCase() === String(dishName).toLowerCase())) {
+                        const fromCatalog = lookupPublicCatalogByName(dishName);
+                        normalizedInclusions.push({
+                            category: 'Menu / Food',
+                            name: dishName,
+                            quantity: '',
+                            description: (fromCatalog && fromCatalog.description) || '',
+                            image_url: (fromCatalog && fromCatalog.image_url) || '',
+                            catalog_category: (fromCatalog && fromCatalog.category) || ''
                         });
                     }
                 });
-            } else if (typeof raw === 'object' && raw !== null) {
-                Object.entries(raw).forEach(([k, v]) => {
-                    if (v === true || v === 1) {
-                        normalizedInclusions.push({ category: 'Equipment', name: k, quantity: '', description: '' });
-                    }
-                });
             }
-        } catch (err) {
-            console.error("Error parsing inclusions:", err);
-        }
 
-        // Merge legacy linked inventory if not already in inclusions
-        if (pkg.linked_inventory && Array.isArray(pkg.linked_inventory)) {
-            pkg.linked_inventory.forEach(invName => {
-                if (invName && !normalizedInclusions.some(i => i.name.toLowerCase() === String(invName).toLowerCase())) {
-                    normalizedInclusions.push({ category: 'Equipment', name: invName, quantity: '', description: '' });
-                }
+            const groupedInc = { 'Menu / Food': [], 'Service': [], 'Equipment': [], 'Other': [] };
+            normalizedInclusions.forEach(item => {
+                const cat = item.category || 'Menu / Food';
+                if (!groupedInc[cat]) groupedInc[cat] = [];
+                groupedInc[cat].push(item);
             });
+
+            const catThemes = {
+                'Menu / Food': { title: 'Menu & Food Inclusions', icon: 'fas fa-utensils', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', cardIcon: 'fa-utensils' },
+                'Service': { title: 'Services Included', icon: 'fas fa-concierge-bell', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', cardIcon: 'fa-concierge-bell' },
+                'Equipment': { title: 'Equipment Included', icon: 'fas fa-chair', color: '#ea580c', bg: '#fff7ed', border: '#fed7aa', cardIcon: 'fa-chair' },
+                'Other': { title: 'Other Inclusions', icon: 'fas fa-box-open', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0', cardIcon: 'fa-box-open' }
+            };
+
+            for (const [cat, items] of Object.entries(groupedInc)) {
+                if (!items || items.length === 0) continue;
+                const theme = catThemes[cat] || catThemes['Other'];
+                incHtml += `
+                <div style="margin-bottom: 1.25rem;">
+                    <h4 style="font-size: 0.72rem; font-weight: 800; color: ${theme.color}; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px;">
+                        <i class="${theme.icon}"></i> ${theme.title}
+                        <span style="font-size: 0.68rem; background: ${theme.bg}; border: 1px solid ${theme.border}; padding: 1px 7px; border-radius: 12px; margin-left: auto;">${items.length}</span>
+                    </h4>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        ${items.map(item => renderOfferMediaCard({
+                            name: item.name,
+                            category: item.catalog_category || '',
+                            description: item.description || '',
+                            image_url: item.image_url || ''
+                        }, theme.color, theme.cardIcon)).join('')}
+                    </div>
+                </div>`;
+            }
         }
 
-        // Merge legacy dishes if not already in inclusions
-        if (pkg.dishes && Array.isArray(pkg.dishes)) {
-            pkg.dishes.forEach(dishName => {
-                if (dishName && !normalizedInclusions.some(i => i.name.toLowerCase() === String(dishName).toLowerCase())) {
-                    normalizedInclusions.push({ category: 'Menu / Food', name: dishName, quantity: '', description: '' });
-                }
-            });
+        // Customizable: resolve catalog IDs → readable lists (never dump raw keys/IDs)
+        let choicesHtml = '';
+        let sRules = pkg.selection_rules;
+        if (typeof sRules === 'string') {
+            try { sRules = JSON.parse(sRules); } catch (e) { sRules = null; }
         }
 
-        // Build Grouped Inclusions HTML (Menu / Food, Services, Equipment, Other)
-        const groupedInc = {
-            'Menu / Food': [],
-            'Service': [],
-            'Equipment': [],
-            'Other': []
-        };
+        if (pkg.is_customizable && sRules && typeof sRules === 'object') {
+            const menuIds = Array.isArray(sRules.available_menu_ids) ? sRules.available_menu_ids : [];
+            const serviceIds = Array.isArray(sRules.available_service_ids) ? sRules.available_service_ids : [];
+            const menuItems = menuIds.map(mid => publicCatalog.menu[String(mid)]).filter(Boolean);
+            const serviceItems = serviceIds.map(sid => publicCatalog.service[String(sid)]).filter(Boolean);
 
-        normalizedInclusions.forEach(item => {
-            let cat = item.category || 'Menu / Food';
-            if (!groupedInc[cat]) groupedInc[cat] = [];
-            groupedInc[cat].push(item);
-        });
-
-        const catThemes = {
-            'Menu / Food': { title: 'Menu & Food Inclusions', icon: 'fas fa-utensils', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
-            'Service': { title: 'Services Included', icon: 'fas fa-concierge-bell', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
-            'Equipment': { title: 'Equipment & Rentals Included', icon: 'fas fa-chair', color: '#ea580c', bg: '#fff7ed', border: '#fed7aa' },
-            'Other': { title: 'Other Inclusions', icon: 'fas fa-box-open', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' }
-        };
-
-        let incHtml = '';
-        for (const [cat, items] of Object.entries(groupedInc)) {
-            if (!items || items.length === 0) continue;
-            const theme = catThemes[cat] || catThemes['Other'];
-
-            incHtml += `
-            <div style="margin-bottom: 1.25rem;">
-                <h4 style="font-size: 0.72rem; font-weight: 800; color: ${theme.color}; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px;">
-                    <i class="${theme.icon}"></i> ${theme.title}
-                    <span style="font-size: 0.68rem; background: ${theme.bg}; border: 1px solid ${theme.border}; padding: 1px 7px; border-radius: 12px; margin-left: auto;">${items.length} item${items.length === 1 ? '' : 's'}</span>
-                </h4>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;">
-                    ${items.map(item => `
-                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.65rem 0.85rem; display: flex; flex-direction: column; gap: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 6px;">
-                                <span style="font-size: 0.82rem; font-weight: 800; color: #1e293b; line-height: 1.25;">
-                                    <i class="fas fa-check-circle" style="color: ${theme.color}; font-size: 0.75rem; margin-right: 4px;"></i>${item.name}
-                                </span>
-                                ${item.quantity ? `
-                                    <span style="font-size: 0.68rem; font-weight: 700; color: #475569; background: #f1f5f9; padding: 1px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0;">
-                                        ${item.quantity}
-                                    </span>
-                                ` : ''}
-                            </div>
-                            ${item.description ? `
-                                <div style="font-size: 0.74rem; color: #64748b; line-height: 1.35; padding-left: 1rem;">
-                                    ${item.description}
-                                </div>
-                            ` : ''}
-                        </div>
-                    `).join('')}
+            choicesHtml += `
+            <div style="margin-bottom:1.25rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:0.85rem 1rem;">
+                <div style="font-size:0.78rem;font-weight:800;color:#1d4ed8;margin-bottom:0.35rem;">
+                    <i class="fas fa-sliders-h" style="margin-right:6px;"></i>Build-your-own package
                 </div>
-            </div>
-            `;
-        }
-
-        let dishHtml = '';
-        if (pkg.selection_rules && Object.keys(pkg.selection_rules).length > 0) {
-            dishHtml = `
-            <div style="margin-bottom:1.25rem;">
-                <h4 style="font-size:0.72rem;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
-                    <i class="fas fa-utensils" style="color:var(--brand-primary);margin-right:6px;"></i>Menu Selection Limits
-                </h4>
-                <div style="display:flex;flex-wrap:wrap;gap:6px;">
-                    ${Object.entries(pkg.selection_rules).map(([cat, limit]) => `<span style="background:#f8fafc;color:#475569;padding:4px 12px;border-radius:100px;font-size:0.72rem;font-weight:700;border:1px solid #e2e8f0;">${limit} ${cat}</span>`).join('')}
-                </div>
+                <p style="font-size:0.8rem;color:#475569;line-height:1.5;margin:0;">
+                    Customers pick from the options below when booking. Final price depends on selections.
+                </p>
             </div>`;
+
+            if (menuItems.length > 0) {
+                choicesHtml += `
+                <div style="margin-bottom:1.25rem;">
+                    <h4 style="font-size:0.72rem;font-weight:800;color:#16a34a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.6rem;display:flex;align-items:center;gap:6px;">
+                        <i class="fas fa-utensils"></i> Available Menu Choices
+                        <span style="font-size:0.68rem;background:#f0fdf4;border:1px solid #bbf7d0;padding:1px 7px;border-radius:12px;margin-left:auto;">${menuItems.length}</span>
+                    </h4>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        ${menuItems.map(item => renderOfferMediaCard(item, '#16a34a', 'fa-utensils')).join('')}
+                    </div>
+                </div>`;
+            }
+
+            if (serviceItems.length > 0) {
+                choicesHtml += `
+                <div style="margin-bottom:1.25rem;">
+                    <h4 style="font-size:0.72rem;font-weight:800;color:#2563eb;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.6rem;display:flex;align-items:center;gap:6px;">
+                        <i class="fas fa-concierge-bell"></i> Available Services
+                        <span style="font-size:0.68rem;background:#eff6ff;border:1px solid #bfdbfe;padding:1px 7px;border-radius:12px;margin-left:auto;">${serviceItems.length}</span>
+                    </h4>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        ${serviceItems.map(item => renderOfferMediaCard(item, '#2563eb', 'fa-concierge-bell')).join('')}
+                    </div>
+                </div>`;
+            }
+
+            if (menuItems.length === 0 && serviceItems.length === 0) {
+                choicesHtml += `<p style="font-size:0.82rem;color:#64748b;margin-bottom:1rem;">Menu and service options will be shown during booking.</p>`;
+            }
+        } else if (!pkg.is_customizable && sRules && typeof sRules === 'object') {
+            // Legacy fixed rules like { Beef: 1, Pork: 1 } — skip metadata keys
+            const META = new Set(['package_type', 'available_menu_ids', 'available_service_ids', 'available_equipment_ids', 'menu_groups', 'optional_services']);
+            const limitPills = Object.entries(sRules)
+                .filter(([k, v]) => !META.has(k) && (typeof v === 'number' || (typeof v === 'string' && /^\d+$/.test(v))))
+                .map(([cat, limit]) => `<span style="background:#f8fafc;color:#475569;padding:4px 12px;border-radius:100px;font-size:0.72rem;font-weight:700;border:1px solid #e2e8f0;">Choose ${esc(limit)} ${esc(cat)}</span>`);
+            if (limitPills.length > 0) {
+                choicesHtml = `
+                <div style="margin-bottom:1.25rem;">
+                    <h4 style="font-size:0.72rem;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
+                        <i class="fas fa-utensils" style="color:var(--brand-primary);margin-right:6px;"></i>Menu Selection Limits
+                    </h4>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;">${limitPills.join('')}</div>
+                </div>`;
+            }
         }
+
+        const modeBadge = pkg.is_customizable
+            ? `<span style="display:inline-flex;align-items:center;gap:5px;font-size:0.68rem;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;color:#fff;background:rgba(37,99,235,0.92);padding:4px 10px;border-radius:99px;margin-bottom:0.5rem;"><i class="fas fa-sliders-h" style="font-size:0.6rem;"></i> Customizable</span>`
+            : `<span style="display:inline-flex;align-items:center;gap:5px;font-size:0.68rem;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;color:#fff;background:rgba(15,23,42,0.85);padding:4px 10px;border-radius:99px;margin-bottom:0.5rem;"><i class="fas fa-lock" style="font-size:0.6rem;"></i> Fixed</span>`;
+
+        const descHtml = isUsefulDesc(pkg.desc)
+            ? `<p style="font-size:0.85rem;color:#475569;line-height:1.65;margin-bottom:1.25rem;">${esc(pkg.desc)}</p>`
+            : '';
 
         const html = `
             <div style="margin-bottom:1.25rem;">
                 <div style="font-size:0.7rem;font-weight:800;color:var(--brand-primary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Package Details</div>
-                <h2 style="font-size:1.3rem;font-weight:900;color:#1e293b;margin-bottom:0.25rem;">${pkg.name}</h2>
+                ${modeBadge}
+                <h2 style="font-size:1.3rem;font-weight:900;color:#1e293b;margin-bottom:0.25rem;">${esc(pkg.name)}</h2>
                 <div style="font-size:1.5rem;font-weight:900;color:var(--brand-primary);">${pkg.price}</div>
             </div>
-            ${pkg.desc ? `<p style="font-size:0.85rem;color:#475569;line-height:1.65;margin-bottom:1.25rem;">${pkg.desc}</p>` : ''}
+            ${descHtml}
             ${serviceHtml}
             ${incHtml}
-            ${dishHtml}
+            ${choicesHtml}
             <button onclick="promptBookingAuth()" class="w-full py-3 bg-slate-900 text-white hover:bg-slate-800 rounded-2xl text-xs font-bold transition-all shadow-sm" style="margin-top:0.5rem;display:flex;align-items:center;justify-content:center;gap:8px;">
                 <i class="fas fa-calendar-check"></i> Book this Package
             </button>

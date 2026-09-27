@@ -811,6 +811,24 @@
                     </div>
                 </div>
 
+                <div class="form-group-pro" style="margin-bottom: 1rem;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Photo <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
+                    </label>
+                    <div id="quickAddOptionPhotoZone" onclick="document.getElementById('quickAddOptionImage').click()"
+                        style="border: 1.5px dashed #cbd5e1; border-radius: 10px; padding: 0.85rem; background: #f8fafc; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: border-color 0.15s;">
+                        <div id="quickAddOptionPhotoPreview" style="width: 56px; height: 56px; border-radius: 10px; background: #e2e8f0; color: #94a3b8; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
+                            <i class="fas fa-camera"></i>
+                        </div>
+                        <div style="min-width: 0;">
+                            <div style="font-size: 0.85rem; font-weight: 800; color: #334155;">Upload photo</div>
+                            <div style="font-size: 0.75rem; color: #94a3b8;">JPG or PNG · shows on package details</div>
+                        </div>
+                    </div>
+                    <input type="file" name="image" id="quickAddOptionImage" accept="image/*" style="display: none;"
+                        onchange="window.previewQuickCatalogPhoto('add', event)" />
+                </div>
+
                 <div class="form-group-pro" style="margin-bottom: 0.5rem;">
                     <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
                         Description <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
@@ -885,6 +903,24 @@
                     </label>
                     <input type="number" step="0.01" min="0" name="price" id="quickEditOptionPrice" class="control-pro" value="0.00"
                         style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; font-weight: 700; color: #0f172a;" />
+                </div>
+
+                <div class="form-group-pro" style="margin-bottom: 1rem;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Photo <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
+                    </label>
+                    <div id="quickEditOptionPhotoZone" onclick="document.getElementById('quickEditOptionImage').click()"
+                        style="border: 1.5px dashed #cbd5e1; border-radius: 10px; padding: 0.85rem; background: #f8fafc; cursor: pointer; display: flex; align-items: center; gap: 12px;">
+                        <div id="quickEditOptionPhotoPreview" style="width: 56px; height: 56px; border-radius: 10px; background: #e2e8f0; color: #94a3b8; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
+                            <i class="fas fa-camera"></i>
+                        </div>
+                        <div style="min-width: 0;">
+                            <div style="font-size: 0.85rem; font-weight: 800; color: #334155;" id="quickEditOptionPhotoHint">Upload or replace photo</div>
+                            <div style="font-size: 0.75rem; color: #94a3b8;">JPG or PNG · shows on package details</div>
+                        </div>
+                    </div>
+                    <input type="file" name="image" id="quickEditOptionImage" accept="image/*" style="display: none;"
+                        onchange="window.previewQuickCatalogPhoto('edit', event)" />
                 </div>
 
                 <div class="form-group-pro" style="margin-bottom: 0.5rem;">

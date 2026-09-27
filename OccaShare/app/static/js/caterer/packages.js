@@ -2001,29 +2001,45 @@ function renderInclusionsList() {
         if (cat === 'Menu') cat = 'Menu / Food';
         const cfg = catConfig[cat] || catConfig['Menu / Food'];
 
+        // Resolve image/description from catalog when available
+        let resolvedImg = item.image_url || '';
+        let resolvedDesc = item.description || '';
+        const catalogKey = (cat === 'Service') ? 'service' : ((cat === 'Equipment') ? 'equipment' : 'menu');
+        const catalog = (window.inclusionsCatalog && window.inclusionsCatalog[catalogKey]) || [];
+        if (item.item_id) {
+            const found = catalog.find(c => Number(c.id) === Number(item.item_id));
+            if (found) {
+                if (!resolvedImg) resolvedImg = found.image_url || '';
+                if (!resolvedDesc) resolvedDesc = found.description || '';
+            }
+        } else if (item.name) {
+            const found = catalog.find(c => String(c.name || '').toLowerCase() === String(item.name).toLowerCase());
+            if (found) {
+                if (!resolvedImg) resolvedImg = found.image_url || '';
+                if (!resolvedDesc) resolvedDesc = found.description || '';
+            }
+        }
+
         html += `
         <div class="inclusion-item-card" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); transition: all 0.2s ease;">
             <div style="display: flex; align-items: flex-start; gap: 1rem; flex: 1; min-width: 0;">
-                <div style="width: 40px; height: 40px; border-radius: 10px; background: ${cfg.iconBg}; color: ${cfg.iconColor}; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; margin-top: 2px;">
-                    <i class="${cfg.icon}"></i>
+                <div style="width: 56px; height: 56px; border-radius: 12px; background: ${cfg.iconBg}; color: ${cfg.iconColor}; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; overflow: hidden;">
+                    ${resolvedImg
+                        ? `<img src="${escapeHtml(resolvedImg)}" alt="" onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'${cfg.icon}\\'></i>';" style="width:100%;height:100%;object-fit:cover;">`
+                        : `<i class="${cfg.icon}"></i>`}
                 </div>
                 <div style="flex: 1; min-width: 0;">
                     <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
                         <span style="font-size: 0.72rem; font-weight: 800; color: ${cfg.badgeColor}; background: ${cfg.badgeBg}; border: 1px solid ${cfg.badgeBorder}; padding: 2px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.4px;">
                             ${cat}
                         </span>
-                        ${item.quantity ? `
-                            <span style="font-size: 0.78rem; font-weight: 700; color: #475569; background: #f1f5f9; padding: 2px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;">
-                                <i class="fas fa-tag" style="font-size: 0.65rem; color: #94a3b8;"></i> ${escapeHtml(item.quantity)}
-                            </span>
-                        ` : ''}
                     </div>
                     <div style="font-size: 0.98rem; font-weight: 800; color: #0f172a; line-height: 1.3; margin-bottom: 3px;">
                         ${escapeHtml(item.name)}
                     </div>
-                    ${item.description ? `
-                        <div style="font-size: 0.84rem; color: #64748b; line-height: 1.45; margin-top: 4px;">
-                            ${escapeHtml(item.description)}
+                    ${resolvedDesc && String(resolvedDesc).trim().length > 2 ? `
+                        <div style="font-size: 0.84rem; color: #64748b; line-height: 1.45; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                            ${escapeHtml(resolvedDesc)}
                         </div>
                     ` : ''}
                 </div>
@@ -2193,24 +2209,26 @@ function renderCustomizableMenu(query = '') {
     container.innerHTML = filtered.map(item => {
         const id = Number(item.id);
         const isChecked = customizableMenuIds.has(id);
-        const price = parseFloat(item.price || 0);
-        let unitText = item.unit_type || item.pricing_unit || 'pax';
-        if (unitText.startsWith('per_')) unitText = unitText.replace('per_', '');
+        const img = item.image_url || '';
+        const desc = String(item.description || '').trim();
 
         return `
-            <div style="display: flex; align-items: center; gap: 9px; padding: 0.7rem 0.85rem; background: ${isChecked ? '#f0fdf4' : '#ffffff'}; border: 1.5px solid ${isChecked ? '#86efac' : '#e2e8f0'}; border-radius: 10px; transition: all 0.15s ease;"
+            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 0.75rem 0.85rem; background: ${isChecked ? '#f0fdf4' : '#ffffff'}; border: 1.5px solid ${isChecked ? '#86efac' : '#e2e8f0'}; border-radius: 10px; transition: all 0.15s ease;"
                  class="catalog-option-card">
                 <input type="checkbox" ${isChecked ? 'checked' : ''} 
                        onchange="window.toggleCustomizableItem('menu', ${id}, this.checked); const c = this.closest('.catalog-option-card'); c.style.background = this.checked ? '#f0fdf4' : '#ffffff'; c.style.borderColor = this.checked ? '#86efac' : '#e2e8f0';"
-                       style="width: 17px; height: 17px; accent-color: #16a34a; cursor: pointer; flex-shrink: 0;" />
-                <div style="flex: 1; min-width: 0; cursor: pointer;" onclick="const cb = this.previousElementSibling; cb.checked = !cb.checked; cb.dispatchEvent(new Event('change'));">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 6px;">
-                        <strong style="color: #0f172a; font-size: 0.88rem; line-height: 1.3;">${escapeHtml(item.name)}</strong>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+                       style="width: 17px; height: 17px; accent-color: #16a34a; cursor: pointer; flex-shrink: 0; margin-top: 22px;" />
+                <div style="width:56px;height:56px;border-radius:10px;overflow:hidden;background:#f1f5f9;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#cbd5e1;">
+                    ${img
+                        ? `<img src="${escapeHtml(img)}" alt="" onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-utensils\\'></i>';" style="width:100%;height:100%;object-fit:cover;">`
+                        : `<i class="fas fa-utensils"></i>`}
+                </div>
+                <div style="flex: 1; min-width: 0; cursor: pointer;" onclick="const cb = this.parentElement.querySelector('input[type=checkbox]'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change'));">
+                    <strong style="color: #0f172a; font-size: 0.88rem; line-height: 1.3; display:block;">${escapeHtml(item.name)}</strong>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
                         ${item.category ? `<span style="font-size: 0.7rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 1px 6px; border-radius: 4px;">${escapeHtml(item.category)}</span>` : ''}
-                        ${item.description ? `<span style="font-size: 0.75rem; color: #94a3b8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.description)}</span>` : ''}
                     </div>
+                    ${desc.length > 2 ? `<p style="font-size: 0.75rem; color: #64748b; line-height: 1.4; margin: 6px 0 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${escapeHtml(desc)}</p>` : ''}
                 </div>
                 <div style="display: flex; align-items: center; gap: 4px; margin-left: 2px; flex-shrink: 0;">
                     <button type="button" title="Edit Dish" onclick="window.openQuickEditModal('menu', ${id}, event)"
@@ -2254,24 +2272,31 @@ function renderCustomizableServices(query = '') {
         const price = parseFloat(item.price || item.selling_price || 0);
         let unitText = item.unit_type || 'service';
         if (unitText.startsWith('per_')) unitText = unitText.replace('per_', '');
+        const img = item.image_url || '';
+        const desc = String(item.description || '').trim();
 
         return `
-            <div style="display: flex; align-items: center; gap: 9px; padding: 0.7rem 0.85rem; background: ${isChecked ? '#eff6ff' : '#ffffff'}; border: 1.5px solid ${isChecked ? '#93c5fd' : '#e2e8f0'}; border-radius: 10px; transition: all 0.15s ease;"
+            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 0.75rem 0.85rem; background: ${isChecked ? '#eff6ff' : '#ffffff'}; border: 1.5px solid ${isChecked ? '#93c5fd' : '#e2e8f0'}; border-radius: 10px; transition: all 0.15s ease;"
                  class="catalog-option-card">
                 <input type="checkbox" ${isChecked ? 'checked' : ''} 
                        onchange="window.toggleCustomizableItem('service', ${id}, this.checked); const c = this.closest('.catalog-option-card'); c.style.background = this.checked ? '#eff6ff' : '#ffffff'; c.style.borderColor = this.checked ? '#93c5fd' : '#e2e8f0';"
-                       style="width: 17px; height: 17px; accent-color: #2563eb; cursor: pointer; flex-shrink: 0;" />
-                <div style="flex: 1; min-width: 0; cursor: pointer;" onclick="const cb = this.previousElementSibling; cb.checked = !cb.checked; cb.dispatchEvent(new Event('change'));">
+                       style="width: 17px; height: 17px; accent-color: #2563eb; cursor: pointer; flex-shrink: 0; margin-top: 22px;" />
+                <div style="width:56px;height:56px;border-radius:10px;overflow:hidden;background:#f1f5f9;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#cbd5e1;">
+                    ${img
+                        ? `<img src="${escapeHtml(img)}" alt="" onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-concierge-bell\\'></i>';" style="width:100%;height:100%;object-fit:cover;">`
+                        : `<i class="fas fa-concierge-bell"></i>`}
+                </div>
+                <div style="flex: 1; min-width: 0; cursor: pointer;" onclick="const cb = this.parentElement.querySelector('input[type=checkbox]'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change'));">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 6px;">
                         <strong style="color: #0f172a; font-size: 0.88rem; line-height: 1.3;">${escapeHtml(item.name)}</strong>
                         <span style="font-size: 0.75rem; font-weight: 800; color: #1e40af; background: #dbeafe; padding: 2px 7px; border-radius: 6px; white-space: nowrap;">
                             ₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}${unitText && unitText !== 'fixed' ? '/' + escapeHtml(unitText) : ''}
                         </span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
                         ${item.category ? `<span style="font-size: 0.7rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 1px 6px; border-radius: 4px;">${escapeHtml(item.category)}</span>` : ''}
-                        ${item.description ? `<span style="font-size: 0.75rem; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.description)}</span>` : ''}
                     </div>
+                    ${desc.length > 2 ? `<p style="font-size: 0.75rem; color: #64748b; line-height: 1.4; margin: 6px 0 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${escapeHtml(desc)}</p>` : ''}
                 </div>
                 <div style="display: flex; align-items: center; gap: 4px; margin-left: 2px; flex-shrink: 0;">
                     <button type="button" title="Edit Service" onclick="window.openQuickEditModal('service', ${id}, event)"

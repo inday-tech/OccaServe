@@ -1344,10 +1344,19 @@
                         if (typeof item === 'string') {
                             normalizedInclusions.push({ category: 'Menu / Food', name: item, quantity: '', description: '' });
                         } else if (typeof item === 'object') {
+                            const rawCat = String(item.category || item.item_type || 'Menu / Food');
+                            const catLower = rawCat.toLowerCase();
+                            let category = 'Menu / Food';
+                            if (catLower.includes('service') || catLower.includes('staff') || catLower.includes('coverage')) category = 'Service';
+                            else if (catLower.includes('equip') || catLower.includes('rental')) category = 'Equipment';
+                            else if (!(catLower.includes('menu') || catLower.includes('food') || catLower.includes('dish') || !rawCat.trim())) category = 'Other';
+                            const qtyRaw = item.quantity || item.qty || '';
+                            const qtyStr = String(qtyRaw).trim().toLowerCase();
+                            const hideQty = category === 'Menu / Food' || !qtyStr || /^\d+\s*single$/.test(qtyStr) || qtyStr === '1' || qtyStr === '0';
                             normalizedInclusions.push({
-                                category: item.category || 'Menu / Food',
-                                name: item.name || '',
-                                quantity: item.quantity || item.qty || '',
+                                category,
+                                name: item.name || item.item_name || '',
+                                quantity: hideQty ? '' : qtyRaw,
                                 description: item.description || item.details || ''
                             });
                         }
@@ -1540,15 +1549,39 @@
                     </div>`;
                 }
             } else if (pkg.selection_rules && Object.keys(pkg.selection_rules).length > 0) {
-                dishHtml += `
-                <div style="margin-bottom:1.25rem;">
-                    <h4 style="font-size:0.72rem;font-weight:800;color:var(--hub-slate-400);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
-                        <i class="fas fa-utensils" style="color:var(--hub-primary);margin-right:6px;"></i>Choices / Menu Limits
-                    </h4>
-                    <div style="display:flex;flex-wrap:wrap;gap:6px;">
-                        ${Object.entries(pkg.selection_rules).map(([cat, limit]) => `<span style="background:var(--hub-slate-50);color:var(--hub-slate-600);padding:4px 12px;border-radius:100px;font-size:0.72rem;font-weight:700;border:1px solid var(--hub-slate-200);">Choose ${limit} ${cat}</span>`).join('')}
-                    </div>
-                </div>`;
+                const META = new Set(['package_type', 'available_menu_ids', 'available_service_ids', 'available_equipment_ids', 'menu_groups', 'optional_services']);
+                let sRules = pkg.selection_rules;
+                if (typeof sRules === 'string') {
+                    try { sRules = JSON.parse(sRules); } catch(e) { sRules = {}; }
+                }
+                if (pkg.pricing_mode === 'customizable' && sRules) {
+                    const menuCount = Array.isArray(sRules.available_menu_ids) ? sRules.available_menu_ids.length : 0;
+                    const svcCount = Array.isArray(sRules.available_service_ids) ? sRules.available_service_ids.length : 0;
+                    dishHtml += `
+                    <div style="margin-bottom:1.25rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:0.85rem 1rem;">
+                        <div style="font-size:0.78rem;font-weight:800;color:#1d4ed8;margin-bottom:0.35rem;">
+                            <i class="fas fa-sliders-h" style="margin-right:6px;"></i>Build-your-own package
+                        </div>
+                        <p style="font-size:0.8rem;color:#475569;line-height:1.5;margin:0;">
+                            Choose from ${menuCount > 0 ? menuCount + ' menu option' + (menuCount === 1 ? '' : 's') : 'available menu items'}${svcCount > 0 ? ' and ' + svcCount + ' service' + (svcCount === 1 ? '' : 's') : ''} when booking. Price depends on your selections.
+                        </p>
+                    </div>`;
+                } else {
+                    const limitPills = Object.entries(sRules || {})
+                        .filter(([k, v]) => !META.has(k) && (typeof v === 'number' || (typeof v === 'string' && /^\d+$/.test(String(v)))))
+                        .map(([cat, limit]) => `<span style="background:var(--hub-slate-50);color:var(--hub-slate-600);padding:4px 12px;border-radius:100px;font-size:0.72rem;font-weight:700;border:1px solid var(--hub-slate-200);">Choose ${limit} ${cat}</span>`);
+                    if (limitPills.length > 0) {
+                        dishHtml += `
+                        <div style="margin-bottom:1.25rem;">
+                            <h4 style="font-size:0.72rem;font-weight:800;color:var(--hub-slate-400);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
+                                <i class="fas fa-utensils" style="color:var(--hub-primary);margin-right:6px;"></i>Choices / Menu Limits
+                            </h4>
+                            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                                ${limitPills.join('')}
+                            </div>
+                        </div>`;
+                    }
+                }
             }
 
             const contentHtml = `
@@ -1705,19 +1738,19 @@
                     <h2 class="section-title">Ready-to-Book Packages</h2>
                     <div class="pkg-grid">
                         {% for pkg in packages %}
+                        {% set pkg_mode = (pkg.pricing_mode or 'fixed')|lower %}
+                        {% set is_custom_pkg = pkg_mode == 'customizable' %}
                         <div class="elite-item-card pkg-item">
-                            <div class="ei-img-box">
+                            <div class="ei-img-box" style="position: relative;">
                                 <img src="{{ pkg.image_url if pkg.image_url else 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400' }}" onerror="this.src='https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400'" class="ei-img">
+                                <span style="position:absolute;top:10px;right:10px;z-index:2;font-size:0.62rem;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;color:#fff;padding:4px 10px;border-radius:99px;border:1px solid rgba(255,255,255,0.25);background:{% if is_custom_pkg %}rgba(37,99,235,0.92){% else %}rgba(15,23,42,0.85){% endif %};display:inline-flex;align-items:center;gap:4px;">
+                                    <i class="fas {% if is_custom_pkg %}fa-sliders-h{% else %}fa-lock{% endif %}" style="font-size:0.6rem;"></i>
+                                    {{ 'Customizable' if is_custom_pkg else 'Fixed' }}
+                                </span>
                             </div>
                             <div class="ei-body">
                                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px; flex-wrap: wrap;">
-                                    {% if pkg.pricing_mode == 'customizable' %}
-                                    <span style="font-size:0.65rem;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:4px;padding:2px 8px;font-weight:800;letter-spacing:0.3px;">
-                                        <i class="fas fa-sliders-h" style="margin-right:2px;"></i> Customizable Package
-                                    </span>
-                                    {% else %}
                                     <span class="ei-cat">{{ pkg.service_type or 'General' }}</span>
-                                    {% endif %}
                                 </div>
                                 <span class="ei-name">{{ pkg.name }}</span>
                                 {% if pkg.pricing_mode == 'customizable' %}
