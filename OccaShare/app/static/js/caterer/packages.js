@@ -104,8 +104,13 @@ window.togglePricingMode = function (mode) {
     }
     if (serviceTypeSelect) {
         serviceTypeSelect.required = !isCustomizable;
-        if (isCustomizable && (!serviceTypeSelect.value || serviceTypeSelect.value === '')) {
-            serviceTypeSelect.value = 'General';
+        if (isCustomizable) {
+            if (serviceTypeSelect.value) {
+                serviceTypeSelect.dataset.previousValue = serviceTypeSelect.value;
+            }
+            serviceTypeSelect.value = '';
+        } else if (!serviceTypeSelect.value) {
+            serviceTypeSelect.value = serviceTypeSelect.dataset.previousValue || 'General';
         }
     }
     if (pricingModeGroup) {
@@ -120,7 +125,7 @@ window.togglePricingMode = function (mode) {
     // Only visible for Fixed packages, completely removed/hidden for Customizable
     const pricingCard = document.getElementById('pkgPricingCard');
     const priceInput = document.getElementById('pkgManualPriceInput');
-    const resFeeInput = document.getElementById('pkgReservationFeeInput') || document.querySelector('input[name="reservation_fee"]');
+    const resFeeInput = document.getElementById('pkgReservationFeeInput') || document.querySelector('input[name="reservation_fee_value"]');
 
     if (pricingCard) {
         pricingCard.style.display = isCustomizable ? 'none' : 'block';
@@ -274,6 +279,7 @@ window.editPackage = async function (pkgId) {
         if (form.max_guests) form.max_guests.value = pkg.max_guests || '';
         if (form.base_pax) form.base_pax.value = pkg.base_pax || '';
         if (form.additional_guest_price) form.additional_guest_price.value = pkg.additional_guest_price || '';
+        if (form.reservation_fee_value) form.reservation_fee_value.value = pkg.reservation_fee_value || 0;
         if (form.status) form.status.value = pkg.status || 'active';
         if (form.booking_lead_time) form.booking_lead_time.value = pkg.booking_lead_time || 7;
 
@@ -496,11 +502,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (form.price_per_head) form.price_per_head.addEventListener('input', calculatePricing);
         if (form.min_guests) form.min_guests.addEventListener('input', calculatePricing);
 
-        // Guarantee inclusions and customizable selection rules are serialized right before form submit
-        form.addEventListener('submit', () => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
             syncInclusionsHidden();
             if (typeof syncCustomizableSelectionRules === 'function') {
                 syncCustomizableSelectionRules();
+            }
+
+            const submitBtn = document.getElementById('pkgSaveBtn');
+            const result = await window.apiAction(form.action, {
+                method: 'POST',
+                body: new FormData(form)
+            }, submitBtn);
+
+            if (result) {
+                safeCloseModal('packageModal');
+                window.location.reload();
             }
         });
     }
@@ -622,7 +639,7 @@ function validateTab(tabName) {
         if (mode === 'customizable') {
             // Price & reservation fee are removed for customizable packages
             if (form.price_per_head) form.price_per_head.value = '0.00';
-            if (form.reservation_fee) form.reservation_fee.value = '0';
+            if (form.reservation_fee_value) form.reservation_fee_value.value = '0';
         } else {
             if (form.price_per_head) {
                 const rawPrice = (form.price_per_head.value || '').replace(/,/g, '');
@@ -632,11 +649,11 @@ function validateTab(tabName) {
                 }
             }
 
-            if (form.reservation_fee && form.reservation_fee.value) {
-                const resFee = parseFloat(form.reservation_fee.value);
+            if (form.reservation_fee_value && form.reservation_fee_value.value) {
+                const resFee = parseFloat(form.reservation_fee_value.value);
                 const price = parseFloat((form.price_per_head.value || '0').replace(/,/g, ''));
                 if (resFee > price) {
-                    addError(form.reservation_fee, "Reservation fee cannot exceed selling price.");
+                    addError(form.reservation_fee_value, "Reservation fee cannot exceed selling price.");
                 }
             }
         }

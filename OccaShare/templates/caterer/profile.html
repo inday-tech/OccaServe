@@ -365,12 +365,14 @@
                             <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400"
                                 class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
                             {% endif %}
+                            {% if not is_custom_pkg %}
                             <div class="absolute top-4 left-4">
                                 <span
                                     class="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black text-accent uppercase tracking-widest shadow-sm">
                                     {{ pkg.service_type if pkg.service_type else 'Premium' }}
                                 </span>
                             </div>
+                            {% endif %}
                             <div class="absolute top-4 right-4">
                                 <span class="backdrop-blur px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm text-white border border-white/20"
                                     style="background: {% if is_custom_pkg %}rgba(37, 99, 235, 0.92){% else %}rgba(15, 23, 42, 0.85){% endif %};">
