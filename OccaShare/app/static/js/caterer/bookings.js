@@ -1846,7 +1846,20 @@ function showBookingDetails(btn) {
     if (!isManual && data.hasKycRecord === 'true') {
         var kycInfo = {}; try { kycInfo = JSON.parse(data.verificationJson || '{}'); } catch(e){}
         var vBadge = document.getElementById('verifStatusBadge'); if (vBadge) vBadge.innerText = kycInfo.status || 'VERIFIED';
-        var vDoc = document.getElementById('verifDocText'); if (vDoc) vDoc.innerText = kycInfo.id_submitted ? 'Submitted & Validated' : 'Not Submitted';
+        var vDoc = document.getElementById('verifDocText');
+        if (vDoc) {
+            var idSubmitted =
+                kycInfo.id_submitted === true ||
+                kycInfo.id_submitted === 'true' ||
+                kycInfo.status === 'verified' ||
+                kycInfo.verification_status === 'verified' ||
+                kycInfo.ocr_completed === true ||
+                kycInfo.ocr_completed === 'true';
+
+            vDoc.innerText = idSubmitted
+                ? 'Submitted & Validated'
+                : 'Not Submitted';
+        }
         var vOcr = document.getElementById('verifOcrText'); if (vOcr) vOcr.innerText = kycInfo.ocr_completed ? 'OCR Completed' : 'Pending';
         var vLiv = document.getElementById('verifLivenessText'); if (vLiv) vLiv.innerText = kycInfo.liveness_completed ? 'Face Check Passed' : 'Pending';
         var vTime = document.getElementById('verifTimestampVal'); if (vTime) vTime.innerText = kycInfo.verified_at || 'Verified on platform';
