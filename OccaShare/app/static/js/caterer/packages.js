@@ -318,7 +318,8 @@ window.editPackage = async function (pkgId) {
                         quantity: i.quantity || '',
                         quantity_num: i.quantity_num || null,
                         unit: i.unit || '',
-                        description: i.description || ''
+                        description: i.description || '',
+                        image_url: i.image_url || ''
                     };
                 });
             } else if (typeof pkg.inclusions === 'object') {
@@ -1414,6 +1415,109 @@ window.fetchInclusionsCatalog = async function () {
 };
 
 // Open Add Inclusion Modal
+// ===== Inclusion photo upload state/helpers =====
+let inclusionImageFile = null;      // newly picked file, uploaded on save
+let inclusionCurrentImage = '';     // image already stored on the inclusion/catalog item
+
+function setInclusionPhotoPreview(src) {
+    const box = document.getElementById('inclusionPhotoPreview');
+    if (!box) return;
+    if (src) {
+        box.innerHTML = `<img src="${escapeHtml(src)}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-camera\\'></i>';">`;
+        box.style.border = '1.5px solid #e2e8f0';
+    } else {
+        box.innerHTML = '<i class="fas fa-camera"></i>';
+        box.style.border = '1.5px dashed #cbd5e1';
+    }
+}
+
+function resetInclusionImagePicker(currentImage = '') {
+    inclusionImageFile = null;
+    inclusionCurrentImage = currentImage || '';
+    const input = document.getElementById('inclusionImageInput');
+    if (input) input.value = '';
+    const clearBtn = document.getElementById('btnInclusionPhotoClear');
+    if (clearBtn) clearBtn.style.display = 'none';
+    const hint = document.getElementById('inclusionPhotoHint');
+    if (hint) hint.textContent = inclusionCurrentImage
+        ? 'Current photo shown. Upload a new one to replace it.'
+        : 'JPG or PNG, up to 5MB. Saved to the selected catalog item.';
+    setInclusionPhotoPreview(inclusionCurrentImage);
+}
+window.resetInclusionImagePicker = resetInclusionImagePicker;
+
+window.triggerInclusionImagePicker = function () {
+    const input = document.getElementById('inclusionImageInput');
+    if (input) input.click();
+};
+
+window.handleInclusionImageChange = function (event) {
+    const input = event && event.target ? event.target : document.getElementById('inclusionImageInput');
+    const file = input && input.files && input.files[0] ? input.files[0] : null;
+    const hint = document.getElementById('inclusionPhotoHint');
+    if (!file) return;
+
+    if (!file.type || !file.type.startsWith('image/')) {
+        if (hint) { hint.textContent = 'Please choose an image file (JPG or PNG).'; hint.style.color = '#dc2626'; }
+        input.value = '';
+        return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+        if (hint) { hint.textContent = 'Image is too large. Maximum size is 5MB.'; hint.style.color = '#dc2626'; }
+        input.value = '';
+        return;
+    }
+
+    inclusionImageFile = file;
+    const reader = new FileReader();
+    reader.onload = e => setInclusionPhotoPreview(e.target.result);
+    reader.readAsDataURL(file);
+
+    if (hint) { hint.textContent = `Selected: ${file.name} — will be saved with this inclusion.`; hint.style.color = '#15803d'; }
+    const clearBtn = document.getElementById('btnInclusionPhotoClear');
+    if (clearBtn) clearBtn.style.display = 'inline-flex';
+};
+
+window.clearInclusionImageSelection = function () {
+    const hint = document.getElementById('inclusionPhotoHint');
+    if (hint) hint.style.color = '#64748b';
+    resetInclusionImagePicker(inclusionCurrentImage);
+};
+
+// Find the stored photo of a catalog item
+function findCatalogImage(type, itemId, name) {
+    const key = (type === 'Service') ? 'service' : ((type === 'Equipment') ? 'equipment' : 'menu');
+    const catalog = (window.inclusionsCatalog && window.inclusionsCatalog[key]) || [];
+    let found = null;
+    if (itemId) found = catalog.find(c => Number(c.id) === Number(itemId));
+    if (!found && name) found = catalog.find(c => String(c.name || '').toLowerCase() === String(name).toLowerCase());
+    return (found && found.image_url) || '';
+}
+
+// Persist the picked photo onto the linked catalog item
+async function uploadInclusionImage(type, itemId) {
+    const apiType = (type === 'Service') ? 'service' : ((type === 'Equipment') ? 'equipment' : 'menu');
+    const formData = new FormData();
+    formData.append('image', inclusionImageFile);
+
+    const res = await fetch(`/caterer/api/catalogs/item-image/${apiType}/${itemId}`, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    });
+    let data = {};
+    try { data = await res.json(); } catch (e) { data = {}; }
+    if (!res.ok) throw new Error(extractErrorMessage(data, 'Failed to upload the photo.'));
+
+    const imageUrl = data.image_url || '';
+    // Keep the in-memory catalog in sync so other inclusions show the new photo
+    const key = (type === 'Service') ? 'service' : ((type === 'Equipment') ? 'equipment' : 'menu');
+    const catalog = (window.inclusionsCatalog && window.inclusionsCatalog[key]) || [];
+    const entry = catalog.find(c => Number(c.id) === Number(itemId));
+    if (entry) entry.image_url = imageUrl;
+    return imageUrl;
+}
+
 window.openAddInclusionModal = async function () {
     const editIndexEl = document.getElementById('customInclusionEditIndex');
     const title = document.getElementById('inclusionModalTitle');
@@ -1430,6 +1534,7 @@ window.openAddInclusionModal = async function () {
     if (btnDoneText) btnDoneText.innerText = 'Add Inclusion';
     if (alertBox) { alertBox.style.display = 'none'; alertBox.innerText = ''; }
     if (desc) desc.value = '';
+    resetInclusionImagePicker('');
 
     // Ensure catalog is populated
     if (!window.inclusionsCatalog.equipment || window.inclusionsCatalog.equipment.length === 0) {
@@ -1479,6 +1584,7 @@ window.handleInclusionTypeChange = function (type, preselectId = null) {
     const nameEl = document.getElementById('customInclusionName');
     if (itemIdEl) itemIdEl.value = '';
     if (nameEl) nameEl.value = '';
+    if (!inclusionImageFile) resetInclusionImagePicker('');
 
     // Suggest default units based on type
     if (unitInput && !unitInput.value) {
@@ -1557,6 +1663,7 @@ window.handleCatalogItemSelected = function (selectedId) {
         if (banner) banner.style.display = 'none';
         if (itemIdEl) itemIdEl.value = '';
         if (nameEl) nameEl.value = '';
+        if (!inclusionImageFile) resetInclusionImagePicker('');
         window.updateQuantityPreview();
         return;
     }
@@ -1614,6 +1721,10 @@ window.handleCatalogItemSelected = function (selectedId) {
     }
 
     select.style.borderColor = '';
+    // Show the catalog item's existing photo unless the user already picked a new one
+    if (!inclusionImageFile) {
+        resetInclusionImagePicker(findCatalogImage(currentType, selectedId, itemName));
+    }
     window.updateQuantityPreview();
 };
 
@@ -1698,6 +1809,8 @@ window.editInclusion = async function (index) {
     const nameEl = document.getElementById('customInclusionName');
     if (nameEl) nameEl.value = item.name || '';
 
+    resetInclusionImagePicker(item.image_url || findCatalogImage(itemType, item.item_id, item.name));
+
     window.updateQuantityPreview();
     safeOpenModal('addInclusionModal', true);
 };
@@ -1708,7 +1821,7 @@ window.closeAddInclusionModal = function () {
 };
 
 // Save Inclusion (Add or Edit)
-window.saveInclusion = function (addAnother = false) {
+window.saveInclusion = async function (addAnother = false) {
     const editIndexEl = document.getElementById('customInclusionEditIndex');
     const catSelect = document.getElementById('customInclusionCategory');
     const select = document.getElementById('inclusionItemSelect');
@@ -1748,6 +1861,30 @@ window.saveInclusion = function (addAnother = false) {
 
     const categoryVal = selectedType === 'Menu' ? 'Menu / Food' : selectedType;
 
+    // Upload the picked photo (stored on the linked catalog item)
+    let imageUrl = inclusionCurrentImage || '';
+    if (inclusionImageFile) {
+        if (!itemId) {
+            const hint = document.getElementById('inclusionPhotoHint');
+            if (hint) { hint.textContent = 'Select a catalog item first so the photo can be saved.'; hint.style.color = '#dc2626'; }
+            return;
+        }
+        const saveBtns = [document.getElementById('btnInclusionSaveDone'), document.getElementById('btnInclusionSaveAddAnother')].filter(Boolean);
+        const hint = document.getElementById('inclusionPhotoHint');
+        saveBtns.forEach(b => { b.disabled = true; b.style.opacity = '0.6'; });
+        if (hint) { hint.textContent = 'Uploading photo...'; hint.style.color = '#64748b'; }
+        try {
+            imageUrl = await uploadInclusionImage(selectedType, parseInt(itemId, 10));
+            inclusionImageFile = null;
+            inclusionCurrentImage = imageUrl;
+        } catch (err) {
+            if (hint) { hint.textContent = (err && err.message) || 'Failed to upload the photo.'; hint.style.color = '#dc2626'; }
+            return;
+        } finally {
+            saveBtns.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+        }
+    }
+
     const itemObj = {
         type: selectedType,
         category: categoryVal,
@@ -1756,7 +1893,8 @@ window.saveInclusion = function (addAnother = false) {
         quantity: qtyVal,
         quantity_num: qtyNum,
         unit: qtyUnit,
-        description: descVal
+        description: descVal,
+        image_url: imageUrl
     };
 
     const editIndex = editIndexEl ? parseInt(editIndexEl.value, 10) : -1;
@@ -1790,6 +1928,7 @@ window.saveInclusion = function (addAnother = false) {
             if (qtyNumEl) qtyNumEl.value = '';
             if (qtyUnitEl) qtyUnitEl.value = '';
             if (descEl) descEl.value = '';
+            resetInclusionImagePicker('');
             const banner = document.getElementById('selectedItemInfoBanner');
             if (banner) banner.style.display = 'none';
             window.updateQuantityPreview();

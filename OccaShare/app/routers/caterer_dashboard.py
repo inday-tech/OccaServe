@@ -4622,7 +4622,8 @@ def _parse_inclusions(inclusions_json: Optional[str], inclusions_legacy: Optiona
                             "quantity_num": item.get("quantity_num"),
                             "unit": item.get("unit") or "",
                             "description": (item.get("description") or "").strip(),
-                            "notes": (item.get("notes") or "").strip()
+                            "notes": (item.get("notes") or "").strip(),
+                            "image_url": (item.get("image_url") or "").strip()
                         })
                     elif isinstance(item, str) and item.strip():
                         result.append({
@@ -4674,7 +4675,8 @@ def _normalize_inclusions_for_api(inclusions) -> list:
                     "quantity_num": i.get("quantity_num"),
                     "unit": i.get("unit") or "",
                     "description": i.get("description") or "",
-                    "notes": i.get("notes") or ""
+                    "notes": i.get("notes") or "",
+                    "image_url": i.get("image_url") or ""
                 })
             elif isinstance(i, str) and i.strip():
                 normalized.append({
@@ -6575,6 +6577,62 @@ async def quick_edit_catalog_item(
         }
     else:
         raise HTTPException(status_code=400, detail="Invalid item type")
+
+@router.post("/api/catalogs/item-image/{item_type}/{item_id}")
+async def upload_catalog_item_image(
+    item_type: str,
+    item_id: int,
+    image: UploadFile = File(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    """Upload/replace the photo of a catalog item (menu, service or equipment)."""
+    profile = user.caterer_profile
+    if not profile:
+        raise HTTPException(status_code=403, detail="Unauthorized caterer access")
+
+    item_type = (item_type or "menu").lower()
+    if item_type not in ("menu", "service", "equipment"):
+        raise HTTPException(status_code=400, detail="Invalid item type")
+
+    if not getattr(image, "filename", None):
+        raise HTTPException(status_code=400, detail="No image file received.")
+
+    content_bytes = await image.read()
+    if not content_bytes:
+        raise HTTPException(status_code=400, detail="The uploaded image is empty.")
+
+    folder = "menu_images" if item_type == "menu" else ("service_images" if item_type == "service" else "equipment_images")
+    try:
+        image_url = process_base64_image(content_bytes, folder=folder)
+    except Exception:
+        image_url = None
+    if not image_url:
+        raise HTTPException(status_code=400, detail="Could not process the image. Please use a JPG or PNG file.")
+
+    if item_type == "menu":
+        item = db.query(models.MenuItem).filter(
+            models.MenuItem.id == item_id,
+            models.MenuItem.caterer_id == profile.id
+        ).first()
+    elif item_type == "service":
+        item = db.query(models.Service).filter(
+            models.Service.id == item_id,
+            models.Service.caterer_id == profile.id
+        ).first()
+    else:
+        item = db.query(models.Equipment).filter(
+            models.Equipment.id == item_id,
+            models.Equipment.caterer_id == profile.id
+        ).first()
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Catalog item not found")
+
+    item.image_url = image_url
+    db.commit()
+
+    return {"status": "success", "type": item_type, "item_id": item_id, "image_url": image_url}
 
 @router.post("/api/catalogs/quick-delete/{item_type}/{item_id}")
 async def quick_delete_catalog_item_placeholder_skip(
