@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const pricePerHead = Number(window.pricePerHead || 0);
         const catererId = Number(window.catererId || 0);
         let minGuests = Number(window.minGuests || 1);
-        let maxGuests = Number(window.maxGuests || 0);
+        let maxGuests = Math.min(Number(window.maxGuests || 999), 999);
         const phCities = window.PH_CITIES || [];
         
         let parsedRules = {};
@@ -93,14 +93,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- 1.5 Format Guest Count ---
     window.formatGuestCount = function (input) {
-        let rawValue = input.value.replace(/\D/g, '');
+        let rawValue = input.value.replace(/\D/g, '').slice(0, 3);
         if (!rawValue) {
             guestInput.value = "";
             input.value = "";
             return;
         }
-        let num = parseInt(rawValue, 10);
-        if (num > 1000) num = 1000;
+        const num = parseInt(rawValue, 10);
         guestInput.value = num;
         input.value = num.toLocaleString();
     };
@@ -130,13 +129,13 @@ document.addEventListener('DOMContentLoaded', function () {
         window.basePrice = Number(pkg.price || 0);
         window.additionalGuestPrice = Number(pkg.additional_guest_price || 0);
         window.minGuests = Number(pkg.min_guests || 1);
-        window.maxGuests = Number(pkg.max_guests || 1000);
+        window.maxGuests = Math.min(Number(pkg.max_guests || 999), 999);
 
         // 3. Update guest count labels & bounds
         const minSpan = document.getElementById('min_guests_span');
         if (minSpan) minSpan.innerText = window.minGuests;
         const maxSpan = document.getElementById('max_guests_span');
-        if (maxSpan) maxSpan.innerText = window.maxGuests || '1,000';
+        if (maxSpan) maxSpan.innerText = window.maxGuests || '999';
         const errGuests = document.getElementById('err-guests');
         if (errGuests) errGuests.innerText = `Please enter at least ${window.minGuests} guests for this package.`;
 
@@ -162,6 +161,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const isCustomizable = window.pricingMode === 'customizable';
         if (choicesCard) {
             choicesCard.style.display = isCustomizable ? 'block' : 'none';
+            const customizeLink = document.getElementById('customize-package-link');
+            if (customizeLink) {
+                customizeLink.href = `${customizeLink.dataset.customizeBase}?package_id=${encodeURIComponent(pkg.id)}`;
+            }
+            const customizationContent = document.getElementById('customizable-package-content');
+            if (customizationContent && String(pkg.id) !== String(choicesCard.dataset.initialPackageId || '')) {
+                customizationContent.innerHTML = '<p style="margin-top: 1rem; padding: 1rem; color: #9a3412; background: #fff7ed; border: 1px dashed #fdba74; border-radius: 8px;">Customize this package to choose its food, services, and equipment.</p>';
+            }
         }
         window.renderInclusions(pkg.grouped_inclusions || { food: [], services: [], equipment: [] });
 
@@ -875,11 +882,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const g = parseInt(raw, 10);
         const errSpan = document.getElementById('err-guests');
 
-        if (isNaN(g) || raw === '' || g <= 0) {
+        if (!/^\d{1,3}$/.test(raw) || !Number.isInteger(g) || g < 1 || g > 999) {
             guestDisplay.classList.add('error');
             guestDisplay.classList.remove('is-valid');
             if (errSpan) {
-                errSpan.innerText = `Please enter the number of guests.`;
+            errSpan.innerText = 'Number of guests must be between 1 and 999.';
                 errSpan.classList.add('show');
             }
             return false;

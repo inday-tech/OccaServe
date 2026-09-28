@@ -1577,6 +1577,17 @@
         {% endif %}
 
         <div id="kyc-main-content">
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 1rem; padding: 1.25rem 1.5rem; margin: 0 auto 1.5rem; max-width: 680px; text-align: left;">
+                <h3 style="margin: 0 0 0.5rem; font-size: 1rem; font-weight: 800; color: #065f46;">Why we verify your identity</h3>
+                <p style="margin: 0 0 1rem; font-size: 0.85rem; color: #166534; line-height: 1.55;">
+                    We check your government ID against your account details. The liveness check confirms that a real person is completing the check, rather than a photo or recording. Together, these checks help protect your identity and booking and prevent fraudulent bookings.
+                </p>
+                <h3 style="margin: 0 0 0.5rem; font-size: 1rem; font-weight: 800; color: #065f46;">Data Privacy</h3>
+                <p style="margin: 0; font-size: 0.85rem; color: #166534; line-height: 1.55;">
+                    Your ID image, liveness captures, and details read from your ID are stored with your account's verification record and processed for identity and security checks. Verification pages require sign-in, and these materials are not shown on your public profile. We keep them for verification, security, and applicable record-keeping needs.
+                </p>
+            </div>
+
             <!-- Phase 1: Form & Options -->
             {% set kyc_status = user.identity_verification.verification_status if user.identity_verification else
             'pending' %}
@@ -1599,34 +1610,6 @@
 
                 <!-- Hidden ID number field - populated by OCR extraction -->
                 <input type="hidden" id="id_number" value="">
-
-                <!-- Bank-Grade Reassurance Trust Banner -->
-                <div style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1px solid #bbf7d0; border-radius: 1.25rem; padding: 1.5rem 1.75rem; margin: 0 auto 2.5rem; max-width: 680px; text-align: left; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.05);">
-                    <div style="display: flex; align-items: flex-start; gap: 1rem;">
-                        <div style="width: 44px; height: 44px; background: #10b981; color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        <div style="flex: 1;">
-                            <h4 style="margin: 0 0 0.35rem 0; font-size: 1rem; font-weight: 800; color: #065f46; letter-spacing: -0.01em;">
-                                Fast & Secure Identity Verification
-                            </h4>
-                            <p style="margin: 0 0 0.85rem 0; font-size: 0.82rem; color: #047857; font-weight: 600; line-height: 1.5;">
-                                To protect your booking and prevent fraud, please verify your government ID. This process usually takes less than a minute.
-                            </p>
-                            <div style="display: flex; flex-wrap: wrap; gap: 0.6rem;">
-                                <span style="background: #ffffff; color: #065f46; font-size: 0.72rem; font-weight: 800; padding: 0.35rem 0.75rem; border-radius: 2rem; border: 1px solid #a7f3d0; display: inline-flex; align-items: center; gap: 0.35rem; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                                    <i class="fas fa-bolt" style="color: #10b981;"></i> 1-Minute Process
-                                </span>
-                                <span style="background: #ffffff; color: #065f46; font-size: 0.72rem; font-weight: 800; padding: 0.35rem 0.75rem; border-radius: 2rem; border: 1px solid #a7f3d0; display: inline-flex; align-items: center; gap: 0.35rem; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                                    <i class="fas fa-lock" style="color: #10b981;"></i> 256-Bit SSL Encrypted
-                                </span>
-                                <span style="background: #ffffff; color: #065f46; font-size: 0.72rem; font-weight: 800; padding: 0.35rem 0.75rem; border-radius: 2rem; border: 1px solid #a7f3d0; display: inline-flex; align-items: center; gap: 0.35rem; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                                    <i class="fas fa-user-shield" style="color: #10b981;"></i> Data Strictly Protected
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- Step 1: ID Type Selection Card -->
                 <div style="background: #ffffff; border: 1.5px solid var(--kyc-slate-200); border-radius: 1.5rem; padding: 2rem; max-width: 680px; margin: 0 auto 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.02); text-align: left;">

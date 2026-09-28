@@ -594,13 +594,12 @@ async def create_manual_booking(
 
         # 3. Create Booking
         event_time_str = data.get("event_time")
-        if event_time_str:
-            try:
-                event_time = datetime.strptime(event_time_str[:5], "%H:%M").time()
-            except ValueError:
-                event_time = None
-        else:
-            event_time = None
+        if not event_time_str:
+            raise HTTPException(status_code=400, detail="manTime|Event time is required.")
+        try:
+            event_time = datetime.strptime(event_time_str[:5], "%H:%M").time()
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="manTime|Enter a valid event time.")
 
         # Build special requests from notes
         special_notes = data.get("special_notes", "").strip()
@@ -7024,31 +7023,52 @@ async def add_internal_schedule(
     time_str = data.get("time")
     pin = data.get("pin", False)
     
-    if not title or not date_str:
+    if not isinstance(title, str) or not title.strip() or not date_str:
         raise HTTPException(status_code=400, detail="Title and Date are required")
-        
+
+    title = title.strip()
+    if not isinstance(schedule_type, str) or not schedule_type.strip():
+        raise HTTPException(status_code=400, detail="Select a valid schedule type")
+    schedule_type = schedule_type.strip()
+    if not isinstance(pin, bool):
+        raise HTTPException(status_code=400, detail="Pin must be true or false")
+
     from datetime import datetime
-    event_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-    event_time = datetime.strptime(time_str, "%H:%M").time() if time_str else None
+    try:
+        event_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Enter a valid schedule date")
+    try:
+        event_time = datetime.strptime(time_str, "%H:%M").time() if time_str else None
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Enter a valid schedule time")
+
+    if schedule_id not in (None, ""):
+        try:
+            schedule_id = int(schedule_id)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Invalid schedule ID")
     
     if schedule_id:
         schedule = db.query(models.InternalSchedule).filter(
             models.InternalSchedule.id == schedule_id,
             models.InternalSchedule.caterer_id == user.caterer_profile.id
         ).first()
-        if schedule:
-            # Prevent editing schedules that are in the past
-            from datetime import date
-            if schedule.date and schedule.date < date.today():
-                raise HTTPException(status_code=400, detail="Cannot modify past schedules")
+        if not schedule:
+            raise HTTPException(status_code=404, detail="Schedule not found")
 
-            schedule.title = title
-            schedule.schedule_type = schedule_type
-            schedule.date = event_date
-            schedule.time = event_time
-            schedule.is_pinned = pin
-            db.commit()
-            return {"status": "success", "message": "Schedule updated"}
+        # Prevent editing schedules that are in the past
+        from datetime import date
+        if schedule.date and schedule.date < date.today():
+            raise HTTPException(status_code=400, detail="Cannot modify past schedules")
+
+        schedule.title = title
+        schedule.schedule_type = schedule_type
+        schedule.date = event_date
+        schedule.time = event_time
+        schedule.is_pinned = pin
+        db.commit()
+        return {"status": "success", "message": "Schedule updated"}
             
     schedule = models.InternalSchedule(
         caterer_id=user.caterer_profile.id,
@@ -7174,8 +7194,8 @@ async def get_calendar_events(
         }
 
         if is_owner:
-            customer_name = f"{b.user.first_name} {b.user.last_name}" if b.user else "Unknown Customer"
-            customer_first_name = b.user.first_name if b.user else "Customer"
+            customer_name = f"{b.user.first_name} {b.user.last_name}" if b.user else (b.customer_name or b.customer_email or "Walk-in Customer")
+            customer_first_name = b.user.first_name if b.user else customer_name.split()[0]
             event_data["title"] = f"{b.event_type or 'Event'} - {b.event_name or customer_first_name}"
             
             # Serialize selected items for package inclusions

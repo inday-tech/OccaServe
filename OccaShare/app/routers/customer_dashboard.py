@@ -1412,7 +1412,7 @@ async def caterer_detail(
 
     # Get real completed events count
     completed_events_count = db.query(models.Booking).filter(
-        models.Booking.caterer_id == caterer.id, 
+        models.Booking.caterer_id == caterer.id,  
         models.Booking.status == 'completed'
     ).count()
 

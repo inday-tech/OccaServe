@@ -1249,7 +1249,11 @@ async def customize_package_page(
     grouped_inclusions = get_package_grouped_inclusions(package)
 
     # Initial guest count from session or package min_guests or caterer min_pax
-    initial_guest_count = sess_data.get("guest_count") or package.min_guests or caterer.min_pax or 50
+    raw_guest_count = sess_data.get("guest_count") or package.min_guests or caterer.min_pax or 50
+    try:
+        initial_guest_count = min(max(int(raw_guest_count), int(package.min_guests or caterer.min_pax or 10)), 999)
+    except (ValueError, TypeError):
+        initial_guest_count = 50
     saved_customization = sess_data.get("customization", {})
 
     return templates.TemplateResponse("customer/booking_wizard/customizable_package.html", {
@@ -1296,7 +1300,13 @@ async def save_customization_selection(
     booking_data["customization"] = parsed_customization
     if "guest_count" in parsed_customization:
         try:
-            booking_data["guest_count"] = int(parsed_customization["guest_count"])
+            g_count = int(parsed_customization["guest_count"])
+            # Enforce max 3 digits (1-999)
+            if g_count > 999:
+                g_count = 999
+            elif g_count < 1:
+                g_count = 1
+            booking_data["guest_count"] = g_count
         except (ValueError, TypeError):
             pass
     if "estimated_total" in parsed_customization:
@@ -1369,6 +1379,9 @@ async def custom_booking_submit(
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer:
         return RedirectResponse(url="/customer/marketplace", status_code=303)
+
+    if guest_count < 1 or guest_count > 999:
+        return RedirectResponse(url=f"/bookings/custom/request/{caterer_id}?error=Number+of+guests+must+be+between+1+and+999", status_code=303)
         
     min_guests = caterer.min_pax or 20
     if guest_count < min_guests:
@@ -1888,6 +1901,9 @@ async def step_details_submit(
         return RedirectResponse(url=f"{redirect_base}?booking_error=You+already+have+a+booking+request+for+this+exact+schedule+and+caterer.", status_code=303)
 
     # 🚨 VALIDATION 4: Guest Count Bounds
+    if guest_count_int < 1 or guest_count_int > 999:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=Number+of+guests+must+be+between+1+and+999.", status_code=303)
+
     is_package = package_id_int is not None
     min_guests_required = caterer.min_pax or 50 if is_package else 1
     if package:

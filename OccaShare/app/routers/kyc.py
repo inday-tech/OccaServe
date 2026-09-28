@@ -30,7 +30,10 @@ UPLOAD_DIR = "app/static/uploads/verification"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.get("/test-extract")
-async def test_extract():
+async def test_extract(current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Administrator access required")
+
     import glob
     files = glob.glob(os.path.join(UPLOAD_DIR, "temp_ocr_*.enc"))
     if not files:
@@ -39,12 +42,8 @@ async def test_extract():
     latest_file = max(files, key=os.path.getmtime)
     filename = os.path.basename(latest_file)
     id_url = f"/api/bookings/kyc/view/{filename}"
-    print(f"[TEST OCR] Extracting data from latest file: {latest_file} via {id_url}")
     result = await verification_service.extract_id_data(id_url, "PhilSys / PhilID")
-    return {
-        "file_tested": latest_file,
-        "result": result
-    }
+    return {"file_tested": latest_file, "result": result}
 
 @router.api_route("/clear-duplicate-id", methods=["GET", "POST"])
 async def clear_duplicate_id_route(
@@ -53,6 +52,9 @@ async def clear_duplicate_id_route(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """Utility route to clear duplicate identity_verifications records matching an ID number using raw SQL."""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Administrator access required")
+
     import re
     from sqlalchemy import text
     clean_target = re.sub(r'[\s\-]', '', id_number)
@@ -63,17 +65,12 @@ async def clear_duplicate_id_route(
     for row in rows:
         rec_id, u_id, r_num, status = row
         clean_r = re.sub(r'[\s\-]', '', str(r_num or ""))
-        
-        is_match = False
-        if clean_target and clean_target in clean_r:
-            is_match = True
 
-        if is_match and u_id != current_user.id:
+        if clean_target and clean_target in clean_r and u_id != current_user.id:
             deleted_info.append(f"Record #{rec_id} (User #{u_id}, Status: '{status}')")
             db.execute(text("DELETE FROM identity_verifications WHERE id = :id"), {"id": rec_id})
 
     db.commit()
-
     return {
         "status": "success",
         "message": f"Cleared {len(deleted_info)} duplicate record(s) matching '{id_number}'.",
@@ -130,22 +127,6 @@ async def extract_id(
     ocr_first_name = get_field_val("first_name") or get_field_val("given_names")
     ocr_middle_name = get_field_val("middle_name")
     raw_ocr = extracted_data.get("raw_text", "")
-    
-    # Log variables to ocr_debug.log to see why name matching failed
-    try:
-        with open("ocr_debug.log", "a", encoding="utf-8") as f:
-            f.write(f"\n--- KYC MATCH DEBUG ---\n")
-            f.write(f"current_user.id: {current_user.id}\n")
-            f.write(f"current_user.first_name: {current_user.first_name!r}\n")
-            f.write(f"current_user.middle_name: {current_user.middle_name!r}\n")
-            f.write(f"current_user.last_name: {current_user.last_name!r}\n")
-            f.write(f"user_full_name: {user_full_name!r}\n")
-            f.write(f"ocr_full_name: {ocr_full_name!r}\n")
-            f.write(f"ocr_first_name: {ocr_first_name!r}\n")
-            f.write(f"ocr_middle_name: {ocr_middle_name!r}\n")
-            f.write(f"ocr_last_name: {ocr_last_name!r}\n")
-    except Exception as log_err:
-        pass
         
     name_matched = verification_service.match_name(
         user_full_name,
@@ -156,8 +137,6 @@ async def extract_id(
         raw_ocr
     )
     
-    print(f"[KYC EXTRACT] Name matching - Registered: '{user_full_name}', Extracted: '{ocr_full_name}', Matched: {name_matched}")
-    
     if not ocr_first_name.strip() and not ocr_last_name.strip():
         raise HTTPException(
             status_code=400,
@@ -165,10 +144,9 @@ async def extract_id(
         )
         
     if not name_matched:
-        debug_info = f"Registered: '{user_full_name}', OCR Extracted First: '{ocr_first_name}', Middle: '{ocr_middle_name}', Last: '{ocr_last_name}'"
         raise HTTPException(
             status_code=400,
-            detail=f"Identity Verification Failed | The name on your ID does not match your registered name. Please upload your own valid ID.\n\n[DEBUG INFO]: {debug_info}"
+            detail="The name on your ID does not match your account details. Please upload your own valid ID or update your account information."
         )
     
     # Update/Create verification record as pending_confirmation
@@ -279,8 +257,6 @@ async def upload_id(
         middle_name,
         user_full_name
     )
-    
-    print(f"[KYC UPLOAD] Submitted name matching - Registered: '{user_full_name}', Submitted: '{submitted_full_name}', Matched: {submitted_name_matched}")
     
     if not submitted_name_matched:
         kyc_record.verification_status = "failed"
@@ -724,15 +700,6 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
         except Exception as db_err:
             print(f"[KYC BACKGROUND DB ERROR IN EXCEPT] {db_err}")
             
-        try:
-            with open("ocr_debug.log", "a", encoding="utf-8") as f:
-                f.write(f"\n--- KYC BACKGROUND TASK FATAL ERROR AT {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
-                f.write(f"User ID: {user_id}, Booking ID: {booking_id}\n")
-                f.write(f"Error: {str(e)}\n")
-                f.write(f"Traceback: {traceback.format_exc()}\n")
-                f.write("-" * 50 + "\n")
-        except Exception:
-            pass
     finally:
         db.close()
 
@@ -882,7 +849,7 @@ async def view_kyc_document(
     try:
         decrypted_data = decrypt_data(file_data)
         return Response(content=decrypted_data, media_type=media_type)
-    except (InvalidToken, Exception) as e:
+    except Exception as e:
         # Decryption failed — check if the file is actually a valid raw image
         # (uploaded before encryption was enabled, or key has changed)
         image_signatures = {

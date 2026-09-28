@@ -1255,6 +1255,14 @@
                                 <div class="field-error-msg" id="error-extEventDate" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
                             </div>
 
+                            <div class="form-group-pro">
+                                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                    Event Time <span style="color: #ef4444;">*</span>
+                                </label>
+                                <input type="time" id="extEventTime" class="control-pro" required onchange="clearWalkinError('extEventTime')">
+                                <div class="field-error-msg" id="error-extEventTime" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+                            </div>
+
                             <!-- DYNAMIC PARTICIPANT / CELEBRANT / REPRESENTATIVE NAME FIELDS -->
                             <div id="dynamicNameFieldsContainer" style="grid-column: span 2; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
                                 <!-- Default: Customer Full Name -->

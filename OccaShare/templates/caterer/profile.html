@@ -819,6 +819,14 @@
                     <div id="portfolio-event-type" class="text-[10px] font-black text-brand uppercase tracking-widest mb-2">Event Type</div>
                     <h3 id="portfolio-title" class="text-xl font-black text-slate-900 mb-4">Portfolio Title</h3>
                     <p id="portfolio-desc" class="text-sm text-slate-500 leading-relaxed">Description goes here...</p>
+                    <div class="mt-4">
+                        <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Event Location</div>
+                        <p id="portfolio-location" class="text-sm font-semibold text-slate-700"></p>
+                    </div>
+                    <div class="mt-4">
+                        <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Event Highlights</div>
+                        <p id="portfolio-highlights" class="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap"></p>
+                    </div>
                 </div>
                 <div class="p-6 flex-1 bg-slate-50/50">
                     <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Gallery (<span id="portfolio-img-count">0</span> Photos)</h4>
@@ -1013,6 +1021,8 @@
             title: {{ item.title|tojson }},
             event_type: {{ item.event_type|tojson }},
             description: {{ item.description|tojson }},
+            location: {{ (item.location or '')|tojson }},
+            highlights: {{ (item.highlights or '')|tojson }},
             images: [
                 {% for img in item.images %}
                 "{{ img.image_url }}",
@@ -2135,6 +2145,8 @@
         document.getElementById('portfolio-title').innerText = portfolio.title;
         document.getElementById('portfolio-event-type').innerText = portfolio.event_type;
         document.getElementById('portfolio-desc').innerText = portfolio.description;
+        document.getElementById('portfolio-location').textContent = portfolio.location || 'Location upon request';
+        document.getElementById('portfolio-highlights').textContent = portfolio.highlights || 'No highlights provided.';
         document.getElementById('portfolio-img-count').innerText = portfolio.images.length;
         
         const thumbsContainer = document.getElementById('portfolio-thumbnails');

@@ -1868,11 +1868,12 @@
 
                                 <div style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--hub-slate-600); font-weight: 600; margin-bottom: 0.75rem;">
                                     <i class="fas fa-map-marker-alt" style="color: #ef4444; font-size: 0.85rem;"></i>
-                                    <span>{{ p.location or 'Location upon request' }}</span>
+                                    <span><strong>Event Location:</strong> {{ p.location or 'Location upon request' }}</span>
                                 </div>
 
                                 {% if p.highlights %}
                                 <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: auto; padding-top: 0.65rem; border-top: 1px solid #f1f5f9;">
+                                    <strong style="flex-basis: 100%; color: var(--hub-slate-600); font-size: 0.78rem;">Event Highlights</strong>
                                     {% set h_raw = p.highlights %}
                                     {% if h_raw.startswith('[') and h_raw.endswith(']') %}
                                         {% set h_clean = h_raw | replace('[', '') | replace(']', '') | replace('"', '') | replace('{value:', '') | replace('}', '') %}
@@ -1880,7 +1881,7 @@
                                     {% else %}
                                         {% set h_list = h_raw.split(',') %}
                                     {% endif %}
-                                    {% for h in h_list[:3] %}
+                                    {% for h in h_list %}
                                         {% set clean_h = h.strip().strip('"').strip("'") %}
                                         {% if clean_h %}
                                         <span style="background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; font-size: 0.72rem; font-weight: 600; padding: 2px 7px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;">
@@ -1888,9 +1889,6 @@
                                         </span>
                                         {% endif %}
                                     {% endfor %}
-                                    {% if h_list|length > 3 %}
-                                    <span style="font-size: 0.7rem; color: #94a3b8; font-weight: 700; align-self: center;">+{{ h_list|length - 3 }} more</span>
-                                    {% endif %}
                                 </div>
                                 {% endif %}
                             </div>

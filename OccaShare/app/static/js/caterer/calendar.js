@@ -1697,6 +1697,9 @@ window.openAddScheduleModal = function() {
 
 window.submitAddSchedule = async function(e) {
     e.preventDefault();
+    const form = document.getElementById('addScheduleForm');
+    if (!form || !form.reportValidity()) return;
+
     const btn = document.getElementById('btnSubmitSchedule');
     if (btn) {
         btn.disabled = true;
@@ -3079,6 +3082,12 @@ window.submitExternalBooking = async function(e) {
         }
     }
 
+    const eventTimeEl = document.getElementById('extEventTime');
+    const eventTimeVal = eventTimeEl ? eventTimeEl.value : '';
+    if (!eventTimeVal) {
+        reportError('extEventTime', 'Event time is required.');
+    }
+
     // 5. Venue Validation
     const venueEl = document.getElementById('extVenue');
     if (!venueEl || !venueEl.value.trim()) {
@@ -3221,7 +3230,7 @@ window.submitExternalBooking = async function(e) {
         customer_email: "",
         event_name: `${eventType} - ${genericFullName || (normType === 'wedding' ? `${brideName} & ${groomName}` : (celebrantName || repName))}`,
         event_date: dateVal,
-        event_time: "10:00",
+        event_time: eventTimeVal,
         guest_count: 20,
         street_address: streetVal,
         barangay: brgyVal,

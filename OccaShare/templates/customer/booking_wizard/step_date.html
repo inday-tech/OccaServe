@@ -33,8 +33,9 @@
             <label class="calendar-label">Initial Guest Count</label>
             <div class="input-icon-wrapper">
                 <i class="fas fa-users input-icon"></i>
-                <input type="number" name="guest_count" required min="10" class="form-input wizard-input-with-icon"
-                    value="50">
+                <input type="number" name="guest_count" required min="10" max="999" maxlength="3"
+                    oninput="if(this.value.length > 3) this.value = this.value.slice(0, 3);"
+                    class="form-input wizard-input-with-icon" value="50">
             </div>
         </div>
     </div>

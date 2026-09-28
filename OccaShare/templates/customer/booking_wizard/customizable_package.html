@@ -318,14 +318,17 @@
                                    id="custGuestCount" 
                                    name="guest_count"
                                    class="form-input" 
-                                   value="{{ initial_guest_count }}" 
+                                   value="{{ [initial_guest_count or 50, 999] | min }}" 
                                    min="{{ package.min_guests or caterer.min_pax or 10 }}" 
-                                   max="{{ package.max_guests or 1000 }}" 
+                                   max="{{ [(package.max_guests or 999), 999] | min }}" 
+                                   maxlength="3"
                                    step="1"
-                                   oninput="handleGuestCountChange(this.value)"
+                                   oninput="if(this.value.length > 3) this.value = this.value.slice(0, 3); handleGuestCountChange(this.value)"
+                                   onblur="handleGuestCountBlur(this)"
                                    style="width: 140px; font-size: 1.1rem; font-weight: 800; padding: 0.6rem 0.9rem; border: 1.5px solid #cbd5e1; border-radius: 10px;">
                             <span style="font-size: 0.9rem; font-weight: 700; color: #64748b;">guests / persons</span>
                         </div>
+                        <div id="custGuestCountError" style="display: none; color: #dc2626; font-size: 0.78rem; font-weight: 700; margin-top: 4px;"></div>
                     </div>
                     <div style="flex: 2; min-width: 250px; font-size: 0.82rem; color: #64748b; line-height: 1.5; background: #ffffff; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid #fed7aa;">
                         <i class="fas fa-calculator" style="color: #ea580c; margin-right: 4px;"></i>
@@ -547,18 +550,80 @@
 <script>
 const basePackagePrice = {{ (package.price_per_head or package.price or 0) | tojson }};
 const minGuestCapacity = {{ (package.min_guests or caterer.min_pax or 10) | tojson }};
-let currentGuestCount = parseInt(document.getElementById('custGuestCount')?.value, 10) || minGuestCapacity;
+const maxGuestCapacity = Math.min({{ (package.max_guests or 999) | tojson }}, 999);
+let currentGuestCount = Math.min(Math.max(parseInt(document.getElementById('custGuestCount')?.value, 10) || minGuestCapacity, minGuestCapacity), maxGuestCapacity);
 
 function handleGuestCountChange(val) {
-    let parsed = parseInt(val, 10);
-    if (isNaN(parsed) || parsed < 1) parsed = 1;
+    const inputEl = document.getElementById('custGuestCount');
+    const errEl = document.getElementById('custGuestCountError');
+
+    // Remove any non-numeric characters and cap to 3 digits (1-999)
+    let sanitized = String(val !== undefined && val !== null ? val : '').replace(/\D/g, '');
+    if (sanitized.length > 3) {
+        sanitized = sanitized.slice(0, 3);
+    }
+    if (inputEl && inputEl.value !== sanitized) {
+        inputEl.value = sanitized;
+    }
+
+    if (!sanitized) {
+        currentGuestCount = 0;
+        if (errEl) {
+            errEl.innerText = `Please enter expected number of guests (min. ${minGuestCapacity} pax, max 3 digits).`;
+            errEl.style.display = 'block';
+        }
+        if (inputEl) inputEl.style.borderColor = '#dc2626';
+        const display = document.getElementById('summaryGuestCountDisplay');
+        if (display) display.innerText = `0 Pax`;
+        updateCustomizationState();
+        return;
+    }
+
+    let parsed = parseInt(sanitized, 10);
+    if (parsed > maxGuestCapacity) {
+        parsed = maxGuestCapacity;
+        if (inputEl) inputEl.value = parsed;
+    }
+
     currentGuestCount = parsed;
+
+    if (parsed < minGuestCapacity) {
+        if (errEl) {
+            errEl.innerText = `Minimum required for this package is ${minGuestCapacity} pax.`;
+            errEl.style.display = 'block';
+        }
+        if (inputEl) inputEl.style.borderColor = '#ea580c';
+    } else {
+        if (errEl) {
+            errEl.style.display = 'none';
+        }
+        if (inputEl) inputEl.style.borderColor = '#cbd5e1';
+    }
     
     const display = document.getElementById('summaryGuestCountDisplay');
     if (display) display.innerText = `${currentGuestCount} Pax`;
 
     // Recompute all per-pax items and live estimate
     updateCustomizationState();
+}
+
+function handleGuestCountBlur(input) {
+    const inputEl = input || document.getElementById('custGuestCount');
+    const errEl = document.getElementById('custGuestCountError');
+    if (!inputEl) return;
+    
+    let parsed = parseInt(inputEl.value, 10);
+    if (isNaN(parsed) || parsed < minGuestCapacity) {
+        inputEl.value = minGuestCapacity;
+        handleGuestCountChange(minGuestCapacity);
+        if (errEl) errEl.style.display = 'none';
+        inputEl.style.borderColor = '#cbd5e1';
+    } else if (parsed > maxGuestCapacity) {
+        inputEl.value = maxGuestCapacity;
+        handleGuestCountChange(maxGuestCapacity);
+        if (errEl) errEl.style.display = 'none';
+        inputEl.style.borderColor = '#cbd5e1';
+    }
 }
 
 function handleFoodItemToggle(input) {
@@ -679,16 +744,36 @@ function validateAndSubmitCustomization() {
         return;
     }
 
-    // Check guest count minimum
+    // Check guest count minimum and maximum (max 3 digits / 999 max)
     const guestInput = document.getElementById('custGuestCount');
-    const guestVal = parseInt(guestInput?.value, 10) || minGuestCapacity;
-    if (guestVal < minGuestCapacity) {
+    const guestVal = parseInt(guestInput?.value, 10);
+    if (!guestVal || isNaN(guestVal) || guestVal < minGuestCapacity) {
+        const msg = `The minimum guest count for this package is ${minGuestCapacity} guests.`;
         if (alertBox && alertText) {
-            alertText.innerText = `The minimum guest count for this caterer is ${minGuestCapacity} guests.`;
+            alertText.innerText = msg;
             alertBox.style.display = 'block';
             alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
         } else {
-            alert(`The minimum guest count for this caterer is ${minGuestCapacity} guests.`);
+            alert(msg);
+        }
+        if (guestInput) {
+            guestInput.focus();
+            guestInput.style.borderColor = '#dc2626';
+        }
+        return;
+    }
+    if (guestVal > maxGuestCapacity) {
+        const msg = `The maximum guest count allowed is ${maxGuestCapacity} guests (up to 3 digits).`;
+        if (alertBox && alertText) {
+            alertText.innerText = msg;
+            alertBox.style.display = 'block';
+            alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            alert(msg);
+        }
+        if (guestInput) {
+            guestInput.focus();
+            guestInput.style.borderColor = '#dc2626';
         }
         return;
     }

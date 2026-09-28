@@ -43,6 +43,9 @@ async def create_quote_request(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    if guest_count < 1 or guest_count > 999:
+        raise HTTPException(status_code=400, detail="Number of guests must be between 1 and 999.")
+
     # check availability
     date_obj = datetime.strptime(event_date, '%Y-%m-%d').date()
     availability = db.query(models.Availability).filter(
@@ -98,6 +101,9 @@ async def calculate_quotation(
     current_user = get_session_user(request, db)
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+
+    if guest_count < 1 or guest_count > 999:
+        raise HTTPException(status_code=400, detail="Number of guests must be between 1 and 999.")
 
     booking = db.query(models.Booking).get(booking_id)
     if not booking:
@@ -228,6 +234,14 @@ async def sign_contract(
     
     # Sync guest count if adjusted
     guest_count = data.get("guest_count")
+    if guest_count is not None:
+        try:
+            guest_count = int(guest_count)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Number of guests must be between 1 and 999.")
+        if guest_count < 1 or guest_count > 999:
+            raise HTTPException(status_code=400, detail="Number of guests must be between 1 and 999.")
+
     is_customizable = (quotation.package_details and quotation.package_details.get("package_type") == "customizable") or (booking.package and getattr(booking.package, "pricing_mode", "") == "customizable") or (booking.custom_requirements and booking.custom_requirements.get("package_type") == "customizable")
     
     if guest_count and guest_count != quotation.package_details.get("guest_count"):
