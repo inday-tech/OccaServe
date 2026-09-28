@@ -32,12 +32,14 @@
         <div class="package-card-pro" id="package-{{ package.id }}">
             <div class="package-media-pro"
                 style="position: relative; overflow: hidden; height: 200px; background: #f8fafc;">
+                {% set pkg_mode = (package.pricing_mode or 'fixed')|lower %}
+                {% set is_custom_pkg = pkg_mode == 'customizable' %}
+                {% if not is_custom_pkg %}
                 <div class="pkg-badge-category"
                     style="position: absolute; top: 12px; left: 12px; z-index: 10; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); color: white; padding: 4px 12px; border-radius: var(--border-radius, 99px); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid rgba(255,255,255,0.2);">
                     {{ package.service_type or 'General' }}
                 </div>
-                {% set pkg_mode = (package.pricing_mode or 'fixed')|lower %}
-                {% set is_custom_pkg = pkg_mode == 'customizable' %}
+                {% endif %}
                 <div style="position: absolute; top: 12px; right: 12px; z-index: 10; background: {% if is_custom_pkg %}rgba(37, 99, 235, 0.92){% else %}rgba(15, 23, 42, 0.85){% endif %}; backdrop-filter: blur(8px); color: white; padding: 4px 10px; border-radius: var(--border-radius, 99px); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; border: 1px solid rgba(255,255,255,0.2); display: inline-flex; align-items: center; gap: 5px;">
                     <i class="fas {% if is_custom_pkg %}fa-sliders-h{% else %}fa-lock{% endif %}" style="font-size: 0.65rem;"></i>
                     {{ 'Customizable' if is_custom_pkg else 'Fixed' }}
@@ -1220,7 +1222,7 @@
     }
 </script>
 
-<script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v=20.0"></script>
+<script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v=20.1"></script>
 <script>
     // Listen to global header search for packages
     window.addEventListener('globalSearch', function (e) {

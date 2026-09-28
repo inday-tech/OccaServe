@@ -4877,8 +4877,7 @@ async def add_package(
     if pricing_mode == 'customizable':
         price_per_head = 0.0
         reservation_fee_value = 0.0
-        if not service_type or not service_type.strip():
-            service_type = "Customizable"
+        service_type = "Customizable"
     else:
         if price_per_head <= 0:
             errors.append("Price per head must be greater than 0.")
@@ -5872,8 +5871,7 @@ async def update_package(
     if pricing_mode == 'customizable':
         price_per_head = 0.0
         reservation_fee_value = 0.0
-        if not service_type or not service_type.strip():
-            service_type = "Customizable"
+        service_type = "Customizable"
     else:
         if price_per_head <= 0:
             errors.append("Price per head must be greater than 0.")
