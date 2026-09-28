@@ -34,6 +34,27 @@ window.toggleFoodMode = function (mode) {
 };
 
 
+// Converts an API error payload into a readable message.
+// FastAPI validation errors arrive as `detail: [{loc, msg, ...}]`, which
+// stringify to "[object Object]" when shown directly.
+function extractErrorMessage(data, fallback = 'Something went wrong. Please try again.') {
+    if (!data) return fallback;
+
+    const detail = data.detail;
+    if (typeof detail === 'string' && detail.trim()) return detail;
+    if (Array.isArray(detail) && detail.length) {
+        const msgs = detail
+            .map(d => (typeof d === 'string' ? d : (d && d.msg) || ''))
+            .filter(Boolean);
+        if (msgs.length) return msgs.join('\n');
+    }
+    if (detail && typeof detail === 'object' && typeof detail.msg === 'string') return detail.msg;
+
+    if (typeof data.message === 'string' && data.message.trim()) return data.message;
+    return fallback;
+}
+window.extractErrorMessage = extractErrorMessage;
+
 // Global Modal Helpers
 const safeOpenModal = (id, float = false) => {
     const el = document.getElementById(id);
@@ -2563,28 +2584,28 @@ window.submitQuickAddOption = async function (e) {
     }
 
     try {
-        const payload = {
-            item_type: type,
-            name: name,
-            category: category,
-            price: price,
-            unit_type: unit,
-            description: desc,
-            available_qty: qty
-        };
+        const formData = new FormData();
+        formData.append('item_type', type);
+        formData.append('name', name);
+        formData.append('category', category);
+        formData.append('price', price);
+        formData.append('unit_type', unit);
+        formData.append('description', desc);
+        formData.append('available_qty', qty);
+        const fileInput = document.getElementById('quickAddOptionImage');
+        if (fileInput && fileInput.files && fileInput.files[0]) {
+            formData.append('image', fileInput.files[0]);
+        }
 
         const res = await fetch('/caterer/api/catalogs/quick-add', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify(payload)
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
         });
 
         const data = await res.json();
         if (!res.ok || data.status !== 'success') {
-            throw new Error(data.detail || data.message || 'Failed to save item');
+            throw new Error(extractErrorMessage(data, 'Failed to save item'));
         }
 
         const newItem = data.item;
@@ -2821,7 +2842,7 @@ window.submitQuickEditOption = async function (e) {
 
         const data = await res.json();
         if (!res.ok || data.status !== 'success') {
-            throw new Error(data.detail || data.message || 'Failed to update item');
+            throw new Error(extractErrorMessage(data, 'Failed to update item'));
         }
 
         const updatedItem = data.item;
@@ -2893,7 +2914,7 @@ window.quickDeleteCatalogItem = async function (type, id, event) {
 
         const data = await res.json();
         if (!res.ok || data.status !== 'success') {
-            throw new Error(data.detail || data.message || 'Failed to delete item');
+            throw new Error(extractErrorMessage(data, 'Failed to delete item'));
         }
 
         // Remove from local catalog

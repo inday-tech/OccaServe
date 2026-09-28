@@ -1756,7 +1756,7 @@
                             <div class="ei-body">
                                 {% if not is_custom_pkg %}
                                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px; flex-wrap: wrap;">
-                                    <span class="ei-cat">{{ pkg.service_type or 'General' }}</span>
+                                    <span class="ei-cat">{% if is_custom_pkg %}Build Your Own{% else %}{{ pkg.service_type or 'General' }}{% endif %}</span>
                                 </div>
                                 {% endif %}
                                 <span class="ei-name">{{ pkg.name }}</span>
