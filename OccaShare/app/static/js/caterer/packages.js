@@ -83,8 +83,13 @@ window.togglePricingMode = function (mode) {
     }
     if (serviceTypeSelect) {
         serviceTypeSelect.required = !isCustomizable;
-        if (isCustomizable && (!serviceTypeSelect.value || serviceTypeSelect.value === '')) {
-            serviceTypeSelect.value = 'General';
+        if (isCustomizable) {
+            if (serviceTypeSelect.value) {
+                serviceTypeSelect.dataset.previousValue = serviceTypeSelect.value;
+            }
+            serviceTypeSelect.value = '';
+        } else if (!serviceTypeSelect.value) {
+            serviceTypeSelect.value = serviceTypeSelect.dataset.previousValue || 'General';
         }
     }
     if (pricingModeGroup) {
@@ -475,11 +480,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (form.price_per_head) form.price_per_head.addEventListener('input', calculatePricing);
         if (form.min_guests) form.min_guests.addEventListener('input', calculatePricing);
 
-        // Guarantee inclusions and customizable selection rules are serialized right before form submit
-        form.addEventListener('submit', () => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
             syncInclusionsHidden();
             if (typeof syncCustomizableSelectionRules === 'function') {
                 syncCustomizableSelectionRules();
+            }
+
+            const submitBtn = document.getElementById('pkgSaveBtn');
+            const result = await window.apiAction(form.action, {
+                method: 'POST',
+                body: new FormData(form)
+            }, submitBtn);
+
+            if (result) {
+                safeCloseModal('packageModal');
+                window.location.reload();
             }
         });
     }

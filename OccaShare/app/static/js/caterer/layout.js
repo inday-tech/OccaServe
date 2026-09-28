@@ -689,6 +689,31 @@ window.ValidationManager = class ValidationManager {
  * Global AJAX Action Helper
  * Handles button loading states, fetch execution, and Toast notification
  */
+window.formatApiError = function(value) {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (Array.isArray(value)) {
+        return value.map(item => {
+            if (typeof item === 'string') return item;
+            if (item && typeof item === 'object') {
+                const location = Array.isArray(item.loc)
+                    ? item.loc.filter(part => part !== 'body').join(' → ')
+                    : '';
+                const message = item.msg || item.message || JSON.stringify(item);
+                return location ? `${location}: ${message}` : message;
+            }
+            return String(item);
+        }).join('\n');
+    }
+    if (typeof value === 'object') {
+        if (value.message) return window.formatApiError(value.message);
+        if (value.detail) return window.formatApiError(value.detail);
+        if (value.msg) return String(value.msg);
+        return JSON.stringify(value);
+    }
+    return String(value);
+};
+
 window.apiAction = async function(url, options = {}, btn = null) {
     const originalBtnContent = btn ? btn.innerHTML : null;
     if (btn) {
@@ -730,16 +755,7 @@ window.apiAction = async function(url, options = {}, btn = null) {
             if (window.showToast && !options.muteToast) window.showToast(data.message || "Action completed", "success");
             return data;
         } else {
-            let errorMsg = "Request failed";
-            if (data.detail) {
-                if (Array.isArray(data.detail)) {
-                    errorMsg = data.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join('\n');
-                } else if (typeof data.detail === 'string') {
-                    errorMsg = data.detail;
-                } else {
-                    errorMsg = JSON.stringify(data.detail);
-                }
-            }
+            const errorMsg = window.formatApiError(data.message || data.detail || data) || "Request failed";
             if (window.showError) window.showError(errorMsg);
             else if (window.showToast) window.showToast(errorMsg, "error");
             else alert(errorMsg);

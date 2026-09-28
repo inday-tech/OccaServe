@@ -1754,9 +1754,11 @@
                                 </span>
                             </div>
                             <div class="ei-body">
+                                {% if not is_custom_pkg %}
                                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px; flex-wrap: wrap;">
                                     <span class="ei-cat">{{ pkg.service_type or 'General' }}</span>
                                 </div>
+                                {% endif %}
                                 <span class="ei-name">{{ pkg.name }}</span>
                                 {% if pkg.pricing_mode == 'customizable' %}
                                 <span class="ei-price" style="color: #16a34a; font-size: 0.95rem; font-weight: 800;">
@@ -3311,4 +3313,3 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     </script>
 {% endblock %}
-

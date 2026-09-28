@@ -4825,8 +4825,8 @@ def _sync_package_relational_inclusions(db: Session, package: models.CateringPac
 async def add_package(
     request: Request,
     name: str = Form(...),
-    description: str = Form(...),
-    service_type: str = Form("General"),
+    description: str = Form(""),
+    service_type: Optional[str] = Form(None),
     pricing_mode: str = Form("per_pax"),
     service_duration: int = Form(8),
     price_per_head: float = Form(0.0),
@@ -4877,9 +4877,9 @@ async def add_package(
     if pricing_mode == 'customizable':
         price_per_head = 0.0
         reservation_fee_value = 0.0
-        if not service_type or not service_type.strip():
-            service_type = "Customizable"
+        service_type = None
     else:
+        service_type = (service_type or "General").strip() or "General"
         if price_per_head <= 0:
             errors.append("Price per head must be greater than 0.")
         if reservation_fee_value <= 0 and price_per_head > 0:
@@ -5813,8 +5813,8 @@ async def update_package(
     request: Request,
     package_id: int,
     name: str = Form(...),
-    description: str = Form(...),
-    service_type: str = Form("General"),
+    description: str = Form(""),
+    service_type: Optional[str] = Form(None),
     pricing_mode: str = Form("per_pax"),
     service_duration: int = Form(8),
     price_per_head: float = Form(0.0),
@@ -5872,9 +5872,9 @@ async def update_package(
     if pricing_mode == 'customizable':
         price_per_head = 0.0
         reservation_fee_value = 0.0
-        if not service_type or not service_type.strip():
-            service_type = "Customizable"
+        service_type = None
     else:
+        service_type = (service_type or "General").strip() or "General"
         if price_per_head <= 0:
             errors.append("Price per head must be greater than 0.")
         if reservation_fee_value <= 0 and price_per_head > 0:
@@ -9738,4 +9738,3 @@ async def quick_delete_service(
         "success": True,
         "message": "Service deleted successfully."
     }
-
