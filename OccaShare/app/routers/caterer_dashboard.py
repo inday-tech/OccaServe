@@ -4,7 +4,7 @@ from datetime import datetime, date, timedelta
 from pydantic import BaseModel
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from ..core.templates import templates
-from sqlalchemy import func
+from sqlalchemy import func, null
 from sqlalchemy.orm import Session
 from ..db import database, models, schemas
 from ..core import security as auth
@@ -4877,7 +4877,7 @@ async def add_package(
     if pricing_mode == 'customizable':
         price_per_head = 0.0
         reservation_fee_value = 0.0
-        service_type = None
+        service_type = null()
     else:
         service_type = (service_type or "General").strip() or "General"
         if price_per_head <= 0:
@@ -5872,7 +5872,7 @@ async def update_package(
     if pricing_mode == 'customizable':
         price_per_head = 0.0
         reservation_fee_value = 0.0
-        service_type = None
+        service_type = null()
     else:
         service_type = (service_type or "General").strip() or "General"
         if price_per_head <= 0:
