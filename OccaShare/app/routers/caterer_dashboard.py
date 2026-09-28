@@ -4869,7 +4869,6 @@ async def add_package(
     utility_cost = user.caterer_profile.default_utility_cost or 0.0
     transportation_cost = user.caterer_profile.default_transport_cost or 0.0
     reservation_fee_type = user.caterer_profile.default_reservation_type or "fixed"
-    reservation_fee_value = user.caterer_profile.default_reservation_value or 0.0
     
     if not name.strip():
         errors.append("Package name is required.")
@@ -4880,6 +4879,8 @@ async def add_package(
         service_type = null()
     else:
         service_type = (service_type or "General").strip() or "General"
+        if pricing_mode == 'fixed':
+            min_guests = base_pax
         if price_per_head <= 0:
             errors.append("Price per head must be greater than 0.")
         if reservation_fee_value <= 0 and price_per_head > 0:
@@ -5864,7 +5865,6 @@ async def update_package(
     utility_cost = user.caterer_profile.default_utility_cost or 0.0
     transportation_cost = user.caterer_profile.default_transport_cost or 0.0
     reservation_fee_type = user.caterer_profile.default_reservation_type or "fixed"
-    reservation_fee_value = user.caterer_profile.default_reservation_value or 0.0
     
     if not name.strip():
         errors.append("Package name is required.")
@@ -5875,6 +5875,8 @@ async def update_package(
         service_type = null()
     else:
         service_type = (service_type or "General").strip() or "General"
+        if pricing_mode == 'fixed':
+            min_guests = base_pax
         if price_per_head <= 0:
             errors.append("Price per head must be greater than 0.")
         if reservation_fee_value <= 0 and price_per_head > 0:
