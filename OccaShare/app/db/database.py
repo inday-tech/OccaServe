@@ -99,6 +99,42 @@ def _ensure_schema_sync():
             reference_notes TEXT,
             recorded_by VARCHAR
         );
+        """,
+        """
+        UPDATE catering_packages
+        SET price_per_head = CASE 
+                WHEN price_per_head IS NOT NULL AND price_per_head > 0 THEN price_per_head
+                WHEN price IS NOT NULL AND price > 0 THEN price
+                WHEN min_contract_amount IS NOT NULL AND min_contract_amount > 0 THEN min_contract_amount
+                ELSE 350.0 
+            END,
+            price = CASE 
+                WHEN price IS NOT NULL AND price > 0 THEN price
+                WHEN price_per_head IS NOT NULL AND price_per_head > 0 THEN price_per_head
+                WHEN min_contract_amount IS NOT NULL AND min_contract_amount > 0 THEN min_contract_amount
+                ELSE 350.0 
+            END
+        WHERE pricing_mode = 'customizable' AND (price_per_head IS NULL OR price_per_head = 0);
+        """,
+        """
+        UPDATE bookings b
+        SET package_id = cp.id
+        FROM catering_packages cp
+        WHERE b.caterer_id = cp.caterer_id
+          AND cp.pricing_mode = 'customizable'
+          AND (b.package_id IS NULL OR b.package_id = 0)
+          AND (
+              b.is_custom_event = TRUE
+              OR (b.custom_requirements IS NOT NULL AND b.custom_requirements->>'package_type' = 'customizable')
+              OR (b.custom_requirements IS NOT NULL AND b.custom_requirements->>'customization' IS NOT NULL)
+              OR (b.custom_requirements IS NOT NULL AND (b.custom_requirements->>'package_id')::text = cp.id::text)
+              OR b.event_type ILIKE '%custom%'
+              OR (
+                  SELECT COUNT(*) 
+                  FROM catering_packages cp2 
+                  WHERE cp2.caterer_id = b.caterer_id AND cp2.status != 'archived'
+              ) = 1
+          );
         """
     ]
     try:

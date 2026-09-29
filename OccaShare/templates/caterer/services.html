@@ -84,8 +84,7 @@
                 </div>
                 <div class="package-stats-pro" style="display: flex; margin-bottom: 1rem;">
                     <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600;">
-                        <i class="fas fa-calendar-check" style="margin-right: 4px;"></i> {{ package.bookings|length if
-                        package.bookings else 0 }} bookings
+                        <i class="fas fa-calendar-check" style="margin-right: 4px;"></i> {{ package.total_bookings_count if package.total_bookings_count is defined else (package.bookings|length if package.bookings else 0) }} bookings
                     </div>
                 </div>
                 <p class="package-desc-pro"
@@ -99,7 +98,7 @@
                             style="display: block; font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Starting
                             at</span>
                         <span style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">₱{{
-                            "{:,.0f}".format(package.price_per_head or package.price or 0) }}<small
+                            "{:,.0f}".format(package.starting_price_amount if package.starting_price_amount is defined else (package.price_per_head or package.price or package.min_contract_amount or 350)) }}<small
                                 style="font-size: 0.75rem; color: #64748b; font-weight: 500;">{% if package.pricing_mode == 'per_pax' %} / pax{% elif package.pricing_mode == 'customizable' %} starting{% else %} total{% endif %}</small></span>
                     </div>
                     <button class="btn-archive-minimal" onclick="window.archivePackage({{ package.id }})"

@@ -1760,7 +1760,7 @@
                                 <span class="ei-name">{{ pkg.name }}</span>
                                 {% if pkg.pricing_mode == 'customizable' %}
                                 <span class="ei-price" style="color: #16a34a; font-size: 0.95rem; font-weight: 800;">
-                                    Pay Per Selection
+                                    Starting at ₱{{ "{:,.2f}".format(pkg.starting_price_amount if pkg.starting_price_amount is defined else (pkg.price_per_head or pkg.price or 350)) }}
                                 </span>
                                 {% elif pkg.pricing_mode == 'fixed' or pkg.price_unit == 'total' %}
                                 <span class="ei-price">₱{{ "{:,.2f}".format(pkg.price if pkg.price else (pkg.price_per_head if pkg.price_per_head else 0)) }}<span style="font-size:0.65rem;font-weight:600;color:var(--hub-slate-400)"> total</span></span>

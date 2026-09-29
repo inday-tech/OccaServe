@@ -116,30 +116,47 @@ window.togglePricingMode = function (mode) {
         }
     }
 
-    // 2. Package Pricing Details (Fixed package price & Reservation fee)
-    // Only visible for Fixed packages, completely removed/hidden for Customizable
+    // 2. Package Pricing Details (Fixed package price, Per-pax rate, or Customizable starting price)
     const pricingCard = document.getElementById('pkgPricingCard');
     const priceInput = document.getElementById('pkgManualPriceInput');
     const resFeeInput = document.getElementById('pkgReservationFeeInput') || document.querySelector('input[name="reservation_fee"]');
+    const lblPricingMain = document.getElementById('lblPricingMain');
+    const lblPricingSub = document.getElementById('lblPricingSub');
 
     if (pricingCard) {
-        pricingCard.style.display = isCustomizable ? 'none' : 'block';
+        pricingCard.style.display = 'block';
     }
 
-    if (priceInput) {
-        if (isCustomizable) {
-            priceInput.required = false;
-            priceInput.value = '0.00';
-        } else {
+    if (isCustomizable) {
+        if (lblPricingMain) lblPricingMain.innerHTML = 'Starting Price (₱) <span style="color: #ea580c; font-size: 0.8rem; font-weight: 700;">(Starting at...)</span> *';
+        if (lblPricingSub) lblPricingSub.innerHTML = 'Starting / base price displayed to customers for this customizable package.';
+        if (priceInput) {
+            priceInput.placeholder = 'e.g. 350.00';
             priceInput.required = true;
             if (priceInput.value === '0.00' || priceInput.value === '0') {
                 priceInput.value = '';
             }
         }
-    }
-
-    if (resFeeInput && isCustomizable) {
-        resFeeInput.value = '0';
+    } else if (mode === 'fixed') {
+        if (lblPricingMain) lblPricingMain.innerHTML = 'Package Price (Total ₱) *';
+        if (lblPricingSub) lblPricingSub.innerHTML = 'Fixed total contract price visible to customers.';
+        if (priceInput) {
+            priceInput.placeholder = '0.00';
+            priceInput.required = true;
+            if (priceInput.value === '0.00' || priceInput.value === '0') {
+                priceInput.value = '';
+            }
+        }
+    } else {
+        if (lblPricingMain) lblPricingMain.innerHTML = 'Package Price (₱ / pax) *';
+        if (lblPricingSub) lblPricingSub.innerHTML = 'Selling price per guest visible to customers.';
+        if (priceInput) {
+            priceInput.placeholder = '0.00';
+            priceInput.required = true;
+            if (priceInput.value === '0.00' || priceInput.value === '0') {
+                priceInput.value = '';
+            }
+        }
     }
 
     // 3. Show/hide capacity sections
@@ -621,9 +638,13 @@ function validateTab(tabName) {
         }
 
         if (mode === 'customizable') {
-            // Price & reservation fee are removed for customizable packages
-            if (form.price_per_head) form.price_per_head.value = '0.00';
-            if (form.reservation_fee) form.reservation_fee.value = '0';
+            if (form.price_per_head) {
+                const rawPrice = (form.price_per_head.value || '').replace(/,/g, '');
+                const price = parseFloat(rawPrice);
+                if (isNaN(price) || price < 0) {
+                    addError(form.price_per_head, "Starting price must be a valid amount (₱0 or greater).");
+                }
+            }
         } else {
             if (form.price_per_head) {
                 const rawPrice = (form.price_per_head.value || '').replace(/,/g, '');
@@ -714,13 +735,12 @@ function updateReviewTab() {
     }
 
     if (dPrice) {
+        const val = form.price_per_head ? (form.price_per_head.value || '0') : '0';
         if (mode === 'customizable') {
-            dPrice.innerHTML = '<span style="color: #16a34a; font-weight: 800; font-size: 0.95rem;">Calculated per customer choice</span><div style="font-size: 0.72rem; color: #64748b; font-weight: 500; margin-top: 2px;">(No fixed package price or reservation fee)</div>';
+            dPrice.innerHTML = `<span style="color: #0f172a; font-weight: 800; font-size: 1.05rem;">Starting at ₱${val}</span><div style="font-size: 0.72rem; color: #16a34a; font-weight: 600; margin-top: 2px;">+ Customizable choices calculated per customer selection</div>`;
         } else if (mode === 'fixed') {
-            const val = form.price_per_head.value || '0';
             dPrice.innerText = `₱${val} total`;
         } else {
-            const val = form.price_per_head.value || '0';
             dPrice.innerText = `₱${val} / pax`;
         }
     }

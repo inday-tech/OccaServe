@@ -5021,8 +5021,8 @@ async def add_package(
         errors.append("Package name is required.")
 
     if pricing_mode == 'customizable':
-        price_per_head = 0.0
-        reservation_fee_value = 0.0
+        price_per_head = float(price_per_head or 0.0)
+        reservation_fee_value = float(reservation_fee_value or 0.0)
         service_type = "Customizable"
     else:
         if price_per_head <= 0:
@@ -6015,8 +6015,8 @@ async def update_package(
         errors.append("Package name is required.")
 
     if pricing_mode == 'customizable':
-        price_per_head = 0.0
-        reservation_fee_value = 0.0
+        price_per_head = float(price_per_head or 0.0)
+        reservation_fee_value = float(reservation_fee_value or 0.0)
         service_type = "Customizable"
     else:
         if price_per_head <= 0:

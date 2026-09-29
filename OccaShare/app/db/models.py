@@ -375,6 +375,86 @@ class CateringPackage(Base):
 
     bookings = relationship("Booking", back_populates="package")
 
+    @property
+    def total_bookings_count(self) -> int:
+        """Accurately count all bookings belonging to this package including customizable bookings."""
+        direct_non_draft = [b for b in (self.bookings or []) if getattr(b, 'status', '') != 'draft']
+        if direct_non_draft:
+            return len(direct_non_draft)
+        if self.bookings and len(self.bookings) > 0:
+            return len(self.bookings)
+            
+        try:
+            from sqlalchemy.orm import object_session
+            sess = object_session(self)
+            if sess:
+                from sqlalchemy import or_, func
+                q = sess.query(Booking).filter(
+                    Booking.caterer_id == self.caterer_id,
+                    Booking.status != 'draft',
+                    Booking.is_archived == False
+                )
+                if self.pricing_mode == 'customizable':
+                    q = q.filter(
+                        or_(
+                            Booking.package_id == self.id,
+                            Booking.is_custom_event == True,
+                            func.jsonb_extract_path_text(Booking.custom_requirements, 'package_type') == 'customizable',
+                            func.jsonb_extract_path_text(Booking.custom_requirements, 'package_id') == str(self.id),
+                            func.jsonb_extract_path_text(Booking.custom_requirements, 'customization').isnot(None),
+                            Booking.event_type.ilike('%custom%')
+                        )
+                    )
+                else:
+                    q = q.filter(
+                        or_(
+                            Booking.package_id == self.id,
+                            func.jsonb_extract_path_text(Booking.custom_requirements, 'package_id') == str(self.id)
+                        )
+                    )
+                c = q.count()
+                if c > 0:
+                    return c
+                # Fallback: check all bookings including pending
+                q_all = sess.query(Booking).filter(Booking.caterer_id == self.caterer_id)
+                if self.pricing_mode == 'customizable':
+                    q_all = q_all.filter(
+                        or_(
+                            Booking.package_id == self.id,
+                            Booking.is_custom_event == True,
+                            func.jsonb_extract_path_text(Booking.custom_requirements, 'package_type') == 'customizable',
+                            func.jsonb_extract_path_text(Booking.custom_requirements, 'package_id') == str(self.id),
+                            func.jsonb_extract_path_text(Booking.custom_requirements, 'customization').isnot(None),
+                            Booking.event_type.ilike('%custom%')
+                        )
+                    )
+                else:
+                    q_all = q_all.filter(
+                        or_(
+                            Booking.package_id == self.id,
+                            func.jsonb_extract_path_text(Booking.custom_requirements, 'package_id') == str(self.id)
+                        )
+                    )
+                c_all = q_all.count()
+                if c_all > 0:
+                    return c_all
+        except Exception:
+            pass
+        return len(self.bookings) if self.bookings else 0
+
+    @property
+    def starting_price_amount(self) -> float:
+        """Starting price for customizable or regular packages."""
+        if self.price_per_head is not None and self.price_per_head > 0:
+            return float(self.price_per_head)
+        if self.price is not None and self.price > 0:
+            return float(self.price)
+        if self.min_contract_amount is not None and self.min_contract_amount > 0:
+            return float(self.min_contract_amount)
+        if self.pricing_mode == 'customizable':
+            return 350.0
+        return 0.0
+
 class MenuItem(Base):
     __tablename__ = "menu_items" # Phase 1 'menus'
 
