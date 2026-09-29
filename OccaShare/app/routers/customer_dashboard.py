@@ -862,20 +862,20 @@ async def customer_update_address(
     province: str = Form(...),
     city_municipality: str = Form(...),
     barangay: str = Form(...),
-    street_address: str = Form(...),
+    street_address: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
-    if not province or not city_municipality or not barangay or not street_address:
-         return {"success": False, "message": "Province, City, Barangay, and Street Address are required."}
+    if not province or not city_municipality or not barangay:
+         return {"success": False, "message": "Province, City, and Barangay are required."}
 
     user.province = province
     user.city_municipality = city_municipality
     user.barangay = barangay
-    user.street_address = street_address
+    user.street_address = street_address.strip() if (street_address and street_address.strip()) else None
 
     # Also build the legacy single-line address for backward compatibility
-    parts = [p for p in [street_address, barangay, city_municipality, province] if p]
+    parts = [p for p in [user.street_address, barangay, city_municipality, province] if p]
     user.address = ", ".join(parts) if parts else None
 
     db.commit()

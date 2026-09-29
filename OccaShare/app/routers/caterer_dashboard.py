@@ -1045,6 +1045,10 @@ async def update_booking_status(
 
     if new_status == "completed":
         booking.preparation_status = "completed"
+        booking.payment_status = "paid"
+        total_p = float(booking.total_amount or booking.total_price or 0.0)
+        if (booking.amount_paid or 0.0) < total_p:
+            booking.amount_paid = total_p
 
     old_status = booking.status
     booking.status = new_status
@@ -1068,10 +1072,24 @@ async def update_booking_status(
         config = db.query(models.WebsiteConfig).first()
         comm_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
         comm_fixed = config.commission_fixed_amount if config else 20.0
-        commission_amount = (float(booking.total_amount or 0.0) * comm_rate) + comm_fixed
+        booking_total = float(booking.total_amount or booking.total_price or 0.0)
+        commission_amount = (booking_total * comm_rate) + comm_fixed
         
         caterer_prof.outstanding_balance = float(caterer_prof.outstanding_balance or 0.0) + commission_amount
         booking.commission_calculated = True
+
+        # Generate BillingInvoice record so it reflects in Caterer's Invoices and Payments & Earnings
+        existing_inv = db.query(models.BillingInvoice).filter(models.BillingInvoice.booking_id == booking.id).first()
+        if not existing_inv:
+            commission_record = models.BillingInvoice(
+                caterer_id=booking.caterer_id or (caterer_prof.id if caterer_prof else None),
+                booking_id=booking.id,
+                billing_period=booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
+                amount=commission_amount,
+                commission_rate=comm_rate,
+                status='pending'
+            )
+            db.add(commission_record)
         
         billing_audit = models.AuditLog(
             user_id=user.id,
@@ -3576,6 +3594,9 @@ async def complete_booking(
             status_code=303,
         )
     booking.payment_status = "paid"
+    total_p = float(booking.total_amount or booking.total_price or 0.0)
+    if (booking.amount_paid or 0.0) < total_p:
+        booking.amount_paid = total_p
 
     booking.status = 'completed'
     booking.preparation_status = 'completed'
@@ -3592,21 +3613,26 @@ async def complete_booking(
     config = db.query(models.WebsiteConfig).first()
     comm_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
     comm_fixed = config.commission_fixed_amount if config else 20.0
-    commission_due = ((booking.total_amount or 0.0) * comm_rate) + comm_fixed
+    booking_total = float(booking.total_amount or booking.total_price or 0.0)
+    commission_due = (booking_total * comm_rate) + comm_fixed
 
-    commission_record = models.BillingInvoice(
-        caterer_id=booking.caterer_id,
-        booking_id=booking.id,
-        billing_period=booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
-        amount=commission_due,
-        commission_rate=comm_rate,
-        status='pending'
-    )
-    db.add(commission_record)
-    
     caterer_prof = booking.caterer or user.caterer_profile
-    if caterer_prof:
-        caterer_prof.outstanding_balance = float(caterer_prof.outstanding_balance or 0.0) + commission_due
+
+    existing_inv = db.query(models.BillingInvoice).filter(models.BillingInvoice.booking_id == booking.id).first()
+    if not existing_inv:
+        commission_record = models.BillingInvoice(
+            caterer_id=booking.caterer_id or (caterer_prof.id if caterer_prof else None),
+            booking_id=booking.id,
+            billing_period=booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
+            amount=commission_due,
+            commission_rate=comm_rate,
+            status='pending'
+        )
+        db.add(commission_record)
+        
+        if caterer_prof and not booking.commission_calculated:
+            caterer_prof.outstanding_balance = float(caterer_prof.outstanding_balance or 0.0) + commission_due
+    
     booking.commission_calculated = True
     
     db.commit()
@@ -3976,7 +4002,7 @@ async def caterer_customers(
             completed_bookings = [b for b in all_bookings if b.status == 'completed']
             bookings_count = len(completed_bookings)
             
-            total_spent = sum(b.total_price for b in completed_bookings)
+            total_spent = sum((b.total_price or b.total_amount or 0.0) for b in completed_bookings)
             last_booking = all_bookings[0] if all_bookings else None
             first_booking = all_bookings[-1] if all_bookings else None
             

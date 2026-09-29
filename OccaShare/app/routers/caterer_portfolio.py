@@ -43,7 +43,7 @@ async def manage_portfolio_page(
     # Also fetch completed bookings for linking
     completed_bookings = db.query(models.Booking).filter(
         models.Booking.caterer_id == profile.id,
-        models.Booking.status.in_(["Completed", "Delivered"])
+        models.Booking.status.in_(["Completed", "Delivered", "completed", "delivered"])
     ).all()
     
     return templates.TemplateResponse(

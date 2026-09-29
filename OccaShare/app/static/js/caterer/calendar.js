@@ -144,6 +144,34 @@ document.addEventListener('DOMContentLoaded', function () {
             selectable: true,
             selectConstraint: 'businessHours',
             dayMaxEvents: false, // Ensure all events are visible, row will expand
+
+            eventContent: function(arg) {
+                const status = arg.event.extendedProps.status;
+                const time = arg.event.extendedProps.time || '';
+                const title = arg.event.title || '';
+
+                if (status === 'completed') {
+                    return {
+                        html: `
+                            <div class="fc-custom-event completed-event">
+                                ${time && time !== 'TBD' ? `<strong>${time}</strong> ` : ''}
+                                <span>${title}</span>
+                                <div class="completed-label">✓ Completed</div>
+                            </div>
+                        `
+                    };
+                }
+
+                return {
+                    html: `
+                        <div class="fc-custom-event">
+                            ${time && time !== 'TBD' ? `<strong>${time}</strong> ` : ''}
+                            <span>${title}</span>
+                        </div>
+                    `
+                };
+            },
+
             selectAllow: function (selectInfo) {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);

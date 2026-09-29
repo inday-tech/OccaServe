@@ -779,17 +779,18 @@
             </thead>
             <tbody>
                 {% for booking in bookings %}
-                {% set is_early_stage = booking.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'] %}
+                {% set is_completed_or_cancelled = (booking.status or '')|lower in ['completed', 'cancelled', 'delivered'] %}
+                {% set is_early_stage = not is_completed_or_cancelled and (booking.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review']) %}
                 {% set is_pay_review = booking._pay_is_under_review if booking._pay_is_under_review is defined else (booking.payment_status in ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested']) %}
-                {% set caterer_action_needed = booking.status in ['pending', 'awaiting_caterer', 'pending_review'] or (is_pay_review and is_early_stage) %}
+                {% set caterer_action_needed = not is_completed_or_cancelled and (booking.status in ['pending', 'awaiting_caterer', 'pending_review'] or (is_pay_review and is_early_stage)) %}
                 {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
                     {% set caterer_action_needed = False %}
                 {% endif %}
-                {% if is_pay_review and is_early_stage %}
+                {% if is_pay_review and is_early_stage and not is_completed_or_cancelled %}
                     {% set caterer_action_needed = True %}
                 {% endif %}
-                {% set row_is_urgent = (booking.event_date - today).days <= 2 and (booking.event_date - today).days >= 0 and caterer_action_needed %}
-                {% set is_past_event = (booking.event_date < today) and booking.status not in ['completed', 'cancelled'] %}
+                {% set row_is_urgent = (not is_completed_or_cancelled) and booking.event_date and (booking.event_date - today).days <= 2 and (booking.event_date - today).days >= 0 and caterer_action_needed %}
+                {% set is_past_event = (not is_completed_or_cancelled) and booking.event_date and (booking.event_date < today) %}
                 {% set raw_src = (booking.booking_source or '')|lower %}
                 {% set is_manual = (not booking.user_id) or ('walk' in raw_src) or ('internal' in raw_src) or ('manual' in raw_src) or (booking.custom_requirements and booking.custom_requirements.get('is_walk_in')) %}
                 {% set booking_ref = booking.booking_ref or ('BK-' ~ "%06d" | format(booking.id)) %}
@@ -821,7 +822,7 @@
                 {% else %}
                     {% set b_channel = 'OccaServe Website' %}
                 {% endif %}
-                <tr id="booking-row-{{ booking.id }}" class="booking-row-item {% if row_is_urgent or is_past_event %}urgent-booking-row{% endif %}" 
+                <tr id="booking-row-{{ booking.id }}" class="booking-row-item {% if (not is_completed_or_cancelled) and (row_is_urgent or is_past_event) %}urgent-booking-row{% endif %}" 
                     data-booking-row="true"
                     data-booking-id="{{ booking_ref }}"
                     data-status="{{ booking.status }}" 
@@ -831,8 +832,8 @@
                     data-booking-channel="{{ b_channel }}"
                     data-entry-method="{{ 'walkin' if is_manual else 'online' }}"
                     data-event-month="{{ booking.event_date.strftime('%Y-%m') }}"
-                    data-is-urgent="{{ 'true' if row_is_urgent else 'false' }}"
-                    data-is-past="{{ 'true' if is_past_event else 'false' }}"
+                    data-is-urgent="{{ 'true' if ((not is_completed_or_cancelled) and row_is_urgent) else 'false' }}"
+                    data-is-past="{{ 'true' if ((not is_completed_or_cancelled) and is_past_event) else 'false' }}"
                     data-unread-chat="{{ unread_chat_map.get(booking.id, 0) if unread_chat_map else 0 }}"
                     data-search-text="{{ customer_ref }} {{ booking_ref }} RT-{{ '%06d'|format(booking.id) }} ORD-{{ '%06d'|format(booking.id) }} {{ booking.id }} {{ booking.event_type or '' }} {{ booking.package.name if booking.package else '' }}"
                     style="border-bottom: 1px solid #f1f5f9; transition: all 0.15s ease;">
@@ -840,9 +841,9 @@
                     <!-- REF ID & SOURCE -->
                     <td style="padding: 0.75rem 1rem; vertical-align: middle;">
                         <div style="font-weight: 800; color: #0f172a; font-size: 0.88rem; letter-spacing: 0.02em; display: flex; align-items: center; gap: 6px;">
-                            {% if row_is_urgent %}
+                            {% if (not is_completed_or_cancelled) and row_is_urgent %}
                                 <div class="urgent-pulse-indicator" title="Event Happening Soon!"></div>
-                            {% elif is_past_event %}
+                            {% elif (not is_completed_or_cancelled) and is_past_event %}
                                 <div class="urgent-pulse-indicator" style="background: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);" title="Event Date has Passed!"></div>
                             {% endif %}
                             {{ booking_ref }}
@@ -911,7 +912,7 @@
                         {% if is_pay_review and is_early_stage %}
                             {% set caterer_action_needed_cell = True %}
                         {% endif %}
-                        {% set cell_is_urgent = (booking.event_date - today).days <= 2 and caterer_action_needed_cell %}
+                        {% set cell_is_urgent = (not is_completed_or_cancelled) and booking.event_date and (booking.event_date - today).days <= 2 and caterer_action_needed_cell %}
                         <div style="display: flex; align-items: center; gap: 5px;">
                             {% if cell_is_urgent %}
                                 <span style="background: #fff1f2; color: #e11d48; font-size: 0.65rem; font-weight: 800; padding: 1px 5px; border-radius: 4px; border: 1px solid #fecdd3;">URGENT</span>
@@ -979,7 +980,7 @@
                         {% elif booking.status in ['in_progress', 'setup_ongoing'] %}
                             {% set badge_class = 'badge-in_progress' %}
                             {% set status_label = 'In Progress' %}
-                        {% elif booking.status == 'completed' %}
+                        {% elif (booking.status or '')|lower in ['completed', 'delivered'] %}
                             {% set badge_class = 'badge-completed' %}
                             {% set status_label = 'Completed' %}
                         {% elif booking.status == 'cancelled' %}
@@ -1013,6 +1014,15 @@
                         {% elif total_val > 0 %}
                             {% set pay_class = 'badge-pending' %}
                             {% if not booking._pay_label is defined %}{% set pay_label = 'Unpaid' %}{% endif %}
+                        {% endif %}
+
+                        {% if (booking.status or '')|lower in ['completed', 'delivered'] %}
+                            {% set badge_class = 'badge-completed' %}
+                            {% set status_label = 'Completed' %}
+                            {% set pay_class = 'badge-confirmed' %}
+                            {% set pay_label = 'Fully Paid' %}
+                            {% set paid_val = total_val if total_val > 0 else paid_val %}
+                            {% set balance_val = 0 %}
                         {% endif %}
                         
                         <div style="display: flex; flex-direction: column; gap: 4px;">

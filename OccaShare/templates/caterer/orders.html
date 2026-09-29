@@ -383,12 +383,13 @@
             </thead>
             <tbody>
                 {% for booking in bookings %}
-                {% set is_early_stage = booking.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review'] %}
-                {% set caterer_action_needed = booking.status in ['pending', 'awaiting_caterer', 'pending_review'] or (booking.payment_status == 'proof_submitted' and is_early_stage) %}
+                {% set is_completed_or_cancelled = (booking.status or '')|lower in ['completed', 'cancelled', 'delivered'] %}
+                {% set is_early_stage = not is_completed_or_cancelled and (booking.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review']) %}
+                {% set caterer_action_needed = not is_completed_or_cancelled and (booking.status in ['pending', 'awaiting_caterer', 'pending_review'] or (booking.payment_status == 'proof_submitted' and is_early_stage)) %}
                 {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
                     {% set caterer_action_needed = False %}
                 {% endif %}
-                {% set row_is_urgent = (booking.event_date - today).days <= 2 and caterer_action_needed %}
+                {% set row_is_urgent = (not is_completed_or_cancelled) and booking.event_date and (booking.event_date - today).days <= 2 and caterer_action_needed %}
                 <tr id="booking-row-{{ booking.id }}" class="booking-row-item {% if row_is_urgent %}urgent-booking-row{% endif %}" 
                     data-status="{{ booking.status }}" 
                     data-payment-status="{{ booking.payment_status }}"

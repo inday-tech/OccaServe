@@ -429,11 +429,11 @@ async def admin_dashboard(
     booking_count = len(all_bookings)
     
     # Ensure we get proper floats for currency logic
-    total_sales = float(sum(b.total_amount for b in all_bookings if b.status not in ['cancelled', 'inquiry', 'negotiating', 'quoted']) or 0.0)
+    total_sales = float(sum((b.total_amount or b.total_price or 0.0) for b in all_bookings if b.status not in ['cancelled', 'inquiry', 'negotiating', 'quoted']) or 0.0)
     
     # Platform earnings only based on completed/paid bookings effectively
     paid_bookings = [b for b in all_bookings if b.payment_status == 'paid']
-    total_revenue = float(sum(b.total_amount for b in paid_bookings) or 0.0)
+    total_revenue = float(sum((b.total_amount or b.total_price or 0.0) for b in paid_bookings) or 0.0)
     
     # Dynamic commission check 
     config = db.query(models.WebsiteConfig).first()
@@ -469,9 +469,9 @@ async def admin_dashboard(
             models.User.created_at <= last_day_of_month
         ).count()
         
-        month_sales = float(sum(b.total_amount for b in month_bookings) or 0.0)
+        month_sales = float(sum((b.total_amount or b.total_price or 0.0) for b in month_bookings) or 0.0)
         month_paid_bookings = [b for b in month_bookings if b.payment_status == 'paid']
-        month_paid_total = float(sum(b.total_amount for b in month_paid_bookings) or 0.0)
+        month_paid_total = float(sum((b.total_amount or b.total_price or 0.0) for b in month_paid_bookings) or 0.0)
         month_earnings = month_paid_total * commission_rate
 
         chart_data["months"].append(month_name)
@@ -788,9 +788,9 @@ async def manage_commissions(
         extract('year', models.BillingInvoice.created_at) == now.year
     ).all()
     
-    pending_total = float(sum(inv.amount for inv in pending_invoices) or 0.0)
-    paid_total = float(sum(inv.amount for inv in recent_paid) or 0.0)
-    monthly_total = float(sum(inv.amount for inv in monthly_collections) or 0.0)
+    pending_total = float(sum((inv.amount or 0.0) for inv in pending_invoices) or 0.0)
+    paid_total = float(sum((inv.amount or 0.0) for inv in recent_paid) or 0.0)
+    monthly_total = float(sum((inv.amount or 0.0) for inv in monthly_collections) or 0.0)
 
     return templates.TemplateResponse("admin/payouts.html", {
         "request": request,
@@ -2288,15 +2288,15 @@ async def admin_revenue(
         joinedload(models.BillingInvoice.booking)
     ).order_by(models.BillingInvoice.created_at.desc()).all()
     
-    total_commission_revenue = sum(inv.amount for inv in invoices if inv.status == 'paid')
+    total_commission_revenue = sum((inv.amount or 0.0) for inv in invoices if inv.status == 'paid')
     
     now = datetime.utcnow()
     monthly_revenue = sum(
-        inv.amount for inv in invoices 
-        if inv.status == 'paid' and inv.created_at.month == now.month and inv.created_at.year == now.year
+        (inv.amount or 0.0) for inv in invoices 
+        if inv.status == 'paid' and inv.created_at and inv.created_at.month == now.month and inv.created_at.year == now.year
     )
     
-    pending_collection = sum(inv.amount for inv in invoices if inv.status != 'paid')
+    pending_collection = sum((inv.amount or 0.0) for inv in invoices if inv.status != 'paid')
     verified_payments_count = sum(1 for inv in invoices if inv.status == 'paid')
 
     metrics_context = {
@@ -2813,7 +2813,7 @@ async def get_customer_audit_data(
     # Calculate performance metrics
     bookings = target.bookings
     total_completed = sum(1 for b in bookings if b.status == "completed")
-    total_spent = sum(b.total_amount for b in bookings if b.status == "completed")
+    total_spent = sum((b.total_amount or b.total_price or 0.0) for b in bookings if b.status == "completed")
     cancellations = sum(1 for b in bookings if b.status == "cancelled")
     
     # Calculate Risk Score (0-100)

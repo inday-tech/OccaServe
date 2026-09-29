@@ -867,6 +867,11 @@ class Booking(Base):
     def customer_reference(self) -> str:
         return self.customer_ref
 
+    @property
+    def customer(self):
+        """Alias to user relationship for backwards compatibility."""
+        return self.user
+
 
 class BookingPaymentRecord(Base):
     __tablename__ = "booking_payment_records"
@@ -992,6 +997,11 @@ class Review(Base):
     user = relationship("User", back_populates="reviews")
     caterer = relationship("CatererProfile", back_populates="reviews")
     item_ratings = relationship("ItemRating", back_populates="review", cascade="all, delete-orphan")
+    
+    @property
+    def customer(self):
+        """Alias to user relationship for backwards compatibility."""
+        return self.user
 
 class ItemRating(Base):
     __tablename__ = "item_ratings"

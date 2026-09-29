@@ -161,7 +161,7 @@
                     <select name="booking_id" class="control-pro">
                         <option value="">None (Standard Portfolio)</option>
                         {% for b in completed_bookings %}
-                        <option value="{{ b.id }}">#{{ b.id }} - {{ b.customer.first_name }} {{ b.customer.last_name }} ({{ b.event_date.strftime('%B %d, %Y') if b.event_date else 'Unknown Date' }})</option>
+                        <option value="{{ b.id }}">#{{ b.id }} - {{ b.customer_name or ((b.user.first_name ~ ' ' ~ b.user.last_name) if b.user else 'Customer') }} ({{ b.event_date.strftime('%B %d, %Y') if b.event_date else 'Unknown Date' }})</option>
                         {% endfor %}
                     </select>
                 </div>
