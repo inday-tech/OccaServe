@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKe
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from sqlalchemy.ext.hybrid import hybrid_property
 from .database import Base
 
 class User(Base):
@@ -646,6 +647,8 @@ class Booking(Base):
     transaction_type = Column(String, default="contract_track") # 'fast_track' or 'contract_track'
     document_type = Column(String, nullable=True) # 'invoice', 'service_agreement', 'booking_agreement', 'rental_agreement'
     custom_requirements = Column(JSONB, nullable=True)
+    _booking_ref = Column("booking_ref", String, nullable=True)
+    _customer_ref = Column("customer_ref", String, nullable=True)
 
     user = relationship("User", back_populates="bookings")
     caterer = relationship("CatererProfile", back_populates="bookings")
@@ -665,29 +668,50 @@ class Booking(Base):
     def _get_caterer_prefix(self) -> str:
         """Derive standard uppercase 3-letter caterer prefix from caterer business name."""
         try:
-            if self.caterer and self.caterer.business_name:
+            b_name = None
+            if self.caterer and getattr(self.caterer, "business_name", None):
+                b_name = self.caterer.business_name
+            elif hasattr(self, "_caterer_business_name") and self._caterer_business_name:
+                b_name = self._caterer_business_name
+            
+            if not b_name and self.caterer_id:
+                try:
+                    from sqlalchemy.orm import object_session
+                    sess = object_session(self)
+                    if sess:
+                        cp = sess.query(CatererProfile).filter(CatererProfile.id == self.caterer_id).first()
+                        if cp and cp.business_name:
+                            b_name = cp.business_name
+                except Exception:
+                    pass
+
+            if b_name:
                 import re
-                clean = re.sub(r'[^A-Za-z]', '', self.caterer.business_name)
+                clean = re.sub(r'[^A-Za-z]', '', str(b_name).strip())
                 if len(clean) >= 3:
                     return clean[:3].upper()
+                elif len(clean) > 0:
+                    return clean.upper().ljust(3, 'X')
         except Exception:
             pass
         return "BK"
 
-    @property
+    @hybrid_property
     def booking_ref(self) -> str:
-        # Check custom_requirements first
+        # Priority 1: Stored value in database column
+        if self._booking_ref and str(self._booking_ref).strip():
+            return str(self._booking_ref).strip()
+
+        # Priority 2: Check custom_requirements
         if self.custom_requirements and isinstance(self.custom_requirements, dict):
             custom_ref = self.custom_requirements.get("booking_ref") or self.custom_requirements.get("booking_reference")
-            if custom_ref:
-                return str(custom_ref)
+            if custom_ref and str(custom_ref).strip():
+                return str(custom_ref).strip()
         
-        # Check caterer sequence or format by prefix
+        # Priority 3: Check caterer sequence or format by prefix
         prefix = self._get_caterer_prefix()
         if prefix != "BK" and self.caterer_id:
-            # Consistent sequence number based on id or order
             try:
-                # Count order of this booking for the caterer
                 if self.caterer and hasattr(self.caterer, "bookings") and self.caterer.bookings:
                     same_caterer = sorted([b for b in self.caterer.bookings if b.id is not None], key=lambda x: x.id)
                     for idx, b in enumerate(same_caterer, start=1):
@@ -697,9 +721,17 @@ class Booking(Base):
                 pass
             return f"{prefix}-{self.id:03d}"
 
-        # Standard fallback for general bookings
+        # Priority 4: Standard fallback for general bookings
         fallback_pfx = 'ORD-' if self.document_type == 'invoice' else ('RT-' if (self.document_type == 'rental_agreement' or self.event_type == 'Equipment Rental') else 'BK-')
         return f"{fallback_pfx}{self.id:06d}"
+
+    @booking_ref.setter
+    def booking_ref(self, value):
+        self._booking_ref = value
+
+    @booking_ref.expression
+    def booking_ref(cls):
+        return cls._booking_ref
 
     @property
     def display_booking_ref(self) -> str:
@@ -709,14 +741,19 @@ class Booking(Base):
     def booking_reference(self) -> str:
         return self.booking_ref
 
-    @property
+    @hybrid_property
     def customer_ref(self) -> str:
-        # Check custom_requirements first
+        # Priority 1: Stored value in database column
+        if self._customer_ref and str(self._customer_ref).strip():
+            return str(self._customer_ref).strip()
+
+        # Priority 2: Check custom_requirements
         if self.custom_requirements and isinstance(self.custom_requirements, dict):
             custom_cref = self.custom_requirements.get("customer_ref") or self.custom_requirements.get("customer_reference")
-            if custom_cref:
-                return str(custom_cref)
+            if custom_cref and str(custom_cref).strip():
+                return str(custom_cref).strip()
 
+        # Priority 3: Check caterer prefix format
         prefix = self._get_caterer_prefix()
         if prefix != "BK" and self.caterer_id:
             try:
@@ -729,9 +766,18 @@ class Booking(Base):
                 pass
             return f"{prefix}-C-{self.id:03d}"
 
+        # Priority 4: Fallback
         if self.user_id:
             return f"CUST-{self.user_id:04d}"
         return f"WALKIN-BK-{self.id:06d}"
+
+    @customer_ref.setter
+    def customer_ref(self, value):
+        self._customer_ref = value
+
+    @customer_ref.expression
+    def customer_ref(cls):
+        return cls._customer_ref
 
     @property
     def display_customer_ref(self) -> str:

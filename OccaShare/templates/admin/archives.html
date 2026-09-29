@@ -327,7 +327,7 @@
             <div style="flex: 1;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                     <h3 style="margin: 0; font-size: 1rem; font-weight: 800; color: var(--adm-navy);">Review by {{
-                        r.user.first_name }} ({{ r.rating }} Stars)</h3>
+                        (r.user.first_name if r.user else (r.booking.customer_name if r.booking else 'Customer')) }} ({{ r.rating }} Stars)</h3>
                     <span class="sla-badge">Trust Data Held</span>
                 </div>
                 <p style="margin: 4px 0; font-size: 0.8rem; color: var(--adm-navy); font-style: italic; opacity: 0.8;">

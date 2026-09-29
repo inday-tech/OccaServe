@@ -1468,10 +1468,11 @@ function showBookingDetails(btn) {
     var paxCount = data.guestCount || 0;
     var isFoodOrder = data.isFoodOrder === 'true' || data.isFoodOrder === true;
     var isRentalOrder = data.documentType === 'rental_agreement' || data.eventType === 'Equipment Rental';
-    if (!data.booking_ref && data.bookingRef) {
-        data.booking_ref = data.bookingRef;
+    var candidateRef = data.bookingRef || data.booking_ref || '';
+    if (data.bookingRef && (!candidateRef || candidateRef.startsWith('BK-')) && !data.bookingRef.startsWith('BK-')) {
+        candidateRef = data.bookingRef;
     }
-    var formattedRefId = data.booking_ref || ('BK-' + String(cleanId).padStart(6, '0'));
+    var formattedRefId = candidateRef || ('BK-' + String(cleanId).padStart(6, '0'));
     var titlePrefix = isRentalOrder ? 'Rental Agreement #' : (isFoodOrder ? 'Food Order #' : (bookingStatus === 'pending_review' || bookingStatus === 'inquiry' ? 'Inquiry Details #' : 'Booking #'));
 
     // ─── 1. MODAL HEADER POPULATION ──────────────────────────────────────────

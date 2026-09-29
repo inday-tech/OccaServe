@@ -61,6 +61,34 @@ def _ensure_schema_sync():
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_ref VARCHAR;",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_ref VARCHAR;",
         """
+        UPDATE bookings b
+        SET booking_ref = CONCAT(
+            CASE 
+                WHEN LENGTH(REGEXP_REPLACE(cp.business_name, '[^A-Za-z]', '', 'g')) >= 3 
+                THEN UPPER(SUBSTRING(REGEXP_REPLACE(cp.business_name, '[^A-Za-z]', '', 'g') FROM 1 FOR 3)) 
+                ELSE 'BK' 
+            END, 
+            '-', 
+            LPAD(b.id::text, 3, '0')
+        )
+        FROM caterer_profiles cp
+        WHERE b.caterer_id = cp.id AND (b.booking_ref IS NULL OR b.booking_ref = '' OR b.booking_ref LIKE 'BK-%');
+        """,
+        """
+        UPDATE bookings b
+        SET customer_ref = CONCAT(
+            CASE 
+                WHEN LENGTH(REGEXP_REPLACE(cp.business_name, '[^A-Za-z]', '', 'g')) >= 3 
+                THEN UPPER(SUBSTRING(REGEXP_REPLACE(cp.business_name, '[^A-Za-z]', '', 'g') FROM 1 FOR 3)) 
+                ELSE 'BK' 
+            END, 
+            '-C-', 
+            LPAD(b.id::text, 3, '0')
+        )
+        FROM caterer_profiles cp
+        WHERE b.caterer_id = cp.id AND (b.customer_ref IS NULL OR b.customer_ref = '' OR b.customer_ref LIKE 'WALKIN-BK-%' OR b.customer_ref LIKE 'CUST-%');
+        """,
+        """
         CREATE TABLE IF NOT EXISTS booking_payment_records (
             id SERIAL PRIMARY KEY,
             booking_id INTEGER REFERENCES bookings(id) ON DELETE CASCADE,

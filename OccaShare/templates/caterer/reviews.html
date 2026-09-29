@@ -80,10 +80,26 @@
                         <td>
                             <div class="reviewer-meta">
                                 <div class="reviewer-avatar-sm">
-                                    {{ r.user.first_name[0] }}{{ r.user.last_name[0] }}
+                                    {% if r.user and r.user.first_name and r.user.last_name %}
+                                        {{ r.user.first_name[0] }}{{ r.user.last_name[0] }}
+                                    {% elif r.user and r.user.first_name %}
+                                        {{ r.user.first_name[0] }}
+                                    {% elif r.booking and r.booking.customer_name %}
+                                        {{ r.booking.customer_name[0] }}
+                                    {% else %}
+                                        C
+                                    {% endif %}
                                 </div>
                                 <div class="reviewer-info-text">
-                                    <h4 class="reviewer-name">{{ r.user.first_name }} {{ r.user.last_name }}</h4>
+                                    <h4 class="reviewer-name">
+                                        {% if r.user and (r.user.first_name or r.user.last_name) %}
+                                            {{ r.user.first_name or '' }} {{ r.user.last_name or '' }}
+                                        {% elif r.booking and r.booking.customer_name %}
+                                            {{ r.booking.customer_name }}
+                                        {% else %}
+                                            Verified Customer
+                                        {% endif %}
+                                    </h4>
                                 </div>
                             </div>
                         </td>
