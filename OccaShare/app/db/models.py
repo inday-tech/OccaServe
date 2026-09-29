@@ -662,6 +662,19 @@ class Booking(Base):
     payment_records = relationship("BookingPaymentRecord", back_populates="booking", cascade="all, delete-orphan")
 
     @property
+    def booking_ref(self) -> str:
+        if self.custom_requirements and isinstance(self.custom_requirements, dict):
+            custom_ref = self.custom_requirements.get("booking_ref") or self.custom_requirements.get("booking_reference")
+            if custom_ref:
+                return str(custom_ref)
+        prefix = 'ORD-' if self.document_type == 'invoice' else ('RT-' if (self.document_type == 'rental_agreement' or self.event_type == 'Equipment Rental') else 'BK-')
+        return f"{prefix}{self.id:06d}"
+
+    @property
+    def booking_reference(self) -> str:
+        return self.booking_ref
+
+    @property
     def customer_reference(self) -> str:
         if self.user_id:
             return f"CUST-{self.user_id:04d}"

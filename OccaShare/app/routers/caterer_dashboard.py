@@ -2044,7 +2044,14 @@ def build_booking_list_projection(booking, today):
         "created_by_label": created_by_label, "show_guests": booking_kind == "catering" or bool(booking.guest_count),
         "guest_count": booking.guest_count, "event_date": booking.event_date,
         "event_time": booking.event_time, "is_urgent": bool(booking.event_date and 0 <= (booking.event_date - today).days <= 2 and needs_action),
-        "booking_reference": f"ORD-{booking.id:06d}" if booking.document_type == 'invoice' else f"BK-{booking.id:06d}",
+        "booking_ref": getattr(booking, "booking_ref", None) or (
+            f"ORD-{booking.id:06d}" if booking.document_type == 'invoice'
+            else f"BK-{booking.id:06d}"
+        ),
+        "booking_reference": getattr(booking, "booking_ref", None) or (
+            f"ORD-{booking.id:06d}" if booking.document_type == 'invoice'
+            else f"BK-{booking.id:06d}"
+        ),
         "amount": total, "has_quote": has_quote, "payment_filter": "paid" if paid >= total and total > 0 else ("partial" if paid > 0 else "pending"),
         "document_type": booking.document_type or "booking"
     }
@@ -3164,6 +3171,8 @@ async def get_booking_details_api(
 
     return {
         "id": booking.id,
+        "booking_ref": booking.booking_ref,
+        "booking_reference": booking.booking_ref,
         "customer_ref": _booking_customer_reference(booking),
         "has_registered_customer": bool(booking.user_id),
         "customer_is_verified": bool(booking.user and booking.user.is_verified),
