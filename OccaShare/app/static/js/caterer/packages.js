@@ -1606,11 +1606,26 @@ window.handleInclusionTypeChange = function (type, preselectId = null) {
     if (nameEl) nameEl.value = '';
     if (!inclusionImageFile) resetInclusionImagePicker('');
 
-    // Suggest default units based on type
-    if (unitInput && !unitInput.value) {
-        if (normType === 'Equipment') unitInput.placeholder = 'e.g. chairs, pcs';
-        else if (normType === 'Menu') unitInput.placeholder = 'e.g. pax, servings';
-        else unitInput.placeholder = 'e.g. staff, hours';
+    // Handle Quantity container visibility
+    const qtyContainer = document.getElementById('inclusionQtyContainer');
+    const lblQtyOptional = document.getElementById('lblInclusionQtyOptional');
+    const lblQtyRequired = document.getElementById('lblInclusionQtyRequired');
+
+    if (normType === 'Service') {
+        if (qtyContainer) qtyContainer.style.display = 'none';
+        if (qtyInput) qtyInput.value = '';
+        if (unitInput) unitInput.value = '';
+        const preview = document.getElementById('qtyPreviewDisplay');
+        if (preview) preview.innerText = 'Not applicable';
+    } else {
+        if (qtyContainer) qtyContainer.style.display = 'block';
+        if (lblQtyOptional) lblQtyOptional.style.display = 'inline';
+        if (lblQtyRequired) lblQtyRequired.style.display = 'none';
+        // Suggest default units based on type
+        if (unitInput && !unitInput.value) {
+            if (normType === 'Equipment') unitInput.placeholder = 'e.g. chairs, pcs';
+            else if (normType === 'Menu') unitInput.placeholder = 'e.g. pax, servings';
+        }
     }
 
     // Populate the dropdown
@@ -1713,30 +1728,33 @@ window.handleCatalogItemSelected = function (selectedId) {
     // Set intelligent default quantity and unit if empty
     const catSelect = document.getElementById('customInclusionCategory');
     const currentType = catSelect ? catSelect.value : 'Equipment';
+    const qtyContainer = document.getElementById('inclusionQtyContainer');
 
-    if (qtyNum && (!qtyNum.value || qtyNum.value === '0')) {
-        if (currentType === 'Equipment') {
-            const avail = parseInt(itemQty, 10);
-            qtyNum.value = avail && avail < 50 ? String(avail) : '50';
-        } else if (currentType === 'Menu') {
-            qtyNum.value = '100';
-        } else {
-            qtyNum.value = '1';
+    if (currentType === 'Service') {
+        if (qtyContainer) qtyContainer.style.display = 'none';
+        if (qtyNum) qtyNum.value = '';
+        if (qtyUnit) qtyUnit.value = '';
+    } else if (currentType === 'Menu') {
+        if (qtyContainer) qtyContainer.style.display = 'block';
+        // Quantity is optional for Menu/Food - do not enforce 100
+        if (qtyUnit && !qtyUnit.value) {
+            qtyUnit.value = itemUnit || 'pax';
         }
-    }
-
-    if (qtyUnit && !qtyUnit.value) {
-        if (itemUnit) {
-            qtyUnit.value = itemUnit;
-        } else if (currentType === 'Equipment') {
-            const nLower = itemName.toLowerCase();
-            if (nLower.includes('chair')) qtyUnit.value = 'chairs';
-            else if (nLower.includes('table')) qtyUnit.value = 'tables';
-            else qtyUnit.value = 'units';
-        } else if (currentType === 'Menu') {
-            qtyUnit.value = 'pax';
-        } else {
-            qtyUnit.value = 'staff';
+    } else if (currentType === 'Equipment') {
+        if (qtyContainer) qtyContainer.style.display = 'block';
+        if (qtyNum && (!qtyNum.value || qtyNum.value === '0')) {
+            const avail = parseInt(itemQty, 10);
+            if (avail && avail < 50) qtyNum.value = String(avail);
+        }
+        if (qtyUnit && !qtyUnit.value) {
+            if (itemUnit) {
+                qtyUnit.value = itemUnit;
+            } else {
+                const nLower = itemName.toLowerCase();
+                if (nLower.includes('chair')) qtyUnit.value = 'chairs';
+                else if (nLower.includes('table')) qtyUnit.value = 'tables';
+                else qtyUnit.value = 'pcs';
+            }
         }
     }
 
@@ -1768,7 +1786,7 @@ window.updateQuantityPreview = function () {
     }
 
     if (hiddenQty) hiddenQty.value = formatted;
-    if (qtyPreview) qtyPreview.innerText = formatted || 'None specified';
+    if (qtyPreview) qtyPreview.innerText = formatted || 'Not specified (optional)';
 };
 
 // Edit Existing Inclusion
@@ -1825,6 +1843,15 @@ window.editInclusion = async function (index) {
 
     window.handleInclusionTypeChange(itemType, item.item_id);
 
+    const qtyContainer = document.getElementById('inclusionQtyContainer');
+    if (itemType === 'Service') {
+        if (qtyContainer) qtyContainer.style.display = 'none';
+        if (qtyNumEl) qtyNumEl.value = '';
+        if (qtyUnitEl) qtyUnitEl.value = '';
+    } else {
+        if (qtyContainer) qtyContainer.style.display = 'block';
+    }
+
     // If item_id wasn't in catalog yet, set name manually
     const nameEl = document.getElementById('customInclusionName');
     if (nameEl) nameEl.value = item.name || '';
@@ -1874,10 +1901,17 @@ window.saveInclusion = async function (addAnother = false) {
 
     // Formatted Quantity
     window.updateQuantityPreview();
-    const qtyVal = (document.getElementById('customInclusionQuantity') || {}).value || '';
-    const qtyNum = qtyNumEl && qtyNumEl.value ? parseInt(qtyNumEl.value, 10) : null;
-    const qtyUnit = qtyUnitEl ? qtyUnitEl.value.trim() : '';
+    let qtyVal = (document.getElementById('customInclusionQuantity') || {}).value || '';
+    let qtyNum = qtyNumEl && qtyNumEl.value ? parseInt(qtyNumEl.value, 10) : null;
+    let qtyUnit = qtyUnitEl ? qtyUnitEl.value.trim() : '';
     const descVal = descEl ? descEl.value.trim() : '';
+
+    // Services never have quantity
+    if (selectedType === 'Service') {
+        qtyVal = '';
+        qtyNum = null;
+        qtyUnit = '';
+    }
 
     const categoryVal = selectedType === 'Menu' ? 'Menu / Food' : selectedType;
 
@@ -2215,7 +2249,7 @@ function renderInclusionsList() {
                         </span>
                     </div>
                     <div style="font-size: 0.98rem; font-weight: 800; color: #0f172a; line-height: 1.3; margin-bottom: 3px;">
-                        ${escapeHtml(item.name)}
+                        ${escapeHtml(item.name)}${cat !== 'Service' && item.quantity ? ` <span style="font-size: 0.78rem; font-weight: 700; color: #475569; background: #f1f5f9; border: 1px solid #e2e8f0; padding: 2px 7px; border-radius: 6px; margin-left: 6px; vertical-align: middle;">${escapeHtml(item.quantity)}</span>` : ''}
                     </div>
                     ${resolvedDesc && String(resolvedDesc).trim().length > 2 ? `
                         <div style="font-size: 0.84rem; color: #64748b; line-height: 1.45; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
@@ -2585,6 +2619,12 @@ window.openQuickAddOptionModal = function (type) {
     const priceRow = document.getElementById('quickAddOptionPriceRow');
     const priceWrapper = document.getElementById('quickAddOptionPriceWrapper');
 
+    if (catSelect) {
+        if (type === 'menu') catSelect.value = 'Main Course';
+        else if (type === 'service') catSelect.value = 'Service';
+        else catSelect.value = 'Equipment';
+    }
+
     if (type === 'menu') {
         if (titleEl) titleEl.innerHTML = '<i class="fas fa-utensils" style="color: #16a34a; margin-right: 6px;"></i> Quick Add Food / Dish';
         if (nameLabel) nameLabel.innerHTML = 'Dish / Menu Item Name <span style="color: #ef4444;">*</span>';
@@ -2598,22 +2638,6 @@ window.openQuickAddOptionModal = function (type) {
         }
         if (qtyWrapper) qtyWrapper.style.display = 'none';
 
-        if (catSelect) {
-            catSelect.innerHTML = `
-                <option value="Main Course">Main Course</option>
-                <option value="Beef">Beef</option>
-                <option value="Pork">Pork</option>
-                <option value="Chicken">Chicken</option>
-                <option value="Seafood">Seafood</option>
-                <option value="Pasta & Noodles">Pasta & Noodles</option>
-                <option value="Vegetables">Vegetables</option>
-                <option value="Buffet Menu">Buffet Menu</option>
-                <option value="Dessert">Dessert</option>
-                <option value="Beverage">Beverage</option>
-                <option value="Appetizer">Appetizer</option>
-                <option value="Other">Other</option>
-            `;
-        }
         if (unitSelect) {
             unitSelect.innerHTML = `
                 <option value="per_pax">Per Pax / Guest</option>
@@ -2638,19 +2662,6 @@ window.openQuickAddOptionModal = function (type) {
         }
         if (qtyWrapper) qtyWrapper.style.display = 'none';
 
-        if (catSelect) {
-            catSelect.innerHTML = `
-                <option value="Waitstaff & Servers">Waitstaff & Servers</option>
-                <option value="Bartender / Barista">Bartender / Barista</option>
-                <option value="Chef / Cook On-Site">Chef / Cook On-Site</option>
-                <option value="Buffet Management">Buffet Management</option>
-                <option value="Event Setup & Cleanup">Event Setup & Cleanup</option>
-                <option value="Sound & Lighting">Sound & Lighting</option>
-                <option value="Decoration / Styling">Decoration / Styling</option>
-                <option value="Coordinator">Coordinator</option>
-                <option value="General Service">General Service</option>
-            `;
-        }
         if (unitSelect) {
             unitSelect.innerHTML = `
                 <option value="per_event">Per Event (Flat Rate)</option>
@@ -2674,19 +2685,6 @@ window.openQuickAddOptionModal = function (type) {
         }
         if (qtyWrapper) qtyWrapper.style.display = 'block';
 
-        if (catSelect) {
-            catSelect.innerHTML = `
-                <option value="Chairs & Seating">Chairs & Seating</option>
-                <option value="Tables & Linens">Tables & Linens</option>
-                <option value="Dinnerware & Cutlery">Dinnerware & Cutlery</option>
-                <option value="Glassware & Bar">Glassware & Bar</option>
-                <option value="Buffet & Warming Equipment">Buffet & Warming Equipment</option>
-                <option value="Tents & Canopies">Tents & Canopies</option>
-                <option value="Audio & Lighting Gear">Audio & Lighting Gear</option>
-                <option value="Decorative Amenities">Decorative Amenities</option>
-                <option value="Other Equipment">Other Equipment</option>
-            `;
-        }
         if (unitSelect) {
             unitSelect.innerHTML = `
                 <option value="piece">Per Piece</option>

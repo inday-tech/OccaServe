@@ -1429,7 +1429,7 @@
                                     <span style="font-size: 0.82rem; font-weight: 800; color: #1e293b; line-height: 1.25;">
                                         <i class="fas fa-check-circle" style="color: ${theme.color}; font-size: 0.75rem; margin-right: 4px;"></i>${item.name}
                                     </span>
-                                    ${item.quantity ? `
+                                    ${item.quantity && cat !== 'Service' ? `
                                         <span style="font-size: 0.68rem; font-weight: 700; color: #475569; background: #f1f5f9; padding: 1px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0;">
                                             ${item.quantity}
                                         </span>

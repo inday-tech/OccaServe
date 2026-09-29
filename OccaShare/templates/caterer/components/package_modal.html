@@ -613,9 +613,9 @@
             </div>
 
             <!-- Quantity Included -->
-            <div class="form-group-pro" style="margin-bottom: 1.25rem;">
+            <div class="form-group-pro" id="inclusionQtyContainer" style="margin-bottom: 1.25rem;">
                 <label id="lblInclusionQty" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                    Quantity Included <span style="color: #ef4444;">*</span>
+                    Quantity Included <span id="lblInclusionQtyRequired" style="color: #ef4444; display: none;">*</span><span id="lblInclusionQtyOptional" style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
                 </label>
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <input class="control-pro" id="customInclusionQtyNum"
@@ -716,40 +716,19 @@
                         style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;" />
                 </div>
 
-                <div class="form-row-pro" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem;">
-                    <div class="form-group-pro">
-                        <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                            Category <span style="color: #ef4444;">*</span>
-                        </label>
-                        <select name="category" id="quickMenuCategory" class="control-pro" required
-                            style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; font-weight: 600;">
-                            <option value="Buffet Menu">Buffet Menu</option>
-                            <option value="Main Dish">Main Dish</option>
-                            <option value="Beef">Beef</option>
-                            <option value="Pork">Pork</option>
-                            <option value="Chicken">Chicken</option>
-                            <option value="Seafood">Seafood</option>
-                            <option value="Pasta &amp; Noodles">Pasta &amp; Noodles</option>
-                            <option value="Vegetables">Vegetables</option>
-                            <option value="Dessert">Dessert</option>
-                            <option value="Beverage">Beverage</option>
-                            <option value="Appetizer">Appetizer</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
+                <input type="hidden" name="category" id="quickMenuCategory" value="Menu Item" />
 
-                    <div class="form-group-pro">
-                        <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                            Serving Unit
-                        </label>
-                        <select name="unit_type" id="quickMenuUnit" class="control-pro"
-                            style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;">
-                            <option value="per_pax">Per Pax / Guest</option>
-                            <option value="per_tray">Per Tray / Pan</option>
-                            <option value="per_serving">Per Serving</option>
-                            <option value="per_order">Per Order</option>
-                        </select>
-                    </div>
+                <div class="form-group-pro" style="margin-bottom: 1rem;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Serving Unit
+                    </label>
+                    <select name="unit_type" id="quickMenuUnit" class="control-pro"
+                        style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;">
+                        <option value="per_pax">Per Pax / Guest</option>
+                        <option value="per_tray">Per Tray / Pan</option>
+                        <option value="per_serving">Per Serving</option>
+                        <option value="per_order">Per Order</option>
+                    </select>
                 </div>
 
                 <input type="hidden" name="price" id="quickMenuPrice" value="0" />
@@ -802,24 +781,15 @@
                         style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;" />
                 </div>
 
-                <div class="form-row-pro" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem;">
-                    <div class="form-group-pro">
-                        <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                            Category <span style="color: #ef4444;">*</span>
-                        </label>
-                        <select name="category" id="quickAddOptionCategory" class="control-pro" required
-                            style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; font-weight: 600;">
-                        </select>
-                    </div>
+                <input type="hidden" name="category" id="quickAddOptionCategory" value="" />
 
-                    <div class="form-group-pro">
-                        <label id="quickAddOptionUnitLabel" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                            Unit / Pricing
-                        </label>
-                        <select name="unit_type" id="quickAddOptionUnit" class="control-pro"
-                            style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;">
-                        </select>
-                    </div>
+                <div class="form-group-pro" style="margin-bottom: 1rem;">
+                    <label id="quickAddOptionUnitLabel" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Unit / Pricing
+                    </label>
+                    <select name="unit_type" id="quickAddOptionUnit" class="control-pro"
+                        style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;">
+                    </select>
                 </div>
 
                 <div class="form-row-pro" id="quickAddOptionPriceRow" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem;">
