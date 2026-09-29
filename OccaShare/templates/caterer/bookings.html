@@ -793,9 +793,9 @@
                 {% set raw_src = (booking.booking_source or '')|lower %}
                 {% set is_manual = (not booking.user_id) or ('walk' in raw_src) or ('internal' in raw_src) or ('manual' in raw_src) or (booking.custom_requirements and booking.custom_requirements.get('is_walk_in')) %}
                 {% if booking.user_id %}
-                    {% set customer_ref = 'CUST-' ~ ('%04d'|format(booking.user_id)) %}
+                    {% set customer_ref = booking.customer_ref or ('CUST-' ~ ('%04d'|format(booking.user_id))) %}
                 {% else %}
-                    {% set customer_ref = 'WALKIN-BK-' ~ ('%06d'|format(booking.id)) %}
+                    {% set customer_ref = booking.customer_ref or ('WALKIN-BK-' ~ ('%06d'|format(booking.id))) %}
                 {% endif %}
                 {% set source_badge_label = 'MANUAL' if is_manual else 'ONLINE' %}
                 {% set custom_ch = (booking.custom_requirements or {}).get('booking_channel') or (booking.custom_requirements or {}).get('channel') %}
@@ -820,7 +820,7 @@
                 {% endif %}
                 <tr id="booking-row-{{ booking.id }}" class="booking-row-item {% if row_is_urgent or is_past_event %}urgent-booking-row{% endif %}" 
                     data-booking-row="true"
-                    data-booking-id="{% if booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental' %}RT-{% elif booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ '%06d'|format(booking.id) }}"
+                    data-booking-id="{{ booking.booking_ref or (('ORD-' if booking.document_type == 'invoice' else ('RT-' if (booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental') else 'BK-')) ~ ('%06d'|format(booking.id))) }}"
                     data-status="{{ booking.status }}" 
                     data-payment-status="{{ booking.payment_status }}"
                     data-source="{{ 'Manual Booking' if is_manual else (booking.booking_source or 'Online Booking') }}"
@@ -831,7 +831,7 @@
                     data-is-urgent="{{ 'true' if row_is_urgent else 'false' }}"
                     data-is-past="{{ 'true' if is_past_event else 'false' }}"
                     data-unread-chat="{{ unread_chat_map.get(booking.id, 0) if unread_chat_map else 0 }}"
-                    data-search-text="{{ customer_ref }} BK-{{ '%06d'|format(booking.id) }} RT-{{ '%06d'|format(booking.id) }} ORD-{{ '%06d'|format(booking.id) }} {{ booking.id }} {{ booking.event_type or '' }} {{ booking.package.name if booking.package else '' }}"
+                    data-search-text="{{ customer_ref }} {{ booking.booking_ref or ('BK-' ~ '%06d'|format(booking.id)) }} RT-{{ '%06d'|format(booking.id) }} ORD-{{ '%06d'|format(booking.id) }} {{ booking.id }} {{ booking.event_type or '' }} {{ booking.package.name if booking.package else '' }}"
                     style="border-bottom: 1px solid #f1f5f9; transition: all 0.15s ease;">
                     
                     <!-- REF ID & SOURCE -->
@@ -842,7 +842,7 @@
                             {% elif is_past_event %}
                                 <div class="urgent-pulse-indicator" style="background: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);" title="Event Date has Passed!"></div>
                             {% endif %}
-                            {{ 'ORD-' if booking.document_type == 'invoice' else ('RT-' if (booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental') else 'BK-') }}{{ "%06d" | format(booking.id) }}
+                            {{ booking.booking_ref or ('BK-' ~ "%06d" | format(booking.id)) }}
                         </div>
                         <div style="margin-top: 4px;">
                             <span class="booking-source-badge {% if is_manual %}badge-source-walkin{% else %}badge-source-online{% endif %}">
@@ -1040,6 +1040,7 @@
                     <td style="padding: 0.75rem 1rem; text-align: right; white-space: nowrap; vertical-align: middle;">
                         <button type="button" class="btn-sm-outline view-details"
                             data-id="{{ booking.id }}"
+                            data-booking-ref="{{ booking.booking_ref or (('ORD-' if booking.document_type == 'invoice' else ('RT-' if (booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental') else 'BK-')) ~ ('%06d'|format(booking.id))) }}"
                             data-status="{{ booking.status or '' }}"
                             data-payment-status="{{ booking.payment_status or 'no_payment' }}"
                             data-pending-amount="{{ pending_val }}"

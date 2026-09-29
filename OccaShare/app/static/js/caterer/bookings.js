@@ -1465,7 +1465,7 @@ function showBookingDetails(btn) {
     var isFoodOrder = data.isFoodOrder === 'true' || data.isFoodOrder === true;
     var isRentalOrder = data.documentType === 'rental_agreement' || data.eventType === 'Equipment Rental';
     var refPrefix = isRentalOrder ? 'RT-' : (isFoodOrder ? 'ORD-' : 'BK-');
-    var formattedRefId = refPrefix + String(cleanId).padStart(6, '0');
+    var formattedRefId = data.bookingRef || (refPrefix + String(cleanId).padStart(6, '0'));
     var titlePrefix = isRentalOrder ? 'Rental Agreement #' : (isFoodOrder ? 'Food Order #' : (bookingStatus === 'pending_review' || bookingStatus === 'inquiry' ? 'Inquiry Details #' : 'Booking #'));
 
     // ─── 1. MODAL HEADER POPULATION ──────────────────────────────────────────
