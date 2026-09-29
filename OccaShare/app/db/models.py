@@ -645,7 +645,8 @@ class Booking(Base):
     is_custom_event = Column(Boolean, default=False)
     transaction_type = Column(String, default="contract_track") # 'fast_track' or 'contract_track'
     document_type = Column(String, nullable=True) # 'invoice', 'service_agreement', 'booking_agreement', 'rental_agreement'
-    custom_requirements = Column(JSONB, nullable=True) # E.g. {"theme": "Rustic", "budget": 50000}
+    custom_requirements = Column(JSONB, nullable=True)
+
     user = relationship("User", back_populates="bookings")
     caterer = relationship("CatererProfile", back_populates="bookings")
     package = relationship("CateringPackage", back_populates="bookings")
@@ -661,28 +662,84 @@ class Booking(Base):
     messages = relationship("BookingMessage", back_populates="booking", cascade="all, delete-orphan")
     payment_records = relationship("BookingPaymentRecord", back_populates="booking", cascade="all, delete-orphan")
 
+    def _get_caterer_prefix(self) -> str:
+        """Derive standard uppercase 3-letter caterer prefix from caterer business name."""
+        try:
+            if self.caterer and self.caterer.business_name:
+                import re
+                clean = re.sub(r'[^A-Za-z]', '', self.caterer.business_name)
+                if len(clean) >= 3:
+                    return clean[:3].upper()
+        except Exception:
+            pass
+        return "BK"
+
     @property
     def booking_ref(self) -> str:
+        # Check custom_requirements first
         if self.custom_requirements and isinstance(self.custom_requirements, dict):
             custom_ref = self.custom_requirements.get("booking_ref") or self.custom_requirements.get("booking_reference")
             if custom_ref:
                 return str(custom_ref)
-        prefix = 'ORD-' if self.document_type == 'invoice' else ('RT-' if (self.document_type == 'rental_agreement' or self.event_type == 'Equipment Rental') else 'BK-')
-        return f"{prefix}{self.id:06d}"
+        
+        # Check caterer sequence or format by prefix
+        prefix = self._get_caterer_prefix()
+        if prefix != "BK" and self.caterer_id:
+            # Consistent sequence number based on id or order
+            try:
+                # Count order of this booking for the caterer
+                if self.caterer and hasattr(self.caterer, "bookings") and self.caterer.bookings:
+                    same_caterer = sorted([b for b in self.caterer.bookings if b.id is not None], key=lambda x: x.id)
+                    for idx, b in enumerate(same_caterer, start=1):
+                        if b.id == self.id:
+                            return f"{prefix}-{idx:03d}"
+            except Exception:
+                pass
+            return f"{prefix}-{self.id:03d}"
+
+        # Standard fallback for general bookings
+        fallback_pfx = 'ORD-' if self.document_type == 'invoice' else ('RT-' if (self.document_type == 'rental_agreement' or self.event_type == 'Equipment Rental') else 'BK-')
+        return f"{fallback_pfx}{self.id:06d}"
+
+    @property
+    def display_booking_ref(self) -> str:
+        return self.booking_ref
 
     @property
     def booking_reference(self) -> str:
         return self.booking_ref
 
     @property
-    def customer_reference(self) -> str:
+    def customer_ref(self) -> str:
+        # Check custom_requirements first
+        if self.custom_requirements and isinstance(self.custom_requirements, dict):
+            custom_cref = self.custom_requirements.get("customer_ref") or self.custom_requirements.get("customer_reference")
+            if custom_cref:
+                return str(custom_cref)
+
+        prefix = self._get_caterer_prefix()
+        if prefix != "BK" and self.caterer_id:
+            try:
+                if self.caterer and hasattr(self.caterer, "bookings") and self.caterer.bookings:
+                    same_caterer = sorted([b for b in self.caterer.bookings if b.id is not None], key=lambda x: x.id)
+                    for idx, b in enumerate(same_caterer, start=1):
+                        if b.id == self.id:
+                            return f"{prefix}-C-{idx:03d}"
+            except Exception:
+                pass
+            return f"{prefix}-C-{self.id:03d}"
+
         if self.user_id:
             return f"CUST-{self.user_id:04d}"
         return f"WALKIN-BK-{self.id:06d}"
 
     @property
-    def customer_ref(self) -> str:
-        return self.customer_reference
+    def display_customer_ref(self) -> str:
+        return self.customer_ref
+
+    @property
+    def customer_reference(self) -> str:
+        return self.customer_ref
 
 
 class BookingPaymentRecord(Base):

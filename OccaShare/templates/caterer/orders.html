@@ -406,7 +406,7 @@
 
                     <!-- CUSTOMER REF -->
                     <td style="padding: 1.5rem;">
-                        {% set cust_ref = ('CUST-' ~ ('%04d'|format(booking.user_id))) if booking.user_id else ('WALKIN-BK-' ~ ('%06d'|format(booking.id))) %}
+                        {% set cust_ref = booking.customer_ref or (('CUST-' ~ ('%04d'|format(booking.user_id))) if booking.user_id else ('WALKIN-BK-' ~ ('%06d'|format(booking.id)))) %}
                         <div style="font-weight: 800; color: #0f172a; font-size: var(--text-sm);">
                             {{ cust_ref }}
                         </div>
@@ -530,7 +530,7 @@
                                 data-venue="{{ booking.venue_address or 'TBD' }}"
                                 data-requests="{{ booking.special_requests or 'None' }}" 
                                 data-payment-ref="{{ booking.payment_reference or '' }}"
-                                data-customer-ref="{{ ('CUST-' ~ ('%04d'|format(booking.user_id))) if booking.user_id else ('WALKIN-BK-' ~ ('%06d'|format(booking.id))) }}"
+                                data-customer-ref="{{ cust_ref }}"
                                 data-amount="₱{{ '{:,.2f}'.format(booking.total_price or booking.total_amount) }}"
                                 data-status="{{ booking.status }}" data-payment-status="{{ booking.payment_status }}"
                                 data-payment-method="{{ booking.payment_method or 'TBD' }}"

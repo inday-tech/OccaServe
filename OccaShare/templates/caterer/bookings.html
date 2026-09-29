@@ -792,10 +792,12 @@
                 {% set is_past_event = (booking.event_date < today) and booking.status not in ['completed', 'cancelled'] %}
                 {% set raw_src = (booking.booking_source or '')|lower %}
                 {% set is_manual = (not booking.user_id) or ('walk' in raw_src) or ('internal' in raw_src) or ('manual' in raw_src) or (booking.custom_requirements and booking.custom_requirements.get('is_walk_in')) %}
-                {% if booking.user_id %}
-                    {% set customer_ref = booking.customer_ref or ('CUST-' ~ ('%04d'|format(booking.user_id))) %}
+                {% if booking.customer_ref %}
+                    {% set customer_ref = booking.customer_ref %}
+                {% elif booking.user_id %}
+                    {% set customer_ref = 'CUST-' ~ ('%04d'|format(booking.user_id)) %}
                 {% else %}
-                    {% set customer_ref = booking.customer_ref or ('WALKIN-BK-' ~ ('%06d'|format(booking.id))) %}
+                    {% set customer_ref = 'WALKIN-BK-' ~ ('%06d'|format(booking.id)) %}
                 {% endif %}
                 {% set source_badge_label = 'MANUAL' if is_manual else 'ONLINE' %}
                 {% set custom_ch = (booking.custom_requirements or {}).get('booking_channel') or (booking.custom_requirements or {}).get('channel') %}
@@ -2223,7 +2225,7 @@
                 <div style="display: flex; flex-direction: column; gap: 0.35rem; flex: 1; min-width: 0;">
                     <!-- Line 1: Reference ID & Badges -->
                     <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
-                        <h2 id="modalBookingId" style="margin: 0; font-size: 1.35rem; font-weight: 850; color: #0f172a; letter-spacing: -0.02em; line-height: 1.2;">Booking #BK-000000</h2>
+                        <h2 id="modalBookingId" style="margin: 0; font-size: 1.35rem; font-weight: 850; color: #0f172a; letter-spacing: -0.02em; line-height: 1.2;">Booking Details</h2>
                         
                         <!-- SOURCE BADGE -->
                         <span id="modalBookingSourceBadge" class="booking-source-badge badge-source-online" style="padding: 3px 9px; border-radius: 6px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; display: inline-flex; align-items: center; gap: 4px;">
@@ -2380,7 +2382,7 @@
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.85rem; font-size: 0.83rem;">
                             <div>
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Booking Reference</span>
-                                <strong id="ovBookingRef" style="color: #0f172a;">#BK-000000</strong>
+                                <strong id="ovBookingRef" style="color: #0f172a;">—</strong>
                             </div>
                             <div>
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Customer Reference</span>
@@ -2627,7 +2629,7 @@
                             <div>
                                 <div style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #ea580c;">CONSULTATION CHAT</div>
                                 <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; line-height: 1.2;" id="modalChatCustomerHeader">Customer Consultation</div>
-                                <div style="font-size: 0.75rem; color: #64748b;" id="modalChatBookingSubline">Booking #BK-000000</div>
+                                <div style="font-size: 0.75rem; color: #64748b;" id="modalChatBookingSubline">Booking Consultation</div>
                             </div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 0.5rem;">

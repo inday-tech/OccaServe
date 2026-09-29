@@ -1907,6 +1907,8 @@ async def redirect_booking_details(booking_id: str):
 def _booking_customer_reference(booking: models.Booking) -> str:
     if not booking:
         return ""
+    if getattr(booking, "customer_ref", None):
+        return booking.customer_ref
     if getattr(booking, "customer_reference", None):
         return booking.customer_reference
     if getattr(booking, "user_id", None):
@@ -3171,9 +3173,9 @@ async def get_booking_details_api(
 
     return {
         "id": booking.id,
-        "booking_ref": booking.booking_ref,
-        "booking_reference": booking.booking_ref,
-        "customer_ref": _booking_customer_reference(booking),
+        "booking_ref": getattr(booking, "booking_ref", None) or getattr(booking, "display_booking_ref", None) or f"BK-{booking.id:06d}",
+        "booking_reference": getattr(booking, "booking_ref", None) or getattr(booking, "display_booking_ref", None) or f"BK-{booking.id:06d}",
+        "customer_ref": getattr(booking, "customer_ref", None) or _booking_customer_reference(booking),
         "has_registered_customer": bool(booking.user_id),
         "customer_is_verified": bool(booking.user and booking.user.is_verified),
         "status": booking.status,

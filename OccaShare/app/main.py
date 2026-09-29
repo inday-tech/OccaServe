@@ -155,6 +155,8 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS commission_rate FLOAT DEFAULT 10.0",
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
         "ALTER TABLE booking_contracts ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_ref VARCHAR",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_ref VARCHAR",
         # booking_tasks — preparation tracker
         "ALTER TABLE booking_tasks ADD COLUMN IF NOT EXISTS stage VARCHAR",
         "ALTER TABLE booking_tasks ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'not_started'",

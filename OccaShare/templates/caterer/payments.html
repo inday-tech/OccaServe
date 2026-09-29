@@ -223,7 +223,7 @@
             </thead>
             <tbody id="paymentsTableBody">
                 {% for b in bookings %}
-                {% set cust_ref = ('CUST-' ~ ('%04d'|format(b.user_id))) if b.user_id else ('WALKIN-BK-' ~ ('%06d'|format(b.id))) %}
+                {% set cust_ref = b.customer_ref or (('CUST-' ~ ('%04d'|format(b.user_id))) if b.user_id else ('WALKIN-BK-' ~ ('%06d'|format(b.id)))) %}
                 <tr class="premium-row" data-status="{{ b.status }} {{ b.payment_status or '' }} {{ 'completed' if b.status == 'completed' or b.payment_status == 'paid' else '' }}">
                     <td class="premium-cell" data-label="Payment ID">
                         <span class="pay-id payment-id" style="font-weight: 700; color: #0f172a; font-size: 0.88rem;">PAY-{{ "%03d"|format(b.id) }}</span>
@@ -231,7 +231,7 @@
                     <td class="premium-cell" data-label="Customer Ref">
                         <span class="pay-customer-name cust-name" style="font-weight: 700; color: #0f172a; font-size: 0.85rem;">{{ cust_ref }}</span>
                         <!-- Hidden for JS Export -->
-                        <span class="pay-booking-ref bk-id" style="display: none;">{% if b.document_type == 'invoice' %}Order #ORD-{% else %}Booking #BK-{% endif %}{{ b.id }}</span>
+                        <span class="pay-booking-ref bk-id" style="display: none;">{{ b.booking_ref or (('ORD-' if b.document_type == 'invoice' else 'BK-') ~ ('%06d'|format(b.id))) }}</span>
                     </td>
                     <td class="premium-cell" data-label="Event Type">
                         <span class="pay-event-name" style="font-weight: 600; color: #334155; font-size: 0.85rem;">{{ b.event_name or b.event_type }}</span>

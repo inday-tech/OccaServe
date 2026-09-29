@@ -58,6 +58,8 @@ def _ensure_schema_sync():
         "ALTER TABLE booking_menu_items ADD COLUMN IF NOT EXISTS choices JSONB;",
         "ALTER TABLE booking_contracts ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE;",
         "ALTER TABLE booking_contracts ADD COLUMN IF NOT EXISTS contract_history JSONB;",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_ref VARCHAR;",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_ref VARCHAR;",
         """
         CREATE TABLE IF NOT EXISTS booking_payment_records (
             id SERIAL PRIMARY KEY,

@@ -717,7 +717,10 @@ function showPage(page) {
     pageItems.forEach(function(item) {
         const rowId = item.id.replace('booking-row-', '');
         if (rowId) visibleIds.add(rowId);
-        if (item.dataset.bookingId) visibleIds.add(item.dataset.bookingId.replace('BK-', '').replace(/^0+/, ''));
+        if (item.dataset.bookingId) {
+            visibleIds.add(item.dataset.bookingId);
+            visibleIds.add(item.dataset.bookingId.replace(/^[A-Za-z]+-/, '').replace(/^0+/, ''));
+        }
     });
 
     // Hide/show table rows
@@ -1194,7 +1197,7 @@ async function submitExpenses(e) {
 function hydrateButtonDataset(btn, detail) {
     if (!btn || !detail) return;
     const isManual = detail.source_kind === 'manual' || !detail.has_registered_customer;
-    const customerRef = detail.customer_ref || btn.dataset.customerRef || '';
+    const customerRef = detail.customer_ref || detail.customer_reference || btn.dataset.customerRef || '';
     
     const fields = {
         status: detail.status || btn.dataset.status || '',
@@ -1251,7 +1254,7 @@ function hydrateButtonDataset(btn, detail) {
         requests: detail.special_requests || btn.dataset.requests || '',
         motif: detail.motif_theme || detail.motif || btn.dataset.motif || '',
         documentType: detail.document_type || '',
-        bookingRef: detail.booking_ref || btn.dataset.bookingRef || '',
+        bookingRef: detail.booking_ref || detail.booking_reference || btn.dataset.bookingRef || '',
         proofUrl: detail.payment_proof_url || '',
         balanceProofUrl: detail.balance_proof_url || '',
         hasMenu: String(Boolean(detail.package || (detail.selected_items && detail.selected_items.length))),
