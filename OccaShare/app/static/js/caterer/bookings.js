@@ -131,6 +131,7 @@ function bk_openModal(id) {
 function bk_closeModal(id) {
     console.log('[BookingsJS] Closing modal:', id);
     if (id === 'bookingDetailModal') {
+        if (typeof window.resetBookingCustomerDetails === 'function') window.resetBookingCustomerDetails();
         const msgInput = document.getElementById('chatMessageInput');
         if (msgInput) msgInput.value = '';
         const attInput = document.getElementById('chatAttachmentInput');
@@ -1192,11 +1193,8 @@ async function submitExpenses(e) {
 
 function hydrateButtonDataset(btn, detail) {
     if (!btn || !detail) return;
-    const user = detail.user || {};
-    const isManual = detail.source_kind === 'manual' || !detail.user_id;
-    
-    const isGuestEmail = detail.is_guest_email || false;
-    const customerEmail = isGuestEmail ? '' : (detail.customer_email || user.email || '');
+    const isManual = detail.source_kind === 'manual' || !detail.has_registered_customer;
+    const customerRef = detail.customer_ref || btn.dataset.customerRef || '';
     
     const fields = {
         status: detail.status || btn.dataset.status || '',
@@ -1207,19 +1205,24 @@ function hydrateButtonDataset(btn, detail) {
         bookingChannel: detail.booking_channel || btn.dataset.bookingChannel || (isManual ? 'Manual / Direct Inquiry' : 'OccaServe Website'),
         addedBy: detail.added_by || btn.dataset.addedBy || (isManual ? 'Caterer / Staff' : 'Customer'),
         celebrantName: detail.celebrant_name || '',
-        isGuestEmail: String(isGuestEmail),
         paymentRecordsJson: JSON.stringify(detail.payment_records || []),
         eventDate: detail.event_date || btn.dataset.eventDate || '',
         eventTime: detail.event_time || btn.dataset.eventTime || 'TBA',
-        customer: detail.customer_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || btn.dataset.customer || (isManual ? 'Manual Booking Customer' : 'Customer'),
-        email: customerEmail,
-        contact: detail.customer_contact || user.phone_number || btn.dataset.contact || '',
+        customerRef: customerRef,
+        customer: customerRef || (isManual ? 'Walk-in Customer' : 'Customer'),
+        email: '',
+        contact: '',
         venue: detail.venue || btn.dataset.venue || 'Not specified',
         eventType: detail.event_type || btn.dataset.eventType || 'Booking',
         specificName: (detail.package && detail.package.name) || detail.event_name || detail.event_type || 'Booking',
         guestCount: detail.guest_count || btn.dataset.guestCount || 0,
         totalRawAmount: detail.total_amount != null ? detail.total_amount : (btn.dataset.totalRawAmount || 0),
         amountPaid: detail.amount_paid != null ? detail.amount_paid : (btn.dataset.amountPaid || 0),
+        balance: detail.balance_amount != null
+            ? detail.balance_amount
+            : (detail.payment_summary && detail.payment_summary.remaining_balance != null
+                ? detail.payment_summary.remaining_balance
+                : Math.max(Number(detail.total_amount || 0) - Number(detail.amount_paid || 0), 0)),
         pendingAmount: detail.pending_amount != null ? detail.pending_amount : (btn.dataset.pendingAmount || 0),
         remainingAfterVerification: detail.remaining_after_verification != null ? detail.remaining_after_verification : (btn.dataset.remainingAfterVerification || 0),
         isUnderReview: String(Boolean(detail.is_under_review || detail.needs_verification || ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested'].includes(detail.payment_status))),
@@ -1231,16 +1234,18 @@ function hydrateButtonDataset(btn, detail) {
         bookedOn: detail.created_at ? new Date(detail.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : (btn.dataset.bookedOn || '—'),
         balanceDue: detail.balance_due_date ? detail.balance_due_date.slice(0, 10) : (btn.dataset.balanceDue || ''),
         actualCost: detail.actual_cost || 0,
-        targetUserId: detail.user_id || (detail.user ? detail.user.id : ''),
+        hasRegisteredCustomer: String(Boolean(detail.has_registered_customer)),
         isPackage: detail.is_package != null ? String(detail.is_package) : (btn.dataset.isPackage || 'true'),
         isFoodOrder: String(detail.document_type === 'invoice' || detail.event_type === 'Ala Carte Order'),
-        isVerified: String(Boolean(detail.verification && detail.verification.is_verified)),
-        hasKycRecord: String(Boolean(detail.verification && detail.verification.has_record)),
+        isVerified: String(Boolean(detail.customer_is_verified)),
+        hasKycRecord: 'false',
         hasContract: String(Boolean(detail.contract && detail.contract.has_contract)),
-        verificationJson: JSON.stringify(detail.verification || {}),
+        verificationJson: '{}',
         contractJson: JSON.stringify(detail.contract || {}),
+        packageJson: JSON.stringify(detail.package || {}),
         catererServicesJson: JSON.stringify(detail.caterer_services || []),
         selectedServicesJson: JSON.stringify(detail.services || []),
+        selectedItemsJson: JSON.stringify(detail.selected_items || []),
         equipmentItemsJson: JSON.stringify(detail.equipment_items || []),
         preparationStatus: detail.preparation_status || 'not_started',
         requests: detail.special_requests || btn.dataset.requests || '',
@@ -1257,6 +1262,73 @@ function hydrateButtonDataset(btn, detail) {
     });
     btn.dataset.workspaceHydrated = 'true';
 }
+
+let customerDetailsLoadedForBookingId = null;
+
+window.resetBookingCustomerDetails = function() {
+    customerDetailsLoadedForBookingId = null;
+    const gate = document.getElementById('custDetailsGate');
+    const details = document.getElementById('custDetailsContent');
+    const error = document.getElementById('custDetailsError');
+    const button = document.getElementById('btnViewCustomerDetails');
+    if (gate) gate.style.display = 'flex';
+    if (details) details.style.display = 'none';
+    if (error) { error.style.display = 'none'; error.textContent = ''; }
+    if (button) { button.disabled = false; button.innerHTML = '<i class="fas fa-user-lock"></i> View Customer Details'; }
+    ['custFullName', 'custMobile', 'custEmail', 'custType'].forEach(function(id) {
+        const field = document.getElementById(id);
+        if (field) field.textContent = '—';
+    });
+    const emailBadge = document.getElementById('custEmailVerifiedBadge');
+    if (emailBadge) emailBadge.style.display = 'none';
+    [['btnCallCustomer', 'tel:'], ['btnSmsCustomer', 'sms:'], ['btnEmailCustomer', 'mailto:']].forEach(function(item) {
+        const link = document.getElementById(item[0]);
+        if (link) { link.href = 'javascript:void(0)'; link.style.opacity = '0.5'; }
+    });
+};
+
+window.loadCustomerDetails = async function() {
+    const bookingId = String(currentBookingId || '').replace(/\D/g, '');
+    if (!bookingId || customerDetailsLoadedForBookingId === bookingId) return;
+
+    const button = document.getElementById('btnViewCustomerDetails');
+    const error = document.getElementById('custDetailsError');
+    if (button) { button.disabled = true; button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading details'; }
+    if (error) { error.style.display = 'none'; error.textContent = ''; }
+
+    try {
+        const response = await fetch(`/caterer/api/bookings/${bookingId}/customer-details`, {
+            headers: { 'Accept': 'application/json' }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Customer details are unavailable.');
+        if (String(currentBookingId || '').replace(/\D/g, '') !== bookingId) return;
+
+        document.getElementById('custFullName').textContent = data.name || (data.is_manual ? 'Walk-in customer' : 'Customer name not provided');
+        document.getElementById('custMobile').textContent = data.phone || 'Not provided';
+        document.getElementById('custEmail').textContent = data.email || 'Not provided';
+        document.getElementById('custType').textContent = data.is_manual ? 'Manual / Walk-in Client' : 'Registered Customer';
+        const emailBadge = document.getElementById('custEmailVerifiedBadge');
+        if (emailBadge) emailBadge.style.display = data.email && data.email_verified ? 'inline-block' : 'none';
+
+        const phone = data.phone || '';
+        const email = data.email || '';
+        [['btnCallCustomer', phone ? `tel:${phone}` : ''], ['btnSmsCustomer', phone ? `sms:${phone}` : ''], ['btnEmailCustomer', email ? `mailto:${email}` : '']].forEach(function(item) {
+            const link = document.getElementById(item[0]);
+            if (link) { link.href = item[1] || 'javascript:void(0)'; link.style.opacity = item[1] ? '1' : '0.5'; }
+        });
+
+        customerDetailsLoadedForBookingId = bookingId;
+        const gate = document.getElementById('custDetailsGate');
+        const details = document.getElementById('custDetailsContent');
+        if (gate) gate.style.display = 'none';
+        if (details) details.style.display = 'block';
+        if (button) button.innerHTML = '<i class="fas fa-user-check"></i> Customer Details Viewed';
+    } catch (err) {
+        if (error) { error.textContent = err.message || 'Could not load customer details.'; error.style.display = 'block'; }
+        if (button) { button.disabled = false; button.innerHTML = '<i class="fas fa-user-lock"></i> Try Again'; }
+    }
+};
 
 
 // ─── HELPER: Sync Left-Footer Buttons to Booking Status ─────────────────────
@@ -1316,6 +1388,9 @@ function showBookingDetails(btn) {
     var data = btn.dataset;
     var rawId = data.id || data.bookingId || '';
     var cleanId = String(rawId).replace(/\D/g, '') || String(rawId);
+    var wasModalOpen = document.getElementById('bookingDetailModal')?.classList.contains('active');
+    var previousBookingId = String(currentBookingId || '');
+    if (!wasModalOpen || previousBookingId !== cleanId) window.resetBookingCustomerDetails();
     data.id = cleanId;
 
     var sourceVal = (data.source || '').toString().toLowerCase();
@@ -1355,7 +1430,6 @@ function showBookingDetails(btn) {
     data.balance = String(balanceValue);
 
     currentBookingId = cleanId;
-    window.currentBookingTargetUserId = data.targetUserId;
     window.currentBookingStatus = data.status;
     currentEventDate = data.eventDate;
 
@@ -1486,12 +1560,10 @@ function showBookingDetails(btn) {
 
     // Customer Headline & Subline
     var custHeadline = document.getElementById('modalCustomerHeadline');
-    if (custHeadline) custHeadline.innerText = data.customer || (isManual ? 'Manual Booking Customer' : 'Customer');
+    if (custHeadline) custHeadline.innerText = data.customerRef || 'Customer Ref';
 
     var custVerifBadge = document.getElementById('modalCustomerVerificationBadge');
-    if (custVerifBadge) {
-        custVerifBadge.style.display = (!isManual && data.isVerified === 'true') ? 'inline-block' : 'none';
-    }
+    if (custVerifBadge) custVerifBadge.style.display = 'none';
 
     var eventSubline = document.getElementById('modalEventSublineText');
     if (eventSubline) {
@@ -1536,7 +1608,7 @@ function showBookingDetails(btn) {
         if (manualChatView) manualChatView.style.display = 'none';
         if (onlineChatView) onlineChatView.style.display = 'flex';
         var chatCustHdr = document.getElementById('modalChatCustomerHeader');
-        if (chatCustHdr) chatCustHdr.innerText = (data.customer || 'Customer') + ' Consultation';
+        if (chatCustHdr) chatCustHdr.innerText = (data.customerRef || 'Customer') + ' Consultation';
         var chatSubline = document.getElementById('modalChatBookingSubline');
         if (chatSubline) chatSubline.innerText = `${titlePrefix}${formattedRefId} • ${data.eventType || 'Online Booking'}`;
         var chatFormBid = document.getElementById('modalChatBookingId');
@@ -1574,6 +1646,7 @@ function showBookingDetails(btn) {
     var ovChan = document.getElementById('ovBookingChannel'); if (ovChan) ovChan.innerText = data.bookingChannel || (isManual ? 'Manual / Direct Inquiry' : 'OccaServe Website');
     var ovAdd = document.getElementById('ovAddedBy'); if (ovAdd) ovAdd.innerText = data.addedBy || (isManual ? 'Caterer' : 'Customer');
     var ovCreated = document.getElementById('ovCreatedDate'); if (ovCreated) ovCreated.innerText = data.bookedOn || '—';
+    var ovCustRef = document.getElementById('ovCustomerRef'); if (ovCustRef) ovCustRef.innerText = data.customerRef || '—';
     var ovSt = document.getElementById('ovStatusText');
     if (ovSt) {
         if (isUnderReview) {
@@ -1615,6 +1688,9 @@ function showBookingDetails(btn) {
         }
     }
 
+    // Process/Booking Status Workflow Tracker
+    renderProcessWorkflow(bookingStatus, paymentStatus, totalAmountValue, paidAmountValue, isUnderReview);
+
     // ─── 4. TAB 2: CUSTOMER ──────────────────────────────────────────────────
     var custSrcNote = document.getElementById('custSourceNote');
     if (custSrcNote) {
@@ -1622,55 +1698,8 @@ function showBookingDetails(btn) {
         custSrcNote.style.background = isManual ? '#ffedd5' : '#e0e7ff';
         custSrcNote.style.color = isManual ? '#c2410c' : '#4338ca';
     }
-    var custName = document.getElementById('custFullName'); if (custName) custName.innerText = data.customer || '—';
-    var custMob = document.getElementById('custMobile'); if (custMob) custMob.innerText = data.contact || 'Not provided';
-    var custEm = document.getElementById('custEmail');
-    var custEmBadge = document.getElementById('custEmailVerifiedBadge');
-    var rawCustEmail = (data.email || '').toLowerCase().trim();
-    var isGuest = data.isGuestEmail === 'true' || !rawCustEmail || rawCustEmail.includes('@guest.occashare.com') || rawCustEmail.startsWith('walkin') || rawCustEmail === 'n/a' || rawCustEmail === 'not provided';
-    if (custEm) {
-        custEm.innerText = isGuest ? 'Not provided (Manual / Walk-in)' : data.email;
-    }
-    if (custEmBadge) {
-        custEmBadge.style.display = (!isGuest && data.isVerified === 'true') ? 'inline-block' : 'none';
-    }
-    var custType = document.getElementById('custType');
-    if (custType) {
-        custType.innerText = isManual ? 'Manual / Offline Client' : (data.isVerified === 'true' ? 'Verified Platform User' : 'Registered Customer');
-    }
-    var custAddr = document.getElementById('custAddress'); if (custAddr) custAddr.innerText = data.venue || 'Not provided';
-
-    // KYC Summary Block
-    var kycBlock = document.getElementById('custKycSummaryBlock');
-    if (kycBlock) {
-        if (!isManual && (data.hasKycRecord === 'true' || data.isVerified === 'true')) {
-            kycBlock.style.display = 'block';
-            var kycBadge = document.getElementById('custKycStatusBadge');
-            if (kycBadge) {
-                var kycData = {}; try { kycData = JSON.parse(data.verificationJson || '{}'); } catch(e){}
-                kycBadge.innerText = kycData.status || 'VERIFIED';
-            }
-        } else {
-            kycBlock.style.display = 'none';
-        }
-    }
-
-    // Contact Action Buttons
-    var btnCall = document.getElementById('btnCallCustomer');
-    if (btnCall) {
-        btnCall.href = data.contact ? 'tel:' + data.contact : 'javascript:void(0)';
-        btnCall.style.opacity = data.contact ? '1' : '0.5';
-    }
-    var btnSms = document.getElementById('btnSmsCustomer');
-    if (btnSms) {
-        btnSms.href = data.contact ? 'sms:' + data.contact : 'javascript:void(0)';
-        btnSms.style.opacity = data.contact ? '1' : '0.5';
-    }
-    var btnEmail = document.getElementById('btnEmailCustomer');
-    if (btnEmail) {
-        btnEmail.href = (!isGuest && data.email) ? 'mailto:' + data.email : 'javascript:void(0)';
-        btnEmail.style.opacity = (!isGuest && data.email) ? '1' : '0.5';
-    }
+    var custRef = document.getElementById('custCustomerRef');
+    if (custRef) custRef.textContent = data.customerRef || '—';
 
     // ─── 5. TAB 3: EVENT & PACKAGE / SERVICES ────────────────────────────────
     var paneOnline = document.getElementById('paneOnlinePackageView');
@@ -1686,7 +1715,11 @@ function showBookingDetails(btn) {
             var services = [];
             try {
                 services = JSON.parse(data.selectedServicesJson || '[]');
-                if (!services.length) services = JSON.parse(data.catererServicesJson || '[]');
+                if (!services.length) {
+                    services = JSON.parse(data.selectedItemsJson || '[]').filter(function(item) {
+                        return item.type === 'service';
+                    });
+                }
             } catch(e) {}
 
             if (services && services.length > 0) {
@@ -1750,9 +1783,50 @@ function showBookingDetails(btn) {
         if (paneOnline) paneOnline.style.display = 'flex';
         if (paneManual) paneManual.style.display = 'none';
 
-        var onTitle = document.getElementById('onPkgTitle'); if (onTitle) onTitle.innerText = data.specificName || 'Catering Package';
-        var onPrice = document.getElementById('onPkgPrice'); if (onPrice) onPrice.innerText = formattedTotal;
-        var onMeta = document.getElementById('onPkgMeta'); if (onMeta) onMeta.innerText = `Min ${paxCount || 50} guests • Complete Package Service`;
+        var packageDetails = {};
+        try { packageDetails = JSON.parse(data.packageJson || '{}'); } catch(e) {}
+        var hasPackageDetails = Boolean(packageDetails.id);
+        var onTitle = document.getElementById('onPkgTitle');
+        if (onTitle) onTitle.innerText = packageDetails.name || data.specificName || 'Selected Event Services';
+        var onPrice = document.getElementById('onPkgPrice');
+        var onPriceLabel = document.getElementById('onPkgPriceLabel');
+        if (hasPackageDetails) {
+            var packageUnitPrice = Number(packageDetails.price_per_head || packageDetails.price || 0);
+            var packagePricingMode = packageDetails.pricing_mode || (packageDetails.price_unit === 'per_guest' ? 'per_pax' : 'fixed');
+            var packagePrice = Number(packageDetails.price || packageUnitPrice);
+            if (packagePricingMode === 'fixed' || packageDetails.price_unit !== 'per_guest') {
+                var minimumGuests = Number(packageDetails.min_guests || 0);
+                if (Number(paxCount) > minimumGuests && Number(packageDetails.additional_guest_price) > 0) {
+                    packagePrice += (Number(paxCount) - minimumGuests) * Number(packageDetails.additional_guest_price);
+                }
+            } else {
+                packagePrice = packageUnitPrice * Number(paxCount || 1);
+            }
+            if (onPrice) onPrice.innerText = '₱' + packagePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (onPriceLabel) onPriceLabel.innerText = 'Base Package Price';
+        } else {
+            if (onPrice) onPrice.innerText = formattedTotal;
+            if (onPriceLabel) onPriceLabel.innerText = 'Booking Amount';
+        }
+        var onMeta = document.getElementById('onPkgMeta');
+        if (onMeta) {
+            var packageMeta = [];
+            if (hasPackageDetails && packageDetails.min_guests) {
+                packageMeta.push(packageDetails.max_guests
+                    ? `${packageDetails.min_guests}–${packageDetails.max_guests} guest capacity`
+                    : `Minimum ${packageDetails.min_guests} guests`);
+            } else if (!hasPackageDetails) {
+                packageMeta.push(`${paxCount} guests for this booking`);
+            }
+            if (hasPackageDetails && packageDetails.service_duration) packageMeta.push(`${packageDetails.service_duration} hrs`);
+            if (hasPackageDetails && packageDetails.service_type) packageMeta.push(packageDetails.service_type);
+            onMeta.innerText = packageMeta.join(' • ') || 'Package details not available';
+        }
+        var onDescription = document.getElementById('onPkgDescription');
+        if (onDescription) {
+            onDescription.innerText = packageDetails.description || '';
+            onDescription.style.display = packageDetails.description ? 'block' : 'none';
+        }
         var onMotif = document.getElementById('onPkgMotifText'); if (onMotif) onMotif.innerText = data.motif || 'Not specified';
         var onReq = document.getElementById('onPkgRequestsText'); if (onReq) onReq.innerText = data.requests || 'None';
 
@@ -1815,7 +1889,48 @@ function showBookingDetails(btn) {
                 }
             } else {
                 var selectedItems = [];
-                try { selectedItems = JSON.parse(data.selectedServicesJson || '[]'); } catch(e) {}
+                try {
+                    selectedItems = JSON.parse(data.selectedItemsJson || '[]').filter(function(item) {
+                        return item.type === 'menu_item' || item.type === 'service';
+                    });
+                } catch(e) {}
+                if (!selectedItems.length) {
+                    try { selectedItems = JSON.parse(data.selectedServicesJson || '[]'); } catch(e) {}
+                }
+                var selectedMenuItems = selectedItems.some(function(item) { return item.type === 'menu_item'; });
+                var selectedNames = new Set(selectedItems.map(function(item) { return String(item.name || '').trim().toLowerCase(); }));
+                if (!selectedMenuItems) {
+                    (packageDetails.menu_items || []).forEach(function(item) {
+                        var itemName = String(item.name || '').trim();
+                        var itemKey = itemName.toLowerCase();
+                        if (itemName && !selectedNames.has(itemKey)) {
+                            selectedItems.push({ name: itemName, type: 'menu_item', is_included: true, quantity: 1, price: 0 });
+                            selectedNames.add(itemKey);
+                        }
+                    });
+                }
+                (packageDetails.service_items || []).concat(packageDetails.equipment_items || []).forEach(function(item) {
+                    var itemName = String(item.name || '').trim();
+                    var itemKey = itemName.toLowerCase();
+                    if (itemName && !selectedNames.has(itemKey)) {
+                        selectedItems.push({ name: itemName, type: 'included', is_included: true, quantity: item.quantity || 1, price: 0 });
+                        selectedNames.add(itemKey);
+                    }
+                });
+                (packageDetails.inclusions || []).forEach(function(inclusion) {
+                    var itemName = String(typeof inclusion === 'string' ? inclusion : (inclusion.name || inclusion.label || '')).trim();
+                    var itemKey = itemName.toLowerCase();
+                    if (itemName && !selectedNames.has(itemKey)) {
+                        selectedItems.push({
+                            name: itemName,
+                            type: 'included',
+                            is_included: true,
+                            quantity: typeof inclusion === 'object' ? (inclusion.quantity || inclusion.qty || 1) : 1,
+                            price: 0
+                        });
+                        selectedNames.add(itemKey);
+                    }
+                });
                 if (selectedItems && selectedItems.length > 0) {
                     onInclusions.innerHTML = '';
                     selectedItems.forEach(function(item) {
@@ -1827,7 +1942,7 @@ function showBookingDetails(btn) {
                                 <span style="font-weight: 700; color: #0f172a;">${item.name}</span>
                                 ${item.quantity > 1 ? `<span style="font-size: 0.75rem; color: #64748b;">(x${item.quantity})</span>` : ''}
                             </div>
-                            <span style="font-weight: 800; color: #0f172a;">₱${Number(item.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                            <span style="font-weight: 800; color: #0f172a;">${item.is_included ? 'Included' : '₱' + Number(item.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                         `;
                         onInclusions.appendChild(incRow);
                     });
@@ -1845,24 +1960,33 @@ function showBookingDetails(btn) {
     // ─── 6. TAB 4: VERIFICATION (ONLINE ONLY) ────────────────────────────────
     if (!isManual && data.hasKycRecord === 'true') {
         var kycInfo = {}; try { kycInfo = JSON.parse(data.verificationJson || '{}'); } catch(e){}
-        var vBadge = document.getElementById('verifStatusBadge'); if (vBadge) vBadge.innerText = kycInfo.status || 'VERIFIED';
+        var kycIsVerified = kycInfo.is_verified === true || kycInfo.is_verified === 'true' || String(kycInfo.status || '').toLowerCase() === 'verified';
+        var vBadge = document.getElementById('verifStatusBadge');
+        if (vBadge) {
+            vBadge.innerText = kycInfo.status || 'PENDING';
+            vBadge.style.background = kycIsVerified ? '#dcfce7' : '#fef3c7';
+            vBadge.style.color = kycIsVerified ? '#166534' : '#92400e';
+        }
         var vDoc = document.getElementById('verifDocText');
+        var idSubmitted = kycInfo.id_submitted === true || kycInfo.id_submitted === 'true';
         if (vDoc) {
-            var idSubmitted =
-                kycInfo.id_submitted === true ||
-                kycInfo.id_submitted === 'true' ||
-                kycInfo.status === 'verified' ||
-                kycInfo.verification_status === 'verified' ||
-                kycInfo.ocr_completed === true ||
-                kycInfo.ocr_completed === 'true';
-
             vDoc.innerText = idSubmitted
-                ? 'Submitted & Validated'
+                ? 'Submitted'
                 : 'Not Submitted';
         }
-        var vOcr = document.getElementById('verifOcrText'); if (vOcr) vOcr.innerText = kycInfo.ocr_completed ? 'OCR Completed' : 'Pending';
-        var vLiv = document.getElementById('verifLivenessText'); if (vLiv) vLiv.innerText = kycInfo.liveness_completed ? 'Face Check Passed' : 'Pending';
-        var vTime = document.getElementById('verifTimestampVal'); if (vTime) vTime.innerText = kycInfo.verified_at || 'Verified on platform';
+        var ocrCompleted = kycInfo.ocr_completed === true || kycInfo.ocr_completed === 'true';
+        var livenessCompleted = kycInfo.liveness_completed === true || kycInfo.liveness_completed === 'true';
+        var vOcr = document.getElementById('verifOcrText'); if (vOcr) vOcr.innerText = ocrCompleted ? 'OCR Completed' : 'Pending';
+        var vLiv = document.getElementById('verifLivenessText'); if (vLiv) vLiv.innerText = livenessCompleted ? 'Face Check Passed' : 'Pending';
+        var vDocIcon = document.getElementById('verifDocIcon');
+        var vOcrIcon = document.getElementById('verifOcrIcon');
+        var vLivIcon = document.getElementById('verifLivenessIcon');
+        [[vDocIcon, idSubmitted], [vOcrIcon, ocrCompleted], [vLivIcon, livenessCompleted]].forEach(function(entry) {
+            if (!entry[0]) return;
+            entry[0].className = entry[1] ? 'fas fa-check-circle' : 'fas fa-minus-circle';
+            entry[0].style.color = entry[1] ? '#16a34a' : '#94a3b8';
+        });
+        var vTime = document.getElementById('verifTimestampVal'); if (vTime) vTime.innerText = kycInfo.verified_at || 'Not recorded';
     }
 
     // ─── 7. TAB 5: CONTRACT (ONLINE ONLY) ────────────────────────────────────
@@ -2158,7 +2282,80 @@ function showBookingDetails(btn) {
 // End of showBookingDetails
 
 function bk_closeBookingDetailModal() { 
+    if (typeof window.resetBookingCustomerDetails === 'function') window.resetBookingCustomerDetails();
     bk_closeModal('bookingDetailModal'); 
+}
+
+// ─── PROCESS / BOOKING STATUS WORKFLOW RENDERER ─────────────────────────────
+function renderProcessWorkflow(bookingStatus, paymentStatus, totalAmount, amountPaid, isUnderReview) {
+    // Map status → active step index (0-based)
+    var STEPS = ['created', 'quotation', 'confirmation', 'payment', 'preparation', 'completion'];
+    var STEP_DESCS = [
+        'Booking has been created and is awaiting review.',
+        'Quotation / pricing is being prepared or reviewed.',
+        'Booking is confirmed and contract/agreement is signed.',
+        'Payment processing — downpayment or full settlement.',
+        'Event preparation is underway by the catering team.',
+        'Event completed successfully.'
+    ];
+
+    var s = (bookingStatus || '').toLowerCase();
+    var p = (paymentStatus || '').toLowerCase();
+    var isFullyPaid = totalAmount > 0 && amountPaid >= totalAmount - 0.01;
+
+    var activeIdx = 0; // default: Created
+    var desc = STEP_DESCS[0];
+
+    if (s === 'completed') {
+        activeIdx = 5; desc = STEP_DESCS[5];
+    } else if (['preparing', 'setup_ongoing', 'in_progress', 'on_the_way', 'ready_for_delivery', 'ready_for_pickup', 'arrived'].includes(s)) {
+        activeIdx = 4; desc = STEP_DESCS[4];
+    } else if (isFullyPaid || ['paid', 'fully_paid'].includes(p) || (amountPaid > 0 && !isUnderReview)) {
+        activeIdx = 3; desc = 'Payment verified. Booking is now financially settled or partially settled.';
+    } else if (isUnderReview || ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested'].includes(p)) {
+        activeIdx = 3; desc = 'Payment proof submitted and under review by the caterer.';
+    } else if (['confirmed', 'awaiting_payment', 'pending_payment'].includes(s)) {
+        activeIdx = 2; desc = STEP_DESCS[2];
+    } else if (['quotation_phase', 'pending_quotation', 'awaiting_caterer', 'pending_review', 'under_review'].includes(s)) {
+        activeIdx = 1; desc = STEP_DESCS[1];
+    } else {
+        activeIdx = 0; desc = STEP_DESCS[0];
+    }
+
+    // Update step visuals
+    STEPS.forEach(function(name, idx) {
+        var stepEl = document.getElementById('procStep_' + name);
+        if (!stepEl) return;
+        var dot = stepEl.querySelector('.proc-dot');
+        var label = stepEl.querySelector('.proc-label');
+        if (idx < activeIdx) {
+            // Completed step
+            if (dot) { dot.style.background = '#f97316'; dot.style.borderColor = '#f97316'; dot.style.color = '#ffffff'; dot.innerHTML = '<i class="fas fa-check" style="font-size:0.75rem;"></i>'; }
+            if (label) { label.style.color = '#f97316'; }
+        } else if (idx === activeIdx) {
+            // Current/active step
+            var activeBg = s === 'cancelled' ? '#ef4444' : 'var(--primary-color, #800020)';
+            var activeBorder = s === 'cancelled' ? '#ef4444' : 'var(--primary-color, #800020)';
+            if (dot) { dot.style.background = activeBg; dot.style.borderColor = activeBorder; dot.style.color = '#ffffff'; dot.innerHTML = String(idx + 1); dot.style.boxShadow = '0 0 0 4px rgba(128,0,32,0.15)'; }
+            if (label) { label.style.color = s === 'cancelled' ? '#ef4444' : 'var(--primary-color, #800020)'; label.style.fontWeight = '800'; }
+        } else {
+            // Future step
+            if (dot) { dot.style.background = '#f1f5f9'; dot.style.borderColor = '#e2e8f0'; dot.style.color = '#94a3b8'; dot.style.boxShadow = 'none'; dot.innerHTML = String(idx + 1); }
+            if (label) { label.style.color = '#94a3b8'; label.style.fontWeight = '700'; }
+        }
+    });
+
+    // Update connectors — turn orange for completed segments
+    var connectors = document.querySelectorAll('#ovProcessWorkflow .proc-connector');
+    connectors.forEach(function(conn, idx) {
+        conn.style.background = idx < activeIdx ? '#f97316' : '#e2e8f0';
+    });
+
+    // Update status description
+    var descEl = document.getElementById('ovProcessStatusDesc');
+    if (descEl) {
+        descEl.innerHTML = '<i class="fas fa-info-circle" style="color: var(--primary-color, #800020); margin-right: 6px;"></i>' + desc;
+    }
 }
 
 window.actionCenterMinimized = false;
@@ -4007,20 +4204,18 @@ window.exportBookings = function(format) {
     visibleRows.forEach(row => {
         try {
             const cells = row.querySelectorAll('td');
-            if (cells.length < 7) return;
+            if (cells.length < 6) return;
             
             // Clean up innerText by replacing newlines with spaces and trimming
             const clean = (text) => text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
             
             const idText = clean(cells[0].innerText);
-            const customer = clean(cells[1].innerText);
+            const customerRef = clean(cells[1].innerText);
             const eventInfo = clean(cells[2].innerText);
             const dateTime = clean(cells[3].innerText);
-            const guests = clean(cells[4].innerText);
-            const amount = clean(cells[5].innerText).replace('₱', '').trim();
-            const status = clean(cells[6].innerText);
+            const statusBilling = clean(cells[4].innerText);
             
-            data.push({ idText, customer, eventInfo, dateTime, guests, amount, status });
+            data.push({ idText, customerRef, eventInfo, dateTime, statusBilling });
         } catch(e) {
             console.error('Row parsing error', e);
         }
@@ -4030,11 +4225,11 @@ window.exportBookings = function(format) {
 
     if (format === 'excel') {
         let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Booking ID,Customer,Event,Date & Time,Guests,Amount,Status\n";
+        csvContent += "Booking ID,Customer Ref,Event,Date & Time,Status & Billing\n";
         
         data.forEach(d => {
             const escapeCSV = (val) => '"' + String(val).replace(/"/g, '""') + '"';
-            const rowStr = [d.idText, d.customer, d.eventInfo, d.dateTime, d.guests, d.amount, d.status].map(escapeCSV).join(",");
+            const rowStr = [d.idText, d.customerRef, d.eventInfo, d.dateTime, d.statusBilling].map(escapeCSV).join(",");
             csvContent += rowStr + "\n";
         });
         
@@ -4065,13 +4260,11 @@ window.exportBookings = function(format) {
         <table>
             <thead>
                 <tr>
-                    <th width="10%">ID</th>
-                    <th width="20%">Customer</th>
-                    <th width="20%">Event Info</th>
-                    <th width="15%">Date & Time</th>
-                    <th width="10%">Guests</th>
-                    <th width="12%">Amount</th>
-                    <th width="13%">Status</th>
+                    <th width="12%">Booking Ref</th>
+                    <th width="18%">Customer Ref</th>
+                    <th width="22%">Event Info</th>
+                    <th width="18%">Date & Time</th>
+                    <th width="30%">Status & Billing</th>
                 </tr>
             </thead>
             <tbody>
@@ -4080,12 +4273,10 @@ window.exportBookings = function(format) {
         data.forEach(d => {
             html += `<tr>
                 <td><strong>${d.idText}</strong></td>
-                <td>${d.customer}</td>
+                <td>${d.customerRef}</td>
                 <td>${d.eventInfo}</td>
                 <td>${d.dateTime}</td>
-                <td>${d.guests}</td>
-                <td class="amount">${d.amount}</td>
-                <td class="status">${d.status}</td>
+                <td class="status">${d.statusBilling}</td>
             </tr>`;
         });
         

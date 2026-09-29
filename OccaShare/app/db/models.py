@@ -661,6 +661,17 @@ class Booking(Base):
     messages = relationship("BookingMessage", back_populates="booking", cascade="all, delete-orphan")
     payment_records = relationship("BookingPaymentRecord", back_populates="booking", cascade="all, delete-orphan")
 
+    @property
+    def customer_reference(self) -> str:
+        if self.user_id:
+            return f"CUST-{self.user_id:04d}"
+        return f"WALKIN-BK-{self.id:06d}"
+
+    @property
+    def customer_ref(self) -> str:
+        return self.customer_reference
+
+
 class BookingPaymentRecord(Base):
     __tablename__ = "booking_payment_records"
 

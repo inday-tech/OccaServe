@@ -1771,7 +1771,7 @@ async def customer_omni_search(
             "title": c.business_name,
             "subtitle": f"{c.city or 'Quezon'} • {rating_str}",
             "icon": "fas fa-store",
-            "link": f"/caterers/{c.id}",
+            "link": f"/customer/marketplace/{c.id}",
             "type": "caterer"
         })
 
@@ -1795,7 +1795,7 @@ async def customer_omni_search(
                 "title": p.name,
                 "subtitle": f"Package • ₱{float(p.price_per_head or 0):,.2f}/head • {caterer_name}",
                 "icon": "fas fa-box-open",
-                "link": f"/caterers/{p.caterer_id}#packages",
+                "link": f"/customer/marketplace/{p.caterer_id}#packages",
                 "type": "package"
             })
     except Exception as e:
@@ -1821,7 +1821,7 @@ async def customer_omni_search(
                 "title": d.name,
                 "subtitle": f"Dish • ₱{float(d.price or 0):,.2f} ({d.category or 'Menu'}) • {caterer_name}",
                 "icon": "fas fa-bowl-food",
-                "link": f"/caterers/{d.caterer_id}#menu",
+                "link": f"/customer/marketplace/{d.caterer_id}#menu",
                 "type": "dish"
             })
     except Exception as e:
@@ -1847,7 +1847,7 @@ async def customer_omni_search(
                 "title": s.name,
                 "subtitle": f"Service • ₱{float(s.price or 0):,.2f} • {caterer_name}",
                 "icon": "fas fa-concierge-bell",
-                "link": f"/caterers/{s.caterer_id}#services",
+                "link": f"/customer/marketplace/{s.caterer_id}#services",
                 "type": "service"
             })
     except Exception as e:

@@ -37,7 +37,7 @@
                             {{ review.user.first_name[0] if review.user else '?' }}
                         </div>
                         <div>
-                            <h4 style="margin:0; font-size:1.05rem; color:#0f172a; font-weight:700;">{{ review.user.first_name if review.user else 'Anonymous' }} {{ review.user.last_name if review.user else '' }}</h4>
+                            <h4 style="margin:0; font-size:1.05rem; color:#0f172a; font-weight:700;">{{ review.user.first_name if review.user else 'Verified' }} {{ (review.user.last_name[0] ~ '.') if (review.user and review.user.last_name) else 'Customer' }}</h4>
                             <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
                                 <div style="display:flex; color:var(--accent-color); font-size:0.8rem;">
                                     {% for i in range(review.rating) %}<i class="fas fa-star"></i>{% endfor %}

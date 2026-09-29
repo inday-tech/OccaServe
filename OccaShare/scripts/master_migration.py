@@ -349,6 +349,13 @@ def master_migration():
         add_cols("menu_items", menu_cols)
         add_cols("catering_packages", package_cols)
         add_cols("identity_verifications", id_ver_cols)
+        print("  Aligning identity verification document nullability...")
+        try:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE identity_verifications ALTER COLUMN document_url DROP NOT NULL"))
+                conn.execute(text("ALTER TABLE identity_verifications ALTER COLUMN selfie_url DROP NOT NULL"))
+        except Exception as e:
+            print(f"    Warning: Could not update identity verification nullability: {e}")
         add_cols("payouts", payout_cols)
         add_cols("payout_items", payout_item_cols)
         add_cols("website_config", config_cols)

@@ -71,6 +71,10 @@ async def omni_search(
     # 3. Search Customers
     customers = db.query(models.User).filter(
         models.User.role == "customer",
+        models.User.is_archived == False,
+        models.User.email.isnot(None),
+        func.trim(models.User.email) != "",
+        func.coalesce(models.User.auth_provider, "email") != "manual_entry",
         or_(
             models.User.first_name.ilike(f"%{q}%"),
             models.User.last_name.ilike(f"%{q}%"),
@@ -550,7 +554,7 @@ async def manage_caterers(
     # Fetch all non-archived caterers to allow management of all states
     from sqlalchemy.orm import joinedload
     caterers_list = db.query(models.CatererProfile).options(
-        joinedload(models.CatererProfile.user)
+        joinedload(models.CatererProfile.user).joinedload(models.User.identity_verifications)
     ).join(models.User).filter(
         models.User.is_archived == False,
         models.CatererProfile.verification_status.in_(['Verified', 'Suspended'])
@@ -1352,106 +1356,45 @@ def delete_caterer(caterer_id: int, db: Session = Depends(database.get_db), user
     
     return RedirectResponse(url="/admin/caterers?success_msg=Caterer+deleted+successfully", status_code=status.HTTP_303_SEE_OTHER)
 
-from fastapi import BackgroundTasks
-
 @router.post("/api/caterers/{caterer_id}/edit")
 async def edit_caterer(
     caterer_id: int,
-    background_tasks: BackgroundTasks,
-    email: str = Form(...),
-    business_name: Optional[str] = Form(None),
-    full_name: Optional[str] = Form(None),
-    first_name: Optional[str] = Form(None),
-    last_name: Optional[str] = Form(None),
-    phone: Optional[str] = Form(None),
-    province: Optional[str] = Form(None),
     city: Optional[str] = Form(None),
-    barangay: Optional[str] = Form(None),
-    address_details: Optional[str] = Form(None),
-    province_name: Optional[str] = Form(None),
-    city_name: Optional[str] = Form(None),
-    brgy_name: Optional[str] = Form(None),
-    status: Optional[str] = Form(None),
+    coverage_area: Optional[str] = Form(None),
+    commission_rate: Optional[str] = Form(None),
+    admin_remarks: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
 ):
+    """Update operational listing fields only. Personal identity (name, email, phone) is not editable here."""
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer:
          return {"success": False, "message": "Caterer not found."}
-    
-    extracted_fname = ""
-    extracted_lname = ""
-    if full_name:
-        parts = full_name.strip().split(None, 1)
-        extracted_fname = parts[0]
-        extracted_lname = parts[1] if len(parts) > 1 else ""
-    else:
-        if first_name is not None:
-            extracted_fname = first_name.strip()
-        elif caterer.user:
-            extracted_fname = caterer.user.first_name or ""
-            
-        if last_name is not None:
-            extracted_lname = last_name.strip()
-        elif caterer.user:
-            extracted_lname = caterer.user.last_name or ""
-        
-    existing_user = db.query(models.User).filter(models.User.email == email.strip().lower(), models.User.id != caterer.user_id).first()
-    if existing_user:
-        return {"success": False, "message": "This email is already in use by another account."}
 
-    # IDENTITY LOCK: If already verified, do NOT allow changing core business/owner names
-    if caterer.verification_status == 'Verified':
-        if business_name is not None and caterer.business_name != business_name:
-            return {"success": False, "message": "Identity Lock Active: Business Name of a Verified Partner is locked."}
-        if caterer.user and (caterer.user.first_name != extracted_fname or caterer.user.last_name != extracted_lname):
-             return {"success": False, "message": "Identity Lock Active: Signatory Name is locked."}
+    if city is not None:
+        caterer.city = city.strip() or None
+    if coverage_area is not None:
+        caterer.coverage_area = coverage_area.strip() or None
+    if admin_remarks is not None:
+        caterer.admin_remarks = admin_remarks.strip() or None
+    if commission_rate is not None and str(commission_rate).strip() != "":
+        try:
+            rate = float(commission_rate)
+            if rate < 0 or rate > 1:
+                return {"success": False, "message": "Commission rate must be between 0 and 1 (e.g. 0.05 for 5%)."}
+            caterer.commission_rate = rate
+        except ValueError:
+            return {"success": False, "message": "Invalid commission rate."}
 
-    if business_name is not None:
-        caterer.business_name = business_name
-    if phone is not None:
-        caterer.contact_phone = phone
-    
-    # Update Jurisdictional Data
-    if province: caterer.province_code = province
-    if city: caterer.city_code = city
-    if barangay: caterer.brgy_code = barangay
-    if address_details: caterer.address_details = address_details
-    if city_name: caterer.city = city_name
-    
-    # Construct legacy full address for backward compatibility
-    if province_name and city_name and brgy_name:
-        addr_parts = [address_details.strip()] if address_details else []
-        if brgy_name.lower() not in (address_details or "").lower():
-            addr_parts.append(f"Brgy. {brgy_name}")
-        if city_name.lower() not in (address_details or "").lower():
-            addr_parts.append(city_name)
-        if province_name.lower() not in (address_details or "").lower():
-            addr_parts.append(province_name)
-        caterer.contact_address = ", ".join(addr_parts)
-    
-    if caterer.user:
-        caterer.user.first_name = extracted_fname
-        caterer.user.last_name = extracted_lname
-        caterer.user.email = email.strip().lower()
-        if phone is not None:
-            caterer.user.phone_number = phone
-        if status is not None:
-            caterer.user.status = status
-        
     db.commit()
-    if phone is not None:
-        from ..core import utils
-        background_tasks.add_task(utils.background_geocode, caterer.id)
-    
-    # Real-time update
+
     asyncio.create_task(manager.broadcast({
         "type": "caterer_update",
         "caterer_id": caterer_id,
         "action": "edit"
     }))
-    
-    return {"success": True, "message": "Caterer intelligence profiles updated successfully."}
+
+    return {"success": True, "message": "Operational details were updated."}
 
 
 @router.get("/api/caterers/audit-identity")
@@ -2048,11 +1991,8 @@ async def review_verification(
     ).order_by(models.IdentityVerification.id.desc()).first()
 
     if not gov_id_verification:
-        # Create a blank record if it doesn't exist but is requested for audit
+        # Use a transient record for rendering; a read-only page must not persist an empty submission.
         gov_id_verification = models.IdentityVerification(user_id=user_id, verification_type='government_id')
-        db.add(gov_id_verification)
-        db.commit()
-        db.refresh(gov_id_verification)
 
     # Separate Business Permit verification specifically
     permit_verification = None
@@ -2384,13 +2324,33 @@ async def admin_reports(
 ):
     from calendar import month_abbr
     now = datetime.utcnow()
-    
-    # --- Monthly Growth ---
+
+    # ── Shared definitions (kept in sync with the rest of the admin panel) ──
+    # Bookings in these states never converted into platform revenue.
+    NON_REVENUE_STATUSES = [
+        'cancelled', 'inquiry', 'pending_review', 'negotiating', 'quoted',
+        'pending_quotation', 'awaiting_customer', 'awaiting_caterer', 'draft', 'expired'
+    ]
+    # Bookings are "settled" when the flag says so, or when the amount collected
+    # already covers the contract value (identical rule to PaymentService).
+    SETTLED_PAYMENT_STATUSES = ['paid', 'fully_paid']
+
+    def _is_settled(b) -> bool:
+        if (b.payment_status or '').lower() in SETTLED_PAYMENT_STATUSES:
+            return True
+        total = float(b.total_amount or 0.0)
+        return total > 0 and float(b.amount_paid or 0.0) >= total - 0.009
+
+    # --- Monthly Growth (live platform accounts) ---
     this_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     last_month_start = (this_month_start - timedelta(days=1)).replace(day=1)
 
-    new_users_this_month = db.query(models.User).filter(models.User.created_at >= this_month_start).count()
+    new_users_this_month = db.query(models.User).filter(
+        models.User.is_archived == False,
+        models.User.created_at >= this_month_start
+    ).count()
     new_users_last_month = db.query(models.User).filter(
+        models.User.is_archived == False,
         models.User.created_at >= last_month_start,
         models.User.created_at < this_month_start
     ).count()
@@ -2406,23 +2366,31 @@ async def admin_reports(
     total_reviews = db.query(models.Review).filter(models.Review.is_archived == False).count()
 
     # --- Booking Summary ---
-    total_bookings = db.query(models.Booking).filter(models.Booking.is_archived == False).count()
-    paid_bookings = db.query(models.Booking).filter(
-        models.Booking.is_archived == False,
-        models.Booking.payment_status == 'paid'
-    ).count()
-    total_revenue = db.query(func.sum(models.Booking.total_amount)).filter(
-        models.Booking.payment_status == 'paid',
-        models.Booking.is_archived == False
-    ).scalar() or 0.0
-    
+    # Total Bookings = every live booking record (cancelled included, for volume).
+    all_live_bookings = db.query(models.Booking).filter(models.Booking.is_archived == False).all()
+    total_bookings = len(all_live_bookings)
+    cancelled_bookings = sum(1 for b in all_live_bookings if (b.status or '').lower() == 'cancelled')
+
+    # Revenue metrics ignore cancelled / never-converted bookings.
+    revenue_bookings = [b for b in all_live_bookings if (b.status or '').lower() not in NON_REVENUE_STATUSES]
+    # Gross contract value of the bookings that actually pushed through.
+    total_revenue = float(sum(float(b.total_amount or 0.0) for b in revenue_bookings) or 0.0)
+    # Cash actually collected for those bookings.
+    total_collected = float(sum(float(b.amount_paid or 0.0) for b in revenue_bookings) or 0.0)
+    paid_bookings = sum(1 for b in revenue_bookings if _is_settled(b))
+
     # --- Monthly Bookings Trend (last 6 months) ---
     monthly_bookings = []
     monthly_labels = []
-    for i in range(5, -1, -1):
-        month_start = (now.replace(day=1) - timedelta(days=30 * i)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    month_starts = [now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)]
+    for _ in range(5):
+        previous_month = month_starts[-1] - timedelta(days=1)
+        month_starts.append(previous_month.replace(day=1, hour=0, minute=0, second=0, microsecond=0))
+
+    for month_start in reversed(month_starts):
         month_end = (month_start + timedelta(days=32)).replace(day=1)
         count = db.query(models.Booking).filter(
+            models.Booking.is_archived == False,
             models.Booking.created_at >= month_start,
             models.Booking.created_at < month_end
         ).count()
@@ -2433,16 +2401,42 @@ async def admin_reports(
     top_caterers_raw = (
         db.query(models.CatererProfile, func.count(models.Booking.id).label("booking_count"))
         .join(models.Booking, models.Booking.caterer_id == models.CatererProfile.id)
-        .filter(models.Booking.is_archived == False)
+        .join(models.User, models.User.id == models.CatererProfile.user_id)
+        .filter(
+            models.User.is_archived == False,
+            models.Booking.is_archived == False,
+            func.lower(func.coalesce(models.Booking.status, '')).notin_(NON_REVENUE_STATUSES)
+        )
         .group_by(models.CatererProfile.id)
         .order_by(func.count(models.Booking.id).desc())
         .limit(5)
         .all()
     )
     top_caterers = [{"name": c.business_name, "bookings": b} for c, b in top_caterers_raw]
-    total_commission = db.query(func.sum(models.PayoutItem.commission_amount)).filter(
-        models.PayoutItem.status.in_(['released', 'ready'])
-    ).scalar() or 0
+
+    # --- Total Platform Commissions ---
+    # Commissions are recorded in two places: caterer billing invoices (caterer
+    # settles the platform cut) and payout items (platform cut withheld from a
+    # payout). A booking is only counted once, through whichever exists first.
+    INVOICE_COMMISSION_STATUSES = ['pending', 'paid']
+    invoice_commission = db.query(func.sum(models.BillingInvoice.amount)).filter(
+        models.BillingInvoice.status.in_(INVOICE_COMMISSION_STATUSES)
+    ).scalar() or 0.0
+    invoiced_booking_ids = {
+        row[0] for row in db.query(models.BillingInvoice.booking_id).filter(
+            models.BillingInvoice.status.in_(INVOICE_COMMISSION_STATUSES),
+            models.BillingInvoice.booking_id.isnot(None)
+        ).all()
+    }
+    payout_commission = 0.0
+    for item in db.query(models.PayoutItem).filter(
+        models.PayoutItem.status.in_(['ready', 'released'])
+    ).all():
+        if item.booking_id in invoiced_booking_ids:
+            continue
+        payout_commission += float(item.commission_amount or 0.0)
+
+    total_commission = float(invoice_commission) + payout_commission
 
     return templates.TemplateResponse("admin/reports.html", {
         "request": request,
@@ -2453,8 +2447,10 @@ async def admin_reports(
         "avg_rating": avg_rating,
         "total_reviews": total_reviews,
         "total_bookings": total_bookings,
+        "cancelled_bookings": cancelled_bookings,
         "paid_bookings": paid_bookings,
         "total_revenue": total_revenue,
+        "total_collected": total_collected,
         "total_commission": total_commission,
         "monthly_labels": json.dumps(monthly_labels),
         "monthly_bookings": json.dumps(monthly_bookings),
@@ -2716,17 +2712,23 @@ async def admin_bookings(
     user: models.User = Depends(admin_only)
 ):
     bookings = db.query(models.Booking).filter(models.Booking.is_archived == False).order_by(models.Booking.created_at.desc()).all()
-    
-    # Calculate metrics
-    pending_bookings = sum(1 for b in bookings if b.status in ['pending', 'pending_quotation', 'awaiting_payment'])
+
+    # ─── Booking Intelligence Metrics ───
+    # NOTE: "awaiting action" mirrors the statuses used by the table filters below.
+    PENDING_STATUSES = ['pending', 'pending_quotation', 'awaiting_payment', 'pending_payment', 'awaiting_caterer', 'pending_review']
+    DISPUTED_STATUSES = ['disputed', 'under_dispute']
+
+    pending_bookings = sum(1 for b in bookings if (b.status or '').lower() in PENDING_STATUSES)
     completed_bookings = sum(1 for b in bookings if b.status == 'completed')
-    disputed_bookings = sum(1 for b in bookings if b.status == 'disputed')
-    
+    disputed_bookings = sum(1 for b in bookings if (b.status or '').lower() in DISPUTED_STATUSES)
+    cancelled_bookings = sum(1 for b in bookings if b.status == 'cancelled')
+
     metrics = {
         "total_bookings": len(bookings),
         "pending_bookings": pending_bookings,
         "completed_bookings": completed_bookings,
-        "disputed_bookings": disputed_bookings
+        "disputed_bookings": disputed_bookings,
+        "cancelled_bookings": cancelled_bookings
     }
 
     return templates.TemplateResponse("admin/bookings.html", {
@@ -2747,37 +2749,43 @@ async def admin_customers(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    # ONLY show Verified & KYC-Completed Customers here. 
-    # Unverified/Pending go to Compliance Queue.
-    customers = db.query(models.User).filter(
+    # ── Customer Directory ────────────────────────────────────────────────────
+    # Only accounts that were genuinely created on the website are listed here.
+    # "Manual entry" records (walk-in customers encoded by a caterer) have no
+    # login credentials of their own, so they are intentionally excluded — they
+    # are managed through the caterer's own client list, not platform accounts.
+    base_filters = [
         models.User.role == "customer",
         models.User.is_archived == False,
-        models.User.is_verified == True,
-        models.User.is_kyc_complete == True
+        models.User.email.isnot(None),
+        func.trim(models.User.email) != "",
+        func.coalesce(models.User.auth_provider, "email") != "manual_entry",
+    ]
+
+    customers = db.query(models.User).filter(
+        *base_filters
     ).order_by(models.User.created_at.desc()).all()
-    
-    # Metrics should reflect the entire database for a complete overview
-    total_customers_all = db.query(models.User).filter(models.User.role == "customer", models.User.is_archived == False).count()
-    verified_customers_all = db.query(models.User).filter(models.User.role == "customer", models.User.is_archived == False, models.User.is_verified == True).count()
-    
-    now = datetime.now()
-    start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    
+
+    pending_customers = db.query(models.User).filter(
+        *base_filters,
+        models.User.status == "active",
+        models.User.is_verified == False
+    ).count()
+
+    # Metrics use the exact same population as the table so the numbers always match.
     metrics = {
-        "total_customers": total_customers_all,
+        "total_customers": db.query(models.User).filter(*base_filters).count(),
         "active_customers": db.query(models.User).filter(
-            models.User.role == "customer",
-            models.User.is_archived == False,
+            *base_filters,
             models.User.status == "active"
         ).count(),
+        "pending_customers": pending_customers,
         "suspended_customers": db.query(models.User).filter(
-            models.User.role == "customer",
-            models.User.is_archived == False,
+            *base_filters,
             models.User.status == "suspended"
         ).count(),
         "flagged_customers": db.query(models.User).filter(
-            models.User.role == "customer",
-            models.User.is_archived == False,
+            *base_filters,
             models.User.status == "flagged"
         ).count()
     }
@@ -3209,8 +3217,10 @@ async def get_booking_details(
                 "total_amount": booking.total_amount,
                 "status": booking.status,
                 "payment_status": booking.payment_status,
-                "caterer_confirmed": booking.caterer_confirmed,
-                "user_confirmed": booking.user_confirmed,
+                "amount_paid": float(booking.amount_paid or 0.0),
+                "balance_due": max(float(booking.total_amount or 0.0) - float(booking.amount_paid or 0.0), 0.0),
+                "booking_source": booking.booking_source or "OccaServe",
+                "document_type": booking.document_type or "booking",
                 "caterer_name": booking.caterer.business_name if booking.caterer else "N/A",
                 "customer_name": f"{booking.user.first_name} {booking.user.last_name}" if booking.user else "Anonymous User",
                 "special_requests": booking.special_requests or "None specified.",
@@ -3514,12 +3524,10 @@ async def get_caterer_documents(
     elif profile.gov_id_url:
         gov_id_url_raw = profile.gov_id_url
     
-    # Determine selfie_url: prefer IdentityVerification, fallback to User profile image
+    # Only expose an image submitted for identity verification, not the public profile photo.
     selfie_url_raw = None
     if identity and identity.selfie_url:
         selfie_url_raw = identity.selfie_url
-    elif profile.user and profile.user.profile_image_url:
-        selfie_url_raw = profile.user.profile_image_url
 
     docs = {
         "permit_url": fix_url(profile.permit_url),

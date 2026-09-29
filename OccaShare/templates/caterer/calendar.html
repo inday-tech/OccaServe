@@ -397,8 +397,8 @@
                         {% for booking in bookings %}
                         <div class="weekly-event-card type-{{ booking.event_type.lower().split(' ')[0] if booking.event_type else 'other' }}"
                             data-id="{{ booking.id }}"
-                            data-customer="{{ (booking.user.first_name ~ ' ' ~ booking.user.last_name) if booking.user else (booking.customer_name or 'Walk-in') }}"
-                            data-type="{{ booking.event_type or 'Food Order' }}" data-title="{{ booking.event_name or (booking.user.first_name if booking.user else 'Order') }}"
+                            data-customer-ref="{{ booking.customer_reference }}"
+                            data-type="{{ booking.event_type or 'Food Order' }}" data-title="{{ booking.event_name or 'Event Booking' }}"
                             data-datetime="{{ booking.event_date.strftime('%A, %B %d, %Y') }} at {{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBD' }}"
                             data-venue="{{ booking.venue_address or 'TBD' }}"
                             data-package="{{ booking.guest_count }} Guests - {{ booking.package.name if booking.package else 'Ala Carte' }}"
@@ -410,8 +410,6 @@
                             data-prep-date="{{ booking.preparation_date.strftime('%B %d, %Y') if booking.preparation_date else 'TBD' }}"
                             data-total="{{ booking.total_price or booking.total_amount or 0 }}"
                             data-paid="{{ booking.amount_paid or 0 }}"
-                            data-email="{{ booking.user.email if booking.user else (booking.customer_email or 'N/A') }}"
-                            data-phone="{{ booking.user.phone_number if booking.user else (booking.customer_contact or 'N/A') }}"
                             data-fulfillment="{{ 'Pickup at Caterer' if booking.venue_address == 'PICKUP' else 'Delivery' }}"
                             onclick="openSidebarEventModal(this)">
                             
@@ -753,9 +751,9 @@
         <div class="compact-body" style="padding: 1.5rem; background: #f8fafc;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
                 <div style="background: white; padding: 1.25rem; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
-                    <div style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px;">Client Information</div>
-                    <div id="detCustomer" style="font-weight: 700; color: #0f172a; font-size: 1.1rem; margin-bottom: 4px;">---</div>
-                    <div id="detContactInfo" style="font-size: 0.85rem; color: #475569;">---</div>
+                    <div style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px;">Customer Reference</div>
+                    <div id="detCustomer" style="font-weight: 800; color: #0f172a; font-size: 1.1rem; margin-bottom: 4px;">---</div>
+                    <div id="detContactInfo" style="font-size: 0.82rem; color: #475569;"><span style="color: #64748b; font-weight: 500;">Protected Customer Info</span></div>
                 </div>
                 <div style="background: white; padding: 1.25rem; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
                     <div style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px;">Event Logistics</div>

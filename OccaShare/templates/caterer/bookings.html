@@ -769,8 +769,8 @@
         <table class="b-table bookings-list-table" style="width: 100%; border-collapse: collapse; min-width: 1000px;">
             <thead>
                 <tr style="border-bottom: 2px solid #e2e8f0; background: #f8fafc;">
-                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 13%;">REF ID & SOURCE</th>
-                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 19%;">CUSTOMER</th>
+                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 13%;">BOOKING REF</th>
+                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 19%;">CUSTOMER REF</th>
                     <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 19%;">EVENT & PAX</th>
                     <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 14%;">DATE & TIME</th>
                     <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 26%;">STATUS & BILLING</th>
@@ -792,6 +792,11 @@
                 {% set is_past_event = (booking.event_date < today) and booking.status not in ['completed', 'cancelled'] %}
                 {% set raw_src = (booking.booking_source or '')|lower %}
                 {% set is_manual = (not booking.user_id) or ('walk' in raw_src) or ('internal' in raw_src) or ('manual' in raw_src) or (booking.custom_requirements and booking.custom_requirements.get('is_walk_in')) %}
+                {% if booking.user_id %}
+                    {% set customer_ref = 'CUST-' ~ ('%04d'|format(booking.user_id)) %}
+                {% else %}
+                    {% set customer_ref = 'WALKIN-BK-' ~ ('%06d'|format(booking.id)) %}
+                {% endif %}
                 {% set source_badge_label = 'MANUAL' if is_manual else 'ONLINE' %}
                 {% set custom_ch = (booking.custom_requirements or {}).get('booking_channel') or (booking.custom_requirements or {}).get('channel') %}
                 {% if is_manual %}
@@ -826,8 +831,7 @@
                     data-is-urgent="{{ 'true' if row_is_urgent else 'false' }}"
                     data-is-past="{{ 'true' if is_past_event else 'false' }}"
                     data-unread-chat="{{ unread_chat_map.get(booking.id, 0) if unread_chat_map else 0 }}"
-                    data-phone="{{ (booking.user.phone_number if booking.user else '') or '' }}"
-                    data-search-text="BK-{{ '%06d'|format(booking.id) }} RT-{{ '%06d'|format(booking.id) }} ORD-{{ '%06d'|format(booking.id) }} {{ booking.id }} {{ booking.user.first_name if booking.user else '' }} {{ booking.user.last_name if booking.user else '' }} {{ booking.customer_name if booking.customer_name else '' }} {{ booking.event_type or '' }} {{ booking.package.name if booking.package else '' }} {{ booking.user.phone_number if booking.user else '' }} {{ booking.user.email if booking.user else (booking.customer_email or '') }}"
+                    data-search-text="{{ customer_ref }} BK-{{ '%06d'|format(booking.id) }} RT-{{ '%06d'|format(booking.id) }} ORD-{{ '%06d'|format(booking.id) }} {{ booking.id }} {{ booking.event_type or '' }} {{ booking.package.name if booking.package else '' }}"
                     style="border-bottom: 1px solid #f1f5f9; transition: all 0.15s ease;">
                     
                     <!-- REF ID & SOURCE -->
@@ -847,41 +851,17 @@
                         </div>
                     </td>
 
-                    <!-- CUSTOMER -->
+                    <!-- CUSTOMER REF -->
                     <td style="padding: 0.75rem 1rem; vertical-align: middle;">
                         <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                            <div style="font-weight: 700; color: #0f172a; font-size: 0.88rem; line-height: 1.25;">
-                                {% if booking.user %}
-                                {{ booking.user.first_name or '' }} {{ booking.user.last_name or '' }}
-                                {% elif booking.customer_name and booking.customer_name != 'None' %}
-                                {{ booking.customer_name }}
-                                {% else %}
-                                Walk-in Customer
-                                {% endif %}
-                            </div>
-                            {% if booking.user %}
-                                {% if booking.user.is_verified %}
-                                    <span title="Identity Verified" style="color: var(--accent-color, #f97316); font-size: 0.75rem;"><i class="fas fa-shield-check"></i></span>
-                                {% elif booking.package_id %}
-                                    <span title="Needs KYC Audit" style="color: var(--accent-color, #f97316); font-size: 0.75rem;"><i class="fas fa-shield-exclamation"></i></span>
-                                {% endif %}
-                            {% endif %}
+                            <div style="font-weight: 800; color: #0f172a; font-size: 0.88rem; line-height: 1.25;">{{ customer_ref }}</div>
                             {% if unread_chat_map and unread_chat_map.get(booking.id, 0) > 0 %}
                                 <span style="background: #3b82f6; color: white; font-size: 0.65rem; font-weight: 800; padding: 2px 7px; border-radius: 10px; display: inline-flex; align-items: center; gap: 3px; box-shadow: 0 1px 3px rgba(59,130,246,0.2);" title="Unread Consultation Messages">
                                     <i class="fas fa-comment-dots"></i> {{ unread_chat_map.get(booking.id) }}
                                 </span>
                             {% endif %}
                         </div>
-                        <div style="font-size: 0.74rem; color: #64748b; font-weight: 500; margin-top: 3px; line-height: 1.2; word-break: break-all;">
-                            {% set raw_email = (booking.user.email if booking.user else (booking.customer_email or ''))|string %}
-                            {% if not raw_email or raw_email == 'None' or '@guest.occashare.com' in raw_email.lower() or raw_email.lower().startswith('walkin') or (is_manual and ('@guest' in raw_email.lower() or 'walkin' in raw_email.lower() or not raw_email)) %}
-                                <span style="display: inline-flex; align-items: center; gap: 4px; color: #ea580c; background: #fff7ed; border: 1px solid #ffedd5; padding: 1px 7px; border-radius: 4px; font-size: 0.69rem; font-weight: 700;">
-                                    <i class="fas fa-user-tag" style="font-size: 0.65rem;"></i> Manual / Walk-in
-                                </span>
-                            {% else %}
-                                <span>{{ raw_email }}</span>
-                            {% endif %}
-                        </div>
+                        <div style="font-size: 0.7rem; color: #64748b; font-weight: 600; margin-top: 3px;">{{ 'Walk-in booking' if is_manual else 'Registered customer' }}</div>
                     </td>
 
                     <!-- EVENT & PAX -->
@@ -1072,9 +1052,7 @@
                             data-added-by="{{ ('Caterer' if is_manual else 'Customer')|e }}"
                             data-event-date="{{ booking.event_date.isoformat() if booking.event_date else '' }}"
                             data-event-time="{{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBA' }}"
-                            data-customer="{{ ((booking.user.first_name ~ ' ' ~ booking.user.last_name) if booking.user else (booking.customer_name or 'Customer'))|trim|e }}"
-                            data-email="{{ ((booking.user.email if booking.user else booking.customer_email) or '')|e }}"
-                            data-contact="{{ (booking.user.phone_number if booking.user else '') or '' }}"
+                            data-customer-ref="{{ customer_ref }}"
                             data-venue="{{ (booking.venue or 'Not specified')|e }}"
                             data-event-type="{{ (booking.event_type or 'Booking')|e }}"
                             data-specific-name="{{ ((booking.package.name if booking.package else booking.event_type) or 'Booking')|e }}"
@@ -1089,10 +1067,9 @@
                             data-booked-on="{{ booking.created_at.strftime('%b %d, %Y at %I:%M %p') if booking.created_at else 'Not available' }}"
                             data-balance-due="{{ booking.balance_due_date.isoformat() if booking.balance_due_date else '' }}"
                             data-actual-cost="{{ booking.actual_cost or 0 }}"
-                            data-target-user-id="{{ booking.user_id or '' }}"
+                            data-has-registered-customer="{{ 'true' if booking.user_id else 'false' }}"
                             data-is-package="{{ 'true' if booking.package_id else 'false' }}"
                             data-is-food-order="{{ 'true' if booking.document_type == 'invoice' or booking.event_type == 'Ala Carte Order' else 'false' }}"
-                            data-is-verified="{{ 'true' if (booking.user and booking.user.is_verified) else 'false' }}"
                             data-preparation-status="{{ booking.preparation_status or 'not_started' }}"
                             data-requests="{{ (booking.special_requests or '')|e }}"
                             data-motif="{{ ((booking.custom_requirements.theme_motif if (booking.custom_requirements and booking.custom_requirements.theme_motif) else (booking.custom_requirements.motif_theme if (booking.custom_requirements and booking.custom_requirements.motif_theme) else '')) or '')|e }}"
@@ -2315,9 +2292,6 @@
                 <i class="fas fa-comments"></i> <span>Consultation Chat</span>
                 <span id="modalChatTabBadge" style="display: none; background: #ea580c; color: white; font-size: 0.65rem; font-weight: 850; padding: 1px 6px; border-radius: 10px; margin-left: 4px; box-shadow: 0 1px 3px rgba(234, 88, 12, 0.3);">0</span>
             </button>
-            <button id="tabBtnVerification" data-tab="verification" class="mtab-btn-pro" onclick="switchBookingTab('verification', this)" style="display: none;">
-                <i class="fas fa-shield-alt"></i> <span>Verification</span>
-            </button>
             <button id="tabBtnContract" data-tab="contract" class="mtab-btn-pro" onclick="switchBookingTab('contract', this)" style="display: none;">
                 <i class="fas fa-file-signature"></i> <span>Contract</span>
             </button>
@@ -2408,6 +2382,15 @@
                                 <strong id="ovBookingRef" style="color: #0f172a;">#BK-000000</strong>
                             </div>
                             <div>
+                                <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Customer Reference</span>
+                                <span style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                    <strong id="ovCustomerRef" style="color: #0f172a; font-size: 0.88rem;">—</strong>
+                                    <button type="button" onclick="switchBookingTab('customer', document.getElementById('tabBtnCustomer'))" style="font-size: 0.68rem; font-weight: 700; color: #7e22ce; background: #f3e8ff; border: 1px solid #e9d5ff; border-radius: 4px; padding: 1px 7px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; line-height: 1.4; white-space: nowrap;" title="View Customer Details">
+                                        <i class="fas fa-user-lock" style="font-size: 0.6rem;"></i> View Details
+                                    </button>
+                                </span>
+                            </div>
+                            <div>
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Booking Source</span>
                                 <span id="ovSourceBadge" style="font-weight: 800; font-size: 0.75rem; color: #4338ca;">ONLINE BOOKING</span>
                             </div>
@@ -2423,7 +2406,7 @@
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Created Date</span>
                                 <span id="ovCreatedDate" style="color: #334155; font-weight: 600;">—</span>
                             </div>
-                            <div>
+                            <div style="grid-column: span 2;">
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Booking Status</span>
                                 <span id="ovStatusText" style="font-weight: 800; color: #16a34a;">Confirmed</span>
                             </div>
@@ -2456,6 +2439,48 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- ─── PROCESS / BOOKING STATUS WORKFLOW TRACKER ─── -->
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-route" style="color: var(--primary-color, #800020);"></i> Booking Process Status
+                    </div>
+                    <!-- Workflow steps -->
+                    <div id="ovProcessWorkflow" style="display: flex; align-items: flex-start; gap: 0; overflow-x: auto; padding-bottom: 0.25rem;">
+                        <!-- Steps rendered by JS: renderProcessWorkflow() -->
+                        <div class="proc-step" id="procStep_created" style="display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 80px; position: relative; z-index: 1;">
+                            <div class="proc-dot" style="width: 36px; height: 36px; border-radius: 50%; background: #f1f5f9; border: 3px solid #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: #94a3b8; font-weight: 800; transition: all 0.3s; position: relative; z-index: 2;">1</div>
+                            <div class="proc-label" style="font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 6px; text-align: center; line-height: 1.3;">Created</div>
+                        </div>
+                        <div class="proc-connector" style="flex: 1; height: 3px; background: #e2e8f0; margin-top: 16px; min-width: 20px; transition: background 0.3s;"></div>
+                        <div class="proc-step" id="procStep_quotation" style="display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 80px;">
+                            <div class="proc-dot" style="width: 36px; height: 36px; border-radius: 50%; background: #f1f5f9; border: 3px solid #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: #94a3b8; font-weight: 800; transition: all 0.3s;">2</div>
+                            <div class="proc-label" style="font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 6px; text-align: center; line-height: 1.3;">Quotation</div>
+                        </div>
+                        <div class="proc-connector" style="flex: 1; height: 3px; background: #e2e8f0; margin-top: 16px; min-width: 20px; transition: background 0.3s;"></div>
+                        <div class="proc-step" id="procStep_confirmation" style="display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 80px;">
+                            <div class="proc-dot" style="width: 36px; height: 36px; border-radius: 50%; background: #f1f5f9; border: 3px solid #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: #94a3b8; font-weight: 800; transition: all 0.3s;">3</div>
+                            <div class="proc-label" style="font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 6px; text-align: center; line-height: 1.3;">Confirmation</div>
+                        </div>
+                        <div class="proc-connector" style="flex: 1; height: 3px; background: #e2e8f0; margin-top: 16px; min-width: 20px; transition: background 0.3s;"></div>
+                        <div class="proc-step" id="procStep_payment" style="display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 80px;">
+                            <div class="proc-dot" style="width: 36px; height: 36px; border-radius: 50%; background: #f1f5f9; border: 3px solid #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: #94a3b8; font-weight: 800; transition: all 0.3s;">4</div>
+                            <div class="proc-label" style="font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 6px; text-align: center; line-height: 1.3;">Payment</div>
+                        </div>
+                        <div class="proc-connector" style="flex: 1; height: 3px; background: #e2e8f0; margin-top: 16px; min-width: 20px; transition: background 0.3s;"></div>
+                        <div class="proc-step" id="procStep_preparation" style="display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 80px;">
+                            <div class="proc-dot" style="width: 36px; height: 36px; border-radius: 50%; background: #f1f5f9; border: 3px solid #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: #94a3b8; font-weight: 800; transition: all 0.3s;">5</div>
+                            <div class="proc-label" style="font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 6px; text-align: center; line-height: 1.3;">Preparation</div>
+                        </div>
+                        <div class="proc-connector" style="flex: 1; height: 3px; background: #e2e8f0; margin-top: 16px; min-width: 20px; transition: background 0.3s;"></div>
+                        <div class="proc-step" id="procStep_completion" style="display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 80px;">
+                            <div class="proc-dot" style="width: 36px; height: 36px; border-radius: 50%; background: #f1f5f9; border: 3px solid #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: #94a3b8; font-weight: 800; transition: all 0.3s;">6</div>
+                            <div class="proc-label" style="font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 6px; text-align: center; line-height: 1.3;">Completion</div>
+                        </div>
+                    </div>
+                    <!-- Status description -->
+                    <div id="ovProcessStatusDesc" style="margin-top: 0.85rem; font-size: 0.8rem; color: #64748b; font-weight: 500; padding: 0.6rem 0.85rem; background: #f8fafc; border-radius: 8px; border: 1px solid #f1f5f9;">—</div>
+                </div>
             </div>
 
             <!-- ─── TAB 2: CUSTOMER ─── -->
@@ -2463,61 +2488,56 @@
                 <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; margin-bottom: 1.25rem;">
                         <div style="font-size: 1rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-id-card" style="color: var(--primary-color, #800020);"></i> Customer Profile &amp; Information
+                            <i class="fas fa-user-circle" style="color: var(--primary-color, #800020);"></i> Customer Details
                         </div>
                         <span id="custSourceNote" style="font-size: 0.75rem; font-weight: 800; padding: 3px 10px; border-radius: 20px; background: #e0e7ff; color: #4338ca;">ONLINE ACCOUNT</span>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; font-size: 0.88rem;">
+                    <div id="custDetailsGate" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.8rem; padding: 1.25rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
                         <div>
-                            <span style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Full Name</span>
-                            <strong id="custFullName" style="font-size: 1.05rem; color: #0f172a;">—</strong>
+                            <span style="display: block; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Customer Reference</span>
+                            <strong id="custCustomerRef" style="font-size: 1rem; color: #0f172a;">—</strong>
                         </div>
-                        <div>
-                            <span style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Mobile Number</span>
-                            <strong id="custMobile" style="font-size: 1rem; color: #0f172a;">—</strong>
-                        </div>
-                        <div>
-                            <span style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Email Address</span>
-                            <div style="display: flex; align-items: center; gap: 6px;">
-                                <span id="custEmail" style="color: #334155; font-weight: 600;">—</span>
-                                <span id="custEmailVerifiedBadge" style="display: none; font-size: 0.68rem; font-weight: 800; background: #dcfce7; color: #166534; padding: 1px 6px; border-radius: 4px;">Verified</span>
+                        <p style="margin: 0; font-size: 0.82rem; color: #64748b; line-height: 1.45;">Contact details are hidden until you request them for booking coordination. Residential address and identity verification records are not available here.</p>
+                        <button type="button" id="btnViewCustomerDetails" onclick="loadCustomerDetails()" class="btn-primary-pro" style="padding: 0.55rem 1rem; font-size: 0.82rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.45rem;">
+                            <i class="fas fa-user-lock"></i> View Customer Details
+                        </button>
+                        <div id="custDetailsError" role="status" style="display: none; font-size: 0.78rem; color: #b91c1c;"></div>
+                    </div>
+
+                    <div id="custDetailsContent" style="display: none;">
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; font-size: 0.88rem;">
+                            <div>
+                                <span style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Full Name</span>
+                                <strong id="custFullName" style="font-size: 1.05rem; color: #0f172a;">—</strong>
+                            </div>
+                            <div>
+                                <span style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Mobile Number</span>
+                                <strong id="custMobile" style="font-size: 1rem; color: #0f172a;">—</strong>
+                            </div>
+                            <div>
+                                <span style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Email Address</span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span id="custEmail" style="color: #334155; font-weight: 600;">—</span>
+                                    <span id="custEmailVerifiedBadge" style="display: none; font-size: 0.68rem; font-weight: 800; background: #dcfce7; color: #166534; padding: 1px 6px; border-radius: 4px;">Verified</span>
+                                </div>
+                            </div>
+                            <div>
+                                <span style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Customer Type</span>
+                                <span id="custType" style="color: #334155; font-weight: 700;">Registered Customer</span>
                             </div>
                         </div>
-                        <div>
-                            <span style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Customer Type</span>
-                            <span id="custType" style="color: #334155; font-weight: 700;">Registered Customer</span>
+                        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                            <a id="btnCallCustomer" href="#" class="btn-primary-pro" style="padding: 0.55rem 1.15rem; font-size: 0.82rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; background: #0284c7; border-color: #0284c7;">
+                                <i class="fas fa-phone"></i> Call Customer
+                            </a>
+                            <a id="btnSmsCustomer" href="#" class="btn-secondary-pro" style="padding: 0.55rem 1.15rem; font-size: 0.82rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
+                                <i class="fas fa-sms"></i> Send SMS
+                            </a>
+                            <a id="btnEmailCustomer" href="#" class="btn-secondary-pro" style="padding: 0.55rem 1.15rem; font-size: 0.82rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
+                                <i class="fas fa-envelope"></i> Send Email
+                            </a>
                         </div>
-                        <div style="grid-column: span 2;">
-                            <span style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Customer Address</span>
-                            <span id="custAddress" style="color: #334155; font-weight: 600;">—</span>
-                        </div>
-                    </div>
-
-                    <!-- KYC Summary Block (Only for Online Bookings) -->
-                    <div id="custKycSummaryBlock" style="display: none; margin-top: 1.25rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem 1.25rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                            <span style="font-size: 0.78rem; font-weight: 800; color: #0f172a; text-transform: uppercase;"><i class="fas fa-shield-alt" style="color: #16a34a;"></i> Identity Verification Status</span>
-                            <span id="custKycStatusBadge" style="font-size: 0.72rem; font-weight: 800; background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px;">VERIFIED</span>
-                        </div>
-                        <div id="custKycDetailsList" style="font-size: 0.8rem; color: #475569; display: flex; flex-direction: column; gap: 4px;">
-                            <div><i class="fas fa-check-circle" style="color: #16a34a;"></i> Government ID submitted</div>
-                            <div><i class="fas fa-check-circle" style="color: #16a34a;"></i> Document verification check completed</div>
-                            <div><i class="fas fa-check-circle" style="color: #16a34a;"></i> Facial liveness confirmed</div>
-                        </div>
-                    </div>
-
-                    <!-- Quick Actions -->
-                    <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                        <a id="btnCallCustomer" href="#" class="btn-primary-pro" style="padding: 0.55rem 1.15rem; font-size: 0.82rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; background: #0284c7; border-color: #0284c7;">
-                            <i class="fas fa-phone"></i> Call Customer
-                        </a>
-                        <a id="btnSmsCustomer" href="#" class="btn-secondary-pro" style="padding: 0.55rem 1.15rem; font-size: 0.82rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
-                            <i class="fas fa-sms"></i> Send SMS
-                        </a>
-                        <a id="btnEmailCustomer" href="#" class="btn-secondary-pro" style="padding: 0.55rem 1.15rem; font-size: 0.82rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
-                            <i class="fas fa-envelope"></i> Send Email
-                        </a>
                     </div>
                 </div>
             </div>
@@ -2533,9 +2553,10 @@
                                 <span style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Catering Package</span>
                                 <h3 id="onPkgTitle" style="margin: 2px 0 0; font-size: 1.25rem; font-weight: 900; color: #0f172a;">Standard Buffet Package</h3>
                                 <div id="onPkgMeta" style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">Min 50 guests • Standard Service</div>
+                                <p id="onPkgDescription" style="display: none; font-size: 0.8rem; color: #475569; margin: 0.45rem 0 0; line-height: 1.45;"></p>
                             </div>
                             <div style="text-align: right;">
-                                <span style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Package Price</span>
+                                <span id="onPkgPriceLabel" style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Base Package Price</span>
                                 <div id="onPkgPrice" style="font-size: 1.45rem; font-weight: 900; color: #16a34a; margin-top: 2px;">₱0.00</div>
                             </div>
                         </div>
@@ -2688,49 +2709,6 @@
             </div>
 
             <!-- ─── TAB 4: VERIFICATION (ONLINE ONLY) ─── -->
-            <div id="btab-verification" class="mtab-pane-pro" style="display: none; flex-direction: column; gap: 1.25rem;">
-                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; margin-bottom: 1.25rem;">
-                        <div style="font-size: 1rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-user-shield" style="color: #16a34a;"></i> Customer Identity Verification (KYC)
-                        </div>
-                        <span id="verifStatusBadge" style="font-size: 0.75rem; font-weight: 800; padding: 3px 12px; border-radius: 20px; background: #dcfce7; color: #166534;">VERIFIED</span>
-                    </div>
-
-                    <p style="font-size: 0.85rem; color: #64748b; line-height: 1.5; margin: 0 0 1.25rem;">
-                        This customer has successfully completed the OccaServe identity verification checkpoints required for online event bookings.
-                    </p>
-
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem; display: flex; align-items: center; gap: 0.75rem;">
-                            <i id="verifDocIcon" class="fas fa-check-circle" style="color: #16a34a; font-size: 1.5rem;"></i>
-                            <div>
-                                <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Government ID</div>
-                                <div id="verifDocText" style="font-size: 0.88rem; font-weight: 800; color: #0f172a;">Submitted &amp; Validated</div>
-                            </div>
-                        </div>
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem; display: flex; align-items: center; gap: 0.75rem;">
-                            <i id="verifOcrIcon" class="fas fa-check-circle" style="color: #16a34a; font-size: 1.5rem;"></i>
-                            <div>
-                                <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Document Scan</div>
-                                <div id="verifOcrText" style="font-size: 0.88rem; font-weight: 800; color: #0f172a;">OCR Completed</div>
-                            </div>
-                        </div>
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem; display: flex; align-items: center; gap: 0.75rem;">
-                            <i id="verifLivenessIcon" class="fas fa-check-circle" style="color: #16a34a; font-size: 1.5rem;"></i>
-                            <div>
-                                <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Liveness Verification</div>
-                                <div id="verifLivenessText" style="font-size: 0.88rem; font-weight: 800; color: #0f172a;">Face Check Passed</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="verifTimestampLine" style="font-size: 0.8rem; color: #64748b; display: flex; align-items: center; gap: 6px;">
-                        <i class="fas fa-clock"></i> Verification completed on: <strong id="verifTimestampVal" style="color: #334155;">—</strong>
-                    </div>
-                </div>
-            </div>
-
             <!-- ─── TAB 5: CONTRACT ─── -->
             <div id="btab-contract" class="mtab-pane-pro" style="display: none; flex-direction: column; gap: 1.25rem;">
                 <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">

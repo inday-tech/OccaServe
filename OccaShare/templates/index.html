@@ -569,8 +569,7 @@
                     {# We duplicate the items for seamless infinite scroll #}
                     {% for i in range(2) %}
                     {% for review in highlighted_reviews %}
-                    {% set full_name = ((review.user.first_name or '') ~ ' ' ~ (review.user.last_name or ''))|trim or
-                    review.user.email %}
+                    {% set display_author = (review.user.first_name ~ ' ' ~ review.user.last_name[0] ~ '.') if (review.user and review.user.first_name and review.user.last_name) else (review.user.first_name if (review.user and review.user.first_name) else 'Verified Customer') %}
                     <div class="testimonial-card">
                         <div class="testimonial-rating" style="margin-bottom: 1.25rem;">
                             {% for i in range(review.rating) %}<i class="fas fa-star"></i>{% endfor %}
@@ -582,12 +581,11 @@
                             {% if review.user.profile_image_url %}
                             <img src="{{ review.user.profile_image_url }}" class="testimonial-avatar" alt="User">
                             {% else %}
-                            <img src="https://ui-avatars.com/api/?name={{ full_name|urlencode }}&background=f97316&color=fff"
+                            <img src="https://ui-avatars.com/api/?name={{ display_author|urlencode }}&background=f97316&color=fff"
                                 class="testimonial-avatar" alt="User">
                             {% endif %}
                             <div>
-                                <span style="display: block; font-weight: 700; color: var(--lp-secondary);">{{ full_name
-                                    }}</span>
+                                <span style="display: block; font-weight: 700; color: var(--lp-secondary);">{{ display_author }}</span>
                                 <span style="font-size: 0.85rem; color: var(--lp-text-muted);">
                                     {{ review.booking.event_type if review.booking and review.booking.event_type else
                                     'Verified Client' }}

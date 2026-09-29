@@ -59,10 +59,20 @@
     <!-- Revenue Card -->
     <div class="kpi-card-clean">
         <div class="kpi-info">
-            <h4>Total Revenue Volume</h4>
+            <h4>Gross Booking Value</h4>
             <span class="kpi-value">₱{{ "{:,.0f}".format(total_revenue if total_revenue is defined else 0) }}</span>
             <span class="trend-badge trend-up">
                 <i class="fas fa-money-bill-wave"></i> Gross
+            </span>
+        </div>
+    </div>
+
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Cash Collected</h4>
+            <span class="kpi-value">₱{{ "{:,.0f}".format(total_collected if total_collected is defined else 0) }}</span>
+            <span class="trend-badge trend-up">
+                <i class="fas fa-wallet"></i> Received on live bookings
             </span>
         </div>
     </div>
@@ -73,7 +83,7 @@
             <h4>Total Platform Commissions</h4>
             <span class="kpi-value" style="color: var(--adm-primary);">₱{{ "{:,.2f}".format(total_commission if total_commission is defined else 0) }}</span>
             <span class="trend-badge trend-up">
-                <i class="fas fa-piggy-bank"></i> Earnings
+                <i class="fas fa-piggy-bank"></i> Paid + outstanding
             </span>
         </div>
     </div>

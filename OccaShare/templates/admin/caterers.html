@@ -206,6 +206,295 @@
         border-color: #10b981 !important;
         background: #f0fdf4 !important;
     }
+
+    .vd-tabs {
+        display: flex;
+        gap: 8px;
+        border-bottom: 1px solid #e2e8f0;
+        margin-bottom: 1.25rem;
+        overflow-x: auto;
+    }
+
+    .vd-tab {
+        flex: 0 0 auto;
+        padding: 10px 12px 12px;
+        cursor: pointer;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--adm-muted);
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        background: none;
+        border-top: none;
+        border-left: none;
+        border-right: none;
+    }
+
+    .vd-tab.active {
+        color: var(--adm-primary);
+        border-bottom-color: var(--adm-primary);
+    }
+
+    .vd-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem 1.25rem;
+    }
+
+    .vd-field label {
+        display: block;
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: var(--adm-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 4px;
+    }
+
+    .vd-field div {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #334155;
+        line-height: 1.4;
+        word-break: break-word;
+    }
+
+    .vd-field.span-2 {
+        grid-column: 1 / -1;
+    }
+
+    .vd-field-highlight {
+        padding: 12px 14px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+    }
+
+    .vd-field-highlight div {
+        font-size: 1rem;
+        color: var(--adm-navy);
+    }
+
+    .vd-privacy-note {
+        font-size: 0.7rem;
+        color: #64748b;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 10px 12px;
+        margin-bottom: 1rem;
+        line-height: 1.45;
+    }
+
+    .verif-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .verif-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+    }
+
+    .verif-row span {
+        font-size: 0.72rem;
+        font-weight: 800;
+        color: var(--adm-muted);
+        text-transform: uppercase;
+    }
+
+    .verif-row strong {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--adm-navy);
+        text-align: right;
+    }
+
+    .doc-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        padding: 10px;
+        border-radius: 12px;
+    }
+
+    .doc-card h5 {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--adm-navy);
+        margin: 0 0 8px;
+    }
+
+    .doc-thumb {
+        width: 100%;
+        height: 130px;
+        object-fit: cover;
+        border-radius: 8px;
+        cursor: pointer;
+        background: #f1f5f9;
+    }
+
+    .doc-card-title {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 0 0 10px;
+        color: var(--adm-navy);
+        font-size: 0.78rem;
+        font-weight: 800;
+    }
+
+    .doc-preview-trigger {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        padding: 0;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #f8fafc;
+        cursor: pointer;
+    }
+
+    .doc-card-thumb,
+    .doc-pdf-preview,
+    .doc-preview-unavailable {
+        display: flex;
+        width: 100%;
+        height: 140px;
+        align-items: center;
+        justify-content: center;
+        object-fit: contain;
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .doc-pdf-preview {
+        flex-direction: column;
+        gap: 6px;
+        color: #b91c1c;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .doc-pdf-preview i {
+        font-size: 2rem;
+    }
+
+    .doc-preview-unavailable {
+        padding: 12px;
+        color: #b91c1c;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .doc-preview-label {
+        padding: 8px;
+        color: var(--adm-primary);
+        font-size: 0.72rem;
+        font-weight: 800;
+    }
+
+    .verification-empty {
+        grid-column: 1 / -1;
+        padding: 2rem;
+        border-radius: 8px;
+        background: #f8fafc;
+        color: #64748b;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .doc-lightbox {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 5000;
+        background: rgba(15, 23, 42, 0.88);
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        flex-direction: column;
+    }
+
+    .doc-lightbox.active {
+        display: flex;
+    }
+
+    .doc-lightbox img {
+        max-width: min(960px, 94vw);
+        max-height: 88vh;
+        border-radius: 12px;
+        object-fit: contain;
+    }
+
+    .doc-lightbox iframe {
+        width: min(1100px, 94vw);
+        height: min(82vh, 900px);
+        border: 0;
+        border-radius: 8px;
+        background: white;
+    }
+
+    .doc-lightbox-close {
+        position: fixed;
+        top: 14px;
+        right: 18px;
+        width: 40px;
+        height: 40px;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        border-radius: 50%;
+        background: rgba(15, 23, 42, 0.55);
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+    }
+
+    .verification-files-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .vd-modal-card {
+        max-width: 720px;
+        width: 95%;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .edit-section-heading {
+        margin: 1.1rem 0 0.65rem;
+        color: var(--adm-primary);
+        font-size: 0.68rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    @media (max-width: 640px) {
+        .vd-grid { grid-template-columns: 1fr; }
+        .vd-field.span-2 { grid-column: auto; }
+        .vd-modal-card .modal-header-clean,
+        .vd-modal-card .modal-body-clean,
+        .vd-modal-card .modal-footer-clean,
+        #verificationFilesModal .modal-header-clean,
+        #verificationFilesModal .modal-body-clean,
+        #verificationFilesModal .modal-footer-clean { padding-left: 1rem !important; padding-right: 1rem !important; }
+        .verification-files-grid { grid-template-columns: 1fr; }
+        .verif-row { align-items: flex-start; flex-direction: column; }
+        .doc-lightbox { padding: 12px; }
+        .doc-lightbox iframe { width: 96vw; height: 84vh; }
+    }
 </style>
 {% endblock %}
 
@@ -324,26 +613,37 @@
                         <div class="actions-dropdown">
                             <button class="dropdown-trigger" onclick="toggleActionDropdown(this, event)">...</button>
                             <div class="dropdown-menu-dm">
-                                <button class="dm-dropdown-item" data-name="{{ caterer.business_name }}"
-                                    data-owner="{{ caterer.user.first_name }} {{ caterer.user.last_name }}"
-                                    data-email="{{ caterer.user.email }}" data-phone="{{ caterer.user.phone_number }}"
-                                    data-address="{{ caterer.contact_address or caterer.city or 'Not Set' }}"
+                                {% set kyc = caterer.user.identity_verification if caterer.user else None %}
+                                <button class="dm-dropdown-item"
+                                    data-id="{{ caterer.id }}"
+                                    data-name="{{ (caterer.business_name or 'Unnamed business')|e }}"
+                                    data-owner="{{ (caterer.user.first_name ~ ' ' ~ caterer.user.last_name)|e }}"
+                                    data-email="{{ (caterer.user.email or '')|e }}"
+                                    data-city="{{ (caterer.city or 'Not listed')|e }}"
+                                    data-coverage="{{ (caterer.coverage_area or 'Not listed')|e }}"
+                                    data-events="{{ ((caterer.event_types|join(', ')) if caterer.event_types else 'Not listed')|e }}"
+                                    data-cuisines="{{ ((caterer.cuisine_types|join(', ')) if caterer.cuisine_types else 'Not listed')|e }}"
+                                    data-years="{{ caterer.years_of_operation if caterer.years_of_operation else 'Not listed' }}"
+                                    data-pax="{{ caterer.min_pax if caterer.min_pax else 'Not listed' }}"
+                                    data-rating="{{ '%.1f'|format(caterer.rating) if caterer.rating else 'No ratings yet' }}"
+                                    data-bookings="{{ caterer.booking_count if caterer.booking_count is defined else 0 }}"
                                     data-status="{{ caterer.verification_status }}"
-                                    data-regdate="{{ caterer.created_at.strftime('%Y-%m-%d') if caterer.created_at else 'N/A' }}"
-                                    data-verdate="{{ caterer.verified_at.strftime('%Y-%m-%d') if caterer.verified_at else 'N/A' }}"
-                                    data-services="{{ caterer.services_offered or 'Not specified' }}"
-                                    data-user-id="{{ caterer.user_id }}"
+                                    data-account="{{ caterer.account_status or (caterer.user.status if caterer.user else 'Unknown') }}"
+                                    data-regdate="{{ caterer.created_at.strftime('%b %d, %Y') if caterer.created_at else 'Not recorded' }}"
+                                    data-verdate="{{ kyc.verified_at.strftime('%b %d, %Y') if kyc and kyc.verified_at else (caterer.created_at.strftime('%b %d, %Y') if caterer.verification_status == 'Verified' and caterer.created_at else 'Not yet verified') }}"
+                                    data-permit="{{ caterer.permit_expiry_date.strftime('%b %d, %Y') if caterer.permit_expiry_date else 'Not on file' }}"
+                                    data-permit-status="{{ caterer.permit_status or 'Not on file' }}"
                                     onclick="viewCatererDetails(this)">
                                     <i class="fas fa-eye" style="color: #64748b;"></i> View Details
                                 </button>
 
-
-
                                 {% if caterer.verification_status == 'Verified' and caterer.account_status !=
                                 'Suspended' and caterer.user.status != 'suspended' %}
                                 <button class="dm-dropdown-item" data-id="{{ caterer.id }}"
-                                    data-fname="{{ caterer.user.first_name }}" data-lname="{{ caterer.user.last_name }}"
-                                    data-email="{{ caterer.user.email }}" data-status="{{ caterer.user.status }}"
+                                    data-city="{{ (caterer.city or '')|e }}"
+                                    data-coverage="{{ (caterer.coverage_area or '')|e }}"
+                                    data-commission="{{ caterer.commission_rate if caterer.commission_rate is not none else 0.05 }}"
+                                    data-remarks="{{ (caterer.admin_remarks or '')|e }}"
                                     onclick="openEditModal(this)">
                                     <i class="fas fa-edit" style="color: #64748b;"></i> Edit Profile
                                 </button>
@@ -548,7 +848,7 @@
                         <div
                             style="margin-top: auto; padding: 0.75rem; background: var(--adm-primary-soft); border-radius: 10px;">
                             <p style="font-size: 0.65rem; color: var(--adm-navy); font-weight: 600; margin: 0;">
-                                Note: Added caterers bypass document audit and are marked as "Verified" immediately.
+                                Note: Added caterers bypass the verification review and are marked as "Verified" immediately.
                                 They will receive their temporary password via email.
                             </p>
                         </div>
@@ -571,11 +871,11 @@
 
 <!-- Edit Caterer Modal -->
 <div id="editCatererModal" class="admin-modal-overlay">
-    <div class="admin-modal-card" style="max-width: 500px; width: 95%;">
+    <div class="admin-modal-card" style="max-width: 520px; width: 95%;">
         <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem;">
             <div>
                 <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Edit Caterer Profile</h3>
-                <p style="font-size: 0.7rem; color: var(--adm-muted);">Modify basic account information.</p>
+                <p style="font-size: 0.7rem; color: var(--adm-muted);">Update only the public service area and platform settings.</p>
             </div>
             <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
                 onclick="closeEditModal()">&times;</button>
@@ -583,36 +883,31 @@
         <form id="editCatererForm" onsubmit="submitEditCaterer(event)">
             <input type="hidden" id="edit_caterer_id">
             <div class="modal-body-clean" style="padding: 1.5rem 2rem;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                    <div class="dm-input-group">
-                        <label
-                            style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">First
-                            Name</label>
-                        <input type="text" id="edit_fname" name="first_name" required class="form-control">
-                    </div>
-                    <div class="dm-input-group">
-                        <label
-                            style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Last
-                            Name</label>
-                        <input type="text" id="edit_lname" name="last_name" required class="form-control">
-                    </div>
+                <p class="vd-privacy-note">This form cannot change account-holder identity, sign-in or contact details, private address, payout information, or verification records.</p>
+                <h4 class="edit-section-heading" style="margin-top: 0;">Public listing</h4>
+                <div class="dm-input-group" style="margin-bottom: 15px;">
+                    <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Service city shown in listing</label>
+                    <input type="text" id="edit_city" name="city" class="form-control" placeholder="City or municipality shown in the directory">
                 </div>
                 <div class="dm-input-group" style="margin-bottom: 15px;">
-                    <label
-                        style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Email
-                        Address</label>
-                    <input type="email" id="edit_email" name="email" required class="form-control">
+                    <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Coverage area</label>
+                    <textarea id="edit_coverage" name="coverage_area" rows="3" class="form-control"
+                        style="width: 100%; border: none; outline: none; resize: vertical; font-size: 0.85rem;"
+                        placeholder="Areas this partner can serve"></textarea>
                 </div>
+                <h4 class="edit-section-heading">Platform setting</h4>
                 <div class="dm-input-group" style="margin-bottom: 15px;">
-                    <label
-                        style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Status</label>
-                    <select id="edit_status" name="status" class="form-control">
-                        <option value="active">Active</option>
-                        <option value="pending_kyc">Pending KYC</option>
-                        <option value="suspended">Suspended</option>
-                    </select>
+                    <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Commission rate (decimal)</label>
+                    <input type="number" step="0.01" min="0" max="1" id="edit_commission" name="commission_rate" class="form-control">
+                    <small style="font-size: 0.65rem; color: var(--adm-muted); font-weight: 600;">Example: 0.05 = 5%</small>
                 </div>
-                <input type="hidden" name="is_active" value="true">
+                <h4 class="edit-section-heading">Admin-only note</h4>
+                <div class="dm-input-group">
+                    <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Internal note</label>
+                    <textarea id="edit_remarks" name="admin_remarks" rows="3" class="form-control"
+                        style="width: 100%; border: none; outline: none; resize: vertical; font-size: 0.85rem;"
+                        placeholder="Visible to admins only; do not include passwords, payout numbers, or identity data"></textarea>
+                </div>
             </div>
             <div class="modal-footer-clean"
                 style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px;">
@@ -628,107 +923,150 @@
 
 <!-- View Details Modal -->
 <div id="viewCatererModal" class="admin-modal-overlay">
-    <div class="admin-modal-card" style="max-width: 600px; width: 95%;">
+    <div class="admin-modal-card vd-modal-card">
         <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem;">
             <div>
-                <h3 id="vd_title" style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Caterer Details
-                </h3>
-                <p style="font-size: 0.7rem; color: var(--adm-muted);">Complete overview of caterer's profile.</p>
+                <h3 id="vd_title" style="font-size: 1rem; font-weight: 800; color: var(--adm-navy); margin: 0;">Caterer overview</h3>
+                <p style="font-size: 0.75rem; color: var(--adm-muted); margin: 4px 0 0;">Account, business, and verification details.</p>
             </div>
             <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
-                onclick="closeViewCatererModal()">&times;</button>
+                aria-label="Close caterer details" onclick="closeViewCatererModal()">&times;</button>
         </div>
-        <div class="modal-body-clean" style="padding: 1.5rem 2rem;">
-            <div style="display: flex; gap: 15px; border-bottom: 1px solid #e2e8f0; margin-bottom: 15px;">
-                <div class="vd-tab active" onclick="switchVDTab('vd_overview', this)"
-                    style="padding-bottom: 10px; cursor: pointer; font-size: 0.75rem; font-weight: 700; color: var(--adm-primary); border-bottom: 2px solid var(--adm-primary);">
-                    Overview</div>
-                <div class="vd-tab" onclick="switchVDTab('vd_business', this)"
-                    style="padding-bottom: 10px; cursor: pointer; font-size: 0.75rem; font-weight: 700; color: var(--adm-muted); border-bottom: 2px solid transparent;">
-                    Business Info</div>
-                <div class="vd-tab" onclick="switchVDTab('vd_documents', this)"
-                    style="padding-bottom: 10px; cursor: pointer; font-size: 0.75rem; font-weight: 700; color: var(--adm-muted); border-bottom: 2px solid transparent;">
-                    Documents</div>
+        <div class="modal-body-clean" style="padding: 1.25rem 2rem; overflow-y: auto;">
+            <div class="vd-tabs" role="tablist" aria-label="Caterer details">
+                <button type="button" class="vd-tab active" id="vd_overview_tab" role="tab" aria-selected="true" aria-controls="vd_overview" onclick="switchVDTab('vd_overview', this)">Overview</button>
+                <button type="button" class="vd-tab" id="vd_business_tab" role="tab" aria-selected="false" aria-controls="vd_business" onclick="switchVDTab('vd_business', this)">Business Information</button>
+                <button type="button" class="vd-tab" id="vd_verification_tab" role="tab" aria-selected="false" aria-controls="vd_verification" onclick="switchVDTab('vd_verification', this)">Verification</button>
             </div>
 
-            <div id="vd_overview" class="vd-tab-content">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <div>
-                        <label
-                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Business
-                            Name</label>
-                        <div id="vc_name" style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);"></div>
+            <div id="vd_overview" class="vd-tab-content" role="tabpanel" aria-labelledby="vd_overview_tab">
+                <div class="vd-grid">
+                    <div class="vd-field vd-field-highlight">
+                        <label>Business name</label>
+                        <div id="vc_name"></div>
                     </div>
-                    <div>
-                        <label
-                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Owner
-                            Name</label>
-                        <div id="vc_owner" style="font-size: 0.85rem; font-weight: 700; color: #475569;"></div>
+                    <div class="vd-field">
+                        <label>Caterer ID</label>
+                        <div id="vc_id"></div>
                     </div>
-                    <div>
-                        <label
-                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Verification
-                            Status</label>
-                        <div id="vc_status" style="margin-top: 4px;"></div>
+                    <div class="vd-field">
+                        <label>Account holder</label>
+                        <div id="vc_owner"></div>
                     </div>
-                    <div>
-                        <label
-                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Registration
-                            Date</label>
-                        <div id="vc_regdate" style="font-size: 0.85rem; font-weight: 600; color: #475569;"></div>
+                    <div class="vd-field">
+                        <label>Contact email</label>
+                        <div id="vc_email"></div>
                     </div>
-                </div>
-            </div>
-
-            <div id="vd_business" class="vd-tab-content" style="display: none;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <div>
-                        <label
-                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Email</label>
-                        <div id="vc_email" style="font-size: 0.85rem; font-weight: 600; color: #475569;"></div>
+                    <div class="vd-field">
+                        <label>Verification status</label>
+                        <div id="vc_status"></div>
                     </div>
-                    <div>
-                        <label
-                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Phone</label>
-                        <div id="vc_phone" style="font-size: 0.85rem; font-weight: 600; color: #475569;"></div>
+                    <div class="vd-field">
+                        <label>Account status</label>
+                        <div id="vc_account"></div>
                     </div>
-                </div>
-                <div style="margin-top: 15px;">
-                    <label
-                        style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Address</label>
-                    <div id="vc_address" style="font-size: 0.85rem; font-weight: 600; color: #475569;"></div>
-                </div>
-                <div style="margin-top: 15px;">
-                    <label
-                        style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Services
-                        Offered</label>
-                    <div id="vc_services" style="font-size: 0.85rem; font-weight: 600; color: #475569;"></div>
+                    <div class="vd-field">
+                        <label>Joined platform</label>
+                        <div id="vc_regdate"></div>
+                    </div>
+                    <div class="vd-field">
+                        <label>Rating</label>
+                        <div id="vc_rating"></div>
+                    </div>
+                    <div class="vd-field">
+                        <label>Total bookings</label>
+                        <div id="vc_bookings"></div>
+                    </div>
                 </div>
             </div>
 
-            <div id="vd_documents" class="vd-tab-content" style="display: none;">
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; text-align: center;">
-                    <i class="fas fa-shield-alt fa-2x" style="color: var(--adm-primary); margin-bottom: 10px;"></i>
-                    <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 5px;">Identity & Compliance Center</h4>
-                    <p style="color: var(--adm-muted); font-size: 0.75rem; margin-bottom: 15px;">Document reviews, liveness checks, and business permits are managed securely in the Central Verification Terminal.</p>
-                    <a href="#" id="vc_verify_link" class="btn-clean" style="background: var(--adm-primary); color: white; padding: 10px 20px; text-decoration: none; display: inline-block;">
-                        Access Central Verification <i class="fas fa-arrow-right" style="margin-left: 5px;"></i>
-                    </a>
+            <div id="vd_business" class="vd-tab-content" role="tabpanel" aria-labelledby="vd_business_tab" style="display: none;">
+                <p class="vd-privacy-note">Only details needed to manage the public listing are shown. Private address, payout, and personal records are excluded.</p>
+                <div class="vd-grid">
+                    <div class="vd-field">
+                        <label>Service city</label>
+                        <div id="vc_city"></div>
+                    </div>
+                    <div class="vd-field">
+                        <label>Years in operation</label>
+                        <div id="vc_years"></div>
+                    </div>
+                    <div class="vd-field span-2">
+                        <label>Coverage area</label>
+                        <div id="vc_coverage"></div>
+                    </div>
+                    <div class="vd-field">
+                        <label>Event types</label>
+                        <div id="vc_events"></div>
+                    </div>
+                    <div class="vd-field">
+                        <label>Cuisine types</label>
+                        <div id="vc_cuisines"></div>
+                    </div>
+                    <div class="vd-field">
+                        <label>Minimum guest capacity</label>
+                        <div id="vc_pax"></div>
+                    </div>
                 </div>
-                <div style="margin-top: 15px;">
-                    <label
-                        style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Verification
-                        Date</label>
-                    <div id="vc_verdate" style="font-size: 0.85rem; font-weight: 600; color: #475569;"></div>
+            </div>
+
+            <div id="vd_verification" class="vd-tab-content" role="tabpanel" aria-labelledby="vd_verification_tab" style="display: none;">
+                <div class="verif-summary">
+                    <div class="verif-row">
+                        <span>Verification date</span>
+                        <strong id="vc_verdate"></strong>
+                    </div>
+                    <div class="verif-row">
+                        <span>Permit status</span>
+                        <strong id="vc_permit_status"></strong>
+                    </div>
+                    <div class="verif-row">
+                        <span>Permit expiry</span>
+                        <strong id="vc_permit"></strong>
+                    </div>
+                    <p class="vd-privacy-note">Identity and business verification files are restricted to this admin review and are not part of the public listing.</p>
+                    <button type="button" class="btn-clean" id="vc_open_files"
+                        style="background: var(--adm-primary); color: white; width: 100%; justify-content: center; padding: 12px;">
+                        <i class="fas fa-shield-alt" style="margin-right: 8px;"></i> Review verification files
+                    </button>
                 </div>
             </div>
         </div>
         <div class="modal-footer-clean"
-            style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end;">
+            style="padding: 1rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end;">
             <button class="btn-clean" style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy);"
                 onclick="closeViewCatererModal()">Close</button>
         </div>
     </div>
+</div>
+
+<!-- Verification files modal (stays on this page) -->
+<div id="verificationFilesModal" class="admin-modal-overlay">
+    <div class="admin-modal-card" style="max-width: 820px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem;">
+            <div>
+                <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0;">Verification files</h3>
+                <p id="vf_subtitle" style="font-size: 0.7rem; color: var(--adm-muted); margin: 4px 0 0;">Submitted identity and business verification files.</p>
+            </div>
+            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
+                onclick="closeVerificationFilesModal()">&times;</button>
+        </div>
+        <div class="modal-body-clean" style="overflow-y: auto; padding: 1.5rem 2rem;">
+            <div id="verificationFilesGrid" class="verification-files-grid">
+                <div style="color: #64748b; font-size: 0.85rem;"><i class="fas fa-spinner fa-spin"></i> Loading files...</div>
+            </div>
+        </div>
+        <div class="modal-footer-clean" style="padding: 1rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end;">
+            <button class="btn-clean" style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy);"
+                onclick="closeVerificationFilesModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<div id="docLightbox" class="doc-lightbox" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Verification file preview" onclick="closeDocLightbox()">
+    <button type="button" class="doc-lightbox-close" aria-label="Close file preview" onclick="event.stopPropagation(); closeDocLightbox()">&times;</button>
+    <img id="docLightboxImg" alt="Verification file preview" style="display: none;" onclick="event.stopPropagation()">
+    <iframe id="docLightboxFrame" title="Verification file preview" style="display: none;" onclick="event.stopPropagation()"></iframe>
 </div>
 
 <!-- Review Verification Modal -->
@@ -739,7 +1077,7 @@
             <div>
                 <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Review Partner Verification
                 </h3>
-                <p style="font-size: 0.7rem; color: var(--adm-muted);">Audit business and identity documents.</p>
+                <p style="font-size: 0.7rem; color: var(--adm-muted);">Audit submitted identity and business verification files.</p>
             </div>
             <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
                 onclick="closeReviewModal()">&times;</button>
@@ -748,15 +1086,15 @@
         <div class="modal-body-clean" style="overflow-y: auto; padding: 1.5rem 2rem; flex: 1;">
             <div style="display: grid; grid-template-columns: 1fr 300px; gap: 2rem;">
 
-                <!-- Left Panel: Documents -->
+                <!-- Left Panel: Verification files -->
                 <div>
                     <h4
                         style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; margin-bottom: 1rem;">
-                        Submitted Documents</h4>
+                        Submitted Verification Files</h4>
                     <div id="reviewDocumentsGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <!-- Injected by JS -->
                         <div style="color: #64748b; font-size: 0.85rem;"><i class="fas fa-spinner fa-spin"></i> Loading
-                            documents...</div>
+                            verification files...</div>
                     </div>
                 </div>
 
@@ -1167,10 +1505,10 @@
     // Edit Caterer Logic
     function openEditModal(btn) {
         document.getElementById('edit_caterer_id').value = btn.getAttribute('data-id');
-        document.getElementById('edit_fname').value = btn.getAttribute('data-fname');
-        document.getElementById('edit_lname').value = btn.getAttribute('data-lname');
-        document.getElementById('edit_email').value = btn.getAttribute('data-email');
-        document.getElementById('edit_status').value = btn.getAttribute('data-status');
+        document.getElementById('edit_city').value = btn.getAttribute('data-city') || '';
+        document.getElementById('edit_coverage').value = btn.getAttribute('data-coverage') || '';
+        document.getElementById('edit_commission').value = btn.getAttribute('data-commission') || '0.05';
+        document.getElementById('edit_remarks').value = btn.getAttribute('data-remarks') || '';
         document.getElementById('editCatererModal').classList.add('active');
     }
     function closeEditModal() { document.getElementById('editCatererModal').classList.remove('active'); }
@@ -1180,44 +1518,176 @@
         document.querySelectorAll('.vd-tab-content').forEach(c => c.style.display = 'none');
         document.querySelectorAll('.vd-tab').forEach(t => {
             t.classList.remove('active');
-            t.style.color = 'var(--adm-muted)';
-            t.style.borderBottomColor = 'transparent';
+            t.setAttribute('aria-selected', 'false');
         });
         document.getElementById(tabId).style.display = 'block';
         el.classList.add('active');
-        el.style.color = 'var(--adm-primary)';
-        el.style.borderBottomColor = 'var(--adm-primary)';
+        el.setAttribute('aria-selected', 'true');
     }
 
     function viewCatererDetails(btn) {
-        document.getElementById('vd_title').innerText = btn.getAttribute('data-name') || 'N/A';
-        document.getElementById('vc_name').innerText = btn.getAttribute('data-name') || 'N/A';
-        document.getElementById('vc_owner').innerText = btn.getAttribute('data-owner') || 'N/A';
-        document.getElementById('vc_email').innerText = btn.getAttribute('data-email') || 'N/A';
-        document.getElementById('vc_phone').innerText = btn.getAttribute('data-phone') || 'N/A';
-        document.getElementById('vc_address').innerText = btn.getAttribute('data-address') || 'N/A';
-        document.getElementById('vc_regdate').innerText = btn.getAttribute('data-regdate') || 'N/A';
-        document.getElementById('vc_verdate').innerText = btn.getAttribute('data-verdate') || 'N/A';
-        document.getElementById('vc_services').innerText = btn.getAttribute('data-services') || 'Not specified';
+        const name = btn.getAttribute('data-name') || 'Unnamed business';
+        document.getElementById('vd_title').innerText = name;
+        document.getElementById('vc_name').innerText = name;
+        document.getElementById('vc_owner').innerText = btn.getAttribute('data-owner') || 'Not listed';
+        document.getElementById('vc_email').innerText = btn.getAttribute('data-email') || 'Not listed';
+        document.getElementById('vc_regdate').innerText = btn.getAttribute('data-regdate') || 'Not recorded';
+        document.getElementById('vc_verdate').innerText = btn.getAttribute('data-verdate') || 'Not yet verified';
+        document.getElementById('vc_city').innerText = btn.getAttribute('data-city') || 'Not listed';
+        document.getElementById('vc_coverage').innerText = btn.getAttribute('data-coverage') || 'Not listed';
+        document.getElementById('vc_events').innerText = btn.getAttribute('data-events') || 'Not listed';
+        document.getElementById('vc_cuisines').innerText = btn.getAttribute('data-cuisines') || 'Not listed';
+        document.getElementById('vc_years').innerText = btn.getAttribute('data-years') || 'Not listed';
+        document.getElementById('vc_pax').innerText = btn.getAttribute('data-pax') || 'Not listed';
+        document.getElementById('vc_rating').innerText = btn.getAttribute('data-rating') || 'No ratings yet';
+        document.getElementById('vc_bookings').innerText = btn.getAttribute('data-bookings') || '0';
+        document.getElementById('vc_permit').innerText = btn.getAttribute('data-permit') || 'Not on file';
+        document.getElementById('vc_permit_status').innerText = btn.getAttribute('data-permit-status') || 'Not on file';
+        document.getElementById('vc_account').innerText = btn.getAttribute('data-account') || 'Unknown';
 
         const status = btn.getAttribute('data-status');
-        let badgeHtml = `<span class="badge-clean" style="background: #f1f5f9; color: #64748b;">${status}</span>`;
-        if (status === 'Verified') badgeHtml = `<span class="badge-clean badge-active">VERIFIED</span>`;
-        if (status === 'Pending' || status === 'Pending Review' || status === 'Requires Revision') badgeHtml = `<span class="badge-clean badge-pending">REVIEW</span>`;
-        document.getElementById('vc_status').innerHTML = badgeHtml;
+        const catererId = btn.getAttribute('data-id');
+        const statusBadge = document.createElement('span');
+        statusBadge.className = 'badge-clean';
+        if (status === 'Verified') statusBadge.classList.add('badge-active');
+        else if (['Pending', 'Pending Review', 'Requires Revision', 'Revision Requested'].includes(status)) statusBadge.classList.add('badge-pending');
+        statusBadge.textContent = status === 'Pending' || status === 'Pending Review' || status === 'Requires Revision' || status === 'Revision Requested'
+            ? 'Needs review'
+            : status || 'Unknown';
+        document.getElementById('vc_status').replaceChildren(statusBadge);
+        document.getElementById('vc_id').textContent = `#${catererId || 'N/A'}`;
+        const accountStatus = (btn.getAttribute('data-account') || 'Unknown').replace(/_/g, ' ');
+        document.getElementById('vc_account').textContent = accountStatus.replace(/\b\w/g, character => character.toUpperCase());
+        document.getElementById('vf_subtitle').innerText = name;
+        document.getElementById('vc_open_files').onclick = () => openVerificationFilesModal(catererId);
 
-        const userId = btn.getAttribute('data-user-id');
-        if (userId) {
-            document.getElementById('vc_verify_link').href = '/admin/verify/' + userId;
-        }
-
-        // Reset tabs
-        const firstTab = document.querySelector('.vd-tab');
+        const firstTab = document.querySelector('#viewCatererModal .vd-tab');
         if (firstTab) switchVDTab('vd_overview', firstTab);
 
         document.getElementById('viewCatererModal').classList.add('active');
     }
     function closeViewCatererModal() { document.getElementById('viewCatererModal').classList.remove('active'); }
+
+    function isPdfVerificationFile(url) {
+        return url.split(/[?#]/, 1)[0].toLowerCase().endsWith('.pdf');
+    }
+
+    function renderVerificationFiles(grid, files, emptyMessage) {
+        const validFiles = files.filter(file => file.url && file.url !== 'None' && file.url !== 'null');
+        grid.replaceChildren();
+        if (!validFiles.length) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'verification-empty';
+            emptyState.textContent = emptyMessage;
+            grid.appendChild(emptyState);
+            return;
+        }
+
+        validFiles.forEach(file => {
+            const card = document.createElement('article');
+            card.className = 'doc-card';
+            const title = document.createElement('h5');
+            title.className = 'doc-card-title';
+            title.textContent = file.name;
+            if (file.extra) {
+                const extra = document.createElement('span');
+                extra.style.color = '#64748b';
+                extra.style.fontWeight = '600';
+                extra.textContent = file.extra;
+                title.appendChild(extra);
+            }
+
+            const previewButton = document.createElement('button');
+            previewButton.type = 'button';
+            previewButton.className = 'doc-preview-trigger';
+            previewButton.setAttribute('aria-label', `Preview ${file.name}`);
+            const isPdf = isPdfVerificationFile(file.url);
+            if (isPdf) {
+                const pdfPreview = document.createElement('span');
+                pdfPreview.className = 'doc-pdf-preview';
+                const icon = document.createElement('i');
+                icon.className = 'fas fa-file-pdf';
+                const label = document.createElement('span');
+                label.textContent = 'PDF verification file';
+                pdfPreview.append(icon, label);
+                previewButton.appendChild(pdfPreview);
+            } else {
+                const image = document.createElement('img');
+                image.className = 'doc-card-thumb';
+                image.src = file.url;
+                image.alt = `${file.name} preview`;
+                image.addEventListener('error', () => {
+                    const unavailable = document.createElement('span');
+                    unavailable.className = 'doc-preview-unavailable';
+                    unavailable.textContent = 'Preview unavailable';
+                    image.replaceWith(unavailable);
+                }, { once: true });
+                previewButton.appendChild(image);
+            }
+
+            const previewLabel = document.createElement('span');
+            previewLabel.className = 'doc-preview-label';
+            previewLabel.textContent = 'Preview verification file';
+            previewButton.appendChild(previewLabel);
+            previewButton.addEventListener('click', () => openDocLightbox(file.url, isPdf));
+            card.append(title, previewButton);
+            grid.appendChild(card);
+        });
+    }
+
+    async function openVerificationFilesModal(catererId) {
+        if (!catererId) return;
+        document.getElementById('verificationFilesModal').classList.add('active');
+        const grid = document.getElementById('verificationFilesGrid');
+        grid.innerHTML = '<div style="color: #64748b; font-size: 0.85rem;"><i class="fas fa-spinner fa-spin"></i> Loading files...</div>';
+
+        try {
+            const res = await fetch(`/admin/api/caterers/${catererId}/documents`);
+            const data = await res.json();
+            if (!data.success) {
+                grid.innerHTML = `<div style="color: #ef4444; font-size: 0.85rem;">Could not load files: ${data.message || 'Unknown error'}</div>`;
+                return;
+            }
+
+            const files = [
+                { name: 'Government ID (front)', url: data.docs.gov_id_url },
+                { name: 'Government ID (back)', url: data.docs.gov_id_back_url },
+                { name: 'Liveness photo 1', url: data.docs.selfie_url },
+                { name: 'Liveness photo 2', url: data.docs.selfie_2_url },
+                { name: 'Liveness photo 3', url: data.docs.selfie_3_url },
+                { name: 'Business permit', url: data.docs.permit_url, extra: data.docs.permit_expiry_date ? `Expires ${data.docs.permit_expiry_date}` : '' },
+                { name: 'DTI registration', url: data.docs.dti_url },
+                { name: 'BIR registration', url: data.docs.bir_url },
+                { name: "Mayor's permit", url: data.docs.mayors_permit_url }
+            ];
+            renderVerificationFiles(grid, files, 'No verification files on record.');
+        } catch (e) {
+            grid.innerHTML = '<div style="color: #ef4444; font-size: 0.85rem;">Failed to load verification files.</div>';
+        }
+    }
+
+    function closeVerificationFilesModal() {
+        document.getElementById('verificationFilesModal').classList.remove('active');
+    }
+
+    function openDocLightbox(url, isPdf = false) {
+        const viewer = document.getElementById('docLightbox');
+        const image = document.getElementById('docLightboxImg');
+        const frame = document.getElementById('docLightboxFrame');
+        image.style.display = isPdf ? 'none' : 'block';
+        frame.style.display = isPdf ? 'block' : 'none';
+        image.src = isPdf ? '' : url;
+        frame.src = isPdf ? url : 'about:blank';
+        viewer.setAttribute('aria-hidden', 'false');
+        viewer.classList.add('active');
+    }
+    function closeDocLightbox() {
+        const viewer = document.getElementById('docLightbox');
+        viewer.classList.remove('active');
+        viewer.setAttribute('aria-hidden', 'true');
+        document.getElementById('docLightboxImg').src = '';
+        document.getElementById('docLightboxFrame').src = 'about:blank';
+    }
 
     async function approveCaterer(id) {
         openDiamondModal({
@@ -1236,7 +1706,7 @@
             html: `
                 <select id="rejectReason" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif;">
                     <option value="Incomplete Information">Incomplete Information</option>
-                    <option value="Invalid Documents">Invalid Documents</option>
+                    <option value="Invalid verification files">Invalid verification files</option>
                     <option value="Unverified Business Information">Unverified Business Information</option>
                     <option value="Other">Other</option>
                 </select>
@@ -1384,15 +1854,14 @@
 
         document.getElementById('reviewVerificationModal').classList.add('active');
         const grid = document.getElementById('reviewDocumentsGrid');
-        grid.innerHTML = '<div style="color: #64748b; font-size: 0.85rem;"><i class="fas fa-spinner fa-spin"></i> Loading documents...</div>';
+        grid.innerHTML = '<div style="color: #64748b; font-size: 0.85rem;"><i class="fas fa-spinner fa-spin"></i> Loading verification files...</div>';
 
         try {
             const res = await fetch(`/admin/api/caterers/${catererId}/documents`);
             const data = await res.json();
 
             if (data.success) {
-                let html = '';
-                const docs = [
+                const files = [
                     { name: 'Gov ID Front', url: data.docs.gov_id_url },
                     { name: 'Gov ID Back', url: data.docs.gov_id_back_url },
                     { name: 'Selfie / Proof of Life 1', url: data.docs.selfie_url },
@@ -1404,38 +1873,12 @@
                     { name: 'Mayor Permit', url: data.docs.mayors_permit_url }
                 ];
 
-                let found = false;
-                docs.forEach(doc => {
-                    if (doc.url && doc.url !== "None" && doc.url !== "null") {
-                        found = true;
-                        const isPdf = doc.url.toLowerCase().endsWith('.pdf');
-                        let preview = isPdf ? `<div style="padding: 2rem; background: #f1f5f9; text-align: center; border-radius: 8px; color: #64748b;"><i class="fas fa-file-pdf fa-2x" style="color: #ef4444;"></i><br><span style="font-size: 0.75rem; font-weight: 600;">PDF Document</span></div>` : `<img src="${doc.url}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px;" onerror="this.onerror=null; this.outerHTML='<div style=\\'width: 100%; height: 120px; background: #fee2e2; color: #ef4444; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; font-size: 0.75rem; font-weight: 700; text-align: center; padding: 10px;\\'><i class=\\'fas fa-exclamation-triangle fa-2x\\' style=\\'margin-bottom: 8px;\\'></i>File Error / Encrypted<br><small style=\\'font-weight: 500; margin-top: 4px;\\'>Requires Re-upload</small></div>';">`;
-
-                        html += `
-                        <div style="background: white; border: 1px solid #e2e8f0; padding: 10px; border-radius: 10px;">
-                            <div style="font-size: 0.75rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 8px; display: flex; justify-content: space-between;">
-                                <span>${doc.name}</span>
-                                <span style="color: #64748b; font-weight: 600;">${doc.extra || ''}</span>
-                            </div>
-                            <a href="${doc.url}" target="_blank" style="display: block;">
-                                ${preview}
-                            </a>
-                            <a href="${doc.url}" target="_blank" style="display: block; text-align: center; padding: 6px; background: #f8fafc; color: var(--adm-primary); font-size: 0.75rem; font-weight: 700; margin-top: 8px; border-radius: 6px; text-decoration: none;">
-                                View Full Screen
-                            </a>
-                        </div>
-                        `;
-                    }
-                });
-                if (!found) {
-                    html = '<div style="grid-column: 1 / -1; padding: 2rem; text-align: center; color: #64748b; background: #f8fafc; border-radius: 8px; font-size: 0.85rem; font-weight: 600;"><i class="fas fa-folder-open fa-2x" style="margin-bottom: 10px; opacity: 0.5;"></i><br>No verification documents submitted yet.</div>';
-                }
-                grid.innerHTML = html;
+                renderVerificationFiles(grid, files, 'No verification files submitted yet.');
             } else {
-                grid.innerHTML = `<div style="color: #ef4444; font-size: 0.85rem;">Failed to load documents: ${data.message}</div>`;
+                grid.textContent = `Failed to load verification files: ${data.message || 'Unknown error'}`;
             }
         } catch (e) {
-            grid.innerHTML = `<div style="color: #ef4444; font-size: 0.85rem;">Failed to fetch documents.</div>`;
+            grid.textContent = 'Failed to fetch verification files.';
         }
     }
 

@@ -638,7 +638,7 @@
                                 {% endif %}
                             </span>
                             <div class="event-sub-info">
-                                <span><i class="fas fa-user" style="color: #94a3b8; font-size: 0.7rem;"></i> {{ (ev.user.first_name ~ ' ' ~ ev.user.last_name) if ev.user else (ev.customer_name or 'Walk-in Customer') }}</span>
+                                <span><i class="fas fa-id-badge" style="color: #94a3b8; font-size: 0.7rem;"></i> {{ ev.customer_reference }}</span>
                                 <span>•</span>
                                 <span><i class="fas fa-calendar" style="color: #94a3b8; font-size: 0.7rem;"></i> {{ ev.event_date.strftime('%B %d, %Y') if ev.event_date else 'Date TBA' }}</span>
                                 <span>•</span>
@@ -791,7 +791,7 @@
                     <div class="review-quote-card">
                         <div class="review-quote-top">
                             <span class="review-quote-author">
-                                {{ (rev.user.first_name ~ ' ' ~ rev.user.last_name) if rev.user else 'Customer' }}
+                                {{ (rev.user.first_name ~ ' ' ~ rev.user.last_name[0] ~ '.') if (rev.user and rev.user.last_name) else (rev.user.first_name if rev.user else 'Verified Customer') }}
                             </span>
                             <div class="review-quote-stars">
                                 {% for _ in range(rev.rating or 5) %}★{% endfor %}
@@ -829,7 +829,7 @@
                     <tr>
                         <th>Booking ID</th>
                         <th>Event Type</th>
-                        <th>Customer</th>
+                        <th>Customer Ref</th>
                         <th>Event Date</th>
                         <th>Package</th>
                         <th style="text-align: right;">Amount</th>
@@ -845,8 +845,8 @@
                         <td class="premium-cell" data-label="Event Type" style="font-weight: 600; color: #0f172a; white-space: nowrap;">
                             {{ row.event_type }}
                         </td>
-                        <td class="premium-cell" data-label="Customer" style="font-weight: 600; color: #334155; white-space: nowrap;">
-                            {{ row.customer_name }}
+                        <td class="premium-cell" data-label="Customer Ref" style="font-weight: 600; color: #334155; white-space: nowrap;">
+                            {{ row.customer_ref }}
                         </td>
                         <td class="premium-cell" data-label="Event Date" style="color: #475569; white-space: nowrap;">
                             {{ row.event_date.strftime('%b %d, %Y') if row.event_date else 'N/A' }}

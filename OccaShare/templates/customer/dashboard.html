@@ -688,7 +688,7 @@
                 <div style="display: flex; flex-direction: column; gap: 0.65rem; padding: 1rem 1.25rem;">
                     {% if featured_caterers %}
                         {% for cat in featured_caterers[:3] %}
-                        <a href="/caterers/{{ cat.id }}" class="caterer-qa-card">
+                        <a href="/customer/marketplace/{{ cat.id }}" class="caterer-qa-card">
                             <img src="{{ cat.logo_url or 'https://ui-avatars.com/api/?name=' ~ (cat.business_name|urlencode) ~ '&background=f1f5f9' }}" 
                                  alt="{{ cat.business_name }}" 
                                  class="caterer-qa-logo"
@@ -962,7 +962,7 @@
             <div style="display: flex; flex-direction: column; gap: 0.65rem; padding: 1rem 1.25rem;">
                 {% if featured_caterers %}
                     {% for cat in featured_caterers[:4] %}
-                    <a href="/caterers/{{ cat.id }}" class="caterer-qa-card">
+                    <a href="/customer/marketplace/{{ cat.id }}" class="caterer-qa-card">
                         <img src="{{ cat.logo_url or 'https://ui-avatars.com/api/?name=' ~ (cat.business_name|urlencode) ~ '&background=f1f5f9' }}" 
                              alt="{{ cat.business_name }}" 
                              class="caterer-qa-logo"

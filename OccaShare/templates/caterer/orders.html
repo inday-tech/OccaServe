@@ -360,7 +360,7 @@
                         Order ID</th>
                     <th
                         style="padding: 1.5rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
-                        Customer</th>
+                        Customer Ref</th>
                     <th
                         style="padding: 1.5rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
                         Order Type</th>
@@ -404,32 +404,17 @@
                         </div>
                     </td>
 
-                    <!-- CUSTOMER -->
+                    <!-- CUSTOMER REF -->
                     <td style="padding: 1.5rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <div style="font-weight: 800; color: #0f172a; font-size: var(--text-sm);">
-                                {% if booking.user %}
-                                {{ booking.user.first_name }} {{ booking.user.last_name }}
-                                {% else %}
-                                Walk-in Customer
-                                {% endif %}
-                            </div>
-                            {% if booking.user %}
-                                {% if booking.user.is_verified %}
-                                    <span title="Identity Verified" style="color: var(--accent-color); font-size: 0.75rem;"><i class="fas fa-shield-check"></i></span>
-                                {% elif booking.package_id %}
-                                    
-                                {% endif %}
-                            {% endif %}
+                        {% set cust_ref = ('CUST-' ~ ('%04d'|format(booking.user_id))) if booking.user_id else ('WALKIN-BK-' ~ ('%06d'|format(booking.id))) %}
+                        <div style="font-weight: 800; color: #0f172a; font-size: var(--text-sm);">
+                            {{ cust_ref }}
                         </div>
-                        <div style="font-size: var(--text-xs); color: #94a3b8; font-weight: 500; margin-top: 0.1rem; letter-spacing: 0.02em;">
-                            {% set raw_email = (booking.user.email if booking.user else (booking.customer_email or ''))|string %}
-                            {% if not raw_email or raw_email == 'None' or '@guest.occashare.com' in raw_email.lower() or raw_email.lower().startswith('walkin') %}
-                                <span style="display: inline-flex; align-items: center; gap: 4px; color: #ea580c; background: #fff7ed; border: 1px solid #ffedd5; padding: 1px 7px; border-radius: 4px; font-size: 0.69rem; font-weight: 700;">
-                                    <i class="fas fa-user-tag" style="font-size: 0.65rem;"></i> Manual / Walk-in
-                                </span>
+                        <div style="font-size: var(--text-xs); color: #64748b; font-weight: 600; margin-top: 0.1rem; letter-spacing: 0.02em;">
+                            {% if booking.user_id %}
+                                <span style="color: #4338ca;"><i class="fas fa-user-check" style="font-size: 0.65rem;"></i> Registered Customer</span>
                             {% else %}
-                                <span>{{ raw_email }}</span>
+                                <span style="color: #ea580c;"><i class="fas fa-clipboard-list" style="font-size: 0.65rem;"></i> Manual / Walk-in</span>
                             {% endif %}
                         </div>
                     </td>
@@ -545,11 +530,7 @@
                                 data-venue="{{ booking.venue_address or 'TBD' }}"
                                 data-requests="{{ booking.special_requests or 'None' }}" 
                                 data-payment-ref="{{ booking.payment_reference or '' }}"
-                                data-caterer-notes="{{ booking.caterer_notes or '' }}"
-                                {% if booking.user %}
-                                data-customer="{{ booking.user.first_name }} {{ booking.user.last_name }}"
-                                data-email="{{ booking.user.email }}" {% else %} data-customer="Walk-in Customer"
-                                data-email="N/A" {% endif %}
+                                data-customer-ref="{{ ('CUST-' ~ ('%04d'|format(booking.user_id))) if booking.user_id else ('WALKIN-BK-' ~ ('%06d'|format(booking.id))) }}"
                                 data-amount="₱{{ '{:,.2f}'.format(booking.total_price or booking.total_amount) }}"
                                 data-status="{{ booking.status }}" data-payment-status="{{ booking.payment_status }}"
                                 data-payment-method="{{ booking.payment_method or 'TBD' }}"

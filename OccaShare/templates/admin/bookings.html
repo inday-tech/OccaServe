@@ -84,6 +84,47 @@
         border: 1px solid #e2e8f0;
     }
 
+    .status-disputed {
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fde68a;
+    }
+
+    /* In-modal feedback blocks */
+    .modal-feedback {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 3rem 2rem;
+        text-align: center;
+    }
+
+    .modal-feedback i.fa-spinner {
+        font-size: 2rem;
+        color: var(--adm-primary);
+    }
+
+    .modal-feedback .fb-title {
+        font-weight: 800;
+        color: var(--adm-navy);
+        font-size: 0.95rem;
+    }
+
+    .modal-feedback .fb-text {
+        font-size: 0.8rem;
+        color: #64748b;
+        font-weight: 600;
+        max-width: 360px;
+        line-height: 1.5;
+    }
+
+    .modal-feedback.is-error i {
+        font-size: 1.75rem;
+        color: #ef4444;
+    }
+
     .action-dots-adm {
         width: 36px;
         height: 36px;
@@ -250,6 +291,13 @@
             <span class="trend-badge trend-down">Needs Review</span>
         </div>
     </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Cancelled</h4>
+            <span class="kpi-value">{{ metrics.cancelled_bookings }}</span>
+            <span class="trend-badge trend-down">Terminated</span>
+        </div>
+    </div>
 </div>
 
 <!-- Booking Terminal -->
@@ -263,7 +311,7 @@
                 <option value="confirmed">Confirmed</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
-                <option value="disputed">Disputed</option>
+                <option value="disputed">Disputed / Under Review</option>
             </select>
             <select id="dateFilter" onchange="filterBookings()" class="btn-clean" style="padding: 6px 12px; font-size: 0.75rem; background: #fff; border: 1px solid #e2e8f0; color: var(--adm-navy);">
                 <option value="all">All Date</option>
@@ -346,19 +394,23 @@
                             Booking Amount</div>
                     </td>
                     <td>
-                        <span class="status-badge-dm 
-                            {% if booking.status == 'confirmed' %}status-confirmed
-                            {% elif booking.status in ['pending', 'pending_quotation', 'awaiting_payment'] %}status-pending
-                            {% elif booking.status == 'completed' %}status-completed
-                            {% elif booking.status == 'cancelled' %}status-cancelled
-                            {% else %}status-neutral{% endif %}">
-                            <i class="fas 
-                                {% if booking.status == 'confirmed' %}fa-check-circle
-                                {% elif booking.status in ['pending', 'pending_quotation', 'awaiting_payment'] %}fa-clock
-                                {% elif booking.status == 'completed' %}fa-star
-                                {% elif booking.status == 'cancelled' %}fa-times-circle
-                                {% else %}fa-info-circle{% endif %}"></i>
-                            {{ booking.status.replace('_', ' ').title() }}
+                        {% set b_status = (booking.status or 'pending')|lower %}
+                        {% set b_icon = 'fa-info-circle' %}
+                        {% set b_class = 'status-neutral' %}
+                        {% if b_status == 'confirmed' %}
+                            {% set b_icon = 'fa-check-circle' %}{% set b_class = 'status-confirmed' %}
+                        {% elif b_status in ['pending', 'pending_quotation', 'awaiting_payment', 'pending_payment', 'awaiting_caterer', 'pending_review'] %}
+                            {% set b_icon = 'fa-clock' %}{% set b_class = 'status-pending' %}
+                        {% elif b_status == 'completed' %}
+                            {% set b_icon = 'fa-star' %}{% set b_class = 'status-completed' %}
+                        {% elif b_status == 'cancelled' %}
+                            {% set b_icon = 'fa-times-circle' %}{% set b_class = 'status-cancelled' %}
+                        {% elif b_status in ['disputed', 'under_dispute'] %}
+                            {% set b_icon = 'fa-balance-scale' %}{% set b_class = 'status-disputed' %}
+                        {% endif %}
+                        <span class="status-badge-dm {{ b_class }}">
+                            <i class="fas {{ b_icon }}"></i>
+                            {{ 'Under Dispute' if b_status in ['disputed', 'under_dispute'] else b_status.replace('_', ' ').title() }}
                         </span>
                     </td>
                     <td style="text-align: right; padding-right: 2rem;">
@@ -379,7 +431,7 @@
                                     <i class="fas fa-bell"></i> Send Notification
                                 </button>
 
-                                {% if booking.status in ['pending', 'pending_quotation', 'awaiting_payment', 'confirmed'] %}
+                                {% if booking.status in ['pending', 'pending_quotation', 'awaiting_payment', 'pending_payment', 'awaiting_caterer', 'pending_review', 'confirmed'] %}
                                 <div class="dropdown-divider"></div>
                                 <button class="dropdown-item-dm danger" onclick="flagDispute({{ booking.id }})">
                                     <i class="fas fa-flag"></i> Flag for Dispute
@@ -387,9 +439,9 @@
                                 <button class="dropdown-item-dm danger" onclick="cancelBooking({{ booking.id }})">
                                     <i class="fas fa-ban"></i> Admin Cancel Booking
                                 </button>
-                                {% elif booking.status == 'disputed' %}
+                                {% elif booking.status in ['disputed', 'under_dispute'] %}
                                 <div class="dropdown-divider"></div>
-                                <button class="dropdown-item-dm" onclick="viewBookingDetails({{ booking.id }})">
+                                <button class="dropdown-item-dm" onclick="openDisputeCenter({{ booking.id }})">
                                     <i class="fas fa-balance-scale"></i> Manage Dispute
                                 </button>
                                 {% endif %}
@@ -440,7 +492,9 @@
         <div class="modal-footer-clean">
             <button class="btn-clean" style="background: #f1f5f9; color: var(--adm-navy); font-weight: 800;"
                 onclick="closeModal('bookingDetailModal')">Close</button>
-            <button class="btn-clean" style="background: var(--adm-primary); color: white; font-weight: 800;">Download Log</button>
+            <button class="btn-clean" id="downloadLogBtn" onclick="downloadBookingLog()"
+                style="background: var(--adm-primary); color: white; font-weight: 800;">
+                <i class="fas fa-file-download"></i> Download Log</button>
         </div>
     </div>
 </div>
@@ -580,19 +634,96 @@
         updatePagination();
     });
 
+    // ─── Booking detail modal helpers ────────────────────────────────────────
+    // Keeps track of the booking currently rendered inside #bookingDetailModal
+    // so the "Download Log" button always has something to export.
+    let currentBookingRecord = null;
+
+    function showModalLoading(label = 'Loading booking record...') {
+        const body = document.getElementById('modalBody');
+        body.innerHTML = `
+            <div class="modal-feedback">
+                <i class="fas fa-spinner fa-spin"></i>
+                <div class="fb-title">${label}</div>
+                <div class="fb-text">Please wait while we pull the latest data from the server.</div>
+            </div>`;
+    }
+
+    function showModalError(message, retryFn) {
+        const body = document.getElementById('modalBody');
+        const retry = typeof retryFn === 'function'
+            ? '<button class="btn-clean" style="background:#fff;border:1px solid #e2e8f0;color:var(--adm-navy);margin-top:6px;" onclick="' + retryFn.name + 'Retry()">Try again</button>'
+            : '';
+        body.innerHTML = `
+            <div class="modal-feedback is-error">
+                <i class="fas fa-triangle-exclamation"></i>
+                <div class="fb-title">Unable to load this record</div>
+                <div class="fb-text">${message}</div>
+                ${retry}
+            </div>`;
+        return retry;
+    }
+
+    function disputeBanner(bookingId, reference) {
+        return `
+            <div style="margin:1.5rem 1.5rem 0;padding:0.85rem 1rem;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;display:flex;gap:10px;align-items:flex-start;">
+                <i class="fas fa-balance-scale" style="color:#b45309;margin-top:2px;"></i>
+                <div style="font-size:0.75rem;font-weight:600;color:#92400e;line-height:1.5;">
+                    This ${reference} is currently under dispute review. The full case file, evidence
+                    and resolution actions are handled in the
+                    <a href="/admin/disputes" style="color:#b45309;font-weight:800;text-decoration:underline;">Dispute Center</a>.
+                </div>
+            </div>`;
+    }
+
+    async function fetchBookingRecord(id) {
+        const res = await fetch(`/admin/api/bookings/${id}/details`);
+        let data = null;
+        try { data = await res.json(); } catch (e) { data = null; }
+        return { ok: res.ok, data };
+    }
+
+    async function submitBookingAction(url, formData, loadingTitle, successTitle, reloadOnSuccess = false) {
+        Swal.fire({ title: loadingTitle, didOpen: () => Swal.showLoading() });
+        try {
+            const response = await fetch(url, { method: 'POST', body: formData });
+            let data = null;
+            try { data = await response.json(); } catch (e) { data = null; }
+
+            if (!response.ok || !data || !data.success) {
+                await Swal.fire('Error', data?.message || 'The action could not be completed. Please try again.', 'error');
+                return false;
+            }
+
+            await Swal.fire(successTitle, data.message || 'The action was completed.', 'success');
+            if (reloadOnSuccess) window.location.reload();
+            return true;
+        } catch (error) {
+            console.error('Booking action failed:', error);
+            await Swal.fire('Error', 'Could not reach the server. Please try again.', 'error');
+            return false;
+        }
+    }
+
     async function viewBookingDetails(id) {
         const modal = document.getElementById('bookingDetailModal');
         const body = document.getElementById('modalBody');
+        currentBookingRecord = null;
+        document.getElementById('detailBookingId').innerText = `#BK-${id}`;
         modal.classList.add('active');
-        body.innerHTML = '<div style="text-align: center; padding: 3rem;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--adm-primary);"></i></div>';
+        showModalLoading('Loading booking record...');
 
         try {
-            const res = await fetch(`/admin/api/bookings/${id}/details`);
-            const data = await res.json();
-            if (data.success) {
-                const b = data.booking;
-                document.getElementById('detailBookingId').innerText = `#BK-${b.id}`;
-                const ri = b.risk_intelligence;
+            const { ok, data } = await fetchBookingRecord(id);
+            if (!ok || !data || !data.success) {
+                const reason = (data && data.message) ? data.message : 'The server returned an unexpected response. Please try again.';
+                showModalError(reason);
+                return;
+            }
+            const b = data.booking;
+            currentBookingRecord = b;
+            document.getElementById('detailBookingId').innerText = `#BK-${b.id}`;
+            const ri = b.risk_intelligence;
                 const riskColor = ri.score > 70 ? '#ef4444' : (ri.score > 30 ? '#f59e0b' : '#10b981');
 
                 body.innerHTML = `
@@ -624,8 +755,13 @@
                             </div>
                             <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9;">
                                 <div style="font-size: 0.6rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Financial Commitment</div>
-                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 1rem; margin-top: 4px;">₱${b.total_amount.toLocaleString()}</div>
-                                <span class="status-badge-dm status-active" style="padding: 2px 6px; font-size: 0.5rem; margin-top: 4px;">SECURED VIA PLATFORM</span>
+                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 1rem; margin-top: 4px;">₱${Number(b.total_amount || 0).toLocaleString()}</div>
+                                <div style="font-size: 0.72rem; color: #64748b; font-weight: 700; margin-top: 4px;">
+                                    Collected: ₱${Number(b.amount_paid || 0).toLocaleString()} • Balance: ₱${Number(b.balance_due || 0).toLocaleString()}
+                                </div>
+                                <span class="status-badge-dm status-neutral" style="padding: 2px 6px; font-size: 0.5rem; margin-top: 6px;">
+                                    ${(b.payment_status || 'pending').toString().replace(/_/g, ' ').toUpperCase()}
+                                </span>
                             </div>
                         </div>
 
@@ -667,22 +803,81 @@
                         </div>
                     </div>
                 `;
-            }
-        } catch (err) { body.innerHTML = '<div style="color: #ef4444; padding: 2rem; text-align: center;">Error loading record.</div>'; }
+
+                if (['disputed', 'under_dispute'].includes((b.status || '').toLowerCase())) {
+                    body.insertAdjacentHTML('afterbegin', disputeBanner(b.id, `booking #BK-${b.id}`));
+                }
+        } catch (err) {
+            console.error('Booking details error:', err);
+            showModalError('The booking record could not be retrieved. Please check your connection and try again.');
+        }
+    }
+
+    // Opens the booking record for a disputed booking and points the admin to the
+    // dedicated Dispute Center for resolution actions.
+    function openDisputeCenter(id) {
+        viewBookingDetails(id);
+    }
+
+    // Exports the record currently shown in the detail modal as a plain-text log.
+    function downloadBookingLog() {
+        if (!currentBookingRecord) {
+            Swal.fire('Nothing to export', 'Open a booking record first, then download its log.', 'info');
+            return;
+        }
+        const b = currentBookingRecord;
+        const lines = [
+            'OccaServe Platform Booking Log',
+            'Generated: ' + new Date().toLocaleString(),
+            '='.repeat(52),
+            `Booking Reference : #BK-${b.id}`,
+            `Status            : ${(b.status || '').replace(/_/g, ' ')}`,
+            `Payment Status    : ${(b.payment_status || 'pending').toString().replace(/_/g, ' ')}`,
+            `Customer          : ${b.customer_name}`,
+            `Caterer           : ${b.caterer_name}`,
+            `Event             : ${b.event_name} (${b.event_type})`,
+            `Event Date        : ${b.event_date} at ${b.event_time}`,
+            `Guests            : ${b.guest_count}`,
+            `Entry Method      : ${b.entry_method}`,
+            `Contract Value    : PHP ${Number(b.total_amount || 0).toLocaleString()}`,
+            `Amount Collected  : PHP ${Number(b.amount_paid || 0).toLocaleString()}`,
+            `Balance Due       : PHP ${Number(b.balance_due || 0).toLocaleString()}`,
+            `Risk Level        : ${b.risk_intelligence ? b.risk_intelligence.level + ' (' + b.risk_intelligence.score + '%)' : 'N/A'}`,
+            '='.repeat(52),
+            'TIMELINE',
+            ...(b.history && b.history.length
+                ? b.history.map(h => `[${h.created_at}] ${h.status} - ${h.notes || 'No notes'}`)
+                : ['No history available.'])
+        ];
+        const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/plain;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `OccaServe_Booking_BK-${b.id}_Log.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     }
 
     async function viewPaymentDetails(id) {
         const modal = document.getElementById('bookingDetailModal');
         const body = document.getElementById('modalBody');
+        currentBookingRecord = null;
         document.getElementById('detailBookingId').innerText = `#BK-${id}`;
         modal.classList.add('active');
-        body.innerHTML = '<div style="text-align: center; padding: 3rem;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--adm-primary);"></i></div>';
+        showModalLoading('Loading payment record...');
 
         try {
-            const res = await fetch(`/admin/api/bookings/${id}/details`);
-            const data = await res.json();
+            const { ok, data } = await fetchBookingRecord(id);
+            if (!ok || !data || !data.success) {
+                const reason = (data && data.message) ? data.message : 'The server returned an unexpected response. Please try again.';
+                showModalError(reason);
+                return;
+            }
             if (data.success) {
                 const b = data.booking;
+                currentBookingRecord = b;
                 let proofHTML = '<div style="text-align: center; padding: 1rem; color: #64748b; font-size: 0.8rem; background: #f1f5f9; border-radius: 8px;">No proof of payment uploaded yet.</div>';
                 if (b.payment_proof_url) {
                     proofHTML = `<img src="${b.payment_proof_url}" style="width: 100%; border-radius: 8px; cursor: pointer; border: 1px solid #e2e8f0;" onclick="window.open(this.src, '_blank')">`;
@@ -693,12 +888,22 @@
                         <h4 style="margin: 0 0 1rem 0; color: var(--adm-navy); font-weight: 800;">Payment Verification</h4>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
                             <div style="background: #f8fafc; padding: 1rem; border-radius: 12px;">
-                                <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Total Amount</div>
-                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 1.2rem;">₱${b.total_amount.toLocaleString()}</div>
+                                <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Contract Value</div>
+                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 1.2rem;">₱${Number(b.total_amount || 0).toLocaleString()}</div>
                             </div>
                             <div style="background: #f8fafc; padding: 1rem; border-radius: 12px;">
+                                <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Collected So Far</div>
+                                <div style="font-weight: 800; color: var(--adm-primary); font-size: 1.2rem;">₱${Number(b.amount_paid || 0).toLocaleString()}</div>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                            <div style="background: #f8fafc; padding: 1rem; border-radius: 12px;">
                                 <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Downpayment (50%)</div>
-                                <div style="font-weight: 800; color: var(--adm-primary); font-size: 1.2rem;">₱${b.downpayment_amount.toLocaleString()}</div>
+                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 1.1rem;">₱${Number(b.downpayment_amount || 0).toLocaleString()}</div>
+                            </div>
+                            <div style="background: #f8fafc; padding: 1rem; border-radius: 12px;">
+                                <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Outstanding Balance</div>
+                                <div style="font-weight: 800; color: ${Number(b.balance_due || 0) > 0 ? '#ef4444' : '#10b981'}; font-size: 1.1rem;">₱${Number(b.balance_due || 0).toLocaleString()}</div>
                             </div>
                         </div>
                         <div style="margin-bottom: 1.5rem;">
@@ -716,7 +921,10 @@
                     </div>
                 `;
             }
-        } catch (err) { body.innerHTML = '<div style="color: #ef4444; padding: 2rem; text-align: center;">Error loading payment record.</div>'; }
+        } catch (err) {
+            console.error('Payment details error:', err);
+            showModalError('The payment record could not be retrieved. Please check your connection and try again.');
+        }
     }
 
     function adminVerifyPayment(id, action) {
@@ -726,15 +934,9 @@
             variant: action === 'approve' ? 'success' : 'danger',
             confirmText: action === 'approve' ? 'Approve Payment' : 'Reject Payment',
             onConfirm: () => {
-                Swal.fire({ title: 'Processing...', didOpen: () => Swal.showLoading() });
                 const fd = new FormData();
                 fd.append('action', action);
-                fetch(`/admin/api/bookings/${id}/verify-payment`, { method: 'POST', body: fd })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) Swal.fire('Success', data.message, 'success').then(() => location.reload());
-                        else Swal.fire('Error', data.message, 'error');
-                    });
+                return submitBookingAction(`/admin/api/bookings/${id}/verify-payment`, fd, 'Processing...', 'Success', true);
             }
         });
     }
@@ -762,15 +964,9 @@
                 return additionalNotes ? `${selectReason} - ${additionalNotes}` : selectReason;
             },
             onConfirm: (reason) => {
-                Swal.fire({ title: 'Cancelling...', didOpen: () => Swal.showLoading() });
                 const fd = new FormData();
                 fd.append('reason', reason);
-                fetch(`/admin/api/bookings/${id}/cancel`, { method: 'POST', body: fd })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) Swal.fire('Cancelled', data.message, 'success').then(() => location.reload());
-                        else Swal.fire('Error', data.message, 'error');
-                    });
+                return submitBookingAction(`/admin/api/bookings/${id}/cancel`, fd, 'Cancelling...', 'Cancelled', true);
             }
         });
     }
@@ -804,16 +1000,10 @@
                 return { reason, desc };
             },
             onConfirm: async (data) => {
-                Swal.fire({ title: 'Flagging...', didOpen: () => Swal.showLoading() });
                 const fd = new FormData();
                 fd.append('reason', data.reason);
                 fd.append('description', data.desc);
-                try {
-                    const res = await fetch(`/admin/api/bookings/${id}/flag-dispute`, { method: 'POST', body: fd });
-                    const resData = await res.json();
-                    if (resData.success) Swal.fire('Disputed', resData.message, 'success').then(() => location.reload());
-                    else Swal.fire('Error', resData.message, 'error');
-                } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
+                return submitBookingAction(`/admin/api/bookings/${id}/flag-dispute`, fd, 'Flagging...', 'Disputed', true);
             }
         });
     }
@@ -846,17 +1036,11 @@
                 return { category, message };
             },
             onConfirm: (data) => {
-                Swal.fire({ title: 'Sending...', didOpen: () => Swal.showLoading() });
                 const fd = new FormData();
                 fd.append('category', data.category);
                 fd.append('message', data.message);
-                
-                fetch(`/admin/api/bookings/${id}/send-alert`, { method: 'POST', body: fd })
-                    .then(res => res.json())
-                    .then(resData => {
-                        if (resData.success) Swal.fire('Sent', resData.message, 'success');
-                        else Swal.fire('Error', resData.message, 'error');
-                    });
+
+                return submitBookingAction(`/admin/api/bookings/${id}/send-alert`, fd, 'Sending...', 'Sent');
             }
         });
     }
@@ -868,14 +1052,7 @@
             variant: 'archive',
             confirmText: 'Archive',
             onConfirm: () => {
-                Swal.fire({ title: 'Archiving...', didOpen: () => Swal.showLoading() });
-                fetch(`/admin/api/archives/${type}/${id}/archive`, { method: 'POST' })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) Swal.fire('Archived', data.message, 'success').then(() => location.reload());
-                        else Swal.fire('Error', data.message, 'error');
-                    })
-                    .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+                return submitBookingAction(`/admin/api/archives/${type}/${id}/archive`, new FormData(), 'Archiving...', 'Archived', true);
             }
         });
     }

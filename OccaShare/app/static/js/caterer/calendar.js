@@ -1624,7 +1624,7 @@ function showBlockedDetails(event) {
 
 window.openSidebarEventModal = function (elem) {
     const ds = elem.dataset;
-    document.getElementById("detCustomer").textContent = ds.customer || "---";
+    document.getElementById("detCustomer").textContent = ds.customerRef || ds.customer || "---";
     document.getElementById("detType").textContent = ds.type || "---";
     document.getElementById("detDateTime").textContent = ds.datetime || "---";
     document.getElementById("detVenue").textContent = ds.venue || "---";

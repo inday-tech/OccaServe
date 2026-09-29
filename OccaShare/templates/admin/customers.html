@@ -219,6 +219,13 @@
     </div>
     <div class="kpi-card-clean">
         <div class="kpi-info">
+            <h4>Pending Verification</h4>
+            <span class="kpi-value">{{ metrics.pending_customers }}</span>
+            <span class="trend-badge" style="background: #fef3c7; color: #92400e;">KYC Not Complete</span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
             <h4>Suspended</h4>
             <span class="kpi-value">{{ metrics.suspended_customers }}</span>
             <span class="trend-badge trend-down">Restricted</span>
@@ -241,6 +248,7 @@
             <select id="statusFilter" onchange="filterRegistry()" class="btn-clean" style="padding: 6px 12px; font-size: 0.75rem; background: #fff; border: 1px solid #e2e8f0; color: var(--adm-navy);">
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
+                <option value="pending">Pending Verification</option>
                 <option value="suspended">Suspended</option>
                 <option value="flagged">Flagged</option>
             </select>
@@ -429,11 +437,13 @@
         const query = globalSearch ? globalSearch.value.toLowerCase().trim() : '';
 
         const filteredRows = rows.filter(row => {
-            const badge = row.querySelector('.status-badge-dm').innerText.toLowerCase();
+            const badgeEl = row.querySelector('.status-badge-dm');
+            const badge = badgeEl ? badgeEl.innerText.toLowerCase() : '';
             const textContent = row.innerText.toLowerCase();
 
             const matchesStatus = (status === 'all') ||
                 (status === 'active' && badge.includes('active')) ||
+                (status === 'pending' && badge.includes('pending')) ||
                 (status === 'flagged' && badge.includes('flagged')) ||
                 (status === 'suspended' && badge.includes('suspended'));
 

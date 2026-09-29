@@ -1904,6 +1904,15 @@ async def redirect_booking_details(booking_id: str):
         return RedirectResponse(url=f"/caterer/bookings?focus={numeric_id}", status_code=303)
     return RedirectResponse(url="/caterer/bookings", status_code=303)
 
+def _booking_customer_reference(booking: models.Booking) -> str:
+    if not booking:
+        return ""
+    if getattr(booking, "customer_reference", None):
+        return booking.customer_reference
+    if getattr(booking, "user_id", None):
+        return f"CUST-{booking.user_id:04d}"
+    return f"WALKIN-BK-{booking.id:06d}"
+
 def build_booking_list_projection(booking, today):
     item_categories = set()
     item_names = []
@@ -2022,14 +2031,12 @@ def build_booking_list_projection(booking, today):
 
     source = "Manual Booking" if is_manual else (booking.booking_source or "Online Booking")
 
-    customer = booking.user
-    customer_name = f"{customer.first_name} {customer.last_name}" if customer else (booking.customer_name or "Walk-in Customer")
     display_item = booking.package.name if booking.package else (item_names[0] if item_names else (booking.event_name or "Custom booking"))
     return {
         "id": booking.id, "kind": booking_kind, "type_label": type_label, "type_icon": type_icon,
         "status": booking.status or "unknown", "status_label": status_label, "payment_label": payment_label,
         "attention": attention, "next_action": next_action, "needs_action": needs_action,
-        "customer_name": customer_name, "customer_email": customer.email if customer else (booking.customer_email or ""),
+        "customer_ref": _booking_customer_reference(booking),
         "event_type": booking.event_type or "Event", "item_name": display_item,
         "item_count": len(item_names), "item_names": item_names[:4], "source": source,
         "source_kind": source_kind, "source_label": source_label, "source_table_badge": source_table_badge,
@@ -2243,8 +2250,67 @@ async def caterer_payments(
     user: models.User = Depends(caterer_only)
 ):
     from datetime import datetime, timezone
+    from app.services.payment_service import PaymentService
     profile = user.caterer_profile
     bookings = [b for b in profile.bookings if b.status not in ['draft', 'pending_review'] and not b.is_archived]
+    bookings.sort(key=lambda x: x.id, reverse=True)
+
+    # Heal drifted payment statuses
+    healed = False
+    for b in bookings:
+        if PaymentService.sync_review_status(b, db):
+            healed = True
+    if healed:
+        db.commit()
+
+    # Attach unified payment summary for template (source of truth - matches Bookings page)
+    for b in bookings:
+        summary = PaymentService.get_payment_summary(b)
+        b._pay_summary = summary
+        b._pay_is_under_review = summary.get("is_under_review", False)
+        b._pay_verified = summary.get("verified_paid", 0)
+        b._pay_pending = summary.get("pending_review", 0)
+        b._pay_balance = summary.get("remaining_balance", 0)
+        b._pay_remaining_after = summary.get("remaining_after_verification", 0)
+        b._pay_label = PaymentService.display_payment_label(b, summary)
+        b._action_label = PaymentService.display_booking_action_label(b, summary)
+
+    # Fetch billing invoices
+    invoices = db.query(models.BillingInvoice).filter(
+        models.BillingInvoice.caterer_id == profile.id
+    ).order_by(models.BillingInvoice.created_at.desc()).all()
+
+    config = db.query(models.WebsiteConfig).first()
+    comm_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
+    comm_fixed = config.commission_fixed_amount if config else 20.0
+
+    # Auto-synchronize completed bookings to outstanding_balance:
+    balance_updated = False
+    for b in bookings:
+        if b.status == 'completed' and not getattr(b, 'commission_calculated', False):
+            comm_amount = (float(b.total_amount or b.total_price or 0.0) * comm_rate) + comm_fixed
+            profile.outstanding_balance = float(profile.outstanding_balance or 0.0) + comm_amount
+            b.commission_calculated = True
+            balance_updated = True
+
+    # Fallback: if outstanding_balance is still 0 and no invoices were settled yet, ensure completed bookings reflect
+    if (profile.outstanding_balance or 0.0) <= 0:
+        completed_bookings = [b for b in bookings if b.status == 'completed']
+        settled_booking_ids = {inv.booking_id for inv in invoices if inv.booking_id and inv.status in ('paid', 'pending')}
+        has_active_global_settlement = any(inv.booking_id is None and inv.status in ('paid', 'pending') for inv in invoices)
+        if completed_bookings and not has_active_global_settlement:
+            unsettled_comm = 0.0
+            for b in completed_bookings:
+                if b.id not in settled_booking_ids:
+                    b_comm = (float(b.total_amount or b.total_price or 0.0) * comm_rate) + comm_fixed
+                    unsettled_comm += b_comm
+                    b.commission_calculated = True
+            if unsettled_comm > 0:
+                profile.outstanding_balance = unsettled_comm
+                balance_updated = True
+
+    if balance_updated:
+        db.commit()
 
     # ── Post-Paid Commission System Variables ──────────────────────────
     outstanding_balance = profile.outstanding_balance or 0.0
@@ -2255,24 +2321,17 @@ async def caterer_payments(
     for b in bookings:
         if b.status in ('cancelled', 'rejected'):
             continue
-        if b.status not in ('completed'):
+        if b.status not in ('completed',):
             active_count += 1
             
         gross_amount = float(b.total_amount or b.total_price or 0)
         
-        if b.payment_status == 'paid' and b.status == 'completed':
+        if b.status == 'completed':
             lifetime_revenue += gross_amount
 
-    # Fetch billing invoices
-    invoices = db.query(models.BillingInvoice).filter(
-        models.BillingInvoice.caterer_id == profile.id
-    ).order_by(models.BillingInvoice.created_at.desc()).all()
-    
     for invoice in invoices:
         if invoice.status == 'paid':
             total_commission_paid += float(invoice.amount)
-
-    config = db.query(models.WebsiteConfig).first()
 
     return templates.TemplateResponse("caterer/payments.html", {
         "request": request,
@@ -2879,6 +2938,7 @@ async def verify_booking_proof(
 
     return {"status": "success", "data": verify_results}
 
+
 @router.get("/api/bookings/{booking_id}")
 @router.get("/api/bookings/{booking_id}/details")
 async def get_booking_details_api(
@@ -2918,9 +2978,17 @@ async def get_booking_details_api(
     selected_items = []
     for item in booking.selected_items or []:
         related_item = item.menu_item or item.equipment or item.service
+        item_type = (
+            "menu_item" if item.menu_item else
+            "equipment" if item.equipment else
+            "service" if item.service else
+            "other"
+        )
         selected_items.append({
             "id": item.id,
             "name": item.custom_name or (related_item.name if related_item else "Unspecified item"),
+            "type": item_type,
+            "category": (related_item.category if related_item and hasattr(related_item, "category") else None),
             "quantity": item.quantity or 1,
             "price": float(item.price or 0),
             "is_add_on": bool(item.is_add_on),
@@ -2964,30 +3032,6 @@ async def get_booking_details_api(
             celebrant_name = f"{b_name} & {g_name}"
     if not celebrant_name and custom_reqs.get("representative_name"):
         celebrant_name = custom_reqs.get("representative_name")
-
-    # Email handling (distinguish auto-generated guest email from real customer email)
-    raw_email = (booking.user.email if booking.user else booking.customer_email) or ""
-    is_guest_email = False
-    if "@guest.occashare.com" in raw_email.lower() or raw_email.lower().startswith("walkin_") or not raw_email:
-        is_guest_email = True
-        display_email = "Not provided"
-    else:
-        display_email = raw_email
-
-    # Verification Info (only for online bookings with authentic verification records)
-    verification_info = None
-    has_verif = bool(booking.ocr_verification or booking.ocr_verified or booking.liveness_verified or (booking.user and booking.user.is_verified))
-    if has_verif and not is_manual:
-        ocr = booking.ocr_verification
-        is_verified_state = bool(booking.ocr_verified or (ocr and ocr.status == "verified") or (booking.user and booking.user.is_verified))
-        verification_info = {
-            "has_record": True,
-            "status": "VERIFIED" if is_verified_state else (ocr.status.upper() if ocr else "PENDING"),
-            "id_submitted": bool(ocr and ocr.document_url),
-            "ocr_completed": bool(booking.ocr_verified or (ocr and ocr.status in ["verified", "completed"])),
-            "liveness_completed": bool(booking.liveness_verified or (ocr and ocr.selfie_url)),
-            "verified_at": ocr.created_at.strftime("%b %d, %Y at %I:%M %p") if (ocr and ocr.created_at) else None
-        }
 
     # Contract Info
     contract_info = None
@@ -3034,9 +3078,14 @@ async def get_booking_details_api(
 
     # Selected Services
     services_list = []
+    service_names = set()
     raw_services = custom_reqs.get("services") or []
     for s in raw_services:
         if isinstance(s, dict) and s.get("name"):
+            service_key = str(s.get("name")).strip().casefold()
+            if service_key in service_names:
+                continue
+            service_names.add(service_key)
             services_list.append({
                 "name": s.get("name"),
                 "price": float(s.get("price", 0) or 0),
@@ -3046,22 +3095,39 @@ async def get_booking_details_api(
             })
     for item in (booking.selected_items or []):
         if item.service:
+            service_name = item.custom_name or item.service.name
+            service_key = str(service_name).strip().casefold()
+            if service_key in service_names:
+                continue
+            service_names.add(service_key)
             services_list.append({
-                "name": item.custom_name or item.service.name,
+                "name": service_name,
                 "price": float(item.price or item.service.selling_price or 0),
                 "category": item.service.category or "Service",
                 "is_selected": True
             })
 
     # Equipment items if rental or extra
-    equipment_list = []
+    equipment_by_name = {}
     for eq in (custom_reqs.get("equipment_items") or []):
         if isinstance(eq, dict):
-            equipment_list.append({
-                "name": eq.get("name", "Equipment"),
+            equipment_name = eq.get("name", "Equipment")
+            equipment_by_name[str(equipment_name).strip().casefold()] = {
+                "name": equipment_name,
                 "price": float(eq.get("price", 0) or eq.get("rental_price", 0) or 0),
                 "quantity": int(eq.get("qty", 1) or 1)
-            })
+            }
+    for item in (booking.selected_items or []):
+        if item.equipment:
+            equipment_name = item.custom_name or item.equipment.name
+            equipment_key = str(equipment_name).strip().casefold()
+            if equipment_key not in equipment_by_name:
+                equipment_by_name[equipment_key] = {
+                    "name": equipment_name,
+                    "price": float(item.price or item.equipment.rental_price or 0),
+                    "quantity": int(item.quantity or 1)
+                }
+    equipment_list = list(equipment_by_name.values())
 
     # Accurate payment calculations using unified PaymentService
     from app.services.payment_service import PaymentService
@@ -3078,9 +3144,29 @@ async def get_booking_details_api(
     remaining_after_verification = pay_summary["remaining_after_verification"]
     computed_payment_status = pay_summary["computed_payment_status"]
 
+    sanitized_custom_reqs = {
+        k: v for k, v in custom_reqs.items()
+        if k not in (
+            "customer_name", "customer_email", "customer_contact", "customer_phone",
+            "phone", "mobile", "email", "address", "id_address", "home_address",
+            "personal_address", "gov_id", "id_number", "id_image", "ocr_data"
+        )
+    }
+
+    sanitized_verification_data = None
+    if booking.payment_verification_data and isinstance(booking.payment_verification_data, dict):
+        sanitized_verification_data = {
+            k: v for k, v in booking.payment_verification_data.items()
+            if k not in ("id_image", "ocr_raw", "selfie", "id_number", "id_details", "customer_name", "account_name")
+        }
+    elif booking.payment_verification_data:
+        sanitized_verification_data = booking.payment_verification_data
+
     return {
         "id": booking.id,
-        "user_id": booking.user_id,
+        "customer_ref": _booking_customer_reference(booking),
+        "has_registered_customer": bool(booking.user_id),
+        "customer_is_verified": bool(booking.user and booking.user.is_verified),
         "status": booking.status,
         "event_name": booking.event_name,
         "event_type": booking.event_type,
@@ -3119,7 +3205,7 @@ async def get_booking_details_api(
         "balance_due_date": booking.balance_due_date.isoformat() if booking.balance_due_date else None,
         "payment_proof_url": booking.payment_proof_url,
         "balance_proof_url": booking.balance_proof_url,
-        "payment_verification_data": booking.payment_verification_data,
+        "payment_verification_data": sanitized_verification_data,
         "preparation_status": booking.preparation_status,
         "preparation_date": booking.preparation_date.isoformat() if booking.preparation_date else None,
         "preparation": build_prep_summary(booking),
@@ -3133,13 +3219,36 @@ async def get_booking_details_api(
             "pricing_mode": booking.package.pricing_mode,
             "selection_rules": booking.package.selection_rules,
             "price": float(booking.package.price or 0) if getattr(booking.package, "price", None) is not None else None,
-            "min_guests": getattr(booking.package, "min_guests", None)
+            "price_per_head": float(booking.package.price_per_head or booking.package.price or 0),
+            "price_unit": booking.package.price_unit or "per_guest",
+            "additional_guest_price": float(booking.package.additional_guest_price or 0),
+            "min_guests": booking.package.min_guests,
+            "max_guests": booking.package.max_guests,
+            "service_duration": booking.package.service_duration,
+            "service_type": booking.package.service_type,
+            "description": booking.package.description or "",
+            "inclusions": _normalize_inclusions_for_api(booking.package.inclusions),
+            "menu_items": [{
+                "id": item.id,
+                "name": item.name,
+                "category": item.category or "Package Dishes",
+                "description": item.description or ""
+            } for item in booking.package.menu_items or []],
+            "service_items": [{
+                "id": link.service.id,
+                "name": link.service.name,
+                "quantity": link.quantity or 1
+            } for link in booking.package.service_links if link.service],
+            "equipment_items": [{
+                "id": link.equipment.id,
+                "name": link.equipment.name,
+                "quantity": link.quantity or 1
+            } for link in booking.package.equipment_links if link.equipment]
         } if booking.package else None,
         "selected_items": selected_items,
         "services": services_list,
         "equipment_items": equipment_list,
         "caterer_services": caterer_services,
-        "verification": verification_info,
         "contract": contract_info,
         "payment_records": [{
             "id": record.id,
@@ -3168,21 +3277,50 @@ async def get_booking_details_api(
         "quotation_id": booking.quotation.id if booking.quotation else None,
         "contract_url": booking.quotation.contract_url if booking.quotation else None,
         "contract_status": (contract_info["status"] if contract_info else None),
-        "user": {
-            "first_name": booking.user.first_name if booking.user else "Manual",
-            "last_name": booking.user.last_name if booking.user else "Customer",
-            "email": display_email,
-            "is_guest_email": is_guest_email,
-            "phone_number": booking.user.phone_number if booking.user else booking.customer_contact,
-            "is_verified": bool(booking.user and booking.user.is_verified)
-        },
-        "customer_name": booking.customer_name or ((f"{booking.user.first_name} {booking.user.last_name}").strip() if booking.user else "Customer"),
-        "customer_email": display_email,
-        "is_guest_email": is_guest_email,
-        "customer_contact": booking.customer_contact or (booking.user.phone_number if booking.user else None),
         "is_package": booking.package_id is not None,
-        "custom_requirements": custom_reqs,
+        "custom_requirements": sanitized_custom_reqs,
         "caterer_notes": booking.caterer_notes
+    }
+
+
+@router.get("/api/bookings/{booking_id}/customer-details")
+async def get_booking_customer_details(
+    booking_id: str,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).filter(
+        models.Booking.id == numeric_id,
+        models.Booking.caterer_id == user.caterer_profile.id
+    ).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    raw_source = (booking.booking_source or "").lower()
+    is_manual = (
+        not booking.user_id
+        or any(source in raw_source for source in ("walk", "manual", "internal"))
+        or bool((booking.custom_requirements or {}).get("is_walk_in"))
+    )
+    raw_email = (booking.user.email if booking.user else booking.customer_email) or ""
+    is_guest_email = (
+        "@guest.occashare.com" in raw_email.lower()
+        or raw_email.lower().startswith("walkin_")
+        or not raw_email
+    )
+    customer_name = booking.customer_name or (
+        f"{booking.user.first_name or ''} {booking.user.last_name or ''}".strip()
+        if booking.user else ""
+    )
+
+    return {
+        "customer_ref": _booking_customer_reference(booking),
+        "name": customer_name or None,
+        "email": None if is_guest_email else raw_email,
+        "phone": booking.customer_contact or (booking.user.phone_number if booking.user else None),
+        "email_verified": bool(booking.user and booking.user.is_email_verified),
+        "is_manual": is_manual
     }
 
 @router.get("/api/bookings/{booking_id}/history")
@@ -3455,6 +3593,11 @@ async def complete_booking(
     )
     db.add(commission_record)
     
+    caterer_prof = booking.caterer or user.caterer_profile
+    if caterer_prof:
+        caterer_prof.outstanding_balance = float(caterer_prof.outstanding_balance or 0.0) + commission_due
+    booking.commission_calculated = True
+    
     db.commit()
 
     # Real-time alert to customer & caterer
@@ -3682,21 +3825,12 @@ async def business_summary(
     # 6. Recent Bookings Table
     recent_bookings_data = []
     for b in sorted(period_bookings, key=lambda x: x.event_date or date.min, reverse=True)[:15]:
-        cust_name = "Walk-in Customer"
-        if b.user:
-            first = b.user.first_name or ''
-            last = b.user.last_name or ''
-            full = f"{first} {last}".strip()
-            cust_name = full if full else "Customer"
-        elif b.customer_name:
-            cust_name = b.customer_name
-
         pkg_title = b.package.name if b.package else (b.event_type or "Custom Catering")
 
         recent_bookings_data.append({
             "id": b.id,
             "event_type": b.event_type or "Booking",
-            "customer_name": cust_name,
+            "customer_ref": _booking_customer_reference(b),
             "event_date": b.event_date,
             "guest_count": b.guest_count or 0,
             "package_name": pkg_title,
@@ -3898,7 +4032,7 @@ async def payments_summary_api(
             active_count += 1
             
         gross_amount = float(b.total_amount or b.total_price or 0)
-        if b.payment_status == 'paid' and b.status == 'completed':
+        if b.status == 'completed':
             lifetime_revenue += gross_amount
             
     # Calculate commission paid
@@ -8592,6 +8726,8 @@ async def get_customer_crm_details(
         models.Booking.user_id == customer_id,
         models.Booking.caterer_id == user.caterer_profile.id
     ).order_by(models.Booking.event_date.desc()).all()
+    if not bookings:
+        return {"status": "error", "message": "Access restricted: No client relationship found."}
     
     total_spent = sum((b.total_price or b.total_amount or 0) for b in bookings if b.status == "completed")
     
@@ -8614,16 +8750,17 @@ async def get_customer_crm_details(
 
     return {
         "id": target_user.id,
+        "customer_ref": f"CUST-{target_user.id:04d}",
         "first_name": target_user.first_name,
         "middle_name": target_user.middle_name,
         "last_name": target_user.last_name,
         "email": target_user.email,
         "phone": target_user.phone_number,
-        "address": target_user.address,
+        "address": "Protected for privacy (See Event Venue)",
         "status": status,
         "total_spent": float(total_spent),
         "total_bookings": len(bookings),
-        "created_at": target_user.created_at.isoformat(),
+        "created_at": target_user.created_at.isoformat() if target_user.created_at else None,
         "notes": target_user.investigation_notes or "No notes added yet.",
         "history": history
     }

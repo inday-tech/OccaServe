@@ -2026,7 +2026,7 @@
                                     <div
                                         style="width: 38px; height: 38px; border-radius: 10px; background: var(--hub-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900;">
                                         {{ review.user.first_name[0] if (review.user and review.user.first_name) else 'C' }}</div>
-                                    <div style="font-size: 0.9rem; font-weight: 800; color: var(--hub-text-dark);">{{ (review.user.first_name ~ ' ' ~ review.user.last_name) if (review.user and review.user.first_name) else 'Verified Customer' }}</div>
+                                    <div style="font-size: 0.9rem; font-weight: 800; color: var(--hub-text-dark);">{{ (review.user.first_name ~ ' ' ~ review.user.last_name[0] ~ '.') if (review.user and review.user.first_name and review.user.last_name) else (review.user.first_name if (review.user and review.user.first_name) else 'Verified Customer') }}</div>
                                 </div>
                                 <div style="color: #f59e0b; font-size: 0.8rem;">
                                     {% for i in range(review.rating) %}<i class="fas fa-star"></i>{% endfor %}

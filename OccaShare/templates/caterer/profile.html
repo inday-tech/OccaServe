@@ -609,8 +609,7 @@
                                     {{ review.user.first_name[0] if review.user.first_name else 'U' }}
                                 </div>
                                 <div>
-                                    <div class="text-xs font-black text-slate-800">{{ review.user.first_name }} {{
-                                        review.user.last_name }}</div>
+                                    <div class="text-xs font-black text-slate-800">{{ review.user.first_name if review.user else 'Verified' }} {{ (review.user.last_name[0] ~ '.') if (review.user and review.user.last_name) else 'Customer' }}</div>
                                     <div class="text-[10px] text-slate-400 font-bold uppercase">{{
                                         review.created_at.strftime('%B %d, %Y') }}</div>
                                 </div>

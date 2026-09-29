@@ -138,18 +138,47 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    function getRowStatusText(row) {
+        const badges = row.querySelectorAll('.badge-status, .premium-status-badge, .pay-status-badge');
+        if (badges && badges.length > 0) {
+            return Array.from(badges).map(b => b.textContent.trim()).filter(Boolean).join(' | ');
+        }
+        const dataStatus = row.getAttribute('data-status');
+        if (dataStatus) return dataStatus.trim();
+        return row.cells[6] ? row.cells[6].textContent.trim() : '';
+    }
+
     // Filtering
     window.filterPayments = function() {
-        const query = document.getElementById('paymentSearch').value.toLowerCase();
-        const status = document.getElementById('statusFilter').value.toLowerCase();
+        const queryEl = document.getElementById('paymentSearch');
+        const query = (queryEl ? queryEl.value : '').toLowerCase().trim();
+        const statusEl = document.getElementById('statusFilter');
+        const status = (statusEl ? statusEl.value : 'all').toLowerCase().trim();
         
         filteredRows = allRows.filter(row => {
             const textContent = row.textContent.toLowerCase();
-            const badgeEl = row.querySelector('.pay-status-badge');
-            const rowStatus = badgeEl ? badgeEl.textContent.toLowerCase().trim() : '';
+            const dataStatus = (row.getAttribute('data-status') || '').toLowerCase();
+            const badges = Array.from(row.querySelectorAll('.badge-status, .pay-status-badge, .premium-status-badge'))
+                .map(b => b.textContent.toLowerCase().trim()).join(' ');
+            const combinedStatus = `${dataStatus} ${badges}`;
             
-            const matchesSearch = textContent.includes(query);
-            const matchesStatus = (status === 'all' || rowStatus.includes(status));
+            const matchesSearch = !query || textContent.includes(query);
+            let matchesStatus = (status === 'all');
+            if (!matchesStatus) {
+                if (status === 'paid' || status === 'completed') {
+                    matchesStatus = combinedStatus.includes('paid') || combinedStatus.includes('completed') || combinedStatus.includes('fully paid');
+                } else if (status === 'verify') {
+                    matchesStatus = combinedStatus.includes('verify') || combinedStatus.includes('review') || combinedStatus.includes('confirm cash') || combinedStatus.includes('awaiting_verification');
+                } else if (status === 'partial') {
+                    matchesStatus = combinedStatus.includes('partial');
+                } else if (status === 'pending' || status === 'unpaid') {
+                    matchesStatus = combinedStatus.includes('pending') || combinedStatus.includes('unpaid') || combinedStatus.includes('awaiting payment');
+                } else if (status === 'refunded') {
+                    matchesStatus = combinedStatus.includes('refund');
+                } else {
+                    matchesStatus = combinedStatus.includes(status);
+                }
+            }
             
             return matchesSearch && matchesStatus;
         });
@@ -200,13 +229,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     `P${amt.toLocaleString()}`, 
                     row.cells[4].textContent.trim(),
                     row.cells[5].textContent.trim(),
-                    row.querySelector('.premium-status-badge').textContent.trim().toUpperCase()
+                    getRowStatusText(row).toUpperCase()
                 ];
             });
 
             doc.autoTable({
                 startY: 40,
-                head: [['PAY ID', 'Customer', 'Booking ID', 'Event Name', 'Amount', 'Method', 'Date', 'Status']],
+                head: [['PAY ID', 'Customer Ref', 'Booking ID', 'Event Name', 'Amount', 'Method', 'Date', 'Status']],
                 body: tableData,
                 theme: 'grid',
                 headStyles: { 
@@ -272,12 +301,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     amt,
                     row.cells[4].textContent.trim(),
                     row.cells[5].textContent.trim(),
-                    row.querySelector('.premium-status-badge').textContent.trim().toUpperCase()
+                    getRowStatusText(row).toUpperCase()
                 ];
             });
 
             const data = [
-                ['Payment ID', 'Customer Name', 'Booking ID', 'Event Title', 'Amount (PHP)', 'Method', 'Transaction Date', 'Current Status'],
+                ['Payment ID', 'Customer Ref', 'Booking ID', 'Event Title', 'Amount (PHP)', 'Method', 'Transaction Date', 'Current Status'],
                 ...dataRows,
                 ['', '', '', 'TOTAL EARNINGS', totalAmt, '', '', '']
             ];
@@ -302,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Export CSV
     window.exportToCSV = function() {
         try {
-            let csv = 'Payment ID,Customer,Event,Amount,Method,Date,Status\n';
+            let csv = 'Payment ID,Customer Ref,Event,Amount,Method,Date,Status\n';
             filteredRows.forEach(row => {
                 const data = [
                     row.querySelector('.payment-id').textContent,
@@ -311,7 +340,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     row.querySelector('.amount-pro').textContent.replace('₱', '').replace(/,/g, ''),
                     row.cells[4].textContent,
                     row.cells[5].textContent,
-                    row.querySelector('.premium-status-badge').textContent
+                    getRowStatusText(row)
                 ];
                 csv += data.map(v => `"${v}"`).join(',') + '\n';
             });
@@ -421,8 +450,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 <div class="pay-details-grid">
                     <div class="pay-details-item-box">
-                        <span class="pay-details-key-label">Client Name</span>
-                        <span class="pay-details-val-text">${booking.user.first_name} ${booking.user.last_name}</span>
+                        <span class="pay-details-key-label">Customer Ref</span>
+                        <span class="pay-details-val-text">${booking.customer_ref || ('CUST-' + String(booking.id || '').padStart(4, '0'))}</span>
                     </div>
                     <div class="pay-details-item-box">
                         <span class="pay-details-key-label">Booking ID</span>

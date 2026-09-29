@@ -43,6 +43,9 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
     if not caterer:
         raise HTTPException(status_code=404, detail="Caterer not found")
         
+    if user and user.role == "customer":
+        return RedirectResponse(url=f"/customer/marketplace/{caterer_id}")
+        
     # Check if profile is public, otherwise restrict to owner
     is_verified = (caterer.verification_status == 'Verified') or (caterer.is_verified == True)
     is_public = (caterer.status == 'Published' and is_verified and caterer.account_status == 'Active')
@@ -212,6 +215,9 @@ def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(datab
             scheme, param = token.split()
             user = auth.verify_token(param, db)
         except: pass
+
+    if user and user.role == "customer":
+        return RedirectResponse(url=f"/customer/marketplace/{caterer.id}")
 
     # Check if profile is public, otherwise restrict to owner
     is_verified = (caterer.verification_status == 'Verified') or (caterer.is_verified == True)
