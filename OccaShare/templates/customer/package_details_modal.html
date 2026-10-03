@@ -124,63 +124,133 @@
         {% endif %}
 
         <!-- Package Inclusions Section (Section A / Mandatory Inclusions) - ONLY DISPLAYED FOR FIXED PACKAGES -->
-        {% if package.pricing_mode != 'customizable' and grouped_inclusions and (grouped_inclusions.food or grouped_inclusions.services or grouped_inclusions.equipment) %}
+        {% if package.pricing_mode != 'customizable' and grouped_inclusions and (grouped_inclusions.food or grouped_inclusions.services) %}
+        {% set food_cnt = grouped_inclusions.food|length if grouped_inclusions.food else 0 %}
+        {% set svc_cnt = grouped_inclusions.services|length if grouped_inclusions.services else 0 %}
+        {% set total_cnt = food_cnt + svc_cnt %}
+
         <div class="body-section" style="margin-bottom: 2rem;">
-            <div style="margin-bottom: 1.25rem;">
+            <div style="margin-bottom: 1rem;">
                 <h3 class="section-title" style="margin-bottom: 0.25rem; font-size: 1.15rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
                     <i class="fas fa-boxes-packing" style="color: #FF6B00;"></i> PACKAGE INCLUSIONS
                 </h3>
-                <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Food, services, and equipment included automatically in this package</p>
+                <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Food and services included automatically in this package</p>
                 <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px 10px; border-radius: 6px; margin-top: 6px; font-weight: 600;">
                     <i class="fas fa-lock" style="color: #FF6B00; font-size: 0.75rem;"></i>
                     <span>These inclusions are fixed and cannot be removed or changed by customers.</span>
                 </div>
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <!-- Inclusions Category Filter Bar -->
+            <div class="modal-inc-filter-bar">
+                <button type="button" class="modal-inc-tab active" data-inc-cat="all" onclick="filterModalInclusions('all', this)">
+                    <i class="fas fa-layer-group"></i> All Inclusions <span class="modal-inc-badge">{{ total_cnt }}</span>
+                </button>
+                {% if food_cnt > 0 %}
+                <button type="button" class="modal-inc-tab" data-inc-cat="food" onclick="filterModalInclusions('food', this)">
+                    <i class="fas fa-utensils" style="color: #16a34a;"></i> Food &amp; Beverages <span class="modal-inc-badge">{{ food_cnt }}</span>
+                </button>
+                {% endif %}
+                {% if svc_cnt > 0 %}
+                <button type="button" class="modal-inc-tab" data-inc-cat="services" onclick="filterModalInclusions('services', this)">
+                    <i class="fas fa-concierge-bell" style="color: #2563eb;"></i> Services <span class="modal-inc-badge">{{ svc_cnt }}</span>
+                </button>
+                {% endif %}
+            </div>
+
+            <div class="modal-inc-content-wrapper">
                 <!-- 1. FOOD & BEVERAGES -->
-                {% if grouped_inclusions.food and grouped_inclusions.food|length > 0 %}
-                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                {% if food_cnt > 0 %}
+                <div class="modal-inc-section" data-inc-cat="food" style="margin-bottom: 1.25rem;">
                     <div style="display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem; margin-bottom: 0.75rem;">
                         <span style="font-size: 1.1rem; line-height: 1;">🍽️</span>
                         <span style="font-size: 0.92rem; font-weight: 800; color: #0f172a; letter-spacing: -0.01em;">Food &amp; Beverages</span>
-                        <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 20px; margin-left: auto;">{{ grouped_inclusions.food|length }} items</span>
+                        <span style="font-size: 0.72rem; font-weight: 700; color: #166534; background: #dcfce7; padding: 2px 8px; border-radius: 20px; margin-left: auto;">{{ food_cnt }} items</span>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.5rem 1.25rem;">
-                        {% for item in grouped_inclusions.food %}
-                        <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.875rem; line-height: 1.45;">
-                            <span style="color: #FF6B00; font-weight: 900; font-size: 1rem; line-height: 1.2;">•</span>
-                            <div style="flex: 1; min-width: 0; word-break: break-word;">
-                                <strong style="color: #1e293b; font-weight: 700;">{{ item.name }}</strong>
-                                {% if item.quantity %}
-                                <span style="color: #64748b; font-weight: 500;"> — {{ item.quantity }}</span>
-                                {% endif %}
+
+                    {% if categorised_menu and categorised_menu|length > 1 %}
+                    <div class="modal-food-subfilter">
+                        <button type="button" class="modal-subchip active" data-food-sub="all" onclick="filterModalFoodSub('all', this)">
+                            All Dishes <span class="subchip-badge">{{ food_cnt }}</span>
+                        </button>
+                        {% for cat_name, c_items in categorised_menu.items() %}
+                        <button type="button" class="modal-subchip" data-food-sub="{{ cat_name|lower|replace(' ', '-') }}" onclick="filterModalFoodSub('{{ cat_name|lower|replace(' ', '-') }}', this)">
+                            {{ cat_name }} <span class="subchip-badge">{{ c_items|length }}</span>
+                        </button>
+                        {% endfor %}
+                    </div>
+
+                    {% for cat_name, c_items in categorised_menu.items() %}
+                    <div class="modal-food-group" data-food-sub="{{ cat_name|lower|replace(' ', '-') }}" style="margin-bottom: 0.85rem;">
+                        <div style="font-size: 0.72rem; font-weight: 800; color: #166534; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.45rem;">
+                            {{ cat_name }} ({{ c_items|length }})
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px;">
+                            {% for item in c_items %}
+                            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.65rem 0.85rem; display: flex; flex-direction: column; gap: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 6px;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #1e293b; line-height: 1.25;">
+                                        <i class="fas fa-check-circle" style="color: #16a34a; font-size: 0.75rem; margin-right: 4px;"></i>{{ item.name }}
+                                    </span>
+                                    <span style="font-size: 0.65rem; font-weight: 700; color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1px 6px; border-radius: 12px; white-space: nowrap; flex-shrink: 0;">
+                                        {{ cat_name }}
+                                    </span>
+                                </div>
                                 {% if item.description %}
-                                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 1px;">{{ item.description }}</div>
+                                <div style="font-size: 0.75rem; color: #64748b; line-height: 1.35; padding-left: 1rem;">{{ item.description }}</div>
                                 {% endif %}
                             </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px;">
+                        {% for item in grouped_inclusions.food %}
+                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.65rem 0.85rem; display: flex; flex-direction: column; gap: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 6px;">
+                                <span style="font-size: 0.85rem; font-weight: 800; color: #1e293b; line-height: 1.25;">
+                                    <i class="fas fa-check-circle" style="color: #16a34a; font-size: 0.75rem; margin-right: 4px;"></i>{{ item.name }}
+                                </span>
+                                {% if item.quantity %}
+                                <span style="font-size: 0.65rem; font-weight: 700; color: #475569; background: #f1f5f9; padding: 1px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0;">
+                                    {{ item.quantity }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% if item.description %}
+                            <div style="font-size: 0.75rem; color: #64748b; line-height: 1.35; padding-left: 1rem;">{{ item.description }}</div>
+                            {% endif %}
                         </div>
                         {% endfor %}
                     </div>
+                    {% endif %}
                 </div>
                 {% endif %}
 
                 <!-- 2. SERVICES -->
-                {% if grouped_inclusions.services and grouped_inclusions.services|length > 0 %}
-                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                {% if svc_cnt > 0 %}
+                <div class="modal-inc-section" data-inc-cat="services" style="margin-bottom: 1.25rem;">
                     <div style="display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem; margin-bottom: 0.75rem;">
                         <span style="font-size: 1.1rem; line-height: 1;">🛎️</span>
                         <span style="font-size: 0.92rem; font-weight: 800; color: #0f172a; letter-spacing: -0.01em;">Services</span>
-                        <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 20px; margin-left: auto;">{{ grouped_inclusions.services|length }} items</span>
+                        <span style="font-size: 0.72rem; font-weight: 700; color: #1d4ed8; background: #dbeafe; padding: 2px 8px; border-radius: 20px; margin-left: auto;">{{ svc_cnt }} items</span>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.5rem 1.25rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px;">
                         {% for item in grouped_inclusions.services %}
-                        <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.875rem; line-height: 1.45;">
-                            <span style="color: #FF6B00; font-weight: 900; font-size: 1rem; line-height: 1.2;">•</span>
-                            <div style="flex: 1; min-width: 0; word-break: break-word;">
-                                <strong style="color: #1e293b; font-weight: 700;">{{ item.name }}</strong>
+                        <div style="background: #ffffff; border: 1.5px solid #bfdbfe; border-radius: 12px; padding: 0.75rem 0.9rem; display: flex; gap: 10px; align-items: flex-start; box-shadow: 0 1px 3px rgba(37,99,235,0.03);">
+                            <div style="width: 34px; height: 34px; border-radius: 10px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0; border: 1px solid #dbeafe;">
+                                <i class="fas fa-concierge-bell"></i>
+                            </div>
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                                    <strong style="font-size: 0.85rem; font-weight: 800; color: #1e3a8a;">{{ item.name }}</strong>
+                                    <span style="font-size: 0.65rem; font-weight: 800; color: #1d4ed8; background: #dbeafe; padding: 1px 7px; border-radius: 12px; white-space: nowrap;">
+                                        {{ item.quantity if item.quantity else 'Included' }}
+                                    </span>
+                                </div>
                                 {% if item.description %}
-                                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 1px;">{{ item.description }}</div>
+                                <div style="font-size: 0.75rem; color: #64748b; line-height: 1.35; margin-top: 3px;">{{ item.description }}</div>
                                 {% endif %}
                             </div>
                         </div>
@@ -188,34 +258,6 @@
                     </div>
                 </div>
                 {% endif %}
-
-                <!-- 3. EQUIPMENT -->
-                {% if grouped_inclusions.equipment and grouped_inclusions.equipment|length > 0 %}
-                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                    <div style="display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem; margin-bottom: 0.75rem;">
-                        <span style="font-size: 1.1rem; line-height: 1;">🪑</span>
-                        <span style="font-size: 0.92rem; font-weight: 800; color: #0f172a; letter-spacing: -0.01em;">Equipment</span>
-                        <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 20px; margin-left: auto;">{{ grouped_inclusions.equipment|length }} items</span>
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.5rem 1.25rem;">
-                        {% for item in grouped_inclusions.equipment %}
-                        <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.875rem; line-height: 1.45;">
-                            <span style="color: #FF6B00; font-weight: 900; font-size: 1rem; line-height: 1.2;">•</span>
-                            <div style="flex: 1; min-width: 0; word-break: break-word;">
-                                <strong style="color: #1e293b; font-weight: 700;">{{ item.name }}</strong>
-                                {% if item.quantity %}
-                                <span style="color: #64748b; font-weight: 500;"> — {{ item.quantity }}</span>
-                                {% endif %}
-                                {% if item.description %}
-                                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 1px;">{{ item.description }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-
             </div>
         </div>
         {% endif %}
@@ -448,4 +490,141 @@
     .btn-book-full:active {
         transform: scale(0.98);
     }
+
+    /* Modal Inclusions Category Filter Styles */
+    .modal-inc-filter-bar {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 4px 2px 10px 2px;
+        margin-bottom: 1.1rem;
+        border-bottom: 1.5px solid #f1f5f9;
+        scrollbar-width: thin;
+        position: sticky;
+        top: -5px;
+        background: #ffffff;
+        z-index: 5;
+    }
+    .modal-inc-filter-bar::-webkit-scrollbar {
+        height: 4px;
+    }
+    .modal-inc-filter-bar::-webkit-scrollbar-thumb {
+        background: #e2e8f0;
+        border-radius: 4px;
+    }
+    .modal-inc-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 14px;
+        border-radius: 9999px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        border: 1.5px solid #e2e8f0;
+        background: #ffffff;
+        color: #475569;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+        font-family: inherit;
+    }
+    .modal-inc-tab:hover {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+        color: #1e293b;
+    }
+    .modal-inc-tab.active {
+        background: #FF6B00;
+        border-color: #FF6B00;
+        color: #ffffff;
+        box-shadow: 0 4px 12px rgba(255, 107, 0, 0.25);
+    }
+    .modal-inc-badge {
+        font-size: 0.68rem;
+        font-weight: 800;
+        padding: 1px 7px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        color: #64748b;
+        transition: all 0.2s ease;
+    }
+    .modal-inc-tab.active .modal-inc-badge {
+        background: rgba(255, 255, 255, 0.28);
+        color: #ffffff;
+    }
+    .modal-food-subfilter {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding: 2px 2px 8px 2px;
+        margin-bottom: 0.85rem;
+        scrollbar-width: none;
+    }
+    .modal-subchip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #475569;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.15s ease;
+        flex-shrink: 0;
+        font-family: inherit;
+    }
+    .modal-subchip:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        color: #1e293b;
+    }
+    .modal-subchip.active {
+        background: #16a34a;
+        border-color: #16a34a;
+        color: #ffffff;
+        box-shadow: 0 2px 8px rgba(22, 163, 74, 0.25);
+    }
+    .modal-subchip.active .subchip-badge {
+        background: rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+    }
+    .subchip-badge {
+        font-size: 0.65rem;
+        font-weight: 800;
+        background: #e2e8f0;
+        color: #475569;
+        padding: 0 5px;
+        border-radius: 6px;
+    }
 </style>
+
+<script>
+function filterModalInclusions(cat, btn) {
+    document.querySelectorAll('.modal-inc-tab').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    document.querySelectorAll('.modal-inc-section').forEach(sec => {
+        if (cat === 'all' || sec.dataset.incCat === cat) {
+            sec.style.display = 'block';
+        } else {
+            sec.style.display = 'none';
+        }
+    });
+}
+
+function filterModalFoodSub(sub, btn) {
+    document.querySelectorAll('.modal-subchip').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    document.querySelectorAll('.modal-food-group').forEach(grp => {
+        if (sub === 'all' || grp.dataset.foodSub === sub) {
+            grp.style.display = 'block';
+        } else {
+            grp.style.display = 'none';
+        }
+    });
+}
+</script>

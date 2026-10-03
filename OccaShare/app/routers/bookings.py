@@ -134,14 +134,30 @@ def get_package_grouped_inclusions(package) -> dict:
         for link in package.service_links:
             if link.service and not link.service.is_archived:
                 qty_str = f"{link.quantity} staff" if link.quantity else ""
-                add_item('services', link.service.name, qty_str, link.service.description or '')
+                desc = link.service.description or ''
+                if hasattr(link.service, 'details_json') and link.service.details_json:
+                    incs = link.service.details_json.get('inclusions', [])
+                    if incs and isinstance(incs, list):
+                        inc_names = [i if isinstance(i, str) else i.get('name', '') for i in incs if i]
+                        inc_names = [n for n in inc_names if n]
+                        if inc_names:
+                            desc = f"{desc} • Includes: {', '.join(inc_names)}" if desc else f"Includes: {', '.join(inc_names)}"
+                add_item('services', link.service.name, qty_str, desc)
 
     # 4. Add linked equipment
     if hasattr(package, 'equipment_links') and package.equipment_links:
         for link in package.equipment_links:
             if link.equipment and not link.equipment.is_archived:
                 qty_str = f"{link.quantity} units" if link.quantity else ""
-                add_item('equipment', link.equipment.name, qty_str, link.equipment.description or '')
+                desc = link.equipment.description or ''
+                if hasattr(link.equipment, 'details_json') and link.equipment.details_json:
+                    incs = link.equipment.details_json.get('inclusions', [])
+                    if incs and isinstance(incs, list):
+                        inc_names = [i if isinstance(i, str) else i.get('name', '') for i in incs if i]
+                        inc_names = [n for n in inc_names if n]
+                        if inc_names:
+                            desc = f"{desc} • Includes: {', '.join(inc_names)}" if desc else f"Includes: {', '.join(inc_names)}"
+                add_item('equipment', link.equipment.name, qty_str, desc)
 
     return grouped
 
@@ -1269,6 +1285,7 @@ async def customize_package_page(
         "grouped_inclusions": grouped_inclusions,
         "initial_guest_count": initial_guest_count,
         "saved_customization": saved_customization,
+        "selection_rules": rules,
         "user": user,
         "current_step": 1,
         "active_page": "bookings"
@@ -1292,6 +1309,30 @@ async def save_customization_selection(
             parsed_customization = json.loads(customization_json)
         except Exception as e:
             print(f"[CustomizeSave] Error parsing JSON: {e}")
+
+    # Validate category quotas if defined
+    package = db.query(models.CateringPackage).get(package_id)
+    if package and package.selection_rules:
+        rules = package.selection_rules if isinstance(package.selection_rules, dict) else {}
+        if isinstance(package.selection_rules, str):
+            try:
+                rules = json.loads(package.selection_rules)
+            except Exception:
+                rules = {}
+        quotas = rules.get("category_quotas") if isinstance(rules.get("category_quotas"), dict) else {}
+        if quotas and isinstance(quotas, dict):
+            cat_counts = {}
+            for f in parsed_customization.get("selected_food", []):
+                cat = f.get("category") or "Others"
+                cat_counts[cat] = cat_counts.get(cat, 0) + 1
+            for cat, allowed in quotas.items():
+                if allowed is not None and str(allowed).isdigit():
+                    allowed_int = int(allowed)
+                    if allowed_int > 0 and cat_counts.get(cat, 0) > allowed_int:
+                        return RedirectResponse(
+                            url=f"/bookings/customize/{caterer_id}?package_id={package_id}&error_msg=You+can+only+select+{allowed_int}+menu+variants+for+{cat}.",
+                            status_code=303
+                        )
 
     booking_data = request.session.get("booking_data", {})
     booking_data["caterer_id"] = caterer_id
@@ -2052,12 +2093,20 @@ async def step_details_submit(
     if is_customizable_package and sess_cust:
         # Sync guest count into customization payload
         sess_cust["guest_count"] = guest_count_int
+
+        # Customizable Package Dynamic Pricing: Total = (base_price + sum(upgrade_fees)) * guest_count + services
+        base_price = float(sess_cust.get("base_price", 0)) or float((package.price_per_head or package.price or 0) if package else 0)
+        is_fixed = bool(package and getattr(package, 'pricing_mode', '') == 'fixed')
+        base_pkg_tot = base_price if is_fixed else (base_price * guest_count_int)
+        sess_cust["base_price"] = base_price
+        sess_cust["base_package_total"] = base_pkg_tot
+
         food_tot = 0.0
-        # Save customizable selected food items
+        # Save customizable selected food items with upgrade fees
         for food in sess_cust.get("selected_food", []):
             f_id = food.get("id")
-            f_price = float(food.get("price", 0))
-            f_qty = guest_count_int if (food.get("unit") in ["pax", "per_pax", "per guest", "per_guest"] or not food.get("qty") or food.get("qty") == 1) else int(food.get("qty", guest_count_int))
+            f_price = float(food.get("upgrade_fee", food.get("price", 0)))
+            f_qty = guest_count_int
             food["qty"] = f_qty
             f_sub = f_price * f_qty
             food["subtotal"] = f_sub
@@ -2109,7 +2158,7 @@ async def step_details_submit(
         sess_cust["food_total"] = food_tot
         sess_cust["services_total"] = srv_tot
         sess_cust["equipment_total"] = eq_tot
-        computed_total = food_tot + srv_tot + eq_tot + float(booking.travel_fee or 0.0)
+        computed_total = base_pkg_tot + food_tot + srv_tot + eq_tot + float(booking.travel_fee or 0.0)
         sess_cust["estimated_total"] = computed_total
         
         c_req = booking.custom_requirements or {}

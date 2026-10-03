@@ -331,6 +331,284 @@
             gap: 2rem;
         }
     }
+
+    /* ── Featured Catering Packages Grid ── */
+    .landing-packages-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.75rem;
+    }
+    @media (max-width: 640px) {
+        .landing-packages-grid {
+            grid-template-columns: 1fr;
+            gap: 1.25rem;
+        }
+    }
+    .landing-pkg-card {
+        background: #ffffff;
+        border-radius: 1.25rem;
+        overflow: hidden;
+        border: 1px solid #fed7aa;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        display: flex;
+        flex-direction: column;
+    }
+    .landing-pkg-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px rgba(249, 115, 22, 0.12);
+        border-color: #f97316;
+    }
+    .landing-pkg-thumb-wrap {
+        position: relative;
+        height: 190px;
+        background: #f1f5f9;
+        overflow: hidden;
+    }
+    .landing-pkg-thumb-wrap img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s ease;
+    }
+    .landing-pkg-card:hover .landing-pkg-thumb-wrap img {
+        transform: scale(1.05);
+    }
+    .landing-pkg-badge {
+        position: absolute;
+        top: 0.85rem;
+        left: 0.85rem;
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 4px 10px;
+        border-radius: 99px;
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .landing-pkg-badge.is-custom {
+        background: #2563eb;
+    }
+    .landing-pkg-badge.is-fixed {
+        background: #ea580c;
+    }
+    .landing-pkg-caterer-tag {
+        position: absolute;
+        bottom: 0.85rem;
+        left: 0.85rem;
+        right: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(15, 23, 42, 0.85);
+        backdrop-filter: blur(8px);
+        padding: 5px 12px;
+        border-radius: 99px;
+        color: #fff;
+        text-decoration: none;
+        max-width: fit-content;
+        transition: background 0.2s ease;
+    }
+    .landing-pkg-caterer-tag:hover {
+        background: rgba(15, 23, 42, 0.95);
+    }
+    .landing-pkg-caterer-tag img {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .landing-pkg-caterer-tag span {
+        font-size: 0.75rem;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 200px;
+    }
+    .landing-pkg-body {
+        padding: 1.25rem 1.35rem 1.35rem;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
+    .landing-pkg-title {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0 0 0.5rem;
+        line-height: 1.3;
+    }
+    .landing-pkg-desc {
+        font-size: 0.82rem;
+        color: #64748b;
+        line-height: 1.5;
+        margin: 0 0 1rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .landing-pkg-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 1rem;
+    }
+    .landing-pkg-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #475569;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        padding: 3px 9px;
+        border-radius: 8px;
+    }
+    .landing-pkg-chip i {
+        color: #f97316;
+    }
+    .landing-pkg-price-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-top: auto;
+        padding-top: 0.75rem;
+        border-top: 1px solid #f1f5f9;
+        margin-bottom: 1rem;
+    }
+    .landing-pkg-price-val {
+        font-size: 1.3rem;
+        font-weight: 900;
+        color: #ea580c;
+    }
+    .landing-pkg-price-val span {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #94a3b8;
+    }
+    .landing-pkg-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    .btn-pkg-details {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 0.65rem 0.75rem;
+        font-size: 0.78rem;
+        font-weight: 800;
+        border-radius: 10px;
+        border: 1.5px solid #fed7aa;
+        background: #fff7ed;
+        color: #c2410c;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+    .btn-pkg-details:hover {
+        background: #ffedd5;
+        border-color: #ea580c;
+        color: #9a3412;
+    }
+    .btn-pkg-book {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 0.65rem 0.75rem;
+        font-size: 0.78rem;
+        font-weight: 800;
+        border-radius: 10px;
+        border: none;
+        background: #f97316;
+        color: #ffffff;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        box-shadow: 0 2px 8px rgba(249, 115, 22, 0.25);
+    }
+    .btn-pkg-book:hover {
+        background: #ea580c;
+        color: #ffffff;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.35);
+    }
+
+    /* Modal for Landing Page Package Details */
+    .landing-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.7);
+        backdrop-filter: blur(6px);
+        z-index: 3000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+    .landing-modal-overlay.active {
+        display: flex;
+    }
+    .landing-modal-card {
+        background: #ffffff;
+        width: 100%;
+        max-width: 680px;
+        max-height: 88vh;
+        border-radius: 1.5rem;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        position: relative;
+        animation: modalZoomIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes modalZoomIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    .landing-modal-close {
+        position: absolute;
+        top: 1rem;
+        right: 1.25rem;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: rgba(15, 23, 42, 0.06);
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        font-size: 1rem;
+        transition: background 0.2s, color 0.2s;
+        z-index: 10;
+    }
+    .landing-modal-close:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: #dc2626;
+    }
+    .landing-modal-body {
+        padding: 1.75rem;
+        overflow-y: auto;
+    }
+    .landing-modal-footer {
+        padding: 1rem 1.75rem;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
 </style>
 {% endblock %}
 
@@ -453,6 +731,111 @@
 
         </div>
     </section>
+
+    {# ======= 2.5 FEATURED CATERING PACKAGES ======= #}
+    {% if packages and packages|length > 0 %}
+    <section id="packages" class="section-clean section-light-orange" style="background-color: var(--lp-bg-light, #fff7ed); padding: 5rem 0;">
+        <div class="container">
+            <div class="section-header" style="text-align: center; margin-bottom: 2.5rem;">
+                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(249, 115, 22, 0.12); color: #ea580c; border: 1px solid rgba(249, 115, 22, 0.25); padding: 4px 14px; border-radius: 99px; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.75rem;">
+                    <i class="fas fa-boxes-packing"></i> Catering Packages
+                </div>
+                <h2 style="font-size: 2.35rem; margin-bottom: 0.5rem; color: var(--lp-secondary, #1e293b); font-weight: 800;">Featured Packages</h2>
+                <p style="color: var(--lp-text-muted, #64748b); font-size: 1.05rem; max-width: 620px; margin: 0 auto;">
+                    Pre-curated and customizable menus with complete food &amp; service inclusions designed for worry-free celebrations.
+                </p>
+            </div>
+
+            <div class="landing-packages-grid animate-on-scroll">
+                {% for pkg in packages %}
+                {% set pkg_mode = (pkg.pricing_mode or 'fixed')|lower %}
+                {% set is_custom = pkg_mode == 'customizable' %}
+                <div class="landing-pkg-card">
+                    <div class="landing-pkg-thumb-wrap">
+                        {% if pkg.cover_image_url %}
+                        <img src="{{ pkg.cover_image_url }}" alt="{{ pkg.name }}" onerror="this.src='https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=800&auto=format&fit=crop'">
+                        {% else %}
+                        <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=800&auto=format&fit=crop" alt="{{ pkg.name }}">
+                        {% endif %}
+
+                        {% if is_custom %}
+                        <span class="landing-pkg-badge is-custom"><i class="fas fa-sliders-h"></i> Customizable</span>
+                        {% else %}
+                        <span class="landing-pkg-badge is-fixed"><i class="fas fa-lock"></i> Fixed Package</span>
+                        {% endif %}
+
+                        {% if pkg.caterer %}
+                        <a href="/caterers/profile/{{ pkg.caterer.id }}" class="landing-pkg-caterer-tag" title="View {{ pkg.caterer.business_name }}">
+                            {% if pkg.caterer.logo_url %}
+                            <img src="{{ pkg.caterer.logo_url }}" alt="{{ pkg.caterer.business_name }}" onerror="this.style.display='none'">
+                            {% else %}
+                            <i class="fas fa-utensils" style="font-size: 0.75rem;"></i>
+                            {% endif %}
+                            <span>{{ pkg.caterer.business_name }}</span>
+                        </a>
+                        {% endif %}
+                    </div>
+
+                    <div class="landing-pkg-body">
+                        <h3 class="landing-pkg-title">{{ pkg.name }}</h3>
+                        {% if pkg.description %}
+                        <p class="landing-pkg-desc">{{ pkg.description }}</p>
+                        {% else %}
+                        <p class="landing-pkg-desc" style="color: #94a3b8; font-style: italic;">Complete catering package tailored for events and celebrations.</p>
+                        {% endif %}
+
+                        <div class="landing-pkg-meta">
+                            {% if pkg.min_guests or pkg.max_guests %}
+                            <span class="landing-pkg-chip">
+                                <i class="fas fa-users"></i>
+                                {% if pkg.min_guests and pkg.max_guests %}
+                                {{ pkg.min_guests }} - {{ pkg.max_guests }} Pax
+                                {% elif pkg.min_guests %}
+                                Min. {{ pkg.min_guests }} Pax
+                                {% elif pkg.max_guests %}
+                                Up to {{ pkg.max_guests }} Pax
+                                {% endif %}
+                            </span>
+                            {% endif %}
+                            <span class="landing-pkg-chip">
+                                <i class="fas fa-clock"></i> {{ pkg.service_duration or 4 }} Hours
+                            </span>
+                        </div>
+
+                        <div class="landing-pkg-price-row">
+                            <span style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">Price</span>
+                            <div class="landing-pkg-price-val">
+                                {% if is_custom %}
+                                <span style="color: #16a34a; font-size: 1.1rem;">Build Your Own</span>
+                                {% elif pkg.pricing_mode == 'per_pax' or pkg.price_unit == 'per_guest' %}
+                                ₱{{ "{:,.2f}".format(pkg.price_per_head if pkg.price_per_head else (pkg.price if pkg.price else 0)) }} <span>/pax</span>
+                                {% else %}
+                                ₱{{ "{:,.2f}".format(pkg.price if pkg.price else (pkg.price_per_head if pkg.price_per_head else 0)) }} <span>fixed</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="landing-pkg-actions">
+                            <button type="button" class="btn-pkg-details" onclick="openLandingPkgDetails({{ pkg.id }})">
+                                <i class="fas fa-eye"></i> View Details
+                            </button>
+                            {% if is_custom %}
+                            <a href="/bookings/customize/{{ pkg.caterer_id }}?package_id={{ pkg.id }}" class="btn-pkg-book">
+                                <i class="fas fa-sliders-h"></i> Customize
+                            </a>
+                            {% else %}
+                            <a href="/bookings/start/{{ pkg.caterer_id }}?package_id={{ pkg.id }}" class="btn-pkg-book">
+                                <i class="fas fa-calendar-check"></i> Book Now
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
 
     {# ======= 3. EVENT CATEGORIES ======= #}
     <section id="categories" class="section-clean section-light-orange"
@@ -736,6 +1119,263 @@
         setInterval(nextSlide, INTERVAL);
     })();
 
+    /* ============================================
+       LANDING PAGE — Package Details Modal & Filter Pills
+    (Category filter pills: All, Menu / Food, Services - Equipment and menu choices excluded)
+       ============================================ */
+    const landingPackagesData = {
+        {% for pkg in packages %}
+        {% set pkg_mode = (pkg.pricing_mode or 'fixed')|lower %}
+        {% set is_custom = pkg_mode == 'customizable' %}
+        "{{ pkg.id }}": {
+            id: {{ pkg.id }},
+            name: {{ pkg.name|tojson }},
+            desc: {{ (pkg.description or '')|tojson }},
+            pricing_mode: {{ pkg_mode|tojson }},
+            is_customizable: {{ 'true' if is_custom else 'false' }},
+            caterer_id: {{ pkg.caterer_id }},
+            caterer_name: {{ (pkg.caterer.business_name if pkg.caterer else 'Catering Partner')|tojson }},
+            caterer_logo: {{ (pkg.caterer.logo_url if pkg.caterer and pkg.caterer.logo_url else '')|tojson }},
+            price_display: {% if is_custom %}'Build Your Own (Pay per selection)'{% elif pkg.pricing_mode == 'per_pax' or pkg.price_unit == 'per_guest' %}'₱{{ "{:,.2f}".format(pkg.price_per_head if pkg.price_per_head else (pkg.price if pkg.price else 0)) }} /pax'{% else %}'₱{{ "{:,.2f}".format(pkg.price if pkg.price else (pkg.price_per_head if pkg.price_per_head else 0)) }} total'{% endif %},
+            min_guests: {{ (pkg.min_guests or 0)|tojson }},
+            max_guests: {{ (pkg.max_guests or 0)|tojson }},
+            duration: "{{ pkg.service_duration or 4 }} hrs",
+            additional_guest_price: {{ (pkg.additional_guest_price or 0)|tojson }},
+            overtime_fee: {{ (pkg.overtime_fee or 0)|tojson }},
+            inclusions: {{ (pkg.inclusions)|tojson if pkg.inclusions else '[]' }},
+            dishes: [{% for item in pkg.menu_items %}{% if item.category not in ['Rentals', 'Equipment'] %}{{ item.name|tojson }},{% endif %}{% endfor %}].filter(Boolean),
+            services: [{% if pkg.service_links %}{% for sl in pkg.service_links %}{{ sl.service.name|tojson }},{% endfor %}{% endif %}].filter(Boolean)
+        },
+        {% endfor %}
+    };
 
+    function openLandingPkgDetails(id) {
+        const pkg = landingPackagesData[id];
+        if (!pkg) return;
+
+        const esc = (s) => String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+        // Normalize inclusions and exclude equipment and menu-choice categories
+        let normalizedInclusions = [];
+        try {
+            let raw = pkg.inclusions;
+            if (typeof raw === 'string') {
+                try { raw = JSON.parse(raw); } catch (e) { raw = raw.split(',').map(s => s.trim()).filter(Boolean); }
+            }
+            if (Array.isArray(raw)) {
+                raw.forEach(item => {
+                    if (!item) return;
+                    if (typeof item === 'string') {
+                        normalizedInclusions.push({ category: 'Menu / Food', name: item, description: '' });
+                    } else if (typeof item === 'object') {
+                        const name = item.name || item.item_name || '';
+                        if (!name) return;
+                        const rawCat = String(item.category || item.item_type || 'Menu / Food').toLowerCase();
+                        // EXCLUDE EQUIPMENT AND MENU CHOICES
+                        if (rawCat.includes('equip') || rawCat.includes('rental') || rawCat.includes('chair') || rawCat.includes('table') || rawCat.includes('choice')) {
+                            return;
+                        }
+                        const cat = (rawCat.includes('service') || rawCat.includes('staff')) ? 'Service' : 'Menu / Food';
+                        normalizedInclusions.push({
+                            category: cat,
+                            name: name,
+                            quantity: item.quantity || item.qty || '',
+                            description: item.description || item.details || ''
+                        });
+                    }
+                });
+            }
+        } catch (err) {
+            console.error('Error parsing package inclusions:', err);
+        }
+
+        // Add dishes if not already in inclusions
+        if (pkg.dishes && Array.isArray(pkg.dishes)) {
+            pkg.dishes.forEach(dishName => {
+                if (dishName && !normalizedInclusions.some(i => i.name.toLowerCase() === String(dishName).toLowerCase())) {
+                    normalizedInclusions.push({ category: 'Menu / Food', name: dishName, description: '' });
+                }
+            });
+        }
+
+        // Add services if not already in inclusions
+        if (pkg.services && Array.isArray(pkg.services)) {
+            pkg.services.forEach(svcName => {
+                if (svcName && !normalizedInclusions.some(i => i.name.toLowerCase() === String(svcName).toLowerCase())) {
+                    normalizedInclusions.push({ category: 'Service', name: svcName, description: '' });
+                }
+            });
+        }
+
+        // Filter out any equipment (strictly Food & Services only)
+        normalizedInclusions = normalizedInclusions.filter(i => i.category !== 'Equipment');
+
+        const groupedInc = { 'Menu / Food': [], 'Service': [] };
+        normalizedInclusions.forEach(item => {
+            const cat = item.category || 'Menu / Food';
+            if (!groupedInc[cat]) groupedInc[cat] = [];
+            groupedInc[cat].push(item);
+        });
+
+        const catThemes = {
+            'Menu / Food': { title: 'Food & Menu Inclusions', icon: 'fas fa-utensils', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
+            'Service': { title: 'Services Included', icon: 'fas fa-concierge-bell', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' }
+        };
+
+        const activeCats = Object.keys(groupedInc).filter(c => groupedInc[c] && groupedInc[c].length > 0);
+
+        let pillsHtml = '';
+        if (activeCats.length > 1) {
+            pillsHtml = `
+            <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:1.25rem;" class="custom-scrollbar">
+                <button type="button" class="landing-pkg-cat-pill" onclick="switchLandingPkgCat('all', this)" style="padding:5px 12px;font-size:0.75rem;font-weight:700;border-radius:20px;border:1.5px solid #ea580c;background:#ea580c;color:#fff;cursor:pointer;white-space:nowrap;">All (${normalizedInclusions.length})</button>
+                ${activeCats.map(cat => {
+                    const count = groupedInc[cat].length;
+                    return `<button type="button" class="landing-pkg-cat-pill" onclick="switchLandingPkgCat('${cat}', this)" style="padding:5px 12px;font-size:0.75rem;font-weight:700;border-radius:20px;border:1px solid #cbd5e1;background:#f8fafc;color:#475569;cursor:pointer;white-space:nowrap;">${cat} (${count})</button>`;
+                }).join('')}
+            </div>`;
+        }
+
+        let groupsHtml = '';
+        for (const [cat, items] of Object.entries(groupedInc)) {
+            if (!items || items.length === 0) continue;
+            const theme = catThemes[cat] || catThemes['Menu / Food'];
+            groupsHtml += `
+            <div class="landing-pkg-cat-group" data-cat="${cat}" style="margin-bottom: 1.25rem;">
+                <h4 style="font-size: 0.72rem; font-weight: 800; color: ${theme.color}; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px;">
+                    <i class="${theme.icon}"></i> ${theme.title}
+                    <span style="font-size: 0.68rem; background: ${theme.bg}; border: 1px solid ${theme.border}; padding: 1px 7px; border-radius: 12px; margin-left: auto;">${items.length}</span>
+                </h4>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    ${items.map(it => `
+                        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:0.75rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:30px;height:30px;border-radius:8px;background:${theme.bg};color:${theme.color};display:flex;align-items:center;justify-content:center;font-size:0.85rem;flex-shrink:0;">
+                                    <i class="${theme.icon}"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:0.85rem;font-weight:700;color:#1e293b;">${esc(it.name)}</div>
+                                    ${it.description ? `<div style="font-size:0.75rem;color:#64748b;margin-top:2px;">${esc(it.description)}</div>` : ''}
+                                </div>
+                            </div>
+                            ${it.quantity ? `<span style="font-size:0.7rem;font-weight:700;color:#475569;background:#f1f5f9;padding:2px 8px;border-radius:6px;">${esc(it.quantity)}</span>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>`;
+        }
+
+        const modeBadge = pkg.is_customizable
+            ? `<span style="display:inline-flex;align-items:center;gap:5px;font-size:0.68rem;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;color:#fff;background:#2563eb;padding:3px 9px;border-radius:99px;margin-bottom:0.5rem;"><i class="fas fa-sliders-h"></i> Customizable</span>`
+            : `<span style="display:inline-flex;align-items:center;gap:5px;font-size:0.68rem;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;color:#fff;background:#ea580c;padding:3px 9px;border-radius:99px;margin-bottom:0.5rem;"><i class="fas fa-lock"></i> Fixed Package</span>`;
+
+        let addGuestInfo = '';
+        if (pkg.additional_guest_price > 0) {
+            addGuestInfo = `<div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid #f1f5f9;"><span style="color:#64748b;">Additional Guest</span><span style="font-weight:700;color:#1e293b;">₱${parseFloat(pkg.additional_guest_price).toLocaleString('en-PH', {minimumFractionDigits:2})} /pax</span></div>`;
+        }
+        let overtimeInfo = '';
+        if (pkg.overtime_fee > 0) {
+            overtimeInfo = `<div style="display:flex;justify-content:space-between;padding:0.4rem 0;"><span style="color:#64748b;">Overtime Fee</span><span style="font-weight:700;color:#1e293b;">₱${parseFloat(pkg.overtime_fee).toLocaleString('en-PH', {minimumFractionDigits:2})} /hr</span></div>`;
+        }
+
+        const bookUrl = pkg.is_customizable
+            ? `/bookings/customize/${pkg.caterer_id}?package_id=${pkg.id}`
+            : `/bookings/start/${pkg.caterer_id}?package_id=${pkg.id}`;
+
+        const contentHtml = `
+            <div style="margin-bottom: 1.25rem;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:0.35rem;">
+                    <div style="font-size:0.75rem;font-weight:700;color:#ea580c;display:flex;align-items:center;gap:6px;">
+                        <i class="fas fa-utensils"></i> ${esc(pkg.caterer_name)}
+                    </div>
+                    ${modeBadge}
+                </div>
+                <h3 style="font-size: 1.4rem; font-weight: 900; color: #0f172a; margin: 0 0 0.4rem;">${esc(pkg.name)}</h3>
+                <div style="font-size: 1.35rem; font-weight: 900; color: #ea580c; margin-bottom: 0.75rem;">${pkg.price_display}</div>
+                ${pkg.desc ? `<p style="font-size:0.85rem;color:#475569;line-height:1.6;margin-bottom:1rem;">${esc(pkg.desc)}</p>` : ''}
+            </div>
+
+            <div style="background:#f8fafc;border-radius:12px;padding:0.9rem 1.1rem;border:1px solid #e2e8f0;font-size:0.8rem;margin-bottom:1.25rem;">
+                <div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid #f1f5f9;">
+                    <span style="color:#64748b;">Guest Capacity</span>
+                    <span style="font-weight:700;color:#1e293b;">${pkg.min_guests > 0 ? 'Min. ' + pkg.min_guests : '—'}${pkg.max_guests > 0 ? ' · Max. ' + pkg.max_guests : ''} pax</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:0.4rem 0;${(addGuestInfo || overtimeInfo) ? 'border-bottom:1px solid #f1f5f9;' : ''}">
+                    <span style="color:#64748b;">Service Duration</span>
+                    <span style="font-weight:700;color:#1e293b;">${esc(pkg.duration)}</span>
+                </div>
+                ${addGuestInfo}
+                ${overtimeInfo}
+            </div>
+
+            ${pillsHtml}
+            ${groupsHtml}
+        `;
+
+        const modal = document.getElementById('landingPkgModal');
+        const contentEl = document.getElementById('landingPkgModalContent');
+        const bookBtn = document.getElementById('landingPkgModalBookBtn');
+
+        if (contentEl) contentEl.innerHTML = contentHtml;
+        if (bookBtn) {
+            bookBtn.href = bookUrl;
+            bookBtn.innerHTML = pkg.is_customizable
+                ? '<i class="fas fa-sliders-h"></i> Customize this Package'
+                : '<i class="fas fa-calendar-check"></i> Book this Package';
+        }
+
+        if (modal) {
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeLandingPkgModal() {
+        const modal = document.getElementById('landingPkgModal');
+        if (modal) modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    window.switchLandingPkgCat = function(targetCat, btn) {
+        const container = document.getElementById('landingPkgModalContent');
+        if (!container) return;
+
+        container.querySelectorAll('.landing-pkg-cat-pill').forEach(b => {
+            b.style.background = '#f8fafc';
+            b.style.color = '#475569';
+            b.style.borderColor = '#cbd5e1';
+        });
+
+        btn.style.background = '#ea580c';
+        btn.style.color = '#fff';
+        btn.style.borderColor = '#ea580c';
+
+        container.querySelectorAll('.landing-pkg-cat-group').forEach(grp => {
+            if (targetCat === 'all' || grp.getAttribute('data-cat') === targetCat) {
+                grp.style.display = 'block';
+            } else {
+                grp.style.display = 'none';
+            }
+        });
+    };
 </script>
+
+<!-- Landing Page Package Details Modal -->
+<div id="landingPkgModal" class="landing-modal-overlay" onclick="if(event.target === this) closeLandingPkgModal();">
+    <div class="landing-modal-card">
+        <button type="button" class="landing-modal-close" onclick="closeLandingPkgModal()" aria-label="Close modal">
+            <i class="fas fa-times"></i>
+        </button>
+        <div id="landingPkgModalContent" class="landing-modal-body"></div>
+        <div class="landing-modal-footer">
+            <button type="button" onclick="closeLandingPkgModal()" style="padding:0.65rem 1.25rem;border-radius:10px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-weight:700;font-size:0.8rem;cursor:pointer;">
+                Close
+            </button>
+            <a id="landingPkgModalBookBtn" href="#" class="btn-pkg-book" style="padding:0.65rem 1.5rem;font-size:0.85rem;">
+                <i class="fas fa-calendar-check"></i> Book this Package
+            </a>
+        </div>
+    </div>
+</div>
 {% endblock %}

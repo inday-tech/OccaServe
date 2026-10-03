@@ -272,13 +272,20 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             eventDidMount: function (info) {
                 // Filter logic
-                let eType = (info.event.extendedProps.eventType || info.event.extendedProps.type || '').toLowerCase();
+                let eType = (info.event.extendedProps.recordType || info.event.extendedProps.eventType || info.event.extendedProps.type || '').toLowerCase();
                 let fType = 'booking';
                 if (eType === 'reminder') fType = 'reminder';
                 else if (eType === 'preparation') fType = 'preparation';
                 else if (['task', 'meeting', 'other'].includes(eType)) fType = 'task';
                 else if (eType === 'blocked' || info.event.title === 'BLOCKED') fType = 'blocked';
                 
+                // Active pill filter button check
+                if (window.activeCalendarFilter && window.activeCalendarFilter !== 'all') {
+                    if (fType !== window.activeCalendarFilter) {
+                        info.el.style.display = 'none';
+                    }
+                }
+
                 let isChecked = true;
                 const cbs = document.querySelectorAll('.cal-filter-cb');
                 if (cbs.length > 0) {
@@ -313,7 +320,20 @@ document.addEventListener('DOMContentLoaded', function () {
         calendar.render();
         window.fullCalendarInstance = calendar;
 
-    // Calendar Filters
+    // Calendar Filters (.cal-filter-cb and .filter-btn)
+    window.activeCalendarFilter = 'all';
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            window.activeCalendarFilter = this.getAttribute('data-filter') || 'all';
+            if (window.fullCalendarInstance) {
+                window.fullCalendarInstance.render();
+            }
+        });
+    });
+
     document.querySelectorAll('.cal-filter-cb').forEach(cb => {
         cb.addEventListener('change', () => {
             if (window.fullCalendarInstance) {
@@ -1973,6 +1993,24 @@ window.openExternalBookingModal = function() {
         window.initWalkinAddressDropdowns();
     }
 
+    // Reset status and notes
+    const statusSelect = document.getElementById('extBookingStatus');
+    if (statusSelect) statusSelect.value = 'pending';
+    const notesInput = document.getElementById('extBookingNotes');
+    if (notesInput) notesInput.value = '';
+
+    // Reset discount
+    const discInput = document.getElementById('extDiscountInput');
+    if (discInput) discInput.value = '0.00';
+    const discAmt = document.getElementById('extDiscountAmount');
+    if (discAmt) discAmt.value = 0;
+
+    // Reset downpayment / amount paid
+    const dpInput = document.getElementById('extDownpaymentInput');
+    if (dpInput) dpInput.value = '0.00';
+    const dpAmt = document.getElementById('extDownpaymentAmount');
+    if (dpAmt) dpAmt.value = 0;
+
     // Reset totals
     if (typeof recalculateWalkinTotals === 'function') {
         recalculateWalkinTotals();
@@ -1981,12 +2019,13 @@ window.openExternalBookingModal = function() {
         window.recalcEquipRentalTotals();
     }
 
-    // Default booking dates to min_booking_date if available
+    // Allow historical dates for walk-in bookings without min-date restriction
     const dateInput = document.getElementById('extEventDate');
-    if (dateInput && window.MIN_BOOKING_DATE) {
-        dateInput.min = window.MIN_BOOKING_DATE;
+    if (dateInput) {
+        dateInput.removeAttribute('min');
         if (!dateInput.value) {
-            dateInput.value = window.MIN_BOOKING_DATE;
+            const todayStr = new Date().toISOString().split('T')[0];
+            dateInput.value = todayStr;
         }
     }
 
@@ -1996,6 +2035,19 @@ window.openExternalBookingModal = function() {
         if (!eqDateInput.value) {
             eqDateInput.value = window.MIN_BOOKING_DATE;
         }
+    }
+
+    // Attach live summary update listeners
+    ['extVenue', 'extEventTime', 'extCustomerContact', 'extFullName', 'extMotifTheme'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && !el.dataset.summaryBound) {
+            el.addEventListener('input', () => { if (window.updateWalkinSummary) window.updateWalkinSummary(); });
+            el.dataset.summaryBound = 'true';
+        }
+    });
+
+    if (window.updateWalkinSummary) {
+        window.updateWalkinSummary();
     }
 
     const modal = document.getElementById('externalBookingModal');
@@ -2043,14 +2095,14 @@ window.handleWalkinEventTypeChange = function(eventType) {
                 <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
                     Bride's Full Name <span style="color: #ef4444;">*</span>
                 </label>
-                <input type="text" id="extBrideName" class="control-pro" placeholder="e.g. Maria Santos" required oninput="clearWalkinError('extBrideName')">
+                <input type="text" id="extBrideName" class="control-pro" placeholder="e.g. Maria Santos" required oninput="clearWalkinError('extBrideName'); if(window.updateWalkinSummary) window.updateWalkinSummary();">
                 <div class="field-error-msg" id="error-extBrideName" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
             </div>
             <div class="form-group-pro">
                 <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
                     Groom's Full Name <span style="color: #ef4444;">*</span>
                 </label>
-                <input type="text" id="extGroomName" class="control-pro" placeholder="e.g. Juan Dela Cruz" required oninput="clearWalkinError('extGroomName')">
+                <input type="text" id="extGroomName" class="control-pro" placeholder="e.g. Juan Dela Cruz" required oninput="clearWalkinError('extGroomName'); if(window.updateWalkinSummary) window.updateWalkinSummary();">
                 <div class="field-error-msg" id="error-extGroomName" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
             </div>
         `;
@@ -2061,7 +2113,7 @@ window.handleWalkinEventTypeChange = function(eventType) {
                 <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
                     ${titleLabel} <span style="color: #ef4444;">*</span>
                 </label>
-                <input type="text" id="extCelebrantName" class="control-pro" placeholder="e.g. Maria Santos" required oninput="clearWalkinError('extCelebrantName')">
+                <input type="text" id="extCelebrantName" class="control-pro" placeholder="e.g. Maria Santos" required oninput="clearWalkinError('extCelebrantName'); if(window.updateWalkinSummary) window.updateWalkinSummary();">
                 <div class="field-error-msg" id="error-extCelebrantName" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
             </div>
         `;
@@ -2071,7 +2123,7 @@ window.handleWalkinEventTypeChange = function(eventType) {
                 <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
                     Contact Person / Event Representative <span style="color: #ef4444;">*</span>
                 </label>
-                <input type="text" id="extRepresentativeName" class="control-pro" placeholder="e.g. Juan Dela Cruz (HR Coordinator)" required oninput="clearWalkinError('extRepresentativeName')">
+                <input type="text" id="extRepresentativeName" class="control-pro" placeholder="e.g. Juan Dela Cruz (HR Coordinator)" required oninput="clearWalkinError('extRepresentativeName'); if(window.updateWalkinSummary) window.updateWalkinSummary();">
                 <div class="field-error-msg" id="error-extRepresentativeName" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
             </div>
         `;
@@ -2081,10 +2133,14 @@ window.handleWalkinEventTypeChange = function(eventType) {
                 <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
                     Customer Full Name <span style="color: #ef4444;">*</span>
                 </label>
-                <input type="text" id="extFullName" class="control-pro" placeholder="e.g. Juan Dela Cruz" required oninput="clearWalkinError('extFullName')">
+                <input type="text" id="extFullName" class="control-pro" placeholder="e.g. Juan Dela Cruz" required oninput="clearWalkinError('extFullName'); if(window.updateWalkinSummary) window.updateWalkinSummary();">
                 <div class="field-error-msg" id="error-extFullName" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
             </div>
         `;
+    }
+
+    if (window.updateWalkinSummary) {
+        window.updateWalkinSummary();
     }
 };
 
@@ -2353,37 +2409,58 @@ window.renderWalkinServicesList = function() {
             html += `
                 <div id="walkin_service_card_${id}" class="walkin-service-card ${isChecked ? 'is-checked' : ''}" data-service-id="${id}">
                     <div class="walkin-service-top-row">
-                        <label class="walkin-service-label" for="walkin_cb_${id}">
-                            <input type="checkbox" id="walkin_cb_${id}" class="walkin-service-checkbox" data-service-id="${id}" data-name="${escapeHtml(s.name)}" data-category="${escapeHtml(s.category || 'Service')}" data-type="catalog" ${isChecked ? 'checked' : ''} onchange="handleWalkinServiceToggle('${id}', false)">
-                            <div class="walkin-service-icon" style="background: ${iconColor}15; color: ${iconColor};">
-                                <i class="${iconClass}"></i>
-                            </div>
-                            <div style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
-                                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                                    <span class="walkin-service-name" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</span>
-                                    <span class="walkin-service-active-pill" title="Active Service"><i class="fas fa-check"></i> Active</span>
-                                    ${s.category ? `<span class="walkin-service-category">${escapeHtml(s.category)}</span>` : ''}
+                        <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
+                            <!-- Checkbox outside label to fix click desync / 0 selected bug -->
+                            <input type="checkbox" id="walkin_cb_${id}" class="walkin-service-checkbox" data-service-id="${id}" data-catalog-id="${s.id}" data-name="${escapeHtml(s.name)}" data-category="${escapeHtml(s.category || 'Service')}" data-type="catalog" ${isChecked ? 'checked' : ''} onchange="handleWalkinServiceToggle('${id}', false)">
+                            <label for="walkin_cb_${id}" style="cursor: pointer; display: flex; align-items: center; gap: 8px; margin: 0; flex: 1; min-width: 0;">
+                                <div class="walkin-service-icon" style="background: ${iconColor}15; color: ${iconColor};">
+                                    <i class="${iconClass}"></i>
                                 </div>
-                                ${s.notes || s.description ? `<div style="font-size: 0.76rem; color: #64748b; margin-top: 2px;">${escapeHtml(s.notes || s.description)}</div>` : ''}
-                            </div>
-                        </label>
+                                <div style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                        <span class="walkin-service-name" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</span>
+                                        <span class="walkin-service-active-pill" title="Active Service"><i class="fas fa-check"></i> Active</span>
+                                        ${s.category ? `<span class="walkin-service-category">${escapeHtml(s.category)}</span>` : ''}
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
 
-                        <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
-                            <span class="walkin-service-price-tag">₱${priceStr}</span>
-                            <div style="display: flex; align-items: center; gap: 4px;">
-                                <button type="button" class="btn-svc-action" onclick="startEditWalkinService(${s.id})" title="Edit service">
-                                    <i class="fas fa-pencil-alt"></i> Edit
+                        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                            <!-- Quantity -->
+                            <div style="display: flex; align-items: center; gap: 3px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px 6px;" title="Quantity">
+                                <span style="font-size: 0.68rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Qty</span>
+                                <input type="number" id="walkin_qty_${id}" class="walkin-service-qty" min="1" value="1" style="width: 44px; border: none; background: transparent; text-align: center; font-weight: 700; font-size: 0.82rem; color: #0f172a; outline: none;" oninput="handleWalkinServiceQtyChange('${id}')">
+                            </div>
+
+                            <!-- Unit Price -->
+                            <div class="walkin-amount-box is-active" id="walkin_amount_box_${id}" style="width: 105px; min-width: 105px; max-width: 105px; height: 32px;" title="Unit Price">
+                                <span class="walkin-currency-symbol">₱</span>
+                                <input type="text" id="walkin_amount_${id}" class="walkin-service-amount" value="${priceStr}" placeholder="0.00" oninput="handleWalkinServiceAmountInput(this, '${id}')" onblur="handleWalkinServiceAmountBlur(this, '${id}')" onfocus="handleWalkinServiceAmountFocus(this, '${id}')">
+                            </div>
+
+                            <!-- Subtotal = Qty * Unit Price -->
+                            <div style="min-width: 80px; text-align: right;" title="Subtotal = Qty &times; Unit Price">
+                                <span style="font-size: 0.65rem; color: #64748b; font-weight: 700; text-transform: uppercase; display: block; line-height: 1;">Subtotal</span>
+                                <span id="walkin_subtotal_${id}" style="font-size: 0.88rem; font-weight: 800; color: #0f172a;">₱${priceStr}</span>
+                            </div>
+
+                            <!-- Edit / Delete Actions -->
+                            <div style="display: flex; align-items: center; gap: 2px;">
+                                <button type="button" class="btn-svc-action" onclick="startEditWalkinService(${s.id})" title="Edit service in catalog" style="padding: 3px 6px;">
+                                    <i class="fas fa-pencil-alt"></i>
                                 </button>
-                                <button type="button" class="btn-svc-action btn-delete" onclick="promptDeleteWalkinService(${s.id}, '${escapeHtml(s.name)}')" title="Delete service">
-                                    <i class="fas fa-trash-alt"></i> Delete
+                                <button type="button" class="btn-svc-action btn-delete" onclick="promptDeleteWalkinService(${s.id}, '${escapeHtml(s.name)}')" title="Delete from catalog" style="padding: 3px 6px;">
+                                    <i class="fas fa-trash-alt"></i>
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Hidden sync fields for external booking submission and total calculations -->
-                    <input type="hidden" id="walkin_amount_${id}" value="${priceStr}">
-                    <input type="hidden" id="walkin_note_${id}" value="${escapeHtml(s.notes || s.description || '')}">
+                    <!-- Notes / Specifications for this service -->
+                    <div style="margin-left: 28px;">
+                        <input type="text" id="walkin_note_${id}" class="walkin-service-note-input" value="${escapeHtml(s.notes || s.description || '')}" placeholder="Optional notes, inclusions, or specifications..." oninput="recalculateWalkinTotals()">
+                    </div>
                 </div>
             `;
         }
@@ -2397,23 +2474,37 @@ window.renderWalkinServicesList = function() {
         html += `
             <div id="walkin_service_card_${id}" class="walkin-service-card is-draft" data-service-id="${id}">
                 <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                    <div class="walkin-service-top-row">
                         <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
-                            <input type="checkbox" id="walkin_cb_${id}" class="walkin-service-checkbox" data-service-id="${id}" data-type="draft" checked title="Include in this booking">
-                            <input type="text" id="walkin_custom_name_${id}" class="control-pro" placeholder="Service / Inclusion Name (e.g. 360 Photobooth)..." value="${escapeHtml(draft.name || '')}" style="font-size: 0.85rem; font-weight: 700; padding: 4px 8px; height: 34px; flex: 1;" oninput="handleWalkinDraftNameInput(this, '${draft.id}')">
+                            <input type="checkbox" id="walkin_cb_${id}" class="walkin-service-checkbox" data-service-id="${id}" data-type="draft" checked title="Include in this booking" onchange="handleWalkinServiceToggle('${id}', true)">
+                            <input type="text" id="walkin_custom_name_${id}" class="control-pro" placeholder="Service / Inclusion Name (e.g. 360 Photobooth)..." value="${escapeHtml(draft.name || '')}" style="font-size: 0.85rem; font-weight: 700; padding: 4px 8px; height: 32px; flex: 1;" oninput="handleWalkinDraftNameInput(this, '${draft.id}')">
                         </div>
 
-                        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-                            <div id="walkin_amount_box_${id}" class="walkin-amount-box is-active">
+                        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                            <!-- Quantity -->
+                            <div style="display: flex; align-items: center; gap: 3px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px 6px;" title="Quantity">
+                                <span style="font-size: 0.68rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Qty</span>
+                                <input type="number" id="walkin_qty_${id}" class="walkin-service-qty" min="1" value="${draft.qty || 1}" style="width: 44px; border: none; background: transparent; text-align: center; font-weight: 700; font-size: 0.82rem; color: #0f172a; outline: none;" oninput="handleWalkinServiceQtyChange('${id}')">
+                            </div>
+
+                            <!-- Unit Price -->
+                            <div id="walkin_amount_box_${id}" class="walkin-amount-box is-active" style="width: 105px; min-width: 105px; max-width: 105px; height: 32px;" title="Unit Price">
                                 <span class="walkin-currency-symbol">₱</span>
                                 <input type="text" id="walkin_amount_${id}" class="walkin-service-amount" placeholder="0.00" value="${priceStr}" oninput="handleWalkinServiceAmountInput(this, '${id}')" onblur="handleWalkinServiceAmountBlur(this, '${id}')" onfocus="handleWalkinServiceAmountFocus(this, '${id}')">
                             </div>
-                            <!-- SAVE BUTTON: Checkmark icon beside trash icon -->
-                            <button type="button" id="btn_save_draft_${draft.id}" class="btn-draft-save" onclick="saveWalkinDraftService('${draft.id}')" title="Save this service to database">
+
+                            <!-- Subtotal -->
+                            <div style="min-width: 80px; text-align: right;" title="Subtotal = Qty &times; Unit Price">
+                                <span style="font-size: 0.65rem; color: #64748b; font-weight: 700; text-transform: uppercase; display: block; line-height: 1;">Subtotal</span>
+                                <span id="walkin_subtotal_${id}" style="font-size: 0.88rem; font-weight: 800; color: #0f172a;">₱${priceStr || '0.00'}</span>
+                            </div>
+
+                            <!-- SAVE BUTTON: Checkmark icon -->
+                            <button type="button" id="btn_save_draft_${draft.id}" class="btn-draft-save" onclick="saveWalkinDraftService('${draft.id}')" title="Save this service to database" style="width: 30px; height: 30px;">
                                 <i class="fas fa-check"></i>
                             </button>
                             <!-- DISCARD DRAFT BUTTON: Trash icon -->
-                            <button type="button" class="btn-draft-trash" onclick="cancelWalkinDraft('${draft.id}')" title="Discard this draft">
+                            <button type="button" class="btn-draft-trash" onclick="cancelWalkinDraft('${draft.id}')" title="Discard this draft" style="width: 30px; height: 30px;">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
                         </div>
@@ -2439,6 +2530,7 @@ window.addWalkinCustomService = function() {
         id: draftId,
         name: '',
         price: 0,
+        qty: 1,
         notes: ''
     });
     window.renderWalkinServicesList();
@@ -2468,6 +2560,7 @@ window.handleWalkinDraftNameInput = function(input, draftId) {
         errEl.innerText = '';
         errEl.style.display = 'none';
     }
+    if (window.updateWalkinSummary) window.updateWalkinSummary();
 };
 
 window.handleWalkinDraftNoteInput = function(input, draftId) {
@@ -2750,6 +2843,17 @@ window.handleWalkinServiceToggle = function(id, isCustom) {
     recalculateWalkinTotals();
 };
 
+window.handleWalkinServiceQtyChange = function(id) {
+    const qtyInput = document.getElementById(`walkin_qty_${id}`);
+    if (qtyInput) {
+        let val = parseInt(qtyInput.value);
+        if (isNaN(val) || val < 1) {
+            qtyInput.value = 1;
+        }
+    }
+    recalculateWalkinTotals();
+};
+
 window.handleWalkinServiceAmountInput = function(input, id) {
     const errEl = document.getElementById('error-walkinServices');
     if (errEl) {
@@ -2780,9 +2884,10 @@ window.handleWalkinServiceAmountInput = function(input, id) {
         input.setSelectionRange(newSel, newSel);
     }
 
-    if (id.startsWith('custom_')) {
-        const cs = window.walkinCustomServices.find(item => item.id === id);
-        if (cs) cs.price = parseCurrencyFloat(formatted);
+    if (id.startsWith('draft_')) {
+        const rawId = id.replace('draft_', '');
+        const draft = (window.walkinDraftServices || []).find(item => item.id === rawId);
+        if (draft) draft.price = parseCurrencyFloat(formatted);
     }
 
     recalculateWalkinTotals();
@@ -2801,19 +2906,19 @@ window.handleWalkinServiceAmountBlur = function(input, id) {
     if (rawNum > 0) {
         input.value = formatCurrencyString(rawNum);
     } else {
-        input.value = '';
+        input.value = '0.00';
     }
 
-    if (id.startsWith('custom_')) {
-        const cs = window.walkinCustomServices.find(item => item.id === id);
-        if (cs) cs.price = rawNum;
+    if (id.startsWith('draft_')) {
+        const rawId = id.replace('draft_', '');
+        const draft = (window.walkinDraftServices || []).find(item => item.id === rawId);
+        if (draft) draft.price = rawNum;
     }
 
     recalculateWalkinTotals();
 };
 
 function updateSelectedServicesCount() {
-    const allCbs = document.querySelectorAll('.walkin-service-checkbox');
     const checkedCbs = document.querySelectorAll('.walkin-service-checkbox:checked');
     const badge = document.getElementById('walkinSelectedServicesCount');
     if (badge) {
@@ -2827,6 +2932,10 @@ function updateSelectedServicesCount() {
             badge.style.color = '#64748b';
             badge.style.borderColor = '#e2e8f0';
         }
+    }
+    const sumServices = document.getElementById('sumServices');
+    if (sumServices) {
+        sumServices.innerText = `${checkedCbs.length} selected`;
     }
 }
 window.updateSelectedServicesCount = updateSelectedServicesCount;
@@ -2850,43 +2959,22 @@ window.handleCurrencyBlur = function(input) {
     recalculateWalkinTotals();
 };
 
-window.switchWalkinTab = function(tab) {
-    const tabCatering = document.getElementById('walkinTabCatering');
-    if (tabCatering) tabCatering.style.display = 'flex';
+window.handleDiscountInput = function(input) {
+    const errEl = document.getElementById('error-extDiscount');
+    if (errEl) {
+        errEl.innerText = '';
+        errEl.style.display = 'none';
+    }
+    input.style.borderColor = '#cbd5e1';
+    recalculateWalkinTotals();
 };
 
-window.toggleWalkinDownpayment = function(isChecked) {
-    const dpInput = document.getElementById('extDownpaymentInput');
-    const dpErr = document.getElementById('error-extDownpayment');
-    if (dpErr) {
-        dpErr.innerText = '';
-        dpErr.style.display = 'none';
-    }
-
-    if (isChecked) {
-        if (dpInput) {
-            dpInput.disabled = false;
-            dpInput.style.background = '#ffffff';
-            dpInput.style.color = '#0f172a';
-            dpInput.style.borderColor = '#cbd5e1';
-
-            // Default suggestion: 50% of subtotal if subtotal > 0
-            const total = parseFloat(document.getElementById('extTotalAmount')?.value || 0);
-            const currentDp = parseCurrencyFloat(dpInput.value);
-            if (currentDp <= 0 && total > 0) {
-                const suggestedDp = Math.round(total * 0.5 * 100) / 100;
-                dpInput.value = formatCurrencyString(suggestedDp);
-            }
-            dpInput.focus();
-        }
+window.handleDiscountBlur = function(input) {
+    const rawNum = parseCurrencyFloat(input.value);
+    if (rawNum > 0) {
+        input.value = formatCurrencyString(rawNum);
     } else {
-        if (dpInput) {
-            dpInput.value = '0.00';
-            dpInput.disabled = true;
-            dpInput.style.background = '#e2e8f0';
-            dpInput.style.color = '#94a3b8';
-            dpInput.style.borderColor = '#cbd5e1';
-        }
+        input.value = '0.00';
     }
     recalculateWalkinTotals();
 };
@@ -2908,61 +2996,72 @@ window.handleDownpaymentBlur = function(dpInput) {
 };
 
 function recalculateWalkinTotals() {
-    let subtotal = 0;
+    let servicesTotal = 0;
     const checkboxes = document.querySelectorAll('.walkin-service-checkbox');
     checkboxes.forEach(cb => {
+        const id = cb.getAttribute('data-service-id');
+        const qtyInput = document.getElementById(`walkin_qty_${id}`);
+        const qty = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
+        const amtInput = document.getElementById(`walkin_amount_${id}`);
+        const unitPrice = amtInput ? parseCurrencyFloat(amtInput.value) : 0;
+        const itemSubtotal = Math.round(qty * unitPrice * 100) / 100;
+
+        const subtotalEl = document.getElementById(`walkin_subtotal_${id}`);
+        if (subtotalEl) {
+            subtotalEl.innerText = '₱' + formatCurrencyString(itemSubtotal);
+        }
+
         if (cb.checked) {
-            const id = cb.getAttribute('data-service-id');
-            const amtInput = document.getElementById(`walkin_amount_${id}`);
-            if (amtInput) {
-                const amt = parseCurrencyFloat(amtInput.value);
-                if (amt > 0) subtotal += amt;
-            }
+            servicesTotal += itemSubtotal;
         }
     });
 
-    subtotal = Math.round(subtotal * 100) / 100;
+    servicesTotal = Math.round(servicesTotal * 100) / 100;
 
-    // Update Subtotal Displays
+    // Update Services Total Display
     const subtotalDisplay = document.getElementById('walkinSubtotalDisplay');
-    if (subtotalDisplay) subtotalDisplay.innerText = '₱' + formatCurrencyString(subtotal);
+    if (subtotalDisplay) subtotalDisplay.innerText = '₱' + formatCurrencyString(servicesTotal);
 
     const hiddenTotal = document.getElementById('extTotalAmount');
-    if (hiddenTotal) hiddenTotal.value = subtotal;
+    if (hiddenTotal) hiddenTotal.value = servicesTotal;
 
-    // Downpayment & Remaining Balance
-    const hasDpCheckbox = document.getElementById('extHasDownpayment');
+    // Discount
+    const discInput = document.getElementById('extDiscountInput');
+    const discount = discInput ? parseCurrencyFloat(discInput.value) : 0;
+    const hiddenDisc = document.getElementById('extDiscountAmount');
+    if (hiddenDisc) hiddenDisc.value = discount;
+
+    // Grand Total = max(0, servicesTotal - discount)
+    const grandTotal = Math.max(0, Math.round((servicesTotal - discount) * 100) / 100);
+    const grandTotalDisplay = document.getElementById('walkinGrandTotalDisplay');
+    if (grandTotalDisplay) grandTotalDisplay.innerText = '₱' + formatCurrencyString(grandTotal);
+
+    const hiddenGrand = document.getElementById('extGrandTotalAmount');
+    if (hiddenGrand) hiddenGrand.value = grandTotal;
+
+    // Downpayment / Amount Paid
     const dpInput = document.getElementById('extDownpaymentInput');
     const dpErr = document.getElementById('error-extDownpayment');
-    let downpayment = 0;
+    const amountPaid = dpInput ? parseCurrencyFloat(dpInput.value) : 0;
 
-    if (hasDpCheckbox && hasDpCheckbox.checked && dpInput) {
-        downpayment = parseCurrencyFloat(dpInput.value);
-        if (downpayment > subtotal) {
-            if (dpErr) {
-                dpErr.innerText = 'Downpayment cannot exceed the total amount.';
-                dpErr.style.display = 'block';
-            }
-            dpInput.style.borderColor = '#ef4444';
-        } else {
-            if (dpErr) {
-                dpErr.innerText = '';
-                dpErr.style.display = 'none';
-            }
-            dpInput.style.borderColor = '#cbd5e1';
+    if (amountPaid > grandTotal && grandTotal > 0) {
+        if (dpErr) {
+            dpErr.innerText = 'Amount paid exceeds the grand total.';
+            dpErr.style.display = 'block';
         }
+        if (dpInput) dpInput.style.borderColor = '#ef4444';
     } else {
         if (dpErr) {
             dpErr.innerText = '';
             dpErr.style.display = 'none';
         }
+        if (dpInput) dpInput.style.borderColor = '#cbd5e1';
     }
 
-    downpayment = Math.round(downpayment * 100) / 100;
-    const remainingBalance = Math.max(0, Math.round((subtotal - downpayment) * 100) / 100);
+    const remainingBalance = Math.max(0, Math.round((grandTotal - amountPaid) * 100) / 100);
 
     const hiddenDp = document.getElementById('extDownpaymentAmount');
-    if (hiddenDp) hiddenDp.value = downpayment;
+    if (hiddenDp) hiddenDp.value = amountPaid;
 
     const hiddenBal = document.getElementById('extRemainingBalance');
     if (hiddenBal) hiddenBal.value = remainingBalance;
@@ -2972,24 +3071,122 @@ function recalculateWalkinTotals() {
 
     // Dynamic Payment Status Badge
     const badge = document.getElementById('walkinPaymentStatusBadge');
+    let paymentStatusText = 'UNPAID';
     if (badge) {
-        if (subtotal <= 0 || downpayment === 0) {
+        if (grandTotal <= 0) {
+            if (amountPaid > 0) {
+                paymentStatusText = 'FULLY PAID';
+                badge.innerText = 'FULLY PAID';
+                badge.style.background = '#dcfce7';
+                badge.style.color = '#15803d';
+            } else {
+                paymentStatusText = 'UNPAID';
+                badge.innerText = 'UNPAID';
+                badge.style.background = '#fef2f2';
+                badge.style.color = '#ef4444';
+            }
+        } else if (amountPaid === 0) {
+            paymentStatusText = 'UNPAID';
             badge.innerText = 'UNPAID';
             badge.style.background = '#fef2f2';
             badge.style.color = '#ef4444';
-        } else if (downpayment > 0 && downpayment < subtotal) {
+        } else if (amountPaid < grandTotal) {
+            paymentStatusText = 'PARTIALLY PAID';
             badge.innerText = 'PARTIALLY PAID';
             badge.style.background = '#fef9c3';
             badge.style.color = '#854d0e';
-        } else if (downpayment >= subtotal && subtotal > 0) {
+        } else {
+            paymentStatusText = 'FULLY PAID';
             badge.innerText = 'FULLY PAID';
             badge.style.background = '#dcfce7';
             badge.style.color = '#15803d';
         }
     }
 
-    return subtotal;
+    if (window.updateWalkinSummary) {
+        window.updateWalkinSummary(servicesTotal, grandTotal, amountPaid, remainingBalance, paymentStatusText);
+    }
+
+    return grandTotal;
 }
+
+window.updateWalkinSummary = function(servicesTotal, grandTotal, amountPaid, remainingBalance, paymentStatusText) {
+    // 1. Customer Name
+    const eventType = document.getElementById('extEventType')?.value || '';
+    const normType = eventType.toLowerCase();
+    let custName = '';
+    if (normType === 'wedding') {
+        const b = (document.getElementById('extBrideName')?.value || '').trim();
+        const g = (document.getElementById('extGroomName')?.value || '').trim();
+        if (b && g) custName = `${b} & ${g}`;
+        else custName = b || g || '-';
+    } else if (normType === 'birthday' || normType === 'debut' || normType === 'anniversary') {
+        custName = (document.getElementById('extCelebrantName')?.value || '').trim() || '-';
+    } else if (normType === 'corporate' || normType === 'seminar' || normType === 'meeting' || normType === 'product launch') {
+        custName = (document.getElementById('extRepresentativeName')?.value || '').trim() || '-';
+    } else {
+        custName = (document.getElementById('extFullName')?.value || '').trim() || '-';
+    }
+    const sumCustomer = document.getElementById('sumCustomer');
+    if (sumCustomer) sumCustomer.innerText = custName;
+
+    // 2. Event Type
+    const sumEventType = document.getElementById('sumEventType');
+    if (sumEventType) sumEventType.innerText = eventType || '-';
+
+    // 3. Date & Time
+    const dateVal = document.getElementById('extEventDate')?.value || '';
+    const timeVal = document.getElementById('extEventTime')?.value || '';
+    let dateTimeStr = '-';
+    if (dateVal) {
+        dateTimeStr = dateVal;
+        if (timeVal) {
+            dateTimeStr += ` @ ${timeVal}`;
+        }
+    }
+    const sumDateTime = document.getElementById('sumDateTime');
+    if (sumDateTime) sumDateTime.innerText = dateTimeStr;
+
+    // 4. Venue
+    const venueVal = (document.getElementById('extVenue')?.value || '').trim();
+    const sumVenue = document.getElementById('sumVenue');
+    if (sumVenue) sumVenue.innerText = venueVal || '-';
+
+    // 5. Services Count
+    const checkedCount = document.querySelectorAll('.walkin-service-checkbox:checked').length;
+    const sumServices = document.getElementById('sumServices');
+    if (sumServices) sumServices.innerText = `${checkedCount} selected`;
+
+    // 6. Grand Total
+    if (grandTotal === undefined) {
+        grandTotal = parseFloat(document.getElementById('extGrandTotalAmount')?.value || 0);
+    }
+    const sumGrandTotal = document.getElementById('sumGrandTotal');
+    if (sumGrandTotal) sumGrandTotal.innerText = '₱' + formatCurrencyString(grandTotal);
+
+    // 7. Paid / Balance
+    if (amountPaid === undefined) {
+        amountPaid = parseFloat(document.getElementById('extDownpaymentAmount')?.value || 0);
+    }
+    if (remainingBalance === undefined) {
+        remainingBalance = parseFloat(document.getElementById('extRemainingBalance')?.value || 0);
+    }
+    const sumPaidBalance = document.getElementById('sumPaidBalance');
+    if (sumPaidBalance) {
+        sumPaidBalance.innerText = `₱${formatCurrencyString(amountPaid)} / ₱${formatCurrencyString(remainingBalance)}`;
+    }
+
+    // 8. Status
+    const statusSelect = document.getElementById('extBookingStatus');
+    const statusVal = statusSelect ? statusSelect.options[statusSelect.selectedIndex]?.text || 'Pending' : 'Pending';
+    if (!paymentStatusText) {
+        paymentStatusText = document.getElementById('walkinPaymentStatusBadge')?.innerText || 'UNPAID';
+    }
+    const sumStatus = document.getElementById('sumStatus');
+    if (sumStatus) {
+        sumStatus.innerHTML = `${statusVal} &bull; <span style="font-weight: 800;">${paymentStatusText}</span>`;
+    }
+};
 
 window.submitExternalBooking = async function(e) {
     if (e && e.preventDefault) e.preventDefault();
@@ -3093,21 +3290,11 @@ window.submitExternalBooking = async function(e) {
         canonicalPhone = `+63${cleanDigits}`;
     }
 
-    // 4. Date of Event Validation
+    // 4. Date of Event Validation (Allows legitimate historical walk-in entries)
     const dateEl = document.getElementById('extEventDate');
     const dateVal = dateEl ? dateEl.value : '';
     if (!dateVal) {
         reportError('extEventDate', 'Date of event is required.');
-    } else {
-        const selectedDate = new Date(dateVal + 'T00:00:00');
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        if (selectedDate <= today) {
-            reportError('extEventDate', 'Event date cannot be in the past or today.');
-        } else if (window.MIN_BOOKING_DATE && dateVal < window.MIN_BOOKING_DATE) {
-            reportError('extEventDate', `Bookings require advance notice. Earliest available date is ${window.MIN_BOOKING_DATE}.`);
-        }
     }
 
     const eventTimeEl = document.getElementById('extEventTime');
@@ -3133,7 +3320,6 @@ window.submitExternalBooking = async function(e) {
     const cityVal = cityEl ? cityEl.value.trim() : '';
     const provVal = provEl ? provEl.value.trim() : '';
 
-    // If partial address given, update formatted preview, but no required errors
     window.updateWalkinAddressPreview();
     let formattedAddress = '';
     if (streetVal || brgyVal || cityVal) {
@@ -3158,6 +3344,7 @@ window.submitExternalBooking = async function(e) {
         if (cb.checked) {
             const id = cb.getAttribute('data-service-id');
             const type = cb.getAttribute('data-type');
+            const catalogId = cb.getAttribute('data-catalog-id');
             let name = '';
             let category = 'Service';
 
@@ -3177,28 +3364,37 @@ window.submitExternalBooking = async function(e) {
                 category = cb.getAttribute('data-category') || 'Service';
             }
 
+            const qtyInput = document.getElementById(`walkin_qty_${id}`);
+            const qty = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
+
             const amtInput = document.getElementById(`walkin_amount_${id}`);
-            const amt = amtInput ? parseCurrencyFloat(amtInput.value) : 0;
+            const unitPrice = amtInput ? parseCurrencyFloat(amtInput.value) : 0;
             const noteInput = document.getElementById(`walkin_note_${id}`);
             const noteVal = noteInput ? noteInput.value.trim() : '';
 
-            if (amt <= 0) {
+            if (unitPrice <= 0) {
                 hasServiceAmountError = true;
                 const amtBox = document.getElementById(`walkin_amount_box_${id}`);
                 if (amtBox) amtBox.style.borderColor = '#ef4444';
                 if (!firstServiceAmtInput) firstServiceAmtInput = amtInput;
             }
 
+            const subtotal = Math.round(qty * unitPrice * 100) / 100;
+
             if (name) {
                 selectedServices.push({
+                    service_id: catalogId ? parseInt(catalogId) : null,
                     name: name,
-                    price: amt,
+                    unit_price: unitPrice,
+                    price: unitPrice,
+                    qty: qty,
+                    quantity: qty,
+                    subtotal: subtotal,
                     notes: noteVal,
                     category: category,
-                    is_custom: type === 'custom' || type === 'draft',
-                    qty: 1
+                    is_custom: type === 'custom' || type === 'draft'
                 });
-                servicesTotal += amt;
+                servicesTotal += subtotal;
             }
         }
     });
@@ -3207,27 +3403,26 @@ window.submitExternalBooking = async function(e) {
         reportError('walkinServices', 'Please enter a name for all custom services or uncheck them.');
         if (firstCustomNameInput && !firstInvalidEl) firstInvalidEl = firstCustomNameInput;
     } else if (selectedServices.length === 0) {
-        reportError('walkinServices', 'Please select at least one service or add a custom inclusion for this booking.');
+        reportError('walkinServices', 'Please select at least one service or add an inclusion for this booking.');
         const svcSection = document.getElementById('walkinServicesList');
         if (svcSection && !firstInvalidEl) firstInvalidEl = svcSection;
     } else if (hasServiceAmountError) {
-        reportError('walkinServices', 'Please enter a valid amount greater than ₱0 for all selected services.');
+        reportError('walkinServices', 'Please enter a valid price greater than ₱0 for all selected services.');
         if (firstServiceAmtInput && !firstInvalidEl) firstInvalidEl = firstServiceAmtInput;
     }
 
-    const totalAmount = Math.round(servicesTotal * 100) / 100;
+    // 8. Discount & Payment Details
+    const discountVal = parseCurrencyFloat(document.getElementById('extDiscountInput')?.value || 0);
+    const grandTotal = Math.max(0, Math.round((servicesTotal - discountVal) * 100) / 100);
+    const amountPaid = parseCurrencyFloat(document.getElementById('extDownpaymentInput')?.value || 0);
+    const paymentMethod = document.getElementById('extPaymentMethod')?.value || 'Cash';
+    const bookingStatus = document.getElementById('extBookingStatus')?.value || 'pending';
+    const bookingNotes = (document.getElementById('extBookingNotes')?.value || '').trim();
 
-    // 8. Downpayment Validation
-    const hasDpCheckbox = document.getElementById('extHasDownpayment');
-    const isDpChecked = hasDpCheckbox ? hasDpCheckbox.checked : false;
-    const downpaymentAmount = isDpChecked ? parseCurrencyFloat(document.getElementById('extDownpaymentInput')?.value || 0) : 0;
-
-    if (isDpChecked) {
-        if (downpaymentAmount < 0) {
-            reportError('extDownpayment', 'Downpayment cannot be negative.');
-        } else if (downpaymentAmount > totalAmount) {
-            reportError('extDownpayment', 'Downpayment cannot exceed total amount.');
-        }
+    if (amountPaid < 0) {
+        reportError('extDownpayment', 'Amount paid cannot be negative.');
+    } else if (amountPaid > grandTotal && grandTotal > 0) {
+        reportError('extDownpayment', 'Amount paid cannot exceed the grand total.');
     }
 
     if (!isValid) {
@@ -3247,7 +3442,9 @@ window.submitExternalBooking = async function(e) {
     }
 
     const payload = {
-        booking_source: "Walk-in",
+        booking_source: "WALK_IN",
+        status: bookingStatus,
+        payment_method: paymentMethod,
         event_type: eventType,
         bride_name: brideName,
         groom_name: groomName,
@@ -3270,11 +3467,14 @@ window.submitExternalBooking = async function(e) {
         package_id: null,
         services: selectedServices,
         quotation_items: selectedServices,
-        total_amount: totalAmount,
-        has_downpayment: isDpChecked,
-        downpayment_amount: downpaymentAmount,
-        amount_paid: downpaymentAmount,
-        status: "confirmed",
+        services_total: servicesTotal,
+        discount: discountVal,
+        total_amount: grandTotal,
+        has_downpayment: amountPaid > 0,
+        downpayment_amount: amountPaid,
+        amount_paid: amountPaid,
+        caterer_notes: bookingNotes,
+        booking_notes: bookingNotes,
         force_override: false
     };
 
@@ -3293,9 +3493,10 @@ window.submitExternalBooking = async function(e) {
                 window.fullCalendarInstance.refetchEvents();
             }
 
-            const successMsg = `Walk-in catering booking for ${payload.full_name} created successfully! Total: ₱${formatCurrencyString(totalAmount)}, Paid: ₱${formatCurrencyString(downpaymentAmount)}.`;
+            const bookingRef = result.booking_ref || (`#${result.booking_id}`);
+            const successMsg = `Walk-in booking ${bookingRef} for ${payload.full_name} created successfully! Total: ₱${formatCurrencyString(grandTotal)}, Paid: ₱${formatCurrencyString(amountPaid)}.`;
             if (window.showNotification) {
-                window.showNotification('Success', successMsg, 'success');
+                window.showNotification('Walk-in Booking Saved', successMsg, 'success');
             } else if (window.showToast) {
                 window.showToast(successMsg, 'success');
             } else {

@@ -128,7 +128,7 @@
         flex-shrink: 0;
     }
 
-    /* Price badges */
+    /* Price & Upgrade badges */
     .price-badge-pax {
         font-size: 0.78rem;
         font-weight: 800;
@@ -158,6 +158,243 @@
         padding: 3px 9px;
         border-radius: 6px;
         white-space: nowrap;
+    }
+
+    .price-badge-upgrade {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #b45309;
+        background: #fef3c7;
+        border: 1px solid #fde68a;
+        padding: 3px 9px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+    }
+    .price-badge-included {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #15803d;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        padding: 3px 9px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+    }
+
+    /* Quota Tracker Box */
+    .cust-tracker-box {
+        background: linear-gradient(135deg, #f8fafc 0%, #fff7ed 100%);
+        border: 1.5px solid #fed7aa;
+        border-radius: 14px;
+        padding: 1.25rem 1.4rem;
+        margin-bottom: 1.75rem;
+        box-shadow: 0 4px 12px rgba(234, 88, 12, 0.05);
+    }
+    .tracker-top-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+    .tracker-title-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .tracker-icon-badge {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        background: #ea580c;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        box-shadow: 0 2px 6px rgba(234, 88, 12, 0.3);
+    }
+    .tracker-title {
+        font-size: 1rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+    }
+    .tracker-subtitle {
+        font-size: 0.78rem;
+        color: #64748b;
+        margin: 2px 0 0 0;
+    }
+    .tracker-total-stat {
+        text-align: right;
+        background: #ffffff;
+        border: 1px solid #fed7aa;
+        border-radius: 10px;
+        padding: 6px 14px;
+    }
+    .tracker-total-stat .stat-label {
+        display: block;
+        font-size: 0.68rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+    }
+    .tracker-total-stat .stat-value {
+        font-size: 1.15rem;
+        font-weight: 900;
+        color: #0f172a;
+    }
+    .tracker-total-stat .stat-divider {
+        color: #cbd5e1;
+        margin: 0 3px;
+    }
+    .tracker-progress-bar-bg {
+        height: 8px;
+        background: #e2e8f0;
+        border-radius: 999px;
+        overflow: hidden;
+        margin-bottom: 0.85rem;
+    }
+    .tracker-progress-bar-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #ea580c 0%, #f97316 100%);
+        border-radius: 999px;
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .tracker-chips-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .tracker-chip {
+        font-size: 0.76rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .tracker-chip:hover {
+        border-color: #ea580c;
+        color: #ea580c;
+        transform: translateY(-1px);
+    }
+    .tracker-chip.completed {
+        background: #f0fdf4;
+        border-color: #86efac;
+        color: #166534;
+        font-weight: 800;
+    }
+    .tracker-chip.completed i {
+        color: #16a34a;
+    }
+    .tracker-chip.warning {
+        background: #fff7ed;
+        border-color: #fdba74;
+        color: #c2410c;
+    }
+
+    /* Category headers */
+    .menu-cat-header-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        border-bottom: 1.5px solid #f1f5f9;
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.85rem;
+    }
+    .cat-header-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .cat-header-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #ea580c;
+    }
+    .cat-header-name {
+        font-size: 0.92rem;
+        font-weight: 800;
+        color: #0f172a;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .cat-quota-pill {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #ea580c;
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        padding: 2px 8px;
+        border-radius: 6px;
+    }
+    .cat-header-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .cat-avail-text {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        font-weight: 600;
+    }
+    .cat-badge-counter {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #64748b;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        padding: 3px 10px;
+        border-radius: 20px;
+        transition: all 0.2s ease;
+    }
+    .cat-badge-counter.fulfilled {
+        color: #166534;
+        background: #dcfce7;
+        border-color: #86efac;
+    }
+
+    .toast-popup {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: #0f172a;
+        color: #ffffff;
+        padding: 12px 20px;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .toast-popup.warning {
+        background: #b91c1c;
+    }
+    .toast-popup.info {
+        background: #ea580c;
     }
 
     .subtotal-pill {
@@ -294,6 +531,13 @@
         <!-- Main Customization Options Column -->
         <div class="cust-main-col">
 
+            {% if request.query_params.get('error_msg') %}
+            <div style="background: #fef2f2; border: 1.5px solid #fecaca; border-radius: 12px; padding: 1rem 1.25rem; color: #b91c1c; font-weight: 700; font-size: 0.88rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-exclamation-circle" style="font-size: 1.2rem; flex-shrink: 0;"></i>
+                <span>{{ request.query_params.get('error_msg') }}</span>
+            </div>
+            {% endif %}
+
             <!-- SECTION 0: GUEST CAPACITY SELECTION -->
             <div class="cust-section-card" style="border-color: #fed7aa; background: #fffcf9;">
                 <div class="cust-section-header" style="border-bottom-color: #fed7aa;">
@@ -352,23 +596,67 @@
                 </div>
 
                 <p style="font-size: 0.85rem; color: #64748b; margin-top: -0.5rem; margin-bottom: 1.25rem;">
-                    Select the dishes and beverages you would like included in your catering service.
+                    Select the dishes and beverages you would like included in your catering service based on your package category allowances.
                 </p>
 
+                <!-- Menu Selection Quota & Progress Tracker -->
+                <div class="cust-tracker-box" id="menuSelectionTracker">
+                    <div class="tracker-top-row">
+                        <div class="tracker-title-group">
+                            <div class="tracker-icon-badge">
+                                <i class="fas fa-clipboard-check"></i>
+                            </div>
+                            <div>
+                                <h4 class="tracker-title">Menu Selection Quota</h4>
+                                <p class="tracker-subtitle">Select your allowed menu variants per category.</p>
+                            </div>
+                        </div>
+                        <div class="tracker-total-stat">
+                            <span class="stat-label">Total Selected</span>
+                            <div class="stat-value">
+                                <span id="trackerTotalSelected" style="color: #ea580c;">0</span><span class="stat-divider">/</span><span id="trackerTotalAllowed">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tracker-progress-bar-bg">
+                        <div class="tracker-progress-bar-fill" id="trackerProgressBar"></div>
+                    </div>
+                    
+                    <div class="tracker-chips-wrapper" id="trackerCategoryChips">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+                </div>
+
                 {% if categorized_available_menu and categorized_available_menu|length > 0 %}
-                <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                {% set cat_quotas = (selection_rules.category_quotas if (selection_rules and selection_rules is mapping and selection_rules.category_quotas is mapping) else {}) %}
+                <div style="display: flex; flex-direction: column; gap: 1.75rem;">
                     {% for category, items in categorized_available_menu.items() %}
-                    <div class="menu-cat-group">
-                        <div style="font-size: 0.88rem; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.65rem; display: flex; align-items: center; gap: 8px; border-bottom: 1.5px solid #f1f5f9; padding-bottom: 0.4rem;">
-                            <span style="color: #ea580c;">•</span>
-                            <span>{{ category }}</span>
-                            <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; margin-left: auto;">{{ items|length }} available</span>
+                    {% set raw_q = cat_quotas.get(category) %}
+                    {% set quota = (raw_q|int if raw_q is not none and (raw_q|string).isdigit() and raw_q|int > 0 else 1) %}
+                    {% set safe_cat_id = category|replace(' ', '_')|replace('/', '_') %}
+                    <div class="menu-cat-group" id="catGroup_{{ safe_cat_id }}">
+                        <div class="menu-cat-header-wrap">
+                            <div class="cat-header-left">
+                                <span class="cat-header-dot"></span>
+                                <span class="cat-header-name">{{ category }}</span>
+                                <span class="cat-quota-pill">
+                                    <i class="fas fa-check-circle" style="margin-right: 3px;"></i> Choose {{ quota }} variant{{ 's' if quota > 1 else '' }}
+                                </span>
+                            </div>
+                            <div class="cat-header-right">
+                                <span class="cat-avail-text">{{ items|length }} available</span>
+                                <span class="cat-badge-counter" id="catBadge_{{ safe_cat_id }}" data-category="{{ category }}" data-quota="{{ quota }}">
+                                    0 / {{ quota }} selected
+                                </span>
+                            </div>
                         </div>
 
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.75rem;">
                             {% for item in items %}
                             {% set unit_text = (item.pricing_unit or 'per_pax')|replace('per_', '') %}
                             {% set is_pax = (item.pricing_unit == 'per_pax' or not item.pricing_unit or item.pricing_unit == 'pax') %}
+                            {% set upgrade_fee = item.upgrade_fee or 0 %}
                             <label class="cust-item-card" id="card_food_{{ item.id }}">
                                 <input type="checkbox" 
                                        class="cust-item-checkbox food-checkbox"
@@ -377,16 +665,21 @@
                                        data-id="{{ item.id }}"
                                        data-name="{{ item.name }}"
                                        data-category="{{ category }}"
+                                       data-upgrade-fee="{{ upgrade_fee }}"
                                        data-price="{{ item.price or 0 }}"
                                        data-unit="{{ unit_text }}"
                                        data-is-pax="{{ 1 if is_pax else 0 }}"
                                        onchange="handleFoodItemToggle(this)">
                                 <div style="flex: 1; min-width: 0;">
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
                                         <strong style="color: #0f172a; font-size: 0.92rem; line-height: 1.3;">{{ item.name }}</strong>
-                                        {% if (item.price or 0) > 0 %}
-                                        <span class="price-badge-pax">
-                                            ₱{{ "{:,.2f}".format(item.price) }}/{{ unit_text }}
+                                        {% if upgrade_fee > 0 %}
+                                        <span class="price-badge-upgrade">
+                                            <i class="fas fa-arrow-circle-up"></i> +₱{{ "{:,.2f}".format(upgrade_fee) }}/pax
+                                        </span>
+                                        {% else %}
+                                        <span class="price-badge-included">
+                                            <i class="fas fa-check"></i> Included (₱0)
                                         </span>
                                         {% endif %}
                                     </div>
@@ -395,11 +688,9 @@
                                         {{ item.description }}
                                     </div>
                                     {% endif %}
-                                    {% if (item.price or 0) > 0 %}
                                     <div class="subtotal-pill" id="subtotal_food_{{ item.id }}" style="display: none;">
                                         ₱0.00
                                     </div>
-                                    {% endif %}
                                 </div>
                             </label>
                             {% endfor %}
@@ -501,12 +792,12 @@
                 </div>
 
                 <div class="summary-row" id="rowBasePrice" style="{% if not (package.price_per_head or package.price) %}display: none;{% endif %}">
-                    <span>Base Package Price:</span>
-                    <strong style="color: #0f172a;">₱{{ "{:,.2f}".format(package.price_per_head or package.price or 0) }}</strong>
+                    <span id="lblBasePackageSummary">Base Package:</span>
+                    <strong id="valBasePackageSummary" style="color: #0f172a;">₱{{ "{:,.2f}".format(package.price_per_head or package.price or 0) }}</strong>
                 </div>
 
                 <div class="summary-row" id="rowFoodSubtotal">
-                    <span id="lblFoodSummary">Food (0 items):</span>
+                    <span id="lblFoodSummary">Menu Upgrades (0):</span>
                     <strong id="valFoodSummary" style="color: #15803d;">₱0.00</strong>
                 </div>
 
@@ -548,10 +839,51 @@
 
 {% block step_js %}
 <script>
-const basePackagePrice = {{ (package.price_per_head or package.price or 0) | tojson }};
+const rawSelectionRules = {{ (selection_rules or {}) | tojson }};
+const packagePricingMode = {{ (package.pricing_mode or 'per_pax') | tojson }};
+const isPerPax = packagePricingMode !== 'fixed';
+const basePackagePrice = parseFloat({{ (package.price_per_head or package.price or 0) | tojson }}) || 0;
 const minGuestCapacity = {{ (package.min_guests or caterer.min_pax or 10) | tojson }};
 const maxGuestCapacity = Math.min({{ (package.max_guests or 999) | tojson }}, 999);
 let currentGuestCount = Math.min(Math.max(parseInt(document.getElementById('custGuestCount')?.value, 10) || minGuestCapacity, minGuestCapacity), maxGuestCapacity);
+
+// Extract category quotas strictly from selection_rules.category_quotas
+let categoryQuotas = {};
+let totalVariantsAllowed = 0;
+
+if (rawSelectionRules && typeof rawSelectionRules === 'object') {
+    if (rawSelectionRules.category_quotas && typeof rawSelectionRules.category_quotas === 'object') {
+        categoryQuotas = Object.assign({}, rawSelectionRules.category_quotas);
+    }
+    if (rawSelectionRules.total_variants_allowed) {
+        totalVariantsAllowed = parseInt(rawSelectionRules.total_variants_allowed, 10) || 0;
+    }
+}
+
+// Toast notification helper
+let toastTimer = null;
+function showSelectionToast(message, type = 'info') {
+    let toast = document.getElementById('custSelectionToast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'custSelectionToast';
+        toast.className = 'toast-popup';
+        document.body.appendChild(toast);
+    }
+    toast.className = `toast-popup ${type}`;
+    const icon = type === 'warning' ? '<i class="fas fa-exclamation-triangle"></i>' : '<i class="fas fa-info-circle"></i>';
+    toast.innerHTML = `${icon} <span>${message}</span>`;
+    toast.style.display = 'flex';
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0)';
+    
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        setTimeout(() => { if (toast) toast.style.display = 'none'; }, 200);
+    }, 2800);
+}
 
 function handleGuestCountChange(val) {
     const inputEl = document.getElementById('custGuestCount');
@@ -626,12 +958,183 @@ function handleGuestCountBlur(input) {
     }
 }
 
+// Render dynamic chips inside the Quota Tracker banner
+function renderTrackerChips() {
+    const container = document.getElementById('trackerCategoryChips');
+    if (!container) return;
+
+    // Gather categories strictly from rendered food checkboxes on the page
+    const categoriesSet = new Set();
+    document.querySelectorAll('.food-checkbox').forEach(cb => {
+        const cat = (cb.dataset.category || '').trim();
+        if (cat) categoriesSet.add(cat);
+    });
+
+    const categories = Array.from(categoriesSet).sort();
+
+    if (categories.length === 0) {
+        const tracker = document.getElementById('menuSelectionTracker');
+        if (tracker) tracker.style.display = 'none';
+        return;
+    }
+
+    // Guarantee each category has a valid quota (minimum 1)
+    categories.forEach(cat => {
+        const q = parseInt(categoryQuotas[cat], 10);
+        if (isNaN(q) || q <= 0) {
+            categoryQuotas[cat] = 1;
+        }
+    });
+
+    // Compute totalVariantsAllowed from category quotas sum if not explicit
+    let sumAllowed = 0;
+    categories.forEach(cat => {
+        sumAllowed += (parseInt(categoryQuotas[cat], 10) || 1);
+    });
+    if (!totalVariantsAllowed || totalVariantsAllowed > sumAllowed) {
+        totalVariantsAllowed = sumAllowed;
+    }
+
+    const totalAllowedEl = document.getElementById('trackerTotalAllowed');
+    if (totalAllowedEl) totalAllowedEl.innerText = totalVariantsAllowed;
+
+    container.innerHTML = categories.map(cat => {
+        const quota = parseInt(categoryQuotas[cat], 10) || 1;
+        const safeCat = cat.replace(/\s+/g, '_').replace(/\//g, '_');
+        
+        return `
+            <div class="tracker-chip" id="trackerChip_${safeCat}" onclick="scrollToCategory('${safeCat}')" title="Click to jump to ${cat}">
+                <span>${cat}:</span>
+                <strong id="trackerChipVal_${safeCat}">0/${quota}</strong>
+            </div>
+        `;
+    }).join('');
+
+    updateTrackerProgress();
+}
+
+function scrollToCategory(safeCatId) {
+    const el = document.getElementById(`catGroup_${safeCatId}`);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.style.transition = 'background 0.3s ease';
+        const origBg = el.style.background;
+        el.style.background = '#fff7ed';
+        setTimeout(() => { el.style.background = origBg; }, 1200);
+    }
+}
+
+// Update Tracker Progress, Category Badges & Chips
+function updateTrackerProgress() {
+    let totalFoodSelected = 0;
+    const catCounts = {};
+
+    document.querySelectorAll('.food-checkbox:checked').forEach(cb => {
+        totalFoodSelected++;
+        const cat = (cb.dataset.category || 'Others').trim();
+        catCounts[cat] = (catCounts[cat] || 0) + 1;
+    });
+
+    // Update total counter
+    const totalSelEl = document.getElementById('trackerTotalSelected');
+    if (totalSelEl) totalSelEl.innerText = totalFoodSelected;
+
+    // Update progress bar
+    const bar = document.getElementById('trackerProgressBar');
+    if (bar) {
+        let pct = 0;
+        if (totalVariantsAllowed > 0) {
+            pct = Math.min(100, Math.round((totalFoodSelected / totalVariantsAllowed) * 100));
+        } else if (totalFoodSelected > 0) {
+            pct = 100;
+        }
+        bar.style.width = `${pct}%`;
+    }
+
+    // Update category badges and tracker chips from categoryQuotas
+    for (const [cat, quotaVal] of Object.entries(categoryQuotas)) {
+        const quota = parseInt(quotaVal, 10) || 1;
+        const count = catCounts[cat] || 0;
+        const safeCat = cat.replace(/\s+/g, '_').replace(/\//g, '_');
+
+        const badge = document.getElementById(`catBadge_${safeCat}`);
+        if (badge) {
+            if (count >= quota) {
+                badge.className = 'cat-badge-counter fulfilled';
+                badge.innerHTML = `<i class="fas fa-check" style="margin-right: 3px;"></i> ${count} / ${quota} selected`;
+            } else {
+                badge.className = 'cat-badge-counter';
+                badge.innerHTML = `${count} / ${quota} selected`;
+            }
+        }
+
+        // Tracker chip
+        const chip = document.getElementById(`trackerChip_${safeCat}`);
+        const chipVal = document.getElementById(`trackerChipVal_${safeCat}`);
+        if (chip && chipVal) {
+            chipVal.innerText = `${count}/${quota}`;
+            if (count >= quota) {
+                chip.className = 'tracker-chip completed';
+                chipVal.innerHTML = `${count}/${quota} <i class="fas fa-check"></i>`;
+            } else if (count > 0) {
+                chip.className = 'tracker-chip warning';
+            } else {
+                chip.className = 'tracker-chip';
+            }
+        }
+    }
+}
+
+// Handle Food Checkbox Toggle with Smart Auto-Swap & Category Quota Enforcement
 function handleFoodItemToggle(input) {
     const card = document.getElementById(`card_food_${input.value}`);
-    if (card) {
-        if (input.checked) card.classList.add('selected');
-        else card.classList.remove('selected');
+    const cat = (input.dataset.category || 'Others').trim();
+    const rawQuota = parseInt(categoryQuotas[cat], 10);
+    const quota = (!isNaN(rawQuota) && rawQuota > 0) ? rawQuota : 1;
+
+    if (input.checked) {
+        // Enforce category quota
+        if (quota > 0) {
+            const checkedInCat = Array.from(document.querySelectorAll(`.food-checkbox:checked`))
+                .filter(cb => cb.dataset.category === cat && cb.value !== input.value);
+
+            if (quota === 1) {
+                // Smart Auto-Swap: If quota is 1 and another dish in the same category was previously selected, swap to the new dish
+                if (checkedInCat.length > 0) {
+                    const prev = checkedInCat[0];
+                    prev.checked = false;
+                    const prevCard = document.getElementById(`card_food_${prev.value}`);
+                    if (prevCard) prevCard.classList.remove('selected');
+                    const prevSub = document.getElementById(`subtotal_food_${prev.value}`);
+                    if (prevSub) prevSub.style.display = 'none';
+                    showSelectionToast(`Swapped to ${input.dataset.name}`, 'info');
+                }
+            } else if (checkedInCat.length >= quota) {
+                // Quota > 1 and already at limit: prevent selection and guide user
+                input.checked = false;
+                if (card) card.classList.remove('selected');
+                showSelectionToast(`You can only select up to ${quota} variants for ${cat}. Uncheck a dish first to swap.`, 'warning');
+                return;
+            }
+        }
+
+        // Global package variant limit check
+        if (totalVariantsAllowed > 0) {
+            const totalChecked = document.querySelectorAll('.food-checkbox:checked').length;
+            if (totalChecked > totalVariantsAllowed) {
+                input.checked = false;
+                if (card) card.classList.remove('selected');
+                showSelectionToast(`Maximum package limit of ${totalVariantsAllowed} variants reached.`, 'warning');
+                return;
+            }
+        }
+
+        if (card) card.classList.add('selected');
+    } else {
+        if (card) card.classList.remove('selected');
     }
+
+    updateTrackerProgress();
     updateCustomizationState();
 }
 
@@ -644,29 +1147,38 @@ function handleServiceItemToggle(input) {
     updateCustomizationState();
 }
 
-
+// Live Pricing Computation: Total = (base_price + sum(upgrade_fees)) * guest_count + services_total
 function updateCustomizationState() {
-    let foodSubtotal = 0;
+    let foodUpgradeSubtotal = 0;
     let foodSelectedCount = 0;
 
     let servicesSubtotal = 0;
     let servicesSelectedCount = 0;
 
-    // 1. Food Calculation
+    // 1. Food Upgrades Calculation
     document.querySelectorAll('.food-checkbox').forEach(cb => {
         const id = cb.value;
         const subtotalPill = document.getElementById(`subtotal_food_${id}`);
-        const price = parseFloat(cb.dataset.price) || 0;
-        const isPax = cb.dataset.isPax === '1';
+        const upgradeFee = parseFloat(cb.dataset.upgradeFee) || 0;
 
         if (cb.checked) {
             foodSelectedCount++;
-            let itemTotal = isPax ? (price * currentGuestCount) : price;
-            foodSubtotal += itemTotal;
+            const itemUpgradeTotal = upgradeFee * currentGuestCount;
+            foodUpgradeSubtotal += itemUpgradeTotal;
 
-            if (subtotalPill && price > 0) {
+            if (subtotalPill) {
                 subtotalPill.style.display = 'inline-block';
-                subtotalPill.innerText = `₱${itemTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })} (${isPax ? currentGuestCount + ' pax' : cb.dataset.unit})`;
+                if (upgradeFee > 0) {
+                    subtotalPill.innerHTML = `+₱${itemUpgradeTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })} (+₱${upgradeFee.toLocaleString('en-PH', { minimumFractionDigits: 2 })}/pax × ${currentGuestCount} pax)`;
+                    subtotalPill.style.color = '#b45309';
+                    subtotalPill.style.background = '#fef3c7';
+                    subtotalPill.style.borderColor = '#fde68a';
+                } else {
+                    subtotalPill.innerHTML = `<i class="fas fa-check" style="margin-right: 3px;"></i> Included in Package (₱0.00)`;
+                    subtotalPill.style.color = '#15803d';
+                    subtotalPill.style.background = '#f0fdf4';
+                    subtotalPill.style.borderColor = '#bbf7d0';
+                }
             }
         } else {
             if (subtotalPill) subtotalPill.style.display = 'none';
@@ -700,11 +1212,28 @@ function updateCustomizationState() {
     if (badgeSvc) badgeSvc.innerText = `${servicesSelectedCount} Selected`;
 
     // 4. Update Sidebar Summary Rows
+    const basePackageTotal = isPerPax ? (basePackagePrice * currentGuestCount) : basePackagePrice;
+    const valBase = document.getElementById('valBasePackageSummary');
+    if (valBase) {
+        if (isPerPax && basePackagePrice > 0) {
+            valBase.innerText = `₱${basePackageTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+            valBase.title = `₱${basePackagePrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}/pax × ${currentGuestCount} pax`;
+        } else {
+            valBase.innerText = `₱${basePackageTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+        }
+    }
+
     const lblFood = document.getElementById('lblFoodSummary');
     const valFood = document.getElementById('valFoodSummary');
     if (lblFood && valFood) {
-        lblFood.innerText = `Food (${foodSelectedCount} items):`;
-        valFood.innerText = `₱${foodSubtotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+        lblFood.innerText = `Menu Upgrades (${foodSelectedCount} items):`;
+        if (foodUpgradeSubtotal > 0) {
+            valFood.innerText = `+₱${foodUpgradeSubtotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+            valFood.style.color = '#b45309';
+        } else {
+            valFood.innerText = `₱0.00 (Included)`;
+            valFood.style.color = '#15803d';
+        }
     }
 
     const lblSvc = document.getElementById('lblServicesSummary');
@@ -714,87 +1243,89 @@ function updateCustomizationState() {
         valSvc.innerText = `₱${servicesSubtotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
     }
 
-    // 5. Grand Estimated Total
-    const grandTotal = basePackagePrice + foodSubtotal + servicesSubtotal;
+    // 5. Grand Estimated Total: (base_price + sum(upgrade_fees)) * guest_count + servicesSubtotal
+    const grandTotal = basePackageTotal + foodUpgradeSubtotal + servicesSubtotal;
     const txtTotal = document.getElementById('summaryEstimatedTotal');
     if (txtTotal) {
         txtTotal.innerText = `₱${grandTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
     }
 }
 
+// Validation & Form Submission
 function validateAndSubmitCustomization() {
     const alertBox = document.getElementById('validationAlert');
     const alertText = document.getElementById('validationAlertText');
     if (alertBox) alertBox.style.display = 'none';
 
-    // Verify at least one item is chosen across food or services
-    const selectedFoodBoxes = Array.from(document.querySelectorAll('.food-checkbox:checked'));
-    const selectedServiceBoxes = Array.from(document.querySelectorAll('.service-checkbox:checked'));
-
-    const totalSelected = selectedFoodBoxes.length + selectedServiceBoxes.length;
-
-    if (totalSelected === 0) {
-        if (alertBox && alertText) {
-            alertText.innerText = 'Please select at least one menu item or service to customize your package.';
-            alertBox.style.display = 'block';
-            alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
-            alert('Please select at least one menu item or service to customize your package.');
-        }
-        return;
-    }
-
-    // Check guest count minimum and maximum (max 3 digits / 999 max)
+    // 1. Guest count check
     const guestInput = document.getElementById('custGuestCount');
     const guestVal = parseInt(guestInput?.value, 10);
     if (!guestVal || isNaN(guestVal) || guestVal < minGuestCapacity) {
         const msg = `The minimum guest count for this package is ${minGuestCapacity} guests.`;
-        if (alertBox && alertText) {
-            alertText.innerText = msg;
-            alertBox.style.display = 'block';
-            alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
-            alert(msg);
-        }
-        if (guestInput) {
-            guestInput.focus();
-            guestInput.style.borderColor = '#dc2626';
-        }
+        showValidationError(msg, guestInput);
         return;
     }
     if (guestVal > maxGuestCapacity) {
         const msg = `The maximum guest count allowed is ${maxGuestCapacity} guests (up to 3 digits).`;
-        if (alertBox && alertText) {
-            alertText.innerText = msg;
-            alertBox.style.display = 'block';
-            alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
-            alert(msg);
-        }
-        if (guestInput) {
-            guestInput.focus();
-            guestInput.style.borderColor = '#dc2626';
-        }
+        showValidationError(msg, guestInput);
         return;
     }
 
-    // Build itemized payloads
-    let foodSubtotal = 0;
+    // 2. Category Quota Enforcement
+    const catCounts = {};
+    const selectedFoodBoxes = Array.from(document.querySelectorAll('.food-checkbox:checked'));
+    selectedFoodBoxes.forEach(cb => {
+        const cat = cb.dataset.category || 'Others';
+        catCounts[cat] = (catCounts[cat] || 0) + 1;
+    });
+
+    for (const [cat, quotaVal] of Object.entries(categoryQuotas)) {
+        const quota = parseInt(quotaVal, 10);
+        if (!isNaN(quota) && quota > 0) {
+            const count = catCounts[cat] || 0;
+            if (count < quota) {
+                const missing = quota - count;
+                const msg = `Please select ${missing} more variant${missing > 1 ? 's' : ''} for ${cat} (${count}/${quota} selected).`;
+                const safeCat = cat.replace(/\s+/g, '_').replace(/\//g, '_');
+                const catGroup = document.getElementById(`catGroup_${safeCat}`);
+                showValidationError(msg, catGroup);
+                return;
+            }
+        }
+    }
+
+    // 3. Package Total Variants Limit
+    if (totalVariantsAllowed > 0 && selectedFoodBoxes.length < totalVariantsAllowed) {
+        const missing = totalVariantsAllowed - selectedFoodBoxes.length;
+        const msg = `This package includes ${totalVariantsAllowed} menu variants. Please select ${missing} more variant${missing > 1 ? 's' : ''}.`;
+        showValidationError(msg, document.getElementById('menuSelectionTracker'));
+        return;
+    }
+
+    // 4. Must select at least one item
+    const selectedServiceBoxes = Array.from(document.querySelectorAll('.service-checkbox:checked'));
+    if (selectedFoodBoxes.length === 0 && selectedServiceBoxes.length === 0) {
+        showValidationError('Please select at least one menu item or service to customize your package.');
+        return;
+    }
+
+    // Build payload
+    let foodUpgradeSubtotal = 0;
     const foodPayload = selectedFoodBoxes.map(cb => {
         const id = parseInt(cb.value, 10);
+        const upgradeFee = parseFloat(cb.dataset.upgradeFee) || 0;
         const price = parseFloat(cb.dataset.price) || 0;
-        const isPax = cb.dataset.isPax === '1';
-        const qty = isPax ? guestVal : 1;
-        const subtotal = price * qty;
-        foodSubtotal += subtotal;
+        const subtotal = upgradeFee * guestVal;
+        foodUpgradeSubtotal += subtotal;
 
         return {
             id: id,
             name: cb.dataset.name,
             category: cb.dataset.category || 'Menu',
+            upgrade_fee: upgradeFee,
             price: price,
             unit: cb.dataset.unit || 'pax',
-            qty: qty,
+            qty: guestVal,
             subtotal: subtotal
         };
     });
@@ -816,7 +1347,8 @@ function validateAndSubmitCustomization() {
         };
     });
 
-    const grandTotal = basePackagePrice + foodSubtotal + servicesSubtotal;
+    const basePackageTotal = isPerPax ? (basePackagePrice * guestVal) : basePackagePrice;
+    const grandTotal = basePackageTotal + foodUpgradeSubtotal + servicesSubtotal;
     const specialReq = document.getElementById('custSpecialRequests')?.value || '';
 
     const finalPayload = {
@@ -825,9 +1357,11 @@ function validateAndSubmitCustomization() {
         pricing_mode: 'customizable',
         guest_count: guestVal,
         base_price: basePackagePrice,
+        base_package_total: basePackageTotal,
+        food_upgrade_total: foodUpgradeSubtotal,
         selected_food: foodPayload,
         selected_services: servicesPayload,
-        food_total: foodSubtotal,
+        food_total: foodUpgradeSubtotal,
         services_total: servicesSubtotal,
         estimated_total: grandTotal,
         special_requests: specialReq
@@ -837,7 +1371,25 @@ function validateAndSubmitCustomization() {
     document.getElementById('customizationForm').submit();
 }
 
+function showValidationError(msg, focusEl) {
+    const alertBox = document.getElementById('validationAlert');
+    const alertText = document.getElementById('validationAlertText');
+    if (alertBox && alertText) {
+        alertText.innerText = msg;
+        alertBox.style.display = 'block';
+        alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+        alert(msg);
+    }
+    if (focusEl) {
+        focusEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (typeof focusEl.focus === 'function') focusEl.focus();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    renderTrackerChips();
+
     // Restore pre-selected items if user navigated back
     {% if saved_customization %}
     try {
@@ -848,7 +1400,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const cb = document.querySelector(`.food-checkbox[value="${f.id}"]`);
                     if (cb) {
                         cb.checked = true;
-                        handleFoodItemToggle(cb);
+                        const card = document.getElementById(`card_food_${f.id}`);
+                        if (card) card.classList.add('selected');
                     }
                 });
             }
@@ -861,13 +1414,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             }
-
         }
     } catch(err) {
         console.warn('Could not restore saved customization:', err);
     }
     {% endif %}
 
+    updateTrackerProgress();
     updateCustomizationState();
 });
 </script>

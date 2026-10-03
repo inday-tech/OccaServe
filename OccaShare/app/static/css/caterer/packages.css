@@ -240,10 +240,10 @@
 #pkgWizardFooter {
     flex-shrink: 0 !important;
     display: flex !important;
-    justify-content: flex-end !important;
+    justify-content: space-between !important;
     align-items: center !important;
     gap: 12px !important;
-    padding: 18px 24px !important;
+    padding: 14px 24px !important;
     border-top: 1px solid #e5e7eb !important;
     background: #ffffff !important;
     width: 100% !important;
@@ -251,19 +251,24 @@
     z-index: 10 !important;
 }
 
-#packageModal .pkg-wizard-footer-btn {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 6px !important;
-    height: 42px !important;
-    padding: 0 1.4rem !important;
-    font-size: 0.9rem !important;
-    font-weight: 700 !important;
-    border-radius: 8px !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
-    box-sizing: border-box !important;
+#packageModal .pkg-wizard-footer-btn,
+#packageModal .pkg-modal-nav-btn {
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 40px;
+    padding: 0 1.25rem;
+    font-size: 0.88rem;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+#packageModal .pkg-wizard-footer-btn[style*="display: none"],
+#packageModal .pkg-modal-nav-btn[style*="display: none"] {
+    display: none !important;
 }
 
 #packageModal .btn-secondary-pro {
@@ -286,6 +291,17 @@
 
 #packageModal .btn-primary-pro:hover {
     background: #0f172a !important;
+}
+
+#packageModal #pkgSaveBtn {
+    background: #16a34a !important;
+    border: 1px solid #16a34a !important;
+    color: #ffffff !important;
+}
+
+#packageModal #pkgSaveBtn:hover {
+    background: #15803d !important;
+    border-color: #15803d !important;
 }
 
 /* Responsive Rules: Tablet & Mobile */
@@ -2274,7 +2290,9 @@ textarea.control-pro {
 }
 
 .tab-pane-pro.active {
-    display: block;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 @keyframes fadeInModal {
@@ -2385,7 +2403,9 @@ textarea.control-pro {
 }
 
 .tab-pane-pro.active {
-    display: block;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 .modal-tabs-pro {
@@ -2500,5 +2520,381 @@ textarea.control-pro {
 @media (max-width: 640px) {
     .inline-inclusion-grid {
         grid-template-columns: 1fr !important;
+    }
+}
+
+#addInclusionModal {
+    position: fixed !important;
+    inset: 0 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 16px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+#addInclusionModal .inclusion-modal-box {
+    display: flex !important;
+    flex-direction: column !important;
+    width: min(580px, calc(100vw - 32px)) !important;
+    max-width: 580px !important;
+    max-height: min(90vh, calc(100vh - 32px)) !important;
+    max-height: min(90dvh, calc(100dvh - 32px)) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: auto !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    border-radius: 16px !important;
+}
+
+#addInclusionModal .inclusion-modal-header {
+    flex: 0 0 auto !important;
+    align-items: center !important;
+    gap: 1rem;
+    box-sizing: border-box;
+    overflow: hidden !important;
+    padding: 1.25rem 1.5rem !important;
+    background: #f8fafc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+#addInclusionModal .inclusion-modal-body {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    flex-direction: column !important;
+    gap: 0.9rem;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    padding: 1.25rem 1.5rem 1rem !important;
+    scrollbar-gutter: stable;
+    box-sizing: border-box !important;
+}
+
+#addInclusionModal #addInclusionSuccessAlert {
+    margin: 0 !important;
+}
+
+#addInclusionModal .inclusion-info-alert {
+    margin: 0 !important;
+}
+
+#addInclusionModal .inclusion-modal-body > .form-group-pro {
+    margin: 0 !important;
+}
+
+#addInclusionModal .inclusion-modal-body label {
+    line-height: 1.35;
+}
+
+#addInclusionModal .inclusion-quantity-section > div:first-of-type {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(110px, 140px);
+    align-items: center;
+    gap: 0.625rem !important;
+}
+
+#addInclusionModal .inclusion-quantity-section > div:first-of-type input {
+    width: 100% !important;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+#addInclusionModal #customInclusionDescription {
+    min-height: 82px;
+    line-height: 1.5;
+    box-sizing: border-box;
+}
+
+#addInclusionModal .inclusion-photo-section > label {
+    margin-bottom: 0.55rem !important;
+}
+
+#addInclusionModal .inclusion-photo-upload {
+    gap: 0.875rem !important;
+    padding: 0.7rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+    box-sizing: border-box;
+}
+
+#addInclusionModal .inclusion-photo-preview {
+    width: 64px !important;
+    height: 64px !important;
+    border-radius: 8px !important;
+    background: #ffffff !important;
+}
+
+#addInclusionModal .inclusion-photo-preview > i {
+    font-size: 1.2rem;
+}
+
+#addInclusionModal .inclusion-photo-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0.45rem;
+}
+
+#addInclusionModal .inclusion-photo-upload-button {
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.2;
+}
+
+#addInclusionModal #inclusionPhotoHint {
+    margin-top: 0 !important;
+    line-height: 1.4;
+}
+
+#addInclusionModal .inclusion-modal-footer {
+    flex: 0 0 auto !important;
+    position: relative !important;
+    z-index: 2 !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 0.625rem !important;
+    padding: 0.85rem 1.25rem !important;
+    background: #f8fafc !important;
+    border-top: 1px solid #e2e8f0 !important;
+    box-sizing: border-box !important;
+    flex-wrap: wrap !important;
+}
+
+#addInclusionModal .inclusion-modal-footer button {
+    min-height: 40px;
+    line-height: 1.25;
+    max-width: 100%;
+}
+
+#addInclusionModal .inclusion-modal-footer button[hidden] {
+    display: none !important;
+}
+
+#addInclusionModal .occ-modal-close {
+    background: #e2e8f0 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #334155 !important;
+}
+
+#addInclusionModal .occ-modal-close:hover {
+    background: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+@media (max-width: 600px) {
+    #addInclusionModal .inclusion-modal-box {
+        width: calc(100vw - 16px) !important;
+        max-height: calc(100vh - 16px) !important;
+        max-height: calc(100dvh - 16px) !important;
+        border-radius: 12px !important;
+    }
+
+    #addInclusionModal .inclusion-modal-header {
+        padding: 1rem 1.125rem !important;
+    }
+
+    #addInclusionModal .inclusion-modal-body {
+        padding: 1rem 1.125rem !important;
+    }
+
+    #addInclusionModal .inclusion-modal-footer {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 0.75rem 1rem !important;
+        gap: 0.5rem !important;
+    }
+
+    #addInclusionModal .inclusion-modal-footer button {
+        width: 100%;
+        min-width: 0;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+        white-space: normal;
+    }
+
+    #addInclusionModal #btnInclusionSaveDone {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 360px) {
+    #addInclusionModal .inclusion-quantity-section > div:first-of-type {
+        grid-template-columns: minmax(0, 1fr) minmax(96px, 120px);
+        gap: 0.45rem !important;
+    }
+
+    #addInclusionModal .inclusion-photo-upload {
+        gap: 0.625rem !important;
+        padding: 0.55rem;
+    }
+
+    #addInclusionModal .inclusion-photo-preview {
+        width: 52px !important;
+        height: 52px !important;
+    }
+}
+
+#quickAddOptionModal {
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+#quickAddOptionModal .occ-modal-box {
+    display: flex !important;
+    flex-direction: column !important;
+    width: min(600px, calc(100vw - 32px)) !important;
+    max-width: 600px !important;
+    max-height: 90vh !important;
+    max-height: 90dvh !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: auto !important;
+    box-sizing: border-box !important;
+}
+
+#quickAddOptionModal .occ-modal-header,
+#quickAddOptionModal .occ-modal-footer {
+    flex-shrink: 0 !important;
+}
+
+#quickAddOptionModal .occ-modal-close {
+    display: flex;
+    flex: 0 0 36px;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+}
+
+#quickAddOptionModal .occ-modal-close i {
+    color: inherit !important;
+}
+
+#quickAddOptionModal .occ-modal-close:hover {
+    border-color: #cbd5e1 !important;
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+#quickAddOptionModal .occ-modal-close:focus-visible {
+    outline: 2px solid var(--primary-color, #f97316);
+    outline-offset: 2px;
+}
+
+#quickAddOptionModal form#quickAddOptionForm {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+}
+
+#quickAddOptionModal .quick-add-option-body {
+    display: flex !important;
+    flex: 1 1 0% !important;
+    flex-direction: column !important;
+    gap: 0.85rem;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    padding: 1.25rem 1.5rem !important;
+    scrollbar-gutter: stable;
+    box-sizing: border-box !important;
+}
+
+#quickAddOptionModal .quick-add-option-body > .form-group-pro,
+#quickAddOptionModal #quickAddOptionPriceRow {
+    margin: 0 !important;
+}
+
+#quickAddOptionModal #quickAddOptionPriceRow[style*="display: none"] {
+    display: none !important;
+}
+
+#quickAddOptionModal #quickAddOptionDescription {
+    min-height: 76px;
+    line-height: 1.5;
+    box-sizing: border-box;
+}
+
+#quickAddOptionModal .occ-modal-footer {
+    padding: 0.85rem 1.25rem !important;
+    gap: 0.625rem !important;
+}
+
+#quickAddOptionModal .occ-modal-footer button {
+    min-height: 40px;
+}
+
+@media (max-width: 600px) {
+    #quickAddOptionModal .occ-modal-box {
+        width: calc(100vw - 32px) !important;
+        max-height: 90vh !important;
+        max-height: 90dvh !important;
+        border-radius: 12px !important;
+    }
+
+    #quickAddOptionModal .occ-modal-header {
+        padding: 1rem 1.125rem !important;
+    }
+
+    #quickAddOptionModal .quick-add-option-body {
+        padding: 1rem 1.125rem !important;
+    }
+
+    #quickAddOptionModal .occ-modal-footer {
+        flex-direction: column-reverse !important;
+        align-items: stretch !important;
+        padding: 0.75rem 1rem !important;
+    }
+
+    #quickAddOptionModal .occ-modal-footer button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+#step2CustomizableContainer .customizable-options-heading {
+    flex: 1 1 320px;
+    min-width: 0;
+}
+
+#step2CustomizableContainer .customizable-options-add-button {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 0.45rem 0.85rem !important;
+    font-size: 0.78rem !important;
+    white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+    #step2CustomizableContainer .customizable-options-header {
+        align-items: flex-start !important;
+    }
+
+    #step2CustomizableContainer .customizable-options-heading {
+        flex-basis: 100%;
+    }
+
+    #step2CustomizableContainer .customizable-options-add-button {
+        margin-left: auto;
     }
 }

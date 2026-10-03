@@ -154,21 +154,30 @@ document.addEventListener('DOMContentLoaded', function() {
         const query = (queryEl ? queryEl.value : '').toLowerCase().trim();
         const statusEl = document.getElementById('statusFilter');
         const status = (statusEl ? statusEl.value : 'all').toLowerCase().trim();
+        const typeEl = document.getElementById('typeFilter');
+        const pType = (typeEl ? typeEl.value : 'all').toLowerCase().trim();
         
         filteredRows = allRows.filter(row => {
             const textContent = row.textContent.toLowerCase();
             const dataStatus = (row.getAttribute('data-status') || '').toLowerCase();
-            const badges = Array.from(row.querySelectorAll('.badge-status, .pay-status-badge, .premium-status-badge'))
+            const dataType = (row.getAttribute('data-type') || '').toLowerCase();
+            const badges = Array.from(row.querySelectorAll('.badge-status, .badge-pstatus, .badge-ptype, .pay-status-badge, .premium-status-badge'))
                 .map(b => b.textContent.toLowerCase().trim()).join(' ');
             const combinedStatus = `${dataStatus} ${badges}`;
             
             const matchesSearch = !query || textContent.includes(query);
+
+            let matchesType = (pType === 'all');
+            if (!matchesType) {
+                matchesType = dataType.includes(pType) || badges.includes(pType);
+            }
+
             let matchesStatus = (status === 'all');
             if (!matchesStatus) {
                 if (status === 'paid' || status === 'completed') {
                     matchesStatus = combinedStatus.includes('paid') || combinedStatus.includes('completed') || combinedStatus.includes('fully paid');
                 } else if (status === 'verify') {
-                    matchesStatus = combinedStatus.includes('verify') || combinedStatus.includes('review') || combinedStatus.includes('confirm cash') || combinedStatus.includes('awaiting_verification');
+                    matchesStatus = combinedStatus.includes('verify') || combinedStatus.includes('review') || combinedStatus.includes('confirm cash') || combinedStatus.includes('pending verify') || combinedStatus.includes('awaiting_verification');
                 } else if (status === 'partial') {
                     matchesStatus = combinedStatus.includes('partial');
                 } else if (status === 'pending' || status === 'unpaid') {
@@ -180,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             
-            return matchesSearch && matchesStatus;
+            return matchesSearch && matchesType && matchesStatus;
         });
         
         currentPage = 1;
@@ -214,28 +223,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
             let totalPrice = 0;
             const tableData = filteredRows.map(row => {
-                const amtText = row.querySelector('.amount-pro').textContent.replace('₱', '').replace(/,/g, '').trim();
+                const amtEl = row.querySelector('.amount-pro');
+                const amtText = amtEl ? amtEl.textContent.replace('₱', '').replace(/,/g, '').trim() : '0';
                 const amt = parseFloat(amtText) || 0;
                 totalPrice += amt;
                 
-                const custName = row.querySelector('.cust-name').textContent.trim();
-                const eventName = row.cells[2].textContent.trim();
+                const custName = (row.querySelector('.cust-name') ? row.querySelector('.cust-name').textContent.trim() : '') || row.getAttribute('data-customer') || 'Customer';
+                const eventName = row.getAttribute('data-event') || 'Event';
+                const payId = (row.querySelector('.payment-id') ? row.querySelector('.payment-id').textContent.trim() : '') || row.getAttribute('data-payment-id') || '';
+                const bkId = (row.querySelector('.bk-id') ? row.querySelector('.bk-id').textContent.trim() : '') || ('BK-' + row.getAttribute('data-booking-id'));
+                const method = row.getAttribute('data-method') || (row.querySelector('.pay-method') ? row.querySelector('.pay-method').textContent.trim() : 'Direct');
+                const dateStr = row.getAttribute('data-date') || (row.querySelector('.pay-date') ? row.querySelector('.pay-date').textContent.trim() : '');
                 
                 return [
-                    row.querySelector('.payment-id').textContent.trim(),
-                    custName || 'Walk-in Customer', // Fallback for empty names
-                    row.querySelector('.bk-id').textContent.trim(),
-                    eventName || 'N/A',
-                    `P${amt.toLocaleString()}`, 
-                    row.cells[4].textContent.trim(),
-                    row.cells[5].textContent.trim(),
+                    payId,
+                    custName,
+                    bkId,
+                    eventName,
+                    `₱${amt.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 
+                    method,
+                    dateStr,
                     getRowStatusText(row).toUpperCase()
                 ];
             });
 
             doc.autoTable({
                 startY: 40,
-                head: [['PAY ID', 'Customer Ref', 'Booking ID', 'Event Name', 'Amount', 'Method', 'Date', 'Status']],
+                head: [['PAY ID', 'Customer', 'Booking ID', 'Event Name', 'Amount', 'Method', 'Date', 'Status']],
                 body: tableData,
                 theme: 'grid',
                 headStyles: { 
@@ -272,7 +286,7 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.setFontSize(13);
             doc.setTextColor(primaryColor);
             doc.setFont('helvetica', 'bold');
-            doc.text(`TOTAL EARNINGS: P${totalPrice.toLocaleString()}`, doc.internal.pageSize.width - 14, finalY, { align: 'right' });
+            doc.text(`TOTAL COLLECTED: ₱${totalPrice.toLocaleString(undefined, {minimumFractionDigits: 2})}`, doc.internal.pageSize.width - 14, finalY, { align: 'right' });
 
             doc.save(`Payments_Report_${Date.now()}.pdf`);
             window.showSuccess("PDF report generated successfully.");
@@ -291,24 +305,34 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             let totalAmt = 0;
             const dataRows = filteredRows.map(row => {
-                const amt = parseFloat(row.querySelector('.amount-pro').textContent.replace('₱', '').replace(/,/g, '').trim()) || 0;
+                const amtEl = row.querySelector('.amount-pro');
+                const amtText = amtEl ? amtEl.textContent.replace('₱', '').replace(/,/g, '').trim() : '0';
+                const amt = parseFloat(amtText) || 0;
                 totalAmt += amt;
+
+                const custName = (row.querySelector('.cust-name') ? row.querySelector('.cust-name').textContent.trim() : '') || row.getAttribute('data-customer') || 'Customer';
+                const eventName = row.getAttribute('data-event') || 'Event';
+                const payId = (row.querySelector('.payment-id') ? row.querySelector('.payment-id').textContent.trim() : '') || row.getAttribute('data-payment-id') || '';
+                const bkId = (row.querySelector('.bk-id') ? row.querySelector('.bk-id').textContent.trim() : '') || ('BK-' + row.getAttribute('data-booking-id'));
+                const method = row.getAttribute('data-method') || (row.querySelector('.pay-method') ? row.querySelector('.pay-method').textContent.trim() : 'Direct');
+                const dateStr = row.getAttribute('data-date') || (row.querySelector('.pay-date') ? row.querySelector('.pay-date').textContent.trim() : '');
+
                 return [
-                    row.querySelector('.payment-id').textContent.trim(),
-                    row.querySelector('.cust-name').textContent.trim() || 'Walk-in',
-                    row.querySelector('.bk-id').textContent.trim(),
-                    row.cells[2].textContent.trim(),
+                    payId,
+                    custName,
+                    bkId,
+                    eventName,
                     amt,
-                    row.cells[4].textContent.trim(),
-                    row.cells[5].textContent.trim(),
+                    method,
+                    dateStr,
                     getRowStatusText(row).toUpperCase()
                 ];
             });
 
             const data = [
-                ['Payment ID', 'Customer Ref', 'Booking ID', 'Event Title', 'Amount (PHP)', 'Method', 'Transaction Date', 'Current Status'],
+                ['Payment ID', 'Customer', 'Booking ID', 'Event Title', 'Amount (PHP)', 'Method', 'Transaction Date', 'Status'],
                 ...dataRows,
-                ['', '', '', 'TOTAL EARNINGS', totalAmt, '', '', '']
+                ['', '', '', 'TOTAL COLLECTED', totalAmt, '', '', '']
             ];
 
             const wb = XLSX.utils.book_new();
@@ -331,15 +355,25 @@ document.addEventListener('DOMContentLoaded', function() {
     // Export CSV
     window.exportToCSV = function() {
         try {
-            let csv = 'Payment ID,Customer Ref,Event,Amount,Method,Date,Status\n';
+            let csv = 'Payment ID,Customer,Booking ID,Event,Amount,Method,Date,Status\n';
             filteredRows.forEach(row => {
+                const amtEl = row.querySelector('.amount-pro');
+                const amtText = amtEl ? amtEl.textContent.replace('₱', '').replace(/,/g, '').trim() : '0';
+                const custName = (row.querySelector('.cust-name') ? row.querySelector('.cust-name').textContent.trim() : '') || row.getAttribute('data-customer') || 'Customer';
+                const eventName = row.getAttribute('data-event') || 'Event';
+                const payId = (row.querySelector('.payment-id') ? row.querySelector('.payment-id').textContent.trim() : '') || row.getAttribute('data-payment-id') || '';
+                const bkId = (row.querySelector('.bk-id') ? row.querySelector('.bk-id').textContent.trim() : '') || ('BK-' + row.getAttribute('data-booking-id'));
+                const method = row.getAttribute('data-method') || (row.querySelector('.pay-method') ? row.querySelector('.pay-method').textContent.trim() : 'Direct');
+                const dateStr = row.getAttribute('data-date') || (row.querySelector('.pay-date') ? row.querySelector('.pay-date').textContent.trim() : '');
+
                 const data = [
-                    row.querySelector('.payment-id').textContent,
-                    row.querySelector('.cust-name').textContent,
-                    row.cells[2].textContent,
-                    row.querySelector('.amount-pro').textContent.replace('₱', '').replace(/,/g, ''),
-                    row.cells[4].textContent,
-                    row.cells[5].textContent,
+                    payId,
+                    custName,
+                    bkId,
+                    eventName,
+                    amtText,
+                    method,
+                    dateStr,
                     getRowStatusText(row)
                 ];
                 csv += data.map(v => `"${v}"`).join(',') + '\n';
@@ -688,6 +722,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Settle Dues Modal Logic
     window.openSettleModal = function() {
+        const periodInput = document.getElementById('settlePeriod');
+        if (periodInput && !periodInput.value) {
+            const now = new Date();
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            periodInput.value = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+        }
         window.openModal('settleModal');
     };
 

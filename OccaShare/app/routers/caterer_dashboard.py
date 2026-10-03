@@ -541,10 +541,24 @@ async def create_manual_booking(
             
         event_date = datetime.strptime(event_date_str, "%Y-%m-%d").date()
         
-        # Lead Time & Past Date Check
+        # Check if booking is historical or future
         today = date.today()
-        if event_date <= today + timedelta(days=1):
-            raise HTTPException(status_code=400, detail="manDate|Bookings must be made at least 2 days in advance. Bookings for today or tomorrow are not allowed.")
+        status_input = (data.get("status") or "pending").strip().lower()
+        status_map = {
+            "pending": "pending",
+            "confirmed": "confirmed",
+            "completed": "completed",
+            "cancelled": "cancelled",
+            "no show": "no_show",
+            "no_show": "no_show"
+        }
+        requested_status = status_map.get(status_input, "pending")
+        is_historical = (event_date < today) or (requested_status == "completed" and event_date <= today)
+
+        # Lead Time & Past Date Check (allow historical bookings for past dates)
+        if not is_historical:
+            if event_date <= today + timedelta(days=1) and not data.get("force_override", False):
+                raise HTTPException(status_code=400, detail="extEventDate|Bookings must be made at least 2 days in advance. Bookings for today or tomorrow are not allowed.")
 
         # Anti-Double Booking Validation (Duplicate Detection)
         duplicate_check = db.query(models.Booking).filter(
@@ -555,7 +569,7 @@ async def create_manual_booking(
         ).first()
         
         if duplicate_check:
-            raise HTTPException(status_code=400, detail=f"manDate|Duplicate Error: The customer '{target_user.first_name}' already has an active booking registered on {event_date.strftime('%b %d, %Y')}. Double-booking the same customer on the exact same day is prohibited to prevent data redundancy.")
+            raise HTTPException(status_code=400, detail=f"extEventDate|Duplicate Error: The customer '{target_user.first_name}' already has an active booking registered on {event_date.strftime('%b %d, %Y')}. Double-booking the same customer on the exact same day is prohibited.")
 
         # Package Constraint Check
         package_id = data.get("package_id")
@@ -574,46 +588,41 @@ async def create_manual_booking(
             models.Booking.is_archived == False
         ).count()
         
-        # Check manual block first
-        manual_block = db.query(models.Availability).filter(
-            models.Availability.caterer_id == user.caterer_profile.id,
-            models.Availability.date == event_date,
-            models.Availability.is_available == False
-        ).first()
-        
-        if manual_block:
-            raise HTTPException(status_code=400, detail=f"manDate|This date is manually blocked: {manual_block.reason or 'No reason provided'}. Unblock it first before adding bookings.")
-        
-        # Configurable capacity limit (caterer can override via force flag)
-        max_cap = user.caterer_profile.max_bookings_per_day or 1
-        force_override = data.get("force_override", False)
-        auto_block = user.caterer_profile.auto_block_enabled if user.caterer_profile.auto_block_enabled is not None else True
-        
-        if auto_block and existing_on_date >= max_cap and not force_override:
-            raise HTTPException(status_code=409, detail=f"manDate|Capacity Reached: You already have {existing_on_date}/{max_cap} active bookings on {event_date}. You can override this by confirming in the capacity warning dialog.")
+        # Check manual block for future dates
+        if not is_historical:
+            manual_block = db.query(models.Availability).filter(
+                models.Availability.caterer_id == user.caterer_profile.id,
+                models.Availability.date == event_date,
+                models.Availability.is_available == False
+            ).first()
+            
+            if manual_block:
+                raise HTTPException(status_code=400, detail=f"extEventDate|This date is manually blocked: {manual_block.reason or 'No reason provided'}. Unblock it first before adding bookings.")
+            
+            # Configurable capacity limit (caterer can override via force flag)
+            max_cap = user.caterer_profile.max_bookings_per_day or 1
+            force_override = data.get("force_override", False)
+            auto_block = user.caterer_profile.auto_block_enabled if user.caterer_profile.auto_block_enabled is not None else True
+            
+            if auto_block and existing_on_date >= max_cap and not force_override:
+                raise HTTPException(status_code=409, detail=f"extEventDate|Capacity Reached: You already have {existing_on_date}/{max_cap} active bookings on {event_date}. You can override this by confirming in the capacity warning dialog.")
 
         # 3. Create Booking
         event_time_str = data.get("event_time")
         if not event_time_str:
-            raise HTTPException(status_code=400, detail="manTime|Event time is required.")
+            raise HTTPException(status_code=400, detail="extEventTime|Event time is required.")
         try:
             event_time = datetime.strptime(event_time_str[:5], "%H:%M").time()
         except (TypeError, ValueError):
-            raise HTTPException(status_code=400, detail="manTime|Enter a valid event time.")
+            raise HTTPException(status_code=400, detail="extEventTime|Enter a valid event time.")
 
-        # Build special requests from notes
+        # Build special requests and staff notes
         special_notes = data.get("special_notes", "").strip()
         special_requests = special_notes if special_notes else ""
+        booking_notes = data.get("booking_notes") or data.get("notes") or data.get("caterer_notes") or ""
         
         # Payment handling
-        payment_method = data.get("payment_method", "Cash")
-        requested_status = data.get("status", "confirmed")
-        override_kyc = data.get("override_kyc", False)
-        
-        # Enforce Digital Contract & KYC rule for existing users
-        if is_existing_user and requested_status == "confirmed" and not override_kyc:
-            requested_status = "awaiting_customer"
-            special_requests = special_requests + " [Awaiting Customer Digital Signature & KYC]"
+        payment_method = data.get("payment_method", "Cash") or "Cash"
         
         # Services & Walk-in Metadata
         services = data.get("services", [])
@@ -635,57 +644,67 @@ async def create_manual_booking(
                 for eq in equipment_items
             ]
 
-        # Authoritative Total Amount Computation
+        # Authoritative Services Total & Discount Computation
+        discount_amount = round(float(data.get("discount", data.get("discount_amount", 0)) or 0), 2)
+        if discount_amount < 0:
+            raise HTTPException(status_code=400, detail="extDiscount|Discount cannot be negative.")
+
         if package_id:
             pkg_obj = db.query(models.CateringPackage).get(package_id)
-            total_amt = round(float(pkg_obj.price if (pkg_obj and pkg_obj.price) else (data.get("total_amount", 0) or 0)), 2)
+            services_total = round(float(pkg_obj.price if (pkg_obj and pkg_obj.price) else (data.get("total_amount", 0) or 0)), 2)
         elif event_type.lower() == "equipment rental" or equipment_items:
             computed_eq_total = 0.0
             for eq in equipment_items:
                 eq_price = float(eq.get("price", 0) or eq.get("rental_price", 0) or 0)
                 eq_qty = int(eq.get("qty", 1) or eq.get("quantity", 1) or 1)
                 computed_eq_total += (eq_price * eq_qty)
-            total_amt = round(computed_eq_total if computed_eq_total > 0 else float(data.get("total_amount", 0) or 0), 2)
+            services_total = round(computed_eq_total if computed_eq_total > 0 else float(data.get("total_amount", 0) or 0), 2)
         elif services:
             computed_services_total = 0.0
             for s in services:
-                s_price = float(s.get("price", 0) or 0)
-                if s_price <= 0:
-                    raise HTTPException(status_code=400, detail=f"services|Amount for '{s.get('name', 'selected service')}' must be greater than ₱0.")
-                computed_services_total += s_price
-            total_amt = round(computed_services_total, 2)
+                s_price = float(s.get("price", 0) or s.get("unit_price", 0) or 0)
+                s_qty = int(s.get("qty", 1) or s.get("quantity", 1) or 1)
+                if s_price < 0:
+                    raise HTTPException(status_code=400, detail=f"walkinServices|Service price cannot be negative for '{s.get('name', 'service')}'.")
+                if s_qty <= 0:
+                    raise HTTPException(status_code=400, detail=f"walkinServices|Quantity must be greater than zero for '{s.get('name', 'service')}'.")
+                computed_services_total += (s_price * s_qty)
+            services_total = round(computed_services_total, 2)
         else:
-            total_amt = round(float(data.get("total_amount", 0) or 0), 2)
+            services_total = round(float(data.get("total_amount", 0) or 0), 2)
 
-        # Downpayment calculation & validation
-        has_downpayment = data.get("has_downpayment", False)
-        raw_downpayment = data.get("downpayment_amount", data.get("amount_paid", 0))
-        downpayment_amt = round(float(raw_downpayment or 0), 2) if has_downpayment or float(raw_downpayment or 0) > 0 else 0.0
+        if not services and not equipment_items and not package_id:
+            raise HTTPException(status_code=400, detail="walkinServices|At least one service/inclusion must be selected.")
 
-        if downpayment_amt < 0:
-            raise HTTPException(status_code=400, detail="manDownpayment|Downpayment cannot be negative.")
-        if downpayment_amt > total_amt:
-            raise HTTPException(status_code=400, detail="manDownpayment|Downpayment cannot exceed the total amount.")
+        # Grand Total = Services Total - Discount
+        total_amt = round(max(0.0, services_total - discount_amount), 2)
 
-        amount_paid = downpayment_amt
+        # Downpayment / Amount Paid calculation & validation
+        raw_paid = data.get("amount_paid", data.get("downpayment_amount", 0))
+        amount_paid = round(float(raw_paid or 0), 2)
+
+        if amount_paid < 0:
+            raise HTTPException(status_code=400, detail="extDownpayment|Amount paid cannot be negative.")
+        if amount_paid > total_amt:
+            raise HTTPException(status_code=400, detail="extDownpayment|Amount paid cannot exceed grand total.")
+
         remaining_balance = round(max(0.0, total_amt - amount_paid), 2)
 
-        # Determine payment_status according to strict specifications:
-        # Downpayment = 0 -> UNPAID
-        # Downpayment > 0 AND Downpayment < Total -> PARTIALLY PAID
-        # Downpayment = Total -> FULLY PAID
+        # Payment status according to strict rules:
+        # Amount Paid = 0 -> UNPAID
+        # Amount Paid > 0 and Balance > 0 -> PARTIALLY PAID
+        # Balance = 0 -> FULLY PAID
         if total_amt == 0 and amount_paid == 0:
             computed_payment_status = 'unpaid'
         elif total_amt > 0 and amount_paid == 0:
             computed_payment_status = 'unpaid'
-        elif 0 < amount_paid < total_amt:
+        elif amount_paid > 0 and remaining_balance > 0:
             computed_payment_status = 'partially_paid'
-        elif amount_paid >= total_amt and total_amt > 0:
+        elif remaining_balance == 0 and total_amt >= 0:
             computed_payment_status = 'fully_paid'
         else:
             computed_payment_status = 'unpaid'
 
-        discount_amount = data.get("discount_amount", 0)
         custom_reqs = {
             "is_walk_in": True,
             "event_type": event_type,
@@ -698,15 +717,15 @@ async def create_manual_booking(
             "services": services,
             "equipment_items": equipment_items,
             "quotation_items": quotation_items,
+            "services_total": services_total,
             "discount_amount": discount_amount,
-            "has_downpayment": has_downpayment,
-            "downpayment_amount": downpayment_amt,
-            "remaining_balance": remaining_balance,
+            "grand_total": total_amt,
             "amount_paid": amount_paid,
+            "remaining_balance": remaining_balance,
+            "booking_notes": booking_notes.strip() if booking_notes else "",
+            "booking_source": "WALK_IN",
             "entry_method": "manual"
         }
-        booking_channel = data.get("booking_channel") or data.get("channel") or data.get("booking_source") or "In Person"
-        custom_reqs["booking_channel"] = booking_channel
 
         new_booking = models.Booking(
             user_id=target_user.id,
@@ -729,21 +748,22 @@ async def create_manual_booking(
             payment_method=payment_method,
             amount_paid=amount_paid,
             special_requests=special_requests,
+            caterer_notes=booking_notes.strip() if booking_notes else None,
             custom_requirements=custom_reqs,
-            booking_source=booking_channel
+            booking_source="WALK_IN"
         )
         db.add(new_booking)
         db.flush()
 
-        # If an initial downpayment or payment was made, record it in BookingPaymentRecord
+        # If an initial payment was made, record in BookingPaymentRecord
         if amount_paid > 0:
             pay_record = models.BookingPaymentRecord(
                 booking_id=new_booking.id,
                 amount=amount_paid,
                 payment_date=func.now(),
                 payment_method=payment_method,
-                payment_type="Deposit" if amount_paid < total_amt else "Full",
-                reference_notes=f"Walk-in Initial Downpayment recorded by caterer ({payment_method}).",
+                payment_type="Deposit" if remaining_balance > 0 else "Full",
+                reference_notes=f"Walk-in payment recorded by caterer ({payment_method}).",
                 recorded_by="Caterer"
             )
             db.add(pay_record)
@@ -791,14 +811,26 @@ async def create_manual_booking(
         if services:
             for s_data in services:
                 s_name = s_data.get("name") or s_data.get("service_name") or "Service"
-                s_price = float(s_data.get("price", 0) or 0)
-                s_qty = int(s_data.get("qty", 1) or 1)
+                s_price = float(s_data.get("unit_price", s_data.get("price", 0)) or 0)
+                s_qty = int(s_data.get("qty", 1) or s_data.get("quantity", 1) or 1)
+                raw_svc_id = s_data.get("service_id") or s_data.get("id")
+                svc_id_int = None
+                if raw_svc_id:
+                    try:
+                        clean_sid = str(raw_svc_id).replace("cat_", "").replace("draft_", "")
+                        if clean_sid.isdigit():
+                            svc_id_int = int(clean_sid)
+                    except Exception:
+                        svc_id_int = None
+
                 s_item_rec = models.BookingMenuItem(
                     booking_id=new_booking.id,
-                    custom_name=s_name,
+                    service_id=svc_id_int,
+                    custom_name=s_name if not svc_id_int else None,
                     quantity=s_qty,
                     price=s_price,
-                    is_add_on=True
+                    is_add_on=True,
+                    choices={"notes": s_data.get("notes", "")} if s_data.get("notes") else None
                 )
                 db.add(s_item_rec)
 
@@ -843,6 +875,27 @@ async def create_manual_booking(
         
         # 5. Add Operations Checklist
         create_default_booking_tasks(db, new_booking.id)
+
+        # 6. If created as completed, calculate admin platform commission & billing invoice
+        if requested_status in ["completed", "delivered"]:
+            config = db.query(models.WebsiteConfig).first()
+            comm_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
+            comm_fixed = config.commission_fixed_amount if config else 20.0
+            commission_amount = (total_amt * comm_rate) + comm_fixed
+            
+            caterer_prof = user.caterer_profile
+            if caterer_prof:
+                caterer_prof.outstanding_balance = float(caterer_prof.outstanding_balance or 0.0) + commission_amount
+            new_booking.commission_calculated = True
+            
+            commission_record = models.BillingInvoice(
+                caterer_id=new_booking.caterer_id or (caterer_prof.id if caterer_prof else None),
+                booking_id=new_booking.id,
+                billing_period=new_booking.event_date.strftime('%B %Y') if new_booking.event_date else 'General',
+                amount=commission_amount,
+                status="pending"
+            )
+            db.add(commission_record)
         
         db.commit()
         try:
@@ -860,10 +913,16 @@ async def create_manual_booking(
         return {
             "status": "success",
             "booking_id": new_booking.id,
+            "booking_ref": getattr(new_booking, "booking_ref", None) or f"BK-{new_booking.id:06d}",
             "total_amount": total_amt,
-            "downpayment_amount": amount_paid,
+            "services_total": services_total,
+            "discount_amount": discount_amount,
+            "amount_paid": amount_paid,
             "remaining_balance": remaining_balance,
-            "payment_status": computed_payment_status
+            "payment_status": computed_payment_status,
+            "booking_status": requested_status,
+            "customer_name": customer_name,
+            "event_date": str(event_date)
         }
     except HTTPException as he:
         # Re-raise so FastAPI handles it correctly
@@ -999,26 +1058,30 @@ async def update_booking_status(
     if booking.status in ['cancelled', 'completed'] and data.status not in ['cancelled', 'completed']:
         raise HTTPException(status_code=400, detail=f"Booking is already {booking.status} and cannot be reopened or modified.")
 
-    new_status = data.status
-    allowed_statuses = ["preparing", "ready_for_delivery", "on_the_way", "arrived", "setup_ongoing", "completed", "cancelled"]
+    new_status = data.status.lower()
+    allowed_statuses = ["pending", "confirmed", "preparing", "ready_for_delivery", "on_the_way", "arrived", "setup_ongoing", "completed", "cancelled", "no_show"]
     
     if new_status not in allowed_statuses:
         raise HTTPException(status_code=400, detail="Invalid status")
 
     # --- STRICT STATE MACHINE ENFORCEMENT ---
-    # Define valid linear transitions to prevent status jumping
+    # Normal flow: Pending -> Confirmed -> Completed
+    # Cancellation: Pending/Confirmed -> Cancelled
+    # No-show: Confirmed -> No Show
     valid_transitions = {
-        "confirmed": ["preparing", "cancelled"],
+        "pending": ["confirmed", "cancelled"],
+        "confirmed": ["preparing", "completed", "cancelled", "no_show"],
         "preparing": ["ready_for_delivery", "cancelled"],
         "ready_for_delivery": ["on_the_way", "cancelled"],
         "on_the_way": ["arrived", "cancelled"],
         "arrived": ["setup_ongoing", "completed", "cancelled"],
         "setup_ongoing": ["completed", "cancelled"],
         "completed": [],
-        "cancelled": []
+        "cancelled": [],
+        "no_show": []
     }
     
-    current_status = booking.status
+    current_status = (booking.status or "pending").lower()
     if new_status != "cancelled":
         allowed_next = valid_transitions.get(current_status, allowed_statuses)
         if new_status not in allowed_next:
@@ -1505,22 +1568,75 @@ async def caterer_dashboard(
             
         amount = float(b.total_amount or b.total_price or 0)
         paid = float(b.amount_paid or 0)
+        cust_name = (
+            b.customer_name 
+            or (f"{b.user.first_name} {b.user.last_name}".strip() if b.user and (b.user.first_name or b.user.last_name) else None)
+            or b.customer_email 
+            or f"Booking #{b.id}"
+        )
+        ev_title = b.event_name or (b.package.name if b.package else (b.event_type or "Catering Event"))
+        rem_balance = max(0.0, amount - paid)
         
         # Balance computation
         if amount > paid and b.status not in ['pending_quotation', 'pending_review']:
-            outstanding_balance += (amount - paid)
+            outstanding_balance += rem_balance
             outstanding_count += 1
             if b.event_date and b.event_date <= today + timedelta(days=3):
-                action_center_items.append({'type': 'urgent', 'title': 'Payment Overdue', 'desc': f'Booking #{b.id}', 'icon': 'fa-money-bill-wave'})
-            elif b.event_date and b.event_date <= today + timedelta(days=14) and b.status == 'confirmed':
-                action_center_items.append({'type': 'warning', 'title': 'Final Balance Due', 'desc': f'Booking #{b.id}', 'icon': 'fa-coins'})
+                action_center_items.append({
+                    'type': 'urgent',
+                    'title': f'Payment Overdue — {cust_name}',
+                    'desc': f'Booking #{b.id} • {ev_title} • Balance: ₱{rem_balance:,.2f} • Date: {b.event_date.strftime("%b %d, %Y")}',
+                    'icon': 'fa-money-bill-wave',
+                    'booking_id': b.id
+                })
+            elif b.event_date and b.event_date <= today + timedelta(days=14) and b.status in ['confirmed', 'preparing']:
+                action_center_items.append({
+                    'type': 'warning',
+                    'title': f'Final Balance Due — {cust_name}',
+                    'desc': f'Booking #{b.id} • {ev_title} • Balance: ₱{rem_balance:,.2f} • Date: {b.event_date.strftime("%b %d, %Y")}',
+                    'icon': 'fa-coins',
+                    'booking_id': b.id
+                })
+
+        # Unconfirmed booking alert
+        if b.status in ['pending', 'inquiry', 'pending_quotation', 'pending_review', 'awaiting_caterer']:
+            action_center_items.append({
+                'type': 'urgent',
+                'title': f'Unconfirmed Booking — {cust_name}',
+                'desc': f'Booking #{b.id} • {ev_title} • Needs your review and confirmation',
+                'icon': 'fa-calendar-plus',
+                'booking_id': b.id
+            })
+
+        # Missing booking information alert (e.g. missing venue/location)
+        if b.status in ['confirmed', 'preparing'] and not (b.event_address or b.venue_address or b.event_location):
+            action_center_items.append({
+                'type': 'warning',
+                'title': f'Missing Venue Location — {cust_name}',
+                'desc': f'Booking #{b.id} • {ev_title} has no event address specified',
+                'icon': 'fa-map-marker-alt',
+                'booking_id': b.id
+            })
                 
         # Prep / Deadline computation
         if b.event_date and today < b.event_date <= today + timedelta(days=7):
-            action_center_items.append({'type': 'warning', 'title': 'Event within 7 days', 'desc': f'{b.event_type} - Booking #{b.id}', 'icon': 'fa-calendar-day'})
+            days_left = (b.event_date - today).days
+            action_center_items.append({
+                'type': 'warning',
+                'title': f'Event in {days_left} day{"s" if days_left > 1 else ""} — {cust_name}',
+                'desc': f'Booking #{b.id} • {ev_title} • {b.guest_count or 0} pax • {b.event_date.strftime("%B %d, %Y")}',
+                'icon': 'fa-calendar-day',
+                'booking_id': b.id
+            })
             
         if getattr(b, 'contract_status', '') == 'awaiting_signature':
-            action_center_items.append({'type': 'warning', 'title': 'Contract Pending', 'desc': f'Booking #{b.id}', 'icon': 'fa-file-signature'})
+            action_center_items.append({
+                'type': 'warning',
+                'title': f'Contract Pending Signature — {cust_name}',
+                'desc': f'Booking #{b.id} • {ev_title} awaiting customer contract signing',
+                'icon': 'fa-file-signature',
+                'booking_id': b.id
+            })
 
     # Action required mapping based on actual computed items
     action_required_count = len(action_center_items)
@@ -1577,17 +1693,76 @@ async def caterer_dashboard(
 
     total_bookings = len([b for b in profile.bookings if b.status not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted', 'cancelled'] and not b.is_archived])
     
+    import datetime as dt_module
+    today_schedule = [b for b in all_bookings if b.event_date == today and b.status not in ['cancelled', 'draft']]
+    today_schedule.sort(key=lambda b: (b.event_time or dt_module.time.min))
+
+    upcoming_events_list = [b for b in all_bookings if b.event_date and b.event_date > today and b.status not in ['cancelled', 'draft']]
+    upcoming_events_list.sort(key=lambda b: (b.event_date, b.event_time or dt_module.time.min))
+    upcoming_events_list = upcoming_events_list[:8]
+
     pinned_schedules = db.query(models.InternalSchedule).filter(
         models.InternalSchedule.caterer_id == profile.id,
-        models.InternalSchedule.is_pinned == True,
-        models.InternalSchedule.date >= today
-    ).order_by(models.InternalSchedule.date, models.InternalSchedule.time).all()
+        models.InternalSchedule.is_pinned == True
+    ).order_by(models.InternalSchedule.date.asc(), models.InternalSchedule.time.asc()).all()
+
+    # Accurate analytics counts across both online and walk-in bookings:
+    accurate_active_bookings = len([
+        b for b in all_bookings 
+        if not b.is_archived and b.status in [
+            'confirmed', 'preparing', 'ready_for_delivery', 'on_the_way', 
+            'arrived', 'setup_ongoing', 'in_progress'
+        ]
+    ])
+    accurate_completed_events = len([
+        b for b in all_bookings 
+        if not b.is_archived and b.status in ['completed', 'delivered']
+    ])
+    accurate_pending_bookings = len([
+        b for b in all_bookings 
+        if not b.is_archived and b.status in [
+            'pending', 'inquiry', 'pending_quotation', 'pending_review', 
+            'awaiting_caterer', 'awaiting_customer', 'awaiting_payment'
+        ]
+    ])
+    accurate_total_revenue = sum([
+        float(b.total_amount or b.total_price or 0.0) 
+        for b in all_bookings 
+        if not b.is_archived and b.status in ['completed', 'delivered']
+    ])
+
+    # Recent 5 bookings for Dashboard
+    recent_bookings_dashboard = []
+    for b in sorted([b for b in all_bookings if not getattr(b, 'is_archived', False)], key=lambda x: (x.created_at or dt_module.datetime.min, x.id), reverse=True)[:5]:
+        cust_display = (
+            b.customer_name 
+            or (f"{b.user.first_name} {b.user.last_name}".strip() if b.user and (b.user.first_name or b.user.last_name) else None)
+            or b.customer_email 
+            or f"Customer #{b.id}"
+        )
+        pkg_title = b.package.name if b.package else (b.event_type or "Custom Catering")
+        recent_bookings_dashboard.append({
+            "id": b.id,
+            "booking_ref": getattr(b, 'booking_ref', None) or f"BK-{b.id:06d}",
+            "customer": cust_display,
+            "event_type": b.event_type or "Catering Event",
+            "event_date": b.event_date,
+            "guest_count": b.guest_count or 0,
+            "package": pkg_title,
+            "amount": float(b.total_amount or b.total_price or 0.0),
+            "status": b.status or "pending"
+        })
 
     return templates.TemplateResponse("caterer/index.html", {
         "request": request,
         "user": user,
         "profile": profile,
         **stats,
+        "accurate_active_bookings": accurate_active_bookings,
+        "accurate_completed_events": accurate_completed_events,
+        "accurate_pending_bookings": accurate_pending_bookings,
+        "accurate_total_revenue": accurate_total_revenue,
+        "recent_bookings_dashboard": recent_bookings_dashboard,
         "active_page": "dashboard",
         "completion_percentage": completion_pct,
         "has_logo": has_logo,
@@ -1602,7 +1777,9 @@ async def caterer_dashboard(
         "is_identity_verified": is_identity_verified,
         "next_action": next_action,
         "total_bookings": total_bookings,
-        "pinned_schedules": pinned_schedules
+        "pinned_schedules": pinned_schedules,
+        "today_schedule": today_schedule,
+        "upcoming_events_list": upcoming_events_list
     })
 
 @router.post("/toggle-publish")
@@ -1693,7 +1870,7 @@ async def caterer_omni_search(
             results.append({
                 "type": "Dish / Menu",
                 "title": item.name,
-                "subtitle": f"₱{item.price:,.2f} • {item.category or 'General'}",
+                "subtitle": f"₱{float(item.price or 0):,.2f} • {item.category or 'General'}",
                 "url": f"/caterer/services?tab=dishes&search={urllib.parse.quote(item.name)}",
                 "icon": "fas fa-utensils"
             })
@@ -1705,12 +1882,12 @@ async def caterer_omni_search(
     ).all()
     for pkg in packages:
         p_name = pkg.name.lower() if pkg.name else ""
-        p_type = (pkg.event_type or "").lower()
+        p_type = (pkg.service_type or "").lower()
         if query in p_name or query in p_type:
             results.append({
                 "type": "Package",
                 "title": pkg.name,
-                "subtitle": f"₱{pkg.price_per_head:,.2f}/head • {pkg.event_type or 'General'}",
+                "subtitle": f"₱{float(pkg.price_per_head or pkg.price or 0):,.2f}/head • {pkg.service_type or 'General'}",
                 "url": f"/caterer/packages?search={urllib.parse.quote(pkg.name)}",
                 "icon": "fas fa-box"
             })
@@ -1722,12 +1899,12 @@ async def caterer_omni_search(
     for c in customers:
         c_name = f"{c.first_name} {c.last_name}".lower()
         c_email = (c.email or "").lower()
-        c_phone = (c.contact_number or "").lower()
+        c_phone = (c.phone_number or "").lower()
         if query in c_name or query in c_email or query in c_phone:
             results.append({
                 "type": "Customer",
                 "title": f"{c.first_name} {c.last_name}",
-                "subtitle": c.email or c.contact_number or "Customer",
+                "subtitle": c.email or c.phone_number or "Customer",
                 "url": f"/caterer/customers?search={urllib.parse.quote(c.first_name)}",
                 "icon": "fas fa-user-tag"
             })
@@ -2311,54 +2488,259 @@ async def caterer_payments(
     comm_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
     comm_fixed = config.commission_fixed_amount if config else 20.0
 
-    # Auto-synchronize completed bookings to outstanding_balance:
+    # Auto-synchronize completed bookings to outstanding_balance and BillingInvoice:
     balance_updated = False
+    unsettled_bookings = []
+    
+    # Map of paid booking IDs from invoices
+    paid_booking_ids = {inv.booking_id for inv in invoices if inv.booking_id and inv.status == 'paid'}
+    pending_invoices = [inv for inv in invoices if inv.status in ('pending', 'processing')]
+    
+    # Calculate dues across all completed bookings that have not been settled
+    total_unsettled_dues = 0.0
     for b in bookings:
-        if b.status == 'completed' and not getattr(b, 'commission_calculated', False):
+        if b.status in ('completed', 'delivered'):
             comm_amount = (float(b.total_amount or b.total_price or 0.0) * comm_rate) + comm_fixed
-            profile.outstanding_balance = float(profile.outstanding_balance or 0.0) + comm_amount
-            b.commission_calculated = True
-            balance_updated = True
-
-    # Fallback: if outstanding_balance is still 0 and no invoices were settled yet, ensure completed bookings reflect
-    if (profile.outstanding_balance or 0.0) <= 0:
-        completed_bookings = [b for b in bookings if b.status == 'completed']
-        settled_booking_ids = {inv.booking_id for inv in invoices if inv.booking_id and inv.status in ('paid', 'pending')}
-        has_active_global_settlement = any(inv.booking_id is None and inv.status in ('paid', 'pending') for inv in invoices)
-        if completed_bookings and not has_active_global_settlement:
-            unsettled_comm = 0.0
-            for b in completed_bookings:
-                if b.id not in settled_booking_ids:
-                    b_comm = (float(b.total_amount or b.total_price or 0.0) * comm_rate) + comm_fixed
-                    unsettled_comm += b_comm
-                    b.commission_calculated = True
-            if unsettled_comm > 0:
-                profile.outstanding_balance = unsettled_comm
+            existing_inv = next((inv for inv in invoices if inv.booking_id == b.id), None)
+            if not existing_inv:
+                period_str = b.event_date.strftime('%B %Y') if b.event_date else 'General'
+                commission_record = models.BillingInvoice(
+                    caterer_id=profile.id,
+                    booking_id=b.id,
+                    billing_period=period_str,
+                    amount=comm_amount,
+                    status="pending"
+                )
+                db.add(commission_record)
+                invoices.insert(0, commission_record)
                 balance_updated = True
+                b.commission_calculated = True
+            
+            # Check if this booking's commission is already paid
+            if b.id not in paid_booking_ids and (not existing_inv or existing_inv.status != 'paid'):
+                total_unsettled_dues += comm_amount
+                b._due_amount = comm_amount
+                unsettled_bookings.append(b)
+
+    # Any global pending invoice with booking_id is None
+    global_pending_amount = sum(float(inv.amount or 0) for inv in pending_invoices if inv.booking_id is None)
+    if total_unsettled_dues > 0 or global_pending_amount > 0:
+        calculated_dues = max(total_unsettled_dues, global_pending_amount)
+        if abs(float(profile.outstanding_balance or 0.0) - calculated_dues) > 0.01:
+            profile.outstanding_balance = calculated_dues
+            balance_updated = True
+    elif (profile.outstanding_balance or 0.0) < 0:
+        profile.outstanding_balance = 0.0
+        balance_updated = True
 
     if balance_updated:
         db.commit()
 
-    # ── Post-Paid Commission System Variables ──────────────────────────
-    outstanding_balance = profile.outstanding_balance or 0.0
-    lifetime_revenue = 0.0
-    active_count = 0
-    total_commission_paid = 0.0
+    # ── Post-Paid Commission & Financial Calculations ──────────────────
+    from datetime import datetime, timezone, timedelta, date
 
+    today_dt = datetime.now()
+    now_date = today_dt.date()
+    
+    # Timeframe calculation
+    period = request.query_params.get("period", "month").lower()
+    start_date_param = request.query_params.get("start_date")
+    end_date_param = request.query_params.get("end_date")
+    
+    start_filter = None
+    end_filter = None
+    
+    if period == "today":
+        start_filter = now_date
+        end_filter = now_date
+    elif period == "week":
+        start_filter = now_date - timedelta(days=now_date.weekday())
+        end_filter = start_filter + timedelta(days=6)
+    elif period == "month":
+        start_filter = now_date.replace(day=1)
+        next_month = (start_filter.replace(day=28) + timedelta(days=4)).replace(day=1)
+        end_filter = next_month - timedelta(days=1)
+    elif period == "last_month":
+        first_of_this_month = now_date.replace(day=1)
+        end_filter = first_of_this_month - timedelta(days=1)
+        start_filter = end_filter.replace(day=1)
+    elif period == "year":
+        start_filter = date(now_date.year, 1, 1)
+        end_filter = date(now_date.year, 12, 31)
+    elif period == "custom" and start_date_param and end_date_param:
+        try:
+            start_filter = datetime.strptime(start_date_param, "%Y-%m-%d").date()
+            end_filter = datetime.strptime(end_date_param, "%Y-%m-%d").date()
+        except Exception:
+            start_filter = None
+            end_filter = None
+    elif period == "all":
+        start_filter = None
+        end_filter = None
+
+    def is_in_period(b):
+        if not start_filter or not end_filter:
+            return True
+        b_date = b.event_date
+        if not b_date and b.created_at:
+            b_date = b.created_at.date()
+        if not b_date:
+            return True
+        return start_filter <= b_date <= end_filter
+
+    # Next Billing Date (last day of current month)
+    curr_first = now_date.replace(day=1)
+    next_m = (curr_first.replace(day=28) + timedelta(days=4)).replace(day=1)
+    next_billing_date = next_m - timedelta(days=1)
+    next_billing_date_str = next_billing_date.strftime('%B %d, %Y')
+
+    # All-time valid bookings
+    valid_bookings = [b for b in bookings if b.status not in ('cancelled', 'rejected')]
+    period_bookings = [b for b in valid_bookings if is_in_period(b)]
+
+    # 1. Customer Payments & Earnings: Summary Cards (Period-based)
+    period_total_booking_value = sum(float(b.total_amount or b.total_price or 0.0) for b in period_bookings)
+    period_amount_collected = sum(float(b._pay_verified or 0.0) for b in period_bookings)
+    period_outstanding_balance = sum(float(b._pay_balance or 0.0) for b in period_bookings if b.status not in ('completed', 'delivered'))
+    period_active_count = sum(1 for b in period_bookings if b.status not in ('completed', 'delivered'))
+
+    # Lifetime Totals
+    lifetime_booking_value = sum(float(b.total_amount or b.total_price or 0.0) for b in valid_bookings)
+    lifetime_amount_collected = sum(float(b._pay_verified or 0.0) for b in valid_bookings)
+    lifetime_outstanding_balance = sum(float(b._pay_balance or 0.0) for b in valid_bookings if b.status not in ('completed', 'delivered'))
+    lifetime_active_count = sum(1 for b in valid_bookings if b.status not in ('completed', 'delivered'))
+
+    # 2. Platform Commission Metrics
+    outstanding_commission = float(profile.outstanding_balance or 0.0)
+    total_commission_paid = sum(float(inv.amount or 0.0) for inv in invoices if inv.status == 'paid')
+    total_commission_due = sum(float(inv.amount or 0.0) for inv in invoices)
+    if total_commission_due <= 0 and len(valid_bookings) > 0:
+        total_commission_due = sum(
+            (float(b.total_amount or b.total_price or 0.0) * comm_rate) + comm_fixed
+            for b in valid_bookings if b.status in ('completed', 'delivered')
+        )
+    
+    # Estimated period commission & net earnings
+    period_commission_est = sum(
+        (float(b.total_amount or b.total_price or 0.0) * comm_rate) + comm_fixed
+        for b in period_bookings if b.status in ('completed', 'delivered')
+    )
+    period_net_earnings = max(0.0, period_amount_collected - period_commission_est)
+
+    # 3. Outstanding Customer Balances List
+    customer_balance_bookings = [
+        b for b in valid_bookings 
+        if b.status not in ('completed', 'delivered') and (b._pay_balance or 0.0) > 0.01
+    ]
+    customer_balance_bookings.sort(key=lambda b: float(b._pay_balance or 0.0), reverse=True)
+
+    # 4. Customer Payment Transactions (Transaction History)
+    transactions = []
     for b in bookings:
-        if b.status in ('cancelled', 'rejected'):
+        if b.status in ('draft', 'pending_review'):
             continue
-        if b.status not in ('completed',):
-            active_count += 1
             
-        gross_amount = float(b.total_amount or b.total_price or 0)
+        total_val = float(b.total_amount or b.total_price or 0.0)
+        paid_val = float(b._pay_verified or 0.0)
+        pending_val = float(b._pay_pending or 0.0)
+        balance_val = float(b._pay_balance or 0.0)
+        cust_name = f"{b.user.first_name} {b.user.last_name}".strip() if b.user and b.user.first_name else (b.customer_name or b.customer_ref or "Customer")
         
-        if b.status == 'completed':
-            lifetime_revenue += gross_amount
+        has_records = False
+        if b.payment_records and len(b.payment_records) > 0:
+            for rec in b.payment_records:
+                t_amt = float(rec.amount or 0.0)
+                if t_amt <= 0:
+                    continue
+                has_records = True
+                p_type = rec.payment_type or ("Downpayment" if b.payment_plan == 'downpayment' else "Full Payment")
+                p_date = rec.payment_date or b.created_at
+                
+                if b.status in ('cancelled', 'rejected'):
+                    p_status = "Cancelled"
+                elif b._pay_is_under_review and rec.recorded_by == "Customer" and abs(t_amt - pending_val) < 0.01:
+                    p_status = "Payment Pending Verification"
+                elif balance_val <= 0 and total_val > 0:
+                    p_status = "Fully Paid"
+                elif paid_val > 0:
+                    p_status = "Partially Paid"
+                else:
+                    p_status = "Unpaid"
+                    
+                transactions.append({
+                    "id": f"PAY-{rec.id:04d}",
+                    "payment_id_num": rec.id,
+                    "booking_id": b.id,
+                    "booking_ref": b.booking_ref or f"BK-{b.id:06d}",
+                    "customer_name": cust_name,
+                    "customer_ref": b.customer_ref or (f"CUST-{b.user_id:04d}" if b.user_id else f"WALKIN-BK-{b.id:06d}"),
+                    "event_name": b.event_name or b.event_type or "Catering Event",
+                    "payment_type": p_type,
+                    "amount": t_amt,
+                    "method": rec.payment_method or b.payment_method or "GCash",
+                    "date": p_date,
+                    "date_str": p_date.strftime('%b %d, %Y') if p_date else '—',
+                    "date_iso": p_date.strftime('%Y-%m-%d') if p_date else '',
+                    "status": p_status,
+                    "booking_status": b.status,
+                    "booking_total": total_val,
+                    "paid_val": paid_val,
+                    "balance_val": balance_val,
+                    "is_under_review": (p_status == "Payment Pending Verification"),
+                    "proof_url": b.balance_proof_url if 'balance' in p_type.lower() else (b.payment_proof_url or b.balance_proof_url),
+                    "recorded_by": rec.recorded_by or "System",
+                    "booking": b
+                })
+        
+        if not has_records:
+            p_date = b.updated_at or b.created_at
+            if b.status in ('completed', 'delivered') or b.payment_status in ('paid', 'fully_paid'):
+                p_type = "Full Payment"
+                t_amt = total_val
+                p_status = "Fully Paid"
+            elif b._pay_is_under_review:
+                p_type = "Balance Payment" if b.payment_status in ('balance_proof_submitted', 'cash_balance_requested') else "Downpayment"
+                t_amt = pending_val if pending_val > 0 else (b.reservation_fee or total_val * 0.5)
+                p_status = "Payment Pending Verification"
+            elif paid_val > 0:
+                p_type = "Downpayment" if b.payment_plan == 'downpayment' else "Partial Payment"
+                t_amt = paid_val
+                p_status = "Partially Paid"
+            elif b.status in ('cancelled', 'rejected'):
+                p_type = "Full Payment"
+                t_amt = total_val
+                p_status = "Cancelled"
+            else:
+                p_type = "Full Payment" if b.payment_plan == 'full' else "Downpayment"
+                t_amt = total_val
+                p_status = "Unpaid"
+                
+            transactions.append({
+                "id": f"PAY-{b.id:04d}",
+                "payment_id_num": b.id,
+                "booking_id": b.id,
+                "booking_ref": b.booking_ref or f"BK-{b.id:06d}",
+                "customer_name": cust_name,
+                "customer_ref": b.customer_ref or (f"CUST-{b.user_id:04d}" if b.user_id else f"WALKIN-BK-{b.id:06d}"),
+                "event_name": b.event_name or b.event_type or "Catering Event",
+                "payment_type": p_type,
+                "amount": t_amt,
+                "method": b.payment_method or "GCash",
+                "date": p_date,
+                "date_str": p_date.strftime('%b %d, %Y') if p_date else '—',
+                "date_iso": p_date.strftime('%Y-%m-%d') if p_date else '',
+                "status": p_status,
+                "booking_status": b.status,
+                "booking_total": total_val,
+                "paid_val": paid_val,
+                "balance_val": balance_val,
+                "is_under_review": (p_status == "Payment Pending Verification"),
+                "proof_url": b.payment_proof_url or b.balance_proof_url,
+                "recorded_by": "System",
+                "booking": b
+            })
 
-    for invoice in invoices:
-        if invoice.status == 'paid':
-            total_commission_paid += float(invoice.amount)
+    transactions.sort(key=lambda t: t['date'] or datetime.min, reverse=True)
 
     return templates.TemplateResponse("caterer/payments.html", {
         "request": request,
@@ -2366,10 +2748,28 @@ async def caterer_payments(
         "config": config,
         "bookings": bookings,
         "invoices": invoices,
-        "outstanding_balance": outstanding_balance,
-        "lifetime_revenue": lifetime_revenue,
+        "unsettled_bookings": unsettled_bookings,
+        "period": period,
+        "start_date": start_date_param or "",
+        "end_date": end_date_param or "",
+        "period_total_booking_value": period_total_booking_value,
+        "period_amount_collected": period_amount_collected,
+        "period_outstanding_balance": period_outstanding_balance,
+        "period_active_count": period_active_count,
+        "period_net_earnings": period_net_earnings,
+        "period_commission_est": period_commission_est,
+        "lifetime_booking_value": lifetime_booking_value,
+        "lifetime_amount_collected": lifetime_amount_collected,
+        "lifetime_outstanding_balance": lifetime_outstanding_balance,
+        "lifetime_active_count": lifetime_active_count,
+        "total_commission_due": total_commission_due,
         "total_commission_paid": total_commission_paid,
-        "active_count": active_count,
+        "outstanding_commission": outstanding_commission,
+        "next_billing_date_str": next_billing_date_str,
+        "customer_balance_bookings": customer_balance_bookings,
+        "transactions": transactions,
+        "outstanding_balance": outstanding_commission,
+        "active_count": period_active_count,
         "active_page": "payments"
     })
 
@@ -3801,28 +4201,52 @@ async def business_summary(
         if b.event_date and b.event_date >= today and b.status in active_statuses
     ]
     upcoming_events_all.sort(key=lambda x: (x.event_date, x.event_time or datetime.min.time()))
-    upcoming_events_count = len(upcoming_events_all)
-    upcoming_events_display = upcoming_events_all[:6]
+    
+    # Upcoming events for selected timeframe
+    upcoming_events_period = [
+        b for b in period_bookings 
+        if b.event_date and b.event_date >= today and b.status in active_statuses
+    ]
+    upcoming_events_count = len(upcoming_events_period) if timeframe not in ['all_time'] else len(upcoming_events_all)
+    upcoming_events_display = upcoming_events_period[:6] if upcoming_events_period else upcoming_events_all[:6]
 
-    completed_events_count = sum(1 for b in period_bookings if b.status == 'completed')
+    completed_events_count = sum(1 for b in period_bookings if b.status in ['completed', 'delivered'])
 
     pending_statuses = ['pending', 'pending_review', 'inquiry', 'awaiting_payment', 'awaiting_caterer', 'pending_payment', 'draft']
-    pending_bookings_count = sum(1 for b in all_bookings if b.status in pending_statuses)
+    pending_bookings_count = sum(1 for b in period_bookings if b.status in pending_statuses)
 
     valid_period_bookings = [b for b in period_bookings if b.status not in ['cancelled', 'rejected']]
     total_revenue = sum(float(b.total_amount or b.total_price or 0.0) for b in valid_period_bookings)
     total_paid = sum(float(b.amount_paid or 0.0) for b in valid_period_bookings)
     pending_balance = max(0.0, total_revenue - total_paid)
 
-    # 2. Booking Status Breakdown
+    # 2. Booking Status Breakdown (based on selected timeframe)
     status_counts = {
-        "pending": sum(1 for b in all_bookings if b.status in ['pending', 'pending_review', 'inquiry']),
-        "awaiting": sum(1 for b in all_bookings if b.status in ['awaiting_payment', 'awaiting_caterer', 'pending_payment', 'draft']),
-        "confirmed": sum(1 for b in all_bookings if b.status == 'confirmed'),
-        "preparing": sum(1 for b in all_bookings if b.status in ['preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'in_progress', 'setup_ongoing']),
-        "completed": sum(1 for b in all_bookings if b.status == 'completed'),
-        "cancelled": sum(1 for b in all_bookings if b.status in ['cancelled', 'rejected']),
+        "pending": sum(1 for b in period_bookings if b.status in ['pending', 'pending_review', 'inquiry', 'pending_quotation']),
+        "awaiting": sum(1 for b in period_bookings if b.status in ['awaiting_payment', 'awaiting_caterer', 'pending_payment', 'draft']),
+        "confirmed": sum(1 for b in period_bookings if b.status == 'confirmed'),
+        "preparing": sum(1 for b in period_bookings if b.status in ['preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'in_progress', 'setup_ongoing', 'arrived']),
+        "completed": sum(1 for b in period_bookings if b.status in ['completed', 'delivered']),
+        "cancelled": sum(1 for b in period_bookings if b.status in ['cancelled', 'rejected']),
     }
+
+    # Revenue Trend (Last 6 Months)
+    revenue_trend_labels = []
+    revenue_trend_values = []
+    for i in range(5, -1, -1):
+        m_date = today - relativedelta(months=i)
+        m_start = m_date.replace(day=1)
+        m_end = (m_start + relativedelta(months=1)) - timedelta(days=1)
+        label = m_date.strftime('%b')
+        m_rev = sum(
+            float(b.total_amount or b.total_price or 0.0)
+            for b in all_bookings
+            if b.status not in ['cancelled', 'rejected']
+            and b.event_date
+            and m_start <= b.event_date <= m_end
+        )
+        revenue_trend_labels.append(label)
+        revenue_trend_values.append(round(m_rev, 2))
 
     # 3. Package Performance
     package_stats = {}
@@ -3837,20 +4261,23 @@ async def business_summary(
 
         if pkg_name:
             if pkg_name not in package_stats:
-                package_stats[pkg_name] = {"name": pkg_name, "bookings": 0, "revenue": 0.0}
+                package_stats[pkg_name] = {"name": pkg_name, "bookings": 0, "revenue": 0.0, "avg_value": 0.0}
             package_stats[pkg_name]["bookings"] += 1
             package_stats[pkg_name]["revenue"] += float(b.total_amount or b.total_price or 0.0)
 
     for pkg in (profile.packages or []):
         if not getattr(pkg, 'is_archived', False) and pkg.name not in package_stats:
-            package_stats[pkg.name] = {"name": pkg.name, "bookings": 0, "revenue": 0.0}
+            package_stats[pkg.name] = {"name": pkg.name, "bookings": 0, "revenue": 0.0, "avg_value": 0.0}
 
-    top_packages = sorted(package_stats.values(), key=lambda x: (x["bookings"], x["revenue"]), reverse=True)[:5]
+    for p in package_stats.values():
+        p["avg_value"] = (p["revenue"] / p["bookings"]) if p["bookings"] > 0 else 0.0
+
+    top_packages = sorted(package_stats.values(), key=lambda x: (x["bookings"], x["revenue"]), reverse=True)[:8]
 
     # 4. Customer Engagement
     profile_views = int(profile.profile_views or 0)
     booking_requests = len(period_bookings)
-    confirmed_count = sum(1 for b in period_bookings if b.status in ['confirmed', 'completed', 'preparing', 'in_progress', 'ready_for_delivery', 'on_the_way'])
+    confirmed_count = sum(1 for b in period_bookings if b.status in ['confirmed', 'completed', 'delivered', 'preparing', 'in_progress', 'ready_for_delivery', 'on_the_way'])
     conversion_rate = round((confirmed_count / booking_requests * 100), 1) if booking_requests > 0 else 0.0
 
     # 5. Customer Feedback
@@ -3893,6 +4320,8 @@ async def business_summary(
         "total_paid": total_paid,
         "pending_balance": pending_balance,
         "status_counts": status_counts,
+        "revenue_trend_labels": revenue_trend_labels,
+        "revenue_trend_values": revenue_trend_values,
         "top_packages": top_packages,
         "profile_views": profile_views,
         "booking_requests": booking_requests,
@@ -4333,7 +4762,8 @@ async def manage_services(
             "usage_type": getattr(e, "usage_type", "both"),
             "is_addon": getattr(e, "is_addon", False),
             "addon_price": getattr(e, "addon_price", 0.0),
-            "image_url": e.image_url
+            "image_url": e.image_url,
+            "details_json": getattr(e, "details_json", None) or {}
         })
     for s in service_items:
         items.append({
@@ -4357,7 +4787,8 @@ async def manage_services(
             "min_staff_required": getattr(s, "min_staff_required", 1),
             "allow_freelancers": getattr(s, "allow_freelancers", False),
             "buffer_time_hours": getattr(s, "buffer_time_hours", 0),
-            "base_duration_hours": getattr(s, "base_duration_hours", 3)
+            "base_duration_hours": getattr(s, "base_duration_hours", 3),
+            "details_json": getattr(s, "details_json", None) or {}
         })
     for m in legacy_items:
         items.append({
@@ -7261,6 +7692,9 @@ async def get_calendar_events(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(auth.get_current_user_optional)
 ):
+    from datetime import date, timedelta
+    today_date = date.today()
+
     # Use provided caterer_id (for customers) or user's caterer profile (for caterers themselves)
     target_caterer_id = caterer_id
     if not target_caterer_id and user and user.role == 'caterer':
@@ -7271,7 +7705,12 @@ async def get_calendar_events(
 
     bookings = db.query(models.Booking).filter(
         models.Booking.caterer_id == target_caterer_id,
-        models.Booking.status.in_(['inquiry', 'pending_quotation', 'awaiting_customer', 'confirmed', 'preparing', 'ready_for_delivery', 'on_the_way', 'arrived', 'setup_ongoing', 'completed']),
+        models.Booking.status.in_([
+            'pending', 'inquiry', 'pending_quotation', 'pending_review',
+            'awaiting_caterer', 'awaiting_customer', 'awaiting_payment',
+            'confirmed', 'preparing', 'ready_for_delivery', 'on_the_way',
+            'arrived', 'setup_ongoing', 'in_progress', 'completed', 'delivered', 'no_show'
+        ]),
         models.Booking.is_archived == False
     ).all()
     
@@ -7365,30 +7804,55 @@ async def get_calendar_events(
         }
 
         if is_owner:
-            customer_name = f"{b.user.first_name} {b.user.last_name}" if b.user else (b.customer_name or b.customer_email or "Walk-in Customer")
-            customer_first_name = b.user.first_name if b.user else customer_name.split()[0]
-            event_data["title"] = f"{b.event_type or 'Event'} - {b.event_name or customer_first_name}"
+            customer_name = (
+                b.customer_name 
+                or (f"{b.user.first_name} {b.user.last_name}".strip() if b.user and (b.user.first_name or b.user.last_name) else None)
+                or b.customer_email 
+                or "Walk-in Customer"
+            )
+            customer_first_name = b.user.first_name if b.user and b.user.first_name else customer_name.split()[0]
+            event_title_name = b.event_name or (b.package.name if b.package else (b.event_type or "Event"))
+            event_data["title"] = f"{b.event_type or 'Event'} - {event_title_name}"
             
             # Serialize selected items for package inclusions
             inclusions = []
-            if b.package_id:
+            if getattr(b, 'selected_items', None) and b.selected_items:
                 for item in b.selected_items:
-                    if getattr(item, 'menu_item', None):
-                        inclusions.append(item.menu_item.name)
-            else:
-                for q_item in b.quotation_items:
-                    inclusions.append(f"{q_item.qty}x {q_item.item_name} (₱{q_item.unit_price:,.2f})")
+                    name = None
+                    if getattr(item, 'menu_item', None) and item.menu_item:
+                        name = item.menu_item.name
+                    elif getattr(item, 'equipment', None) and item.equipment:
+                        name = item.equipment.name
+                    elif getattr(item, 'service', None) and item.service:
+                        name = item.service.name
+                    elif getattr(item, 'custom_name', None) and item.custom_name:
+                        name = item.custom_name
+                    if name:
+                        qty = getattr(item, 'quantity', 1) or 1
+                        inclusions.append(f"{qty}x {name}" if qty > 1 else name)
+            elif getattr(b, 'quotation', None) and b.quotation and getattr(b.quotation, 'addons', None):
+                addons = b.quotation.addons if isinstance(b.quotation.addons, list) else []
+                for q_item in addons:
+                    if isinstance(q_item, dict):
+                        q_name = q_item.get('item_name') or q_item.get('name') or "Item"
+                        q_qty = q_item.get('qty') or q_item.get('quantity') or 1
+                        q_price = q_item.get('unit_price') or q_item.get('price') or 0
+                        inclusions.append(f"{q_qty}x {q_name} (₱{float(q_price):,.2f})")
             
+            resolved_venue = b.event_address or b.venue_address or b.event_location or "Venue TBD"
+            resolved_email = (b.user.email if b.user and b.user.email else None) or b.customer_email or "Not specified"
+            resolved_contact = (b.user.phone_number if b.user and b.user.phone_number else None) or b.customer_contact or "Not specified"
+
             event_data["extendedProps"] = {
                 "recordType": "booking",
-                "booking_kind": build_booking_list_projection(b, date.today())["kind"],
+                "booking_kind": build_booking_list_projection(b, today_date)["kind"],
                 "booking_source": b.booking_source or ("Website" if b.user_id else "Walk-in"),
                 "document_type": b.document_type or "booking",
                 "customer": customer_name,
-                "type": b.event_type or "N/A",
-                "guests": b.guest_count,
-                "venue": b.venue_address or "TBD",
-                "package": b.package.name if b.package else "Custom",
+                "type": b.event_type or (b.package.name if b.package else "Catering"),
+                "guests": b.guest_count or 0,
+                "venue": resolved_venue,
+                "package": b.package.name if b.package else (b.event_name or "Custom Package"),
                 "inclusions": inclusions,
                 "custom_requirements": b.custom_requirements or {},
                 "time": str(b.event_time) if b.event_time else "TBD",
@@ -7398,8 +7862,8 @@ async def get_calendar_events(
                 "preparation_date": str(b.preparation_date.strftime('%B %d, %Y')) if getattr(b, 'preparation_date', None) else "TBD",
                 "total_price": float(b.total_amount or b.total_price or 0.0),
                 "amount_paid": float(b.amount_paid or 0.0),
-                "customer_email": b.user.email if b.user else (b.customer_email or "N/A"),
-                "customer_contact": b.user.phone_number if b.user else (b.customer_contact or "N/A"),
+                "customer_email": resolved_email,
+                "customer_contact": resolved_contact,
                 "booking_id": b.id,
                 "special_requests": b.special_requests or ""
             }
@@ -7421,10 +7885,9 @@ async def get_calendar_events(
                 })
                 
             # Sub-event: Payment Reminder (if unpaid/partial and event is in future)
-            from datetime import timedelta, date
-            if b.payment_status in ['pending', 'unpaid', 'deposit_paid', 'partial', 'pending_verification'] and b.event_date and b.event_date > date.today():
+            if b.payment_status in ['pending', 'unpaid', 'deposit_paid', 'partial', 'pending_verification'] and b.event_date and b.event_date > today_date:
                 deadline_date = b.event_date - timedelta(days=3)
-                if deadline_date >= date.today():
+                if deadline_date >= today_date:
                     events.append({
                         "id": f"pay-{b.id}",
                         "start": str(deadline_date),

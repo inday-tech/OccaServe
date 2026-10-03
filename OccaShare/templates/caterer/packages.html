@@ -4,8 +4,7 @@
 {% block title %}Manage Packages - OccaServe Caterer{% endblock %}
 
 {% block extra_css %}
-<link href="{{ url_for('static', path='/css/caterer/packages.css') }}?v=17.0" rel="stylesheet" />
-
+<link href="{{ url_for('static', path='/css/caterer/packages.css') }}?v=26.6" rel="stylesheet" />
 {% endblock %}
 
 {% block content %}
@@ -117,10 +116,12 @@
                             style="font-size: 0.75rem; color: #64748b; font-weight: 500;">{{ ' / pax' if
                             package.pricing_mode == 'per_pax' else (' starting' if package.pricing_mode == 'customizable' else ' total') }}</small></span>
                 </div>
-                <button class="btn-archive-minimal" onclick="window.archivePackage({{ package.id }})"
-                    style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid #fee2e2; background: #fff5f5; color: #ef4444; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;"
-                    title="Archive Package" type="button"><i class="fas fa-archive"
-                        style="font-size: 0.85rem;"></i></button>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button class="btn-archive-minimal" onclick="window.archivePackage({{ package.id }})"
+                        style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid #fee2e2; background: #fff5f5; color: #ef4444; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;"
+                        title="Archive Package" type="button"><i class="fas fa-archive"
+                            style="font-size: 0.85rem;"></i></button>
+                </div>
             </div>
         </div>
     </div>
@@ -174,7 +175,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v=20.2"></script>
+<script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v=26.2"></script>
 <script>
     // Listen to global header search
     window.addEventListener('globalSearch', function (e) {

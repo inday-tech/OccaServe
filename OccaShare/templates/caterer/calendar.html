@@ -1266,7 +1266,7 @@
                                 <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
                                     Date of Event <span style="color: #ef4444;">*</span>
                                 </label>
-                                <input type="date" id="extEventDate" name="event_date" class="control-pro" required min="{{ min_booking_date.strftime('%Y-%m-%d') }}" onchange="clearWalkinError('extEventDate')">
+                                <input type="date" id="extEventDate" name="event_date" class="control-pro" required onchange="clearWalkinError('extEventDate'); if(window.updateWalkinSummary) window.updateWalkinSummary();">
                                 <div class="field-error-msg" id="error-extEventDate" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
                             </div>
 
@@ -1645,36 +1645,68 @@
                         </div>
                     </div>
 
-                    <!-- SECTION 3: Payment Breakdown -->
+                    <!-- SECTION 3: Payment & Booking Summary -->
                     <div class="walkin-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                         <div style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <i class="fas fa-coins" style="color: var(--primary-color, #f97316);"></i> Payment Breakdown & Computation
+                                <i class="fas fa-coins" style="color: var(--primary-color, #f97316);"></i> Payment & Billing Summary
                             </div>
-                            <span id="walkinPaymentStatusBadge" style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; background: #f1f5f9; color: #64748b; padding: 4px 10px; border-radius: 20px;">
+                            <span id="walkinPaymentStatusBadge" style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; background: #f1f5f9; color: #64748b; padding: 4px 10px; border-radius: 20px; border: 1px solid #e2e8f0;">
                                 UNPAID
                             </span>
                         </div>
 
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; align-items: flex-start;">
-                            <!-- Package / Services Total -->
+                            <!-- Total Services Amount -->
                             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
-                                <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Total Services Amount</div>
-                                <div id="walkinSubtotalDisplay" style="font-size: 1.4rem; font-weight: 800; color: #0f172a; margin-top: 0.25rem;">₱0.00</div>
+                                <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Total Services Amount</div>
+                                <div id="walkinSubtotalDisplay" style="font-size: 1.35rem; font-weight: 800; color: #0f172a; margin-top: 0.25rem;">₱0.00</div>
                                 <input type="hidden" id="extTotalAmount" value="0">
                             </div>
 
-                            <!-- Downpayment Input Group -->
+                            <!-- Discount Input -->
                             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                                    <label style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;">
-                                        <input type="checkbox" id="extHasDownpayment" onchange="toggleWalkinDownpayment(this.checked)" style="width: 16px; height: 16px; accent-color: var(--primary-color, #f97316); cursor: pointer;">
-                                        <span>Has Downpayment</span>
+                                <label style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+                                    Discount / Adjustment
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.85rem; font-weight: 700; color: #ef4444;">-₱</span>
+                                    <input type="text" id="extDiscountInput" class="control-pro" placeholder="0.00" value="0.00" onfocus="handleCurrencyFocus(this)" onblur="handleDiscountBlur(this)" oninput="handleDiscountInput(this)" style="font-weight: 700; text-align: right; background: #ffffff; color: #ef4444;">
+                                </div>
+                                <input type="hidden" id="extDiscountAmount" value="0">
+                                <div class="field-error-msg" id="error-extDiscount" style="color: #ef4444; font-size: 0.7rem; margin-top: 0.25rem; display: none;"></div>
+                            </div>
+
+                            <!-- Grand Total -->
+                            <div style="background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; padding: 0.9rem 1rem;">
+                                <div style="font-size: 0.72rem; font-weight: 700; color: #c2410c; text-transform: uppercase; letter-spacing: 0.05em;">Grand Total</div>
+                                <div id="walkinGrandTotalDisplay" style="font-size: 1.35rem; font-weight: 800; color: #c2410c; margin-top: 0.25rem;">₱0.00</div>
+                                <input type="hidden" id="extGrandTotal" value="0">
+                            </div>
+
+                            <!-- Payment Method -->
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
+                                <label style="display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+                                    Payment Method <span style="color: #ef4444;">*</span>
+                                </label>
+                                <select id="extPaymentMethod" class="control-pro" style="font-weight: 700;" onchange="if(window.updateWalkinSummary) window.updateWalkinSummary();">
+                                    <option value="Cash" selected>Cash</option>
+                                    <option value="GCash">GCash</option>
+                                    <option value="Maya">Maya</option>
+                                    <option value="Bank Transfer">Bank Transfer</option>
+                                </select>
+                            </div>
+
+                            <!-- Amount Paid / Downpayment -->
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                                    <label style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">
+                                        Amount Paid / Downpayment
                                     </label>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 4px;">
-                                    <span style="font-size: 0.85rem; font-weight: 700; color: #64748b;">₱</span>
-                                    <input type="text" id="extDownpaymentInput" class="control-pro" placeholder="0.00" disabled onfocus="handleCurrencyFocus(this)" onblur="handleDownpaymentBlur(this)" oninput="handleDownpaymentInput(this)" style="font-weight: 700; text-align: right; background: #e2e8f0; color: #94a3b8;">
+                                    <span style="font-size: 0.85rem; font-weight: 700; color: #10b981;">₱</span>
+                                    <input type="text" id="extDownpaymentInput" class="control-pro" placeholder="0.00" value="0.00" onfocus="handleCurrencyFocus(this)" onblur="handleDownpaymentBlur(this)" oninput="handleDownpaymentInput(this)" style="font-weight: 700; text-align: right; background: #ffffff; color: #0f172a;">
                                 </div>
                                 <input type="hidden" id="extDownpaymentAmount" value="0">
                                 <div class="field-error-msg" id="error-extDownpayment" style="color: #ef4444; font-size: 0.7rem; margin-top: 0.25rem; display: none;"></div>
@@ -1682,9 +1714,95 @@
 
                             <!-- Remaining Balance -->
                             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
-                                <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Remaining Balance</div>
-                                <div id="walkinBalanceDisplay" style="font-size: 1.4rem; font-weight: 800; color: #2563eb; margin-top: 0.25rem;">₱0.00</div>
+                                <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Remaining Balance</div>
+                                <div id="walkinBalanceDisplay" style="font-size: 1.35rem; font-weight: 800; color: #2563eb; margin-top: 0.25rem;">₱0.00</div>
                                 <input type="hidden" id="extRemainingBalance" value="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 4: Booking Status & Staff Notes -->
+                    <div class="walkin-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                        <div style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-tasks" style="color: var(--primary-color, #f97316);"></i> Booking Status & Staff Notes
+                            </div>
+                            <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">
+                                Source: <strong style="color: #ea580c;">WALK-IN</strong> (Auto)
+                            </span>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; align-items: flex-start;">
+                            <!-- Booking Status Selector -->
+                            <div>
+                                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                    Booking Status <span style="color: #ef4444;">*</span>
+                                </label>
+                                <select id="extBookingStatus" class="control-pro" style="font-weight: 700;" onchange="if(window.updateWalkinSummary) window.updateWalkinSummary();">
+                                    <option value="pending" selected>Pending</option>
+                                    <option value="confirmed">Confirmed</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="cancelled">Cancelled</option>
+                                    <option value="no_show">No Show</option>
+                                </select>
+                                <div style="font-size: 0.72rem; color: #64748b; margin-top: 0.35rem; line-height: 1.4;">
+                                    Default is <strong>Pending</strong>. Select <strong>Completed</strong> when recording past historical events.
+                                </div>
+                            </div>
+
+                            <!-- Booking Notes / Remarks -->
+                            <div>
+                                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                    Booking Notes / Staff Remarks <span style="font-size: 0.75rem; font-weight: 500; color: #94a3b8;">(Optional)</span>
+                                </label>
+                                <textarea id="extBookingNotes" class="control-pro" rows="2" placeholder="e.g. In-person visit, downpayment receipt #1042 issued, dietary reminders..." style="resize: vertical;"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PRE-SAVE LIVE SUMMARY CARD -->
+                    <div class="walkin-section-card" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 1.25rem; margin-bottom: 0.5rem; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; border-bottom: 1px dashed #cbd5e1; padding-bottom: 0.5rem;">
+                            <span style="font-size: 0.85rem; font-weight: 800; color: #1e293b; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-clipboard-check" style="color: var(--primary-color, #f97316);"></i> Walk-in Booking Summary
+                            </span>
+                            <span style="font-size: 0.72rem; background: #ffedd5; color: #c2410c; padding: 3px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #fed7aa;">
+                                SOURCE: WALK-IN
+                            </span>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem; font-size: 0.82rem;">
+                            <div>
+                                <div style="color: #64748b; font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">Customer</div>
+                                <div id="sumCustomer" style="font-weight: 700; color: #0f172a; margin-top: 2px;">-</div>
+                            </div>
+                            <div>
+                                <div style="color: #64748b; font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">Event Type</div>
+                                <div id="sumEventType" style="font-weight: 700; color: #0f172a; margin-top: 2px;">-</div>
+                            </div>
+                            <div>
+                                <div style="color: #64748b; font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">Date & Time</div>
+                                <div id="sumDateTime" style="font-weight: 700; color: #0f172a; margin-top: 2px;">-</div>
+                            </div>
+                            <div>
+                                <div style="color: #64748b; font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">Venue</div>
+                                <div id="sumVenue" style="font-weight: 700; color: #0f172a; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</div>
+                            </div>
+                            <div>
+                                <div style="color: #64748b; font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">Services</div>
+                                <div id="sumServices" style="font-weight: 700; color: #0f172a; margin-top: 2px;">0 selected</div>
+                            </div>
+                            <div>
+                                <div style="color: #64748b; font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">Grand Total</div>
+                                <div id="sumGrandTotal" style="font-weight: 800; color: #c2410c; margin-top: 2px;">₱0.00</div>
+                            </div>
+                            <div>
+                                <div style="color: #64748b; font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">Paid / Balance</div>
+                                <div id="sumPaidBalance" style="font-weight: 700; color: #0f172a; margin-top: 2px;">₱0.00 / ₱0.00</div>
+                            </div>
+                            <div>
+                                <div style="color: #64748b; font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">Status</div>
+                                <div id="sumStatus" style="font-weight: 700; color: #0f172a; margin-top: 2px;">Pending &bull; UNPAID</div>
                             </div>
                         </div>
                     </div>
@@ -1740,6 +1858,17 @@
 </script>
 <script src="{{ url_for('static', path='/js/caterer/calendar.js') }}?v={{ range(1, 10000) | random }}"></script>
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('action') === 'walkin') {
+            setTimeout(function() {
+                if (typeof openExternalBookingModal === 'function') {
+                    openExternalBookingModal();
+                }
+            }, 350);
+        }
+    });
+
     window.addEventListener('globalSearch', (e) => {
         const q = (e.detail?.value || '').toLowerCase().trim();
         const eventEls = document.querySelectorAll('.fc-event');

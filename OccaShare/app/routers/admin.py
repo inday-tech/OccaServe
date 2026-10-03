@@ -102,7 +102,7 @@ async def omni_search(
         results.append({
             "type": "Booking", 
             "title": f"Order #{str(b.id)[:8]}", 
-            "subtitle": f"₱{b.total_amount:,.2f} - {b.status.upper()}", 
+            "subtitle": f"₱{float(b.total_amount or 0):,.2f} - {(b.status or 'UNKNOWN').upper()}",
             "link": f"/admin/bookings?search={b.id}",
             "icon": "fas fa-calendar-check"
         })

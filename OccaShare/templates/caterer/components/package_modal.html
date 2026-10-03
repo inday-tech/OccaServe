@@ -14,6 +14,8 @@
         </div>
         <form enctype="multipart/form-data" id="packageForm" method="POST"
             style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+            <input type="hidden" name="inclusions_json" id="package_inclusions_json" value="" />
+            <input type="hidden" name="selection_rules" id="package_selection_rules_json" value="" />
             <div class="occ-modal-body modal-body">
                 <!-- Left Sidebar Stepper -->
                 <div class="pkg-wizard-sidebar modal-sidebar">
@@ -235,7 +237,7 @@
                                 <button type="button" class="btn-primary-pro" onclick="window.openAddInclusionModal()"
                                     style="display: inline-flex; align-items: center; gap: 8px; padding: 0.65rem 1.25rem; font-size: 0.9rem; font-weight: 800; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                                     <i class="fas fa-plus"></i>
-                                    <span>+ Add Inclusion</span>
+                                    <span>Quick Add Inclusion</span>
                                 </button>
                             </div>
 
@@ -260,7 +262,7 @@
                                 <button type="button" class="btn-secondary-pro" onclick="window.openAddInclusionModal()"
                                     style="display: inline-flex; align-items: center; gap: 8px; padding: 0.65rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; border: 1.5px dashed #cbd5e1; background: #f8fafc; width: 100%; justify-content: center;">
                                     <i class="fas fa-plus text-brand"></i>
-                                    <span>+ Add Another Inclusion</span>
+                                    <span>Quick Add Another Inclusion</span>
                                 </button>
                             </div>
                         </div>
@@ -268,14 +270,18 @@
                         <!-- 2. CUSTOMIZABLE PACKAGE FLOW: AVAILABLE OPTIONS (Three Sections: A. Menu/Food, B. Services, C. Equipment) -->
                         <div id="step2CustomizableContainer" style="display: none; flex-direction: column; gap: 1.5rem;">
                             <!-- Header Section -->
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 0.75rem;">
-                                <div>
-                                    <div style="display: flex; align-items: center; gap: 10px;">
+                            <div class="customizable-options-header" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 0.75rem;">
+                                <div class="customizable-options-heading">
+                                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                                         <h4 style="font-size: 1.2rem; font-weight: 800; color: #0f172a; margin: 0;">Available Options</h4>
                                         <span id="custTotalAvailableBadge" style="background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; font-size: 0.8rem; font-weight: 800; padding: 3px 10px; border-radius: 9999px;">0 Options Available</span>
                                     </div>
                                     <p style="font-size: 0.85rem; color: #64748b; margin: 4px 0 0 0;">Select the menu and services that customers can choose from when customizing their booking.</p>
                                 </div>
+                                <button type="button" class="btn-primary-pro customizable-options-add-button" onclick="window.openQuickAddOptionModal()"
+                                    style="padding: 0.45rem 0.85rem; font-size: 0.78rem; font-weight: 800; border-radius: 7px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;">
+                                    <i class="fas fa-plus"></i> Quick Add Option
+                                </button>
                             </div>
 
                             <!-- Small Informational Note -->
@@ -296,10 +302,6 @@
                                         <p style="font-size: 0.8rem; color: #64748b; margin: 3px 0 0 0;">Items available for customers to choose for their event menu.</p>
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 6px;">
-                                        <button type="button" class="btn-primary-pro" onclick="window.openQuickAddOptionModal('menu')"
-                                            style="padding: 0.4rem 0.85rem; font-size: 0.78rem; font-weight: 800; border-radius: 6px; background: #16a34a; border-color: #16a34a; display: inline-flex; align-items: center; gap: 5px; color: white;">
-                                            <i class="fas fa-plus"></i> + Quick Add Food
-                                        </button>
                                         <button type="button" class="btn-secondary-pro" onclick="window.toggleAllCustomizableCatalog('menu', true)"
                                             style="padding: 0.4rem 0.75rem; font-size: 0.78rem; font-weight: 700; border-radius: 6px;">Select All</button>
                                         <button type="button" class="btn-secondary-pro" onclick="window.toggleAllCustomizableCatalog('menu', false)"
@@ -319,6 +321,38 @@
                                 </div>
                             </div>
 
+                            <!-- CATEGORY QUOTAS (SELECTION LIMITS) -->
+                            <div style="background: #ffffff; border: 1.5px solid #fed7aa; border-radius: 12px; padding: 1rem 1.25rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="font-size: 0.7rem; font-weight: 800; background: #ea580c; color: #ffffff; padding: 2px 7px; border-radius: 4px; text-transform: uppercase;">Quotas</span>
+                                        <h4 style="font-size: 0.95rem; font-weight: 800; color: #0f172a; margin: 0;">Menu Selection Limits</h4>
+                                        <span style="font-size: 0.78rem; color: #64748b;">(Dishes customer can pick per category)</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                        <button type="button" onclick="window.presetOneVariantPerCategory()"
+                                                title="Set 1 variant limit for each category"
+                                                style="padding: 3px 8px; font-size: 0.75rem; font-weight: 700; border-radius: 6px; background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; cursor: pointer;">
+                                            Set 1 Each
+                                        </button>
+                                        <button type="button" onclick="window.presetAllCategoryQuotas(2)"
+                                                title="Set 2 variants limit for each category"
+                                                style="padding: 3px 8px; font-size: 0.75rem; font-weight: 700; border-radius: 6px; background: #f8fafc; border: 1px solid #cbd5e1; color: #475569; cursor: pointer;">
+                                            Set 2 Each
+                                        </button>
+                                        <span style="font-size: 0.78rem; font-weight: 800; color: #9a3412; background: #ffedd5; padding: 3px 10px; border-radius: 20px; border: 1px solid #fed7aa;">
+                                            Total: <strong id="custTotalVariantsAllowedText" style="color: #ea580c;">0</strong> allowed
+                                        </span>
+                                    </div>
+                                </div>
+                                <div id="categoryQuotasContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.6rem; margin-top: 0.5rem;">
+                                    <!-- Populated dynamically via JS -->
+                                </div>
+                                <div id="custQuotaSummaryBanner" style="margin-top: 0.65rem; padding: 6px 10px; background: #fffaf5; border: 1px dashed #fed7aa; border-radius: 6px; font-size: 0.78rem; color: #9a3412; display: none;">
+                                    <!-- Dynamic text -->
+                                </div>
+                            </div>
+
                             <!-- B. SERVICES -->
                             <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
@@ -331,10 +365,6 @@
                                         <p style="font-size: 0.8rem; color: #64748b; margin: 3px 0 0 0;">Catering services and staff options available for customer selection.</p>
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 6px;">
-                                        <button type="button" class="btn-primary-pro" onclick="window.openQuickAddOptionModal('service')"
-                                            style="padding: 0.4rem 0.85rem; font-size: 0.78rem; font-weight: 800; border-radius: 6px; background: #2563eb; border-color: #2563eb; display: inline-flex; align-items: center; gap: 5px; color: white;">
-                                            <i class="fas fa-plus"></i> + Quick Add Service
-                                        </button>
                                         <button type="button" class="btn-secondary-pro" onclick="window.toggleAllCustomizableCatalog('service', true)"
                                             style="padding: 0.4rem 0.75rem; font-size: 0.78rem; font-weight: 700; border-radius: 6px;">Select All</button>
                                         <button type="button" class="btn-secondary-pro" onclick="window.toggleAllCustomizableCatalog('service', false)"
@@ -354,10 +384,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Hidden inputs to serialize state for form submit -->
-                        <input type="hidden" name="inclusions_json" id="package_inclusions_json" value="[]" />
-                        <input type="hidden" name="selection_rules" id="package_selection_rules_json" value="" />
                     </div>
                     <!-- STEP 3: REVIEW & PUBLISH -->
                     <div class="tab-pane-pro" id="tab-review">
@@ -455,7 +481,12 @@
                                     </div>
                                 </div>
 
-                                <!-- 2. Available Services -->
+                                <!-- 2. Category Quotas / Selection Limits Summary -->
+                                <div id="reviewCustQuotaBlock" style="display: none;">
+                                    <!-- Injected dynamically -->
+                                </div>
+
+                                <!-- 3. Available Services -->
                                 <div style="background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem;">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                                         <h5 style="font-size: 0.75rem; font-weight: 800; color: #1e40af; text-transform: uppercase; margin: 0;">
@@ -482,19 +513,28 @@
                 </div>
             </div>
             <!-- Modal Footer (Properly inside the modal and form) -->
-            <div class="occ-modal-footer modal-footer" id="pkgWizardFooter">
-                <button class="btn-secondary-pro pkg-wizard-footer-btn" onclick="window.closePackageModal()"
-                    style="margin-right: auto;" type="button">Cancel</button>
-                <button class="btn-secondary-pro pkg-wizard-footer-btn" id="btnWizardBack"
-                    onclick="window.goToWizardBackStep()" style="display: none;" type="button"><i
-                        class="fas fa-arrow-left"></i> <span class="pkg-wizard-nav-text"
-                        style="margin-left: 6px;">Back</span></button>
-                <button class="btn-primary-pro pkg-wizard-footer-btn" id="btnWizardNext"
-                    onclick="window.goToWizardNextStep()" style="display: inline-flex;" type="button"><span
-                        class="pkg-wizard-nav-text" style="margin-right: 6px;">Next Step</span> <i
-                        class="fas fa-arrow-right"></i></button>
-                <button class="btn-primary-pro pkg-wizard-footer-btn" id="pkgSaveBtn" style="display: none;"
-                    type="submit"><span style="font-weight: 800;">Publish</span></button>
+            <div class="occ-modal-footer modal-footer" id="pkgWizardFooter"
+                style="display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 14px 24px !important; background: #ffffff !important; border-top: 1px solid #e2e8f0 !important; width: 100% !important; box-sizing: border-box !important;">
+                <div>
+                    <button class="btn-secondary-pro pkg-modal-nav-btn" onclick="window.closePackageModal()"
+                        style="color: #64748b; border: 1.5px solid #cbd5e1; background: #ffffff; padding: 0.55rem 1.25rem; border-radius: 8px; font-weight: 700; cursor: pointer;" type="button">
+                        Cancel
+                    </button>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-left: auto;">
+                    <button class="btn-secondary-pro pkg-modal-nav-btn" id="btnWizardBack"
+                        onclick="window.goToWizardBackStep()" style="display: none !important; color: #475569; border: 1.5px solid #cbd5e1; background: #ffffff; padding: 0.55rem 1.25rem; border-radius: 8px; font-weight: 700; cursor: pointer; align-items: center; gap: 6px;" type="button">
+                        <i class="fas fa-arrow-left"></i> <span class="pkg-wizard-nav-text">Back</span>
+                    </button>
+                    <button class="btn-primary-pro pkg-modal-nav-btn" id="btnWizardNext"
+                        onclick="window.goToWizardNextStep()" style="display: inline-flex !important; background: var(--primary-color, #ff7b54); border: none; color: #ffffff; padding: 0.55rem 1.4rem; border-radius: 8px; font-weight: 800; cursor: pointer; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(255, 123, 84, 0.25);" type="button">
+                        <span class="pkg-wizard-nav-text">Next Step</span> <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <button class="btn-primary-pro pkg-modal-nav-btn" id="pkgSaveBtn" style="display: none !important; background: #16a34a !important; border: none !important; color: #ffffff !important; padding: 0.55rem 1.5rem !important; border-radius: 8px !important; font-weight: 800 !important; cursor: pointer !important; align-items: center !important; gap: 6px !important; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25) !important;"
+                        type="submit">
+                        <i class="fas fa-check-circle"></i> <span style="font-weight: 800;">Publish Package</span>
+                    </button>
+                </div>
             </div>
         </form>
     </div>
@@ -528,19 +568,19 @@
 <!-- Add Package Inclusion Modal (Relational Catalog Linking) -->
 <!-- Unified Add / Edit Inclusion Modal -->
 <div class="occ-modal-overlay" id="addInclusionModal" style="z-index: 2300; display: none;">
-    <div class="occ-modal-box sz-md occ-content-pop" style="max-width: 540px; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
-        <div class="occ-modal-header"
-            style="padding: 1.25rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-start;">
+    <div class="occ-modal-box sz-md occ-content-pop inclusion-modal-box" style="max-width: 540px; max-height: 90vh; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); display: flex; flex-direction: column;">
+        <div class="occ-modal-header inclusion-modal-header"
+            style="padding: 1.25rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-start; flex-shrink: 0;">
             <div>
-                <h3 class="occ-modal-title" id="inclusionModalTitle" style="font-size: 1.2rem; font-weight: 800; color: #0f172a; margin: 0;">Add Package Inclusion</h3>
-                <div id="inclusionModalSubtitle" style="font-size: 0.82rem; color: #64748b; margin-top: 4px;">Link existing items from your catalog into this package.</div>
+                <h3 class="occ-modal-title" id="inclusionModalTitle" style="font-size: 1.2rem; font-weight: 800; color: #0f172a; margin: 0;">Quick Add Inclusion</h3>
+                <div id="inclusionModalSubtitle" style="font-size: 0.82rem; color: #64748b; margin-top: 4px;">Add a food item or service to your fixed package.</div>
             </div>
             <button class="occ-modal-close" onclick="window.closeAddInclusionModal()" type="button"
-                style="background:none; border:none; font-size:1.1rem; color:#94a3b8; cursor:pointer; padding: 4px 8px; border-radius: 6px;">
+                style="background:#f1f5f9; border:1px solid #cbd5e1; width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-size:1rem; color:#475569; cursor:pointer; padding:0; border-radius:50%; box-shadow:none; flex-shrink:0;">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        <div class="occ-modal-body" style="padding: 1.5rem; background: #ffffff;">
+        <div class="occ-modal-body inclusion-modal-body" style="padding: 1.5rem; background: #ffffff; overflow-y: auto; max-height: calc(90vh - 140px);">
             <!-- Hidden field to track editing index -->
             <input type="hidden" id="customInclusionEditIndex" value="-1" />
             <input type="hidden" id="customInclusionItemId" value="" />
@@ -553,26 +593,26 @@
             </div>
 
             <!-- Small Informational Note -->
-            <div style="margin-bottom: 1.25rem; padding: 0.6rem 0.85rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; color: #475569; font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+            <div class="inclusion-info-alert" style="display: none; margin-bottom: 1.25rem; padding: 0.6rem 0.85rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; color: #475569; font-size: 0.82rem; font-weight: 600; align-items: center; gap: 8px;">
                 <i class="fas fa-info-circle" style="color: var(--primary-color, #f97316);"></i>
                 <span>These inclusions are fixed and cannot be changed by customers.</span>
             </div>
 
             <!-- Inclusion Type Selector -->
-            <div class="form-group-pro" style="margin-bottom: 1.25rem;">
+            <div class="form-group-pro inclusion-type-section" style="margin-bottom: 1.25rem;">
                 <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                    Inclusion Type <span style="color: #ef4444;">*</span>
+                    Option Type <span style="color: #ef4444;">*</span>
                 </label>
                 <select class="control-pro" id="customInclusionCategory" onchange="window.handleInclusionTypeChange(this.value)"
                     style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; font-weight: 700; color: #1e293b; background: #fff;">
+                    <option value="" selected disabled>Select option type</option>
                     <option value="Menu">🍽️ Menu / Food</option>
                     <option value="Service">🛎️ Service</option>
-                    <option value="Equipment">🪑 Equipment</option>
                 </select>
             </div>
 
             <!-- Existing Catalog Item Selector -->
-            <div class="form-group-pro" style="margin-bottom: 1.25rem;">
+            <div class="form-group-pro inclusion-catalog-section" style="display: none; margin-bottom: 1.25rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
                     <label id="lblInclusionItem" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; text-transform: uppercase; letter-spacing: 0.5px; margin: 0;">
                         Equipment <span style="color: #ef4444;">*</span>
@@ -613,7 +653,7 @@
             </div>
 
             <!-- Quantity Included -->
-            <div class="form-group-pro" id="inclusionQtyContainer" style="margin-bottom: 1.25rem;">
+            <div class="form-group-pro inclusion-quantity-section" id="inclusionQtyContainer" style="display: none; margin-bottom: 1.25rem;">
                 <label id="lblInclusionQty" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;">
                     Quantity Included <span id="lblInclusionQtyRequired" style="color: #ef4444; display: none;">*</span><span id="lblInclusionQtyOptional" style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
                 </label>
@@ -636,20 +676,30 @@
                 </div>
             </div>
 
-            <!-- Inclusion Photo (Optional) -->
-            <div class="form-group-pro" style="margin-bottom: 1.25rem;">
+            <!-- Description (Optional) -->
+            <div class="form-group-pro inclusion-description-section" style="display: none; margin-bottom: 0.5rem;">
                 <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                    Photo <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
+                    Description / Notes <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
                 </label>
-                <div style="display: flex; align-items: center; gap: 12px;">
+                <textarea class="control-pro" id="customInclusionDescription" rows="2"
+                    placeholder="Add any extra details, specifications, or notes..."
+                    style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; color: #1e293b; resize: vertical;"></textarea>
+            </div>
+
+            <!-- Inclusion Photo (Optional) -->
+            <div class="form-group-pro inclusion-photo-section" style="display: none; margin-bottom: 1.25rem;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Upload Photo <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
+                </label>
+                <div class="inclusion-photo-upload" style="display: flex; align-items: center; gap: 12px;">
                     <div id="inclusionPhotoPreview" onclick="window.triggerInclusionImagePicker()" title="Upload photo"
-                        style="width: 72px; height: 72px; flex-shrink: 0; border-radius: 10px; border: 1.5px dashed #cbd5e1; background: #f8fafc; color: #94a3b8; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden;">
+                        class="inclusion-photo-preview" style="width: 72px; height: 72px; flex-shrink: 0; border-radius: 10px; border: 1.5px dashed #cbd5e1; background: #f8fafc; color: #94a3b8; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden;">
                         <i class="fas fa-camera"></i>
                     </div>
-                    <div style="flex: 1; min-width: 0;">
-                        <input type="file" id="inclusionImageInput" accept="image/*" onchange="window.handleInclusionImageChange(event)" style="display: none;" />
+                    <div class="inclusion-photo-controls" style="flex: 1; min-width: 0;">
+                        <input type="file" id="inclusionImageInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" onchange="window.handleInclusionImageChange(event)" style="display: none;" />
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button type="button" onclick="window.triggerInclusionImagePicker()"
+                            <button type="button" class="inclusion-photo-upload-button" onclick="window.triggerInclusionImagePicker()"
                                 style="padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.8rem; font-weight: 800; border: 1.5px solid #cbd5e1; background: #ffffff; color: #334155; cursor: pointer;">
                                 <i class="fas fa-upload" style="margin-right: 4px;"></i> Upload Photo
                             </button>
@@ -659,101 +709,26 @@
                             </button>
                         </div>
                         <div id="inclusionPhotoHint" style="font-size: 0.78rem; color: #64748b; margin-top: 6px; font-weight: 600;">
-                            JPG or PNG, up to 5MB. Saved to the selected catalog item.
+                            JPG, JPEG, or PNG, up to 5MB. An existing catalog photo can be kept.
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Description (Optional) -->
-            <div class="form-group-pro" style="margin-bottom: 0.5rem;">
-                <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                    Description / Notes <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
-                </label>
-                <textarea class="control-pro" id="customInclusionDescription" rows="2"
-                    placeholder="Add any extra details, specifications, or notes..."
-                    style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; color: #1e293b; resize: vertical;"></textarea>
-            </div>
         </div>
 
-        <div class="occ-modal-footer"
-            style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <button class="btn-secondary-pro" id="btnInclusionCancel" onclick="window.closeAddInclusionModal()" type="button"
-                style="padding: 0.55rem 1.15rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700;">Cancel</button>
+        <div class="occ-modal-footer inclusion-modal-footer"
+            style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0;">
             <button class="btn-secondary-pro" id="btnInclusionSaveAddAnother" onclick="window.saveInclusion(true)" type="button"
-                style="padding: 0.55rem 1.15rem; border-radius: 8px; font-size: 0.85rem; font-weight: 800; border: 1.5px solid var(--primary-color, #f97316); color: var(--primary-color, #f97316); background: #ffffff;">
+                hidden style="padding: 0.55rem 1.15rem; border-radius: 8px; font-size: 0.85rem; font-weight: 800; border: 1.5px solid var(--primary-color, #f97316); color: var(--primary-color, #f97316); background: #ffffff;">
                 <i class="fas fa-plus" style="margin-right: 4px;"></i> Save &amp; Add Another
             </button>
-            <button class="btn-primary-pro" id="btnInclusionSaveDone" onclick="window.saveInclusion(false)" type="button"
+            <button class="btn-primary-pro" id="btnInclusionSaveDone" onclick="window.saveInclusion(false)" type="button" disabled hidden
                 style="padding: 0.55rem 1.35rem; border-radius: 8px; font-size: 0.85rem; font-weight: 800; display: inline-flex; align-items: center; gap: 6px;">
                 <i class="fas fa-check"></i>
-                <span id="btnInclusionSaveDoneText">Add Inclusion</span>
+                <span id="btnInclusionSaveDoneText">Save &amp; Select</span>
             </button>
         </div>
-    </div>
-</div>
-
-<!-- Quick Add Menu Item Modal (When user clicks + Create New Menu Item from package builder) -->
-<div class="occ-modal-overlay" id="quickAddMenuModal" style="z-index: 2400; display: none;">
-    <div class="occ-modal-box sz-md occ-content-pop" style="max-width: 480px; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
-        <div class="occ-modal-header"
-            style="padding: 1.25rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
-            <h3 class="occ-modal-title" style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 0;">
-                <i class="fas fa-utensils" style="color: var(--primary-color, #f97316); margin-right: 6px;"></i> Add New Menu Item
-            </h3>
-            <button class="occ-modal-close" onclick="window.closeQuickAddMenuModal()" type="button"
-                style="background:none; border:none; font-size:1.1rem; color:#94a3b8; cursor:pointer; padding: 4px 8px; border-radius: 6px;">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <form id="quickAddMenuForm" onsubmit="window.submitQuickAddMenu(event)">
-            <div class="occ-modal-body" style="padding: 1.5rem; background: #ffffff;">
-                <div class="form-group-pro" style="margin-bottom: 1rem;">
-                    <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                        Item / Dish Name <span style="color: #ef4444;">*</span>
-                    </label>
-                    <input type="text" name="name" id="quickMenuName" class="control-pro" required placeholder="e.g. Buffet Menu A, Lechon Belly, Roast Beef"
-                        style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;" />
-                </div>
-
-                <input type="hidden" name="category" id="quickMenuCategory" value="Menu Item" />
-
-                <div class="form-group-pro" style="margin-bottom: 1rem;">
-                    <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                        Serving Unit
-                    </label>
-                    <select name="unit_type" id="quickMenuUnit" class="control-pro"
-                        style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;">
-                        <option value="per_pax">Per Pax / Guest</option>
-                        <option value="per_tray">Per Tray / Pan</option>
-                        <option value="per_serving">Per Serving</option>
-                        <option value="per_order">Per Order</option>
-                    </select>
-                </div>
-
-                <input type="hidden" name="price" id="quickMenuPrice" value="0" />
-                <input type="hidden" name="usage_type" value="package_only" />
-
-                <div class="form-group-pro" style="margin-bottom: 0.5rem;">
-                    <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                        Description <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
-                    </label>
-                    <textarea name="description" id="quickMenuDescription" class="control-pro" rows="2"
-                        placeholder="Add ingredients, dish details or notes..."
-                        style="width: 100%; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem; resize: vertical;"></textarea>
-                </div>
-            </div>
-            <div class="occ-modal-footer"
-                style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px;">
-                <button type="button" class="btn-secondary-pro" onclick="window.closeQuickAddMenuModal()"
-                    style="padding: 0.55rem 1.15rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700;">Cancel</button>
-                <button type="submit" id="btnQuickMenuSubmit" class="btn-primary-pro"
-                    style="padding: 0.55rem 1.35rem; border-radius: 8px; font-size: 0.85rem; font-weight: 800; display: inline-flex; align-items: center; gap: 6px;">
-                    <i class="fas fa-check"></i>
-                    <span>Save &amp; Select</span>
-                </button>
-            </div>
-        </form>
     </div>
 </div>
 
@@ -762,9 +737,10 @@
     <div class="occ-modal-box sz-md occ-content-pop" style="max-width: 500px; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
         <div class="occ-modal-header"
             style="padding: 1.25rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
-            <h3 class="occ-modal-title" id="quickAddOptionModalTitle" style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 0;">
-                <i class="fas fa-plus-circle" style="color: var(--primary-color, #f97316); margin-right: 6px;"></i> Quick Add Item
-            </h3>
+            <div>
+                <h3 class="occ-modal-title" id="quickAddOptionModalTitle" style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 0;">Quick Add Option</h3>
+                <div style="font-size: 0.82rem; color: #64748b; margin-top: 4px;">Add a food item or service to your customizable package.</div>
+            </div>
             <button class="occ-modal-close" onclick="window.closeQuickAddOptionModal()" type="button"
                 style="background:none; border:none; font-size:1.1rem; color:#94a3b8; cursor:pointer; padding: 4px 8px; border-radius: 6px;">
                 <i class="fas fa-times"></i>
@@ -772,27 +748,39 @@
         </div>
         <form id="quickAddOptionForm" onsubmit="window.submitQuickAddOption(event)">
             <input type="hidden" name="item_type" id="quickAddOptionType" value="menu" />
-            <div class="occ-modal-body" style="padding: 1.5rem; background: #ffffff;">
-                <div class="form-group-pro" style="margin-bottom: 1rem;">
-                    <label id="quickAddOptionNameLabel" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                        Item Name <span style="color: #ef4444;">*</span>
+            <div class="occ-modal-body quick-add-option-body" style="padding: 1.5rem; background: #ffffff;">
+                <div class="form-group-pro" id="quickAddOptionTypeWrapper" style="margin-bottom: 1rem;">
+                    <label for="quickAddOptionTypeSelect" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Option Type <span style="color: #ef4444;">*</span>
                     </label>
-                    <input type="text" name="name" id="quickAddOptionName" class="control-pro" required placeholder="e.g. Item Name"
+                    <select id="quickAddOptionTypeSelect" class="control-pro" required onchange="window.setQuickAddOptionType(this.value)"
+                        style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;">
+                        <option value="" selected disabled>Select option type</option>
+                        <option value="menu">Food / Menu Item</option>
+                        <option value="service">Service</option>
+                    </select>
+                </div>
+
+                <div class="form-group-pro" id="quickAddOptionNameWrapper" style="display: none; margin-bottom: 1rem;">
+                    <label id="quickAddOptionNameLabel" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Dish / Menu Item Name <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input type="text" name="name" id="quickAddOptionName" class="control-pro" required placeholder="e.g. Sweet &amp; Sour Pork, Roast Beef, Lechon Belly"
                         style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;" />
                 </div>
 
                 <input type="hidden" name="category" id="quickAddOptionCategory" value="" />
 
-                <div class="form-group-pro" style="margin-bottom: 1rem;">
+                <div class="form-group-pro" id="quickAddOptionUnitWrapper" style="display: none; margin-bottom: 1rem;">
                     <label id="quickAddOptionUnitLabel" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                        Unit / Pricing
+                        Serving Unit <span style="color: #ef4444;">*</span>
                     </label>
-                    <select name="unit_type" id="quickAddOptionUnit" class="control-pro"
+                    <select name="unit_type" id="quickAddOptionUnit" class="control-pro" required
                         style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;">
                     </select>
                 </div>
 
-                <div class="form-row-pro" id="quickAddOptionPriceRow" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem;">
+                <div class="form-row-pro" id="quickAddOptionPriceRow" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem;">
                     <div class="form-group-pro" id="quickAddOptionPriceWrapper">
                         <label id="quickAddOptionPriceLabel" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
                             Price (₱) <span style="color: #ef4444;">*</span>
@@ -810,7 +798,16 @@
                     </div>
                 </div>
 
-                <div class="form-group-pro" style="margin-bottom: 1rem;">
+                <div class="form-group-pro" id="quickAddOptionDescriptionWrapper" style="display: none; margin-bottom: 0.5rem;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Description <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
+                    </label>
+                    <textarea name="description" id="quickAddOptionDescription" class="control-pro" rows="2"
+                        placeholder="Details, ingredients, specifications or notes..."
+                        style="width: 100%; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem; resize: vertical;"></textarea>
+                </div>
+
+                <div class="form-group-pro" id="quickAddOptionPhotoWrapper" style="display: none; margin-bottom: 1rem;">
                     <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
                         Photo <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
                     </label>
@@ -821,31 +818,12 @@
                         </div>
                         <div style="min-width: 0;">
                             <div style="font-size: 0.85rem; font-weight: 800; color: #334155;">Upload photo</div>
-                            <div style="font-size: 0.75rem; color: #94a3b8;">JPG or PNG · shows on package details</div>
+                            <div style="font-size: 0.75rem; color: #94a3b8;">JPG or PNG · shown on package details</div>
                         </div>
                     </div>
                     <input type="file" name="image" id="quickAddOptionImage" accept="image/*" style="display: none;"
                         onchange="window.previewQuickCatalogPhoto('add', event)" />
                 </div>
-
-                <div class="form-group-pro" style="margin-bottom: 0.5rem;">
-                    <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                        Description <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
-                    </label>
-                    <textarea name="description" id="quickAddOptionDescription" class="control-pro" rows="2"
-                        placeholder="Details, ingredients, specifications or notes..."
-                        style="width: 100%; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem; resize: vertical;"></textarea>
-                </div>
-            </div>
-            <div class="occ-modal-footer"
-                style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px;">
-                <button type="button" class="btn-secondary-pro" onclick="window.closeQuickAddOptionModal()"
-                    style="padding: 0.55rem 1.15rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700;">Cancel</button>
-                <button type="submit" id="btnQuickOptionSubmit" class="btn-primary-pro"
-                    style="padding: 0.55rem 1.35rem; border-radius: 8px; font-size: 0.85rem; font-weight: 800; display: inline-flex; align-items: center; gap: 6px;">
-                    <i class="fas fa-check"></i>
-                    <span>Save &amp; Select</span>
-                </button>
             </div>
         </form>
     </div>

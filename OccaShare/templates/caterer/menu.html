@@ -260,6 +260,7 @@
                     <div class="form-group-pro">
                         <label>Category *</label>
                         <select name="category" id="modalCategory" class="control-pro" required onchange="toggleCustomCategory()">
+                            <option value="" disabled selected>-- Select Category --</option>
                             <option value="Mixed/Combo">Mixed / Combo</option>
                             <option value="Pork">Pork</option>
                             <option value="Chicken">Chicken</option>
@@ -765,6 +766,16 @@
         document.getElementById('upgrade_fee_input').value = '';
         removeImage();
         
+        // Reset Category
+        const catSelect = document.getElementById('modalCategory');
+        if (catSelect) catSelect.value = '';
+        const customCat = document.getElementById('customCategoryInput');
+        if (customCat) {
+            customCat.value = '';
+            customCat.style.display = 'none';
+            customCat.required = false;
+        }
+
         // Reset Serving Styles and Item Type
         document.querySelectorAll('input[name="item_type"]').forEach(cb => cb.checked = false);
         document.querySelector('input[name="item_type"][value="single"]').checked = true;
@@ -828,15 +839,29 @@
             
             const catSelect = form.category;
             const catOptions = Array.from(catSelect.options).map(o => o.value);
-            if (catOptions.includes(item.category)) {
+            const customInput = document.getElementById('customCategoryInput');
+            if (item.category && catOptions.includes(item.category)) {
                 catSelect.value = item.category;
-                document.getElementById('customCategoryInput').style.display = 'none';
-                document.getElementById('customCategoryInput').required = false;
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            } else if (item.category) {
+                let opt = Array.from(catSelect.options).find(o => o.value.toLowerCase() === item.category.toLowerCase());
+                if (!opt) {
+                    opt = new Option(item.category, item.category, true, true);
+                    const otherOpt = Array.from(catSelect.options).find(o => o.value === 'Other');
+                    if (otherOpt) catSelect.insertBefore(opt, otherOpt);
+                    else catSelect.appendChild(opt);
+                }
+                catSelect.value = item.category;
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
             } else {
-                catSelect.value = 'Other';
-                document.getElementById('customCategoryInput').style.display = 'block';
-                document.getElementById('customCategoryInput').value = item.category;
-                document.getElementById('customCategoryInput').required = true;
+                catSelect.value = '';
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
             }
 
             // Set Item Type
@@ -962,9 +987,10 @@
     function toggleCustomCategory() {
         const catSelect = document.getElementById('modalCategory');
         const customInput = document.getElementById('customCategoryInput');
-        if (catSelect.value === 'Other') {
+        if (catSelect.value === 'Other' || catSelect.value === 'Others') {
             customInput.style.display = 'block';
             customInput.required = true;
+            customInput.focus();
         } else {
             customInput.style.display = 'none';
             customInput.required = false;
@@ -1030,9 +1056,19 @@
         // --- CUSTOM CATEGORY LOGIC ---
         const catSelect = this.querySelector('select[name="category"]');
         const customInput = document.getElementById('customCategoryInput');
-        if (catSelect.value === 'Other' && customInput && customInput.value.trim() !== '') {
-            const newOpt = new Option(customInput.value.trim(), customInput.value.trim(), true, true);
-            catSelect.appendChild(newOpt);
+        if ((catSelect.value === 'Other' || catSelect.value === 'Others') && customInput && customInput.value.trim() !== '') {
+            const trimmed = customInput.value.trim();
+            let existingOpt = Array.from(catSelect.options).find(o => o.value.toLowerCase() === trimmed.toLowerCase());
+            if (!existingOpt) {
+                existingOpt = new Option(trimmed, trimmed, true, true);
+                const otherOpt = Array.from(catSelect.options).find(o => o.value === 'Other');
+                if (otherOpt) {
+                    catSelect.insertBefore(existingOpt, otherOpt);
+                } else {
+                    catSelect.appendChild(existingOpt);
+                }
+            }
+            catSelect.value = existingOpt.value;
         }
 
         if (!this.checkValidity()) {

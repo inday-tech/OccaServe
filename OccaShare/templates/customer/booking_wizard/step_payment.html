@@ -180,44 +180,48 @@
                     {% else %}
                     <div class="pay-section-box animate-up" style="animation-delay: 0.1s;">
                         <div class="pay-section-header">
-                            <h3 class="pay-section-title"><i class="fas fa-tasks text-slate-500"></i> 1. Choose How Much to Pay</h3>
-                            <span class="pay-section-subtitle">Select your deposit or full payment</span>
+                            <h3 class="pay-section-title"><i class="fas fa-file-contract text-slate-500"></i> 1. Agreed Contract Payment Term</h3>
+                            <span class="pay-section-subtitle">Locked to the terms specified in your signed contract</span>
                         </div>
 
-                        {% set signed_dp = quotation.downpayment_percent if quotation else 100 %}
-                        {% set accepted_terms = [signed_dp] %}
-                        {% if signed_dp < 100 %}
-                            {% set _ = accepted_terms.append(100) %}
-                        {% endif %}
+                        {% set signed_dp = quotation.downpayment_percent if (quotation and quotation.downpayment_percent) else (50 if booking.payment_plan == 'downpayment' else 100) %}
+                        {% set is_full_locked = (signed_dp >= 100 or booking.payment_plan == 'full') %}
+                        {% set locked_term = 100 if is_full_locked else signed_dp %}
+                        {% set term_amount = (booking.total_amount|float * (locked_term|float / 100.0)) %}
                         
                         <div class="plan-list-clean">
-                            {% for term in accepted_terms|sort %}
-                                {% set term_amount = (booking.total_amount|float * (term|float / 100.0)) %}
-                                <div class="plan-card-clean {% if loop.first %}active{% endif %}" id="plan-{{ term }}" onclick="updatePaymentPlan('{{ term }}', {{ term_amount }}, {{ booking.total_amount or 0 }})">
-                                    <div class="plan-left">
-                                        <div class="plan-radio"></div>
-                                        <div class="plan-info">
-                                            {% if term == 100 %}
-                                                <span class="plan-tag-pill">Pay All Now</span>
-                                                <h4>100% Full Payment</h4>
-                                                <p>Pay the full booking amount today {% if loop.first %}(Required){% else %}(Recommended){% endif %}</p>
-                                            {% else %}
-                                                <span class="plan-tag-pill">Minimum Deposit</span>
-                                                <h4>{{ term }}% Deposit</h4>
-                                                <p>Pay half now to save your date</p>
-                                            {% endif %}
-                                        </div>
+                            <div class="plan-card-clean active" id="plan-{{ locked_term }}" style="border-color: var(--primary-color, #f97316); cursor: default; background: #fffcf9;">
+                                <div class="plan-left">
+                                    <div class="plan-radio" style="background: var(--primary-color, #f97316); border-color: var(--primary-color, #f97316); display: flex; align-items: center; justify-content: center;">
+                                        <i class="fas fa-lock" style="font-size: 0.6rem; color: #fff;"></i>
                                     </div>
-                                    <div class="plan-price">₱{{ "{:,.2f}".format(term_amount) }}</div>
+                                    <div class="plan-info">
+                                        {% if locked_term == 100 %}
+                                            <span class="plan-tag-pill" style="background: #e0f2fe; color: #0284c7; font-weight: 700;">Signed Contract Term</span>
+                                            <h4>100% Full Payment</h4>
+                                            <p>As agreed in your signed contract, full payment settles your booking.</p>
+                                        {% else %}
+                                            <span class="plan-tag-pill" style="background: #e0f2fe; color: #0284c7; font-weight: 700;">Signed Contract Term</span>
+                                            <h4>{{ locked_term }}% Downpayment Deposit</h4>
+                                            <p>As agreed in your signed contract, initial {{ locked_term }}% deposit confirms and secures your date.</p>
+                                        {% endif %}
+                                    </div>
                                 </div>
-                            {% endfor %}
+                                <div class="plan-price">₱{{ "{:,.2f}".format(term_amount) }}</div>
+                            </div>
                         </div>
                     </div>
                     
                     <script>
                         document.addEventListener("DOMContentLoaded", function() {
-                            var firstTerm = '{{ (accepted_terms|sort)[0] }}';
-                            document.getElementById('selected-plan').value = firstTerm;
+                            var lockedTerm = '{{ locked_term }}';
+                            var termAmt = {{ term_amount }};
+                            var totalAmt = {{ booking.total_amount or 0 }};
+                            var planInput = document.getElementById('selected-plan');
+                            if (planInput) planInput.value = lockedTerm;
+                            if (typeof updatePaymentPlan === 'function') {
+                                updatePaymentPlan(lockedTerm, termAmt, totalAmt);
+                            }
                         });
                     </script>
                     {% endif %}

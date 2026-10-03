@@ -27,7 +27,7 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
     # Running DDL per-request holds AccessExclusiveLock on tables and causes deadlocks.
 
     try:
-        packages = db.query(models.CateringPackage).filter(models.CateringPackage.is_active == True).limit(3).all()
+        packages = db.query(models.CateringPackage).filter(models.CateringPackage.is_active == True).limit(6).all()
     except Exception as e:
         print(f"[HOMEPAGE ERROR] Failed to load catering packages: {e}")
         db.rollback()

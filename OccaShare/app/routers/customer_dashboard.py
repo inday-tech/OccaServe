@@ -1785,7 +1785,7 @@ async def customer_omni_search(
             or_(
                 models.CateringPackage.name.ilike(search_filter),
                 models.CateringPackage.description.ilike(search_filter),
-                models.CateringPackage.event_type.ilike(search_filter)
+                models.CateringPackage.service_type.ilike(search_filter)
             )
         ).limit(4).all()
 
@@ -1845,7 +1845,7 @@ async def customer_omni_search(
             caterer_name = s.caterer.business_name if s.caterer else "Caterer"
             results.append({
                 "title": s.name,
-                "subtitle": f"Service • ₱{float(s.price or 0):,.2f} • {caterer_name}",
+                "subtitle": f"Service • ₱{float(s.selling_price or 0):,.2f} • {caterer_name}",
                 "icon": "fas fa-concierge-bell",
                 "link": f"/customer/marketplace/{s.caterer_id}#services",
                 "type": "service"
@@ -1873,7 +1873,7 @@ async def customer_omni_search(
         prefix = "ORD-" if b.document_type == 'invoice' else "BK-"
         results.append({
             "title": b.event_name or b.event_type or f"Booking {prefix}{b.id}",
-            "subtitle": f"ID: {prefix}{b.id} • {b.status.replace('_', ' ').title()}",
+            "subtitle": f"ID: {prefix}{b.id} • {(b.status or 'pending').replace('_', ' ').title()}",
             "icon": "fas fa-calendar-check" if b.document_type != 'invoice' else "fas fa-shopping-bag",
             "link": f"/customer/bookings/manage/{b.id}",
             "type": "booking"

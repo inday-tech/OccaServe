@@ -1098,6 +1098,271 @@
         background-color: var(--hub-slate-200);
         border-radius: 10px;
     }
+
+    /* Enhanced Package Details Modal Styles */
+    #pkg-modal .m-box-elite {
+        max-width: 720px;
+        padding: 2.25rem 2rem;
+        border-radius: 20px;
+    }
+    @media (max-width: 640px) {
+        #pkg-modal .m-box-elite {
+            padding: 1.5rem 1.15rem;
+            max-width: 95%;
+            border-radius: 16px;
+        }
+    }
+    .pkg-category-filter-bar {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 4px 2px 10px 2px;
+        margin-bottom: 1.1rem;
+        border-bottom: 1.5px solid #f1f5f9;
+        scrollbar-width: thin;
+        position: sticky;
+        top: -5px;
+        background: #ffffff;
+        z-index: 5;
+    }
+    .pkg-category-filter-bar::-webkit-scrollbar {
+        height: 4px;
+    }
+    .pkg-category-filter-bar::-webkit-scrollbar-thumb {
+        background: #e2e8f0;
+        border-radius: 4px;
+    }
+    .pkg-cat-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 14px;
+        border-radius: 9999px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        border: 1.5px solid #e2e8f0;
+        background: #ffffff;
+        color: #475569;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+        font-family: inherit;
+    }
+    .pkg-cat-btn:hover {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+        color: #1e293b;
+    }
+    .pkg-cat-btn.active {
+        background: #FF6B00;
+        border-color: #FF6B00;
+        color: #ffffff;
+        box-shadow: 0 4px 12px rgba(255, 107, 0, 0.25);
+    }
+    .pkg-cat-btn .pkg-cat-count {
+        font-size: 0.68rem;
+        font-weight: 800;
+        padding: 1px 7px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        color: #64748b;
+        transition: all 0.2s ease;
+    }
+    .pkg-cat-btn.active .pkg-cat-count {
+        background: rgba(255, 255, 255, 0.28);
+        color: #ffffff;
+    }
+    .pkg-food-subfilter {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding: 2px 2px 8px 2px;
+        margin-bottom: 0.85rem;
+        scrollbar-width: none;
+    }
+    .pkg-food-subfilter::-webkit-scrollbar {
+        display: none;
+    }
+    .pkg-subchip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #475569;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.15s ease;
+        flex-shrink: 0;
+        font-family: inherit;
+    }
+    .pkg-subchip:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        color: #1e293b;
+    }
+    .pkg-subchip.active {
+        background: #16a34a;
+        border-color: #16a34a;
+        color: #ffffff;
+        box-shadow: 0 2px 8px rgba(22, 163, 74, 0.25);
+    }
+    .pkg-subchip.active .subchip-count {
+        background: rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+    }
+    .subchip-count {
+        font-size: 0.65rem;
+        font-weight: 800;
+        background: #e2e8f0;
+        color: #475569;
+        padding: 0 5px;
+        border-radius: 6px;
+    }
+
+    #pkg-modal.fixed-package-modal .m-box-elite {
+        display: flex;
+        flex-direction: column;
+        width: min(720px, calc(100vw - 24px));
+        height: min(90vh, 900px);
+        height: min(90dvh, 900px);
+        max-height: 90vh;
+        max-height: 90dvh;
+        padding: 0;
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+
+    #pkg-modal.fixed-package-modal #pkg-content {
+        display: flex;
+        flex: 1 1 auto;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .pkg-fixed-package-view {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .pkg-fixed-header {
+        flex: 0 0 auto;
+        padding: 1.25rem 4rem 1rem 1.5rem;
+        border-bottom: 1px solid var(--hub-slate-100);
+        background: #ffffff;
+    }
+
+    .pkg-fixed-summary {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem;
+        margin-top: 0.85rem;
+    }
+
+    .pkg-fixed-summary-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        min-width: 0;
+        padding: 0.6rem 0.75rem;
+        border: 1px solid var(--hub-slate-100);
+        border-radius: 10px;
+        background: var(--hub-slate-50);
+    }
+
+    .pkg-fixed-summary-label {
+        color: var(--hub-slate-400);
+        font-size: 0.65rem;
+        font-weight: 800;
+        line-height: 1.3;
+    }
+
+    .pkg-fixed-summary-value {
+        color: var(--hub-text-dark);
+        font-size: 0.82rem;
+        font-weight: 800;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+    }
+
+    .pkg-fixed-scroll {
+        flex: 1 1 auto;
+        min-width: 0;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 0 1.5rem 1rem;
+    }
+
+    .pkg-fixed-scroll .pkg-category-filter-bar {
+        top: 0;
+        margin: 0 -0.15rem 0.85rem;
+        padding: 0.7rem 0.15rem;
+        border-bottom: 1px solid var(--hub-slate-100);
+    }
+
+    .pkg-fixed-footer {
+        flex: 0 0 auto;
+        padding: 0.85rem 1.5rem;
+        border-top: 1px solid var(--hub-slate-100);
+        background: #ffffff;
+    }
+
+    .pkg-fixed-footer .pkg-fixed-cta {
+        display: flex;
+        width: 100%;
+        min-height: 48px;
+        margin: 0;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        text-decoration: none;
+    }
+
+    @media (max-width: 640px) {
+        #pkg-modal.fixed-package-modal {
+            padding: 0.5rem;
+        }
+
+        #pkg-modal.fixed-package-modal .m-box-elite {
+            width: 100%;
+            height: 90vh;
+            height: 90dvh;
+            max-height: 90vh;
+            max-height: 90dvh;
+            border-radius: 16px;
+        }
+
+        .pkg-fixed-header {
+            padding: 1rem 3.5rem 0.75rem 1rem;
+        }
+
+        .pkg-fixed-scroll {
+            padding-right: 1rem;
+            padding-left: 1rem;
+        }
+
+        .pkg-fixed-footer {
+            padding: 0.75rem 1rem;
+        }
+    }
+
+    @media (max-width: 380px) {
+        .pkg-fixed-summary {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
 </style>
 {% endblock %}
 
@@ -1327,12 +1592,84 @@
             });
         };
 
+        window.filterPkgCat = function(cat, btn) {
+            const parent = document.getElementById('pkg-content');
+            if (!parent) return;
+            parent.querySelectorAll('.pkg-cat-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            parent.querySelectorAll('.pkg-cat-section').forEach(sec => {
+                if (cat === 'all' || sec.dataset.cat === cat) {
+                    sec.style.display = 'block';
+                } else {
+                    sec.style.display = 'none';
+                }
+            });
+        };
+
+        window.filterPkgFoodSub = function(sub, btn) {
+            const parent = document.getElementById('pkg-content');
+            if (!parent) return;
+            parent.querySelectorAll('.pkg-subchip').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            parent.querySelectorAll('.pkg-food-subgroup').forEach(grp => {
+                if (sub === 'all' || grp.dataset.subcat === sub) {
+                    grp.style.display = 'block';
+                } else {
+                    grp.style.display = 'none';
+                }
+            });
+        };
+
         window.openPkgDetails = function(id) {
             const pkg = window.hubPkgs ? window.hubPkgs[String(id)] : null;
             if (!pkg) return;
+            const isFixedPackage = pkg.pricing_mode !== 'customizable';
 
-            // Parse & normalize inclusions into categorized objects
+            // 1. Collect & Normalize Inclusions
             let normalizedInclusions = [];
+            const seenKeys = new Set();
+
+            function addItem(cat, subcat, name, qty, desc) {
+                if (!name || !String(name).trim()) return;
+                const cleanName = String(name).trim();
+                const key = (cat + ':::' + cleanName).toLowerCase();
+                if (seenKeys.has(key)) return;
+                seenKeys.add(key);
+
+                const qtyStr = String(qty || '').trim().toLowerCase();
+                const hideQty = cat === 'Menu / Food' || !qtyStr || /^\d+\s*single$/.test(qtyStr) || qtyStr === '1' || qtyStr === '0';
+
+                normalizedInclusions.push({
+                    category: cat,
+                    subCategory: subcat || (cat === 'Menu / Food' ? 'Main Dish' : 'General'),
+                    name: cleanName,
+                    quantity: hideQty ? '' : (qty || ''),
+                    description: (desc || '').trim()
+                });
+            }
+
+            function deduceDishSubcat(rawCat, dishName) {
+                const c = String(rawCat || '').trim();
+                const cLower = c.toLowerCase();
+                if (c && !['menu', 'food', 'menu / food', 'other', 'dishes', 'dish'].includes(cLower)) {
+                    return c;
+                }
+                const nLower = String(dishName || '').toLowerCase();
+                if (nLower.includes('pork') || nLower.includes('liempo') || nLower.includes('lechon') || nLower.includes('menudo') || nLower.includes('sisig') || nLower.includes('hamon')) return 'Pork';
+                if (nLower.includes('beef') || nLower.includes('caldereta') || nLower.includes('bulalo') || nLower.includes('bistek') || nLower.includes('steak') || nLower.includes('salpicao')) return 'Beef';
+                if (nLower.includes('chicken') || nLower.includes('manok') || nLower.includes('inasal') || nLower.includes('buffalo') || nLower.includes('wings') || nLower.includes('cordon bleu')) return 'Chicken';
+                if (nLower.includes('fish') || nLower.includes('seafood') || nLower.includes('shrimp') || nLower.includes('prawn') || nLower.includes('squid') || nLower.includes('bangus') || nLower.includes('salmon') || nLower.includes('tuna') || nLower.includes('crab')) return 'Seafood';
+                if (nLower.includes('pasta') || nLower.includes('spaghetti') || nLower.includes('carbonara') || nLower.includes('pansit') || nLower.includes('pancit') || nLower.includes('noodle') || nLower.includes('lasagna')) return 'Pasta & Noodles';
+                if (nLower.includes('dessert') || nLower.includes('salad') || nLower.includes('cake') || nLower.includes('gelatin') || nLower.includes('leche flan') || nLower.includes('buko') || nLower.includes('mango') || nLower.includes('sweet') || nLower.includes('pastry')) return 'Desserts';
+                if (nLower.includes('drink') || nLower.includes('beverage') || nLower.includes('juice') || nLower.includes('tea') || nLower.includes('soda') || nLower.includes('coffee') || nLower.includes('punch') || nLower.includes('water')) return 'Beverages';
+                if (nLower.includes('soup') || nLower.includes('sinigang') || nLower.includes('chowder')) return 'Soup';
+                if (nLower.includes('rice') || nLower.includes('fried rice')) return 'Rice';
+                if (nLower.includes('veg') || nLower.includes('chopsuey') || nLower.includes('pinakbet')) return 'Vegetables';
+                if (nLower.includes('appetizer') || nLower.includes('lumpia') || nLower.includes('spring roll') || nLower.includes('nachos') || nLower.includes('finger food')) return 'Appetizers';
+                return 'Main Dish';
+            }
+
+            // Parse pkg.inclusions
             try {
                 let raw = pkg.inclusions;
                 if (typeof raw === 'string') {
@@ -1342,29 +1679,33 @@
                     raw.forEach(item => {
                         if (!item) return;
                         if (typeof item === 'string') {
-                            normalizedInclusions.push({ category: 'Menu / Food', name: item, quantity: '', description: '' });
+                            const sub = deduceDishSubcat('', item);
+                            addItem('Menu / Food', sub, item, '', '');
                         } else if (typeof item === 'object') {
                             const rawCat = String(item.category || item.item_type || 'Menu / Food');
                             const catLower = rawCat.toLowerCase();
                             let category = 'Menu / Food';
-                            if (catLower.includes('service') || catLower.includes('staff') || catLower.includes('coverage')) category = 'Service';
-                            else if (catLower.includes('equip') || catLower.includes('rental')) category = 'Equipment';
-                            else if (!(catLower.includes('menu') || catLower.includes('food') || catLower.includes('dish') || !rawCat.trim())) category = 'Other';
-                            const qtyRaw = item.quantity || item.qty || '';
-                            const qtyStr = String(qtyRaw).trim().toLowerCase();
-                            const hideQty = category === 'Menu / Food' || !qtyStr || /^\d+\s*single$/.test(qtyStr) || qtyStr === '1' || qtyStr === '0';
-                            normalizedInclusions.push({
-                                category,
-                                name: item.name || item.item_name || '',
-                                quantity: hideQty ? '' : qtyRaw,
-                                description: item.description || item.details || ''
-                            });
+                            if (catLower.includes('service') || catLower.includes('staff') || catLower.includes('coverage') || catLower.includes('coordinator') || catLower.includes('waiter') || catLower.includes('crew') || catLower.includes('host') || catLower.includes('setup') || catLower.includes('cleanup')) {
+                                category = 'Service';
+                            } else if (catLower.includes('equip') || catLower.includes('rental') || catLower.includes('chair') || catLower.includes('table') || catLower.includes('sound') || catLower.includes('light') || catLower.includes('tent') || catLower.includes('linen') || catLower.includes('chafing') || catLower.includes('utensil')) {
+                                category = 'Equipment';
+                            } else if (!(catLower.includes('menu') || catLower.includes('food') || catLower.includes('dish') || !rawCat.trim())) {
+                                const foodKws = ['pork', 'beef', 'chicken', 'meat', 'seafood', 'fish', 'dessert', 'beverage', 'drink', 'pasta', 'noodle', 'veg', 'soup', 'rice', 'appetizer', 'main', 'side'];
+                                if (foodKws.some(k => catLower.includes(k))) {
+                                    category = 'Menu / Food';
+                                } else {
+                                    category = 'Other';
+                                }
+                            }
+                            const name = item.name || item.item_name || '';
+                            const sub = category === 'Menu / Food' ? deduceDishSubcat(item.sub_category || item.category, name) : (item.sub_category || item.category || category);
+                            addItem(category, sub, name, item.quantity || item.qty || '', item.description || item.details || '');
                         }
                     });
                 } else if (typeof raw === 'object' && raw !== null) {
                     Object.entries(raw).forEach(([k, v]) => {
                         if (v === true || v === 1) {
-                            normalizedInclusions.push({ category: 'Equipment', name: k, quantity: '', description: '' });
+                            addItem('Equipment', 'Equipment', k, '', '');
                         }
                     });
                 }
@@ -1372,25 +1713,64 @@
                 console.error("Error parsing inclusions:", err);
             }
 
-            // Merge legacy linked inventory if not already in inclusions
+            // Merge detailed menu items
+            if (pkg.menu_items_detailed && Array.isArray(pkg.menu_items_detailed)) {
+                pkg.menu_items_detailed.forEach(mi => {
+                    if (mi && mi.name) {
+                        const sub = deduceDishSubcat(mi.category, mi.name);
+                        addItem('Menu / Food', sub, mi.name, '', mi.description || '');
+                    }
+                });
+            }
+
+            // Merge detailed service links
+            if (pkg.service_links_detailed && Array.isArray(pkg.service_links_detailed)) {
+                pkg.service_links_detailed.forEach(sl => {
+                    if (sl && sl.name) {
+                        let desc = sl.description || '';
+                        if (sl.inclusions && Array.isArray(sl.inclusions) && sl.inclusions.length > 0) {
+                            const incNames = sl.inclusions.map(i => typeof i === 'string' ? i : (i.name || '')).filter(Boolean);
+                            if (incNames.length > 0) {
+                                desc = (desc ? desc + ' • ' : '') + 'Includes: ' + incNames.join(', ');
+                            }
+                        }
+                        addItem('Service', sl.sub_category || 'Service', sl.name, sl.quantity || '', desc);
+                    }
+                });
+            }
+
+            // Merge detailed equipment links
+            if (pkg.equipment_links_detailed && Array.isArray(pkg.equipment_links_detailed)) {
+                pkg.equipment_links_detailed.forEach(el => {
+                    if (el && el.name) {
+                        let desc = el.description || '';
+                        if (el.inclusions && Array.isArray(el.inclusions) && el.inclusions.length > 0) {
+                            const incNames = el.inclusions.map(i => typeof i === 'string' ? i : (i.name || '')).filter(Boolean);
+                            if (incNames.length > 0) {
+                                desc = (desc ? desc + ' • ' : '') + 'Includes: ' + incNames.join(', ');
+                            }
+                        }
+                        addItem('Equipment', el.sub_category || 'Equipment', el.name, el.quantity || '', desc);
+                    }
+                });
+            }
+
+            // Backward compatibility for legacy linked_inventory & dishes
             if (pkg.linked_inventory && Array.isArray(pkg.linked_inventory)) {
                 pkg.linked_inventory.forEach(invName => {
-                    if (invName && !normalizedInclusions.some(i => i.name.toLowerCase() === String(invName).toLowerCase())) {
-                        normalizedInclusions.push({ category: 'Equipment', name: invName, quantity: '', description: '' });
-                    }
+                    if (invName) addItem('Equipment', 'Equipment', invName, '', '');
                 });
             }
-
-            // Merge legacy dishes if not already in inclusions
             if (pkg.dishes && Array.isArray(pkg.dishes)) {
                 pkg.dishes.forEach(dishName => {
-                    if (dishName && !normalizedInclusions.some(i => i.name.toLowerCase() === String(dishName).toLowerCase())) {
-                        normalizedInclusions.push({ category: 'Menu / Food', name: dishName, quantity: '', description: '' });
+                    if (dishName) {
+                        const sub = deduceDishSubcat('', dishName);
+                        addItem('Menu / Food', sub, dishName, '', '');
                     }
                 });
             }
 
-            // Build Grouped Inclusions HTML (Menu / Food, Services, Equipment, Other)
+            // Organize into Categories
             const groupedInc = {
                 'Menu / Food': [],
                 'Service': [],
@@ -1398,57 +1778,326 @@
                 'Other': []
             };
 
+            const foodBySubcat = {};
+
             normalizedInclusions.forEach(item => {
                 let cat = item.category || 'Menu / Food';
                 if (!groupedInc[cat]) groupedInc[cat] = [];
                 groupedInc[cat].push(item);
+
+                if (cat === 'Menu / Food') {
+                    const sub = item.subCategory || 'Main Dish';
+                    if (!foodBySubcat[sub]) foodBySubcat[sub] = [];
+                    foodBySubcat[sub].push(item);
+                }
             });
 
-            const catThemes = {
-                'Menu / Food': { title: 'Menu & Food Inclusions', icon: 'fas fa-utensils', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
-                'Service': { title: 'Services Included', icon: 'fas fa-concierge-bell', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
-                'Equipment': { title: 'Equipment & Rentals Included', icon: 'fas fa-chair', color: '#ea580c', bg: '#fff7ed', border: '#fed7aa' },
-                'Other': { title: 'Other Inclusions', icon: 'fas fa-box-open', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' }
-            };
+            // Parse selection rules (customizable menu groups & optional services)
+            let sRules = pkg.selection_rules;
+            if (typeof sRules === 'string') {
+                try { sRules = JSON.parse(sRules); } catch(e) { sRules = {}; }
+            }
+            const mGroups = (sRules && sRules.menu_groups) ? sRules.menu_groups : [];
+            const oServices = (sRules && sRules.optional_services) ? sRules.optional_services : [];
+            const hasCustomChoices = (pkg.pricing_mode === 'customizable' && (mGroups.length > 0 || (sRules && sRules.available_menu_ids)));
+            const hasLimitPills = !hasCustomChoices && sRules && Object.keys(sRules).length > 0;
 
-            let incHtml = '';
-            for (const [cat, items] of Object.entries(groupedInc)) {
-                if (!items || items.length === 0) continue;
-                const theme = catThemes[cat] || catThemes['Other'];
+            const foodCount = groupedInc['Menu / Food'].length;
+            const serviceCount = groupedInc['Service'].length + (!isFixedPackage && oServices ? oServices.length : 0);
+            const equipmentCount = isFixedPackage ? 0 : groupedInc['Equipment'].length;
+            const choicesCount = isFixedPackage ? 0 : mGroups.length + (hasLimitPills ? Object.keys(sRules).length : 0);
+            const otherCount = isFixedPackage ? 0 : groupedInc['Other'].length;
+            const totalCount = isFixedPackage
+                ? foodCount + groupedInc['Service'].length
+                : foodCount + serviceCount + otherCount;
 
-                incHtml += `
-                <div style="margin-bottom: 1.25rem;">
-                    <h4 style="font-size: 0.72rem; font-weight: 800; color: ${theme.color}; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px;">
-                        <i class="${theme.icon}"></i> ${theme.title}
-                        <span style="font-size: 0.68rem; background: ${theme.bg}; border: 1px solid ${theme.border}; padding: 1px 7px; border-radius: 12px; margin-left: auto;">${items.length} item${items.length === 1 ? '' : 's'}</span>
+            // Interactive Category Filter Bar
+            let filterTabsHtml = `
+            <div class="pkg-category-filter-bar">
+                <button type="button" class="pkg-cat-btn active" data-cat="all" onclick="window.filterPkgCat('all', this)">
+                    <i class="fas fa-layer-group"></i> All Inclusions <span class="pkg-cat-count">${totalCount}</span>
+                </button>
+                ${foodCount > 0 || isFixedPackage ? `
+                <button type="button" class="pkg-cat-btn" data-cat="food" onclick="window.filterPkgCat('food', this)">
+                    <i class="fas fa-utensils" style="color: #16a34a;"></i> Menu &amp; Food <span class="pkg-cat-count">${foodCount}</span>
+                </button>` : ''}
+                ${serviceCount > 0 || isFixedPackage ? `
+                <button type="button" class="pkg-cat-btn" data-cat="service" onclick="window.filterPkgCat('service', this)">
+                    <i class="fas fa-concierge-bell" style="color: #2563eb;"></i> Services <span class="pkg-cat-count">${serviceCount}</span>
+                </button>` : ''}
+                ${otherCount > 0 && !isFixedPackage ? `
+                <button type="button" class="pkg-cat-btn" data-cat="other" onclick="window.filterPkgCat('other', this)">
+                    <i class="fas fa-box-open" style="color: #64748b;"></i> Other <span class="pkg-cat-count">${otherCount}</span>
+                </button>` : ''}
+            </div>`;
+
+            // 1. Food & Menu Section
+            let foodHtml = '';
+            if (foodCount > 0) {
+                const subcatKeys = Object.keys(foodBySubcat);
+                const showSubfilter = subcatKeys.length > 0;
+
+                let subchipsHtml = '';
+                if (showSubfilter) {
+                    subchipsHtml = `
+                    <div class="pkg-food-subfilter">
+                        <button type="button" class="pkg-subchip active" data-sub="all" onclick="window.filterPkgFoodSub('all', this)">
+                            All Dishes <span class="subchip-count">${foodCount}</span>
+                        </button>
+                        ${subcatKeys.map(sub => {
+                            const count = foodBySubcat[sub].length;
+                            const slug = sub.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                            return `
+                            <button type="button" class="pkg-subchip" data-sub="${slug}" onclick="window.filterPkgFoodSub('${slug}', this)">
+                                ${sub} <span class="subchip-count">${count}</span>
+                            </button>`;
+                        }).join('')}
+                    </div>`;
+                }
+
+                let foodGroupsHtml = subcatKeys.map(sub => {
+                    const slug = sub.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                    const items = foodBySubcat[sub];
+                    return `
+                    <div class="pkg-food-subgroup" data-subcat="${slug}" style="margin-bottom: 1rem;">
+                        ${showSubfilter ? `
+                        <div style="font-size: 0.72rem; font-weight: 800; color: #166534; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.45rem; display: flex; align-items: center; gap: 6px;">
+                            <span>${sub}</span>
+                            <span style="font-size: 0.65rem; background: #dcfce7; color: #166534; padding: 1px 6px; border-radius: 10px;">${items.length}</span>
+                        </div>` : ''}
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;">
+                            ${items.map(item => `
+                                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.65rem 0.85rem; display: flex; flex-direction: column; gap: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); transition: border-color 0.2s;" onmouseover="this.style.borderColor='#bbf7d0'" onmouseout="this.style.borderColor='#e2e8f0'">
+                                    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 6px;">
+                                        <span style="font-size: 0.82rem; font-weight: 800; color: #1e293b; line-height: 1.25;">
+                                            <i class="fas fa-check-circle" style="color: #16a34a; font-size: 0.75rem; margin-right: 4px;"></i>${item.name}
+                                        </span>
+                                        <span style="font-size: 0.64rem; font-weight: 700; color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1px 6px; border-radius: 12px; white-space: nowrap; flex-shrink: 0;">
+                                            ${sub}
+                                        </span>
+                                    </div>
+                                    ${item.description ? `
+                                        <div style="font-size: 0.73rem; color: #64748b; line-height: 1.35; padding-left: 1rem;">
+                                            ${item.description}
+                                        </div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+                }).join('');
+
+                foodHtml = `
+                <div class="pkg-cat-section" data-cat="food" style="margin-bottom: 1.25rem;">
+                    <h4 style="font-size: 0.74rem; font-weight: 800; color: #16a34a; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-utensils"></i> Menu &amp; Food Inclusions
+                        <span style="font-size: 0.68rem; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1px 7px; border-radius: 12px; margin-left: auto;">${foodCount} dish${foodCount === 1 ? '' : 'es'}</span>
+                    </h4>
+                    ${subchipsHtml}
+                    ${foodGroupsHtml}
+                </div>`;
+            }
+
+            // 2. Services Section
+            let serviceSecHtml = '';
+            const servicesIncluded = groupedInc['Service'] || [];
+            if (serviceCount > 0) {
+                function getServiceIconClass(name) {
+                    const n = String(name || '').toLowerCase();
+                    if (n.includes('waiter') || n.includes('server') || n.includes('staff') || n.includes('crew')) return 'fas fa-user-friends';
+                    if (n.includes('bar') || n.includes('drink') || n.includes('cocktail')) return 'fas fa-cocktail';
+                    if (n.includes('chef') || n.includes('cook')) return 'fas fa-utensils';
+                    if (n.includes('clean') || n.includes('setup') || n.includes('sanitiz')) return 'fas fa-broom';
+                    if (n.includes('coordinat') || n.includes('manager') || n.includes('planner')) return 'fas fa-clipboard-check';
+                    if (n.includes('transport') || n.includes('delivery')) return 'fas fa-truck';
+                    return 'fas fa-concierge-bell';
+                }
+
+                let incServicesCards = servicesIncluded.map(item => `
+                    <div style="background: #ffffff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 0.75rem 0.9rem; display: flex; gap: 10px; align-items: flex-start; box-shadow: 0 1px 3px rgba(37,99,235,0.03); transition: border-color 0.2s;" onmouseover="this.style.borderColor='#93c5fd'" onmouseout="this.style.borderColor='#bfdbfe'">
+                        <div style="width: 34px; height: 34px; border-radius: 10px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0; border: 1px solid #dbeafe;">
+                            <i class="${getServiceIconClass(item.name)}"></i>
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                                <strong style="font-size: 0.82rem; font-weight: 800; color: #1e3a8a;">${item.name}</strong>
+                                <span style="font-size: 0.65rem; font-weight: 800; color: #1d4ed8; background: #dbeafe; padding: 1px 7px; border-radius: 12px; white-space: nowrap;">
+                                    ${item.quantity || 'Included'}
+                                </span>
+                            </div>
+                            ${item.description ? `<div style="font-size: 0.73rem; color: #64748b; line-height: 1.35; margin-top: 3px;">${item.description}</div>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+
+                let optionalServicesCards = '';
+                if (!isFixedPackage && oServices && oServices.length > 0) {
+                    optionalServicesCards = `
+                    <div style="margin-top: 0.85rem;">
+                        <div style="font-size: 0.7rem; font-weight: 800; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.45rem; display: flex; align-items: center; gap: 4px;">
+                            <i class="fas fa-plus-circle"></i> Available Optional Add-on Services
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;">
+                            ${oServices.map(s => {
+                                let pStr = s.pricing_type === 'custom_quote' ? 'Custom Quote' : (s.pricing_type === 'starting' ? `Starting at ₱${Number(s.price).toLocaleString()}` : (s.pricing_type === 'per_pax' ? `+₱${Number(s.price).toLocaleString()}/pax` : `₱${Number(s.price).toLocaleString()} fixed`));
+                                return `
+                                <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0.6rem 0.8rem;">
+                                    <div>
+                                        <strong style="font-size: 0.8rem; color: #1e293b;">${s.name}</strong>
+                                        ${s.description ? `<span style="font-size: 0.72rem; color: #64748b; display: block;">${s.description}</span>` : ''}
+                                    </div>
+                                    <span style="font-size: 0.72rem; font-weight: 800; color: #1d4ed8; background: #dbeafe; padding: 2px 7px; border-radius: 6px; white-space: nowrap; margin-left: 6px;">${pStr}</span>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    </div>`;
+                }
+
+                serviceSecHtml = `
+                <div class="pkg-cat-section" data-cat="service" style="margin-bottom: 1.25rem;">
+                    <h4 style="font-size: 0.74rem; font-weight: 800; color: #2563eb; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-concierge-bell"></i> Services Included
+                        <span style="font-size: 0.68rem; background: #eff6ff; border: 1px solid #bfdbfe; padding: 1px 7px; border-radius: 12px; margin-left: auto;">${servicesIncluded.length} included</span>
                     </h4>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;">
-                        ${items.map(item => `
-                            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.65rem 0.85rem; display: flex; flex-direction: column; gap: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 6px;">
-                                    <span style="font-size: 0.82rem; font-weight: 800; color: #1e293b; line-height: 1.25;">
-                                        <i class="fas fa-check-circle" style="color: ${theme.color}; font-size: 0.75rem; margin-right: 4px;"></i>${item.name}
-                                    </span>
-                                    ${item.quantity && cat !== 'Service' ? `
-                                        <span style="font-size: 0.68rem; font-weight: 700; color: #475569; background: #f1f5f9; padding: 1px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0;">
-                                            ${item.quantity}
-                                        </span>
-                                    ` : ''}
+                        ${incServicesCards || '<span style="font-size:0.75rem; color:#64748b;">No included services</span>'}
+                    </div>
+                    ${optionalServicesCards}
+                </div>`;
+            }
+
+            // 3. Equipment Section
+            let equipmentHtml = '';
+            const equipItems = groupedInc['Equipment'] || [];
+            if (!isFixedPackage && equipItems.length > 0) {
+                function getEquipIconClass(name) {
+                    const n = String(name || '').toLowerCase();
+                    if (n.includes('chair') || n.includes('seat')) return 'fas fa-chair';
+                    if (n.includes('table')) return 'fas fa-border-all';
+                    if (n.includes('tent') || n.includes('canopy')) return 'fas fa-campground';
+                    if (n.includes('sound') || n.includes('audio') || n.includes('speaker') || n.includes('mic')) return 'fas fa-volume-up';
+                    if (n.includes('light') || n.includes('lamp')) return 'fas fa-lightbulb';
+                    if (n.includes('chafing') || n.includes('warmer') || n.includes('stove')) return 'fas fa-fire';
+                    if (n.includes('plate') || n.includes('dish') || n.includes('spoon') || n.includes('fork') || n.includes('glass') || n.includes('cup')) return 'fas fa-utensils';
+                    if (n.includes('linen') || n.includes('cloth') || n.includes('cover')) return 'fas fa-layer-group';
+                    return 'fas fa-box';
+                }
+
+                equipmentHtml = `
+                <div class="pkg-cat-section" data-cat="equipment" style="margin-bottom: 1.25rem;">
+                    <h4 style="font-size: 0.74rem; font-weight: 800; color: #ea580c; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-chair"></i> Equipment &amp; Rentals Included
+                        <span style="font-size: 0.68rem; background: #fff7ed; border: 1px solid #fed7aa; padding: 1px 7px; border-radius: 12px; margin-left: auto;">${equipItems.length} item${equipItems.length === 1 ? '' : 's'}</span>
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;">
+                        ${equipItems.map(item => `
+                            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.65rem 0.85rem; display: flex; gap: 8px; align-items: flex-start; box-shadow: 0 1px 2px rgba(0,0,0,0.02); transition: border-color 0.2s;" onmouseover="this.style.borderColor='#fed7aa'" onmouseout="this.style.borderColor='#e2e8f0'">
+                                <div style="width: 32px; height: 32px; border-radius: 8px; background: #fff7ed; color: #ea580c; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; flex-shrink: 0; border: 1px solid #ffedd5;">
+                                    <i class="${getEquipIconClass(item.name)}"></i>
                                 </div>
-                                ${item.description ? `
-                                    <div style="font-size: 0.74rem; color: #64748b; line-height: 1.35; padding-left: 1rem;">
-                                        ${item.description}
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 6px;">
+                                        <span style="font-size: 0.82rem; font-weight: 800; color: #1e293b; line-height: 1.25;">
+                                            ${item.name}
+                                        </span>
+                                        ${item.quantity ? `
+                                            <span style="font-size: 0.65rem; font-weight: 700; color: #9a3412; background: #fff7ed; border: 1px solid #fed7aa; padding: 1px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0;">
+                                                ${item.quantity}
+                                            </span>` : ''}
                                     </div>
-                                ` : ''}
+                                    ${item.description ? `
+                                        <div style="font-size: 0.73rem; color: #64748b; line-height: 1.35; margin-top: 2px;">
+                                            ${item.description}
+                                        </div>` : ''}
+                                </div>
                             </div>
                         `).join('')}
                     </div>
-                </div>
-                `;
+                </div>`;
             }
 
-            // Section 1: Service Details
-            const paxLabel = (pkg.pricing_mode === 'per_pax' || pkg.price_unit === 'per_guest') ? '/pax' : ' total';
+            // 4. Choices & Options Section
+            let choicesSecHtml = '';
+            if (!isFixedPackage && choicesCount > 0) {
+                let choicesBody = '';
+                if (mGroups.length > 0) {
+                    choicesBody += `
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        ${mGroups.map(g => {
+                            const ruleText = g.rule_type === 'exact' ? `Choose ${g.rule_count}` : (g.rule_type === 'min' ? `Choose at least ${g.rule_count}` : `Choose up to ${g.rule_count}`);
+                            const opts = (g.options || []).map(o => {
+                                let pText = 'Included';
+                                if (o.pricing_type === 'per_pax' && o.price > 0) pText = `+₱${Number(o.price).toLocaleString()}/pax`;
+                                else if (o.pricing_type === 'fixed' && o.price > 0) pText = `+₱${Number(o.price).toLocaleString()}`;
+                                return `<span style="font-size:0.75rem;background:#fff7ed;color:#9a3412;padding:2px 8px;border-radius:4px;border:1px solid #fed7aa;">${o.name} <strong style="color:#c2410c;">(${pText})</strong></span>`;
+                            }).join(' ');
+                            return `
+                                <div style="background:#ffffff;border:1px solid #fed7aa;border-radius:10px;padding:0.65rem 0.85rem;">
+                                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                                        <strong style="font-size:0.85rem;color:#0f172a;">${g.name}</strong>
+                                        <span style="font-size:0.7rem;font-weight:800;color:#c2410c;background:#ffedd5;padding:2px 6px;border-radius:4px;">${ruleText}</span>
+                                    </div>
+                                    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">
+                                        ${opts || '<span style="font-size:0.75rem;color:#94a3b8;font-style:italic;">No dishes specified yet</span>'}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>`;
+                }
+
+                if (pkg.pricing_mode === 'customizable' && sRules && !mGroups.length) {
+                    const menuCount = Array.isArray(sRules.available_menu_ids) ? sRules.available_menu_ids.length : 0;
+                    const svcCount = Array.isArray(sRules.available_service_ids) ? sRules.available_service_ids.length : 0;
+                    choicesBody += `
+                    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:0.85rem 1rem;">
+                        <div style="font-size:0.78rem;font-weight:800;color:#1d4ed8;margin-bottom:0.35rem;">
+                            <i class="fas fa-sliders-h" style="margin-right:6px;"></i>Build-your-own package
+                        </div>
+                        <p style="font-size:0.8rem;color:#475569;line-height:1.5;margin:0;">
+                            Choose from ${menuCount > 0 ? menuCount + ' menu option' + (menuCount === 1 ? '' : 's') : 'available menu items'}${svcCount > 0 ? ' and ' + svcCount + ' service' + (svcCount === 1 ? '' : 's') : ''} when booking.
+                        </p>
+                    </div>`;
+                } else if (hasLimitPills) {
+                    const META = new Set(['package_type', 'available_menu_ids', 'available_service_ids', 'available_equipment_ids', 'menu_groups', 'optional_services']);
+                    const limitPills = Object.entries(sRules || {})
+                        .filter(([k, v]) => !META.has(k) && (typeof v === 'number' || (typeof v === 'string' && /^\d+$/.test(String(v)))))
+                        .map(([cat, limit]) => `<span style="background:#f8fafc;color:#334155;padding:4px 12px;border-radius:100px;font-size:0.72rem;font-weight:700;border:1px solid #e2e8f0;">Choose ${limit} ${cat}</span>`);
+                    if (limitPills.length > 0) {
+                        choicesBody += `<div style="display:flex;flex-wrap:wrap;gap:6px;">${limitPills.join('')}</div>`;
+                    }
+                }
+
+                choicesSecHtml = `
+                <div class="pkg-cat-section" data-cat="choices" style="margin-bottom: 1.25rem;">
+                    <h4 style="font-size: 0.74rem; font-weight: 800; color: #c2410c; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-sliders-h"></i> Customer Menu Choices &amp; Limits
+                    </h4>
+                    ${choicesBody}
+                </div>`;
+            }
+
+            // 5. Other Section
+            let otherSecHtml = '';
+            const otherItems = groupedInc['Other'] || [];
+            if (!isFixedPackage && otherItems.length > 0) {
+                otherSecHtml = `
+                <div class="pkg-cat-section" data-cat="other" style="margin-bottom: 1.25rem;">
+                    <h4 style="font-size: 0.74rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-box-open"></i> Other Inclusions
+                        <span style="font-size: 0.68rem; background: #f8fafc; border: 1px solid #e2e8f0; padding: 1px 7px; border-radius: 12px; margin-left: auto;">${otherItems.length}</span>
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;">
+                        ${otherItems.map(item => `
+                            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.65rem 0.85rem; display: flex; flex-direction: column; gap: 3px;">
+                                <span style="font-size: 0.82rem; font-weight: 800; color: #1e293b;"><i class="fas fa-check-circle" style="color: #64748b; font-size: 0.75rem; margin-right: 4px;"></i>${item.name}</span>
+                                ${item.description ? `<div style="font-size: 0.73rem; color: #64748b; padding-left: 1rem;">${item.description}</div>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            }
+
+            // Service Details Summary
             const addGuestHtml = pkg.additional_guest_price > 0
                 ? `<div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.5rem 0;border-bottom:1px solid var(--hub-slate-100);">
                      <span style="color:var(--hub-slate-400);font-weight:700;">EXTRA PAX</span>
@@ -1469,14 +2118,14 @@
             ` : '';
 
             const serviceHtml = `
-                <div style="background:var(--hub-slate-50);border-radius:12px;padding:1rem;border:1px solid var(--hub-slate-100);margin-bottom:1.25rem;">
-                    <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.5rem 0;border-bottom:1px solid var(--hub-slate-100);">
-                        <span style="color:var(--hub-slate-400);font-weight:700;">GUEST COUNT</span>
+                <div style="background:var(--hub-slate-50);border-radius:12px;padding:0.85rem 1rem;border:1px solid var(--hub-slate-100);margin-bottom:1.1rem;">
+                    <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.35rem 0;border-bottom:1px solid var(--hub-slate-100);">
+                        <span style="color:var(--hub-slate-400);font-weight:700;">GUEST CAPACITY</span>
                         <span style="font-weight:800;color:var(--hub-text-dark);">
                             ${pkg.min_guests > 0 ? 'Min. '+pkg.min_guests : '—'}${pkg.max_guests > 0 ? ' · Max. '+pkg.max_guests : ''} pax
                         </span>
                     </div>
-                    <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.5rem 0;border-bottom:1px solid var(--hub-slate-100);">
+                    <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.35rem 0;border-bottom:1px solid var(--hub-slate-100);">
                         <span style="color:var(--hub-slate-400);font-weight:700;">SERVICE DURATION</span>
                         <span style="font-weight:800;color:var(--hub-text-dark);">${pRules.max_event_duration ? pRules.max_event_duration + " hours" : pkg.duration}</span>
                     </div>
@@ -1485,137 +2134,118 @@
                     ${overtimeHtml}
                 </div>`;
 
-            // Selection Limits & Customizable Options
-            let dishHtml = '';
-            if (pkg.pricing_mode === 'customizable' && pkg.selection_rules) {
-                let sRules = pkg.selection_rules;
-                if (typeof sRules === 'string') {
-                    try { sRules = JSON.parse(sRules); } catch(e) { sRules = {}; }
-                }
-                const mGroups = (sRules && sRules.menu_groups) ? sRules.menu_groups : [];
-                const oServices = (sRules && sRules.optional_services) ? sRules.optional_services : [];
+            const descriptionText = String(pkg.desc || '').trim();
+            const displayDescription = /^(?:ok(?:ay)?|test(?:ing)?|n\/?a|none|null|[-.])[\s.!]*$/i.test(descriptionText) ? '' : descriptionText;
+            const minGuests = Number(pkg.min_guests) || 0;
+            const maxGuests = Number(pkg.max_guests) || 0;
+            const guestCapacity = [
+                minGuests > 0 ? `Min. ${minGuests}` : '',
+                maxGuests > 0 ? `Max. ${maxGuests}` : ''
+            ].filter(Boolean);
+            const packageDetailRows = [];
+            if (guestCapacity.length) packageDetailRows.push(['GUEST CAPACITY', `${guestCapacity.join(' · ')} pax`]);
 
-                if (mGroups.length > 0) {
-                    dishHtml += `
-                    <div style="margin-bottom:1.25rem;">
-                        <h4 style="font-size:0.75rem;font-weight:800;color:var(--hub-slate-400);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
-                            <i class="fas fa-utensils" style="color:#ea580c;margin-right:6px;"></i>Customer Menu Choices
-                        </h4>
-                        <div style="display:flex;flex-direction:column;gap:8px;">
-                            ${mGroups.map(g => {
-                                const ruleText = g.rule_type === 'exact' ? `Choose ${g.rule_count}` : (g.rule_type === 'min' ? `Choose at least ${g.rule_count}` : `Choose up to ${g.rule_count}`);
-                                const opts = (g.options || []).map(o => {
-                                    let pText = 'Included';
-                                    if (o.pricing_type === 'per_pax' && o.price > 0) pText = `+₱${Number(o.price).toLocaleString()}/pax`;
-                                    else if (o.pricing_type === 'fixed' && o.price > 0) pText = `+₱${Number(o.price).toLocaleString()}`;
-                                    return `<span style="font-size:0.75rem;background:#fff7ed;color:#9a3412;padding:2px 8px;border-radius:4px;border:1px solid #fed7aa;">${o.name} <strong style="color:#c2410c;">(${pText})</strong></span>`;
-                                }).join(' ');
-                                return `
-                                    <div style="background:#ffffff;border:1px solid #fed7aa;border-radius:8px;padding:0.6rem 0.85rem;">
-                                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-                                            <strong style="font-size:0.85rem;color:#0f172a;">${g.name}</strong>
-                                            <span style="font-size:0.7rem;font-weight:800;color:#c2410c;background:#ffedd5;padding:2px 6px;border-radius:4px;">${ruleText}</span>
-                                        </div>
-                                        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">
-                                            ${opts || '<span style="font-size:0.75rem;color:#94a3b8;font-style:italic;">No dishes specified yet</span>'}
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>`;
-                }
-
-                if (oServices.length > 0) {
-                    dishHtml += `
-                    <div style="margin-bottom:1.25rem;">
-                        <h4 style="font-size:0.75rem;font-weight:800;color:var(--hub-slate-400);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
-                            <i class="fas fa-concierge-bell" style="color:#2563eb;margin-right:6px;"></i>Available Optional Services
-                        </h4>
-                        <div style="display:flex;flex-direction:column;gap:6px;">
-                            ${oServices.map(s => {
-                                let pStr = s.pricing_type === 'custom_quote' ? 'Custom Quote' : (s.pricing_type === 'starting' ? `Starting at ₱${Number(s.price).toLocaleString()}` : (s.pricing_type === 'per_pax' ? `+₱${Number(s.price).toLocaleString()}/pax` : `₱${Number(s.price).toLocaleString()} fixed`));
-                                return `
-                                    <div style="display:flex;justify-content:space-between;align-items:center;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:0.5rem 0.75rem;">
-                                        <div>
-                                            <strong style="font-size:0.82rem;color:#1e3a8a;">${s.name}</strong>
-                                            ${s.description ? `<span style="font-size:0.75rem;color:#64748b;display:block;">${s.description}</span>` : ''}
-                                        </div>
-                                        <span style="font-size:0.75rem;font-weight:800;color:#1d4ed8;background:#dbeafe;padding:2px 6px;border-radius:4px;white-space:nowrap;">${pStr}</span>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>`;
-                }
-            } else if (pkg.selection_rules && Object.keys(pkg.selection_rules).length > 0) {
-                const META = new Set(['package_type', 'available_menu_ids', 'available_service_ids', 'available_equipment_ids', 'menu_groups', 'optional_services']);
-                let sRules = pkg.selection_rules;
-                if (typeof sRules === 'string') {
-                    try { sRules = JSON.parse(sRules); } catch(e) { sRules = {}; }
-                }
-                if (pkg.pricing_mode === 'customizable' && sRules) {
-                    const menuCount = Array.isArray(sRules.available_menu_ids) ? sRules.available_menu_ids.length : 0;
-                    const svcCount = Array.isArray(sRules.available_service_ids) ? sRules.available_service_ids.length : 0;
-                    dishHtml += `
-                    <div style="margin-bottom:1.25rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:0.85rem 1rem;">
-                        <div style="font-size:0.78rem;font-weight:800;color:#1d4ed8;margin-bottom:0.35rem;">
-                            <i class="fas fa-sliders-h" style="margin-right:6px;"></i>Build-your-own package
-                        </div>
-                        <p style="font-size:0.8rem;color:#475569;line-height:1.5;margin:0;">
-                            Choose from ${menuCount > 0 ? menuCount + ' menu option' + (menuCount === 1 ? '' : 's') : 'available menu items'}${svcCount > 0 ? ' and ' + svcCount + ' service' + (svcCount === 1 ? '' : 's') : ''} when booking. Price depends on your selections.
-                        </p>
-                    </div>`;
-                } else {
-                    const limitPills = Object.entries(sRules || {})
-                        .filter(([k, v]) => !META.has(k) && (typeof v === 'number' || (typeof v === 'string' && /^\d+$/.test(String(v)))))
-                        .map(([cat, limit]) => `<span style="background:var(--hub-slate-50);color:var(--hub-slate-600);padding:4px 12px;border-radius:100px;font-size:0.72rem;font-weight:700;border:1px solid var(--hub-slate-200);">Choose ${limit} ${cat}</span>`);
-                    if (limitPills.length > 0) {
-                        dishHtml += `
-                        <div style="margin-bottom:1.25rem;">
-                            <h4 style="font-size:0.72rem;font-weight:800;color:var(--hub-slate-400);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">
-                                <i class="fas fa-utensils" style="color:var(--hub-primary);margin-right:6px;"></i>Choices / Menu Limits
-                            </h4>
-                            <div style="display:flex;flex-wrap:wrap;gap:6px;">
-                                ${limitPills.join('')}
-                            </div>
-                        </div>`;
-                    }
-                }
+            const durationValue = pRules.max_event_duration || pkg.duration || '';
+            if (durationValue) {
+                const durationText = typeof durationValue === 'number' ? `${durationValue} hours` : String(durationValue);
+                packageDetailRows.push(['SERVICE DURATION', durationText]);
             }
 
-            const contentHtml = `
+            const setupHours = Number(pRules.setup_time_hours) || 0;
+            const cleanupHours = Number(pRules.cleanup_time_hours) || 0;
+            if (setupHours > 0 || cleanupHours > 0) {
+                packageDetailRows.push(['REQUIRED PREP TIME', `${setupHours}h Setup / ${cleanupHours}h Cleanup`]);
+            }
+
+            const extraPaxPrice = Number(pkg.additional_guest_price) || 0;
+            if (extraPaxPrice > 0) {
+                packageDetailRows.push(['EXTRA PAX', `₱${extraPaxPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}/person`]);
+            }
+
+            const fixedSummaryHtml = packageDetailRows.length ? `
+                <div class="pkg-fixed-summary">
+                    ${packageDetailRows.map(([label, value]) => `
+                        <div class="pkg-fixed-summary-item">
+                            <span class="pkg-fixed-summary-label">${label}</span>
+                            <span class="pkg-fixed-summary-value">${value}</span>
+                        </div>
+                    `).join('')}
+                </div>` : '';
+
+            const fixedSupportingText = `Fixed Package${minGuests > 0 ? ` • Minimum ${minGuests} pax` : ''}`;
+            const fixedBookingCta = window.catererAvailable
+                ? `<a href="/bookings/start/{{ caterer.id }}?package_id=${id}" class="btn-hub-main pkg-fixed-cta"><i class="fas fa-calendar-check"></i> Select This Package</a>`
+                : `<div class="btn-hub-main pkg-fixed-cta" aria-disabled="true" style="opacity:0.5;cursor:not-allowed;"><i class="fas fa-ban"></i> Caterer Unavailable</div>`;
+
+            const fixedContentHtml = `
+                <div class="pkg-fixed-package-view">
+                    <header class="pkg-fixed-header">
+                        <div style="font-size:0.68rem;font-weight:800;color:var(--hub-primary);text-transform:uppercase;margin-bottom:0.25rem;">PACKAGE INCLUSIONS &amp; DETAILS</div>
+                        <h2 style="font-size:1.3rem;font-weight:900;color:var(--hub-text-dark);line-height:1.25;margin:0 0 0.25rem;">${pkg.name}</h2>
+                        <div style="font-size:1.45rem;font-weight:900;color:var(--hub-primary);line-height:1.25;">${pkg.price}</div>
+                        <div style="font-size:0.78rem;color:var(--hub-slate-600);font-weight:700;margin-top:0.25rem;">${fixedSupportingText}</div>
+                        ${displayDescription ? `<p style="font-size:0.82rem;color:var(--hub-slate-600);line-height:1.45;margin:0.45rem 0 0;">${displayDescription}</p>` : ''}
+                        ${fixedSummaryHtml}
+                    </header>
+                    <div class="pkg-fixed-scroll">
+                        ${filterTabsHtml}
+                        <div id="pkg-sections-wrapper" style="min-height:100px;">
+                            ${foodHtml}
+                            ${serviceSecHtml}
+                        </div>
+                    </div>
+                    <footer class="pkg-fixed-footer">${fixedBookingCta}</footer>
+                </div>`;
+
+            const customizableContentHtml = `
                 ${pkg.image_url ? `
-                <div style="margin: -2.5rem -2.5rem 1.25rem -2.5rem; height: 180px; overflow: hidden; border-radius: 24px 24px 0 0; position: relative;">
+                <div style="margin: -2.25rem -2rem 1.25rem -2rem; height: 180px; overflow: hidden; border-radius: 20px 20px 0 0; position: relative;">
                     <img src="${pkg.image_url}" onerror="this.parentElement.style.display='none'" style="width:100%; height:100%; object-fit:cover;">
                     <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(15,23,42,0.6) 0%,transparent 60%);"></div>
                 </div>` : ''}
-                <div style="margin-bottom:1.25rem;">
-                    <div style="font-size:0.7rem;font-weight:800;color:var(--hub-primary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Package Details</div>
-                    <h2 style="font-size:1.3rem;font-weight:900;color:var(--hub-text-dark);margin-bottom:0.25rem;">${pkg.name}</h2>
+                <div style="margin-bottom:1rem;">
+                    <div style="font-size:0.7rem;font-weight:800;color:var(--hub-primary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.25rem;">Package Inclusions &amp; Details</div>
+                    <h2 style="font-size:1.35rem;font-weight:900;color:var(--hub-text-dark);margin-bottom:0.25rem;">${pkg.name}</h2>
                     <div style="font-size:1.5rem;font-weight:900;color:var(--hub-primary);">${pkg.price}</div>
                 </div>
-                ${pkg.desc ? `<p style="font-size:0.85rem;color:var(--hub-slate-600);line-height:1.65;margin-bottom:1.25rem;">${pkg.desc}</p>` : ''}
+                ${pkg.desc ? `<p style="font-size:0.85rem;color:var(--hub-slate-600);line-height:1.6;margin-bottom:1.1rem;">${pkg.desc}</p>` : ''}
                 ${(pkg.gallery_images && pkg.gallery_images.length > 1) ? `
-                <div style="margin-bottom:1.25rem; display:flex; gap:8px; overflow-x:auto; padding-bottom:8px;">
+                <div style="margin-bottom:1.1rem; display:flex; gap:8px; overflow-x:auto; padding-bottom:8px;">
                     ${pkg.gallery_images.map(img => `<img src="${img}" style="width:100px; height:75px; object-fit:cover; border-radius:8px; border:1px solid #e2e8f0; flex-shrink:0;">`).join('')}
                 </div>` : ''}
                 ${serviceHtml}
-                ${incHtml}
-                ${dishHtml}
+                ${filterTabsHtml}
+                <div id="pkg-sections-wrapper" style="min-height: 100px;">
+                    ${foodHtml}
+                    ${serviceSecHtml}
+                    ${otherSecHtml}
+                </div>
                 ${window.catererAvailable
                     ? (pkg.pricing_mode === 'customizable'
-                        ? `<a href="/bookings/customize/{{ caterer.id }}?package_id=${id}" class="btn-hub-main" style="margin-top:0.5rem;display:flex;text-align:center;text-decoration:none;background:#ea580c;border-color:#ea580c;justify-content:center;"><i class="fas fa-sliders-h"></i> Customize this Package</a>`
-                        : `<a href="/bookings/start/{{ caterer.id }}?package_id=${id}" class="btn-hub-main" style="margin-top:0.5rem;display:flex;text-align:center;text-decoration:none;justify-content:center;"><i class="fas fa-calendar-check"></i> Select this Package</a>`
+                        ? `<a href="/bookings/customize/{{ caterer.id }}?package_id=${id}" class="btn-hub-main" style="margin-top:0.75rem;display:flex;text-align:center;text-decoration:none;background:#ea580c;border-color:#ea580c;justify-content:center;"><i class="fas fa-sliders-h"></i> Customize this Package</a>`
+                        : `<a href="/bookings/start/{{ caterer.id }}?package_id=${id}" class="btn-hub-main" style="margin-top:0.75rem;display:flex;text-align:center;text-decoration:none;justify-content:center;"><i class="fas fa-calendar-check"></i> Select this Package</a>`
                       )
-                    : `<div class="btn-hub-main" style="margin-top:0.5rem;opacity:0.5;cursor:not-allowed;justify-content:center;"><i class="fas fa-ban"></i> Caterer Unavailable</div>`
+                    : `<div class="btn-hub-main" style="margin-top:0.75rem;opacity:0.5;cursor:not-allowed;justify-content:center;"><i class="fas fa-ban"></i> Caterer Unavailable</div>`
                 }`;
 
+            const contentHtml = isFixedPackage ? fixedContentHtml : customizableContentHtml;
+
             document.getElementById('pkg-content').innerHTML = contentHtml;
-            document.getElementById('pkg-modal').classList.add('active');
+            const packageModal = document.getElementById('pkg-modal');
+            packageModal.classList.toggle('fixed-package-modal', isFixedPackage);
+            if (window._pkgModalPreviousOverflow === undefined) {
+                window._pkgModalPreviousOverflow = document.body.style.overflow;
+            }
+            document.body.style.overflow = 'hidden';
+            packageModal.classList.add('active');
         };
 
-        window.closePkgModal = function() { document.getElementById('pkg-modal').classList.remove('active'); };
+        window.closePkgModal = function() {
+            const packageModal = document.getElementById('pkg-modal');
+            packageModal.classList.remove('active', 'fixed-package-modal');
+            document.body.style.overflow = window._pkgModalPreviousOverflow || '';
+            delete window._pkgModalPreviousOverflow;
+        };
         
         window.openMessageModal = function() { 
             console.log('Hub: Opening Message Modal');
@@ -2178,6 +2808,49 @@ window.hubPkgs = {
             {% if pkg.service_links %}{% for sl in pkg.service_links %}{{ sl.service.name|tojson }},{% endfor %}{% endif %}
         ].filter(Boolean),
         dishes: [{% for item in pkg.menu_items %}{% if item.category not in ['Rentals', 'Services'] and item.usage_type != 'order_only' %}{{ item.name|tojson }},{% endif %}{% endfor %}].filter(Boolean),
+        menu_items_detailed: [
+            {% for item in pkg.menu_items %}
+            {% if item.category not in ['Rentals', 'Services'] and item.usage_type != 'order_only' %}
+            {
+                name: {{ item.name|tojson }},
+                category: {{ (item.category or 'Main Dish')|tojson }},
+                description: {{ (item.description or '')|tojson }}
+            },
+            {% endif %}
+            {% endfor %}
+        ],
+        service_links_detailed: [
+            {% if pkg.service_links %}
+            {% for sl in pkg.service_links %}
+            {% if sl.service and not sl.service.is_archived %}
+            {
+                name: {{ sl.service.name|tojson }},
+                category: 'Service',
+                sub_category: {{ (sl.service.category or 'Event Service')|tojson }},
+                quantity: {{ (sl.quantity|string ~ ' staff')|tojson if sl.quantity else "''" }},
+                description: {{ (sl.service.description or '')|tojson }},
+                inclusions: {{ (sl.service.details_json.inclusions if sl.service.details_json and sl.service.details_json.inclusions else [])|tojson }}
+            },
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+        ],
+        equipment_links_detailed: [
+            {% if pkg.equipment_links %}
+            {% for el in pkg.equipment_links %}
+            {% if el.equipment and not el.equipment.is_archived %}
+            {
+                name: {{ el.equipment.name|tojson }},
+                category: 'Equipment',
+                sub_category: {{ (el.equipment.category or 'Equipment')|tojson }},
+                quantity: {{ (el.quantity|string ~ ' pcs')|tojson if el.quantity else "''" }},
+                description: {{ (el.equipment.description or '')|tojson }},
+                inclusions: {{ (el.equipment.details_json.inclusions if el.equipment.details_json and el.equipment.details_json.inclusions else [])|tojson }}
+            },
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+        ],
         selection_rules: {{ (pkg.selection_rules)|tojson if pkg.selection_rules else 'null' }}
     }{{ ',' if not loop.last }}
     {% endfor %}
@@ -2870,6 +3543,22 @@ document.addEventListener('DOMContentLoaded', function() {
             // Parse details
             const details = item.details_json || {};
             let detailsHtml = '';
+
+            // Inclusions (What's Included)
+            if (details.inclusions && Array.isArray(details.inclusions) && details.inclusions.length > 0) {
+                detailsHtml += `
+                    <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:14px 16px; margin-top:8px;">
+                        <h4 style="font-size:0.75rem; font-weight:850; color:#166534; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px;"><i class="fas fa-check-circle" style="color:#16a34a;"></i> What's Included</h4>
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                            ${details.inclusions.map(inc => {
+                                const name = typeof inc === 'string' ? inc : (inc.name || inc.title || '');
+                                const qty = (typeof inc === 'object' && inc.qty) ? `${inc.qty}x ` : '';
+                                return `<div style="font-size:0.85rem; font-weight:700; color:#14532d; display:flex; align-items:center; gap:8px;"><i class="fas fa-check" style="color:#16a34a;"></i> ${qty}${name}</div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
 
             let specItems = [];
             if (isEquipment) {

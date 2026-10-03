@@ -2,11 +2,11 @@
 console.log("[Packages] v17.0 Loading...");
 
 // Constants
-const DISH_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100%25' height='100%25' fill='%23f8fafc'/%3E%3Cpath d='M30 40 L70 40 L50 70 Z' fill='%23e2e8f0'/%3E%3Ctext x='50%25' y='85%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='8' font-weight='800' fill='%23cbd5e1'%3ENO DISH IMAGE%3C/text%3E%3C/svg%3E";
+var DISH_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100%25' height='100%25' fill='%23f8fafc'/%3E%3Cpath d='M30 40 L70 40 L50 70 Z' fill='%23e2e8f0'/%3E%3Ctext x='50%25' y='85%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='8' font-weight='800' fill='%23cbd5e1'%3ENO DISH IMAGE%3C/text%3E%3C/svg%3E";
 
-let STEPS_ORDER = ['basic', 'inclusions', 'review'];
-const ALL_STEPS = ['basic', 'inclusions', 'review'];
-let currentPackageId = null;
+var STEPS_ORDER = ['basic', 'inclusions', 'review'];
+var ALL_STEPS = ['basic', 'inclusions', 'review'];
+var currentPackageId = null;
 
 // ==========================================
 // UNLIMITED INCLUSIONS STATE (v17)
@@ -56,9 +56,17 @@ function extractErrorMessage(data, fallback = 'Something went wrong. Please try 
 window.extractErrorMessage = extractErrorMessage;
 
 // Global Modal Helpers
-const safeOpenModal = (id, float = false) => {
+var safeOpenModal = (id, float = false) => {
     const el = document.getElementById(id);
     if (!el) return;
+
+    document.querySelectorAll('.occ-modal-overlay.active').forEach((overlay) => {
+        if (overlay.id !== id) {
+            overlay.classList.remove('active');
+            overlay.style.display = 'none';
+        }
+    });
+
     el.style.display = 'flex';
     requestAnimationFrame(() => {
         el.classList.add('active');
@@ -66,7 +74,7 @@ const safeOpenModal = (id, float = false) => {
     document.body.style.overflow = 'hidden';
 };
 
-const safeCloseModal = (id) => {
+var safeCloseModal = (id) => {
     const el = document.getElementById(id);
     if (!el) return;
     el.classList.remove('active');
@@ -208,7 +216,7 @@ window.togglePricingMode = function (mode) {
     calculatePricing();
 };
 
-window.openAddPackageModal = function () {
+window.openAddPackageModal = async function () {
     const form = document.getElementById('packageForm');
     if (!form) { console.error('[Packages] packageForm not found'); return; }
 
@@ -243,46 +251,61 @@ window.openAddPackageModal = function () {
     customizableMenuIds = new Set();
     customizableServiceIds = new Set();
     customizableEquipmentIds = new Set();
+    customizableCategoryQuotas = {};
     lastMenuQuery = '';
     lastServiceQuery = '';
     const mSearch = document.getElementById('custMenuSearchInput');
     const sSearch = document.getElementById('custServiceSearchInput');
     if (mSearch) mSearch.value = '';
     if (sSearch) sSearch.value = '';
-    if (typeof renderCustomizableCatalogs === 'function') renderCustomizableCatalogs();
-    if (typeof syncCustomizableSelectionRules === 'function') syncCustomizableSelectionRules();
-
-    // Fetch catalog in background
-    if (window.fetchInclusionsCatalog) window.fetchInclusionsCatalog();
 
     // Reset wizard to Step 1 and open modal immediately
-    switchPackageTab(document.getElementById('step-btn-basic'), 'basic');
+    const basicStepBtn = document.getElementById('step-btn-basic');
+    if (typeof window.switchPackageTab === 'function') {
+        window.switchPackageTab(basicStepBtn, 'basic');
+    }
     safeOpenModal('packageModal');
 
+    // Fetch catalog upfront so menus, equipment, services are all immediately available
+    if (window.fetchInclusionsCatalog) {
+        window.fetchInclusionsCatalog().then(() => {
+            if (typeof renderCustomizableCatalogs === 'function') renderCustomizableCatalogs();
+            if (typeof syncCustomizableSelectionRules === 'function') syncCustomizableSelectionRules();
+        }).catch(e => console.warn('[Packages] Catalog load error:', e));
+    }
+
     // Load addon library in background (non-blocking)
-    loadPkgMenuLibrary().catch(e => console.warn('[Packages] Library load error (non-critical):', e));
+    if (typeof loadPkgMenuLibrary === 'function') {
+        loadPkgMenuLibrary().catch(e => console.warn('[Packages] Library load error (non-critical):', e));
+    }
 };
 
 window.editPackage = async function (pkgId) {
     if (!pkgId) return;
 
+    const title = document.getElementById('packageModalTitle');
+    if (title) title.innerText = 'Edit Package';
+
+    const form = document.getElementById('packageForm');
+    if (form) form.action = `/caterer/packages/${pkgId}/update`;
+
+    const basicStepBtn = document.getElementById('step-btn-basic');
+    if (typeof window.switchPackageTab === 'function') {
+        window.switchPackageTab(basicStepBtn, 'basic');
+    }
+    safeOpenModal('packageModal');
+
     try {
-        if (window.fetchInclusionsCatalog) window.fetchInclusionsCatalog();
+        if (window.fetchInclusionsCatalog) await window.fetchInclusionsCatalog();
 
         const response = await fetch(`/caterer/packages/${pkgId}/details`);
         if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
 
         const pkg = await response.json();
 
-        const title = document.getElementById('packageModalTitle');
-        if (title) title.innerText = 'Edit Package';
-
-        const form = document.getElementById('packageForm');
-        if (!form) return;
-        form.action = `/caterer/packages/${pkgId}/update`;
-
         // Populate fields
-        if (form.name) form.name.value = pkg.name || '';
+        const nameInput = form.elements.namedItem('name');
+        if (nameInput) nameInput.value = pkg.name || '';
         if (form.description) form.description.value = pkg.description || '';
         if (form.service_type) form.service_type.value = pkg.service_type || 'General';
         if (form.pricing_mode) form.pricing_mode.value = pkg.pricing_mode || 'fixed';
@@ -375,16 +398,28 @@ window.editPackage = async function (pkgId) {
                 if (Array.isArray(rules.available_equipment_ids)) {
                     rules.available_equipment_ids.forEach(id => customizableEquipmentIds.add(Number(id)));
                 }
+                if (rules.category_quotas && typeof rules.category_quotas === 'object') {
+                    customizableCategoryQuotas = Object.assign({}, rules.category_quotas);
+                } else {
+                    customizableCategoryQuotas = {};
+                }
             }
+        } else {
+            customizableCategoryQuotas = {};
         }
         if (typeof renderCustomizableCatalogs === 'function') renderCustomizableCatalogs();
         if (typeof syncCustomizableSelectionRules === 'function') syncCustomizableSelectionRules();
 
         // Open modal immediately, load addon library in background
-        switchPackageTab(document.getElementById('step-btn-basic'), 'basic');
+        const basicStepBtn = document.getElementById('step-btn-basic');
+        if (typeof window.switchPackageTab === 'function') {
+            window.switchPackageTab(basicStepBtn, 'basic');
+        }
         safeOpenModal('packageModal');
 
-        loadPkgMenuLibrary().catch(e => console.warn('[Packages] Library load error (non-critical):', e));
+        if (typeof loadPkgMenuLibrary === 'function') {
+            loadPkgMenuLibrary().catch(e => console.warn('[Packages] Library load error (non-critical):', e));
+        }
     } catch (e) {
         console.error('[Packages] Error loading package details:', e);
         if (window.showError) window.showError("Could not load package details.");
@@ -525,19 +560,22 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Dynamic Wizard Navigation
-window.switchPackageTab = function (el, tabName) {
-    if (!el) return;
+window.STEPS_ORDER = STEPS_ORDER;
 
-    const targetIdx = STEPS_ORDER.indexOf(tabName);
+window.switchPackageTab = function (el, tabName) {
+    if (!tabName) tabName = 'basic';
+
+    const steps = window.STEPS_ORDER || ['basic', 'inclusions', 'review'];
+    const targetIdx = steps.indexOf(tabName);
     const activeStepEl = document.querySelector('.pkg-step-side.active');
     const currentTabName = activeStepEl ? activeStepEl.id.replace('step-btn-', '') : 'basic';
-    const currentIdx = STEPS_ORDER.indexOf(currentTabName);
+    const currentIdx = steps.indexOf(currentTabName);
 
     // Validate forward movement
-    if (targetIdx > currentIdx) {
+    if (targetIdx > currentIdx && currentIdx >= 0) {
         for (let i = currentIdx; i < targetIdx; i++) {
-            if (!validateTab(STEPS_ORDER[i])) {
-                const failEl = document.getElementById('step-btn-' + STEPS_ORDER[i]);
+            if (typeof validateTab === 'function' && !validateTab(steps[i])) {
+                const failEl = document.getElementById('step-btn-' + steps[i]);
                 if (failEl) {
                     document.querySelectorAll('.pkg-step-side').forEach(s => s.classList.remove('active'));
                     failEl.classList.add('active');
@@ -548,7 +586,12 @@ window.switchPackageTab = function (el, tabName) {
     }
 
     document.querySelectorAll('.pkg-step-side').forEach(s => s.classList.remove('active'));
-    el.classList.add('active');
+    if (el) {
+        el.classList.add('active');
+    } else {
+        const targetBtn = document.getElementById('step-btn-' + tabName);
+        if (targetBtn) targetBtn.classList.add('active');
+    }
 
     document.querySelectorAll('#packageModal .tab-pane-pro').forEach(p => p.classList.remove('active'));
     const target = document.getElementById('tab-' + tabName);
@@ -563,7 +606,8 @@ window.switchPackageTab = function (el, tabName) {
     // Update Progress
     const progressEl = document.getElementById('pkgWizardProgress');
     if (progressEl) {
-        const pct = ((targetIdx + 1) / STEPS_ORDER.length) * 100;
+        const safeIdx = targetIdx >= 0 ? targetIdx : 0;
+        const pct = ((safeIdx + 1) / steps.length) * 100;
         progressEl.style.width = pct + '%';
     }
 
@@ -572,37 +616,48 @@ window.switchPackageTab = function (el, tabName) {
     const btnNext = document.getElementById('btnWizardNext');
     const btnSave = document.getElementById('pkgSaveBtn');
 
-    if (btnBack) btnBack.style.display = targetIdx > 0 ? 'inline-flex' : 'none';
+    if (btnBack) {
+        if (targetIdx > 0) {
+            btnBack.style.setProperty('display', 'inline-flex', 'important');
+        } else {
+            btnBack.style.setProperty('display', 'none', 'important');
+        }
+    }
 
-    if (targetIdx === STEPS_ORDER.length - 1) {
-        if (btnNext) btnNext.style.display = 'none';
-        if (btnSave) btnSave.style.display = 'inline-flex';
-        updateReviewTab();
+    if (targetIdx === steps.length - 1) {
+        if (btnNext) btnNext.style.setProperty('display', 'none', 'important');
+        if (btnSave) btnSave.style.setProperty('display', 'inline-flex', 'important');
+        if (typeof updateReviewTab === 'function') updateReviewTab();
     } else {
-        if (btnNext) btnNext.style.display = 'inline-flex';
-        if (btnSave) btnSave.style.display = 'none';
+        if (btnNext) btnNext.style.setProperty('display', 'inline-flex', 'important');
+        if (btnSave) btnSave.style.setProperty('display', 'none', 'important');
     }
 };
 
 window.goToWizardNextStep = function () {
+    const steps = window.STEPS_ORDER || ['basic', 'inclusions', 'review'];
     const activeStepEl = document.querySelector('.pkg-step-side.active');
-    if (!activeStepEl) return;
+    if (!activeStepEl) {
+        window.switchPackageTab(document.getElementById('step-btn-inclusions'), 'inclusions');
+        return;
+    }
     const currentTabName = activeStepEl.id.replace('step-btn-', '');
-    const currentIdx = STEPS_ORDER.indexOf(currentTabName);
-    if (currentIdx < STEPS_ORDER.length - 1) {
-        const nextTab = STEPS_ORDER[currentIdx + 1];
-        switchPackageTab(document.getElementById('step-btn-' + nextTab), nextTab);
+    const currentIdx = steps.indexOf(currentTabName);
+    if (currentIdx < steps.length - 1) {
+        const nextTab = steps[currentIdx + 1];
+        window.switchPackageTab(document.getElementById('step-btn-' + nextTab), nextTab);
     }
 };
 
 window.goToWizardBackStep = function () {
+    const steps = window.STEPS_ORDER || ['basic', 'inclusions', 'review'];
     const activeStepEl = document.querySelector('.pkg-step-side.active');
     if (!activeStepEl) return;
     const currentTabName = activeStepEl.id.replace('step-btn-', '');
-    const currentIdx = STEPS_ORDER.indexOf(currentTabName);
+    const currentIdx = steps.indexOf(currentTabName);
     if (currentIdx > 0) {
-        const prevTab = STEPS_ORDER[currentIdx - 1];
-        switchPackageTab(document.getElementById('step-btn-' + prevTab), prevTab);
+        const prevTab = steps[currentIdx - 1];
+        window.switchPackageTab(document.getElementById('step-btn-' + prevTab), prevTab);
     }
 };
 
@@ -628,8 +683,9 @@ function validateTab(tabName) {
     };
 
     if (tabName === 'basic') {
-        const nameVal = form.name.value.trim();
-        if (!nameVal) addError(form.name, "Package Name is required.");
+        const nameInput = form.elements.namedItem('name');
+        const nameVal = nameInput ? nameInput.value.trim() : '';
+        if (!nameVal) addError(nameInput, "Package Name is required.");
 
         const mode = form.pricing_mode ? form.pricing_mode.value : 'fixed';
         if (mode === 'per_pax' || mode === 'customizable') {
@@ -692,7 +748,8 @@ function updateReviewTab() {
     const dCap = document.getElementById('reviewCapacity');
     const dPrice = document.getElementById('reviewPrice');
 
-    if (dName) dName.innerText = form.name.value || 'Untitled Package';
+    const nameInput = form.elements.namedItem('name');
+    if (dName) dName.innerText = (nameInput && nameInput.value) || 'Untitled Package';
 
     const mode = form.pricing_mode ? form.pricing_mode.value : 'fixed';
 
@@ -749,13 +806,16 @@ function updateReviewTab() {
     const fixedReview = document.getElementById('reviewFixedPackageBlock');
     const custReview = document.getElementById('reviewCustomizablePackageBlock');
 
-    if (mode === 'customizable') {
-        if (fixedReview) fixedReview.style.display = 'none';
-        if (custReview) custReview.style.display = 'flex';
-        renderReviewCustomizable();
-    } else {
-        if (fixedReview) fixedReview.style.display = 'block';
-        if (custReview) custReview.style.display = 'none';
+    try {
+        if (mode === 'customizable') {
+            if (fixedReview) fixedReview.style.display = 'none';
+            if (custReview) custReview.style.display = 'flex';
+            if (typeof renderReviewCustomizable === 'function') {
+                renderReviewCustomizable();
+            }
+        } else {
+            if (fixedReview) fixedReview.style.display = 'block';
+            if (custReview) custReview.style.display = 'none';
 
         // Counts from inclusions state
         const dishCount = packageInclusions.filter(i => i.category === 'Menu / Food' || i.category === 'Menu' || i.type === 'Menu').length;
@@ -791,6 +851,9 @@ function updateReviewTab() {
                 reviewInclusionsDetail.innerHTML = html;
             }
         }
+        }
+    } catch (err) {
+        console.error("updateReviewTab error:", err);
     }
 }
 
@@ -894,7 +957,9 @@ window.loadPkgMenuLibrary = async function () {
             menuContainer.innerHTML = '<div class="text-center py-5 text-slate-400">Your menu library is empty.</div>';
         }
 
-        updateSelectionRulesBuilder();
+        if (typeof updateSelectionRulesBuilder === 'function') {
+            updateSelectionRulesBuilder();
+        }
         renderAddonLists();
         updateInclusionCounters();
 
@@ -1477,8 +1542,9 @@ window.handleInclusionImageChange = function (event) {
     const hint = document.getElementById('inclusionPhotoHint');
     if (!file) return;
 
-    if (!file.type || !file.type.startsWith('image/')) {
-        if (hint) { hint.textContent = 'Please choose an image file (JPG or PNG).'; hint.style.color = '#dc2626'; }
+    const extension = (file.name.split('.').pop() || '').toLowerCase();
+    if (!['jpg', 'jpeg', 'png'].includes(extension) || (file.type && !['image/jpeg', 'image/png'].includes(file.type))) {
+        if (hint) { hint.textContent = 'Please choose a JPG, JPEG, or PNG image.'; hint.style.color = '#dc2626'; }
         input.value = '';
         return;
     }
@@ -1514,6 +1580,17 @@ function findCatalogImage(type, itemId, name) {
     return (found && found.image_url) || '';
 }
 
+function setInclusionCategoryChoices(includeEquipment = false) {
+    const select = document.getElementById('customInclusionCategory');
+    if (!select) return;
+    const equipmentOption = Array.from(select.options).find(option => option.value === 'Equipment');
+    if (includeEquipment && !equipmentOption) {
+        select.add(new Option('Equipment', 'Equipment'));
+    } else if (!includeEquipment && equipmentOption) {
+        equipmentOption.remove();
+    }
+}
+
 // Persist the picked photo onto the linked catalog item
 async function uploadInclusionImage(type, itemId) {
     const apiType = (type === 'Service') ? 'service' : ((type === 'Equipment') ? 'equipment' : 'menu');
@@ -1546,27 +1623,42 @@ window.openAddInclusionModal = async function () {
     const btnDoneText = document.getElementById('btnInclusionSaveDoneText');
     const alertBox = document.getElementById('addInclusionSuccessAlert');
     const desc = document.getElementById('customInclusionDescription');
+    const qtyNum = document.getElementById('customInclusionQtyNum');
+    const qtyUnit = document.getElementById('customInclusionQtyUnit');
+    const itemSelect = document.getElementById('inclusionItemSelect');
+    const searchInput = document.getElementById('inclusionItemSearch');
+    const selectedBanner = document.getElementById('selectedItemInfoBanner');
 
     if (editIndexEl) editIndexEl.value = '-1';
-    if (title) title.innerText = 'Add Package Inclusion';
-    if (subtitle) subtitle.innerText = 'Link existing items from your catalog into this package.';
-    if (btnAddAnother) btnAddAnother.style.display = 'inline-flex';
-    if (btnDoneText) btnDoneText.innerText = 'Add Inclusion';
+    if (title) title.innerText = 'Quick Add Inclusion';
+    if (subtitle) subtitle.innerText = 'Add a food item or service to your fixed package.';
+    if (btnAddAnother) btnAddAnother.hidden = true;
+    if (btnDoneText) btnDoneText.innerText = 'Save & Select';
+    const doneButton = document.getElementById('btnInclusionSaveDone');
+    if (doneButton) {
+        doneButton.disabled = true;
+        doneButton.hidden = true;
+    }
     if (alertBox) { alertBox.style.display = 'none'; alertBox.innerText = ''; }
     if (desc) desc.value = '';
+    if (qtyNum) qtyNum.value = '';
+    if (qtyUnit) qtyUnit.value = '';
+    if (itemSelect) itemSelect.innerHTML = '<option value="">-- Select Menu ▼ --</option>';
+    if (searchInput) searchInput.value = '';
+    if (selectedBanner) selectedBanner.style.display = 'none';
     resetInclusionImagePicker('');
 
-    // Ensure catalog is populated
-    if (!window.inclusionsCatalog.equipment || window.inclusionsCatalog.equipment.length === 0) {
+    // Ensure catalog is populated across all item types
+    if (!window.inclusionsCatalog || !window.inclusionsCatalog.equipment || !window.inclusionsCatalog.menu || !window.inclusionsCatalog.service) {
         await window.fetchInclusionsCatalog();
     }
 
-    // Default to Equipment
+    // Start with only the requested choices; legacy equipment inclusions remain editable.
+    setInclusionCategoryChoices(false);
     const catSelect = document.getElementById('customInclusionCategory');
-    const defaultType = (catSelect && catSelect.value) ? catSelect.value : 'Equipment';
-    if (catSelect) catSelect.value = defaultType;
+    if (catSelect) catSelect.value = '';
 
-    window.handleInclusionTypeChange(defaultType);
+    window.handleInclusionTypeChange('');
 
     safeOpenModal('addInclusionModal', true);
     setTimeout(() => {
@@ -1577,8 +1669,8 @@ window.openAddInclusionModal = async function () {
 
 // Handle Inclusion Type change (Equipment | Menu | Service)
 window.handleInclusionTypeChange = function (type, preselectId = null) {
-    const normType = (type === 'Menu / Food' || type === 'Menu') ? 'Menu' : (type === 'Service' ? 'Service' : 'Equipment');
-    
+    const normType = (type === 'Menu / Food' || type === 'Menu') ? 'Menu' : (type === 'Service' ? 'Service' : (type === 'Equipment' ? 'Equipment' : ''));
+    const select = document.getElementById('inclusionItemSelect');
     const catSelect = document.getElementById('customInclusionCategory');
     if (catSelect && catSelect.value !== normType) {
         catSelect.value = normType;
@@ -1590,6 +1682,48 @@ window.handleInclusionTypeChange = function (type, preselectId = null) {
     const unitInput = document.getElementById('customInclusionQtyUnit');
     const qtyInput = document.getElementById('customInclusionQtyNum');
     const banner = document.getElementById('selectedItemInfoBanner');
+    const catalogSection = document.querySelector('#addInclusionModal .inclusion-catalog-section');
+    const qtyContainer = document.getElementById('inclusionQtyContainer');
+    const descriptionSection = document.querySelector('#addInclusionModal .inclusion-description-section');
+    const photoSection = document.querySelector('#addInclusionModal .inclusion-photo-section');
+    const infoAlert = document.querySelector('#addInclusionModal .inclusion-info-alert');
+    const btnAddAnother = document.getElementById('btnInclusionSaveAddAnother');
+    const doneButton = document.getElementById('btnInclusionSaveDone');
+    const doneText = document.getElementById('btnInclusionSaveDoneText');
+
+    if (!normType) {
+        if (catalogSection) catalogSection.style.display = 'none';
+        if (qtyContainer) qtyContainer.style.display = 'none';
+        if (descriptionSection) descriptionSection.style.display = 'none';
+        if (photoSection) photoSection.style.display = 'none';
+        if (infoAlert) infoAlert.style.display = 'none';
+        if (btnAddAnother) btnAddAnother.hidden = true;
+        if (doneButton) {
+            doneButton.disabled = true;
+            doneButton.hidden = true;
+        }
+        if (doneText) doneText.innerText = 'Save & Select';
+        if (banner) banner.style.display = 'none';
+        const itemIdEl = document.getElementById('customInclusionItemId');
+        const nameEl = document.getElementById('customInclusionName');
+        if (itemIdEl) itemIdEl.value = '';
+        if (nameEl) nameEl.value = '';
+        if (select) select.innerHTML = '<option value="">-- Select Menu ▼ --</option>';
+        if (!inclusionImageFile) resetInclusionImagePicker('');
+        return;
+    }
+
+    if (catalogSection) catalogSection.style.display = 'block';
+    if (qtyContainer) qtyContainer.style.display = 'block';
+    if (descriptionSection) descriptionSection.style.display = 'block';
+    if (photoSection) photoSection.style.display = 'block';
+    if (infoAlert) infoAlert.style.display = 'flex';
+    if (btnAddAnother) btnAddAnother.hidden = false;
+    if (doneButton) {
+        doneButton.disabled = false;
+        doneButton.hidden = false;
+    }
+    if (doneText) doneText.innerText = 'Add Inclusion';
 
     // Update UI text and placeholders
     if (lblItem) lblItem.innerHTML = `${normType} <span style="color: #ef4444;">*</span>`;
@@ -1604,28 +1738,17 @@ window.handleInclusionTypeChange = function (type, preselectId = null) {
     const nameEl = document.getElementById('customInclusionName');
     if (itemIdEl) itemIdEl.value = '';
     if (nameEl) nameEl.value = '';
-    if (!inclusionImageFile) resetInclusionImagePicker('');
+    resetInclusionImagePicker('');
 
-    // Handle Quantity container visibility
-    const qtyContainer = document.getElementById('inclusionQtyContainer');
+    // Quantity is optional for both menu items and services.
     const lblQtyOptional = document.getElementById('lblInclusionQtyOptional');
     const lblQtyRequired = document.getElementById('lblInclusionQtyRequired');
 
-    if (normType === 'Service') {
-        if (qtyContainer) qtyContainer.style.display = 'none';
-        if (qtyInput) qtyInput.value = '';
-        if (unitInput) unitInput.value = '';
-        const preview = document.getElementById('qtyPreviewDisplay');
-        if (preview) preview.innerText = 'Not applicable';
-    } else {
-        if (qtyContainer) qtyContainer.style.display = 'block';
-        if (lblQtyOptional) lblQtyOptional.style.display = 'inline';
-        if (lblQtyRequired) lblQtyRequired.style.display = 'none';
-        // Suggest default units based on type
-        if (unitInput && !unitInput.value) {
-            if (normType === 'Equipment') unitInput.placeholder = 'e.g. chairs, pcs';
-            else if (normType === 'Menu') unitInput.placeholder = 'e.g. pax, servings';
-        }
+    if (lblQtyOptional) lblQtyOptional.style.display = 'inline';
+    if (lblQtyRequired) lblQtyRequired.style.display = 'none';
+    if (unitInput) {
+        unitInput.value = '';
+        unitInput.placeholder = normType === 'Service' ? 'e.g. pax, hour, setup' : (normType === 'Equipment' ? 'e.g. chairs, pcs' : 'e.g. pax, serving');
     }
 
     // Populate the dropdown
@@ -1678,7 +1801,7 @@ window.populateCatalogSelect = function (type, filterQuery = '', preselectId = n
 // Filter items in catalog select on typing in search box
 window.filterInclusionCatalogItems = function (query) {
     const catSelect = document.getElementById('customInclusionCategory');
-    const type = catSelect ? catSelect.value : 'Equipment';
+    const type = catSelect ? catSelect.value : '';
     window.populateCatalogSelect(type, query);
 };
 
@@ -1731,9 +1854,7 @@ window.handleCatalogItemSelected = function (selectedId) {
     const qtyContainer = document.getElementById('inclusionQtyContainer');
 
     if (currentType === 'Service') {
-        if (qtyContainer) qtyContainer.style.display = 'none';
-        if (qtyNum) qtyNum.value = '';
-        if (qtyUnit) qtyUnit.value = '';
+        if (qtyContainer) qtyContainer.style.display = 'block';
     } else if (currentType === 'Menu') {
         if (qtyContainer) qtyContainer.style.display = 'block';
         // Quantity is optional for Menu/Food - do not enforce 100
@@ -1807,7 +1928,7 @@ window.editInclusion = async function (index) {
     if (editIndexEl) editIndexEl.value = String(index);
     if (title) title.innerText = 'Edit Package Inclusion';
     if (subtitle) subtitle.innerText = 'Update the details of this package inclusion.';
-    if (btnAddAnother) btnAddAnother.style.display = 'none';
+    if (btnAddAnother) btnAddAnother.hidden = true;
     if (btnDoneText) btnDoneText.innerText = 'Save Changes';
     if (alertBox) { alertBox.style.display = 'none'; alertBox.innerText = ''; }
     if (desc) desc.value = item.description || '';
@@ -1842,6 +1963,7 @@ window.editInclusion = async function (index) {
     }
 
     window.handleInclusionTypeChange(itemType, item.item_id);
+    if (btnAddAnother) btnAddAnother.hidden = true;
 
     const qtyContainer = document.getElementById('inclusionQtyContainer');
     if (itemType === 'Service') {
@@ -1856,6 +1978,7 @@ window.editInclusion = async function (index) {
     const nameEl = document.getElementById('customInclusionName');
     if (nameEl) nameEl.value = item.name || '';
 
+    setInclusionCategoryChoices(itemType === 'Equipment');
     resetInclusionImagePicker(item.image_url || findCatalogImage(itemType, item.item_id, item.name));
 
     window.updateQuantityPreview();
@@ -1880,6 +2003,10 @@ window.saveInclusion = async function (addAnother = false) {
     const alertBox = document.getElementById('addInclusionSuccessAlert');
 
     const selectedType = catSelect ? catSelect.value : 'Equipment';
+    if (!['Menu', 'Service', 'Equipment'].includes(selectedType)) {
+        if (catSelect) catSelect.focus();
+        return;
+    }
     const itemId = itemIdEl ? itemIdEl.value : '';
     let nameVal = (nameEl ? nameEl.value : '').trim();
 
@@ -1905,13 +2032,6 @@ window.saveInclusion = async function (addAnother = false) {
     let qtyNum = qtyNumEl && qtyNumEl.value ? parseInt(qtyNumEl.value, 10) : null;
     let qtyUnit = qtyUnitEl ? qtyUnitEl.value.trim() : '';
     const descVal = descEl ? descEl.value.trim() : '';
-
-    // Services never have quantity
-    if (selectedType === 'Service') {
-        qtyVal = '';
-        qtyNum = null;
-        qtyUnit = '';
-    }
 
     const categoryVal = selectedType === 'Menu' ? 'Menu / Food' : selectedType;
 
@@ -1983,14 +2103,13 @@ window.saveInclusion = async function (addAnother = false) {
             if (qtyUnitEl) qtyUnitEl.value = '';
             if (descEl) descEl.value = '';
             resetInclusionImagePicker('');
+            setInclusionCategoryChoices(false);
+            if (catSelect) catSelect.value = '';
             const banner = document.getElementById('selectedItemInfoBanner');
             if (banner) banner.style.display = 'none';
-            window.updateQuantityPreview();
-            const searchInput = document.getElementById('inclusionItemSearch');
-            if (searchInput) {
-                searchInput.value = '';
-                searchInput.focus();
-            }
+            window.handleInclusionTypeChange('');
+            const typeSelect = document.getElementById('customInclusionCategory');
+            if (typeSelect) typeSelect.focus();
         } else {
             safeCloseModal('addInclusionModal');
         }
@@ -2021,70 +2140,29 @@ window.handleCreateNewCatalogItem = function () {
     const editIndexEl = document.getElementById('customInclusionEditIndex');
     const editIdx = editIndexEl ? editIndexEl.value : '-1';
 
-    // Store return state
+    // Fixed package flow must remain in the same modal to avoid overlapping dialogs.
+    if (type === 'Menu' || type === 'Service') {
+        if (window.showToast) {
+            window.showToast('Use the same quick-add form to add this item without opening a second modal.', 'info');
+        }
+        return;
+    }
+
+    // Store return state so we return seamlessly to addInclusionModal without closing packageModal
     window._pkgInclusionReturnState = {
         active: true,
         type: type,
         editIndex: editIdx
     };
 
-    // Close inclusion modal temporarily
+    // Close inclusion modal temporarily (leaves packageModal untouched)
     safeCloseModal('addInclusionModal');
 
-    if (type === 'Equipment') {
-        if (typeof openWizard === 'function') {
-            openWizard('rentalWizardModal');
-        } else {
-            alert("Opening Add New Rental wizard...");
-        }
-    } else if (type === 'Service') {
-        if (typeof openWizard === 'function') {
-            openWizard('serviceWizardModal');
-        } else {
-            alert("Opening Add New Service wizard...");
-        }
-    } else if (type === 'Menu') {
-        safeOpenModal('quickAddMenuModal', true);
-    }
-};
-
-window.closeQuickAddMenuModal = function () {
-    safeCloseModal('quickAddMenuModal');
-    safeOpenModal('addInclusionModal', true);
-};
-
-window.submitQuickAddMenu = async function (e) {
-    e.preventDefault();
-    const form = document.getElementById('quickAddMenuForm');
-    const btn = document.getElementById('btnQuickMenuSubmit');
-    if (!form) return;
-    const data = new FormData(form);
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Saving...</span>';
-    }
-    try {
-        const res = await fetch('/caterer/menu/add', {
-            method: 'POST',
-            body: data,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
-        const json = await res.json();
-        if (json && (json.status === 'success' || json.item_id || json.id)) {
-            safeCloseModal('quickAddMenuModal');
-            form.reset();
-            await window.handleCatalogItemCreated('Menu', json);
-        } else {
-            alert((json && json.message) || 'Error adding menu item');
-        }
-    } catch (err) {
-        console.error(err);
-        alert('Failed to save menu item.');
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-check"></i> <span>Save &amp; Select</span>';
-        }
+    const quickType = (type === 'Menu' || type === 'Menu / Food') ? 'menu' : (type === 'Service' ? 'service' : 'equipment');
+    if (typeof window.openQuickAddOptionModal === 'function') {
+        window.openQuickAddOptionModal(quickType);
+    } else {
+        alert(`Opening quick add for ${quickType}...`);
     }
 };
 
@@ -2339,6 +2417,7 @@ window.filterPackages = function () {
 let customizableMenuIds = new Set();
 let customizableServiceIds = new Set();
 let customizableEquipmentIds = new Set();
+let customizableCategoryQuotas = {};
 
 let lastMenuQuery = '';
 let lastServiceQuery = '';
@@ -2349,6 +2428,7 @@ window.toggleCustomizableItem = function (type, id, checked) {
         if (checked) customizableMenuIds.add(numId);
         else customizableMenuIds.delete(numId);
         updateCustomizableCounters('menu');
+        renderCategoryQuotas();
     } else if (type === 'service') {
         if (checked) customizableServiceIds.add(numId);
         else customizableServiceIds.delete(numId);
@@ -2364,6 +2444,7 @@ window.toggleAllCustomizableCatalog = function (type, selectAll) {
         else customizableMenuIds.clear();
         renderCustomizableMenu(lastMenuQuery);
         updateCustomizableCounters('menu');
+        renderCategoryQuotas();
     } else if (type === 'service') {
         if (selectAll) catalog.forEach(i => customizableServiceIds.add(Number(i.id)));
         else customizableServiceIds.clear();
@@ -2400,6 +2481,7 @@ function updateCustomizableCounters(type) {
 window.renderCustomizableCatalogs = function () {
     renderCustomizableMenu(lastMenuQuery);
     renderCustomizableServices(lastServiceQuery);
+    renderCategoryQuotas();
     updateCustomizableCounters();
 };
 
@@ -2534,146 +2616,361 @@ function renderCustomizableServices(query = '') {
 function syncCustomizableSelectionRules() {
     const jsonInput = document.getElementById('package_selection_rules_json');
     if (jsonInput) {
+        const cleanQuotas = {};
+        let total = 0;
+        for (const [cat, val] of Object.entries(customizableCategoryQuotas)) {
+            const num = parseInt(val, 10);
+            if (!isNaN(num) && num > 0) {
+                cleanQuotas[cat] = num;
+                total += num;
+            }
+        }
         const payload = {
             package_type: 'customizable',
             available_menu_ids: Array.from(customizableMenuIds),
             available_service_ids: Array.from(customizableServiceIds),
-            available_equipment_ids: []
+            available_equipment_ids: [],
+            category_quotas: cleanQuotas,
+            total_variants_allowed: total
         };
         jsonInput.value = JSON.stringify(payload);
     }
 }
 
-function renderReviewCustomizable() {
-    // 1. Available Menu / Food
-    const menuList = document.getElementById('reviewCustMenuList');
-    const menuCountBadge = document.getElementById('reviewCustMenuCount');
-    const menuCatalog = window.inclusionsCatalog.menu || [];
-    const selectedMenuItems = menuCatalog.filter(i => customizableMenuIds.has(Number(i.id)));
+window.adjustCategoryQuota = function(encodedCat, delta) {
+    const cat = decodeURIComponent(encodedCat);
+    const cur = parseInt(customizableCategoryQuotas[cat] !== undefined ? customizableCategoryQuotas[cat] : 1, 10);
+    const next = Math.max(0, cur + delta);
+    customizableCategoryQuotas[cat] = next;
+    renderCategoryQuotas();
+    syncCustomizableSelectionRules();
+};
 
-    if (menuCountBadge) menuCountBadge.innerText = `${selectedMenuItems.length} item${selectedMenuItems.length === 1 ? '' : 's'}`;
-    if (menuList) {
-        if (selectedMenuItems.length === 0) {
-            menuList.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem; font-style:italic;">No menu items selected. Customers will not have food options to choose from.</div>';
-        } else {
-            menuList.innerHTML = selectedMenuItems.map(i => {
-                const price = parseFloat(i.price || 0);
-                const unit = (i.unit_type || i.pricing_unit || 'pax').replace('per_', '');
-                return `
-                    <div style="font-size:0.85rem; color:#1e293b; display:flex; justify-content:space-between; align-items:center; padding:3px 0; border-bottom:1px dashed #f1f5f9;">
-                        <span><i class="fas fa-check" style="color:#16a34a; font-size:0.75rem; margin-right:6px;"></i><strong>${escapeHtml(i.name)}</strong>${i.category ? ' (' + escapeHtml(i.category) + ')' : ''}</span>
-                    </div>
-                `;
-            }).join('');
-        }
+window.setCategoryQuota = function(encodedCat, val) {
+    const cat = decodeURIComponent(encodedCat);
+    const next = Math.max(0, parseInt(val, 10) || 0);
+    customizableCategoryQuotas[cat] = next;
+    renderCategoryQuotas();
+    syncCustomizableSelectionRules();
+};
+
+window.presetOneVariantPerCategory = function() {
+    const menuCatalog = window.inclusionsCatalog.menu || [];
+    const activeItems = customizableMenuIds.size > 0 
+        ? menuCatalog.filter(i => customizableMenuIds.has(Number(i.id)))
+        : menuCatalog;
+    
+    activeItems.forEach(i => {
+        const cat = (i.category || 'Main Course').trim();
+        if (cat) customizableCategoryQuotas[cat] = 1;
+    });
+    renderCategoryQuotas();
+    syncCustomizableSelectionRules();
+};
+
+window.presetAllCategoryQuotas = function(qty = 1) {
+    const targetQty = Math.max(0, parseInt(qty, 10) || 1);
+    const menuCatalog = window.inclusionsCatalog.menu || [];
+    const activeItems = customizableMenuIds.size > 0 
+        ? menuCatalog.filter(i => customizableMenuIds.has(Number(i.id)))
+        : menuCatalog;
+    
+    activeItems.forEach(i => {
+        const cat = (i.category || 'Main Course').trim();
+        if (cat) customizableCategoryQuotas[cat] = targetQty;
+    });
+    renderCategoryQuotas();
+    syncCustomizableSelectionRules();
+};
+
+window.clearAllCategoryQuotas = function() {
+    for (const cat of Object.keys(customizableCategoryQuotas)) {
+        customizableCategoryQuotas[cat] = 0;
+    }
+    renderCategoryQuotas();
+    syncCustomizableSelectionRules();
+};
+
+function renderCategoryQuotas() {
+    const container = document.getElementById('categoryQuotasContainer');
+    if (!container) return;
+
+    const menuCatalog = window.inclusionsCatalog.menu || [];
+    const activeItems = customizableMenuIds.size > 0 
+        ? menuCatalog.filter(i => customizableMenuIds.has(Number(i.id)))
+        : menuCatalog;
+
+    const catCounts = {};
+    activeItems.forEach(i => {
+        const cat = (i.category || 'Main Course').trim();
+        if (cat) catCounts[cat] = (catCounts[cat] || 0) + 1;
+    });
+
+    const categories = Object.keys(catCounts).sort();
+    if (categories.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; padding: 1rem; text-align: center; color: #94a3b8; font-size: 0.82rem; font-style: italic;">
+                Select menu items in Section A above to set category limits.
+            </div>
+        `;
+        const totalEl = document.getElementById('custTotalVariantsAllowedText');
+        if (totalEl) totalEl.innerText = '0';
+        const banner = document.getElementById('custQuotaSummaryBanner');
+        if (banner) banner.style.display = 'none';
+        return;
     }
 
-    // 2. Available Services
-    const svcList = document.getElementById('reviewCustServicesList');
-    const svcCountBadge = document.getElementById('reviewCustServicesCount');
-    const svcCatalog = window.inclusionsCatalog.service || [];
-    const selectedSvcItems = svcCatalog.filter(i => customizableServiceIds.has(Number(i.id)));
+    let totalAllowed = 0;
+    const summaryParts = [];
 
-    if (svcCountBadge) svcCountBadge.innerText = `${selectedSvcItems.length} item${selectedSvcItems.length === 1 ? '' : 's'}`;
-    if (svcList) {
-        if (selectedSvcItems.length === 0) {
-            svcList.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem; font-style:italic;">No services selected.</div>';
+    container.innerHTML = categories.map(cat => {
+        if (customizableCategoryQuotas[cat] === undefined) {
+            customizableCategoryQuotas[cat] = 1;
+        }
+        const quota = customizableCategoryQuotas[cat];
+        totalAllowed += quota;
+        const availableInCat = catCounts[cat] || 0;
+        const encodedCat = encodeURIComponent(cat);
+
+        if (quota > 0) {
+            summaryParts.push(`${quota} ${cat}`);
+        }
+
+        return `
+            <div style="background: ${quota > 0 ? '#ffffff' : '#f8fafc'}; border: 1.5px solid ${quota > 0 ? '#fed7aa' : '#e2e8f0'}; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; transition: all 0.15s ease;">
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <strong style="font-size: 0.85rem; color: ${quota > 0 ? '#0f172a' : '#94a3b8'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(cat)}</strong>
+                        <span style="font-size: 0.7rem; color: #64748b; background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-weight: 600; white-space: nowrap;">${availableInCat} avail</span>
+                    </div>
+                    ${quota === 0 ? '<div style="font-size: 0.7rem; color: #ef4444; font-weight: 600; margin-top: 1px;">Excluded from package</div>' : ''}
+                </div>
+                <div style="display: flex; align-items: center; gap: 3px; flex-shrink: 0;">
+                    <button type="button" onclick="window.adjustCategoryQuota('${encodedCat}', -1)" 
+                            style="width: 26px; height: 26px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; font-weight: 800; color: #475569; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;">-</button>
+                    <input type="number" min="0" max="20" value="${quota}" 
+                           onchange="window.setCategoryQuota('${encodedCat}', this.value)"
+                           style="width: 38px; height: 26px; text-align: center; font-weight: 800; font-size: 0.88rem; border: 1.5px solid #fed7aa; border-radius: 6px; color: #ea580c; background: #ffffff; padding: 0;" />
+                    <button type="button" onclick="window.adjustCategoryQuota('${encodedCat}', 1)" 
+                            style="width: 26px; height: 26px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; font-weight: 800; color: #475569; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;">+</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const totalEl = document.getElementById('custTotalVariantsAllowedText');
+    if (totalEl) totalEl.innerText = totalAllowed;
+
+    const banner = document.getElementById('custQuotaSummaryBanner');
+    if (banner) {
+        banner.style.display = 'block';
+        if (summaryParts.length > 0) {
+            banner.innerHTML = `<i class="fas fa-clipboard-check" style="color: #ea580c; margin-right: 5px;"></i> <strong>Customer picks:</strong> ${summaryParts.join(', ')} (${totalAllowed} variants total)`;
         } else {
-            svcList.innerHTML = selectedSvcItems.map(i => {
-                const price = parseFloat(i.price || i.selling_price || 0);
-                const unit = (i.unit_type || 'service').replace('per_', '');
-                return `
-                    <div style="font-size:0.85rem; color:#1e293b; display:flex; justify-content:space-between; align-items:center; padding:3px 0; border-bottom:1px dashed #f1f5f9;">
-                        <span><i class="fas fa-check" style="color:#2563eb; font-size:0.75rem; margin-right:6px;"></i><strong>${escapeHtml(i.name)}</strong></span>
-                        <span style="font-weight:700; color:#1e40af; font-size:0.78rem;">₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}${unit && unit !== 'fixed' ? '/' + escapeHtml(unit) : ''}</span>
+            banner.innerHTML = `<i class="fas fa-info-circle" style="color: #64748b; margin-right: 5px;"></i> No category limits set yet. Click <em>"Set 1 Each"</em> to allow 1 dish per category.`;
+        }
+    }
+}
+
+function renderReviewCustomizable() {
+    try {
+        // 1. Available Menu / Food
+        const menuList = document.getElementById('reviewCustMenuList');
+        const menuCountBadge = document.getElementById('reviewCustMenuCount');
+        const menuCatalog = (window.inclusionsCatalog && window.inclusionsCatalog.menu) || [];
+        const selectedMenuItems = menuCatalog.filter(i => customizableMenuIds.has(Number(i.id)));
+
+        if (menuCountBadge) menuCountBadge.innerText = `${selectedMenuItems.length} item${selectedMenuItems.length === 1 ? '' : 's'}`;
+        if (menuList) {
+            if (selectedMenuItems.length === 0) {
+                menuList.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem; font-style:italic; padding: 6px 0;">No menu items selected. Customers will not have food options to choose from.</div>';
+            } else {
+                menuList.innerHTML = selectedMenuItems.map(i => {
+                    return `
+                        <div style="font-size:0.85rem; color:#1e293b; display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px dashed #f1f5f9;">
+                            <span><i class="fas fa-check-circle" style="color:#16a34a; font-size:0.8rem; margin-right:6px;"></i><strong>${escapeHtml(i.name)}</strong>${i.category ? ' <span style="color:#64748b; font-size:0.75rem;">(' + escapeHtml(i.category) + ')</span>' : ''}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // 2. Category Quotas / Selection Limits Summary
+        const quotaBanner = document.getElementById('reviewCustQuotaBlock');
+        if (quotaBanner) {
+            const summaryParts = [];
+            let totalAllowed = 0;
+            if (typeof customizableCategoryQuotas === 'object' && customizableCategoryQuotas !== null) {
+                for (const [cat, val] of Object.entries(customizableCategoryQuotas)) {
+                    const num = parseInt(val, 10);
+                    if (!isNaN(num) && num > 0) {
+                        summaryParts.push(`<span style="background: #ffffff; border: 1px solid #fed7aa; padding: 3px 8px; border-radius: 6px; font-weight: 700; color: #9a3412; font-size: 0.8rem;"><strong style="color: #ea580c;">${num}</strong> ${escapeHtml(cat)}</span>`);
+                        totalAllowed += num;
+                    }
+                }
+            }
+            if (summaryParts.length > 0) {
+                quotaBanner.style.display = 'block';
+                quotaBanner.innerHTML = `
+                    <div style="background: #fff7ed; border: 1.5px solid #fed7aa; border-radius: 10px; padding: 0.85rem 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 4px;">
+                            <h5 style="font-size: 0.75rem; font-weight: 800; color: #c2410c; text-transform: uppercase; margin: 0;">
+                                <i class="fas fa-layer-group" style="margin-right: 5px;"></i> Menu Selection Quotas (Allowed per Category)
+                            </h5>
+                            <span style="font-size: 0.75rem; font-weight: 800; color: #ea580c; background: #ffedd5; padding: 2px 8px; border-radius: 12px; border: 1px solid #fed7aa;">
+                                Total: ${totalAllowed} dish${totalAllowed === 1 ? '' : 'es'}
+                            </span>
+                        </div>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                            ${summaryParts.join('')}
+                        </div>
+                        <div style="font-size: 0.78rem; color: #9a3412; margin-top: 6px;">
+                            <i class="fas fa-check" style="margin-right: 4px;"></i> Customer will choose up to this quota when booking.
+                        </div>
                     </div>
                 `;
-            }).join('');
+            } else {
+                quotaBanner.style.display = 'none';
+            }
         }
+
+        // 3. Available Services
+        const svcList = document.getElementById('reviewCustServicesList');
+        const svcCountBadge = document.getElementById('reviewCustServicesCount');
+        const svcCatalog = (window.inclusionsCatalog && window.inclusionsCatalog.service) || [];
+        const selectedSvcItems = svcCatalog.filter(i => customizableServiceIds.has(Number(i.id)));
+
+        if (svcCountBadge) svcCountBadge.innerText = `${selectedSvcItems.length} item${selectedSvcItems.length === 1 ? '' : 's'}`;
+        if (svcList) {
+            if (selectedSvcItems.length === 0) {
+                svcList.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem; font-style:italic; padding: 6px 0;">No services selected.</div>';
+            } else {
+                svcList.innerHTML = selectedSvcItems.map(i => {
+                    const price = parseFloat(i.price || i.selling_price || 0);
+                    const unit = (i.unit_type || 'service').replace('per_', '');
+                    return `
+                        <div style="font-size:0.85rem; color:#1e293b; display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px dashed #f1f5f9;">
+                            <span><i class="fas fa-check-circle" style="color:#2563eb; font-size:0.8rem; margin-right:6px;"></i><strong>${escapeHtml(i.name)}</strong></span>
+                            <span style="font-weight:700; color:#1e40af; font-size:0.78rem;">₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}${unit && unit !== 'fixed' ? '/' + escapeHtml(unit) : ''}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+    } catch (err) {
+        console.error("renderReviewCustomizable error:", err);
     }
 }
 
 // -------------------------------------------------------------
 // Quick Add Options for Customizable Packages (Food, Service, Equipment)
 // -------------------------------------------------------------
-window.openQuickAddOptionModal = function (type) {
-    const modal = document.getElementById('quickAddOptionModal');
-    if (!modal) return;
+window.setQuickAddOptionType = function (type) {
+    if (!['menu', 'service', 'equipment'].includes(type)) type = '';
 
-    const form = document.getElementById('quickAddOptionForm');
-    if (form) form.reset();
-
+    const typeWrapper = document.getElementById('quickAddOptionTypeWrapper');
+    const typeSelect = document.getElementById('quickAddOptionTypeSelect');
     const hiddenType = document.getElementById('quickAddOptionType');
-    if (hiddenType) hiddenType.value = type;
-
-    const titleEl = document.getElementById('quickAddOptionModalTitle');
-    const nameLabel = document.getElementById('quickAddOptionNameLabel');
-    const nameInput = document.getElementById('quickAddOptionName');
-    const catSelect = document.getElementById('quickAddOptionCategory');
-    const unitLabel = document.getElementById('quickAddOptionUnitLabel');
-    const unitSelect = document.getElementById('quickAddOptionUnit');
+    const nameWrapper = document.getElementById('quickAddOptionNameWrapper');
+    const unitWrapper = document.getElementById('quickAddOptionUnitWrapper');
+    const descriptionWrapper = document.getElementById('quickAddOptionDescriptionWrapper');
+    const photoWrapper = document.getElementById('quickAddOptionPhotoWrapper');
+    const priceRow = document.getElementById('quickAddOptionPriceRow');
+    const priceWrapper = document.getElementById('quickAddOptionPriceWrapper');
     const priceLabel = document.getElementById('quickAddOptionPriceLabel');
     const priceInput = document.getElementById('quickAddOptionPrice');
     const qtyWrapper = document.getElementById('quickAddOptionQtyWrapper');
+    const nameLabel = document.getElementById('quickAddOptionNameLabel');
+    const nameInput = document.getElementById('quickAddOptionName');
+    const unitLabel = document.getElementById('quickAddOptionUnitLabel');
+    const unitSelect = document.getElementById('quickAddOptionUnit');
+    const categoryInput = document.getElementById('quickAddOptionCategory');
+    const description = document.getElementById('quickAddOptionDescription');
+    const equipmentFlow = type === 'equipment';
 
-    const priceRow = document.getElementById('quickAddOptionPriceRow');
-    const priceWrapper = document.getElementById('quickAddOptionPriceWrapper');
+    if (typeWrapper) typeWrapper.style.display = equipmentFlow ? 'none' : 'block';
+    if (typeSelect) {
+        typeSelect.required = !equipmentFlow;
+        if (type && !equipmentFlow) typeSelect.value = type;
+    }
+    if (hiddenType) hiddenType.value = type;
 
-    if (catSelect) {
-        if (type === 'menu') catSelect.value = 'Main Course';
-        else if (type === 'service') catSelect.value = 'Service';
-        else catSelect.value = 'Equipment';
+    const hasType = Boolean(type);
+    if (nameWrapper) nameWrapper.style.display = hasType ? 'block' : 'none';
+    if (unitWrapper) unitWrapper.style.display = hasType ? 'block' : 'none';
+    if (descriptionWrapper) descriptionWrapper.style.display = hasType ? 'block' : 'none';
+    if (photoWrapper) photoWrapper.style.display = hasType ? 'block' : 'none';
+    if (nameInput) nameInput.required = hasType;
+    if (unitSelect) unitSelect.required = hasType;
+    if (qtyWrapper) qtyWrapper.style.display = equipmentFlow ? 'block' : 'none';
+
+    if (!hasType) {
+        if (priceRow) priceRow.style.display = 'none';
+        if (priceInput) priceInput.required = false;
+        if (categoryInput) categoryInput.value = '';
+        return;
     }
 
     if (type === 'menu') {
-        if (titleEl) titleEl.innerHTML = '<i class="fas fa-utensils" style="color: #16a34a; margin-right: 6px;"></i> Quick Add Food / Dish';
         if (nameLabel) nameLabel.innerHTML = 'Dish / Menu Item Name <span style="color: #ef4444;">*</span>';
         if (nameInput) nameInput.placeholder = 'e.g. Sweet & Sour Pork, Roast Beef, Lechon Belly';
-        if (unitLabel) unitLabel.innerText = 'Serving Unit';
+        if (unitLabel) unitLabel.innerHTML = 'Serving Unit <span style="color: #ef4444;">*</span>';
+        if (unitSelect) {
+            unitSelect.innerHTML = `
+                <option value="per_pax">Per Pax / Guest</option>
+                <option value="per_tray">Per Tray</option>
+                <option value="per_platter">Per Platter</option>
+                <option value="per_order">Per Order</option>
+            `;
+            unitSelect.value = 'per_pax';
+        }
+        if (categoryInput) categoryInput.value = 'Main Course';
         if (priceRow) priceRow.style.display = 'none';
-        if (priceWrapper) priceWrapper.style.display = 'none';
         if (priceInput) {
             priceInput.value = '0.00';
             priceInput.required = false;
         }
-        if (qtyWrapper) qtyWrapper.style.display = 'none';
-
-        if (unitSelect) {
-            unitSelect.innerHTML = `
-                <option value="per_pax">Per Pax / Guest</option>
-                <option value="per_tray">Per Tray / Pan</option>
-                <option value="per_serving">Per Serving</option>
-                <option value="per_order">Per Order</option>
-            `;
-        }
+        if (priceWrapper) priceWrapper.style.display = 'none';
+        if (description) description.placeholder = 'Details, ingredients, specifications or notes...';
     } else if (type === 'service') {
-        if (titleEl) titleEl.innerHTML = '<i class="fas fa-concierge-bell" style="color: #2563eb; margin-right: 6px;"></i> Quick Add Service';
         if (nameLabel) nameLabel.innerHTML = 'Service Name <span style="color: #ef4444;">*</span>';
         if (nameInput) nameInput.placeholder = 'e.g. Trained Waitstaff, Event Setup & Cleanup, Bartender';
-        if (unitLabel) unitLabel.innerText = 'Service Rate Type';
+        if (unitLabel) unitLabel.innerHTML = 'Service Rate Type <span style="color: #ef4444;">*</span>';
+        if (unitSelect) {
+            unitSelect.innerHTML = `
+                <option value="per_event">Per Event (Flat Rate)</option>
+                <option value="per_pax">Per Person</option>
+                <option value="per_hour">Per Hour</option>
+            `;
+            unitSelect.value = 'per_event';
+        }
+        if (categoryInput) categoryInput.value = 'Service';
         if (priceRow) {
             priceRow.style.display = 'grid';
-            priceRow.style.gridTemplateColumns = '1fr';
+            priceRow.style.gridTemplateColumns = 'minmax(0, 1fr)';
         }
         if (priceWrapper) priceWrapper.style.display = 'block';
         if (priceLabel) priceLabel.innerHTML = 'Service Fee (₱) <span style="color: #ef4444;">*</span>';
         if (priceInput) {
             priceInput.required = true;
+            priceInput.value = '0.00';
+            priceInput.placeholder = '0.00';
         }
-        if (qtyWrapper) qtyWrapper.style.display = 'none';
-
-        if (unitSelect) {
-            unitSelect.innerHTML = `
-                <option value="per_event">Per Event (Flat Rate)</option>
-                <option value="per_hour">Per Hour</option>
-                <option value="per_staff">Per Staff Member</option>
-                <option value="per_pax">Per Pax / Guest</option>
-            `;
-        }
-    } else if (type === 'equipment') {
-        if (titleEl) titleEl.innerHTML = '<i class="fas fa-chair" style="color: #ea580c; margin-right: 6px;"></i> Quick Add Equipment';
+        if (description) description.placeholder = 'Details, inclusions, specifications or notes...';
+    } else {
         if (nameLabel) nameLabel.innerHTML = 'Equipment / Item Name <span style="color: #ef4444;">*</span>';
         if (nameInput) nameInput.placeholder = 'e.g. Tiffany Chairs, Round Banquet Table, Chafing Dish';
+        if (unitLabel) unitLabel.innerText = 'Unit / Pricing';
+        if (unitSelect) {
+            unitSelect.innerHTML = `
+                <option value="piece">Per Piece</option>
+                <option value="set">Per Set</option>
+                <option value="pair">Per Pair</option>
+                <option value="lot">Per Lot / Package</option>
+            `;
+            unitSelect.value = 'piece';
+        }
+        if (categoryInput) categoryInput.value = 'Equipment';
         if (priceRow) {
             priceRow.style.display = 'grid';
             priceRow.style.gridTemplateColumns = '1fr 1fr';
@@ -2682,39 +2979,55 @@ window.openQuickAddOptionModal = function (type) {
         if (priceLabel) priceLabel.innerHTML = 'Rental Rate (₱) <span style="color: #ef4444;">*</span>';
         if (priceInput) {
             priceInput.required = true;
-        }
-        if (qtyWrapper) qtyWrapper.style.display = 'block';
-
-        if (unitSelect) {
-            unitSelect.innerHTML = `
-                <option value="piece">Per Piece</option>
-                <option value="set">Per Set</option>
-                <option value="pair">Per Pair</option>
-                <option value="lot">Per Lot / Package</option>
-            `;
+            priceInput.value = '0.00';
         }
     }
+};
 
-    if (priceInput) priceInput.value = '0.00';
+window.openQuickAddOptionModal = function (type) {
+    const modal = document.getElementById('quickAddOptionModal');
+    if (!modal) return;
+
+    const form = document.getElementById('quickAddOptionForm');
+    if (form) form.reset();
+
+    const normalizedType = ['menu', 'service', 'equipment'].includes(type) ? type : '';
+    const typeSelect = document.getElementById('quickAddOptionTypeSelect');
+    if (typeSelect) typeSelect.value = normalizedType === 'equipment' ? '' : normalizedType;
+    window.setQuickAddOptionType(normalizedType);
     safeOpenModal('quickAddOptionModal', true);
 };
 
 window.closeQuickAddOptionModal = function () {
     safeCloseModal('quickAddOptionModal');
+    if (window._pkgInclusionReturnState && window._pkgInclusionReturnState.active) {
+        safeOpenModal('addInclusionModal', true);
+        window._pkgInclusionReturnState = null;
+    }
 };
 
 window.submitQuickAddOption = async function (e) {
     e.preventDefault();
-    const type = document.getElementById('quickAddOptionType')?.value || 'menu';
+    const type = document.getElementById('quickAddOptionType')?.value || '';
     const name = (document.getElementById('quickAddOptionName')?.value || '').trim();
     const category = document.getElementById('quickAddOptionCategory')?.value || '';
     const unit = document.getElementById('quickAddOptionUnit')?.value || '';
-    const price = type === 'menu' ? 0 : (parseFloat(document.getElementById('quickAddOptionPrice')?.value || 0) || 0);
+    const priceInput = document.getElementById('quickAddOptionPrice');
+    const priceText = (priceInput?.value || '').trim();
+    const price = type === 'menu' ? 0 : (parseFloat(priceText || '0') || 0);
     const qty = parseInt(document.getElementById('quickAddOptionQty')?.value || 100, 10) || 100;
     const desc = (document.getElementById('quickAddOptionDescription')?.value || '').trim();
 
+    if (!['menu', 'service', 'equipment'].includes(type)) {
+        alert('Please choose an option type.');
+        return;
+    }
     if (!name) {
         alert('Please enter an item name.');
+        return;
+    }
+    if (type === 'service' && (!priceText || !Number.isFinite(Number(priceText)) || Number(priceText) < 0)) {
+        if (priceInput) priceInput.focus();
         return;
     }
 
@@ -2769,6 +3082,18 @@ window.submitQuickAddOption = async function (e) {
 
         // Close modal
         safeCloseModal('quickAddOptionModal');
+
+        // Check if we came from inclusion modal (e.g. fixed-price package create/edit)
+        if (window._pkgInclusionReturnState && window._pkgInclusionReturnState.active) {
+            const savedState = window._pkgInclusionReturnState;
+            window._pkgInclusionReturnState = null;
+            safeOpenModal('addInclusionModal', true);
+            window.handleInclusionTypeChange(savedState.type, newItem.id);
+            if (window.showToast) {
+                window.showToast(`Added "${newItem.name}" and selected for inclusion!`, 'success');
+            }
+            return;
+        }
 
         if (window.showToast) {
             window.showToast(`Added "${newItem.name}" and selected for this package!`, 'success');

@@ -684,20 +684,10 @@
                 </div>
 
                 <div class="space-y-3">
-                    <button {% if not request.query_params.get('preview') %}onclick="promptBookingAuth()" {% else
-                        %}disabled title="Preview Mode - Action Disabled"
-                        onclick="Swal.fire({icon: 'info', title: 'Preview Mode', text: 'This action is disabled while previewing your profile.', confirmButtonColor: 'var(--brand-primary)'})"
-                        {% endif %}
-                        class="btn-primary w-full text-sm py-4 {% if request.query_params.get('preview') %}opacity-80{% endif %}">
-                        Initiate Booking
-                    </button>
-                    <button {% if not request.query_params.get('preview') %}onclick="promptCustomBookingAuth()" {% else
-                        %}disabled title="Preview Mode - Action Disabled"
-                        onclick="Swal.fire({icon: 'info', title: 'Preview Mode', text: 'This action is disabled while previewing your profile.', confirmButtonColor: 'var(--brand-primary)'})"
-                        {% endif %}
-                        class="btn-outline w-full text-sm py-4 border-2 !bg-slate-900 !text-white !border-slate-900 hover:!bg-slate-800 {% if request.query_params.get('preview') %}opacity-80{% endif %}">
-                        <i class="fas fa-magic text-highlight"></i> Request Custom Event
-                    </button>
+                    <a href="#packages-section"
+                        class="btn-primary w-full text-sm py-4 text-center block font-bold" style="text-decoration: none;">
+                        <i class="fas fa-box-open mr-1"></i> View Packages
+                    </a>
                     <button {% if not request.query_params.get('preview') %}onclick="promptInquiryAuth()" {% else
                         %}disabled title="Preview Mode - Action Disabled"
                         onclick="Swal.fire({icon: 'info', title: 'Preview Mode', text: 'This action is disabled while previewing your profile.', confirmButtonColor: 'var(--brand-primary)'})"
@@ -1054,8 +1044,7 @@
             overtime_fee: {{ (pkg.overtime_fee or 0)|tojson }},
             inclusions: {{ (pkg.inclusions)|tojson if pkg.inclusions else '[]' }},
             linked_inventory: [
-                {% for item in pkg.menu_items %}{% if item.category in ['Rentals', 'Services'] %}{{ item.name|tojson }},{% endif %}{% endfor %}
-                {% if pkg.equipment_links %}{% for el in pkg.equipment_links %}{{ el.equipment.name|tojson }},{% endfor %}{% endif %}
+                {% for item in pkg.menu_items %}{% if item.category in ['Services'] %}{{ item.name|tojson }},{% endif %}{% endfor %}
                 {% if pkg.service_links %}{% for sl in pkg.service_links %}{{ sl.service.name|tojson }},{% endfor %}{% endif %}
             ].filter(Boolean),
             dishes: [{% for item in pkg.menu_items %}{% if item.category not in ['Rentals', 'Services'] %}{{ item.name|tojson }},{% endif %}{% endfor %}].filter(Boolean),
@@ -1422,7 +1411,12 @@
         const incCard = document.getElementById('inv-modal-inclusions-card');
         const incList = document.getElementById('inv-modal-inclusions-list');
         if(details.inclusions && details.inclusions.length > 0) {
-            incList.innerHTML = details.inclusions.map(i => `<li class="flex items-start gap-2 text-sm text-slate-600"><i class="fas fa-check text-brand mt-1"></i> <div><span class="font-bold text-slate-800">${i.qty ? i.qty + 'x ' : ''}${i.name}</span> ${i.details ? '- ' + i.details : ''}</div></li>`).join('');
+            incList.innerHTML = details.inclusions.map(i => {
+                const name = typeof i === 'string' ? i : (i.name || '');
+                const qty = (typeof i === 'object' && i.qty) ? (i.qty + 'x ') : '';
+                const det = (typeof i === 'object' && i.details) ? ('- ' + i.details) : '';
+                return `<li class="flex items-start gap-2 text-sm text-slate-600"><i class="fas fa-check text-brand mt-1"></i> <div><span class="font-bold text-slate-800">${qty}${name}</span> ${det}</div></li>`;
+            }).join('');
             incCard.style.display = 'block';
         } else {
             incCard.style.display = 'none';
@@ -1828,14 +1822,6 @@
         document.getElementById('auth-choice-modal').classList.add('flex');
     }
 
-    function promptCustomBookingAuth() {
-        // We need to set a flag or just use auth-choice-modal, but ideally pass the next URL
-        document.getElementById('auth-choice-modal').classList.remove('hidden');
-        document.getElementById('auth-choice-modal').classList.add('flex');
-        // A hacky way: attach a data attribute so triggerAuthChoice knows the intent
-        document.getElementById('auth-choice-modal').dataset.intent = 'custom';
-    }
-
     function promptInquiryAuth() {
         promptBookingAuth(); // Same auth modal
     }
@@ -1959,13 +1945,6 @@
                 console.error('Error parsing inclusions:', err);
             }
 
-            if (pkg.linked_inventory && Array.isArray(pkg.linked_inventory)) {
-                pkg.linked_inventory.forEach(invName => {
-                    if (invName && !normalizedInclusions.some(i => i.name.toLowerCase() === String(invName).toLowerCase())) {
-                        normalizedInclusions.push({ category: 'Equipment', name: invName, quantity: '', description: '' });
-                    }
-                });
-            }
             if (pkg.dishes && Array.isArray(pkg.dishes)) {
                 pkg.dishes.forEach(dishName => {
                     if (dishName && !normalizedInclusions.some(i => i.name.toLowerCase() === String(dishName).toLowerCase())) {
@@ -1982,9 +1961,13 @@
                 });
             }
 
-            const groupedInc = { 'Menu / Food': [], 'Service': [], 'Equipment': [], 'Other': [] };
+            // Exclude equipment inclusions per design requirement
+            normalizedInclusions = normalizedInclusions.filter(i => i.category !== 'Equipment');
+
+            const groupedInc = { 'Menu / Food': [], 'Service': [] };
             normalizedInclusions.forEach(item => {
                 const cat = item.category || 'Menu / Food';
+                if (cat === 'Equipment') return;
                 if (!groupedInc[cat]) groupedInc[cat] = [];
                 groupedInc[cat].push(item);
             });
@@ -1992,15 +1975,26 @@
             const catThemes = {
                 'Menu / Food': { title: 'Menu & Food Inclusions', icon: 'fas fa-utensils', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', cardIcon: 'fa-utensils' },
                 'Service': { title: 'Services Included', icon: 'fas fa-concierge-bell', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', cardIcon: 'fa-concierge-bell' },
-                'Equipment': { title: 'Equipment Included', icon: 'fas fa-chair', color: '#ea580c', bg: '#fff7ed', border: '#fed7aa', cardIcon: 'fa-chair' },
                 'Other': { title: 'Other Inclusions', icon: 'fas fa-box-open', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0', cardIcon: 'fa-box-open' }
             };
+
+            const activeCats = Object.keys(groupedInc).filter(cat => groupedInc[cat] && groupedInc[cat].length > 0);
+            if (activeCats.length > 1) {
+                incHtml += `
+                <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:1rem;" class="custom-scrollbar">
+                    <button type="button" class="pkg-detail-pill" onclick="switchPkgDetailCat('all', this)" style="padding:5px 12px;font-size:0.75rem;font-weight:700;border-radius:20px;border:1.5px solid var(--brand-primary);background:var(--brand-primary);color:#fff;cursor:pointer;white-space:nowrap;">All (${normalizedInclusions.length})</button>
+                    ${activeCats.map(cat => {
+                        const count = groupedInc[cat].length;
+                        return `<button type="button" class="pkg-detail-pill" onclick="switchPkgDetailCat('${cat}', this)" style="padding:5px 12px;font-size:0.75rem;font-weight:700;border-radius:20px;border:1px solid #cbd5e1;background:#f8fafc;color:#475569;cursor:pointer;white-space:nowrap;">${cat} (${count})</button>`;
+                    }).join('')}
+                </div>`;
+            }
 
             for (const [cat, items] of Object.entries(groupedInc)) {
                 if (!items || items.length === 0) continue;
                 const theme = catThemes[cat] || catThemes['Other'];
                 incHtml += `
-                <div style="margin-bottom: 1.25rem;">
+                <div class="pkg-detail-cat-group" data-cat="${cat}" style="margin-bottom: 1.25rem;">
                     <h4 style="font-size: 0.72rem; font-weight: 800; color: ${theme.color}; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px;">
                         <i class="${theme.icon}"></i> ${theme.title}
                         <span style="font-size: 0.68rem; background: ${theme.bg}; border: 1px solid ${theme.border}; padding: 1px 7px; border-radius: 12px; margin-left: auto;">${items.length}</span>
@@ -2130,6 +2124,27 @@
         document.getElementById('public-img-modal').classList.add('hidden');
         document.getElementById('public-img-modal').classList.remove('flex');
     }
+
+    window.switchPkgDetailCat = function(targetCat, btn) {
+        const parent = btn.closest('#public-pkg-content');
+        if (!parent) return;
+        parent.querySelectorAll('.pkg-detail-pill').forEach(b => {
+            b.style.background = '#f8fafc';
+            b.style.color = '#475569';
+            b.style.borderColor = '#cbd5e1';
+        });
+        btn.style.background = 'var(--brand-primary, #FF6B00)';
+        btn.style.color = '#fff';
+        btn.style.borderColor = 'var(--brand-primary, #FF6B00)';
+
+        parent.querySelectorAll('.pkg-detail-cat-group').forEach(group => {
+            if (targetCat === 'all' || group.getAttribute('data-cat') === targetCat) {
+                group.style.display = 'block';
+            } else {
+                group.style.display = 'none';
+            }
+        });
+    };
 
     let currentPortfolioId = null;
     let currentPortfolioImgIndex = 0;

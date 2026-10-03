@@ -84,16 +84,34 @@
                 <!-- STEP 2: Inclusions (Simplified) -->
                 <div class="wizard-step" id="rentalStep2" style="display: none;">
                     <div style="background: #f8fafc; padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem; border: 1px solid #e2e8f0;">
-                        <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 0.35rem; font-size: 1rem;">What's Included?</h4>
-                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">List items included when renting this item (e.g. 10 Chairs, Table Cloth, Chafing Dish).</p>
+                        <h4 style="font-weight: 800; color: #1e293b; margin-bottom: 0.35rem; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-boxes-packing" style="color: #FF6B00;"></i> What's Included?
+                        </h4>
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
+                            Ilista ang mga inclusions sa equipment rental na ito gamit ang comma (,) o bawat linya (Enter).
+                        </p>
                         
-                        <div id="rentalInclusionsList" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;">
-                            <!-- Inclusions injected here -->
+                        <div class="form-group-pro" style="margin-bottom: 1rem;">
+                            <label style="font-weight: 700; color: #1e293b; font-size: 0.88rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span>Inclusions (Isahang Input Field)</span>
+                                <span style="font-size: 0.75rem; color: #64748b; font-weight: normal;">(Separated by comma or new line)</span>
+                            </label>
+                            <textarea id="rentalInclusionsBulkText" class="control-pro" rows="5"
+                                placeholder="Halimbawa:&#10;• 10 Monoblock Chairs&#10;• 1 Rectangular Table with White Cloth&#10;• Free Delivery within 5km"
+                                style="width: 100%; border-radius: 8px; font-size: 0.88rem; line-height: 1.5; resize: vertical; padding: 10px 12px; box-sizing: border-box;"
+                                oninput="syncRentalInclusionsFromBulkText()"></textarea>
                         </div>
-                        
-                        <div style="display: flex; gap: 10px;">
-                            <input type="text" id="addIncName" class="control-pro" placeholder="Included Item (e.g. 10 Chairs, Table Cloth)" style="flex: 1;" onkeydown="if(event.key==='Enter'){event.preventDefault();addRentalInclusion();}">
-                            <button type="button" class="btn-primary-pro" onclick="addRentalInclusion()" style="padding: 0.6rem 1.25rem; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-plus"></i> <span>Add</span></button>
+
+                        <div style="margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+                            <span style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">
+                                Kasamang Items (<span id="rentalInclusionsCount">0</span>)
+                            </span>
+                            <button type="button" onclick="clearRentalInclusions()" style="background: none; border: none; font-size: 0.75rem; color: #ef4444; font-weight: 700; cursor: pointer; padding: 2px 6px;">
+                                <i class="fas fa-trash-alt"></i> Burahin Lahat
+                            </button>
+                        </div>
+                        <div id="rentalInclusionsPreview" style="display: flex; flex-wrap: wrap; gap: 8px; min-height: 48px; background: white; padding: 10px 12px; border-radius: 8px; border: 1.5px dashed #cbd5e1; align-items: center;">
+                            <span style="color: #94a3b8; font-size: 0.8rem; font-style: italic;">Mag-type o mag-paste sa itaas para makita ang listahan ng inclusions dito...</span>
                         </div>
                     </div>
                 </div>
