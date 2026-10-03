@@ -2869,6 +2869,7 @@ window.setQuickAddOptionType = function (type) {
     if (!['menu', 'service', 'equipment'].includes(type)) type = '';
 
     const typeWrapper = document.getElementById('quickAddOptionTypeWrapper');
+    const footer = document.getElementById('quickAddOptionFooter');
     const typeSelect = document.getElementById('quickAddOptionTypeSelect');
     const hiddenType = document.getElementById('quickAddOptionType');
     const nameWrapper = document.getElementById('quickAddOptionNameWrapper');
@@ -2896,6 +2897,7 @@ window.setQuickAddOptionType = function (type) {
     if (hiddenType) hiddenType.value = type;
 
     const hasType = Boolean(type);
+    if (footer) footer.style.display = hasType ? 'flex' : 'none';
     if (nameWrapper) nameWrapper.style.display = hasType ? 'block' : 'none';
     if (unitWrapper) unitWrapper.style.display = hasType ? 'block' : 'none';
     if (descriptionWrapper) descriptionWrapper.style.display = hasType ? 'block' : 'none';
