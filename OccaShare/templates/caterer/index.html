@@ -368,12 +368,12 @@
                             <p style="color: #64748b; margin: 0; font-size: 0.82rem;">
                                 <i class="far fa-calendar" style="margin-right: 4px;"></i>
                                 {% if sched.date %}
-                                    {{ sched.date.strftime('%B %d, %Y') if hasattr(sched.date, 'strftime') else sched.date }}
+                                    {{ sched.date.strftime('%B %d, %Y') if sched.date.strftime is defined else sched.date }}
                                 {% else %}
                                     Date TBD
                                 {% endif %}
                                 {% if sched.time %}
-                                    at {{ sched.time.strftime('%I:%M %p') if hasattr(sched.time, 'strftime') else sched.time }}
+                                    at {{ sched.time.strftime('%I:%M %p') if sched.time.strftime is defined else sched.time }}
                                 {% endif %}
                                 &bull; <span style="text-transform: capitalize; background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-weight: 600;">{{ sched.schedule_type or 'General' }}</span>
                             </p>
