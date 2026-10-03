@@ -798,7 +798,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             const response = await fetch(`/caterer/api/bookings/${bookingId}/details`);
+            if (!response.ok) throw new Error(`Booking details request failed (${response.status})`);
             const data = await response.json();
+            let customer = {};
+            try {
+                const customerResponse = await fetch(`/caterer/api/bookings/${bookingId}/customer-details`);
+                if (customerResponse.ok) customer = await customerResponse.json();
+            } catch (customerError) {
+                console.warn('Could not load invoice customer details:', customerError);
+            }
+            const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[character]);
+            const customerName = customer.name || 'Customer';
+            const totalAmount = Number(data.total_amount ?? data.total_price ?? 0);
+            const formattedAmount = (Number.isFinite(totalAmount) ? totalAmount : 0)
+                .toLocaleString(undefined, {minimumFractionDigits: 2});
 
             const dateStr = new Date(data.created_at || Date.now()).toLocaleDateString('en-PH', { 
                 year: 'numeric', month: 'long', day: 'numeric' 
@@ -820,8 +835,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
                         <div>
                             <h4 style="font-size: 10px; text-transform: uppercase; color: var(--color-neutral-400); margin-bottom: 0.5rem; font-weight: 800; letter-spacing: 0.05em;">Client Details</h4>
-                            <p style="margin: 0; font-weight: 700; font-size: 0.9rem; color: var(--color-neutral-900);">${data.user.first_name} ${data.user.last_name}</p>
-                            <p style="margin: 2px 0; font-size: 0.8rem; color: var(--color-neutral-500);">${data.user.email}</p>
+                            <p style="margin: 0; font-weight: 700; font-size: 0.9rem; color: var(--color-neutral-900);">${escapeHtml(customerName)}</p>
+                            ${customer.email ? `<p style="margin: 2px 0; font-size: 0.8rem; color: var(--color-neutral-500);">${escapeHtml(customer.email)}</p>` : ''}
                         </div>
                         <div style="text-align: right;">
                             <h4 style="font-size: 10px; text-transform: uppercase; color: var(--color-neutral-400); margin-bottom: 0.5rem; font-weight: 800; letter-spacing: 0.05em;">Service Provider</h4>
@@ -840,10 +855,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         <tbody>
                             <tr>
                                 <td style="padding: 1.25rem 12px; border-bottom: 1px solid var(--color-neutral-50);">
-                                    <div style="font-weight: 700; font-size: 0.9rem; color: var(--color-neutral-900);">${data.event_name || data.event_type}</div>
+                                    <div style="font-weight: 700; font-size: 0.9rem; color: var(--color-neutral-900);">${escapeHtml(data.event_name || data.event_type || 'Catering service')}</div>
                                     <div style="font-size: 0.75rem; color: var(--color-neutral-400); margin-top: 4px;">Standard event package and platform service fee.</div>
                                 </td>
-                                <td style="text-align: right; padding: 1.25rem 12px; font-weight: 800; font-size: 0.9rem; color: var(--color-neutral-900); border-bottom: 1px solid var(--color-neutral-50);">₱${parseFloat(data.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                <td style="text-align: right; padding: 1.25rem 12px; font-weight: 800; font-size: 0.9rem; color: var(--color-neutral-900); border-bottom: 1px solid var(--color-neutral-50);">₱${formattedAmount}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -851,11 +866,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div style="margin-left: auto; width: 100%; max-width: 250px;">
                         <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.85rem; color: var(--color-neutral-500); font-weight: 600;">
                             <span>Subtotal</span>
-                            <span>₱${parseFloat(data.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                            <span>₱${formattedAmount}</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; padding: 12px 0; font-weight: 900; font-size: 1.15rem; color: var(--primary-color); border-top: 2px solid var(--color-neutral-100); margin-top: 8px;">
                             <span>TOTAL PAID</span>
-                            <span>₱${parseFloat(data.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                            <span>₱${formattedAmount}</span>
                         </div>
                     </div>
 
