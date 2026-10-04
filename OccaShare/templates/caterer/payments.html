@@ -6,430 +6,48 @@
 {% block header_title %}Payments & Earnings{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/payments.css') }}?v=13.1">
-<style>
-    /* Payments & Earnings Custom Styling */
-    .payments-wrapper {
-        display: flex;
-        flex-direction: column;
-        gap: 2rem;
-        max-width: 1320px;
-        margin: 0 auto;
-        padding-bottom: 3.5rem;
-    }
-
-    /* Top Page Header & Timeframe Bar */
-    .pay-header-banner {
-        background: #ffffff;
-        border-radius: var(--border-radius, 14px);
-        padding: 1.5rem 1.75rem;
-        border: 1px solid #f1f5f9;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 1.25rem;
-    }
-    .pay-title-group h1 {
-        font-size: 1.55rem;
-        font-weight: 800;
-        color: #0f172a;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .pay-title-group p {
-        font-size: 0.88rem;
-        color: #64748b;
-        margin: 4px 0 0;
-    }
-
-    .pay-controls-bar {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-    }
-    .period-select-custom {
-        padding: 0.62rem 2.2rem 0.62rem 1rem;
-        background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") no-repeat right 0.75rem center/14px;
-        border: 1.5px solid #e2e8f0;
-        border-radius: 10px;
-        font-size: 0.85rem;
-        font-weight: 700;
-        color: #1e293b;
-        cursor: pointer;
-        outline: none;
-        transition: all 0.2s;
-    }
-    .period-select-custom:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(255, 123, 84, 0.15);
-    }
-    .custom-date-inputs {
-        display: none;
-        align-items: center;
-        gap: 6px;
-        background: #f8fafc;
-        padding: 4px 10px;
-        border-radius: 10px;
-        border: 1px solid #e2e8f0;
-    }
-    .custom-date-inputs.is-active {
-        display: flex;
-    }
-    .custom-date-inputs input[type="date"] {
-        border: 1px solid #cbd5e1;
-        border-radius: 6px;
-        padding: 4px 8px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: #334155;
-    }
-
-    /* Section Headings */
-    .section-headline {
-        margin-bottom: 1rem;
-    }
-    .section-headline h2 {
-        font-size: 1.3rem;
-        font-weight: 800;
-        color: #0f172a;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .section-headline p {
-        font-size: 0.84rem;
-        color: #64748b;
-        margin: 3px 0 0;
-    }
-
-    /* Financial Cards Grid */
-    .pay-kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 1.25rem;
-    }
-    @media (max-width: 1024px) {
-        .pay-kpi-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-    @media (max-width: 640px) {
-        .pay-kpi-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    .pay-stat-box {
-        background: #ffffff;
-        border-radius: 12px;
-        padding: 1.35rem 1.45rem;
-        border: 1px solid #f1f5f9;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        position: relative;
-        overflow: hidden;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .pay-stat-box:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
-    }
-    .pay-stat-box::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3.5px;
-    }
-    .pay-stat-box.theme-indigo::before { background: #4f46e5; }
-    .pay-stat-box.theme-emerald::before { background: #059669; }
-    .pay-stat-box.theme-amber::before { background: #d97706; }
-    .pay-stat-box.theme-slate::before { background: #0284c7; }
-    .pay-stat-box.theme-purple::before { background: #7c3aed; }
-
-    .pay-stat-content {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-    .pay-stat-title {
-        font-size: 0.78rem;
-        font-weight: 700;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-    }
-    .pay-stat-number {
-        font-size: 1.55rem;
-        font-weight: 800;
-        color: #0f172a;
-        line-height: 1.2;
-    }
-    .pay-stat-sub {
-        font-size: 0.74rem;
-        color: #94a3b8;
-        font-weight: 500;
-    }
-    .pay-stat-icon-wrapper {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        flex-shrink: 0;
-    }
-
-    /* Estimated Net Earnings Banner Ribbon */
-    .net-earnings-bar {
-        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 1.1rem 1.6rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 1.25rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-    }
-    .net-metrics-list {
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-        flex-wrap: wrap;
-    }
-    .net-metric-item {
-        display: flex;
-        flex-direction: column;
-    }
-    .net-metric-title {
-        font-size: 0.72rem;
-        font-weight: 700;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-    }
-    .net-metric-val {
-        font-size: 1.15rem;
-        font-weight: 800;
-        color: #0f172a;
-    }
-    .net-math-symbol {
-        font-size: 1.3rem;
-        font-weight: 700;
-        color: #94a3b8;
-    }
-
-    /* Cards & Tables */
-    .pay-card-container {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
-        overflow: hidden;
-    }
-    .pay-card-header {
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid #f1f5f9;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
-    .pay-card-header-left h3 {
-        font-size: 1.12rem;
-        font-weight: 800;
-        color: #0f172a;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .pay-card-header-left p {
-        font-size: 0.82rem;
-        color: #64748b;
-        margin: 3px 0 0;
-    }
-    .pay-toolbar {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-    }
-    .pay-search-input {
-        padding: 0.55rem 0.9rem;
-        border: 1.5px solid #e2e8f0;
-        border-radius: 8px;
-        font-size: 0.85rem;
-        color: #1e293b;
-        outline: none;
-        width: 220px;
-        transition: all 0.2s;
-    }
-    .pay-search-input:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(255, 123, 84, 0.15);
-    }
-    .pay-select-filter {
-        padding: 0.55rem 2rem 0.55rem 0.85rem;
-        background: #ffffff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") no-repeat right 0.65rem center/12px;
-        border: 1.5px solid #e2e8f0;
-        border-radius: 8px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #334155;
-        cursor: pointer;
-        outline: none;
-    }
-
-    /* Badges */
-    .badge-ptype {
-        display: inline-flex;
-        align-items: center;
-        padding: 3px 8px;
-        border-radius: 6px;
-        font-size: 0.72rem;
-        font-weight: 700;
-        letter-spacing: 0.02em;
-    }
-    .badge-ptype-dp { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
-    .badge-ptype-partial { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
-    .badge-ptype-balance { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
-    .badge-ptype-full { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
-    .badge-ptype-refund { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
-
-    .badge-pstatus {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 3px 9px;
-        border-radius: 6px;
-        font-size: 0.72rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.02em;
-    }
-    .badge-pstatus-paid { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
-    .badge-pstatus-partial { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
-    .badge-pstatus-review { background: #fefce8; color: #a16207; border: 1px solid #fef08a; }
-    .badge-pstatus-unpaid { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
-    .badge-pstatus-refunded { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-
-    /* Commission Notice Banner */
-    .commission-alert-banner {
-        background: #fffbeb;
-        border: 1.5px solid #fef3c7;
-        border-radius: 12px;
-        padding: 1.2rem 1.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 1rem;
-        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.05);
-    }
-    .commission-alert-left {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-    }
-    .commission-alert-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
-        background: #fef3c7;
-        color: #d97706;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-        flex-shrink: 0;
-    }
-
-    /* Modal Financial Detail Styles */
-    .modal-fin-summary-box {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 1.25rem;
-        margin-bottom: 1.25rem;
-    }
-    .modal-fin-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-    }
-    .modal-fin-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 6px 0;
-        border-bottom: 1px dashed #e2e8f0;
-        font-size: 0.85rem;
-    }
-    .modal-fin-row:last-child {
-        border-bottom: none;
-    }
-    .modal-fin-label {
-        color: #64748b;
-        font-weight: 600;
-    }
-    .modal-fin-val {
-        color: #0f172a;
-        font-weight: 800;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/payments.css') }}?v=14.0">
 {% endblock %}
 
 {% block content %}
 <div class="payments-wrapper">
 
-    <!-- 0. Header & Timeframe Bar -->
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- 1. PAGE HEADER & TIMEFRAME CONTROLS                        -->
+    <!-- ─────────────────────────────────────────────────────────── -->
     <div class="pay-header-banner">
         <div class="pay-title-group">
-            <h1><i class="fas fa-coins" style="color: var(--primary-color);"></i> Payments &amp; Earnings</h1>
-            <p>Track customer payments, outstanding balances, earnings, and platform fees.</p>
+            <h1><i class="fas fa-coins" style="color: var(--primary-color, #ff7b54);"></i> Payments &amp; Earnings</h1>
+            <p>Track customer payments, outstanding balances, earnings, and platform commission in one place.</p>
         </div>
         <div class="pay-controls-bar">
-            <!-- Payment Period Dropdown -->
-            <form id="periodForm" method="GET" action="/caterer/payments" style="display: flex; align-items: center; gap: 8px;">
-                <label for="periodSelect" style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Period:</label>
+            <!-- Period / Date Range Filter -->
+            <form id="periodForm" method="GET" action="/caterer/payments" class="period-filter-form">
+                <label for="periodSelect" class="period-label">Period:</label>
                 <select id="periodSelect" name="period" class="period-select-custom" onchange="handlePeriodChange(this)">
-                    <option value="today" {% if period == 'today' %}selected{% endif %}>Today</option>
-                    <option value="week" {% if period == 'week' %}selected{% endif %}>This Week</option>
-                    <option value="month" {% if period == 'month' or not period %}selected{% endif %}>This Month</option>
-                    <option value="last_month" {% if period == 'last_month' %}selected{% endif %}>Last Month</option>
-                    <option value="year" {% if period == 'year' %}selected{% endif %}>This Year</option>
-                    <option value="custom" {% if period == 'custom' %}selected{% endif %}>Custom Date Range</option>
-                    <option value="all" {% if period == 'all' %}selected{% endif %}>All Time</option>
+                    <option value="today" {% if period=='today' %}selected{% endif %}>Today</option>
+                    <option value="week" {% if period=='week' %}selected{% endif %}>This Week</option>
+                    <option value="month" {% if period=='month' or not period %}selected{% endif %}>This Month</option>
+                    <option value="last_month" {% if period=='last_month' %}selected{% endif %}>Last Month</option>
+                    <option value="year" {% if period=='year' %}selected{% endif %}>This Year</option>
+                    <option value="custom" {% if period=='custom' %}selected{% endif %}>Custom Date Range</option>
+                    <option value="all" {% if period=='all' %}selected{% endif %}>All Time</option>
                 </select>
 
                 <div id="customDateBox" class="custom-date-inputs {% if period == 'custom' %}is-active{% endif %}">
                     <input type="date" name="start_date" id="startDateInput" value="{{ start_date }}" required>
-                    <span style="color: #94a3b8; font-size: 0.75rem;">to</span>
+                    <span class="date-sep">to</span>
                     <input type="date" name="end_date" id="endDateInput" value="{{ end_date }}" required>
-                    <button type="submit" class="btn-primary-pro" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px;">Apply</button>
+                    <button type="submit" class="btn-primary-pro btn-apply-date">Apply</button>
                 </div>
             </form>
 
             <!-- Export Menu -->
-            <div class="export-dropdown-container" style="position: relative;">
-                <button type="button" class="btn-sm-outline" onclick="window.toggleExportMenu(event)">
-                    <i class="fas fa-file-export"></i> <span>Export</span> <i class="fas fa-chevron-down" style="font-size: 0.7rem; margin-left: 4px;"></i>
+            <div class="export-dropdown-container">
+                <button type="button" class="btn-export" onclick="window.toggleExportMenu(event)">
+                    <i class="fas fa-file-export"></i> <span>Export</span> <i class="fas fa-chevron-down caret-icon"></i>
                 </button>
-                <div id="exportMenu" class="pay-dropdown-menu" style="right: 0;">
+                <div id="exportMenu" class="pay-dropdown-menu">
                     <button class="pay-dropdown-item" onclick="window.exportToPDF()">
                         <i class="fas fa-file-pdf" style="color: #ef4444;"></i> Export PDF
                     </button>
@@ -445,16 +63,10 @@
     </div>
 
     <!-- ─────────────────────────────────────────────────────────── -->
-    <!-- SECTION 1: CUSTOMER PAYMENTS & EARNINGS (PRIMARY SECTION) -->
+    <!-- 2. TOP 4 KPI CARDS                                          -->
     <!-- ─────────────────────────────────────────────────────────── -->
-    <div class="section-headline">
-        <h2><i class="fas fa-hand-holding-usd" style="color: var(--primary-color);"></i> Customer Payments &amp; Earnings</h2>
-        <p>Verified money received from customers, collectible balances, and active booking financials.</p>
-    </div>
-
-    <!-- Financial Summary Cards -->
     <div class="pay-kpi-grid">
-        <!-- 1. Total Booking Value -->
+        <!-- Card 1: Total Booking Value -->
         <div class="pay-stat-box theme-indigo">
             <div class="pay-stat-content">
                 <span class="pay-stat-title">Total Booking Value</span>
@@ -466,7 +78,7 @@
             </div>
         </div>
 
-        <!-- 2. Amount Collected -->
+        <!-- Card 2: Amount Collected -->
         <div class="pay-stat-box theme-emerald">
             <div class="pay-stat-content">
                 <span class="pay-stat-title">Amount Collected</span>
@@ -478,10 +90,10 @@
             </div>
         </div>
 
-        <!-- 3. Outstanding Customer Balance -->
+        <!-- Card 3: Outstanding Customer Balance -->
         <div class="pay-stat-box theme-amber">
             <div class="pay-stat-content">
-                <span class="pay-stat-title">Outstanding Balance</span>
+                <span class="pay-stat-title">Outstanding Customer Balance</span>
                 <span class="pay-stat-number" id="kpiOutstanding">₱{{ "{:,.2f}".format(period_outstanding_balance) }}</span>
                 <span class="pay-stat-sub" style="color: #d97706; font-weight: 700;">Collectible from customers</span>
             </div>
@@ -490,20 +102,22 @@
             </div>
         </div>
 
-        <!-- 4. Active Bookings -->
-        <div class="pay-stat-box theme-slate">
+        <!-- Card 4: Estimated Earnings -->
+        <div class="pay-stat-box theme-purple">
             <div class="pay-stat-content">
-                <span class="pay-stat-title">Active Bookings</span>
-                <span class="pay-stat-number" id="kpiActiveCount">{{ period_active_count }}</span>
-                <span class="pay-stat-sub">Active financial contracts</span>
+                <span class="pay-stat-title">Estimated Earnings</span>
+                <span class="pay-stat-number" id="kpiNetEarnings">₱{{ "{:,.2f}".format(period_net_earnings) }}</span>
+                <span class="pay-stat-sub" style="color: #7c3aed; font-weight: 700;">After Platform Commission</span>
             </div>
-            <div class="pay-stat-icon-wrapper" style="background: rgba(2, 132, 199, 0.1); color: #0284c7;">
-                <i class="fas fa-calendar-check"></i>
+            <div class="pay-stat-icon-wrapper" style="background: rgba(124, 58, 237, 0.1); color: #7c3aed;">
+                <i class="fas fa-coins"></i>
             </div>
         </div>
     </div>
 
-    <!-- Optional Estimated Net Earnings Ribbon -->
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- 3. EARNINGS SUMMARY (VISUAL BREAKDOWN ONLY)                 -->
+    <!-- ─────────────────────────────────────────────────────────── -->
     <div class="net-earnings-bar">
         <div class="net-metrics-list">
             <div class="net-metric-item">
@@ -517,27 +131,33 @@
             </div>
             <span class="net-math-symbol">=</span>
             <div class="net-metric-item">
-                <span class="net-metric-title">Estimated Net Earnings</span>
-                <span class="net-metric-val" style="color: var(--primary-color); font-size: 1.25rem;">₱{{ "{:,.2f}".format(period_net_earnings) }}</span>
+                <span class="net-metric-title">Estimated Earnings</span>
+                <span class="net-metric-val net-val-highlight">₱{{ "{:,.2f}".format(period_net_earnings) }}</span>
             </div>
         </div>
-        <div style="font-size: 0.76rem; color: #64748b; font-style: italic;">
-            <i class="fas fa-info-circle"></i> Estimated caterer earnings after platform commission deductions.
+        <div class="net-disclaimer">
+            <i class="fas fa-info-circle"></i> Estimated earnings are based on the current platform commission rate.
         </div>
     </div>
 
     <!-- ─────────────────────────────────────────────────────────── -->
-    <!-- SECTION 2: TRANSACTION HISTORY (CUSTOMER PAYMENTS)       -->
+    <!-- 4. CUSTOMER PAYMENTS SECTION                                -->
     <!-- ─────────────────────────────────────────────────────────── -->
+    <div class="section-headline">
+        <h2><i class="fas fa-hand-holding-usd" style="color: var(--primary-color, #ff7b54);"></i> Customer Payments</h2>
+        <p>View and manage payment transactions from customers.</p>
+    </div>
+
     <div class="pay-card-container">
         <div class="pay-card-header">
             <div class="pay-card-header-left">
-                <h3><i class="fas fa-history" style="color: var(--primary-color);"></i> Customer Payment Transactions</h3>
-                <p>Recorded customer payments, downpayments, installment settlements, and receipts.</p>
+                <h3><i class="fas fa-history" style="color: var(--primary-color, #ff7b54);"></i> Transaction History</h3>
+                <p>Recorded customer payments, downpayments, and receipts.</p>
             </div>
             <div class="pay-toolbar">
-                <input type="text" id="paymentSearch" class="pay-search-input" placeholder="Search customer, booking..." oninput="window.filterPayments()">
-                
+                <input type="text" id="paymentSearch" class="pay-search-input" placeholder="Search customer, booking..."
+                    oninput="window.filterPayments()">
+
                 <select id="typeFilter" class="pay-select-filter" onchange="window.filterPayments()">
                     <option value="all">All Payment Types</option>
                     <option value="downpayment">Downpayment</option>
@@ -559,23 +179,24 @@
         </div>
 
         {% if transactions and transactions|length > 0 %}
-        <div class="table-container" style="padding: 0 1.5rem 1.5rem 1.5rem; overflow-x: auto;">
-            <table class="premium-table" style="border-collapse: collapse; border-spacing: 0; min-width: 950px; width: 100%;">
+        <div class="table-container">
+            <table class="premium-table" style="min-width: 950px;">
                 <thead>
                     <tr>
                         <th>Payment ID</th>
-                        <th>Booking</th>
+                        <th>Booking Ref</th>
                         <th>Customer</th>
                         <th>Payment Type</th>
                         <th style="text-align: right;">Amount</th>
-                        <th>Method</th>
+                        <th>Payment Method</th>
                         <th>Date</th>
-                        <th>Payment Status</th>
+                        <th>Status</th>
                         <th style="text-align: right;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="paymentsTableBody">
                     {% for t in transactions %}
+                    {% set comm_val = (t.booking.commission or (t.booking_total * 0.10)) if t.booking else (t.booking_total * 0.10) %}
                     <tr class="premium-row transaction-row"
                         data-status="{{ t.status|lower }}"
                         data-type="{{ t.payment_type|lower }}"
@@ -587,31 +208,33 @@
                         data-paid="{{ t.paid_val }}"
                         data-current="{{ t.amount }}"
                         data-balance="{{ t.balance_val }}"
+                        data-commission="{{ comm_val }}"
+                        data-contract="{{ (t.booking.contract_url or '') if t.booking else '' }}"
                         data-method="{{ t.method }}"
                         data-date="{{ t.date_str }}"
                         data-proof="{{ t.proof_url or '' }}"
                         data-recorded="{{ t.recorded_by }}">
-                        
-                        <!-- Payment ID -->
-                        <td class="premium-cell" data-label="Payment ID">
-                            <span class="pay-id payment-id" style="font-weight: 700; color: #0f172a; font-size: 0.88rem;">{{ t.id }}</span>
+
+                        <!-- 1. Payment ID -->
+                        <td class="premium-cell">
+                            <span class="pay-id">{{ t.id }}</span>
                         </td>
 
-                        <!-- Booking Ref -->
-                        <td class="premium-cell" data-label="Booking">
-                            <a href="/caterer/bookings?booking_id={{ t.booking_id }}" class="pay-booking-ref bk-id" style="font-weight: 700; color: var(--primary-color); text-decoration: none;">
+                        <!-- 2. Booking Ref -->
+                        <td class="premium-cell">
+                            <a href="/caterer/bookings?booking_id={{ t.booking_id }}" class="pay-booking-ref">
                                 #{{ t.booking_ref }}
                             </a>
                         </td>
 
-                        <!-- Customer -->
-                        <td class="premium-cell" data-label="Customer">
-                            <span class="pay-customer-name cust-name" style="font-weight: 700; color: #0f172a; font-size: 0.85rem; display: block;">{{ t.customer_name }}</span>
+                        <!-- 3. Customer -->
+                        <td class="premium-cell">
+                            <span class="pay-customer-name">{{ t.customer_name }}</span>
                             <span style="font-size: 0.72rem; color: #64748b; font-weight: 600;">{{ t.customer_ref }}</span>
                         </td>
 
-                        <!-- Payment Type -->
-                        <td class="premium-cell" data-label="Payment Type">
+                        <!-- 4. Payment Type -->
+                        <td class="premium-cell">
                             {% set pt = (t.payment_type or '')|lower %}
                             {% if 'downpayment' in pt or 'deposit' in pt %}
                             <span class="badge-ptype badge-ptype-dp">Downpayment</span>
@@ -626,27 +249,27 @@
                             {% endif %}
                         </td>
 
-                        <!-- Payment Amount -->
-                        <td class="premium-cell" data-label="Amount" style="text-align: right;">
-                            <span class="amount-pro" style="font-weight: 800; color: #0f172a; font-size: 0.95rem;">₱{{ "{:,.2f}".format(t.amount) }}</span>
+                        <!-- 5. Amount -->
+                        <td class="premium-cell" style="text-align: right;">
+                            <span class="amount-pro">₱{{ "{:,.2f}".format(t.amount) }}</span>
                         </td>
 
-                        <!-- Method -->
-                        <td class="premium-cell" data-label="Method">
-                            <span class="pay-method" style="font-weight: 600; color: #334155; font-size: 0.85rem;">{{ t.method }}</span>
+                        <!-- 6. Payment Method -->
+                        <td class="premium-cell">
+                            <span style="font-weight: 600; color: #334155;">{{ t.method }}</span>
                         </td>
 
-                        <!-- Date -->
-                        <td class="premium-cell" data-label="Date">
-                            <span class="pay-date" style="font-weight: 600; color: #475569; font-size: 0.84rem;">{{ t.date_str }}</span>
+                        <!-- 7. Date -->
+                        <td class="premium-cell">
+                            <span style="font-weight: 600; color: #475569;">{{ t.date_str }}</span>
                         </td>
 
-                        <!-- Status -->
-                        <td class="premium-cell" data-label="Status">
+                        <!-- 8. Status -->
+                        <td class="premium-cell">
                             {% if t.status == 'Fully Paid' %}
                             <span class="badge-pstatus badge-pstatus-paid"><i class="fas fa-check-circle"></i> Fully Paid</span>
                             {% elif t.status == 'Payment Pending Verification' %}
-                            <span class="badge-pstatus badge-pstatus-review"><i class="fas fa-clock fa-spin"></i> Pending Verify</span>
+                            <span class="badge-pstatus badge-pstatus-review"><i class="fas fa-clock"></i> Pending Verification</span>
                             {% elif t.status == 'Partially Paid' %}
                             <span class="badge-pstatus badge-pstatus-partial"><i class="fas fa-adjust"></i> Partially Paid</span>
                             {% elif t.status == 'Refunded' %}
@@ -656,23 +279,23 @@
                             {% endif %}
                         </td>
 
-                        <!-- Actions -->
+                        <!-- 9. Actions -->
                         <td class="premium-cell" style="text-align: right;">
-                            <div class="pay-action-wrapper action-dropdown-container">
-                                <button class="pay-action-btn" onclick="window.toggleActionMenu('{{ t.id }}', event)">
+                            <div class="pay-action-wrapper">
+                                <button type="button" class="pay-action-btn" onclick="window.toggleActionMenu('{{ t.id }}', event)" aria-label="Action Menu">
                                     <i class="fas fa-ellipsis-v"></i>
                                 </button>
                                 <div id="actionMenu-{{ t.id }}" class="pay-dropdown-menu">
-                                    <button class="pay-dropdown-item" onclick="showTransactionModal('{{ t.id }}')">
+                                    <button type="button" class="pay-dropdown-item" onclick="window.showTransactionModal('{{ t.id }}')">
                                         <i class="fas fa-info-circle" style="color: #3b82f6;"></i> View Details
                                     </button>
                                     {% if t.proof_url %}
-                                    <button class="pay-dropdown-item" onclick="window.showProof('{{ t.proof_url }}', 'Receipt - {{ t.id }}')">
-                                        <i class="fas fa-receipt" style="color: var(--accent-color);"></i> Check Receipt
+                                    <button type="button" class="pay-dropdown-item" onclick="window.showProof('{{ t.proof_url }}', 'Receipt - {{ t.id }}')">
+                                        <i class="fas fa-receipt" style="color: var(--primary-color, #ff7b54);"></i> Check Receipt
                                     </button>
                                     {% endif %}
                                     {% if t.is_under_review %}
-                                    <button class="pay-dropdown-item" onclick="window.verifyPayment('{{ t.booking_id }}')">
+                                    <button type="button" class="pay-dropdown-item" onclick="window.verifyPayment('{{ t.booking_id }}')">
                                         <i class="fas fa-check-circle" style="color: #10b981;"></i> Verify Payment
                                     </button>
                                     {% endif %}
@@ -689,51 +312,61 @@
         </div>
 
         <!-- Empty search fallback -->
-        <div id="noPaymentResults" class="pay-empty-state" style="display:none; padding: 3rem 1rem; text-align: center;">
-            <i class="fas fa-search fa-2x" style="color: #cbd5e1; margin-bottom: 0.5rem;"></i>
-            <p style="color: #64748b; font-weight: 600;">No transactions matched your search or filters.</p>
+        <div id="noPaymentResults" class="pay-empty-box" style="display: none;">
+            <div class="pay-empty-icon" style="background: #f1f5f9; color: #94a3b8;">
+                <i class="fas fa-search"></i>
+            </div>
+            <h4>No transactions match your filters</h4>
+            <p>Try clearing your search query or choosing another status/type.</p>
         </div>
 
         <!-- Pagination Controls -->
         <div class="pay-pagination">
-            <div class="pay-pagination-info">Showing <span id="startRange">0</span>-<span id="endRange">0</span> of <span id="totalEntries">0</span> records</div>
+            <div class="pay-pagination-info">
+                Showing <span id="startRange">0</span>–<span id="endRange">0</span> of <span id="totalEntries">0</span> transactions
+            </div>
             <div class="pay-pagination-btns">
-                <button id="prevPage" class="pay-page-btn"><i class="fas fa-chevron-left"></i></button>
+                <button type="button" id="prevPage" class="pay-page-btn"><i class="fas fa-chevron-left"></i> Prev</button>
                 <div id="pageNumbers" class="pay-page-numbers"></div>
-                <button id="nextPage" class="pay-page-btn">Next <i class="fas fa-chevron-right"></i></button>
+                <button type="button" id="nextPage" class="pay-page-btn">Next <i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
 
         {% else %}
-        <div class="pay-empty-state" style="padding: 4rem 2rem; text-align: center;">
-            <div style="background: var(--color-neutral-50); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
-                <i class="fas fa-receipt fa-2x" style="color: var(--color-neutral-300);"></i>
+        <div class="pay-empty-box">
+            <div class="pay-empty-icon" style="background: #f1f5f9; color: #94a3b8;">
+                <i class="fas fa-receipt"></i>
             </div>
-            <h4 style="margin: 0; color: #475569; font-weight: 700;">No payment records found</h4>
-            <p style="margin: 4px 0 0; font-size: 0.85rem; color: #94a3b8;">Customer payments will appear here as soon as bookings receive payment activity.</p>
+            <h4>No payment records found</h4>
+            <p>Customer payments will appear here as bookings receive financial activity.</p>
         </div>
         {% endif %}
     </div>
 
     <!-- ─────────────────────────────────────────────────────────── -->
-    <!-- SECTION 3: OUTSTANDING CUSTOMER BALANCES                  -->
+    <!-- 5. OUTSTANDING CUSTOMER BALANCES                            -->
     <!-- ─────────────────────────────────────────────────────────── -->
+    <div class="section-headline" style="margin-top: 0.5rem;">
+        <h2><i class="fas fa-clock" style="color: #f59e0b;"></i> Outstanding Customer Balances</h2>
+        <p>Track bookings with remaining customer balances.</p>
+    </div>
+
     <div class="pay-card-container">
         <div class="pay-card-header">
             <div class="pay-card-header-left">
-                <h3><i class="fas fa-exclamation-circle" style="color: #f59e0b;"></i> Outstanding Customer Balances</h3>
-                <p>Active and confirmed bookings that still have unpaid collectible balances.</p>
+                <h3><i class="fas fa-exclamation-circle" style="color: #f59e0b;"></i> Unpaid Balances Action List</h3>
+                <p>Summary of active bookings with outstanding balances due.</p>
             </div>
             <div class="pay-toolbar">
                 <span style="font-size: 0.8rem; font-weight: 700; color: #92400e; background: #fef3c7; border: 1px solid #fde68a; padding: 4px 10px; border-radius: 6px;">
-                    {{ customer_balance_bookings|length }} Bookings with Balance
+                    {{ customer_balance_bookings|length if customer_balance_bookings else 0 }} Bookings Pending
                 </span>
             </div>
         </div>
 
         {% if customer_balance_bookings and customer_balance_bookings|length > 0 %}
-        <div class="table-container" style="padding: 0 1.5rem 1.5rem 1.5rem; overflow-x: auto;">
-            <table class="premium-table" style="border-collapse: collapse; border-spacing: 0; min-width: 900px; width: 100%;">
+        <div class="table-container">
+            <table class="premium-table" style="min-width: 900px;">
                 <thead>
                     <tr>
                         <th>Booking ID</th>
@@ -742,8 +375,8 @@
                         <th style="text-align: right;">Booking Total</th>
                         <th style="text-align: right;">Amount Paid</th>
                         <th style="text-align: right;">Remaining Balance</th>
-                        <th>Due Date / Status</th>
-                        <th style="text-align: right;">Actions</th>
+                        <th>Due Date</th>
+                        <th style="text-align: right;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -753,66 +386,57 @@
                     {% set b_bal = (b._pay_balance or 0) | float %}
                     {% set cust_label = (b.user.first_name ~ ' ' ~ b.user.last_name)|trim if b.user and b.user.first_name else (b.customer_name or b.customer_ref or 'Customer') %}
                     <tr class="premium-row">
-                        <!-- Booking Ref -->
-                        <td class="premium-cell" data-label="Booking ID">
-                            <a href="/caterer/bookings?booking_id={{ b.id }}" style="font-weight: 700; color: var(--primary-color); text-decoration: none;">
+                        <!-- 1. Booking ID -->
+                        <td class="premium-cell">
+                            <a href="/caterer/bookings?booking_id={{ b.id }}" class="pay-booking-ref">
                                 #{{ b.booking_ref or ('BK-' ~ ('%06d'|format(b.id))) }}
                             </a>
                         </td>
 
-                        <!-- Customer -->
-                        <td class="premium-cell" data-label="Customer">
-                            <span style="font-weight: 700; color: #0f172a; font-size: 0.85rem; display: block;">{{ cust_label }}</span>
+                        <!-- 2. Customer -->
+                        <td class="premium-cell">
+                            <span class="pay-customer-name">{{ cust_label }}</span>
                             <span style="font-size: 0.72rem; color: #64748b;">{{ b.customer_ref or ('CUST-' ~ ('%04d'|format(b.user_id))) }}</span>
                         </td>
 
-                        <!-- Event Date -->
-                        <td class="premium-cell" data-label="Event Date">
-                            <span style="font-weight: 600; color: #334155; font-size: 0.85rem;">
+                        <!-- 3. Event Date -->
+                        <td class="premium-cell">
+                            <span style="font-weight: 600; color: #334155;">
                                 {{ b.event_date.strftime('%b %d, %Y') if b.event_date else 'To be scheduled' }}
                             </span>
                         </td>
 
-                        <!-- Booking Total -->
-                        <td class="premium-cell" data-label="Booking Total" style="text-align: right;">
-                            <span style="font-weight: 700; color: #475569; font-size: 0.9rem;">₱{{ "{:,.2f}".format(b_total) }}</span>
+                        <!-- 4. Booking Total -->
+                        <td class="premium-cell" style="text-align: right;">
+                            <span style="font-weight: 700; color: #475569;">₱{{ "{:,.2f}".format(b_total) }}</span>
                         </td>
 
-                        <!-- Amount Paid -->
-                        <td class="premium-cell" data-label="Amount Paid" style="text-align: right;">
-                            <span style="font-weight: 700; color: #059669; font-size: 0.9rem;">₱{{ "{:,.2f}".format(b_paid) }}</span>
+                        <!-- 5. Amount Paid -->
+                        <td class="premium-cell" style="text-align: right;">
+                            <span style="font-weight: 700; color: #059669;">₱{{ "{:,.2f}".format(b_paid) }}</span>
                         </td>
 
-                        <!-- Remaining Balance -->
-                        <td class="premium-cell" data-label="Remaining Balance" style="text-align: right;">
-                            <span style="font-weight: 800; color: #c2410c; background: #fff7ed; border: 1px solid #fed7aa; padding: 2px 8px; border-radius: 6px; font-size: 0.95rem;">
+                        <!-- 6. Remaining Balance -->
+                        <td class="premium-cell" style="text-align: right;">
+                            <span style="font-weight: 800; color: #c2410c; background: #fff7ed; border: 1px solid #fed7aa; padding: 2px 8px; border-radius: 6px;">
                                 ₱{{ "{:,.2f}".format(b_bal) }}
                             </span>
                         </td>
 
-                        <!-- Due Date / Status -->
-                        <td class="premium-cell" data-label="Due Date / Status">
-                            <div style="display: flex; flex-direction: column; gap: 2px;">
-                                <span style="font-size: 0.8rem; font-weight: 700; color: #475569;">
-                                    {{ b.balance_due_date.strftime('%b %d, %Y') if b.balance_due_date else 'Due on Event Day' }}
-                                </span>
-                                {% if b._pay_is_under_review %}
-                                <span class="badge-pstatus badge-pstatus-review" style="font-size: 0.65rem; padding: 1px 6px;">Balance Under Review</span>
-                                {% elif b_paid > 0 %}
-                                <span class="badge-pstatus badge-pstatus-partial" style="font-size: 0.65rem; padding: 1px 6px;">Partially Paid</span>
-                                {% else %}
-                                <span class="badge-pstatus badge-pstatus-unpaid" style="font-size: 0.65rem; padding: 1px 6px;">Unpaid</span>
-                                {% endif %}
-                            </div>
+                        <!-- 7. Due Date -->
+                        <td class="premium-cell">
+                            <span style="font-size: 0.82rem; font-weight: 700; color: #475569;">
+                                {{ b.balance_due_date.strftime('%b %d, %Y') if b.balance_due_date else 'Due on Event Day' }}
+                            </span>
                         </td>
 
-                        <!-- Action -->
+                        <!-- 8. Action -->
                         <td class="premium-cell" style="text-align: right;">
                             <div style="display: flex; align-items: center; justify-content: flex-end; gap: 6px;">
                                 <button type="button" class="btn-sm-outline" onclick="window.viewPaymentDetails('{{ b.id }}')" style="padding: 4px 10px; font-size: 0.78rem;">
                                     Details
                                 </button>
-                                <a href="/caterer/bookings?booking_id={{ b.id }}" class="btn-primary-pro" style="padding: 4px 10px; font-size: 0.78rem; text-decoration: none;">
+                                <a href="/caterer/bookings?booking_id={{ b.id }}" class="btn-primary-pro" style="padding: 4px 10px; font-size: 0.78rem;">
                                     View Booking
                                 </a>
                             </div>
@@ -823,25 +447,25 @@
             </table>
         </div>
         {% else %}
-        <div style="text-align: center; padding: 3rem 1.5rem;">
-            <div style="width: 56px; height: 56px; background: #f0fdf4; color: #16a34a; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem; font-size: 1.5rem;">
-                <i class="fas fa-check-double"></i>
+        <div class="pay-empty-box">
+            <div class="pay-empty-icon" style="background: #ecfdf5; color: #059669;">
+                <i class="fas fa-check-circle"></i>
             </div>
-            <h4 style="margin: 0; color: #1e293b; font-weight: 700;">No Outstanding Customer Balances</h4>
-            <p style="margin: 4px 0 0; font-size: 0.84rem; color: #64748b;">All active customer bookings are fully paid.</p>
+            <h4>No outstanding customer balances.</h4>
+            <p>All active bookings are fully paid with no remaining balances due.</p>
         </div>
         {% endif %}
     </div>
 
     <!-- ─────────────────────────────────────────────────────────── -->
-    <!-- SECTION 4: PLATFORM FEES & COMMISSION (SEPARATE SECTION)   -->
+    <!-- 6. PLATFORM COMMISSION SECTION                              -->
     <!-- ─────────────────────────────────────────────────────────── -->
-    <div class="section-headline" style="margin-top: 1rem;">
-        <h2><i class="fas fa-file-invoice-dollar" style="color: #6366f1;"></i> Platform Fees &amp; Commission</h2>
-        <p>Commission fees owed to the OccaServe platform for completed booking services (Caterer → Platform).</p>
+    <div class="section-headline" style="margin-top: 0.5rem;">
+        <h2><i class="fas fa-percentage" style="color: #6366f1;"></i> Platform Commission</h2>
+        <p>Track the commission owed to OccaServe and manage commission settlements.</p>
     </div>
 
-    <!-- Outstanding Commission Alert Banner (if balance > 0) -->
+    <!-- Compact Warning Banner (Only when outstanding commission > 0) -->
     {% if outstanding_commission and outstanding_commission > 0 %}
     <div class="commission-alert-banner">
         <div class="commission-alert-left">
@@ -849,28 +473,28 @@
                 <i class="fas fa-exclamation-triangle"></i>
             </div>
             <div>
-                <div style="font-weight: 800; font-size: 1rem; color: #92400e;">
-                    Outstanding Platform Commission: ₱{{ "{:,.2f}".format(outstanding_commission) }}
+                <div class="commission-alert-title">
+                    You have an outstanding platform commission: ₱{{ "{:,.2f}".format(outstanding_commission) }}
                 </div>
-                <div style="font-size: 0.82rem; color: #b45309; margin-top: 2px;">
-                    Please settle your pending platform commission to maintain your active caterer standing and receipt generation.
+                <div class="commission-alert-desc">
+                    Please settle your pending platform commission to maintain your active caterer standing.
                 </div>
             </div>
         </div>
-        <button class="btn-primary-pro" onclick="window.openSettleModal()" style="background: #d97706; border-color: #d97706; font-size: 0.85rem; padding: 0.6rem 1.25rem;">
-            <i class="fas fa-hand-holding-usd"></i> Settle Commission Now
+        <button type="button" class="btn-primary-pro btn-settle-action" onclick="window.openSettleModal()">
+            <i class="fas fa-hand-holding-usd"></i> Settle Commission
         </button>
     </div>
     {% endif %}
 
-    <!-- Commission Cards Grid -->
+    <!-- 4 Compact Commission KPI Cards -->
     <div class="pay-kpi-grid">
         <!-- 1. Total Commission Due -->
         <div class="pay-stat-box theme-purple">
             <div class="pay-stat-content">
                 <span class="pay-stat-title">Total Commission Due</span>
                 <span class="pay-stat-number">₱{{ "{:,.2f}".format(total_commission_due) }}</span>
-                <span class="pay-stat-sub">Accrued platform fees</span>
+                <span class="pay-stat-sub">Total accrued commission</span>
             </div>
             <div class="pay-stat-icon-wrapper" style="background: rgba(124, 58, 237, 0.1); color: #7c3aed;">
                 <i class="fas fa-calculator"></i>
@@ -882,7 +506,7 @@
             <div class="pay-stat-content">
                 <span class="pay-stat-title">Commission Paid</span>
                 <span class="pay-stat-number">₱{{ "{:,.2f}".format(total_commission_paid) }}</span>
-                <span class="pay-stat-sub" style="color: #059669; font-weight: 700;">Settled with platform</span>
+                <span class="pay-stat-sub" style="color: #059669; font-weight: 700;">Commission already settled</span>
             </div>
             <div class="pay-stat-icon-wrapper" style="background: rgba(5, 150, 105, 0.1); color: #059669;">
                 <i class="fas fa-check-double"></i>
@@ -893,10 +517,10 @@
         <div class="pay-stat-box theme-amber">
             <div class="pay-stat-content">
                 <span class="pay-stat-title">Outstanding Commission</span>
-                <span class="pay-stat-number" style="color: {% if outstanding_commission > 0 %}#991b1b{% else %}#059669{% endif %};">
+                <span class="pay-stat-number" style="color: {% if outstanding_commission > 0 %}#b91c1c{% else %}#059669{% endif %};">
                     ₱{{ "{:,.2f}".format(outstanding_commission) }}
                 </span>
-                <span class="pay-stat-sub">{% if outstanding_commission > 0 %}Payment required{% else %}All caught up!{% endif %}</span>
+                <span class="pay-stat-sub">Remaining commission balance</span>
             </div>
             <div class="pay-stat-icon-wrapper" style="background: rgba(217, 119, 6, 0.1); color: #d97706;">
                 <i class="fas fa-balance-scale"></i>
@@ -907,26 +531,32 @@
         <div class="pay-stat-box theme-indigo">
             <div class="pay-stat-content">
                 <span class="pay-stat-title">Next Billing Date</span>
-                <span class="pay-stat-number" style="font-size: 1.15rem; color: #475569;">{{ next_billing_date_str }}</span>
-                <span class="pay-stat-sub">End-of-month settlement cycle</span>
+                <span class="pay-stat-number" style="font-size: 1.15rem; color: #334155;">{{ next_billing_date_str }}</span>
+                <span class="pay-stat-sub">Next commission billing date</span>
             </div>
-            <div class="pay-stat-icon-wrapper" style="background: rgba(99, 102, 241, 0.1); color: #4f46e5;">
+            <div class="pay-stat-icon-wrapper" style="background: rgba(79, 70, 229, 0.1); color: #4f46e5;">
                 <i class="fas fa-calendar-alt"></i>
             </div>
         </div>
     </div>
 
     <!-- ─────────────────────────────────────────────────────────── -->
-    <!-- SECTION 5: COMMISSION INVOICES (BILLING & STATEMENTS)      -->
+    <!-- 7. COMMISSION INVOICES                                      -->
     <!-- ─────────────────────────────────────────────────────────── -->
+    <div class="section-headline" style="margin-top: 0.5rem;">
+        <h2><i class="fas fa-file-invoice" style="color: #6366f1;"></i> Commission Invoices</h2>
+        <p>View your platform commission billing statements.</p>
+    </div>
+
     <div class="pay-card-container">
         <div class="pay-card-header">
             <div class="pay-card-header-left">
-                <h3><i class="fas fa-file-invoice" style="color: #6366f1;"></i> Commission Invoices (Billing &amp; Statements)</h3>
-                <p>Platform billing invoices and settlement statements issued by OccaServe.</p>
+                <h3><i class="fas fa-receipt" style="color: #6366f1;"></i> Billing Statements</h3>
+                <p>Official commission invoices issued by OccaServe.</p>
             </div>
             <div class="pay-toolbar">
-                <button type="button" class="btn-primary-pro" onclick="window.openSettleModal()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; font-size: 0.85rem; padding: 0.5rem 1rem;">
+                <button type="button" class="btn-primary-pro" onclick="window.openSettleModal()"
+                    style="background: #059669; border: none; font-size: 0.82rem; padding: 0.5rem 1rem;">
                     <i class="fas fa-hand-holding-usd"></i>
                     <span>Settle Commission</span>
                 </button>
@@ -934,8 +564,8 @@
         </div>
 
         {% if invoices and invoices|length > 0 %}
-        <div class="table-container" style="padding: 0 1.5rem 1.5rem 1.5rem; overflow-x: auto;">
-            <table class="premium-table" style="border-collapse: collapse; border-spacing: 0; min-width: 850px; width: 100%;">
+        <div class="table-container">
+            <table class="premium-table" style="min-width: 850px;">
                 <thead>
                     <tr>
                         <th>Invoice ID</th>
@@ -943,37 +573,37 @@
                         <th style="text-align: right;">Commission Amount</th>
                         <th>Due Date</th>
                         <th>Status</th>
-                        <th>Receipt / Proof</th>
+                        <th>Receipt</th>
                         <th style="text-align: right;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for inv in invoices %}
                     <tr class="premium-row" id="commission-invoice-{{ inv.id }}">
-                        <!-- Invoice ID -->
-                        <td class="premium-cell" data-label="Invoice ID">
-                            <span class="pay-id" style="font-weight: 700; color: #0f172a; font-size: 0.88rem;">INV-{{ "%04d"|format(inv.id) }}</span>
+                        <!-- 1. Invoice ID -->
+                        <td class="premium-cell">
+                            <span class="pay-id">INV-{{ "%04d"|format(inv.id) }}</span>
                         </td>
 
-                        <!-- Billing Period -->
-                        <td class="premium-cell" data-label="Billing Period">
-                            <span style="font-weight: 600; color: #334155; font-size: 0.85rem;">{{ inv.billing_period }}</span>
+                        <!-- 2. Billing Period -->
+                        <td class="premium-cell">
+                            <span style="font-weight: 600; color: #334155;">{{ inv.billing_period }}</span>
                         </td>
 
-                        <!-- Amount -->
-                        <td class="premium-cell" data-label="Amount" style="text-align: right;">
-                            <span style="font-weight: 800; color: #0f172a; font-size: 0.95rem;">₱{{ "{:,.2f}".format(inv.amount) }}</span>
+                        <!-- 3. Commission Amount -->
+                        <td class="premium-cell" style="text-align: right;">
+                            <span class="amount-pro">₱{{ "{:,.2f}".format(inv.amount) }}</span>
                         </td>
 
-                        <!-- Due Date -->
-                        <td class="premium-cell" data-label="Due Date">
-                            <span style="font-weight: 600; color: #475569; font-size: 0.85rem;">
+                        <!-- 4. Due Date -->
+                        <td class="premium-cell">
+                            <span style="font-weight: 600; color: #475569;">
                                 {{ inv.due_date.strftime('%b %d, %Y') if inv.due_date else 'End of Month' }}
                             </span>
                         </td>
 
-                        <!-- Status -->
-                        <td class="premium-cell" data-label="Status">
+                        <!-- 5. Status -->
+                        <td class="premium-cell">
                             {% if inv.status == 'paid' %}
                             <span class="premium-status-badge ps-badge-confirmed">Paid</span>
                             {% elif inv.status == 'settled' %}
@@ -987,10 +617,12 @@
                             {% endif %}
                         </td>
 
-                        <!-- Receipt -->
-                        <td class="premium-cell" data-label="Receipt">
+                        <!-- 6. Receipt -->
+                        <td class="premium-cell">
                             {% if inv.payment_proof_url %}
-                            <button type="button" class="btn-sm-outline" onclick="window.showProof('{{ inv.payment_proof_url }}', 'Invoice Receipt - INV-{{ inv.id }}')" style="padding: 3px 8px; font-size: 0.76rem;">
+                            <button type="button" class="btn-sm-outline"
+                                onclick="window.showProof('{{ inv.payment_proof_url }}', 'Invoice Receipt - INV-{{ inv.id }}')"
+                                style="padding: 3px 8px; font-size: 0.76rem;">
                                 <i class="fas fa-image"></i> View Receipt
                             </button>
                             {% else %}
@@ -998,14 +630,17 @@
                             {% endif %}
                         </td>
 
-                        <!-- Actions -->
+                        <!-- 7. Actions -->
                         <td class="premium-cell" style="text-align: right;">
                             {% if inv.booking_id %}
-                            <button type="button" class="btn-sm-outline" onclick="window.viewInvoice('{{ inv.booking_id }}')" style="padding: 4px 10px; font-size: 0.78rem;">
+                            <button type="button" class="btn-sm-outline"
+                                onclick="window.viewInvoice('{{ inv.booking_id }}')"
+                                style="padding: 4px 10px; font-size: 0.78rem;">
                                 <i class="fas fa-file-invoice"></i> View Invoice
                             </button>
                             {% else %}
-                            <button type="button" class="btn-sm-outline" onclick="window.print()" style="padding: 4px 10px; font-size: 0.78rem;">
+                            <button type="button" class="btn-sm-outline" onclick="window.print()"
+                                style="padding: 4px 10px; font-size: 0.78rem;">
                                 Print Statement
                             </button>
                             {% endif %}
@@ -1016,12 +651,12 @@
             </table>
         </div>
         {% else %}
-        <div style="text-align: center; padding: 4rem 2rem;">
-            <div style="width: 64px; height: 64px; background: var(--color-neutral-50); color: var(--color-neutral-300); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
-                <i class="fas fa-file-invoice fa-2x"></i>
+        <div class="pay-empty-box">
+            <div class="pay-empty-icon" style="background: #f1f5f9; color: #94a3b8;">
+                <i class="fas fa-file-invoice"></i>
             </div>
-            <h4 style="margin: 0; color: var(--color-neutral-600); font-weight: 700;">No commission invoices yet</h4>
-            <p style="margin: 4px 0 0; font-size: 0.85rem; color: var(--color-neutral-400);">Platform commission billing statements will appear here upon event completion.</p>
+            <h4>No commission invoices yet</h4>
+            <p>Platform commission billing statements will appear here upon event completion.</p>
         </div>
         {% endif %}
     </div>
@@ -1032,92 +667,104 @@
 <!-- MODALS                                                      -->
 <!-- ─────────────────────────────────────────────────────────── -->
 
-<!-- 1. Enhanced Payment Details Modal -->
+<!-- 1. Payment Details Modal (detailsModal) -->
 <div id="detailsModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-md" style="max-width: 620px;">
-        <div class="occ-modal-header glass-header">
+    <div class="occ-modal-box" style="max-width: 600px;">
+        <div class="occ-modal-header">
             <div>
-                <h3 class="occ-modal-title"><i class="fas fa-file-invoice-dollar" style="color: var(--primary-color); margin-right: 6px;"></i> Payment Details</h3>
-                <div class="occ-modal-subtitle">Customer transaction breakdown &amp; verification audit.</div>
+                <h3 class="occ-modal-title"><i class="fas fa-file-invoice-dollar" style="color: var(--primary-color, #ff7b54); margin-right: 6px;"></i> Payment Details</h3>
+                <div class="occ-modal-subtitle">Customer transaction details &amp; financial breakdown.</div>
             </div>
-            <button onclick="window.closeDetailsModal()" class="occ-modal-close"><i class="fas fa-times"></i></button>
+            <button type="button" onclick="window.closeDetailsModal()" class="occ-modal-close" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
         <div id="detailsContent" class="occ-modal-body">
-            <!-- Populated dynamically by JS -->
+            <!-- Populated dynamically by showTransactionModal or viewPaymentDetails -->
         </div>
         <div class="occ-modal-footer">
-            <button type="button" class="btn-sm-outline" style="min-width: 120px;" onclick="window.closeDetailsModal()">Close</button>
+            <button type="button" class="btn-sm-outline" onclick="window.closeDetailsModal()">Close</button>
         </div>
     </div>
 </div>
 
-<!-- 2. Settle Commission Dues Modal -->
+<!-- 2. Settle Commission Modal (settleModal) -->
 <div id="settleModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-md">
-        <div class="occ-modal-header glass-header">
+    <div class="occ-modal-box" style="max-width: 540px;">
+        <div class="occ-modal-header">
             <div>
                 <h3 class="occ-modal-title"><i class="fas fa-hand-holding-usd" style="color: #059669; margin-right: 6px;"></i> Settle Platform Commission</h3>
-                <div class="occ-modal-subtitle">Upload proof of GCash payment to OccaServe platform admin.</div>
+                <div class="occ-modal-subtitle">Submit proof of commission payment to OccaServe platform.</div>
             </div>
-            <button onclick="window.closeSettleModal()" class="occ-modal-close"><i class="fas fa-times"></i></button>
+            <button type="button" onclick="window.closeSettleModal()" class="occ-modal-close" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
         <div class="occ-modal-body">
-            <div class="pay-details-summary" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <span style="font-weight: 700; color: #64748b; font-size: 0.85rem;">Total Commission Due:</span>
-                    <span style="font-size: 1.35rem; font-weight: 800; color: #991b1b;">₱{{ "{:,.2f}".format(outstanding_commission) }}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid #e2e8f0;">
-                    <span style="font-weight: 600; color: #64748b; font-size: 0.85rem;">Admin GCash Name:</span>
-                    <span style="font-weight: 800; font-size: 0.95rem; color: #0f172a;">{{ config.admin_gcash_name or 'OccaServe Admin' }}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 6px;">
-                    <span style="font-weight: 600; color: #64748b; font-size: 0.85rem;">Admin GCash Number:</span>
-                    <span style="font-weight: 800; font-size: 0.95rem; color: #0f172a;">{{ config.admin_gcash_number or 'Contact Support' }}</span>
+            <!-- 1. Commission Due -->
+            <div class="settle-summary-card">
+                <div class="settle-summary-row">
+                    <span class="settle-label">Total Commission Due:</span>
+                    <span class="settle-val amount-due">₱{{ "{:,.2f}".format(outstanding_commission) }}</span>
                 </div>
             </div>
 
-            {% if config and config.admin_gcash_qr_url %}
-            <div style="text-align: center; margin-bottom: 1.5rem;">
-                <p style="font-size: 0.8rem; font-weight: 700; color: var(--color-neutral-600); margin-bottom: 0.5rem;">Scan to Pay via GCash</p>
-                <img src="{{ config.admin_gcash_qr_url }}" alt="Admin GCash QR" style="max-width: 160px; border-radius: 8px; border: 1px solid var(--color-neutral-200); box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+            <!-- 2. Payment Instructions -->
+            <div class="settle-inst-card">
+                <div class="settle-card-title"><i class="fas fa-qrcode"></i> GCash Payment Instructions</div>
+                <div class="settle-inst-row">
+                    <span>Admin GCash Name:</span>
+                    <strong>{{ config.admin_gcash_name or 'OccaServe Admin' }}</strong>
+                </div>
+                <div class="settle-inst-row">
+                    <span>Admin GCash Number:</span>
+                    <strong>{{ config.admin_gcash_number or 'Contact Support' }}</strong>
+                </div>
+                {% if config and config.admin_gcash_qr_url %}
+                <div class="settle-qr-box">
+                    <span class="settle-qr-label">Scan to Pay via GCash</span>
+                    <img src="{{ config.admin_gcash_qr_url }}" alt="Admin GCash QR" class="settle-qr-img">
+                </div>
+                {% endif %}
             </div>
-            {% endif %}
 
-            <div class="pay-form-group" style="margin-bottom: 1rem;">
-                <label style="display: block; font-weight: 700; margin-bottom: 0.4rem; color: #334155; font-size: 0.85rem;">Billing Period</label>
-                <input type="text" id="settlePeriod" class="pay-input" placeholder="e.g. October 2026" required
-                    style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1.5px solid #cbd5e1;">
-            </div>
+            <!-- 3. Upload Proof -->
+            <div class="settle-form-section">
+                <div class="pay-form-group">
+                    <label for="settlePeriod">Billing Period <span class="req">*</span></label>
+                    <input type="text" id="settlePeriod" class="pay-input" placeholder="e.g. October 2026" required>
+                </div>
 
-            <div class="pay-form-group">
-                <label style="display: block; font-weight: 700; margin-bottom: 0.4rem; color: #334155; font-size: 0.85rem;">Upload Payment Screenshot</label>
-                <input type="file" id="settleProofFile" class="pay-input" accept="image/*" required
-                    style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #fff;">
-                <p style="font-size: 0.74rem; color: #64748b; margin-top: 0.4rem;">Upload the transfer receipt with reference number visible.</p>
+                <div class="pay-form-group">
+                    <label for="settleProofFile">Upload Payment Screenshot <span class="req">*</span></label>
+                    <input type="file" id="settleProofFile" class="pay-input-file" accept="image/*" required>
+                    <p class="pay-form-hint">Upload transfer receipt screenshot with visible reference number.</p>
+                </div>
             </div>
         </div>
         <div class="occ-modal-footer">
             <button type="button" class="btn-sm-outline" onclick="window.closeSettleModal()">Cancel</button>
             <button type="button" class="btn-primary-pro" id="btnSubmitSettle" onclick="window.submitSettleDues()" style="background: #059669; border: none;">
-                Submit Settlement Proof
+                <i class="fas fa-check"></i> Submit Settlement
             </button>
         </div>
     </div>
 </div>
 
-<!-- 3. Receipt / Payment Proof Modal -->
+<!-- 3. Payment Proof Modal (proofModal) -->
 <div id="proofModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-md">
-        <div class="occ-modal-header glass-header">
+    <div class="occ-modal-box" style="max-width: 560px;">
+        <div class="occ-modal-header">
             <div>
                 <h3 id="proofModalTitle" class="occ-modal-title">Receipt / Payment Proof</h3>
                 <div class="occ-modal-subtitle">Official payment document provided by the customer or admin.</div>
             </div>
-            <button onclick="window.closeProof()" class="occ-modal-close"><i class="fas fa-times"></i></button>
+            <button type="button" onclick="window.closeProof()" class="occ-modal-close" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
-        <div class="occ-modal-body" style="text-align: center;">
-            <img id="proofModalImg" src="" alt="Proof" style="max-width: 100%; border-radius: var(--radius-md); box-shadow: var(--shadow-xl);">
+        <div class="occ-modal-body" style="text-align: center; padding: 1.5rem;">
+            <img id="proofModalImg" src="" alt="Proof" class="proof-viewer-img">
         </div>
         <div class="occ-modal-footer">
             <button type="button" class="btn-sm-outline" onclick="window.closeProof()">Close</button>
@@ -1125,23 +772,25 @@
     </div>
 </div>
 
-<!-- 4. Digital Invoice Modal -->
+<!-- 4. Digital Invoice Modal (invoiceModal) -->
 <div id="invoiceModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-lg" style="max-width: 850px;">
-        <div class="occ-modal-header glass-header">
+    <div class="occ-modal-box" style="max-width: 820px;">
+        <div class="occ-modal-header">
             <div>
                 <h3 class="occ-modal-title"><i class="fas fa-file-invoice" style="margin-right: 6px;"></i> Official Digital Invoice</h3>
                 <div class="occ-modal-subtitle">Audit-ready document for tax and accounting.</div>
             </div>
-            <button onclick="window.closeInvoiceModal()" class="occ-modal-close"><i class="fas fa-times"></i></button>
+            <button type="button" onclick="window.closeInvoiceModal()" class="occ-modal-close" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
-        <div id="invoiceContent" class="occ-modal-body" style="background: var(--color-neutral-50);">
-            <!-- Populated by JS -->
+        <div id="invoiceContent" class="occ-modal-body invoice-scroll-body">
+            <!-- Populated dynamically by window.viewInvoice -->
         </div>
         <div class="occ-modal-footer">
             <button type="button" class="btn-sm-outline" onclick="window.closeInvoiceModal()">Close Invoice</button>
-            <button type="button" class="btn-primary-pro" onclick="window.printInvoice()" style="min-width: 150px;">
-                Print / PDF
+            <button type="button" class="btn-primary-pro" onclick="window.printInvoice()" style="min-width: 140px;">
+                <i class="fas fa-print"></i> Print / PDF
             </button>
         </div>
     </div>
@@ -1153,9 +802,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="{{ url_for('static', path='/js/caterer/payments.js') }}?v=13.1"></script>
+<script src="{{ url_for('static', path='/js/caterer/payments.js') }}?v=14.0"></script>
 <script>
-    // Handle Timeframe Change
     function handlePeriodChange(selectEl) {
         const val = selectEl.value;
         const customBox = document.getElementById('customDateBox');
@@ -1163,127 +811,9 @@
             if (customBox) customBox.classList.add('is-active');
         } else {
             if (customBox) customBox.classList.remove('is-active');
-            document.getElementById('periodForm').submit();
+            const form = document.getElementById('periodForm');
+            if (form) form.submit();
         }
     }
-
-    // Modal Details Show with Immediate Data Hydration
-    function showTransactionModal(paymentId) {
-        const row = document.querySelector(`tr[data-payment-id="${paymentId}"]`);
-        if (!row) {
-            window.viewPaymentDetails(paymentId);
-            return;
-        }
-
-        const bookingId = row.getAttribute('data-booking-id');
-        const custName = row.getAttribute('data-customer') || 'Customer';
-        const eventName = row.getAttribute('data-event') || 'Event';
-        const total = parseFloat(row.getAttribute('data-total')) || 0;
-        const paid = parseFloat(row.getAttribute('data-paid')) || 0;
-        const current = parseFloat(row.getAttribute('data-current')) || 0;
-        const balance = parseFloat(row.getAttribute('data-balance')) || 0;
-        const method = row.getAttribute('data-method') || 'Direct';
-        const dateStr = row.getAttribute('data-date') || '';
-        const proofUrl = row.getAttribute('data-proof') || '';
-        const recordedBy = row.getAttribute('data-recorded') || 'System';
-        const status = row.getAttribute('data-status') || '';
-
-        // Calculate previous paid
-        const previousPaid = Math.max(0, paid - current);
-
-        const content = document.getElementById('detailsContent');
-        if (!content) return;
-
-        content.innerHTML = `
-            <div class="modal-fin-summary-box">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                    <div>
-                        <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Payment Transaction</span>
-                        <h4 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a;">${paymentId}</h4>
-                    </div>
-                    <span class="badge-pstatus ${status.includes('paid') ? 'badge-pstatus-paid' : (status.includes('verify') ? 'badge-pstatus-review' : 'badge-pstatus-partial')}">
-                        ${status.toUpperCase()}
-                    </span>
-                </div>
-
-                <div class="modal-fin-grid">
-                    <div>
-                        <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Booking Reference</span>
-                        <div style="font-size: 0.9rem; font-weight: 700; color: var(--primary-color);">#BK-${bookingId}</div>
-                    </div>
-                    <div>
-                        <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Customer</span>
-                        <div style="font-size: 0.9rem; font-weight: 700; color: #0f172a;">${custName}</div>
-                    </div>
-                    <div>
-                        <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Event</span>
-                        <div style="font-size: 0.88rem; font-weight: 600; color: #334155;">${eventName}</div>
-                    </div>
-                    <div>
-                        <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Payment Method</span>
-                        <div style="font-size: 0.88rem; font-weight: 600; color: #334155;">${method}</div>
-                    </div>
-                </div>
-            </div>
-
-            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem;">
-                <div style="font-size: 0.8rem; font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 0.75rem; letter-spacing: 0.04em;">
-                    <i class="fas fa-calculator" style="color: var(--primary-color); margin-right: 4px;"></i> Financial Accounting Breakdown
-                </div>
-                
-                <div class="modal-fin-row">
-                    <span class="modal-fin-label">Booking Total Contract Value:</span>
-                    <span class="modal-fin-val">₱${total.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                </div>
-                <div class="modal-fin-row">
-                    <span class="modal-fin-label">Previous Amount Paid:</span>
-                    <span class="modal-fin-val" style="color: #64748b;">₱${previousPaid.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                </div>
-                <div class="modal-fin-row" style="background: #f0fdf4; padding: 6px 8px; border-radius: 6px;">
-                    <span class="modal-fin-label" style="color: #166534; font-weight: 700;">Current Payment Recorded:</span>
-                    <span class="modal-fin-val" style="color: #166534; font-size: 1rem;">₱${current.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                </div>
-                <div class="modal-fin-row">
-                    <span class="modal-fin-label">Total Verified Paid to Date:</span>
-                    <span class="modal-fin-val" style="color: #059669;">₱${paid.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                </div>
-                <div class="modal-fin-row" style="background: #fff7ed; padding: 6px 8px; border-radius: 6px;">
-                    <span class="modal-fin-label" style="color: #c2410c; font-weight: 700;">Remaining Customer Balance:</span>
-                    <span class="modal-fin-val" style="color: #c2410c; font-size: 1rem;">₱${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                </div>
-            </div>
-
-            <div style="display: flex; gap: 0.75rem; align-items: center; justify-content: flex-end;">
-                ${proofUrl ? `
-                <button type="button" class="btn-primary-pro" onclick="window.showProof('${proofUrl}', 'Receipt - ${paymentId}')" style="background: var(--accent-color); border: none;">
-                    <i class="fas fa-image"></i> View Customer Receipt
-                </button>
-                ` : ''}
-                <button type="button" class="btn-sm-outline" onclick="window.viewInvoice('${bookingId}')">
-                    <i class="fas fa-file-invoice"></i> View Official Invoice
-                </button>
-            </div>
-        `;
-
-        window.openModal('detailsModal');
-    }
-
-    // Initialize Overdue Checks on Mount
-    document.addEventListener("DOMContentLoaded", function () {
-        document.querySelectorAll('.timer-overdue-check').forEach(badge => {
-            const startStr = badge.getAttribute('data-start');
-            if (startStr) {
-                const signedAt = new Date(startStr).getTime();
-                const expiresAt = signedAt + (48 * 60 * 60 * 1000);
-                const now = new Date().getTime();
-                if (now > expiresAt) {
-                    badge.innerHTML = 'Overdue/Expired';
-                    badge.style.background = '#fef2f2';
-                    badge.style.color = '#991b1b';
-                    badge.style.borderColor = '#fecaca';
-                }
-            }
-        });
-    });
 </script>
 {% endblock %}

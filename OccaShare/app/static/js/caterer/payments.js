@@ -1,18 +1,16 @@
 /**
- * Caterer Payments Pro Interactions - Advanced Features & Theme Sync
+ * OccaServe Caterer Payments & Earnings — Clean, Responsive Controller
  */
 document.addEventListener('DOMContentLoaded', function() {
-    // Global Pagination State
-    const ROWS_PER_PAGE = 5;
+    // Pagination Configuration
+    const ROWS_PER_PAGE = 8;
     let currentPage = 1;
-    let filteredRows = [];
+    let allRows = Array.from(document.querySelectorAll('#paymentsTableBody .transaction-row'));
+    let filteredRows = allRows;
 
-    // Initialize
-    const allRows = Array.from(document.querySelectorAll('#paymentsTableBody .premium-row'));
-    filteredRows = allRows;
+    // Initialize pagination
     showPage(1);
 
-    // Pagination Logic
     function showPage(page) {
         const totalPages = Math.ceil(filteredRows.length / ROWS_PER_PAGE) || 1;
         if (page < 1) page = 1;
@@ -22,17 +20,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const startIdx = (page - 1) * ROWS_PER_PAGE;
         const endIdx = startIdx + ROWS_PER_PAGE;
 
-        // Hide all rows first
+        // Hide all rows
         allRows.forEach(row => row.style.display = 'none');
 
-        // Show scoped rows from filtered list
+        // Show only current page rows
         filteredRows.slice(startIdx, endIdx).forEach(row => {
             row.style.display = '';
         });
 
         const noResults = document.getElementById('noPaymentResults');
         if (noResults) {
-            noResults.style.display = filteredRows.length === 0 ? 'flex' : 'none';
+            noResults.style.display = filteredRows.length === 0 ? 'block' : 'none';
         }
 
         renderPaginationControls(totalPages);
@@ -44,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const prevBtn = document.getElementById('prevPage');
         const nextBtn = document.getElementById('nextPage');
         
-        if (!container) return;
+        if (!container || !prevBtn || !nextBtn) return;
         container.innerHTML = '';
 
         prevBtn.disabled = currentPage === 1;
@@ -55,22 +53,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (filteredRows.length === 0) return;
 
-        // Branding Primary Color for Active Page
-        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#3b82f6';
-
         for (let i = 1; i <= totalPages; i++) {
             const btn = document.createElement('button');
-            const isActive = i === currentPage;
-            
+            const isActive = (i === currentPage);
             btn.className = `page-num-btn ${isActive ? 'active' : ''}`;
-            btn.style.cssText = `
-                width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
-                border-radius: 0.5rem; border: 1px solid ${isActive ? primaryColor : '#e2e8f0'};
-                background: ${isActive ? primaryColor : 'white'};
-                color: ${isActive ? 'white' : '#475569'};
-                font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
-            `;
             btn.innerText = i;
+            btn.setAttribute('type', 'button');
             btn.onclick = () => showPage(i);
             container.appendChild(btn);
         }
@@ -81,19 +69,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const end = document.getElementById('endRange');
         const total = document.getElementById('totalEntries');
         
-        if (start) {
+        if (start && end && total) {
             start.innerText = filteredRows.length === 0 ? 0 : startIdx + 1;
             end.innerText = Math.min(endIdx, filteredRows.length);
             total.innerText = filteredRows.length;
         }
     }
 
-    // Toggle Action Menu (Exact Bookings Logic)
+    // Toggle Action Menu
     window.toggleActionMenu = function(id, event) {
         if (event) event.stopPropagation();
         
-        document.querySelectorAll('.action-dropdown-menu, .pay-dropdown-menu').forEach(menu => {
-            if (menu.id !== 'actionMenu-' + id) {
+        document.querySelectorAll('.pay-dropdown-menu').forEach(menu => {
+            if (menu.id !== 'actionMenu-' + id && menu.id !== 'exportMenu') {
                 menu.style.display = 'none';
                 menu.classList.remove('active');
             }
@@ -106,49 +94,47 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(() => element.classList.add('active'), 10);
             } else {
                 element.classList.remove('active');
-                setTimeout(() => element.style.display = "none", 200);
+                setTimeout(() => element.style.display = "none", 150);
             }
         }
     };
 
+    // Toggle Export Menu
     window.toggleExportMenu = function(event) {
         if (event) event.stopPropagation();
         const menu = document.getElementById('exportMenu');
+        if (!menu) return;
+        
         if (menu.style.display === "none" || menu.style.display === "") {
             menu.style.display = "block";
             setTimeout(() => menu.classList.add('active'), 10);
         } else {
             menu.classList.remove('active');
-            setTimeout(() => menu.style.display = "none", 200);
+            setTimeout(() => menu.style.display = "none", 150);
         }
     };
 
-    // Close on outside click or when an item is clicked
+    // Close on outside click
     document.addEventListener('click', function(event) {
-        const isClickOutside = !event.target.closest('.action-dropdown-container') && 
-                               !event.target.closest('.export-dropdown-container') && 
-                               !event.target.closest('.pay-action-wrapper');
-        const isClickItem = event.target.closest('.pay-dropdown-item') || event.target.closest('.action-dropdown-item');
-        
-        if (isClickOutside || isClickItem) {
-            document.querySelectorAll('.action-dropdown-menu, .pay-dropdown-menu, #exportMenu').forEach(menu => {
+        const isClickOutside = !event.target.closest('.pay-action-wrapper') && 
+                               !event.target.closest('.export-dropdown-container');
+        if (isClickOutside) {
+            document.querySelectorAll('.pay-dropdown-menu').forEach(menu => {
                 menu.classList.remove('active');
-                setTimeout(() => menu.style.display = 'none', 200);
+                menu.style.display = 'none';
             });
         }
     });
 
     function getRowStatusText(row) {
-        const badges = row.querySelectorAll('.badge-status, .premium-status-badge, .pay-status-badge');
+        const badges = row.querySelectorAll('.badge-pstatus, .badge-ptype');
         if (badges && badges.length > 0) {
             return Array.from(badges).map(b => b.textContent.trim()).filter(Boolean).join(' | ');
         }
-        const dataStatus = row.getAttribute('data-status');
-        if (dataStatus) return dataStatus.trim();
-        return row.cells[6] ? row.cells[6].textContent.trim() : '';
+        return row.getAttribute('data-status') || '';
     }
 
-    // Filtering
+    // Filter Payments
     window.filterPayments = function() {
         const queryEl = document.getElementById('paymentSearch');
         const query = (queryEl ? queryEl.value : '').toLowerCase().trim();
@@ -157,11 +143,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const typeEl = document.getElementById('typeFilter');
         const pType = (typeEl ? typeEl.value : 'all').toLowerCase().trim();
         
+        allRows = Array.from(document.querySelectorAll('#paymentsTableBody .transaction-row'));
+        
         filteredRows = allRows.filter(row => {
             const textContent = row.textContent.toLowerCase();
             const dataStatus = (row.getAttribute('data-status') || '').toLowerCase();
             const dataType = (row.getAttribute('data-type') || '').toLowerCase();
-            const badges = Array.from(row.querySelectorAll('.badge-status, .badge-pstatus, .badge-ptype, .pay-status-badge, .premium-status-badge'))
+            const badges = Array.from(row.querySelectorAll('.badge-pstatus, .badge-ptype'))
                 .map(b => b.textContent.toLowerCase().trim()).join(' ');
             const combinedStatus = `${dataStatus} ${badges}`;
             
@@ -174,14 +162,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
             let matchesStatus = (status === 'all');
             if (!matchesStatus) {
-                if (status === 'paid' || status === 'completed') {
-                    matchesStatus = combinedStatus.includes('paid') || combinedStatus.includes('completed') || combinedStatus.includes('fully paid');
-                } else if (status === 'verify') {
-                    matchesStatus = combinedStatus.includes('verify') || combinedStatus.includes('review') || combinedStatus.includes('confirm cash') || combinedStatus.includes('pending verify') || combinedStatus.includes('awaiting_verification');
+                if (status === 'paid') {
+                    matchesStatus = combinedStatus.includes('fully paid') || (combinedStatus.includes('paid') && !combinedStatus.includes('partially'));
                 } else if (status === 'partial') {
-                    matchesStatus = combinedStatus.includes('partial');
-                } else if (status === 'pending' || status === 'unpaid') {
-                    matchesStatus = combinedStatus.includes('pending') || combinedStatus.includes('unpaid') || combinedStatus.includes('awaiting payment');
+                    matchesStatus = combinedStatus.includes('partially paid') || combinedStatus.includes('partial');
+                } else if (status === 'verify') {
+                    matchesStatus = combinedStatus.includes('pending verification') || combinedStatus.includes('pending verify') || combinedStatus.includes('review');
+                } else if (status === 'unpaid') {
+                    matchesStatus = combinedStatus.includes('unpaid') || combinedStatus.includes('pending');
                 } else if (status === 'refunded') {
                     matchesStatus = combinedStatus.includes('refund');
                 } else {
@@ -198,28 +186,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Export PDF
     window.exportToPDF = function() {
-        // More robust detection for jsPDF in different bundle formats
         const jsPDFLib = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
-        
         if (!jsPDFLib) {
-            window.showError("PDF Library not loaded yet. Please wait a moment and try again.", "Integration Error");
+            alert("PDF library is still loading. Please try again in a moment.");
             return;
         }
 
-        // For plugins like autoTable to work, window.jsPDF might be needed
-        if (!window.jsPDF) window.jsPDF = jsPDFLib;
-
         try {
             const doc = new jsPDFLib({ orientation: 'landscape' });
-            const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#1e293b';
+            const primaryColor = '#ff7b54';
 
-            doc.setFontSize(22);
+            doc.setFontSize(20);
             doc.setTextColor(primaryColor);
             doc.text('Payments & Earnings Report', 14, 20);
             
-            doc.setFontSize(11);
+            doc.setFontSize(10);
             doc.setTextColor(100);
-            doc.text(`Caterer: ${window.catererConfig?.businessName || 'Business Owner'} | Generated: ${new Date().toLocaleString()}`, 14, 28);
+            doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 28);
 
             let totalPrice = 0;
             const tableData = filteredRows.map(row => {
@@ -228,18 +211,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 const amt = parseFloat(amtText) || 0;
                 totalPrice += amt;
                 
-                const custName = (row.querySelector('.cust-name') ? row.querySelector('.cust-name').textContent.trim() : '') || row.getAttribute('data-customer') || 'Customer';
-                const eventName = row.getAttribute('data-event') || 'Event';
-                const payId = (row.querySelector('.payment-id') ? row.querySelector('.payment-id').textContent.trim() : '') || row.getAttribute('data-payment-id') || '';
-                const bkId = (row.querySelector('.bk-id') ? row.querySelector('.bk-id').textContent.trim() : '') || ('BK-' + row.getAttribute('data-booking-id'));
-                const method = row.getAttribute('data-method') || (row.querySelector('.pay-method') ? row.querySelector('.pay-method').textContent.trim() : 'Direct');
-                const dateStr = row.getAttribute('data-date') || (row.querySelector('.pay-date') ? row.querySelector('.pay-date').textContent.trim() : '');
+                const custName = (row.querySelector('.pay-customer-name') ? row.querySelector('.pay-customer-name').textContent.trim() : '') || row.getAttribute('data-customer') || 'Customer';
+                const payId = (row.querySelector('.pay-id') ? row.querySelector('.pay-id').textContent.trim() : '') || row.getAttribute('data-payment-id') || '';
+                const bkId = (row.querySelector('.pay-booking-ref') ? row.querySelector('.pay-booking-ref').textContent.trim() : '') || ('BK-' + row.getAttribute('data-booking-id'));
+                const ptype = row.getAttribute('data-type') || 'Payment';
+                const method = row.getAttribute('data-method') || 'Direct';
+                const dateStr = row.getAttribute('data-date') || '';
                 
                 return [
                     payId,
-                    custName,
                     bkId,
-                    eventName,
+                    custName,
+                    ptype.toUpperCase(),
                     `₱${amt.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 
                     method,
                     dateStr,
@@ -248,58 +231,43 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             doc.autoTable({
-                startY: 40,
-                head: [['PAY ID', 'Customer', 'Booking ID', 'Event Name', 'Amount', 'Method', 'Date', 'Status']],
+                startY: 36,
+                head: [['PAYMENT ID', 'BOOKING', 'CUSTOMER', 'TYPE', 'AMOUNT', 'METHOD', 'DATE', 'STATUS']],
                 body: tableData,
                 theme: 'grid',
                 headStyles: { 
-                    fillColor: primaryColor, 
+                    fillColor: [15, 23, 42], 
                     textColor: 255, 
-                    fontSize: 10, 
-                    fontStyle: 'bold',
-                    halign: 'center'
+                    fontSize: 9, 
+                    fontStyle: 'bold'
                 },
                 styles: { 
-                    fontSize: 9, 
+                    fontSize: 8.5, 
                     cellPadding: 4, 
-                    font: 'helvetica',
-                    valign: 'middle',
-                    lineColor: [226, 232, 240], // Lighter borders
-                    lineWidth: 0.1
+                    lineColor: [226, 232, 240], 
+                    lineWidth: 0.1 
                 },
-                columnStyles: {
-                    0: { cellWidth: 25, halign: 'center' }, // PAY ID
-                    1: { cellWidth: 45 }, // Customer
-                    2: { cellWidth: 25, halign: 'center' }, // BK ID
-                    3: { cellWidth: 'auto' }, // Event
-                    4: { cellWidth: 35, fontStyle: 'bold', halign: 'right' }, // Amount
-                    5: { cellWidth: 25, halign: 'center' }, // Method
-                    6: { cellWidth: 35, halign: 'center' }, // Date
-                    7: { cellWidth: 30, halign: 'center' }  // Status
-                },
-                alternateRowStyles: { fillColor: [250, 252, 255] },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
                 margin: { left: 14, right: 14 }
             });
 
-            // Add Total Summary at the bottom
             const finalY = doc.lastAutoTable.finalY + 10;
-            doc.setFontSize(13);
-            doc.setTextColor(primaryColor);
+            doc.setFontSize(11);
+            doc.setTextColor(15, 23, 42);
             doc.setFont('helvetica', 'bold');
             doc.text(`TOTAL COLLECTED: ₱${totalPrice.toLocaleString(undefined, {minimumFractionDigits: 2})}`, doc.internal.pageSize.width - 14, finalY, { align: 'right' });
 
             doc.save(`Payments_Report_${Date.now()}.pdf`);
-            window.showSuccess("PDF report generated successfully.");
         } catch (e) {
-            console.error("PDF Export failed", e);
-            window.showError("Failed to generate PDF. Internal script error.");
+            console.error("PDF Export error:", e);
+            alert("Could not generate PDF at this time.");
         }
     };
 
     // Export Excel
     window.exportToExcel = function() {
         if (!window.XLSX) {
-            window.showError("Excel Library not loaded yet.", "Internal Error");
+            alert("Excel library is still loading. Please try again in a moment.");
             return;
         }
         try {
@@ -310,299 +278,408 @@ document.addEventListener('DOMContentLoaded', function() {
                 const amt = parseFloat(amtText) || 0;
                 totalAmt += amt;
 
-                const custName = (row.querySelector('.cust-name') ? row.querySelector('.cust-name').textContent.trim() : '') || row.getAttribute('data-customer') || 'Customer';
-                const eventName = row.getAttribute('data-event') || 'Event';
-                const payId = (row.querySelector('.payment-id') ? row.querySelector('.payment-id').textContent.trim() : '') || row.getAttribute('data-payment-id') || '';
-                const bkId = (row.querySelector('.bk-id') ? row.querySelector('.bk-id').textContent.trim() : '') || ('BK-' + row.getAttribute('data-booking-id'));
-                const method = row.getAttribute('data-method') || (row.querySelector('.pay-method') ? row.querySelector('.pay-method').textContent.trim() : 'Direct');
-                const dateStr = row.getAttribute('data-date') || (row.querySelector('.pay-date') ? row.querySelector('.pay-date').textContent.trim() : '');
+                const custName = (row.querySelector('.pay-customer-name') ? row.querySelector('.pay-customer-name').textContent.trim() : '') || row.getAttribute('data-customer') || 'Customer';
+                const payId = (row.querySelector('.pay-id') ? row.querySelector('.pay-id').textContent.trim() : '') || row.getAttribute('data-payment-id') || '';
+                const bkId = (row.querySelector('.pay-booking-ref') ? row.querySelector('.pay-booking-ref').textContent.trim() : '') || ('BK-' + row.getAttribute('data-booking-id'));
+                const ptype = row.getAttribute('data-type') || 'Payment';
+                const method = row.getAttribute('data-method') || 'Direct';
+                const dateStr = row.getAttribute('data-date') || '';
 
                 return [
                     payId,
-                    custName,
                     bkId,
-                    eventName,
+                    custName,
+                    ptype,
                     amt,
                     method,
                     dateStr,
-                    getRowStatusText(row).toUpperCase()
+                    getRowStatusText(row)
                 ];
             });
 
             const data = [
-                ['Payment ID', 'Customer', 'Booking ID', 'Event Title', 'Amount (PHP)', 'Method', 'Transaction Date', 'Status'],
+                ['Payment ID', 'Booking Ref', 'Customer', 'Payment Type', 'Amount (PHP)', 'Method', 'Date', 'Status'],
                 ...dataRows,
                 ['', '', '', 'TOTAL COLLECTED', totalAmt, '', '', '']
             ];
 
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.aoa_to_sheet(data);
-            
-            // Auto-format columns
             ws['!cols'] = [
-                {wch: 15}, {wch: 25}, {wch: 15}, {wch: 30}, {wch: 15}, {wch: 15}, {wch: 20}, {wch: 15}
+                {wch: 15}, {wch: 15}, {wch: 25}, {wch: 18}, {wch: 16}, {wch: 15}, {wch: 18}, {wch: 20}
             ];
 
             XLSX.utils.book_append_sheet(wb, ws, 'Payments');
-            XLSX.writeFile(wb, `Payments_Export_${Date.now()}.xlsx`);
-            window.showSuccess("Excel export successful.");
+            XLSX.writeFile(wb, `Payments_Report_${Date.now()}.xlsx`);
         } catch (e) {
-            console.error("Excel Export failed", e);
-            window.showError("Failed to generate Excel file.");
+            console.error("Excel Export error:", e);
+            alert("Could not generate Excel file.");
         }
     };
 
     // Export CSV
     window.exportToCSV = function() {
         try {
-            let csv = 'Payment ID,Customer,Booking ID,Event,Amount,Method,Date,Status\n';
+            let csv = 'Payment ID,Booking Ref,Customer,Payment Type,Amount,Method,Date,Status\n';
             filteredRows.forEach(row => {
                 const amtEl = row.querySelector('.amount-pro');
                 const amtText = amtEl ? amtEl.textContent.replace('₱', '').replace(/,/g, '').trim() : '0';
-                const custName = (row.querySelector('.cust-name') ? row.querySelector('.cust-name').textContent.trim() : '') || row.getAttribute('data-customer') || 'Customer';
-                const eventName = row.getAttribute('data-event') || 'Event';
-                const payId = (row.querySelector('.payment-id') ? row.querySelector('.payment-id').textContent.trim() : '') || row.getAttribute('data-payment-id') || '';
-                const bkId = (row.querySelector('.bk-id') ? row.querySelector('.bk-id').textContent.trim() : '') || ('BK-' + row.getAttribute('data-booking-id'));
-                const method = row.getAttribute('data-method') || (row.querySelector('.pay-method') ? row.querySelector('.pay-method').textContent.trim() : 'Direct');
-                const dateStr = row.getAttribute('data-date') || (row.querySelector('.pay-date') ? row.querySelector('.pay-date').textContent.trim() : '');
+                const custName = (row.querySelector('.pay-customer-name') ? row.querySelector('.pay-customer-name').textContent.trim() : '') || row.getAttribute('data-customer') || 'Customer';
+                const payId = (row.querySelector('.pay-id') ? row.querySelector('.pay-id').textContent.trim() : '') || row.getAttribute('data-payment-id') || '';
+                const bkId = (row.querySelector('.pay-booking-ref') ? row.querySelector('.pay-booking-ref').textContent.trim() : '') || ('BK-' + row.getAttribute('data-booking-id'));
+                const ptype = row.getAttribute('data-type') || 'Payment';
+                const method = row.getAttribute('data-method') || 'Direct';
+                const dateStr = row.getAttribute('data-date') || '';
 
                 const data = [
                     payId,
-                    custName,
                     bkId,
-                    eventName,
+                    custName,
+                    ptype,
                     amtText,
                     method,
                     dateStr,
                     getRowStatusText(row)
                 ];
-                csv += data.map(v => `"${v}"`).join(',') + '\n';
+                csv += data.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',') + '\n';
             });
 
-            const blob = new Blob([csv], { type: 'text/csv' });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = `Payments_Report_${Date.now()}.csv`;
             a.click();
-            window.showSuccess("CSV export successful.");
         } catch (e) {
-            window.showError("Failed to download CSV.");
+            console.error("CSV Export error:", e);
+            alert("Could not export CSV file.");
         }
     };
 
-    // Modal Details
-    window.viewPaymentDetails = async function(bookingId) {
-        const modal = document.getElementById('detailsModal');
-        const content = document.getElementById('detailsContent');
+    // Details Modal Hydration (Instant from Data Row Attributes)
+    window.showTransactionModal = function(paymentId) {
+        const row = document.querySelector(`tr[data-payment-id="${paymentId}"]`);
+        if (!row) {
+            window.viewPaymentDetails(paymentId);
+            return;
+        }
+
+        const bookingId = row.getAttribute('data-booking-id');
+        const custName = row.getAttribute('data-customer') || 'Customer';
+        const total = parseFloat(row.getAttribute('data-total')) || 0;
+        const paid = parseFloat(row.getAttribute('data-paid')) || 0;
+        const balance = parseFloat(row.getAttribute('data-balance')) || 0;
+        const method = row.getAttribute('data-method') || 'Direct';
+        const dateStr = row.getAttribute('data-date') || '—';
+        const proofUrl = row.getAttribute('data-proof') || '';
+        const contractUrl = row.getAttribute('data-contract') || '';
+        const status = row.getAttribute('data-status') || 'Pending';
+        const ptype = row.getAttribute('data-type') || 'Payment';
         
-        // Initial Loading State
-        content.innerHTML = '<div style="text-align: center; padding: 3rem;"><i class="fas fa-spinner fa-spin fa-3x" style="color: var(--primary-color);"></i><p style="margin-top: 1rem; color: #64748b;">Fetching details...</p></div>';
-        window.openModal('detailsModal');
+        // Commission estimate
+        const commissionAttr = row.getAttribute('data-commission');
+        const commission = commissionAttr ? parseFloat(commissionAttr) : (total * 0.10);
+        const estEarnings = Math.max(0, paid - commission);
+
+        const content = document.getElementById('detailsContent');
+        if (!content) return;
+
+        let statusBadgeClass = 'badge-pstatus-unpaid';
+        if (status.includes('fully') || status.includes('paid')) statusBadgeClass = 'badge-pstatus-paid';
+        else if (status.includes('partial')) statusBadgeClass = 'badge-pstatus-partial';
+        else if (status.includes('verify')) statusBadgeClass = 'badge-pstatus-review';
+        else if (status.includes('refund')) statusBadgeClass = 'badge-pstatus-refunded';
+
+        content.innerHTML = `
+            <div class="modal-detail-sections">
+                <!-- 1. Payment Information -->
+                <div class="modal-detail-section">
+                    <h4 class="modal-section-title"><i class="fas fa-info-circle" style="color: var(--primary-color);"></i> Payment Information</h4>
+                    <div class="modal-info-grid">
+                        <div class="modal-info-item">
+                            <span class="modal-info-label">Customer</span>
+                            <span class="modal-info-val">${custName}</span>
+                        </div>
+                        <div class="modal-info-item">
+                            <span class="modal-info-label">Booking ID</span>
+                            <span class="modal-info-val"><a href="/caterer/bookings?booking_id=${bookingId}" class="pay-booking-ref">#BK-${bookingId}</a></span>
+                        </div>
+                        <div class="modal-info-item">
+                            <span class="modal-info-label">Payment Method</span>
+                            <span class="modal-info-val">${method}</span>
+                        </div>
+                        <div class="modal-info-item">
+                            <span class="modal-info-label">Payment Status</span>
+                            <span class="modal-info-val"><span class="badge-pstatus ${statusBadgeClass}">${status}</span></span>
+                        </div>
+                        <div class="modal-info-item">
+                            <span class="modal-info-label">Payment Date</span>
+                            <span class="modal-info-val">${dateStr}</span>
+                        </div>
+                        <div class="modal-info-item">
+                            <span class="modal-info-label">Payment Type</span>
+                            <span class="modal-info-val"><span class="badge-ptype badge-ptype-dp">${ptype}</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Financial Breakdown -->
+                <div class="modal-detail-section">
+                    <h4 class="modal-section-title"><i class="fas fa-calculator" style="color: #6366f1;"></i> Financial Breakdown</h4>
+                    <div class="modal-breakdown-list">
+                        <div class="modal-breakdown-row">
+                            <span class="row-label">Booking Total Contract Value:</span>
+                            <span class="row-val">₱${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div class="modal-breakdown-row">
+                            <span class="row-label">Amount Paid to Date:</span>
+                            <span class="row-val" style="color: #059669;">₱${paid.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div class="modal-breakdown-row highlight-warn">
+                            <span class="row-label" style="color: #c2410c;">Remaining Customer Balance:</span>
+                            <span class="row-val" style="color: #c2410c;">₱${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div class="modal-breakdown-row">
+                            <span class="row-label">Platform Commission:</span>
+                            <span class="row-val" style="color: #dc2626;">− ₱${commission.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div class="modal-breakdown-row highlight-net">
+                            <span class="row-label" style="font-weight: 800; color: #0f172a;">Estimated Earnings After Platform Commission:</span>
+                            <span class="row-val" style="color: var(--primary-color); font-size: 1.05rem;">₱${estEarnings.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Documents -->
+                <div class="modal-detail-section">
+                    <h4 class="modal-section-title"><i class="fas fa-folder-open" style="color: #d97706;"></i> Documents</h4>
+                    <div class="modal-docs-actions">
+                        ${proofUrl ? `
+                            <button type="button" class="btn-sm-outline" onclick="window.showProof('${proofUrl}', 'Receipt - ${paymentId}')">
+                                <i class="fas fa-receipt"></i> Payment Proof
+                            </button>
+                        ` : '<span class="no-doc">No payment proof uploaded</span>'}
+                        ${contractUrl ? `
+                            <a href="${contractUrl}" target="_blank" class="btn-sm-outline">
+                                <i class="fas fa-file-contract"></i> Digital Contract
+                            </a>
+                        ` : ''}
+                        <button type="button" class="btn-sm-outline" onclick="window.viewInvoice('${bookingId}')">
+                            <i class="fas fa-file-invoice"></i> View Invoice
+                        </button>
+                        <a href="/caterer/bookings?booking_id=${bookingId}" class="btn-sm-outline">
+                            <i class="fas fa-external-link-alt"></i> View Booking
+                        </a>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        if (typeof window.openModal === 'function') {
+            window.openModal('detailsModal');
+        } else {
+            const el = document.getElementById('detailsModal');
+            if (el) {
+                el.style.display = 'flex';
+                el.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+    };
+
+    // Full Details Modal Hydration via API (for Outstanding Customer Balances & Direct links)
+    window.viewPaymentDetails = async function(bookingId) {
+        const content = document.getElementById('detailsContent');
+        if (!content) return;
+        
+        content.innerHTML = '<div style="text-align: center; padding: 3rem;"><i class="fas fa-spinner fa-spin fa-2x" style="color: var(--primary-color);"></i><p style="margin-top: 0.75rem; color: #64748b; font-size: 0.85rem;">Loading financial details...</p></div>';
+        if (typeof window.openModal === 'function') {
+            window.openModal('detailsModal');
+        } else {
+            const el = document.getElementById('detailsModal');
+            if (el) {
+                el.style.display = 'flex';
+                el.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
 
         try {
             const response = await fetch(`/caterer/api/bookings/${bookingId}/details`);
             const booking = await response.json();
             
-            if (!response.ok) throw new Error(booking.detail || "Failed to load details");
+            if (!response.ok) throw new Error(booking.detail || "Failed to load booking details");
 
-            let documentsHtml = '';
-            if (booking.payment_proof_url || booking.balance_proof_url || booking.contract_url) {
-                documentsHtml = `
-                    <div class="pay-docs-group">
-                        <div class="pay-docs-title">Verified Documents</div>
-                        <div class="pay-docs-actions">
-                            ${booking.payment_proof_url || booking.balance_proof_url ? `
-                                <button class="pay-doc-btn" onclick="showProof('${booking.balance_proof_url || booking.payment_proof_url}', 'Proof - BK-${bookingId}')">
-                                    <i class="fas fa-image"></i> Payment Proof
+            const total = parseFloat(booking.total_amount || booking.total_price || 0);
+            const paid = parseFloat(booking.paid_amount || booking._pay_verified || 0);
+            const balance = parseFloat(booking.balance_amount || booking._pay_balance || (total - paid));
+            const commission = parseFloat(booking.commission || (total * 0.10));
+            const estEarnings = parseFloat(booking.net_earnings || (paid - commission));
+            const custName = booking.customer_name || (booking.user ? `${booking.user.first_name || ''} ${booking.user.last_name || ''}`.trim() : 'Customer');
+            const status = booking.payment_status || booking.status || 'Pending';
+            const method = booking.payment_method || 'Direct';
+            const dateStr = booking.event_date ? new Date(booking.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+            const proofUrl = booking.payment_proof_url || booking.balance_proof_url || '';
+
+            let statusBadgeClass = 'badge-pstatus-unpaid';
+            if (status.includes('paid')) statusBadgeClass = 'badge-pstatus-paid';
+            else if (status.includes('partial')) statusBadgeClass = 'badge-pstatus-partial';
+            else if (status.includes('review') || status.includes('proof')) statusBadgeClass = 'badge-pstatus-review';
+
+            content.innerHTML = `
+                <div class="modal-detail-sections">
+                    <!-- 1. Payment Information -->
+                    <div class="modal-detail-section">
+                        <h4 class="modal-section-title"><i class="fas fa-info-circle" style="color: var(--primary-color);"></i> Payment Information</h4>
+                        <div class="modal-info-grid">
+                            <div class="modal-info-item">
+                                <span class="modal-info-label">Customer</span>
+                                <span class="modal-info-val">${custName}</span>
+                            </div>
+                            <div class="modal-info-item">
+                                <span class="modal-info-label">Booking ID</span>
+                                <span class="modal-info-val"><a href="/caterer/bookings?booking_id=${bookingId}" class="pay-booking-ref">#BK-${bookingId}</a></span>
+                            </div>
+                            <div class="modal-info-item">
+                                <span class="modal-info-label">Payment Method</span>
+                                <span class="modal-info-val">${method}</span>
+                            </div>
+                            <div class="modal-info-item">
+                                <span class="modal-info-label">Payment Status</span>
+                                <span class="modal-info-val"><span class="badge-pstatus ${statusBadgeClass}">${status}</span></span>
+                            </div>
+                            <div class="modal-info-item">
+                                <span class="modal-info-label">Event Date</span>
+                                <span class="modal-info-val">${dateStr}</span>
+                            </div>
+                            <div class="modal-info-item">
+                                <span class="modal-info-label">Payment Plan</span>
+                                <span class="modal-info-val">${booking.payment_plan ? booking.payment_plan.toUpperCase() : 'STANDARD'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Financial Breakdown -->
+                    <div class="modal-detail-section">
+                        <h4 class="modal-section-title"><i class="fas fa-calculator" style="color: #6366f1;"></i> Financial Breakdown</h4>
+                        <div class="modal-breakdown-list">
+                            <div class="modal-breakdown-row">
+                                <span class="row-label">Booking Total Contract Value:</span>
+                                <span class="row-val">₱${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div class="modal-breakdown-row">
+                                <span class="row-label">Amount Paid to Date:</span>
+                                <span class="row-val" style="color: #059669;">₱${paid.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div class="modal-breakdown-row highlight-warn">
+                                <span class="row-label" style="color: #c2410c;">Remaining Customer Balance:</span>
+                                <span class="row-val" style="color: #c2410c;">₱${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div class="modal-breakdown-row">
+                                <span class="row-label">Platform Commission:</span>
+                                <span class="row-val" style="color: #dc2626;">− ₱${commission.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div class="modal-breakdown-row highlight-net">
+                                <span class="row-label" style="font-weight: 800; color: #0f172a;">Estimated Earnings After Platform Commission:</span>
+                                <span class="row-val" style="color: var(--primary-color); font-size: 1.05rem;">₱${estEarnings.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Documents -->
+                    <div class="modal-detail-section">
+                        <h4 class="modal-section-title"><i class="fas fa-folder-open" style="color: #d97706;"></i> Documents</h4>
+                        <div class="modal-docs-actions">
+                            ${proofUrl ? `
+                                <button type="button" class="btn-sm-outline" onclick="window.showProof('${proofUrl}', 'Receipt - BK-${bookingId}')">
+                                    <i class="fas fa-receipt"></i> Payment Proof
                                 </button>
-                            ` : ''}
+                            ` : '<span class="no-doc">No payment proof uploaded</span>'}
                             ${booking.contract_url ? `
-                                <a href="${booking.contract_url}" target="_blank" class="pay-doc-btn">
+                                <a href="${booking.contract_url}" target="_blank" class="btn-sm-outline">
                                     <i class="fas fa-file-contract"></i> Digital Contract
                                 </a>
                             ` : ''}
-                            ${booking.quotation_id ? `
-                                <button type="button" class="pay-doc-btn" onclick="window.viewInvoice(${bookingId})">
-                                    <i class="fas fa-receipt"></i> Official Invoice
-                                </button>
-                            ` : ''}
-                        </div>
-                    </div>
-                `;
-            }
-
-            let verificationHtml = '';
-            if (booking.payment_proof_url || booking.balance_proof_url) {
-                const verif = booking.payment_verification_data;
-                const confidence = verif ? verif.confidence : 0;
-                const statusColor = confidence > 70 ? 'var(--color-success-500)' : (confidence > 30 ? 'var(--color-warning-500)' : 'var(--color-danger-500)');
-                const statusBg = confidence > 70 ? 'var(--color-success-50)' : (confidence > 30 ? 'var(--color-warning-50)' : 'var(--color-danger-50)');
-                const statusIcon = confidence > 70 ? 'fa-shield-check' : (confidence > 30 ? 'fa-shield-exclamation' : 'fa-shield-slash');
-                
-                verificationHtml = `
-                    <div class="pay-verification-report" style="margin-top: var(--space-md);">
-                        <div class="pay-verification-header">
-                            <h4 class="pay-verification-title">
-                                <i class="fas ${statusIcon}" style="color: ${statusColor};"></i> AI Integrity Scan
-                            </h4>
-                            <span class="pay-verification-confidence" style="color: ${statusColor}; background: ${statusBg};">
-                                ${confidence}% Confidence
-                            </span>
-                        </div>
-                        
-                        ${verif ? `
-                            <div class="pay-verification-grid">
-                                <div class="pay-verification-key">Amount Match:</div>
-                                <div class="pay-verification-val" style="color: ${verif.amount_match ? 'var(--color-success-600)' : 'var(--color-danger-600)'}">
-                                    ${verif.amount_match ? 'Match ✓' : 'Mismatch ✗'}
-                                </div>
-                                <div class="pay-verification-key">Receipt Status:</div>
-                                <div class="pay-verification-val" style="color: ${!verif.is_duplicate_ref ? 'var(--color-success-600)' : 'var(--color-danger-600)'}">
-                                    ${!verif.is_duplicate_ref ? 'Unique ✓' : 'Duplicate ✗'}
-                                </div>
-                                <div class="pay-verification-key">Reference No:</div>
-                                <div class="pay-verification-val" style="color: var(--color-neutral-900);">
-                                    ${verif.extracted_data?.reference_no || 'N/A'}
-                                </div>
-                            </div>
-                        ` : `
-                            <p style="font-size: var(--text-xs); color: var(--color-neutral-500); margin-bottom: var(--space-sm);">No security scan data found for this proof.</p>
-                            <button class="btn-review-kyc" onclick="runManualVerification(${bookingId})" style="width: 100%; padding: 0.5rem;">
-                                <i class="fas fa-microchip"></i> Re-scan Proof
+                            <button type="button" class="btn-sm-outline" onclick="window.viewInvoice('${bookingId}')">
+                                <i class="fas fa-file-invoice"></i> View Invoice
                             </button>
-                        `}
-                    </div>
-                `;
-            }
-
-            content.innerHTML = `
-                <div class="pay-details-summary">
-                    <div class="pay-details-label-sm">Gross Subtotal</div>
-                    <div class="pay-details-amount-lg">₱${parseFloat(booking.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-                </div>
-
-                <div class="pay-details-grid">
-                    <div class="pay-details-item-box">
-                        <span class="pay-details-key-label">Customer Ref</span>
-                        <span class="pay-details-val-text">${booking.customer_ref || ('CUST-' + String(booking.id || '').padStart(4, '0'))}</span>
-                    </div>
-                    <div class="pay-details-item-box">
-                        <span class="pay-details-key-label">Booking ID</span>
-                        <span class="pay-details-val-text">#BK-${bookingId}</span>
-                    </div>
-                    <div class="pay-details-item-box">
-                        <span class="pay-details-key-label">Event Type</span>
-                        <span class="pay-details-val-text">${booking.event_type}</span>
-                    </div>
-                    <div class="pay-details-item-box">
-                        <span class="pay-details-key-label">Payment Method</span>
-                        <span class="pay-details-val-text">${booking.payment_method || 'Direct'}</span>
+                            <a href="/caterer/bookings?booking_id=${bookingId}" class="btn-sm-outline">
+                                <i class="fas fa-external-link-alt"></i> View Booking
+                            </a>
+                        </div>
                     </div>
                 </div>
-
-                <div class="pay-breakdown-card">
-                    <div class="pay-breakdown-hdr">
-                        <i class="fas fa-chart-pie"></i> Financial Breakdown
-                    </div>
-                    <div class="pay-breakdown-row">
-                        <span class="pay-breakdown-label">Gross Revenue</span>
-                        <span class="pay-breakdown-val">₱${parseFloat(booking.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                    </div>
-                    <div class="pay-breakdown-row">
-                        <span class="pay-breakdown-label">Platform Fee (${booking.commission_rate}%)</span>
-                        <span class="pay-breakdown-val negative">- ₱${parseFloat(booking.commission).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                    </div>
-                    <div class="pay-earnings-summary-line">
-                        <span class="pay-earnings-label-text">Net Earnings</span>
-                        <span class="pay-earnings-amount-val">₱${parseFloat(booking.net_earnings || (booking.total_amount - booking.commission)).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                    </div>
-                </div>
-              </div>
-
-                ${documentsHtml}
-                
-                ${verificationHtml}
             `;
-
         } catch (err) {
-            console.error(err);
-            content.innerHTML = `<div style="text-align: center; color: #ef4444; padding: 2rem;"><i class="fas fa-exclamation-triangle fa-2x"></i><p>${err.message}</p></div>`;
-        }
-    };
-
-    window.runManualVerification = async function(bookingId) {
-        const btn = event.currentTarget;
-        const originalHtml = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
-        
-        try {
-            const res = await window.apiAction(`/caterer/api/bookings/${bookingId}/verify-proof`, { method: "POST" });
-            if (res && res.status === 'success') {
-                window.viewPaymentDetails(bookingId); // Refresh details
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
-            }
+            console.error("View payment details error:", err);
+            content.innerHTML = `<div style="text-align: center; color: #dc2626; padding: 2rem;"><i class="fas fa-exclamation-triangle fa-2x"></i><p style="margin-top: 0.5rem; font-weight: 600;">${err.message}</p></div>`;
         }
     };
 
     window.closeDetailsModal = function() {
-        window.closeModal('detailsModal');
+        if (typeof window.closeModal === 'function') {
+            window.closeModal('detailsModal');
+        } else {
+            const el = document.getElementById('detailsModal');
+            if (el) {
+                el.classList.remove('active');
+                el.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
     };
 
+    // Verify Payment
     window.verifyPayment = function(bookingId) {
-        const row = allRows.find(r => r.querySelector('.bk-id').textContent.trim() === `BK-${bookingId}`);
-        const amount = row ? row.querySelector('.amount-pro').textContent.trim() : "Unknown Amount";
-        const custName = row ? row.querySelector('.cust-name').textContent.trim() : "Unknown Customer";
-        
-        window.showConfirm(`Verify payment of <strong>${amount}</strong> from <strong>${custName}</strong>?<br><br>This will mark the transaction BK-${bookingId} as fully paid and confirm the booking.`, function() {
+        const doVerify = () => {
             if (window.apiAction) {
                 window.apiAction(`/caterer/payments/${bookingId}/confirm`, { 
                     method: "POST",
                     headers: { 'Content-Type': 'application/json' }
                 })
                 .then(res => {
-                    if (res.status === 'success' && row) {
-                        refreshPaymentSummary(); // Immediate refresh
-                        row.classList.add('fade-out-archive');
-                        setTimeout(() => {
-                            row.remove();
-                            // Update total entries count if needed
-                            const total = document.getElementById('totalEntries');
-                            if (total) total.innerText = parseInt(total.innerText) - 1;
-                        }, 500);
+                    if (res && res.status === 'success') {
+                        window.location.reload();
+                    } else {
+                        window.location.reload();
                     }
                 })
-                .catch(err => console.error("Payment Verification Error:", err));
+                .catch(err => {
+                    console.error("Payment Verification Error:", err);
+                    window.location.reload();
+                });
             } else {
-                // Fallback if layout.js not fully loaded or helpers missing
                 const f = document.createElement('form'); 
                 f.method = 'POST'; 
                 f.action = `/caterer/payments/${bookingId}/confirm`; 
                 document.body.appendChild(f); 
                 f.submit();
             }
-        }, "Are you sure?", "Yes, Verify Payment", "success");
+        };
+
+        if (typeof window.showConfirm === 'function') {
+            window.showConfirm(
+                `Verify payment for booking #BK-${bookingId}? This will mark the transaction as verified and update the booking.`,
+                doVerify,
+                'Verify Payment',
+                'Yes, Verify Payment',
+                'success'
+            );
+        } else {
+            if (confirm(`Verify payment for booking #BK-${bookingId}? This will confirm the received payment.`)) {
+                doVerify();
+            }
+        }
     };
 
+    // Confirm Cash Payment
     window.confirmCashPayment = function(bookingId, customerName, amount, paymentStatus) {
         const amountVal = parseFloat(amount) || 0;
         const today = new Date().toISOString().slice(0, 10);
-        const label = customerName ? ` from <strong>${customerName}</strong>` : '';
-        const amtLabel = amountVal
-            ? `₱${amountVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-            : 'the cash payment';
+        const amtLabel = amountVal ? `₱${amountVal.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : 'the cash payment';
 
-        window.showConfirm(
-            `Confirm that you have physically received ${amtLabel} cash${label}?`,
-            function() {
-                if (!window.apiAction) return;
+        const doConfirm = () => {
+            if (window.apiAction) {
                 window.apiAction(`/caterer/payments/${bookingId}/confirm-cash`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -613,114 +690,34 @@ document.addEventListener('DOMContentLoaded', function() {
                     })
                 }).then(res => {
                     if (res && res.status === 'success') {
-                        setTimeout(() => window.location.reload(), 600);
+                        window.location.reload();
                     }
                 }).catch(err => console.error('Cash confirm error:', err));
-            },
-            'Confirm Cash Payment',
-            'Yes, Cash Received',
-            'success'
-        );
-    };
-    
-    window.archivePayment = function(bookingId) {
-        const row = document.getElementById('payment-row-' + bookingId);
-        const displayId = 'BK-' + bookingId;
-
-        window.showConfirm('This will move the payment record to archives. You can still view it in the Archives section.', function() {
-            if (window.apiAction) {
-                window.apiAction(`/caterer/bookings/${bookingId}/archive`, { method: 'POST' })
-                    .then(res => {
-                        if (res.status === 'success' || res.success) {
-                            if (row) {
-                                if (typeof refreshPaymentSummary === 'function') refreshPaymentSummary();
-                                row.classList.add('fade-out-archive');
-                                setTimeout(() => { 
-                                    row.remove(); 
-                                    const total = document.getElementById('totalEntries');
-                                    if (total) total.innerText = parseInt(total.innerText) - 1;
-                                }, 400);
-                            } else {
-                                location.reload();
-                            }
-                        } else {
-                            if (window.showError) window.showError(res.error || 'Failed to archive payment');
-                        }
-                    })
-                    .catch(err => console.error("Payment Archival Error:", err));
             } else {
-                const f = document.createElement('form');
-                f.method = 'POST';
-                f.action = `/caterer/bookings/${bookingId}/archive?next=/caterer/payments`; 
-                document.body.appendChild(f);
+                const f = document.createElement('form'); 
+                f.method = 'POST'; 
+                f.action = `/caterer/payments/${bookingId}/confirm-cash`; 
+                document.body.appendChild(f); 
                 f.submit();
             }
-        });
-    };
+        };
 
-    // Real-time Summary Polling
-    async function refreshPaymentSummary() {
-        try {
-            const response = await fetch('/caterer/api/payments/summary');
-            const data = await response.json();
-            
-            if (data) {
-                const formatter = new Intl.NumberFormat('en-PH', {
-                    style: 'currency',
-                    currency: 'PHP',
-                    minimumFractionDigits: 2
-                });
-
-                // Update Withdraw Panel (Available Funds)
-                const withdrawValue = document.querySelector('.pay-withdrawable-amount .value');
-                if (withdrawValue) withdrawValue.innerText = formatter.format(data.ready_total);
-
-                // Update Stats Grid
-                const releasedValue = document.querySelector('.pay-stat-released .pay-stat-value');
-                if (releasedValue) releasedValue.innerText = formatter.format(data.released_total);
-
-                const escrowValue = document.querySelector('.pay-stat-escrow .pay-stat-value');
-                if (escrowValue) escrowValue.innerText = formatter.format(data.escrow_total);
-
-                const activeValue = document.querySelector('.pay-stat-active .pay-stat-value');
-                if (activeValue) activeValue.innerText = data.active_count;
-
-                // Disable/Enable Withdraw button based on amount
-                const btnWithdraw = document.getElementById('btnWithdraw');
-                if (btnWithdraw) {
-                    btnWithdraw.disabled = data.ready_total <= 0;
-                }
+        if (typeof window.showConfirm === 'function') {
+            window.showConfirm(
+                `Confirm that you have physically received ${amtLabel} in cash?`,
+                doConfirm,
+                'Confirm Cash Payment',
+                'Yes, Cash Received',
+                'success'
+            );
+        } else {
+            if (confirm(`Confirm that you have physically received ${amtLabel} in cash?`)) {
+                doConfirm();
             }
-        } catch (err) {
-            console.warn("Summary refresh failed:", err);
-        }
-    }
-
-    // Initial refresh and setup interval (every 30 seconds)
-    refreshPaymentSummary();
-    setInterval(refreshPaymentSummary, 30000);
-
-    window.showProof = function(url, title) {
-        const img = document.getElementById('proofModalImg');
-        const h3 = document.getElementById('proofModalTitle');
-        if (img) { 
-            img.src = url; 
-            if (h3) h3.innerText = title; 
-            window.openModal('proofModal');
         }
     };
 
-    // Real-time Event Listener (from layout.js)
-    window.addEventListener('payoutUpdate', function(e) {
-        console.log("Real-time payout update triggered refresh");
-        refreshPaymentSummary();
-        // If it was a completion, reload to update the history table
-        if (e.detail.type === 'payout_completed' || e.detail.type === 'payout_update') {
-            setTimeout(() => window.location.reload(), 1500);
-        }
-    });
-
-    // Settle Dues Modal Logic
+    // Settle Commission Dues
     window.openSettleModal = function() {
         const periodInput = document.getElementById('settlePeriod');
         if (periodInput && !periodInput.value) {
@@ -728,26 +725,47 @@ document.addEventListener('DOMContentLoaded', function() {
             const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
             periodInput.value = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
         }
-        window.openModal('settleModal');
+        if (typeof window.openModal === 'function') {
+            window.openModal('settleModal');
+        } else {
+            const el = document.getElementById('settleModal');
+            if (el) {
+                el.style.display = 'flex';
+                el.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
     };
 
     window.closeSettleModal = function() {
-        window.closeModal('settleModal');
+        if (typeof window.closeModal === 'function') {
+            window.closeModal('settleModal');
+        } else {
+            const el = document.getElementById('settleModal');
+            if (el) {
+                el.classList.remove('active');
+                el.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
     };
 
     window.submitSettleDues = async function() {
         const btn = document.getElementById('btnSubmitSettle');
-        const originalHtml = btn.innerHTML;
-        const period = document.getElementById('settlePeriod').value;
-        const proofFile = document.getElementById('settleProofFile').files[0];
+        const originalHtml = btn ? btn.innerHTML : '';
+        const period = document.getElementById('settlePeriod') ? document.getElementById('settlePeriod').value : '';
+        const fileInput = document.getElementById('settleProofFile');
+        const proofFile = fileInput && fileInput.files ? fileInput.files[0] : null;
 
         if (!period || !proofFile) {
-            window.showError("Please provide a billing period and upload a payment proof.", "Missing Details");
+            alert("Please specify the billing period and upload a payment screenshot.");
             return;
         }
         
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+        }
         
         try {
             const formData = new FormData();
@@ -761,143 +779,222 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             
             if (response.ok && data.status === 'success') {
-                window.showSuccess("Proof of payment submitted successfully! The admin will verify it shortly.", "Settlement Requested");
-                closeSettleModal();
-                setTimeout(() => window.location.reload(), 2000);
+                alert("Proof of payment submitted successfully! OccaServe admin will verify it shortly.");
+                window.closeSettleModal();
+                setTimeout(() => window.location.reload(), 1000);
             } else {
                 throw new Error(data.detail || "Unable to submit settlement at this time.");
             }
         } catch (err) {
-            console.error(err);
-            window.showError(err.message, "System Error");
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
+            console.error("Submit settlement error:", err);
+            alert(err.message || "An error occurred while submitting settlement.");
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
         }
     };
 
-    // Listen to global header search
-    window.addEventListener('globalSearch', function(e) {
-        const hiddenInput = document.getElementById('paymentSearch');
-        if (hiddenInput && typeof window.filterPayments === 'function') {
-            hiddenInput.value = e.detail.value;
-            window.filterPayments();
+    // Proof Modal
+    window.showProof = function(url, title) {
+        const img = document.getElementById('proofModalImg');
+        const h3 = document.getElementById('proofModalTitle');
+        if (img) img.src = url;
+        if (h3 && title) h3.innerText = title;
+        if (typeof window.openModal === 'function') {
+            window.openModal('proofModal');
+        } else {
+            const el = document.getElementById('proofModal');
+            if (el) {
+                el.style.display = 'flex';
+                el.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
         }
-    });
-
-    window.closeProof = function() { 
-        window.closeModal('proofModal');
     };
 
-    // Modal Invoice View
+    window.closeProof = function() {
+        if (typeof window.closeModal === 'function') {
+            window.closeModal('proofModal');
+        } else {
+            const el = document.getElementById('proofModal');
+            if (el) {
+                el.classList.remove('active');
+                el.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
+    };
+
+    // Invoice Modal
     window.viewInvoice = async function(bookingId) {
-        const modal = document.getElementById('invoiceModal');
         const content = document.getElementById('invoiceContent');
+        if (!content) return;
         
-        content.innerHTML = '<div style="text-align: center; padding: 3rem;"><i class="fas fa-spinner fa-spin fa-3x" style="color: var(--primary-color);"></i><p style="margin-top:1rem; font-weight:700; color:var(--color-neutral-400);">GENERTING INVOICE...</p></div>';
-        window.openModal('invoiceModal');
+        content.innerHTML = '<div style="text-align: center; padding: 3rem;"><i class="fas fa-spinner fa-spin fa-2x" style="color: var(--primary-color);"></i><p style="margin-top: 0.75rem; color: #64748b; font-size: 0.85rem;">Generating invoice...</p></div>';
+        if (typeof window.openModal === 'function') {
+            window.openModal('invoiceModal');
+        } else {
+            const el = document.getElementById('invoiceModal');
+            if (el) {
+                el.style.display = 'flex';
+                el.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
 
         try {
             const response = await fetch(`/caterer/api/bookings/${bookingId}/details`);
-            if (!response.ok) throw new Error(`Booking details request failed (${response.status})`);
+            if (!response.ok) throw new Error("Could not fetch invoice details");
             const data = await response.json();
+            
             let customer = {};
             try {
                 const customerResponse = await fetch(`/caterer/api/bookings/${bookingId}/customer-details`);
                 if (customerResponse.ok) customer = await customerResponse.json();
-            } catch (customerError) {
-                console.warn('Could not load invoice customer details:', customerError);
+            } catch (ce) {
+                console.warn("Customer details secondary fetch:", ce);
             }
-            const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
-                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-            })[character]);
-            const customerName = customer.name || 'Customer';
-            const totalAmount = Number(data.total_amount ?? data.total_price ?? 0);
-            const formattedAmount = (Number.isFinite(totalAmount) ? totalAmount : 0)
-                .toLocaleString(undefined, {minimumFractionDigits: 2});
 
+            const customerName = customer.name || data.customer_name || 'Customer';
+            const totalAmount = Number(data.total_amount ?? data.total_price ?? 0);
+            const formattedAmount = totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 });
             const dateStr = new Date(data.created_at || Date.now()).toLocaleDateString('en-PH', { 
                 year: 'numeric', month: 'long', day: 'numeric' 
             });
 
             content.innerHTML = `
-                <div style="background: white; padding: 2.5rem; border-radius: var(--radius-md); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; border-bottom: 2px solid var(--color-neutral-50); padding-bottom: 1.5rem;">
+                <div style="background: white; padding: 2rem; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.02);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 2px solid #f1f5f9; padding-bottom: 1.25rem;">
                         <div>
-                            <h2 style="margin: 0; color: var(--primary-color); font-weight: 800;">OccaServe</h2>
-                            <p style="margin: 4px 0 0; font-size: 0.7rem; color: var(--color-neutral-400); font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">Official Invoice</p>
+                            <h2 style="margin: 0; color: var(--primary-color, #ff7b54); font-weight: 800; font-size: 1.4rem;">OccaServe</h2>
+                            <p style="margin: 4px 0 0; font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;">Official Invoice</p>
                         </div>
                         <div style="text-align: right;">
-                            <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--color-neutral-900);">#BK-${bookingId}</h3>
-                            <p style="margin: 4px 0 0; font-size: 0.85rem; color: var(--color-neutral-500); font-weight: 600;">Date: ${dateStr}</p>
+                            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a;">#BK-${bookingId}</h3>
+                            <p style="margin: 4px 0 0; font-size: 0.8rem; color: #64748b; font-weight: 600;">Date: ${dateStr}</p>
                         </div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
                         <div>
-                            <h4 style="font-size: 10px; text-transform: uppercase; color: var(--color-neutral-400); margin-bottom: 0.5rem; font-weight: 800; letter-spacing: 0.05em;">Client Details</h4>
-                            <p style="margin: 0; font-weight: 700; font-size: 0.9rem; color: var(--color-neutral-900);">${escapeHtml(customerName)}</p>
-                            ${customer.email ? `<p style="margin: 2px 0; font-size: 0.8rem; color: var(--color-neutral-500);">${escapeHtml(customer.email)}</p>` : ''}
+                            <h4 style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; margin: 0 0 0.4rem 0; font-weight: 800; letter-spacing: 0.04em;">Customer Details</h4>
+                            <p style="margin: 0; font-weight: 700; font-size: 0.88rem; color: #0f172a;">${customerName}</p>
+                            ${customer.email ? `<p style="margin: 2px 0 0; font-size: 0.8rem; color: #64748b;">${customer.email}</p>` : ''}
                         </div>
                         <div style="text-align: right;">
-                            <h4 style="font-size: 10px; text-transform: uppercase; color: var(--color-neutral-400); margin-bottom: 0.5rem; font-weight: 800; letter-spacing: 0.05em;">Service Provider</h4>
-                            <p style="margin: 0; font-weight: 700; font-size: 0.9rem; color: var(--color-neutral-900);">Verified Caterer</p>
-                            <p style="margin: 2px 0; font-size: 0.8rem; color: var(--color-neutral-500);">OccaServe Certified Partner</p>
+                            <h4 style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; margin: 0 0 0.4rem 0; font-weight: 800; letter-spacing: 0.04em;">Service Provider</h4>
+                            <p style="margin: 0; font-weight: 700; font-size: 0.88rem; color: #0f172a;">Verified OccaServe Partner</p>
+                            <p style="margin: 2px 0 0; font-size: 0.8rem; color: #64748b;">Platform Certified Caterer</p>
                         </div>
                     </div>
 
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 2rem;">
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;">
                         <thead>
-                            <tr style="background: var(--color-neutral-50);">
-                                <th style="text-align: left; padding: 12px; font-size: 10px; font-weight: 800; color: var(--color-neutral-500); text-transform: uppercase; letter-spacing: 0.05em;">Description</th>
-                                <th style="text-align: right; padding: 12px; font-size: 10px; font-weight: 800; color: var(--color-neutral-500); text-transform: uppercase; letter-spacing: 0.05em;">Amount</th>
+                            <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                                <th style="text-align: left; padding: 10px; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Description</th>
+                                <th style="text-align: right; padding: 10px; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Amount</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td style="padding: 1.25rem 12px; border-bottom: 1px solid var(--color-neutral-50);">
-                                    <div style="font-weight: 700; font-size: 0.9rem; color: var(--color-neutral-900);">${escapeHtml(data.event_name || data.event_type || 'Catering service')}</div>
-                                    <div style="font-size: 0.75rem; color: var(--color-neutral-400); margin-top: 4px;">Standard event package and platform service fee.</div>
+                                <td style="padding: 1rem 10px; border-bottom: 1px solid #f1f5f9;">
+                                    <div style="font-weight: 700; font-size: 0.88rem; color: #0f172a;">${data.event_name || data.event_type || 'Catering Package Service'}</div>
+                                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">Confirmed event booking services.</div>
                                 </td>
-                                <td style="text-align: right; padding: 1.25rem 12px; font-weight: 800; font-size: 0.9rem; color: var(--color-neutral-900); border-bottom: 1px solid var(--color-neutral-50);">₱${formattedAmount}</td>
+                                <td style="text-align: right; padding: 1rem 10px; font-weight: 800; font-size: 0.9rem; color: #0f172a; border-bottom: 1px solid #f1f5f9;">₱${formattedAmount}</td>
                             </tr>
                         </tbody>
                     </table>
 
-                    <div style="margin-left: auto; width: 100%; max-width: 250px;">
-                        <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.85rem; color: var(--color-neutral-500); font-weight: 600;">
-                            <span>Subtotal</span>
+                    <div style="margin-left: auto; width: 100%; max-width: 260px;">
+                        <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.82rem; color: #64748b; font-weight: 600;">
+                            <span>Subtotal:</span>
                             <span>₱${formattedAmount}</span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; padding: 12px 0; font-weight: 900; font-size: 1.15rem; color: var(--primary-color); border-top: 2px solid var(--color-neutral-100); margin-top: 8px;">
-                            <span>TOTAL PAID</span>
+                        <div style="display: flex; justify-content: space-between; padding: 10px 0; font-weight: 800; font-size: 1.1rem; color: var(--primary-color, #ff7b54); border-top: 2px solid #e2e8f0; margin-top: 6px;">
+                            <span>TOTAL:</span>
                             <span>₱${formattedAmount}</span>
                         </div>
                     </div>
 
-                    <div style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px dashed var(--color-neutral-200); text-align: center;">
-                        <p style="margin: 0; font-size: 0.7rem; color: var(--color-neutral-400); font-weight: 600; letter-spacing: 0.025em;">Thank you for using OccaServe. This is a computer-generated digital record.</p>
+                    <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px dashed #cbd5e1; text-align: center;">
+                        <p style="margin: 0; font-size: 0.72rem; color: #94a3b8; font-weight: 600;">Generated electronically via OccaServe. Audit and tax compliant.</p>
                     </div>
                 </div>
             `;
         } catch (err) {
-            console.error(err);
-            content.innerHTML = '<p style="text-align: center; color: var(--color-danger-500); padding: 2rem; font-weight:700;">Failed to generate invoice. Please try again.</p>';
+            console.error("View invoice error:", err);
+            content.innerHTML = `<p style="text-align: center; color: #dc2626; padding: 2rem; font-weight: 700;">${err.message || 'Failed to generate invoice.'}</p>`;
         }
     };
 
     window.printInvoice = function() {
-        const content = document.getElementById('invoiceContent').innerHTML;
-        const win = window.open('', '', 'height=700,width=900');
+        const content = document.getElementById('invoiceContent');
+        if (!content) return;
+        const win = window.open('', '', 'height=700,width=850');
         win.document.write('<html><head><title>Invoice</title>');
-        win.document.write('<style>body{font-family: sans-serif; padding: 40px; color: #1e293b;} table{width:100%; border-collapse:collapse;} th,td{padding:12px; border-bottom:1px solid #f1f5f9;} th{background:#f8fafc; text-transform:uppercase; font-size:10px; color:#64748b;}</style>');
+        win.document.write('<style>body{font-family: sans-serif; padding: 30px; color: #0f172a;} table{width:100%; border-collapse:collapse;} th,td{padding:10px; border-bottom:1px solid #f1f5f9;} th{background:#f8fafc; text-transform:uppercase; font-size:10px; color:#64748b;}</style>');
         win.document.write('</head><body>');
-        win.document.write(content);
+        win.document.write(content.innerHTML);
         win.document.write('</body></html>');
         win.document.close();
         win.print();
     };
 
     window.closeInvoiceModal = function() {
-        window.closeModal('invoiceModal');
+        if (typeof window.closeModal === 'function') {
+            window.closeModal('invoiceModal');
+        } else {
+            const el = document.getElementById('invoiceModal');
+            if (el) {
+                el.classList.remove('active');
+                el.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
     };
+
+    // Real-time Summary Polling
+    async function refreshPaymentSummary() {
+        try {
+            const response = await fetch('/caterer/api/payments/summary');
+            if (!response.ok) return;
+            const data = await response.json();
+            
+            if (data) {
+                const formatter = new Intl.NumberFormat('en-PH', {
+                    style: 'currency',
+                    currency: 'PHP',
+                    minimumFractionDigits: 2
+                });
+
+                if (data.collected_total !== undefined) {
+                    const colEl = document.getElementById('kpiCollected');
+                    if (colEl) colEl.innerText = formatter.format(data.collected_total);
+                }
+            }
+        } catch (err) {
+            console.warn("Summary poll note:", err);
+        }
+    }
+
+    // Refresh every 35 seconds
+    setInterval(refreshPaymentSummary, 35000);
+
+    // Real-time Payout & Global Search listeners
+    window.addEventListener('payoutUpdate', function(e) {
+        refreshPaymentSummary();
+        if (e.detail && (e.detail.type === 'payout_completed' || e.detail.type === 'payout_update')) {
+            setTimeout(() => window.location.reload(), 1500);
+        }
+    });
+
+    window.addEventListener('globalSearch', function(e) {
+        const searchInput = document.getElementById('paymentSearch');
+        if (searchInput && typeof window.filterPayments === 'function') {
+            searchInput.value = e.detail.value;
+            window.filterPayments();
+        }
+    });
 });

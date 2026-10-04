@@ -5,536 +5,55 @@
 {% block header_title %}Business Overview{% endblock %}
 
 {% block extra_css %}
-<style>
-    .overview-container {
-        max-width: 1280px;
-        margin: 0 auto;
-        padding-top: 1rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-    }
-
-    /* Page Header Banner */
-    .overview-header-banner {
-        background: white;
-        border-radius: var(--border-radius, 14px);
-        padding: 1.5rem 1.75rem;
-        border: 1px solid #f1f5f9;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        flex-wrap: wrap;
-    }
-
-    .overview-header-text h2 {
-        margin: 0;
-        font-size: 1.45rem;
-        font-weight: 800;
-        color: #0f172a;
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-    }
-
-    .overview-header-text p {
-        margin: 0.35rem 0 0;
-        color: #64748b;
-        font-size: 0.88rem;
-        font-weight: 500;
-    }
-
-    /* Filter Bar */
-    .filter-wrapper {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-    }
-
-    .filter-label {
-        font-weight: 700;
-        color: #334155;
-        font-size: 0.85rem;
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-    }
-
-    .custom-date-inputs {
-        display: none;
-        align-items: center;
-        gap: 6px;
-    }
-
-    /* Top Summary 5 Cards */
-    .kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 1.25rem;
-    }
-
-    .kpi-card {
-        background: white;
-        border-radius: var(--border-radius, 14px);
-        padding: 1.35rem 1.25rem;
-        border: 1px solid #f1f5f9;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .kpi-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.06);
-        border-color: #cbd5e1;
-    }
-
-    .kpi-card::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background: #cbd5e1;
-    }
-
-    .kpi-card.accent-primary::after { background: var(--primary-color, #800020); }
-    .kpi-card.accent-emerald::after { background: #10b981; }
-    .kpi-card.accent-blue::after { background: #0284c7; }
-    .kpi-card.accent-amber::after { background: #f59e0b; }
-    .kpi-card.accent-purple::after { background: #8b5cf6; }
-
-    .kpi-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.75rem;
-    }
-
-    .kpi-title {
-        font-size: 0.75rem;
-        color: #64748b;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .kpi-icon {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.95rem;
-    }
-
-    .kpi-value {
-        font-size: 1.7rem;
-        font-weight: 800;
-        color: #0f172a;
-        line-height: 1.2;
-    }
-
-    .kpi-subtext {
-        font-size: 0.75rem;
-        color: #94a3b8;
-        font-weight: 500;
-        margin-top: 0.4rem;
-    }
-
-    /* Two Column & Dashboard Sections */
-    .dashboard-grid-2col {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1.5rem;
-    }
-
-    .section-card {
-        background: white;
-        border-radius: var(--border-radius, 14px);
-        border: 1px solid #f1f5f9;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .section-header {
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid #f1f5f9;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: white;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-
-    .section-header h3 {
-        margin: 0;
-        font-size: 1.05rem;
-        font-weight: 800;
-        color: #0f172a;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .section-action-link {
-        font-size: 0.8rem;
-        font-weight: 700;
-        color: var(--primary-color, #800020);
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        transition: opacity 0.2s;
-    }
-
-    .section-action-link:hover {
-        opacity: 0.8;
-        text-decoration: underline;
-    }
-
-    .section-body {
-        padding: 1.25rem 1.5rem;
-        flex: 1;
-    }
-
-    /* Booking Overview Status Blocks */
-    .status-distribution-grid {
-        display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        gap: 0.75rem;
-    }
-
-    .status-tile {
-        background: #f8fafc;
-        border-radius: 10px;
-        padding: 1rem 0.75rem;
-        text-align: center;
-        border: 1px solid #e2e8f0;
-        transition: transform 0.15s ease;
-    }
-
-    .status-tile:hover {
-        transform: translateY(-2px);
-    }
-
-    .status-tile-count {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: #0f172a;
-        line-height: 1;
-        margin-bottom: 0.35rem;
-    }
-
-    .status-tile-label {
-        font-size: 0.72rem;
-        font-weight: 700;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-    }
-
-    /* Upcoming Events List */
-    .event-item-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.85rem 0;
-        border-bottom: 1px solid #f1f5f9;
-        gap: 0.75rem;
-    }
-
-    .event-item-row:last-child {
-        border-bottom: none;
-        padding-bottom: 0;
-    }
-
-    .event-meta-col {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-    }
-
-    .event-name-tag {
-        font-weight: 700;
-        font-size: 0.92rem;
-        color: #0f172a;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .event-sub-info {
-        font-size: 0.78rem;
-        color: #64748b;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .event-right-meta {
-        text-align: right;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 4px;
-    }
-
-    /* Revenue & Payment 3 Cards */
-    .rev-summary-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1rem;
-        margin-bottom: 1.25rem;
-    }
-
-    .rev-card {
-        padding: 1.1rem 1rem;
-        border-radius: 10px;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .rev-card-title {
-        font-size: 0.72rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .rev-card-val {
-        font-size: 1.45rem;
-        font-weight: 900;
-    }
-
-    /* Package Performance Progress List */
-    .pkg-stat-item {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        padding: 0.75rem 0;
-        border-bottom: 1px solid #f1f5f9;
-    }
-
-    .pkg-stat-item:last-child {
-        border-bottom: none;
-        padding-bottom: 0;
-    }
-
-    .pkg-stat-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 0.88rem;
-    }
-
-    .pkg-stat-title {
-        font-weight: 700;
-        color: #0f172a;
-    }
-
-    .pkg-stat-count {
-        font-weight: 800;
-        color: #0284c7;
-        background: #f0f9ff;
-        padding: 2px 8px;
-        border-radius: 6px;
-        font-size: 0.78rem;
-    }
-
-    /* Customer Engagement Grid */
-    .engage-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-    }
-
-    .engage-box {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.85rem;
-    }
-
-    .engage-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-    }
-
-    .engage-val {
-        font-size: 1.35rem;
-        font-weight: 800;
-        color: #0f172a;
-        line-height: 1.1;
-    }
-
-    .engage-lbl {
-        font-size: 0.75rem;
-        color: #64748b;
-        font-weight: 600;
-    }
-
-    /* Customer Feedback Section */
-    .feedback-overview-header {
-        display: flex;
-        align-items: center;
-        gap: 1.25rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid #f1f5f9;
-        margin-bottom: 1rem;
-    }
-
-    .feedback-score-badge {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 1.5rem;
-        font-weight: 900;
-        color: #0f172a;
-    }
-
-    .review-quote-card {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 0.85rem 1rem;
-        margin-bottom: 0.75rem;
-    }
-
-    .review-quote-card:last-child {
-        margin-bottom: 0;
-    }
-
-    .review-quote-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 4px;
-    }
-
-    .review-quote-author {
-        font-weight: 700;
-        font-size: 0.82rem;
-        color: #0f172a;
-    }
-
-    .review-quote-stars {
-        color: #f59e0b;
-        font-size: 0.75rem;
-    }
-
-    .review-quote-text {
-        font-size: 0.8rem;
-        color: #475569;
-        line-height: 1.4;
-        font-style: italic;
-    }
-
-    /* Badges */
-    .badge-status-chip {
-        font-size: 0.7rem;
-        font-weight: 700;
-        padding: 3px 8px;
-        border-radius: 4px;
-        text-transform: capitalize;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
-
-    /* Search Box */
-    .search-box input {
-        padding: 0.55rem 1rem;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
-        outline: none;
-        font-size: 0.85rem;
-        width: 100%;
-        min-width: 240px;
-        transition: border-color 0.2s;
-    }
-
-    .search-box input:focus {
-        border-color: var(--primary-color, #800020);
-    }
-
-    /* Responsive */
-    @media (max-width: 1024px) {
-        .kpi-grid { grid-template-columns: repeat(3, 1fr); }
-        .dashboard-grid-2col { grid-template-columns: 1fr; }
-        .status-distribution-grid { grid-template-columns: repeat(3, 1fr); }
-    }
-
-    @media (max-width: 640px) {
-        .kpi-grid { grid-template-columns: 1fr; }
-        .status-distribution-grid { grid-template-columns: repeat(2, 1fr); }
-        .rev-summary-grid { grid-template-columns: 1fr; }
-        .engage-grid { grid-template-columns: 1fr; }
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/business_summary.css') }}?v=2.0">
 {% endblock %}
 
 {% block content %}
 <div class="overview-container">
 
-    <!-- ══ HEADER & TIMEFRAME BAR ══ -->
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- 1. PAGE HEADER & TIMEFRAME FILTER                           -->
+    <!-- ─────────────────────────────────────────────────────────── -->
     <div class="overview-header-banner">
         <div class="overview-header-text">
-            <h2><i class="fas fa-chart-pie" style="color: var(--primary-color, #800020);"></i> Business Overview</h2>
-            <p>Monitor your catering business activity, bookings, payments, and customer engagement.</p>
+            <h1><i class="fas fa-chart-pie" style="color: var(--primary-color, #ff7b54);"></i> Business Overview</h1>
+            <p>Monitor your catering business performance, bookings, revenue trends, packages, and customer feedback.</p>
         </div>
 
         <div class="filter-wrapper">
-            <span class="filter-label"><i class="fas fa-calendar-alt text-slate-400"></i> Performance Overview:</span>
-            <form method="GET" action="/caterer/business-summary" id="timeframeForm" style="display: flex; align-items: center; gap: 8px;">
-                <select name="timeframe" id="timeframeSelect" class="occ-input" onchange="handleTimeframeChange(this)" style="padding: 0.5rem 1rem; min-width: 170px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: 700; color: #334155; cursor: pointer; outline: none; background: #ffffff;">
+            <span class="filter-label"><i class="fas fa-calendar-alt"></i> Timeframe:</span>
+            <form method="GET" action="/caterer/business-summary" id="timeframeForm" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <select name="timeframe" id="timeframeSelect" class="timeframe-select-custom" onchange="handleTimeframeChange(this)">
                     <option value="today" {% if timeframe == 'today' %}selected{% endif %}>Today</option>
                     <option value="week" {% if timeframe == 'week' %}selected{% endif %}>This Week</option>
-                    <option value="month" {% if timeframe == 'month' %}selected{% endif %}>This Month</option>
+                    <option value="month" {% if timeframe == 'month' or not timeframe %}selected{% endif %}>This Month</option>
                     <option value="last_month" {% if timeframe == 'last_month' %}selected{% endif %}>Last Month</option>
                     <option value="year" {% if timeframe == 'year' %}selected{% endif %}>This Year</option>
                     <option value="custom" {% if timeframe == 'custom' %}selected{% endif %}>Custom Date Range</option>
+                    <option value="all_time" {% if timeframe == 'all_time' %}selected{% endif %}>All Time</option>
                 </select>
 
-                <div id="customDateContainer" class="custom-date-inputs" style="{% if timeframe == 'custom' %}display: flex;{% else %}display: none;{% endif %}">
-                    <input type="date" name="start_date" value="{{ start_date }}" class="occ-input" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid #cbd5e1;">
-                    <span style="font-size: 0.75rem; color: #94a3b8;">to</span>
-                    <input type="date" name="end_date" value="{{ end_date }}" class="occ-input" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid #cbd5e1;">
-                    <button type="submit" class="btn-primary" style="padding: 0.45rem 0.85rem; font-size: 0.8rem; border-radius: 6px; border: none; cursor: pointer; background: var(--primary-color, #800020); color: white;">Apply</button>
+                <div id="customDateContainer" class="custom-date-inputs {% if timeframe == 'custom' %}is-active{% endif %}">
+                    <input type="date" name="start_date" id="startDateInput" value="{{ start_date }}" required>
+                    <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">to</span>
+                    <input type="date" name="end_date" id="endDateInput" value="{{ end_date }}" required>
+                    <button type="submit" class="btn-apply-filter">Apply</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- ══ A. KEY BUSINESS METRICS (TOP 5 SUMMARY CARDS) ══ -->
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- 2. TOP 5 KPI CARDS                                          -->
+    <!-- ─────────────────────────────────────────────────────────── -->
     <div class="kpi-grid">
         <!-- 1. Total Bookings -->
         <div class="kpi-card accent-primary">
             <div class="kpi-header">
                 <span class="kpi-title">Total Bookings</span>
-                <div class="kpi-icon" style="background: #fff1f2; color: #be123c;"><i class="fas fa-book-open"></i></div>
+                <div class="kpi-icon" style="background: rgba(255, 123, 84, 0.12); color: var(--primary-color, #ff7b54);">
+                    <i class="fas fa-book-open"></i>
+                </div>
             </div>
             <div class="kpi-value">{{ total_bookings }}</div>
             <div class="kpi-subtext">Received in selected timeframe</div>
@@ -544,17 +63,21 @@
         <div class="kpi-card accent-blue">
             <div class="kpi-header">
                 <span class="kpi-title">Upcoming Events</span>
-                <div class="kpi-icon" style="background: #e0f2fe; color: #0369a1;"><i class="fas fa-calendar-check"></i></div>
+                <div class="kpi-icon" style="background: #f0f9ff; color: #0284c7;">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
             </div>
             <div class="kpi-value">{{ upcoming_events_count }}</div>
-            <div class="kpi-subtext">Scheduled active events</div>
+            <div class="kpi-subtext">Confirmed upcoming bookings</div>
         </div>
 
         <!-- 3. Completed Events -->
         <div class="kpi-card accent-emerald">
             <div class="kpi-header">
                 <span class="kpi-title">Completed Events</span>
-                <div class="kpi-icon" style="background: #dcfce7; color: #166534;"><i class="fas fa-flag-checkered"></i></div>
+                <div class="kpi-icon" style="background: #ecfdf5; color: #10b981;">
+                    <i class="fas fa-flag-checkered"></i>
+                </div>
             </div>
             <div class="kpi-value">{{ completed_events_count }}</div>
             <div class="kpi-subtext">Fulfilled events in timeframe</div>
@@ -564,237 +87,314 @@
         <div class="kpi-card accent-amber">
             <div class="kpi-header">
                 <span class="kpi-title">Pending Bookings</span>
-                <div class="kpi-icon" style="background: #fef3c7; color: #b45309;"><i class="fas fa-hourglass-half"></i></div>
+                <div class="kpi-icon" style="background: #fffbeb; color: #f59e0b;">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
             </div>
             <div class="kpi-value">{{ pending_bookings_count }}</div>
-            <div class="kpi-subtext">Inquiries &amp; awaiting payment</div>
-        </div>
-
-        <!-- 5. Total Revenue -->
-        <div class="kpi-card accent-purple">
-            <div class="kpi-header">
-                <span class="kpi-title">Total Revenue</span>
-                <div class="kpi-icon" style="background: #f3e8ff; color: #7e22ce;"><i class="fas fa-coins"></i></div>
-            </div>
-            <div class="kpi-value" style="font-size: 1.45rem;">₱{{ "{:,.2f}".format(total_revenue) }}</div>
-            <div class="kpi-subtext">Total booking value in timeframe</div>
+            <div class="kpi-subtext">Awaiting action or verification</div>
         </div>
     </div>
 
-    <!-- ══ B. BOOKING OVERVIEW (STATUS DISTRIBUTION) ══ -->
-    <div class="section-card">
-        <div class="section-header">
-            <h3><i class="fas fa-stream" style="color: var(--primary-color, #800020);"></i> Booking Overview</h3>
-            <span style="font-size: 0.78rem; color: #64748b; font-weight: 600;">Booking counts for the selected timeframe</span>
+    <!-- 5. Total Booking Value (Featured Highlight Card) -->
+    <div class="kpi-featured-card">
+        <div class="kpi-featured-left">
+            <span class="kpi-featured-title">Total Booking Value</span>
+            <div class="kpi-featured-value">₱{{ "{:,.2f}".format(total_revenue) }}</div>
+            <span class="kpi-featured-sub">Gross contract value of all active bookings in the selected timeframe</span>
         </div>
-        <div class="section-body">
-            <div class="status-distribution-grid">
-                <div class="status-tile" style="border-left: 3px solid #f59e0b;">
-                    <div class="status-tile-count" style="color: #b45309;">{{ status_counts.pending }}</div>
-                    <div class="status-tile-label">Pending / Inquiries</div>
-                </div>
-                <div class="status-tile" style="border-left: 3px solid #0284c7;">
-                    <div class="status-tile-count" style="color: #0369a1;">{{ status_counts.awaiting }}</div>
-                    <div class="status-tile-label">Awaiting Payment</div>
-                </div>
-                <div class="status-tile" style="border-left: 3px solid #10b981;">
-                    <div class="status-tile-count" style="color: #047857;">{{ status_counts.confirmed }}</div>
-                    <div class="status-tile-label">Confirmed</div>
-                </div>
-                <div class="status-tile" style="border-left: 3px solid #6366f1;">
-                    <div class="status-tile-count" style="color: #4338ca;">{{ status_counts.preparing }}</div>
-                    <div class="status-tile-label">In Preparation</div>
-                </div>
-                <div class="status-tile" style="border-left: 3px solid #16a34a;">
-                    <div class="status-tile-count" style="color: #15803d;">{{ status_counts.completed }}</div>
-                    <div class="status-tile-label">Completed</div>
-                </div>
-                <div class="status-tile" style="border-left: 3px solid #ef4444;">
-                    <div class="status-tile-count" style="color: #dc2626;">{{ status_counts.cancelled }}</div>
-                    <div class="status-tile-label">Cancelled</div>
-                </div>
+        <div class="kpi-featured-right">
+            <div class="kpi-featured-icon">
+                <i class="fas fa-coins"></i>
             </div>
         </div>
     </div>
 
-    <!-- ══ C. REVENUE & PAYMENTS (FINANCIAL ANALYTICS & TREND) ══ -->
-    <div class="section-card">
-        <div class="section-header">
-            <div>
-                <h3><i class="fas fa-wallet" style="color: #16a34a;"></i> Revenue &amp; Payments</h3>
-                <span style="font-size: 0.78rem; color: #64748b;">Overall financial performance and revenue trend</span>
-            </div>
-            <a href="/caterer/payments" class="section-action-link">View Payments &amp; Earnings <i class="fas fa-arrow-right"></i></a>
-        </div>
-        <div class="section-body">
-            <!-- 3 Financial Cards -->
-            <div class="rev-summary-grid">
-                <div class="rev-card" style="background: #f8fafc; border: 1px solid #e2e8f0;">
-                    <span class="rev-card-title" style="color: #64748b;">Total Booking Value / Revenue</span>
-                    <span class="rev-card-val" style="color: #0f172a;">₱{{ "{:,.2f}".format(total_revenue) }}</span>
-                    <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 500;">Recorded for selected timeframe</span>
-                </div>
-                <div class="rev-card" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
-                    <span class="rev-card-title" style="color: #166534;">Amount Paid</span>
-                    <span class="rev-card-val" style="color: #166534;">₱{{ "{:,.2f}".format(total_paid) }}</span>
-                    <span style="font-size: 0.72rem; color: #15803d; font-weight: 500;">Verified collected funds</span>
-                </div>
-                <div class="rev-card" style="background: #eff6ff; border: 1px solid #bfdbfe;">
-                    <span class="rev-card-title" style="color: #1e40af;">Pending Balance</span>
-                    <span class="rev-card-val" style="color: #1e40af;">₱{{ "{:,.2f}".format(pending_balance) }}</span>
-                    <span style="font-size: 0.72rem; color: #3b82f6; font-weight: 500;">Outstanding client balances</span>
-                </div>
-            </div>
-
-            <!-- Collection Progress -->
-            <div style="background: #f8fafc; border-radius: 10px; padding: 1.1rem 1.25rem; border: 1px solid #e2e8f0; font-size: 0.85rem; color: #475569; margin-bottom: 1.5rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <span style="font-weight: 700; color: #1e293b;">Payment Collection Progress:</span>
-                    <strong style="color: #0f172a; font-size: 1rem;">
-                        {% if total_revenue > 0 %}
-                            {{ "{:.1f}".format((total_paid / total_revenue) * 100) }}%
-                        {% else %}
-                            0.0%
-                        {% endif %}
-                    </strong>
-                </div>
-                <div style="height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden;">
-                    <div style="height: 100%; width: {% if total_revenue > 0 %}{{ [((total_paid / total_revenue) * 100), 100]|min }}{% else %}0{% endif %}%; background: linear-gradient(90deg, #10b981, #059669); transition: width 0.4s ease;"></div>
-                </div>
-                <div style="margin-top: 8px; font-size: 0.78rem; color: #64748b; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
-                    <span>Calculated directly from verified customer payments vs total booking contract value.</span>
-                    <span style="color: #0284c7; font-weight: 600;"><i class="fas fa-info-circle"></i> Granular payment proofs &amp; invoices are in Payments &amp; Earnings</span>
-                </div>
-            </div>
-
-            <!-- Revenue Trend Chart -->
-            <div style="background: #ffffff; border: 1px solid #f1f5f9; border-radius: 10px; padding: 1.25rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                        <i class="fas fa-chart-line" style="color: var(--primary-color, #c2414f);"></i> Revenue Trend
-                    </h4>
-                    <span style="font-size: 0.75rem; color: #64748b; font-weight: 600; background: #f8fafc; padding: 3px 10px; border-radius: 20px; border: 1px solid #e2e8f0;">
-                        Last 6 Months
-                    </span>
-                </div>
-                <div style="height: 250px; width: 100%; position: relative;">
-                    <canvas id="revenueTrendChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ══ ROW: D. PACKAGE PERFORMANCE & E. CUSTOMER ENGAGEMENT ══ -->
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- 3. BOOKING OVERVIEW & REVENUE PERFORMANCE (2 COLUMNS)       -->
+    <!-- ─────────────────────────────────────────────────────────── -->
     <div class="dashboard-grid-2col">
-        <!-- D. PACKAGE PERFORMANCE -->
-        <div class="section-card">
-            <div class="section-header">
-                <div>
-                    <h3><i class="fas fa-boxes-stacked" style="color: #8b5cf6;"></i> Package Performance</h3>
-                    <span style="font-size: 0.78rem; color: #64748b;">Which packages are generating bookings &amp; revenue</span>
-                </div>
-                <a href="/caterer/services" class="section-action-link">View Packages <i class="fas fa-arrow-right"></i></a>
-            </div>
-            <div class="section-body" style="padding: 0;">
-                <div style="overflow-x: auto;">
-                    <table class="premium-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
-                        <thead>
-                            <tr style="background: #f8fafc; border-bottom: 1.5px solid #f1f5f9;">
-                                <th style="padding: 0.85rem 1.25rem; font-weight: 800; color: #64748b; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: left;">Package</th>
-                                <th style="padding: 0.85rem 1rem; font-weight: 800; color: #64748b; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: center;">Bookings</th>
-                                <th style="padding: 0.85rem 1.25rem; font-weight: 800; color: #64748b; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Revenue</th>
-                                <th style="padding: 0.85rem 1.25rem; font-weight: 800; color: #64748b; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Avg. Value</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% if top_packages %}
-                                {% for pkg in top_packages %}
-                                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;">
-                                    <td style="padding: 0.9rem 1.25rem; font-weight: 700; color: #0f172a;">
-                                        <i class="fas fa-box" style="color: #a855f7; margin-right: 6px; font-size: 0.85rem;"></i>
-                                        {{ pkg.name }}
-                                    </td>
-                                    <td style="padding: 0.9rem 1rem; text-align: center;">
-                                        <span style="background: #f0f9ff; color: #0284c7; font-weight: 800; padding: 3px 10px; border-radius: 6px; font-size: 0.78rem;">
-                                            {{ pkg.bookings }}
-                                        </span>
-                                    </td>
-                                    <td style="padding: 0.9rem 1.25rem; font-weight: 800; color: #0f172a; text-align: right; white-space: nowrap;">
-                                        ₱{{ "{:,.2f}".format(pkg.revenue) }}
-                                    </td>
-                                    <td style="padding: 0.9rem 1.25rem; font-weight: 700; color: #64748b; text-align: right; white-space: nowrap;">
-                                        ₱{{ "{:,.2f}".format(pkg.avg_value or 0.0) }}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            {% else %}
-                                <tr>
-                                    <td colspan="4" style="padding: 2.5rem; text-align: center; color: #94a3b8;">
-                                        <i class="fas fa-box-open" style="font-size: 2rem; color: #cbd5e1; margin-bottom: 0.5rem; display: block;"></i>
-                                        No package bookings recorded in this timeframe.
-                                    </td>
-                                </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
 
-        <!-- E. CUSTOMER ENGAGEMENT -->
+        <!-- A. BOOKING OVERVIEW (STATUS DISTRIBUTION) -->
         <div class="section-card">
             <div class="section-header">
-                <div>
-                    <h3><i class="fas fa-comments" style="color: #f59e0b;"></i> Customer Engagement</h3>
-                    <span style="font-size: 0.78rem; color: #64748b;">Live profile, request, and rating analytics</span>
+                <div class="section-header-text">
+                    <h3><i class="fas fa-stream" style="color: var(--primary-color, #ff7b54);"></i> Booking Overview</h3>
+                    <p>Current distribution of bookings across operational stages.</p>
                 </div>
-                <a href="/caterer/reviews" class="section-action-link">View All Reviews <i class="fas fa-arrow-right"></i></a>
             </div>
             <div class="section-body">
-                <!-- Engagement metrics 2x2 + 1 -->
-                <div class="engage-grid" style="margin-bottom: 1.25rem;">
+                <div class="status-distribution-grid">
+                    <!-- Pending / Inquiries -->
+                    <div class="status-tile" style="border-top: 3px solid #f59e0b;">
+                        <i class="fas fa-hourglass-start status-tile-icon" style="color: #d97706;"></i>
+                        <div class="status-tile-count" style="color: #b45309;">{{ status_counts.pending }}</div>
+                        <div class="status-tile-label">Pending / Inquiries</div>
+                    </div>
+
+                    <!-- Awaiting Payment -->
+                    <div class="status-tile" style="border-top: 3px solid #0284c7;">
+                        <i class="fas fa-receipt status-tile-icon" style="color: #0284c7;"></i>
+                        <div class="status-tile-count" style="color: #0369a1;">{{ status_counts.awaiting }}</div>
+                        <div class="status-tile-label">Awaiting Payment</div>
+                    </div>
+
+                    <!-- Confirmed -->
+                    <div class="status-tile" style="border-top: 3px solid #10b981;">
+                        <i class="fas fa-check-circle status-tile-icon" style="color: #10b981;"></i>
+                        <div class="status-tile-count" style="color: #047857;">{{ status_counts.confirmed }}</div>
+                        <div class="status-tile-label">Confirmed</div>
+                    </div>
+
+                    <!-- In Preparation -->
+                    <div class="status-tile" style="border-top: 3px solid #8b5cf6;">
+                        <i class="fas fa-utensils status-tile-icon" style="color: #8b5cf6;"></i>
+                        <div class="status-tile-count" style="color: #6d28d9;">{{ status_counts.preparing }}</div>
+                        <div class="status-tile-label">In Preparation</div>
+                    </div>
+
+                    <!-- Completed -->
+                    <div class="status-tile" style="border-top: 3px solid #16a34a;">
+                        <i class="fas fa-calendar-check status-tile-icon" style="color: #16a34a;"></i>
+                        <div class="status-tile-count" style="color: #15803d;">{{ status_counts.completed }}</div>
+                        <div class="status-tile-label">Completed</div>
+                    </div>
+
+                    <!-- Cancelled -->
+                    <div class="status-tile" style="border-top: 3px solid #ef4444;">
+                        <i class="fas fa-times-circle status-tile-icon" style="color: #ef4444;"></i>
+                        <div class="status-tile-count" style="color: #dc2626;">{{ status_counts.cancelled }}</div>
+                        <div class="status-tile-label">Cancelled</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- B. REVENUE PERFORMANCE -->
+        <div class="section-card">
+            <div class="section-header">
+                <div class="section-header-text">
+                    <h3><i class="fas fa-chart-line" style="color: #10b981;"></i> Revenue Performance</h3>
+                    <p>Business booking value and payment collection progress.</p>
+                </div>
+                <a href="/caterer/payments" class="section-action-link">
+                    Payments &amp; Earnings <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+            <div class="section-body">
+                <!-- 2 Revenue Summary Cards -->
+                <div class="rev-summary-grid">
+                    <div class="rev-card" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                        <span class="rev-card-title" style="color: #64748b;">Gross Booking Value</span>
+                        <span class="rev-card-val" style="color: #0f172a;">₱{{ "{:,.2f}".format(total_revenue) }}</span>
+                        <span class="rev-card-hint" style="color: #94a3b8;">Total contracts in timeframe</span>
+                    </div>
+                    <div class="rev-card" style="background: #ecfdf5; border: 1px solid #bbf7d0;">
+                        <span class="rev-card-title" style="color: #166534;">Verified Collected</span>
+                        <span class="rev-card-val" style="color: #166534;">₱{{ "{:,.2f}".format(total_paid) }}</span>
+                        <span class="rev-card-hint" style="color: #059669;">Verified customer payments</span>
+                    </div>
+                </div>
+
+                <!-- Collection Progress Bar -->
+                <div class="collection-progress-box">
+                    {% set col_pct = ((total_paid / total_revenue) * 100) if total_revenue > 0 else 0 %}
+                    <div class="collection-progress-hdr">
+                        <span style="font-weight: 700; color: #1e293b;">Payment Collection Progress:</span>
+                        <strong style="color: #0f172a; font-size: 0.95rem;">{{ "{:.0f}".format(col_pct) }}%</strong>
+                    </div>
+                    <div class="collection-progress-bar-bg">
+                        <div class="collection-progress-fill" style="width: {{ [col_pct, 100]|min }}%;"></div>
+                    </div>
+                    <div class="collection-progress-footer">
+                        <span>Calculated from verified customer payments vs total booking contract value.</span>
+                        <a href="/caterer/payments" style="color: var(--primary-color, #ff7b54); text-decoration: none; font-weight: 700;">
+                            View Details <i class="fas fa-chevron-right" style="font-size: 0.65rem;"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- 4. REVENUE TREND CHART (FULL WIDTH)                         -->
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-header-text">
+                <h3><i class="fas fa-chart-area" style="color: var(--primary-color, #ff7b54);"></i> Revenue Trend</h3>
+                <p>Business booking value and sales volume over the last 6 months.</p>
+            </div>
+            <span style="font-size: 0.76rem; color: #64748b; font-weight: 700; background: #f8fafc; padding: 4px 12px; border-radius: 20px; border: 1px solid #e2e8f0;">
+                <i class="fas fa-calendar-alt" style="margin-right: 4px;"></i> Last 6 Months
+            </span>
+        </div>
+        <div class="section-body">
+            {% set has_trend_data = (revenue_trend_values and revenue_trend_values|sum > 0) %}
+            {% if has_trend_data %}
+            <div style="height: 260px; width: 100%; position: relative;">
+                <canvas id="revenueTrendChart"></canvas>
+            </div>
+            {% else %}
+            <div class="biz-empty-box">
+                <div class="biz-empty-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h4>No revenue data available for the selected period</h4>
+                <p>Completed and confirmed bookings will show revenue trend performance over time.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- 5. PACKAGE PERFORMANCE (TABLE)                              -->
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-header-text">
+                <h3><i class="fas fa-boxes-stacked" style="color: #8b5cf6;"></i> Package Performance</h3>
+                <p>Identify which catering packages are most popular and contribute most to bookings.</p>
+            </div>
+            <a href="/caterer/services" class="section-action-link">
+                View Packages <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+        <div class="section-body" style="padding: 0;">
+            {% if top_packages and top_packages|length > 0 %}
+            <div class="table-container">
+                <table class="premium-table">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">Package Name</th>
+                            <th style="text-align: center;">Bookings</th>
+                            <th style="text-align: right;">Total Booking Value</th>
+                            <th style="text-align: right;">Average Booking Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pkg in top_packages %}
+                        <tr>
+                            <td style="font-weight: 700; color: #0f172a;">
+                                <i class="fas fa-box" style="color: #a855f7; margin-right: 6px; font-size: 0.85rem;"></i>
+                                {{ pkg.name }}
+                            </td>
+                            <td style="text-align: center;">
+                                <span style="background: #f0f9ff; color: #0284c7; font-weight: 800; padding: 3px 10px; border-radius: 6px; font-size: 0.78rem;">
+                                    {{ pkg.bookings }}
+                                </span>
+                            </td>
+                            <td style="font-weight: 800; color: #0f172a; text-align: right; white-space: nowrap;">
+                                ₱{{ "{:,.2f}".format(pkg.revenue) }}
+                            </td>
+                            <td style="font-weight: 700; color: #64748b; text-align: right; white-space: nowrap;">
+                                ₱{{ "{:,.2f}".format(pkg.avg_value or 0.0) }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="biz-empty-box">
+                <div class="biz-empty-icon">
+                    <i class="fas fa-box-open"></i>
+                </div>
+                <h4>No package performance data available yet</h4>
+                <p>Packages will be ranked as customer bookings are placed and confirmed.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- 6. CUSTOMER ENGAGEMENT & REVIEWS (2 COLUMNS)                -->
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <div class="dashboard-grid-2col">
+
+        <!-- A. CUSTOMER ENGAGEMENT -->
+        <div class="section-card">
+            <div class="section-header">
+                <div class="section-header-text">
+                    <h3><i class="fas fa-users" style="color: #0284c7;"></i> Customer Engagement</h3>
+                    <p>Live profile interactions and customer request metrics.</p>
+                </div>
+            </div>
+            <div class="section-body">
+                <div class="engage-grid">
+                    <!-- 1. Profile Views -->
                     <div class="engage-box">
-                        <div class="engage-icon" style="background: #e0f2fe; color: #0284c7;"><i class="fas fa-eye"></i></div>
+                        <div class="engage-icon" style="background: #f0f9ff; color: #0284c7;">
+                            <i class="fas fa-eye"></i>
+                        </div>
                         <div>
                             <div class="engage-val">{{ profile_views }}</div>
                             <div class="engage-lbl">Profile Views</div>
                         </div>
                     </div>
+
+                    <!-- 2. Booking Requests -->
                     <div class="engage-box">
-                        <div class="engage-icon" style="background: #fef3c7; color: #d97706;"><i class="fas fa-clipboard-list"></i></div>
+                        <div class="engage-icon" style="background: #fffbeb; color: #d97706;">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
                         <div>
                             <div class="engage-val">{{ booking_requests }}</div>
                             <div class="engage-lbl">Booking Requests</div>
                         </div>
                     </div>
+
+                    <!-- 3. Customer Reviews -->
                     <div class="engage-box">
-                        <div class="engage-icon" style="background: #dcfce7; color: #166534;"><i class="fas fa-check-circle"></i></div>
-                        <div>
-                            <div class="engage-val">{{ completed_events_count }}</div>
-                            <div class="engage-lbl">Completed Bookings</div>
+                        <div class="engage-icon" style="background: #f5f3ff; color: #7e22ce;">
+                            <i class="fas fa-comments"></i>
                         </div>
-                    </div>
-                    <div class="engage-box">
-                        <div class="engage-icon" style="background: #f3e8ff; color: #7e22ce;"><i class="fas fa-star"></i></div>
                         <div>
                             <div class="engage-val">{{ total_reviews }}</div>
                             <div class="engage-lbl">Customer Reviews</div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Reviews & Rating summary -->
-                <div class="feedback-overview-header" style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 10px; padding: 0.85rem 1rem; margin-bottom: 1rem;">
-                    <div class="feedback-score-badge" style="color: #b45309; font-size: 1.4rem;">
-                        <i class="fas fa-star" style="color: #f59e0b;"></i> {{ avg_rating }} / 5.0
+                    <!-- 4. Average Rating -->
+                    <div class="engage-box">
+                        <div class="engage-icon" style="background: #fefce8; color: #eab308;">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div>
+                            <div class="engage-val">{{ avg_rating }} <span style="font-size: 0.85rem; font-weight: 600; color: #94a3b8;">/ 5.0</span></div>
+                            <div class="engage-lbl">Average Rating</div>
+                        </div>
                     </div>
-                    <div style="font-size: 0.82rem; color: #92400e;">
-                        Average Rating from <strong>{{ total_reviews }}</strong> verified client review{{ 's' if total_reviews != 1 else '' }}
+                </div>
+            </div>
+        </div>
+
+        <!-- B. CUSTOMER REVIEWS -->
+        <div class="section-card">
+            <div class="section-header">
+                <div class="section-header-text">
+                    <h3><i class="fas fa-star" style="color: #f59e0b;"></i> Customer Reviews</h3>
+                    <p>Verified ratings and feedback from past catering clients.</p>
+                </div>
+                <a href="/caterer/reviews" class="section-action-link">
+                    View All Reviews <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+            <div class="section-body">
+                <!-- Average Rating Header Badge -->
+                <div class="reviews-rating-header">
+                    <div class="reviews-score-badge">
+                        <i class="fas fa-star"></i> {{ avg_rating }} / 5.0
+                    </div>
+                    <div style="font-size: 0.82rem; color: #92400e; font-weight: 600;">
+                        Based on {{ total_reviews }} client review{{ 's' if total_reviews != 1 else '' }}
                     </div>
                 </div>
 
                 <!-- Recent Review Quotes -->
-                {% if recent_reviews %}
+                {% if recent_reviews and recent_reviews|length > 0 %}
                     {% for rev in recent_reviews %}
                     <div class="review-quote-card">
                         <div class="review-quote-top">
@@ -808,93 +408,142 @@
                         <div class="review-quote-text">
                             "{{ rev.comment or 'Great catering service provided!' }}"
                         </div>
+                        {% if rev.created_at %}
+                        <div class="review-quote-date">
+                            {{ rev.created_at.strftime('%B %Y') }}
+                        </div>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 {% else %}
-                    <div style="padding: 1rem; text-align: center; color: #94a3b8; font-size: 0.82rem;">
-                        No customer reviews received yet.
+                    <div class="biz-empty-box" style="padding: 1.5rem 1rem;">
+                        <div class="biz-empty-icon" style="width: 40px; height: 40px; font-size: 1rem;">
+                            <i class="fas fa-comment-slash"></i>
+                        </div>
+                        <h4>No customer reviews yet</h4>
+                        <p>Reviews will appear here as completed events receive client feedback.</p>
                     </div>
                 {% endif %}
             </div>
         </div>
+
     </div>
 
-    <!-- ══ F. RECENT BOOKINGS ACTIVITY TABLE ══ -->
+    <!-- ─────────────────────────────────────────────────────────── -->
+    <!-- 7. RECENT BOOKING ACTIVITY                                  -->
+    <!-- ─────────────────────────────────────────────────────────── -->
     <div class="section-card">
         <div class="section-header">
-            <div>
-                <h3><i class="fas fa-list-check" style="color: var(--primary-color, #800020);"></i> Recent Booking Activity</h3>
-                <span style="font-size: 0.78rem; color: #64748b;">Detailed bookings within the selected timeframe</span>
+            <div class="section-header-text">
+                <h3><i class="fas fa-list-check" style="color: var(--primary-color, #ff7b54);"></i> Recent Booking Activity</h3>
+                <p>Latest booking activity in the selected timeframe (showing up to 10 latest).</p>
             </div>
-            <div class="search-box">
-                <input type="text" id="bookingsSearchInput" placeholder="Search by ID, Customer, or Event..." onkeyup="filterRecentBookingsTable()">
+            <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                <div class="search-box">
+                    <input type="text" id="bookingsSearchInput" placeholder="Search Customer, ID, or Event..." onkeyup="filterRecentBookingsTable()">
+                </div>
+                <a href="/caterer/bookings" class="section-action-link" style="white-space: nowrap;">
+                    View All Bookings <i class="fas fa-arrow-right"></i>
+                </a>
             </div>
         </div>
 
-        <div class="premium-table-wrapper" style="border: none; box-shadow: none; padding: 0;">
-            <table class="premium-table" id="recentBookingsTable">
-                <thead>
-                    <tr>
-                        <th>Booking ID</th>
-                        <th>Event Type</th>
-                        <th>Customer Ref</th>
-                        <th>Event Date</th>
-                        <th>Package</th>
-                        <th style="text-align: right;">Amount</th>
-                        <th style="text-align: center;">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in recent_bookings %}
-                    <tr class="premium-row">
-                        <td class="premium-cell" data-label="Booking ID" style="color: #64748b; font-weight: 700; white-space: nowrap;">
-                            #BK-{{ "%06d"|format(row.id) }}
-                        </td>
-                        <td class="premium-cell" data-label="Event Type" style="font-weight: 600; color: #0f172a; white-space: nowrap;">
-                            {{ row.event_type }}
-                        </td>
-                        <td class="premium-cell" data-label="Customer Ref" style="font-weight: 600; color: #334155; white-space: nowrap;">
-                            {{ row.customer_ref }}
-                        </td>
-                        <td class="premium-cell" data-label="Event Date" style="color: #475569; white-space: nowrap;">
-                            {{ row.event_date.strftime('%b %d, %Y') if row.event_date else 'N/A' }}
-                        </td>
-                        <td class="premium-cell" data-label="Package" style="color: #475569; font-weight: 500;">
-                            {{ row.package_name }}
-                        </td>
-                        <td class="premium-cell" data-label="Amount" style="font-weight: 800; color: #0f172a; text-align: right; white-space: nowrap;">
-                            ₱{{ "{:,.2f}".format(row.amount) }}
-                        </td>
-                        <td class="premium-cell" data-label="Status" style="text-align: center; white-space: nowrap;">
-                            {% set st = row.status %}
-                            {% if st == 'completed' %}
-                                <span class="badge-status-chip" style="background: #dcfce7; color: #166534;">Completed</span>
-                            {% elif st == 'confirmed' %}
-                                <span class="badge-status-chip" style="background: #e0f2fe; color: #0369a1;">Confirmed</span>
-                            {% elif st in ['preparing', 'ready_for_delivery', 'on_the_way', 'in_progress', 'setup_ongoing'] %}
-                                <span class="badge-status-chip" style="background: #f3e8ff; color: #7e22ce;">{{ st.replace('_', ' ') }}</span>
-                            {% elif st in ['cancelled', 'rejected'] %}
-                                <span class="badge-status-chip" style="background: #fee2e2; color: #991b1b;">Cancelled</span>
-                            {% else %}
-                                <span class="badge-status-chip" style="background: #fef3c7; color: #b45309;">{{ st.replace('_', ' ') }}</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="7" class="premium-cell" style="text-align: center; padding: 3rem; color: #94a3b8; background: #f8fafc;">
-                            <i class="fas fa-folder-open" style="font-size: 2rem; color: #cbd5e1; margin-bottom: 0.75rem; display: block;"></i>
-                            No bookings found for the selected timeframe.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="section-body" style="padding: 0;">
+            {% if recent_bookings and recent_bookings|length > 0 %}
+            <div class="table-container">
+                <table class="premium-table" id="recentBookingsTable">
+                    <thead>
+                        <tr>
+                            <th>Booking ID</th>
+                            <th>Event Type</th>
+                            <th>Customer</th>
+                            <th>Event Date</th>
+                            <th>Package</th>
+                            <th style="text-align: right;">Booking Value</th>
+                            <th style="text-align: center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in recent_bookings[:10] %}
+                        <tr class="recent-booking-row">
+                            <!-- Booking ID -->
+                            <td style="font-weight: 700; white-space: nowrap;">
+                                <a href="/caterer/bookings?booking_id={{ row.id }}" style="color: var(--primary-color, #ff7b54); text-decoration: none;">
+                                    #BK-{{ "%06d"|format(row.id) }}
+                                </a>
+                            </td>
+
+                            <!-- Event Type -->
+                            <td style="font-weight: 600; color: #0f172a; white-space: nowrap;">
+                                {{ row.event_type }}
+                            </td>
+
+                            <!-- Customer -->
+                            <td style="font-weight: 600; color: #334155; white-space: nowrap;">
+                                {{ row.customer_ref }}
+                            </td>
+
+                            <!-- Event Date -->
+                            <td style="color: #475569; white-space: nowrap; font-weight: 500;">
+                                {{ row.event_date.strftime('%b %d, %Y') if row.event_date else 'N/A' }}
+                            </td>
+
+                            <!-- Package -->
+                            <td style="color: #475569; font-weight: 500;">
+                                {{ row.package_name }}
+                            </td>
+
+                            <!-- Booking Value -->
+                            <td style="font-weight: 800; color: #0f172a; text-align: right; white-space: nowrap;">
+                                ₱{{ "{:,.2f}".format(row.amount) }}
+                            </td>
+
+                            <!-- Status -->
+                            <td style="text-align: center; white-space: nowrap;">
+                                {% set st = row.status %}
+                                {% if st == 'completed' %}
+                                    <span class="badge-status-chip" style="background: #dcfce7; color: #166534;">Completed</span>
+                                {% elif st == 'confirmed' %}
+                                    <span class="badge-status-chip" style="background: #e0f2fe; color: #0369a1;">Confirmed</span>
+                                {% elif st in ['preparing', 'ready_for_delivery', 'on_the_way', 'in_progress', 'setup_ongoing'] %}
+                                    <span class="badge-status-chip" style="background: #f3e8ff; color: #7e22ce;">{{ st.replace('_', ' ') }}</span>
+                                {% elif st in ['cancelled', 'rejected'] %}
+                                    <span class="badge-status-chip" style="background: #fee2e2; color: #991b1b;">Cancelled</span>
+                                {% else %}
+                                    <span class="badge-status-chip" style="background: #fef3c7; color: #b45309;">{{ st.replace('_', ' ') }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty Search Fallback inside table -->
+            <div id="noBookingsSearchMatch" class="biz-empty-box" style="display: none;">
+                <div class="biz-empty-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h4>No bookings matched your search</h4>
+                <p>Try searching with another customer name, booking ID, or event type.</p>
+            </div>
+
+            {% else %}
+            <div class="biz-empty-box">
+                <div class="biz-empty-icon">
+                    <i class="fas fa-calendar-times"></i>
+                </div>
+                <h4>No recent booking activity</h4>
+                <p>Booking records for the selected timeframe will appear here.</p>
+            </div>
+            {% endif %}
         </div>
     </div>
 
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
@@ -906,22 +555,22 @@ document.addEventListener('DOMContentLoaded', function() {
     if (ctx && trendLabels && trendLabels.length > 0) {
         const chartCtx = ctx.getContext('2d');
         const gradient = chartCtx.createLinearGradient(0, 0, 0, 240);
-        gradient.addColorStop(0, 'rgba(234, 88, 12, 0.22)');
-        gradient.addColorStop(1, 'rgba(234, 88, 12, 0.01)');
+        gradient.addColorStop(0, 'rgba(255, 123, 84, 0.25)');
+        gradient.addColorStop(1, 'rgba(255, 123, 84, 0.01)');
 
         new Chart(ctx, {
             type: 'line',
             data: {
                 labels: trendLabels,
                 datasets: [{
-                    label: 'Monthly Revenue',
+                    label: 'Booking Value (PHP)',
                     data: trendValues,
-                    borderColor: '#ea580c',
+                    borderColor: '#ff7b54',
                     borderWidth: 2.5,
                     backgroundColor: gradient,
                     fill: true,
                     tension: 0.35,
-                    pointBackgroundColor: '#ea580c',
+                    pointBackgroundColor: '#ff7b54',
                     pointBorderColor: '#ffffff',
                     pointBorderWidth: 2,
                     pointRadius: 4.5,
@@ -936,7 +585,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                return ' Revenue: ₱' + Number(context.raw).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                return ' Booking Value: ₱' + Number(context.raw).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                             }
                         }
                     }
@@ -965,42 +614,33 @@ document.addEventListener('DOMContentLoaded', function() {
 function handleTimeframeChange(select) {
     const customContainer = document.getElementById("customDateContainer");
     if (select.value === 'custom') {
-        customContainer.style.display = 'flex';
+        if (customContainer) customContainer.classList.add('is-active');
     } else {
-        customContainer.style.display = 'none';
-        document.getElementById("timeframeForm").submit();
+        if (customContainer) customContainer.classList.remove('is-active');
+        const form = document.getElementById("timeframeForm");
+        if (form) form.submit();
     }
 }
 
 function filterRecentBookingsTable() {
     const input = document.getElementById("bookingsSearchInput");
-    const filter = input.value.toUpperCase();
-    const table = document.getElementById("recentBookingsTable");
-    const tr = table.getElementsByTagName("tr");
+    const filter = input ? input.value.toUpperCase().trim() : "";
+    const rows = document.querySelectorAll("#recentBookingsTable tbody tr.recent-booking-row");
+    let matchCount = 0;
 
-    for (let i = 1; i < tr.length; i++) {
-        let tdId = tr[i].getElementsByTagName("td")[0];
-        let tdType = tr[i].getElementsByTagName("td")[1];
-        let tdCust = tr[i].getElementsByTagName("td")[2];
-        let tdPkg = tr[i].getElementsByTagName("td")[4];
+    rows.forEach(tr => {
+        const text = tr.textContent.toUpperCase();
+        if (!filter || text.indexOf(filter) > -1) {
+            tr.style.display = "";
+            matchCount++;
+        } else {
+            tr.style.display = "none";
+        }
+    });
 
-        if (tdId || tdType || tdCust || tdPkg) {
-            let txtId = tdId ? (tdId.textContent || tdId.innerText) : "";
-            let txtType = tdType ? (tdType.textContent || tdType.innerText) : "";
-            let txtCust = tdCust ? (tdCust.textContent || tdCust.innerText) : "";
-            let txtPkg = tdPkg ? (tdPkg.textContent || tdPkg.innerText) : "";
-
-            if (
-                txtId.toUpperCase().indexOf(filter) > -1 || 
-                txtType.toUpperCase().indexOf(filter) > -1 || 
-                txtCust.toUpperCase().indexOf(filter) > -1 ||
-                txtPkg.toUpperCase().indexOf(filter) > -1
-            ) {
-                tr[i].style.display = "";
-            } else {
-                tr[i].style.display = "none";
-            }
-        }       
+    const noMatch = document.getElementById("noBookingsSearchMatch");
+    if (noMatch) {
+        noMatch.style.display = (matchCount === 0 && filter !== "") ? "block" : "none";
     }
 }
 </script>
