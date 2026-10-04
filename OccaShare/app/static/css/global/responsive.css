@@ -141,12 +141,16 @@ button {
     h3 { font-size: 18px !important; }
 
     /* --- Buttons --- */
-    .btn-primary, .btn-secondary, .btn-outline, .btn-white, .btn-lg, .btn-action-primary, .btn-clean, button[type="submit"] {
-        width: 100% !important;
+    .btn-primary, .btn-secondary, .btn-outline, .btn-white, .btn-lg, .btn-action-primary, .btn-clean, button[type="submit"],
+    button, .btn, .page-btn, .pagination button, .pagination a {
+        width: auto !important;
+        max-width: 100% !important;
+        min-width: fit-content !important;
         justify-content: center !important;
         text-align: center !important;
-        height: 56px !important;
-        min-height: 56px !important;
+        height: 48px !important;
+        min-height: 48px !important;
+        white-space: nowrap !important;
     }
 
     /* --- Sticky Sidebars Disabled --- */
@@ -173,21 +177,127 @@ button {
         object-fit: cover !important;
     }
 
-    /* --- Tables: Turn rows into cards OR allow scroll --- */
-    .table-container, .table-responsive, .elite-table-wrap, .management-terminal-elite, table {
+    /* --- Tables: keep structure, allow horizontal scroll on the container --- */
+    .table-container, .table-responsive, .elite-table-wrap, .management-terminal-elite,
+    .bookings-table-scroll-wrapper, .premium-table-wrapper, .pay-table-wrap,
+    .pay-data-wrap, .table-scroll-wrapper {
         display: block !important;
         width: 100% !important;
+        max-width: 100% !important;
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch !important;
     }
-    
+
+    .table-container > table, .table-responsive > table, .elite-table-wrap > table,
+    .management-terminal-elite > table, .bookings-table-scroll-wrapper > table,
+    .premium-table-wrapper > table, .pay-table-wrap > table, .pay-data-wrap > table,
+    .table-scroll-wrapper > table,
+    table:not(.calendar-table) {
+        display: table !important;
+        min-width: 680px !important;
+        width: max-content !important;
+        max-width: none !important;
+        table-layout: auto !important;
+    }
+
+    th, td, table th, table td,
+    .table-dashboard th, .table-dashboard td,
+    .data-table th, .data-table td {
+        white-space: nowrap !important;
+    }
+
+    /* Ensure core caterer settings and upload modules stack cleanly */
+    .occ-form-grid, .grid-two-col {
+        grid-template-columns: 1fr !important;
+    }
+
+    .branding-grid, .branding-card, .verif-summary-banner,
+    .uploaded-doc-item, .upload-dropzone-box, .avail-toggle-bar,
+    .sticky-settings-action-bar, .action-bar-buttons {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .branding-card, .verif-summary-banner,
+    .uploaded-doc-item, .upload-dropzone-box,
+    .avail-toggle-bar {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .branding-card-header {
+        align-items: flex-start !important;
+        gap: 0.75rem !important;
+    }
+
+    .branding-card-title,
+    .status-badge-saved, .status-badge-empty,
+    .uploaded-doc-info, .uploaded-doc-info > *,
+    .branding-helper-text, .upload-dropzone-box > * {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        word-break: normal !important;
+        overflow-wrap: anywhere !important;
+    }
+
+    .status-badge-saved, .status-badge-empty {
+        flex: 0 0 auto !important;
+        white-space: nowrap !important;
+    }
+
+    .branding-actions-row,
+    .uploaded-doc-actions,
+    .action-bar-buttons {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        width: 100% !important;
+    }
+
+    .btn-media-replace, .btn-media-remove,
+    .btn-bar-cancel, .btn-bar-save {
+        width: 100% !important;
+        min-width: 0 !important;
+        justify-content: center !important;
+    }
+
+    .logo-preview-box { width: min(100%, 130px) !important; height: 130px !important; }
+    .cover-preview-box { width: 100% !important; height: 140px !important; }
+
     /* Modals */
-    .modal-content, .admin-modal-card, .sweet-alert, .swal2-popup {
-        width: 95% !important;
-        max-width: 95% !important;
-        margin: 1rem auto !important;
-        max-height: 90vh !important;
+    .modal,
+    .modal-dialog,
+    .occ-modal-overlay,
+    .occ-modal-box,
+    .modal-content,
+    .admin-modal-card,
+    .sweet-alert,
+    .swal2-popup {
+        width: min(100%, calc(100vw - 20px)) !important;
+        max-width: calc(100vw - 20px) !important;
+        margin: 0.5rem auto !important;
+        box-sizing: border-box !important;
+    }
+
+    .modal-body,
+    .occ-modal-body,
+    .pkg-wizard-content,
+    .modal-content .modal-body,
+    .swal2-html-container {
         overflow-y: auto !important;
+        overflow-x: hidden !important;
+        max-height: calc(100vh - 190px) !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .modal-footer,
+    .occ-modal-footer,
+    .pkg-wizard-footer-btn,
+    .footer-actions-row,
+    .action-row {
+        flex-wrap: wrap !important;
+        gap: 12px !important;
     }
 
     /* Fix header/nav wrapping */
@@ -208,9 +318,11 @@ button {
         flex-direction: column !important;
         gap: 16px !important;
     }
-    .filter-bar input, .filter-bar select, .search-filter-row input, .search-filter-row select {
+    .filter-bar input, .filter-bar select, .search-filter-row input, .search-filter-row select,
+    input, select, textarea {
         width: 100% !important;
         min-width: 0 !important;
+        max-width: 100% !important;
     }
 
     /* Tabs Horizontal Scrolling */
@@ -228,8 +340,8 @@ button {
 
     /* Text wrap enforcement */
     p, span, div {
-        word-break: break-word;
         overflow-wrap: break-word;
+        word-break: normal;
     }
 }
 

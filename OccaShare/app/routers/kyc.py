@@ -20,8 +20,6 @@ import time
 import traceback
 import random
 
-# Security Constants
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 ALLOWED_MIME_TYPES = ["image/jpeg", "image/png"]
 
 router = APIRouter(prefix="/api/bookings", tags=["kyc"])
@@ -92,10 +90,6 @@ async def extract_id(
     ext = os.path.splitext(id_document.filename)[1].lower()
     if ext not in [".jpg", ".jpeg", ".png"]:
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload JPG or PNG image only.")
-    
-    # 2. File Size Validation (Max 10MB)
-    if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File is too large. Maximum size is 10MB.")
     
     id_url = upload_file_to_cloudinary(content, folder="valid_ids")
     if not id_url:
@@ -223,10 +217,6 @@ async def upload_id(
     ext = os.path.splitext(id_document.filename)[1].lower()
     if ext not in [".jpg", ".jpeg", ".png"]:
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload JPG or PNG image only.")
-    
-    # 2. File Size Validation (Max 10MB)
-    if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File is too large. Maximum size is 10MB.")
     
     id_url = upload_file_to_cloudinary(content, folder="valid_ids")
     if not id_url:

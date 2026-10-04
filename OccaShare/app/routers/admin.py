@@ -14,6 +14,7 @@ from sqlalchemy import func, String, or_
 import json, re, asyncio
 from ..services.realtime import manager
 from ..services.verification import verification_service
+from ..services.commission import get_commission_rate_percent
 from sqlalchemy import or_
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -200,7 +201,10 @@ async def get_sidebar_badges(
 
     # Reports & Analytics (Action Needed: pending invoices/payouts)
     revenue_count = db.query(models.BillingInvoice).filter(
-        models.BillingInvoice.status == 'pending'
+        models.BillingInvoice.status.in_(('pending', 'processing')),
+        models.BillingInvoice.booking_id.is_(None),
+        models.BillingInvoice.payment_proof_url.isnot(None),
+        models.BillingInvoice.payment_proof_url != ''
     ).count()
 
     return {
@@ -437,7 +441,7 @@ async def admin_dashboard(
     
     # Dynamic commission check 
     config = db.query(models.WebsiteConfig).first()
-    commission_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
+    commission_rate = get_commission_rate_percent(config) / 100.0
     
     platform_earnings = total_revenue * commission_rate
 
@@ -765,18 +769,69 @@ async def manage_commissions(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    # Fetch invoices
-    pending_invoices = db.query(models.BillingInvoice).filter(
-        models.BillingInvoice.status == 'pending'
+    from sqlalchemy.orm import joinedload
+
+    submitted_statuses = ('pending', 'processing')
+    pending_invoices = db.query(models.BillingInvoice).options(
+        joinedload(models.BillingInvoice.caterer),
+        joinedload(models.BillingInvoice.booking)
+    ).filter(
+        models.BillingInvoice.status.in_(submitted_statuses),
+        models.BillingInvoice.booking_id.is_(None),
+        models.BillingInvoice.payment_proof_url.isnot(None),
+        models.BillingInvoice.payment_proof_url != ''
     ).order_by(models.BillingInvoice.created_at.desc()).all()
 
-    recent_paid = db.query(models.BillingInvoice).filter(
-        models.BillingInvoice.status == 'paid'
-    ).order_by(models.BillingInvoice.created_at.desc()).limit(15).all()
-    
+    paid_invoices = db.query(models.BillingInvoice).filter(
+        models.BillingInvoice.status == 'paid',
+        models.BillingInvoice.booking_id.is_(None),
+        models.BillingInvoice.payment_proof_url.isnot(None),
+        models.BillingInvoice.payment_proof_url != ''
+    ).order_by(models.BillingInvoice.created_at.desc()).all()
+    recent_paid = paid_invoices[:15]
+
     rejected_count = db.query(models.BillingInvoice).filter(
-        models.BillingInvoice.status == 'rejected'
+        models.BillingInvoice.status == 'rejected',
+        models.BillingInvoice.booking_id.is_(None),
+        models.BillingInvoice.payment_proof_url.isnot(None),
+        models.BillingInvoice.payment_proof_url != ''
     ).count()
+
+    booking_due_rows = db.query(models.BillingInvoice).options(
+        joinedload(models.BillingInvoice.booking)
+    ).filter(
+        models.BillingInvoice.booking_id.isnot(None),
+        models.BillingInvoice.status.in_(submitted_statuses)
+    ).all()
+    batch_booking_totals = {}
+    for due_row in booking_due_rows:
+        if not due_row.booking:
+            continue
+        total, count = batch_booking_totals.get(due_row.caterer_id, (0.0, 0))
+        batch_booking_totals[due_row.caterer_id] = (
+            total + float(due_row.booking.total_amount or due_row.booking.total_price or 0.0),
+            count + 1
+        )
+
+    current_commission_rate = get_commission_rate_percent(db.query(models.WebsiteConfig).first()) / 100.0
+    for invoice in pending_invoices:
+        invoice.display_commission_rate = (
+            invoice.commission_rate
+            if invoice.booking_id is not None and invoice.commission_rate is not None
+            else current_commission_rate
+        )
+        if invoice.booking:
+            invoice.display_booking_amount = float(
+                invoice.booking.total_amount or invoice.booking.total_price or 0.0
+            )
+            invoice.display_booking_count = 1
+        elif invoice.booking_id is None:
+            invoice.display_booking_amount, invoice.display_booking_count = batch_booking_totals.get(
+                invoice.caterer_id, (0.0, 0)
+            )
+        else:
+            invoice.display_booking_amount = None
+            invoice.display_booking_count = 0
 
     from datetime import datetime
     from sqlalchemy import extract
@@ -784,12 +839,15 @@ async def manage_commissions(
     now = datetime.utcnow()
     monthly_collections = db.query(models.BillingInvoice).filter(
         models.BillingInvoice.status == 'paid',
+        models.BillingInvoice.booking_id.is_(None),
+        models.BillingInvoice.payment_proof_url.isnot(None),
+        models.BillingInvoice.payment_proof_url != '',
         extract('month', models.BillingInvoice.created_at) == now.month,
         extract('year', models.BillingInvoice.created_at) == now.year
     ).all()
     
     pending_total = float(sum((inv.amount or 0.0) for inv in pending_invoices) or 0.0)
-    paid_total = float(sum((inv.amount or 0.0) for inv in recent_paid) or 0.0)
+    paid_total = float(sum((inv.amount or 0.0) for inv in paid_invoices) or 0.0)
     monthly_total = float(sum((inv.amount or 0.0) for inv in monthly_collections) or 0.0)
 
     return templates.TemplateResponse("admin/payouts.html", {
@@ -801,6 +859,7 @@ async def manage_commissions(
         "paid_total": paid_total,
         "rejected_count": rejected_count,
         "monthly_total": monthly_total,
+        "commission_rate_percent": current_commission_rate * 100.0,
         "active_page": "commissions"
     })
 
@@ -813,8 +872,33 @@ async def approve_invoice(
     invoice = db.query(models.BillingInvoice).get(invoice_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
+    if invoice.booking_id is not None or invoice.status not in ('pending', 'processing') or not invoice.payment_proof_url:
+        raise HTTPException(status_code=409, detail="This invoice has no submitted settlement proof.")
         
     invoice.status = "paid"
+
+    if invoice.booking_id is None and invoice.caterer:
+        covered_invoices = db.query(models.BillingInvoice).filter(
+            models.BillingInvoice.caterer_id == invoice.caterer_id,
+            models.BillingInvoice.booking_id.isnot(None),
+            models.BillingInvoice.status == 'processing'
+        ).all()
+        if not covered_invoices and invoice.created_at:
+            covered_invoices = db.query(models.BillingInvoice).filter(
+                models.BillingInvoice.caterer_id == invoice.caterer_id,
+                models.BillingInvoice.booking_id.isnot(None),
+                models.BillingInvoice.status.in_(('pending', 'overdue')),
+                models.BillingInvoice.created_at <= invoice.created_at
+            ).all()
+        for covered_invoice in covered_invoices:
+            covered_invoice.status = 'settled'
+
+        remaining_invoices = db.query(models.BillingInvoice).filter(
+            models.BillingInvoice.caterer_id == invoice.caterer_id,
+            models.BillingInvoice.booking_id.isnot(None),
+            models.BillingInvoice.status.in_(('pending', 'processing'))
+        ).all()
+        invoice.caterer.outstanding_balance = sum(float(row.amount or 0.0) for row in remaining_invoices)
     
     # Audit Log
     audit = models.AuditLog(
@@ -837,13 +921,28 @@ async def reject_invoice(
     invoice = db.query(models.BillingInvoice).get(invoice_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
+    if invoice.booking_id is not None or invoice.status not in ('pending', 'processing') or not invoice.payment_proof_url:
+        raise HTTPException(status_code=409, detail="This invoice has no submitted settlement proof.")
         
     invoice.status = "rejected"
     
-    # Return the amount back to caterer's outstanding balance
     caterer = invoice.caterer
     if caterer:
-        caterer.outstanding_balance = float(caterer.outstanding_balance or 0.0) + float(invoice.amount)
+        if invoice.booking_id is None:
+            covered_invoices = db.query(models.BillingInvoice).filter(
+                models.BillingInvoice.caterer_id == invoice.caterer_id,
+                models.BillingInvoice.booking_id.isnot(None),
+                models.BillingInvoice.status == 'processing'
+            ).all()
+            for covered_invoice in covered_invoices:
+                covered_invoice.status = 'pending'
+
+            open_invoices = db.query(models.BillingInvoice).filter(
+                models.BillingInvoice.caterer_id == invoice.caterer_id,
+                models.BillingInvoice.booking_id.isnot(None),
+                models.BillingInvoice.status.in_(('pending', 'processing'))
+            ).all()
+            caterer.outstanding_balance = sum(float(row.amount or 0.0) for row in open_invoices)
         
     audit = models.AuditLog(
         user_id=user.id,
@@ -887,7 +986,6 @@ async def update_website_settings(
     request: Request,
     site_name: str = Form(...),
     support_email: str = Form(...),
-    seo_desc: str = Form(...),
     fb_link: Optional[str] = Form(None),
     ig_link: Optional[str] = Form(None),
     tw_link: Optional[str] = Form(None),
@@ -928,7 +1026,7 @@ async def update_website_settings(
         return {"success": False, "message": "Commission rate must be between 0% and 100%."}
     
     if max_upload is not None and (max_upload < 1 or max_upload > 100):
-        return {"success": False, "message": "Max attachment size must be between 1MB and 100MB."}
+        return {"success": False, "message": "Maximum upload file size must be between 1MB and 100MB."}
 
     # 📝 AUDIT PREPARATION (Capture old values)
     changes = []
@@ -943,7 +1041,6 @@ async def update_website_settings(
     # APPLY CHANGES
     config.site_name = site_name
     config.support_email = support_email
-    config.seo_description = seo_desc
     config.facebook_link = fb_link
     config.instagram_link = ig_link
     config.twitter_link = tw_link
@@ -1361,7 +1458,6 @@ async def edit_caterer(
     caterer_id: int,
     city: Optional[str] = Form(None),
     coverage_area: Optional[str] = Form(None),
-    commission_rate: Optional[str] = Form(None),
     admin_remarks: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
@@ -1377,15 +1473,6 @@ async def edit_caterer(
         caterer.coverage_area = coverage_area.strip() or None
     if admin_remarks is not None:
         caterer.admin_remarks = admin_remarks.strip() or None
-    if commission_rate is not None and str(commission_rate).strip() != "":
-        try:
-            rate = float(commission_rate)
-            if rate < 0 or rate > 1:
-                return {"success": False, "message": "Commission rate must be between 0 and 1 (e.g. 0.05 for 5%)."}
-            caterer.commission_rate = rate
-        except ValueError:
-            return {"success": False, "message": "Invalid commission rate."}
-
     db.commit()
 
     asyncio.create_task(manager.broadcast({
@@ -2288,16 +2375,23 @@ async def admin_revenue(
         joinedload(models.BillingInvoice.booking)
     ).order_by(models.BillingInvoice.created_at.desc()).all()
     
-    total_commission_revenue = sum((inv.amount or 0.0) for inv in invoices if inv.status == 'paid')
+    verified_invoices = [
+        inv for inv in invoices
+        if inv.status == 'paid' and inv.booking_id is None and inv.payment_proof_url
+    ]
+    total_commission_revenue = sum((inv.amount or 0.0) for inv in verified_invoices)
     
     now = datetime.utcnow()
     monthly_revenue = sum(
-        (inv.amount or 0.0) for inv in invoices 
-        if inv.status == 'paid' and inv.created_at and inv.created_at.month == now.month and inv.created_at.year == now.year
+        (inv.amount or 0.0) for inv in verified_invoices
+        if inv.created_at and inv.created_at.month == now.month and inv.created_at.year == now.year
     )
     
-    pending_collection = sum((inv.amount or 0.0) for inv in invoices if inv.status != 'paid')
-    verified_payments_count = sum(1 for inv in invoices if inv.status == 'paid')
+    pending_collection = sum(
+        (inv.amount or 0.0) for inv in invoices
+        if inv.booking_id is not None and inv.status in ('pending', 'processing')
+    )
+    verified_payments_count = len(verified_invoices)
 
     metrics_context = {
         "total_commission_revenue": total_commission_revenue,
@@ -2418,9 +2512,10 @@ async def admin_reports(
     # Commissions are recorded in two places: caterer billing invoices (caterer
     # settles the platform cut) and payout items (platform cut withheld from a
     # payout). A booking is only counted once, through whichever exists first.
-    INVOICE_COMMISSION_STATUSES = ['pending', 'paid']
+    INVOICE_COMMISSION_STATUSES = ['pending', 'processing', 'settled', 'paid']
     invoice_commission = db.query(func.sum(models.BillingInvoice.amount)).filter(
-        models.BillingInvoice.status.in_(INVOICE_COMMISSION_STATUSES)
+        models.BillingInvoice.status.in_(INVOICE_COMMISSION_STATUSES),
+        models.BillingInvoice.booking_id.isnot(None)
     ).scalar() or 0.0
     invoiced_booking_ids = {
         row[0] for row in db.query(models.BillingInvoice.booking_id).filter(

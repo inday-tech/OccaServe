@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Depends, Request, HTTPException, WebSocket, WebSocketDisconnect
 # Trigger reload for DB schema sync
 from fastapi.responses import RedirectResponse, JSONResponse, Response
 import os
@@ -26,6 +26,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from .core.config import settings
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from .core.security import SECRET_KEY, ALGORITHM
+from .core.upload_limits import validate_upload_size
 from jose import jwt, JWTError
 
 from contextlib import asynccontextmanager
@@ -500,7 +501,7 @@ async def lifespan(app: FastAPI):
 
     yield  # App runs here
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, dependencies=[Depends(validate_upload_size)])
 
 
 import traceback
@@ -631,7 +632,6 @@ def get_website_config():
             "id": config.id,
             "site_name": config.site_name,
             "support_email": config.support_email,
-            "seo_description": config.seo_description,
             "logo_url": config.logo_url,
             "favicon_url": config.favicon_url,
             "facebook_link": config.facebook_link,

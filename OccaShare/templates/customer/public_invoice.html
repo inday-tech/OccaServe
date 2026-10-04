@@ -279,18 +279,25 @@
             <div class="total-box">
                 <div class="total-row">
                     <span style="color: var(--text-muted);">Subtotal</span>
-                    <span>₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</span>
+                    <span>₱{{ "{:,.2f}".format(payment_summary.total_amount) }}</span>
                 </div>
-                {% set reservation = booking.reservation_fee or ((booking.total_amount or 0) * 0.3) %}
                 <div class="total-row" style="color: #ea580c; font-weight: 600;">
-                    <span>Required Downpayment</span>
+                    <span>{% if reservation >= payment_summary.total_amount %}Required Full Payment{% else %}Required Downpayment{% endif %}</span>
                     <span>₱{{ "{:,.2f}".format(reservation) }}</span>
+                </div>
+                <div class="total-row">
+                    <span style="color: var(--text-muted);">Verified Amount Paid</span>
+                    <span>₱{{ "{:,.2f}".format(payment_summary.verified_paid) }}</span>
+                </div>
+                <div class="total-row">
+                    <span style="color: var(--text-muted);">Remaining Balance</span>
+                    <span>₱{{ "{:,.2f}".format(payment_summary.remaining_balance) }}</span>
                 </div>
                 <div class="total-row grand-total">
                     <span>Total Amount</span>
-                    <span>₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</span>
+                    <span>₱{{ "{:,.2f}".format(payment_summary.total_amount) }}</span>
                 </div>
-                <p style="font-size: 0.8rem; color: var(--text-muted); text-align: right; margin-top: 8px;">*You may choose to pay only the downpayment to secure the booking.</p>
+                <p style="font-size: 0.8rem; color: var(--text-muted); text-align: right; margin-top: 8px;">Amounts reflect payments verified by the caterer. Submitted proofs are not counted as paid until verified.</p>
             </div>
         </div>
         
@@ -299,6 +306,7 @@
             <h2 style="color: var(--text-main);"><i class="fas fa-wallet" style="color: var(--primary);"></i> Select Payment Method</h2>
             <p style="color: var(--text-muted); margin-bottom: 2rem;">Choose your preferred method to pay securely.</p>
             
+            {% if not payment_summary.is_under_review and payment_summary.remaining_balance > 0.009 %}
             <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 2rem;">
                 {% if booking.caterer and booking.caterer.gcash_qr_url %}
                 <button onclick="openPaymentModal('gcash')" style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 1.5rem; width: 140px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
@@ -323,17 +331,18 @@
                 
                 
             </div>
+            {% endif %}
             
-            {% if booking.payment_status in ['paid', 'deposit_paid'] %}
-                <div style="background: #dcfce7; color: #166534; padding: 1rem; border-radius: 8px; font-weight: 700;">
-                    <i class="fas fa-check-circle"></i> Payment Verified by Caterer
-                </div>
-            {% elif booking.payment_status == 'proof_submitted' %}
+            {% if payment_summary.is_under_review %}
                 <div style="background: #fef9c3; color: #854d0e; padding: 1rem; border-radius: 8px; font-weight: 700;">
-                    <i class="fas fa-clock"></i> Verifying Payment...
+                    <i class="fas fa-clock"></i> Payment proof is under review. You can submit the next payment after it is verified.
+                </div>
+            {% elif payment_summary.remaining_balance <= 0.009 %}
+                <div style="background: #dcfce7; color: #166534; padding: 1rem; border-radius: 8px; font-weight: 700;">
+                    <i class="fas fa-check-circle"></i> Fully paid and verified by the caterer.
                 </div>
             {% else %}
-                <p style="font-size: 0.85rem; color: #64748b; margin-top: 1rem; margin-bottom: 0;">Click on a payment method above to view details and upload your proof of payment.</p>
+                <p style="font-size: 0.85rem; color: #64748b; margin-top: 1rem; margin-bottom: 0;">Select a payment method, then submit proof for the amount due shown below.</p>
             {% endif %}
         </div>
     </div>
@@ -395,6 +404,7 @@
             
             <hr style="border: none; border-top: 1px solid var(--border); margin: 2rem 0;">
             
+            {% if not payment_summary.is_under_review and payment_summary.remaining_balance > 0.009 %}
             <h4 style="font-size: 1rem; color: var(--text-main); margin-bottom: 1rem;"><i class="fas fa-cloud-upload-alt" style="color: var(--primary);"></i> Submit Proof of Payment</h4>
         <form id="paymentUploadForm" action="/customer/booking/{{ booking.id }}/upload-proof" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="payment_method" id="inputPaymentMethod" value="">
@@ -404,14 +414,23 @@
                 <div style="margin-bottom: 1.25rem;">
                     <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text-main);">Payment Type</label>
                     <div style="display: flex; gap: 1rem;">
+                        {% if payment_summary.verified_paid > 0 %}
                         <label style="flex: 1; border: 1px solid var(--border); padding: 0.75rem; border-radius: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8fafc;">
-                            <input type="radio" name="payment_amount_type" value="downpayment" checked> 
-                            <span>Downpayment (₱{{ "{:,.2f}".format(reservation) }})</span>
+                            <input type="radio" name="payment_amount_type" value="balance" checked required>
+                            <span>Remaining Balance (₱{{ "{:,.2f}".format(payment_summary.remaining_balance) }})</span>
                         </label>
-                        <label style="flex: 1; border: 1px solid var(--border); padding: 0.75rem; border-radius: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8fafc;">
-                            <input type="radio" name="payment_amount_type" value="full"> 
-                            <span>Full (₱{{ "{:,.2f}".format(booking.total_amount or 0) }})</span>
-                        </label>
+                        {% else %}
+                            {% if reservation > 0 and reservation < payment_summary.total_amount %}
+                            <label style="flex: 1; border: 1px solid var(--border); padding: 0.75rem; border-radius: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8fafc;">
+                                <input type="radio" name="payment_amount_type" value="deposit" checked required>
+                                <span>Downpayment (₱{{ "{:,.2f}".format(reservation) }})</span>
+                            </label>
+                            {% endif %}
+                            <label style="flex: 1; border: 1px solid var(--border); padding: 0.75rem; border-radius: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8fafc;">
+                                <input type="radio" name="payment_amount_type" value="full" {% if reservation >= payment_summary.total_amount %}checked{% endif %} required>
+                                <span>Full Payment (₱{{ "{:,.2f}".format(payment_summary.total_amount) }})</span>
+                            </label>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -430,6 +449,7 @@
                     Upload & Notify Caterer
                 </button>
             </form>
+            {% endif %}
         </div>
     </div>
 </div>

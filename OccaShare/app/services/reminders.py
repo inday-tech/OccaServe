@@ -1,7 +1,18 @@
 import datetime
+import calendar
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from app.db.models import Booking, Notification, CatererProfile, User
+from app.db.models import Booking, BillingInvoice, Notification, CatererProfile, User
+
+
+def billing_period_due_date(billing_period: str, fallback_date=None):
+    try:
+        period_date = datetime.datetime.strptime(billing_period, "%B %Y").date()
+    except (TypeError, ValueError):
+        period_date = fallback_date or datetime.date.today()
+
+    last_day = calendar.monthrange(period_date.year, period_date.month)[1]
+    return datetime.date(period_date.year, period_date.month, last_day)
 
 def generate_caterer_reminders(user_id: int, db: Session):
     """
@@ -79,3 +90,51 @@ def generate_caterer_reminders(user_id: int, db: Session):
                 )
                 db.add(new_notif)
                 db.commit()
+
+    invoices = db.query(BillingInvoice).filter(
+        BillingInvoice.caterer_id == profile.id,
+        BillingInvoice.status.in_(["pending", "overdue"]),
+        BillingInvoice.payment_proof_url.is_(None)
+    ).all()
+    invoice_changes = False
+
+    for invoice in invoices:
+        fallback_date = invoice.created_at.date() if invoice.created_at else today
+        due_date = invoice.due_date or billing_period_due_date(invoice.billing_period, fallback_date)
+        if invoice.due_date is None:
+            invoice.due_date = due_date
+            invoice_changes = True
+
+        days_until_due = (due_date - today).days
+        if days_until_due > 3:
+            continue
+
+        is_overdue = days_until_due < 0
+        title = "Commission Invoice Overdue" if is_overdue else "Commission Payment Due Soon"
+        invoice_ref = f"INV-{invoice.id:04d}"
+        link = f"/caterer/payments#commission-invoice-{invoice.id}"
+        message = (
+            f"Commission invoice {invoice_ref} for {invoice.billing_period} "
+            f"(₱{float(invoice.amount or 0):,.2f}) was due on {due_date:%b %d, %Y}."
+            if is_overdue else
+            f"Commission invoice {invoice_ref} for {invoice.billing_period} "
+            f"(₱{float(invoice.amount or 0):,.2f}) is due on {due_date:%b %d, %Y}. "
+            "Please submit the payment proof before the due date."
+        )
+        existing = db.query(Notification).filter(
+            Notification.user_id == user_id,
+            Notification.title == title,
+            Notification.link == link
+        ).first()
+        if not existing:
+            db.add(Notification(
+                user_id=user_id,
+                title=title,
+                message=message,
+                type="alert" if is_overdue else "reminder",
+                link=link
+            ))
+            invoice_changes = True
+
+    if invoice_changes:
+        db.commit()

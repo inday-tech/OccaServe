@@ -4,6 +4,7 @@ import re
 import numpy as np
 from PIL import Image, ImageOps
 import io
+from typing import Optional
 from sqlalchemy.orm import Session
 from datetime import datetime
 from ..db import models
@@ -171,7 +172,13 @@ class PaymentVerificationService:
             print(f"[PaymentVerify DEBUG] OCR Error: {e}")
             return {"error": str(e)}
 
-    async def check_for_fraud(self, db: Session, booking: models.Booking, base64_str: str) -> dict:
+    async def check_for_fraud(
+        self,
+        db: Session,
+        booking: models.Booking,
+        base64_str: str,
+        expected_amount: Optional[float] = None
+    ) -> dict:
         """Runs a holistic fraud check on the submitted proof using Gemini."""
         import os, httpx, json, asyncio
         import base64
@@ -216,7 +223,9 @@ class PaymentVerificationService:
                 caterer_maya = caterer.maya_number or ""
                 caterer_bank = caterer.bank_account_name or ""
                 
-        expected_amount = (getattr(booking, 'total_amount', 0.0) if booking else 0.0) or 0.0
+        expected_amount = expected_amount if expected_amount is not None else (
+            (getattr(booking, 'total_amount', 0.0) if booking else 0.0) or 0.0
+        )
         expected_method = (getattr(booking, 'payment_method', 'GCASH') if booking else "GCASH") or "GCASH"
         
         prompt = f"""You are an expert financial receipt verification assistant for OccaServe catering marketplace in the Philippines.

@@ -642,7 +642,6 @@
                                 <button class="dm-dropdown-item" data-id="{{ caterer.id }}"
                                     data-city="{{ (caterer.city or '')|e }}"
                                     data-coverage="{{ (caterer.coverage_area or '')|e }}"
-                                    data-commission="{{ caterer.commission_rate if caterer.commission_rate is not none else 0.05 }}"
                                     data-remarks="{{ (caterer.admin_remarks or '')|e }}"
                                     onclick="openEditModal(this)">
                                     <i class="fas fa-edit" style="color: #64748b;"></i> Edit Profile
@@ -894,12 +893,6 @@
                     <textarea id="edit_coverage" name="coverage_area" rows="3" class="form-control"
                         style="width: 100%; border: none; outline: none; resize: vertical; font-size: 0.85rem;"
                         placeholder="Areas this partner can serve"></textarea>
-                </div>
-                <h4 class="edit-section-heading">Platform setting</h4>
-                <div class="dm-input-group" style="margin-bottom: 15px;">
-                    <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Commission rate (decimal)</label>
-                    <input type="number" step="0.01" min="0" max="1" id="edit_commission" name="commission_rate" class="form-control">
-                    <small style="font-size: 0.65rem; color: var(--adm-muted); font-weight: 600;">Example: 0.05 = 5%</small>
                 </div>
                 <h4 class="edit-section-heading">Admin-only note</h4>
                 <div class="dm-input-group">
@@ -1507,7 +1500,6 @@
         document.getElementById('edit_caterer_id').value = btn.getAttribute('data-id');
         document.getElementById('edit_city').value = btn.getAttribute('data-city') || '';
         document.getElementById('edit_coverage').value = btn.getAttribute('data-coverage') || '';
-        document.getElementById('edit_commission').value = btn.getAttribute('data-commission') || '0.05';
         document.getElementById('edit_remarks').value = btn.getAttribute('data-remarks') || '';
         document.getElementById('editCatererModal').classList.add('active');
     }

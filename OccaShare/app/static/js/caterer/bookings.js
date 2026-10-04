@@ -1437,6 +1437,16 @@ function showBookingDetails(btn) {
     window.currentBookingStatus = data.status;
     currentEventDate = data.eventDate;
 
+    const prepStatusButton = document.getElementById('btnUpdatePrepStatus');
+    const isStatusLocked = ['completed', 'delivered'].includes(bookingStatus);
+    if (prepStatusButton) {
+        prepStatusButton.disabled = isStatusLocked;
+        prepStatusButton.title = isStatusLocked ? 'Completed bookings are locked.' : 'Update preparation status';
+        prepStatusButton.innerHTML = isStatusLocked
+            ? '<i class="fas fa-lock"></i> Status Locked'
+            : '<i class="fas fa-sync-alt"></i> Update Status';
+    }
+
     // Immediately sync footer buttons so Archive/Cancel visibility is correct before hydration
     _syncFooterButtons(cleanId, bookingStatus);
 
@@ -3624,6 +3634,11 @@ window.submitDispatchProof = async function(event) {
 }
 
 function updateBookingStage(bookingId, status) {
+    if (String(bookingId) === String(currentBookingId) && ['completed', 'delivered'].includes(String(window.currentBookingStatus || '').toLowerCase())) {
+        if (window.showToast) window.showToast('Completed bookings are locked.', 'error');
+        return;
+    }
+
     if (status === 'completed') {
         confirmCompleteBooking(bookingId);
         return;
@@ -4021,6 +4036,11 @@ async function loadBookingTasks(bookingId) {
 }
 
 window.openPrepStatusModal = function() {
+    if (['completed', 'delivered'].includes(String(window.currentBookingStatus || '').toLowerCase())) {
+        if (window.showToast) window.showToast('Completed bookings are locked.', 'error');
+        return;
+    }
+
     const modal = document.getElementById('prepStatusModal');
     const list = document.getElementById('prepStatusOptions');
     if (!modal || !list) return;
@@ -4059,6 +4079,11 @@ window.closePrepStatusModal = function() {
 window.selectPrepStatus = async function(statusKey) {
     const cleanId = String(currentBookingId || '').replace(/\D/g, '');
     if (!cleanId || !statusKey) return;
+    if (['completed', 'delivered'].includes(String(window.currentBookingStatus || '').toLowerCase())) {
+        if (window.showToast) window.showToast('Completed bookings are locked.', 'error');
+        closePrepStatusModal();
+        return;
+    }
 
     try {
         const res = await fetch('/caterer/api/bookings/' + cleanId + '/preparation-status', {
@@ -4419,8 +4444,9 @@ async function loadBookingMessages(bookingId) {
 function handleModalChatFileSelect(input) {
     if (input.files && input.files[0]) {
         const file = input.files[0];
-        if (file.size > 10 * 1024 * 1024) {
-            alert('File size exceeds the 10MB limit. Please choose a smaller file.');
+        const maxSizeMb = Number(window.MAX_UPLOAD_SIZE_MB) || 5;
+        if (file.size > maxSizeMb * 1024 * 1024) {
+            alert(`File size exceeds the ${maxSizeMb}MB limit. Please choose a smaller file.`);
             input.value = '';
             return;
         }

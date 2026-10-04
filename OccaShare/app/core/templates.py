@@ -28,7 +28,6 @@ def website_config():
             "id": config.id,
             "site_name": config.site_name,
             "support_email": config.support_email,
-            "seo_description": config.seo_description,
             "logo_url": config.logo_url,
             "favicon_url": config.favicon_url,
             "facebook_link": config.facebook_link,

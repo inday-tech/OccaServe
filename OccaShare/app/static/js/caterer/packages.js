@@ -1526,7 +1526,7 @@ function resetInclusionImagePicker(currentImage = '') {
     const hint = document.getElementById('inclusionPhotoHint');
     if (hint) hint.textContent = inclusionCurrentImage
         ? 'Current photo shown. Upload a new one to replace it.'
-        : 'JPG or PNG, up to 5MB. Saved to the selected catalog item.';
+        : `JPG or PNG. Maximum size: ${Number(window.MAX_UPLOAD_SIZE_MB) || 5}MB.`;
     setInclusionPhotoPreview(inclusionCurrentImage);
 }
 window.resetInclusionImagePicker = resetInclusionImagePicker;
@@ -1548,8 +1548,9 @@ window.handleInclusionImageChange = function (event) {
         input.value = '';
         return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-        if (hint) { hint.textContent = 'Image is too large. Maximum size is 5MB.'; hint.style.color = '#dc2626'; }
+    const maxSizeMb = Number(window.MAX_UPLOAD_SIZE_MB) || 5;
+    if (file.size > maxSizeMb * 1024 * 1024) {
+        if (hint) { hint.textContent = `Image is too large. Maximum size is ${maxSizeMb}MB.`; hint.style.color = '#dc2626'; }
         input.value = '';
         return;
     }

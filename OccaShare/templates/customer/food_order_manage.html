@@ -479,6 +479,11 @@
                 <h3>Options</h3>
             </div>
             <div class="panel-body" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                {% if booking.status != 'draft' %}
+                <a href="/customer/document/{{ booking.id }}" class="btn-action-elite btn-outline-slate">
+                    View Order Invoice <i class="fas fa-file-invoice"></i>
+                </a>
+                {% endif %}
                 <a href="/customer/messages?caterer_id={{ booking.caterer.user_id }}&caterer_name={{ booking.caterer.business_name | urlencode }}" class="btn-action-elite btn-outline-slate">
                     Message Caterer <i class="fas fa-comments"></i>
                 </a>

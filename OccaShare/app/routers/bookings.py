@@ -1767,12 +1767,16 @@ async def step_details_submit(
     selected_service_addons: list[int] = Form(default=[]),
     special_requests: Optional[str] = Form(""),
     theme_motif: Optional[str] = Form(None),
+    celebrant_name: Optional[str] = Form(None),
     province: Optional[str] = Form(None),
     city: Optional[str] = Form(None),
     barangay: Optional[str] = Form(None),
     other_event_type: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
+    theme_motif = (theme_motif or "").strip()
+    celebrant_name = (celebrant_name or "").strip()
+
     # ── DEBUG: print exactly what FastAPI parsed from the form ────────────────
     print(f"[StepDetails PARAMS] caterer_id={caterer_id!r}, event_date={event_date!r}, event_time={event_time!r}, event_name={event_name!r}, guest_count={guest_count!r}, package_id={package_id!r}, booking_id={booking_id!r}")
     # ─────────────────────────────────────────────────────────────────────────
@@ -2000,7 +2004,16 @@ async def step_details_submit(
         booking.document_type = "booking_agreement"
         
         custom_reqs = booking.custom_requirements or {}
-        if theme_motif: custom_reqs["theme_motif"] = theme_motif
+        if theme_motif:
+            custom_reqs["theme_motif"] = theme_motif
+            custom_reqs.pop("motif_theme", None)
+        else:
+            custom_reqs.pop("theme_motif", None)
+            custom_reqs.pop("motif_theme", None)
+        if celebrant_name:
+            custom_reqs["celebrant_name"] = celebrant_name
+        else:
+            custom_reqs.pop("celebrant_name", None)
         sess_cust = request.session.get("booking_data", {}).get("customization")
         if not sess_cust and booking.custom_requirements:
             sess_cust = booking.custom_requirements.get("customization")
@@ -2016,6 +2029,7 @@ async def step_details_submit(
         sess_cust = request.session.get("booking_data", {}).get("customization")
         new_custom_reqs = {}
         if theme_motif: new_custom_reqs["theme_motif"] = theme_motif
+        if celebrant_name: new_custom_reqs["celebrant_name"] = celebrant_name
         if sess_cust:
             new_custom_reqs["package_type"] = "customizable"
             new_custom_reqs["customization"] = sess_cust
@@ -2571,14 +2585,6 @@ async def step_payment_submit(
         if payment_proof.content_type not in allowed_types:
             raise HTTPException(status_code=400, detail="Invalid file type. Only JPG, PNG, WEBP, and PDF are allowed.")
             
-        # File size check
-        payment_proof.file.seek(0, os.SEEK_END)
-        file_size = payment_proof.file.tell()
-        payment_proof.file.seek(0)
-        
-        if file_size > 5 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB.")
-            
         from app.services.storage import upload_file_to_cloudinary
         content_bytes = payment_proof.file.read()
         proof_url = upload_file_to_cloudinary(content_bytes, folder="payment_receipts")
@@ -2719,11 +2725,6 @@ async def alacarte_manage_payment_submit(
     if proof_image.content_type not in allowed_types:
         return {"success": False, "message": "Invalid file type. Only JPG, PNG, WEBP, and PDF are allowed."}
         
-    proof_image.file.seek(0, os.SEEK_END)
-    if proof_image.file.tell() > 5 * 1024 * 1024:
-        return {"success": False, "message": "File too large. Maximum size is 5MB."}
-    proof_image.file.seek(0)
-    
     from app.services.storage import upload_file_to_cloudinary
     content_bytes = await proof_image.read()
     proof_url = upload_file_to_cloudinary(content_bytes, folder="payment_receipts")
@@ -3171,8 +3172,6 @@ async def send_booking_message(
     attachment_url = None
     if attachment and attachment.filename:
         content_bytes = await attachment.read()
-        if len(content_bytes) > 10 * 1024 * 1024:
-            return JSONResponse({"success": False, "message": "Attachment file size exceeds 10MB limit."}, status_code=400)
             
         allowed_exts = ('.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx')
         if not attachment.filename.lower().endswith(allowed_exts):

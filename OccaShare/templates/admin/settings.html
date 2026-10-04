@@ -507,7 +507,7 @@
                             <input type="text" name="site_name" class="input-premium" value="{{ config.site_name }}" required>
                         </div>
                         <div class="input-wrapper">
-                            <label class="label-premium">Support Gateway</label>
+                            <label class="label-premium">Support Email</label>
                             <input type="email" name="support_email" class="input-premium" value="{{ config.support_email }}" required>
                         </div>
                     </div>
@@ -517,14 +517,11 @@
                             <input type="number" step="0.1" name="commission" class="input-premium" value="{{ config.commission_rate }}" min="0" max="100">
                         </div>
                         <div class="input-wrapper">
-                            <label class="label-premium">Max Attachment Size (MB)</label>
-                            <input type="number" name="max_upload" class="input-premium" value="{{ config.max_file_size_mb }}" min="1" max="50">
+                            <label class="label-premium">Maximum Upload File Size (MB)</label>
+                            <input type="number" name="max_upload" class="input-premium" value="{{ config.max_file_size_mb }}" min="1" max="100">
+                            <small>Applies to each uploaded file across the website.</small>
                         </div>
                     </div>
-                        <div class="input-wrapper" style="margin-bottom: 1rem;">
-                            <label class="label-premium">Meta Description (SEO)</label>
-                            <textarea name="seo_desc" class="input-premium" rows="3" required style="resize: none;">{{ config.seo_description }}</textarea>
-                        </div>
                     </div>
                     
                     <div class="display-header" style="margin-top: 0; border-top: 1px solid var(--dm-border); padding-top: 1rem;">

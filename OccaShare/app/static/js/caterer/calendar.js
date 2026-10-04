@@ -1423,19 +1423,86 @@ function showEventDetails(event) {
     if (specialEl) specialEl.textContent = props.special_requests || 'None';
 
     document.getElementById('evModalBookingId').value = event.id;
-    // If this is a past event, hide the Edit button to make the modal view-only
-    try {
-        const editBtn = document.getElementById('evModalEditFullBtn');
-        const today = new Date(); today.setHours(0,0,0,0);
-        if (event.start < today) {
-            if (editBtn) editBtn.style.display = 'none';
-        } else {
-            if (editBtn) editBtn.style.display = '';
-        }
-    } catch (err) { /* ignore DOM errors */ }
-
     if (window.openModal) window.openModal('eventModal');
     else document.getElementById('eventModal').style.display = 'flex';
+
+    loadCalendarBookingDetails(event.id, props);
+}
+
+async function loadCalendarBookingDetails(bookingId, eventProps) {
+    const bookingNumber = String(bookingId || '').replace(/\D/g, '');
+    if (!bookingNumber) return;
+
+    try {
+        const [bookingResponse, customerResponse] = await Promise.all([
+            fetch(`/caterer/api/bookings/${bookingNumber}/details`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            }),
+            fetch(`/caterer/api/bookings/${bookingNumber}/customer-details`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+        ]);
+        if (!bookingResponse.ok) throw new Error('Booking details could not be loaded.');
+
+        const booking = await bookingResponse.json();
+        const customer = customerResponse.ok ? await customerResponse.json() : {};
+        const payment = booking.payment_summary || {};
+        const pkg = booking.package || {};
+        const custom = booking.custom_requirements || {};
+        const setText = (id, value, fallback = '---') => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = value || fallback;
+        };
+        const money = value => `₱${Number(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+        setText('detCustomer', customer.name || booking.customer_ref || eventProps.customer);
+        setText('detContactInfo', [customer.email, customer.phone].filter(Boolean).join(' · '), 'Protected Customer Info');
+        const eventLabel = [booking.event_type, booking.event_name]
+            .filter((value, index, values) => value && values.indexOf(value) === index)
+            .join(' · ');
+        setText('detType', eventLabel || eventProps.type);
+        if (booking.event_date) {
+            const [year, month, day] = booking.event_date.split('-').map(Number);
+            const dateText = new Date(year, month - 1, day).toLocaleDateString('en-US', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            });
+            setText('detDateTime', `${dateText} at ${booking.event_time || 'TBD'}`);
+        }
+        setText('detVenue', booking.venue || eventProps.venue);
+        const packageName = pkg.name || custom.package_name || custom.package || eventProps.package || 'Custom Package';
+        const packageRate = Number(pkg.price_per_head || pkg.price || 0);
+        const priceUnit = pkg.price_unit === 'per_guest' ? '/guest' : '';
+        const rateLabel = packageRate > 0 ? ` · ${money(packageRate)}${priceUnit}` : '';
+        setText('detPackage', `${booking.guest_count || 0} Guests - ${packageName}${rateLabel}`);
+        setText('detStatusBadge', String(booking.status || 'Pending').replaceAll('_', ' '));
+
+        const paymentStatus = payment.is_under_review
+            ? 'Pending Verification'
+            : (payment.computed_payment_status || booking.payment_status || 'Unpaid');
+        setText('detPayment', String(paymentStatus).replaceAll('_', ' '));
+        setText('detTotal', money(payment.total_amount ?? booking.total_amount));
+        setText('detPaid', money(payment.verified_paid ?? booking.amount_paid));
+        setText('detBalance', money(payment.remaining_balance ?? booking.balance_amount));
+        setText('detSpecial', booking.special_requests || 'None');
+
+        const included = [];
+        for (const item of booking.selected_items || []) included.push(`${item.quantity || 1}x ${item.name}`);
+        for (const item of pkg.inclusions || []) {
+            const name = typeof item === 'string' ? item : (item.name || 'Included item');
+            if (!included.some(line => line.includes(name))) included.push(name);
+        }
+        for (const item of [...(booking.services || []), ...(booking.equipment_items || [])]) {
+            if (item.name && !included.some(line => line.includes(item.name))) included.push(item.name);
+        }
+        const inclusionsContainer = document.getElementById('detInclusionsContainer');
+        const inclusionsText = document.getElementById('detInclusions');
+        if (inclusionsContainer && inclusionsText) {
+            inclusionsText.textContent = included.join('\n');
+            inclusionsContainer.style.display = included.length ? 'block' : 'none';
+        }
+    } catch (error) {
+        console.error('Calendar booking detail fetch failed:', error);
+    }
 }
 
 function showBlockedDetails(event) {
@@ -1446,9 +1513,9 @@ function showBlockedDetails(event) {
 window.showEventDetails = showEventDetails;
 window.showBlockedDetails = showBlockedDetails;
 
-window.openShareDocumentModal = function(bookingId = null, customerName = null) {
+window.openShareDocumentModal = async function(bookingId = null, customerName = null) {
     const bId = bookingId || document.getElementById('evModalBookingId').value;
-    const cName = customerName || (document.getElementById('evModalTitle') ? document.getElementById('evModalTitle').innerText : 'Customer');
+    const cName = customerName || document.getElementById('detCustomer')?.textContent || 'Customer';
     
     if (!bId || bId === "None" || bId === "null" || bId === "undefined" || String(bId).startsWith('sched-') || String(bId).startsWith('prep-') || String(bId).startsWith('internal-')) {
         showNotification('Error', 'Invalid Booking ID or this event does not have a booking document.', 'error');
@@ -1460,6 +1527,23 @@ window.openShareDocumentModal = function(bookingId = null, customerName = null) 
     
     document.getElementById('shareDocCustomer').innerText = cName;
     document.getElementById('shareDocTitle').innerText = 'Quotation/Document for Booking #' + bId;
+    const emailEl = document.getElementById('shareDocCustomerEmail');
+    if (emailEl) emailEl.textContent = 'Loading customer account...';
+
+    try {
+        const response = await fetch(`/caterer/api/bookings/${String(bId).replace(/\D/g, '')}/customer-details`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const customer = response.ok ? await response.json() : null;
+        if (customer) {
+            document.getElementById('shareDocCustomer').textContent = customer.name || customerName || 'Customer';
+            if (emailEl) emailEl.textContent = customer.email || 'No registered customer account';
+        } else if (emailEl) {
+            emailEl.textContent = 'Customer account details unavailable';
+        }
+    } catch (error) {
+        if (emailEl) emailEl.textContent = 'Customer account details unavailable';
+    }
     
     const modal = document.getElementById('shareDocumentModal');
     if (modal) {
@@ -1468,20 +1552,25 @@ window.openShareDocumentModal = function(bookingId = null, customerName = null) 
     }
 };
 
-window.copySecureDocumentLink = function() {
+window.copySecureDocumentLink = async function() {
     const bookingId = window.currentShareBookingId;
     if (!bookingId || bookingId === "None" || bookingId === "null") return;
-    
-    // Generate a secure access link placeholder (Ideally this will use a secure hashed token from backend)
-    // For now, we route it to a generic document link that will require auth/verification
-    const url = window.location.origin + '/customer/document/' + bookingId;
-    
-    navigator.clipboard.writeText(url).then(() => {
+
+    try {
+        const response = await fetch(`/caterer/api/bookings/${String(bookingId).replace(/\D/g, '')}/document-link`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || 'Unable to create a secure document link.');
+
+        const url = new URL(result.url, window.location.origin).toString();
+        await navigator.clipboard.writeText(url);
         showNotification('Secure Link Copied!', 'You can now share this secure document link with the customer.', 'success');
         closeModal('shareDocumentModal');
-    }).catch(err => {
-        showNotification('Error', 'Failed to copy secure link', 'error');
-    });
+    } catch (error) {
+        showNotification('Error', error.message || 'Failed to create or copy the secure link.', 'error');
+    }
 };
 /* ==========================================================================
    PSGC ADDRESS API INTEGRATION
@@ -1576,7 +1665,7 @@ async function setReminder() {
         const res = await window.apiAction(`/caterer/api/bookings/${bookingId}/reminders`, {
             method: 'POST'
         });
-        if (res) {
+        if (res && res.email_sent) {
             closeModal('eventModal');
         }
     }
@@ -1677,10 +1766,16 @@ window.openSidebarEventModal = function (elem) {
     document.getElementById("detDateTime").textContent = ds.datetime || "---";
     document.getElementById("detVenue").textContent = ds.venue || "---";
     document.getElementById("detPackage").textContent = ds.package || "---";
-    document.getElementById("currentBookingId").value = ds.id || "";
+    document.getElementById('evModalBookingId').value = ds.id || '';
 
     if (window.openModal) window.openModal("eventModal");
     else document.getElementById("eventModal").style.display = "flex";
+    loadCalendarBookingDetails(ds.id, {
+        customer: ds.customerRef || ds.customer,
+        type: ds.type,
+        venue: ds.venue,
+        package: ds.package
+    });
 };
 
 function updateCapacityDisplay(data) {
@@ -1819,6 +1914,7 @@ window.showInternalScheduleDetails = function(event) {
     }
     document.getElementById('viewSchedType').innerText = event.extendedProps.eventType || event.extendedProps.type;
     document.getElementById('viewSchedPin').innerText = event.extendedProps.isPinned ? "Pinned to Dashboard" : "Not Pinned";
+    document.getElementById('viewSchedId').value = event.extendedProps.internalId || '';
     
     // Store data for editing
     document.getElementById('editScheduleBtn').onclick = function() {
@@ -1873,6 +1969,19 @@ window.showInternalScheduleDetails = function(event) {
     
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('active'), 10);
+};
+
+window.setScheduleReminder = async function() {
+    const scheduleId = document.getElementById('viewSchedId')?.value;
+    if (!scheduleId) {
+        if (window.showToast) window.showToast('Unable to identify this schedule.', 'error');
+        return;
+    }
+
+    const result = await window.apiAction(`/caterer/api/schedule/${scheduleId}/reminders`, {
+        method: 'POST'
+    });
+    if (result && result.email_sent) closeModal('internalScheduleViewModal');
 };
 
 // --- Walk-in / External Booking Wizard Logic ---

@@ -365,10 +365,36 @@
 
     .compliance-tabs {
         gap: var(--space-lg);
+        white-space: nowrap;
+        overflow-x: auto;
     }
 
     .kyc-section-header {
         padding: var(--space-md);
+    }
+
+    .kyc-table-scroll,
+    .audit-review-table-wrapper {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .audit-review-table {
+        min-width: 640px;
+        table-layout: auto;
+    }
+
+    .audit-review-table th,
+    .audit-review-table td {
+        white-space: nowrap;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    .btn-review-kyc {
+        white-space: nowrap;
     }
 }
 

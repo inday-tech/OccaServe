@@ -805,8 +805,60 @@
     .pay-withdraw-panel { flex-direction: column; text-align: center; gap: var(--space-lg); }
     .pay-withdraw-action { flex-direction: column; gap: var(--space-md); }
     .pay-withdrawable-amount { text-align: center; }
+
+    .pay-pagination {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .pay-pagination-info {
+        width: 100%;
+    }
+
+    .pay-pagination-btns {
+        width: 100%;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .pay-page-btn {
+        flex: 0 0 auto;
+        min-width: 44px;
+        white-space: nowrap;
+    }
+
+    .pay-card,
+    .pay-section-header,
+    .pay-toolbar,
+    .pay-filter-row {
+        overflow-x: hidden;
+    }
+
+    .table-container,
+    .pay-table-wrap,
+    .pay-data-wrap {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table-container table,
+    .pay-table-wrap table,
+    .pay-data-wrap table {
+        min-width: 620px;
+        table-layout: auto;
+    }
 }
 
 @media (max-width: 480px) {
     .pay-stats-grid { grid-template-columns: 1fr; }
+    .pay-stat-value {
+        font-size: 1.1rem;
+        white-space: nowrap;
+    }
+    .pay-header-left h3 {
+        font-size: 1rem;
+    }
 }

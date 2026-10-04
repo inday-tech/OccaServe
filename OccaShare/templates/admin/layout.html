@@ -6,6 +6,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <script>window.MAX_UPLOAD_SIZE_MB = {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }};</script>
+    <script src="{{ url_for('static', path='/js/global/upload_limits.js') }}?v=1.0"></script>
     <title>{% block title %}Admin Dashboard - OccaServe{% endblock %}</title>
 
     <!-- Core Assets -->

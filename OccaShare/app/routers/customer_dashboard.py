@@ -556,11 +556,25 @@ async def view_secure_document(
     db: Session = Depends(database.get_db),
     user: Optional[models.User] = Depends(auth.get_current_user_optional)
 ):
-    """Route for a customer to view their secure quotation/booking document."""
+    """Show a booking document only to its customer or caterer."""
     numeric_id = sanitize_booking_id(booking_id)
     booking = db.query(models.Booking).get(numeric_id)
     if not booking:
-        return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    if not user:
+        return RedirectResponse(
+            url=f"/auth/login?next=%2Fcustomer%2Fdocument%2F{numeric_id}",
+            status_code=303
+        )
+    is_customer_owner = user.role == "customer" and booking.user_id == user.id
+    is_booking_caterer = (
+        user.role == "caterer"
+        and user.caterer_profile
+        and booking.caterer_id == user.caterer_profile.id
+    )
+    if not (is_customer_owner or is_booking_caterer):
+        raise HTTPException(status_code=404, detail="Booking not found")
         
     # We will reuse the caterer's contract view or create a specific public invoice template
     quotation = booking.quotation
@@ -573,13 +587,18 @@ async def view_secure_document(
         }
         
     wconfig = db.query(models.WebsiteConfig).first()
+    from ..services.payment_service import PaymentService
+    payment_summary = PaymentService.get_payment_summary(booking)
+    reservation = payment_summary["required_deposit"]
         
     return templates.TemplateResponse("customer/public_invoice.html", {
         "request": request,
         "user": user,
         "booking": booking,
         "quotation": quotation,
-        "wconfig": wconfig
+        "wconfig": wconfig,
+        "payment_summary": payment_summary,
+        "reservation": reservation
     })
 
 @router.post("/booking/{booking_id}/upload-proof")
@@ -589,11 +608,45 @@ async def upload_public_proof_of_payment(
     proof_image: UploadFile = File(...),
     reference_no: Optional[str] = Form(None),
     payment_method: Optional[str] = Form(None),
-    db: Session = Depends(database.get_db)
+    payment_amount_type: str = Form(...),
+    db: Session = Depends(database.get_db),
+    user: Optional[models.User] = Depends(auth.get_current_user_optional)
 ):
     booking = db.query(models.Booking).get(booking_id)
     if not booking:
-        return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if not user:
+        return RedirectResponse(
+            url=f"/auth/login?next=%2Fcustomer%2Fdocument%2F{sanitize_booking_id(booking_id)}",
+            status_code=303
+        )
+    if user.role != "customer" or booking.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    from ..services.payment_service import PaymentService
+    payment_summary = PaymentService.get_payment_summary(booking)
+    total_amt = payment_summary["total_amount"]
+    if payment_summary["is_under_review"]:
+        raise HTTPException(status_code=409, detail="A payment proof is already under review.")
+    if payment_summary["remaining_balance"] <= 0.009:
+        raise HTTPException(status_code=409, detail="This booking is already fully paid.")
+
+    if payment_summary["verified_paid"] > 0:
+        if payment_amount_type != "balance":
+            raise HTTPException(status_code=400, detail="Only the remaining balance can be submitted for this booking.")
+        expected_fee = payment_summary["remaining_balance"]
+        payment_type = "Balance"
+    elif payment_amount_type == "deposit":
+        expected_fee = payment_summary["required_deposit"]
+        payment_type = "Deposit"
+    elif payment_amount_type == "full":
+        expected_fee = total_amt
+        payment_type = "Full"
+    else:
+        raise HTTPException(status_code=400, detail="Select a valid payment type.")
+
+    if expected_fee <= 0:
+        raise HTTPException(status_code=400, detail="There is no valid amount due for this payment type.")
         
     import os
     import shutil
@@ -604,14 +657,6 @@ async def upload_public_proof_of_payment(
     allowed_types = ["image/jpeg", "image/png", "image/jpg"]
     if proof_image.content_type not in allowed_types:
         raise HTTPException(status_code=400, detail="Invalid file type. Only JPG and PNG are allowed.")
-        
-    # Validation: File Size (Read file to check size, then seek back to 0)
-    proof_image.file.seek(0, os.SEEK_END)
-    file_size = proof_image.file.tell()
-    proof_image.file.seek(0)
-    
-    if file_size > 5 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB.")
         
     # Validation: Reference Number
     if reference_no:
@@ -634,7 +679,9 @@ async def upload_public_proof_of_payment(
 
     # Gemini OCR Verification (Pass Cloudinary URL or bytes)
     from ..services.payment_verification import payment_verification_service
-    fraud_results = await payment_verification_service.check_for_fraud(db, booking, c_url)
+    fraud_results = await payment_verification_service.check_for_fraud(
+        db, booking, c_url, expected_amount=expected_fee
+    )
     
     if not fraud_results.get("is_valid_receipt", False) or (fraud_results.get("flags") and fraud_results.get("confidence", 0) < 50):
         # Format a clean error message
@@ -644,30 +691,15 @@ async def upload_public_proof_of_payment(
         encoded_err = urllib.parse.quote(error_text)
         return RedirectResponse(url=f"/customer/document/{booking_id}?error={encoded_err}", status_code=303)
 
-    booking.payment_proof_url = c_url
+    if payment_type == "Balance":
+        booking.balance_proof_url = c_url
+    else:
+        booking.payment_proof_url = c_url
 
     if reference_no:
         booking.special_requests = (booking.special_requests or "") + f"\n[Payment Ref: {reference_no}]"
         
-    booking.payment_status = 'proof_submitted'
-    booking.status = 'pending'
-
-    # Calculate expected amount dynamically
-    total_amt = float(booking.total_amount or booking.total_price or 0.0)
-    dp_percent = 50.0
-    if booking.quotation and booking.quotation.downpayment_percent:
-        dp_percent = float(booking.quotation.downpayment_percent)
-    elif booking.reservation_fee and total_amt > 0 and float(booking.reservation_fee) < total_amt:
-        dp_percent = (float(booking.reservation_fee) / total_amt) * 100.0
-
-    plan_key = str(booking.payment_plan or "").strip().lower()
-    if plan_key in ['full', '100']:
-        expected_fee = round(total_amt, 2)
-        payment_type = "Full"
-    else:
-        expected_fee = round(total_amt * (dp_percent / 100.0), 2)
-        payment_type = "Deposit"
-    booking.reservation_fee = expected_fee
+    booking.payment_status = 'balance_proof_submitted' if payment_type == "Balance" else 'proof_submitted'
 
     # Create or update BookingPaymentRecord (prevent duplicates)
     from datetime import datetime, timezone

@@ -6,7 +6,7 @@
 {% block header_title %}Payments & Earnings{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/payments.css') }}?v=13.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/payments.css') }}?v=13.1">
 <style>
     /* Payments & Earnings Custom Styling */
     .payments-wrapper {
@@ -949,7 +949,7 @@
                 </thead>
                 <tbody>
                     {% for inv in invoices %}
-                    <tr class="premium-row">
+                    <tr class="premium-row" id="commission-invoice-{{ inv.id }}">
                         <!-- Invoice ID -->
                         <td class="premium-cell" data-label="Invoice ID">
                             <span class="pay-id" style="font-weight: 700; color: #0f172a; font-size: 0.88rem;">INV-{{ "%04d"|format(inv.id) }}</span>
@@ -976,6 +976,8 @@
                         <td class="premium-cell" data-label="Status">
                             {% if inv.status == 'paid' %}
                             <span class="premium-status-badge ps-badge-confirmed">Paid</span>
+                            {% elif inv.status == 'settled' %}
+                            <span class="premium-status-badge ps-badge-confirmed">Settled</span>
                             {% elif inv.status == 'processing' %}
                             <span class="premium-status-badge ps-badge-payment">Processing</span>
                             {% elif inv.status == 'overdue' %}

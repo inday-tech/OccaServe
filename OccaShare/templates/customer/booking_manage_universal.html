@@ -726,6 +726,11 @@
                         <span>More Actions & Options</span> <i class="fas fa-chevron-down"></i>
                     </button>
                     <div id="actionDropdownMenu" class="action-dropdown-menu">
+                        {% if booking.status != 'draft' %}
+                        <a href="/customer/document/{{ booking.id }}" class="action-dropdown-item">
+                            <i class="fas fa-file-invoice" style="width: 20px; color: var(--up-orange);"></i> View Booking Document
+                        </a>
+                        {% endif %}
                         <a href="javascript:void(0)" onclick="switchTab('chat', document.querySelectorAll('.tab-btn')[3]); closeActionDropdown();" class="action-dropdown-item">
                             <i class="fas fa-comments" style="width: 20px; color: var(--up-orange);"></i> Open Consultation Chat
                         </a>

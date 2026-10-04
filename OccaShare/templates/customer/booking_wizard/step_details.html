@@ -136,8 +136,13 @@
                 </div>
                 
                 <div class="form-group" style="margin-top: 1rem;">
+                    <label class="form-label">Celebrant / Guest of Honor <small>(Optional)</small></label>
+                    <input type="text" name="celebrant_name" class="form-input" placeholder="Name of the celebrant, couple, or guest of honor" value="{{ booking.custom_requirements.get('celebrant_name', '') if booking and booking.custom_requirements else '' }}">
+                </div>
+
+                <div class="form-group" style="margin-top: 1rem;">
                     <label class="form-label">Theme / Motif <small>(Optional)</small></label>
-                    <input type="text" name="theme_motif" class="form-input" placeholder="e.g., Rustic, Filipiniana, Blue & Gold" value="{{ booking.custom_requirements.theme_motif if booking and booking.custom_requirements else '' }}">
+                    <input type="text" name="theme_motif" class="form-input" placeholder="e.g., Rustic, Filipiniana, Blue & Gold" value="{{ (booking.custom_requirements.get('theme_motif') or booking.custom_requirements.get('motif_theme', '')) if booking and booking.custom_requirements else '' }}">
                 </div>
 
                 <div class="grid-2-col">

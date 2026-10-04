@@ -15,6 +15,8 @@ import uuid
 from ..services.realtime import manager
 from ..services.payment_verification import payment_verification_service
 from ..services.notification import NotificationService
+from ..services.reminders import billing_period_due_date
+from ..services.commission import calculate_booking_commission, get_commission_rate_percent
 
 router = APIRouter(prefix="/caterer", tags=["caterer"])
 
@@ -879,9 +881,9 @@ async def create_manual_booking(
         # 6. If created as completed, calculate admin platform commission & billing invoice
         if requested_status in ["completed", "delivered"]:
             config = db.query(models.WebsiteConfig).first()
-            comm_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
-            comm_fixed = config.commission_fixed_amount if config else 20.0
-            commission_amount = (total_amt * comm_rate) + comm_fixed
+            comm_rate_percent = get_commission_rate_percent(config)
+            comm_rate = comm_rate_percent / 100.0
+            commission_amount = calculate_booking_commission(total_amt, comm_rate_percent)
             
             caterer_prof = user.caterer_profile
             if caterer_prof:
@@ -892,7 +894,12 @@ async def create_manual_booking(
                 caterer_id=new_booking.caterer_id or (caterer_prof.id if caterer_prof else None),
                 booking_id=new_booking.id,
                 billing_period=new_booking.event_date.strftime('%B %Y') if new_booking.event_date else 'General',
+                due_date=billing_period_due_date(
+                    new_booking.event_date.strftime('%B %Y') if new_booking.event_date else 'General',
+                    new_booking.event_date
+                ),
                 amount=commission_amount,
+                commission_rate=comm_rate,
                 status="pending"
             )
             db.add(commission_record)
@@ -944,6 +951,9 @@ async def upload_dispatch_proof(
     booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
+
+    if (booking.status or "").lower() in ["completed", "delivered"]:
+        raise HTTPException(status_code=400, detail="Completed bookings are locked and their status cannot be changed.")
 
     if not proof_image.filename:
         raise HTTPException(status_code=400, detail="No file selected")
@@ -1055,7 +1065,10 @@ async def update_booking_status(
 
     if booking.is_archived:
         raise HTTPException(status_code=400, detail="Cannot modify an archived booking.")
-    if booking.status in ['cancelled', 'completed'] and data.status not in ['cancelled', 'completed']:
+    current_status = (booking.status or "").lower()
+    if current_status in ["completed", "delivered"]:
+        raise HTTPException(status_code=400, detail="Completed bookings are locked and their status cannot be changed.")
+    if current_status == "cancelled":
         raise HTTPException(status_code=400, detail=f"Booking is already {booking.status} and cannot be reopened or modified.")
 
     new_status = data.status.lower()
@@ -1133,10 +1146,10 @@ async def update_booking_status(
         
         # Use Global Admin Commission Setting
         config = db.query(models.WebsiteConfig).first()
-        comm_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
-        comm_fixed = config.commission_fixed_amount if config else 20.0
+        comm_rate_percent = get_commission_rate_percent(config)
+        comm_rate = comm_rate_percent / 100.0
         booking_total = float(booking.total_amount or booking.total_price or 0.0)
-        commission_amount = (booking_total * comm_rate) + comm_fixed
+        commission_amount = calculate_booking_commission(booking_total, comm_rate_percent)
         
         caterer_prof.outstanding_balance = float(caterer_prof.outstanding_balance or 0.0) + commission_amount
         booking.commission_calculated = True
@@ -1148,6 +1161,10 @@ async def update_booking_status(
                 caterer_id=booking.caterer_id or (caterer_prof.id if caterer_prof else None),
                 booking_id=booking.id,
                 billing_period=booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
+                due_date=billing_period_due_date(
+                    booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
+                    booking.event_date
+                ),
                 amount=commission_amount,
                 commission_rate=comm_rate,
                 status='pending'
@@ -2484,23 +2501,56 @@ async def caterer_payments(
         models.BillingInvoice.caterer_id == profile.id
     ).order_by(models.BillingInvoice.created_at.desc()).all()
 
+    invoice_dates_updated = False
+    for invoice in invoices:
+        if invoice.due_date is None:
+            created_date = invoice.created_at.date() if invoice.created_at else datetime.now(timezone.utc).date()
+            invoice.due_date = billing_period_due_date(invoice.billing_period, created_date)
+            invoice_dates_updated = True
+    if invoice_dates_updated:
+        db.commit()
+
     config = db.query(models.WebsiteConfig).first()
-    comm_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
-    comm_fixed = config.commission_fixed_amount if config else 20.0
+    comm_rate_percent = get_commission_rate_percent(config)
+    comm_rate = comm_rate_percent / 100.0
 
     # Auto-synchronize completed bookings to outstanding_balance and BillingInvoice:
     balance_updated = False
     unsettled_bookings = []
+
+    # Attach legacy aggregate submissions to the booking dues they covered.
+    for submission in invoices:
+        if (
+            submission.booking_id is not None
+            or submission.status not in ('pending', 'processing')
+            or not submission.payment_proof_url
+            or not submission.created_at
+        ):
+            continue
+        legacy_due_rows = db.query(models.BillingInvoice).filter(
+            models.BillingInvoice.caterer_id == profile.id,
+            models.BillingInvoice.booking_id.isnot(None),
+            models.BillingInvoice.status.in_(('pending', 'overdue')),
+            models.BillingInvoice.created_at <= submission.created_at
+        ).all()
+        for due_row in legacy_due_rows:
+            if not due_row.payment_proof_url:
+                due_row.status = 'processing'
+                balance_updated = True
     
     # Map of paid booking IDs from invoices
-    paid_booking_ids = {inv.booking_id for inv in invoices if inv.booking_id and inv.status == 'paid'}
-    pending_invoices = [inv for inv in invoices if inv.status in ('pending', 'processing')]
+    paid_booking_ids = {
+        inv.booking_id for inv in invoices
+        if inv.booking_id and inv.status in ('paid', 'settled')
+    }
+    pending_invoices = [inv for inv in invoices if inv.status in ('pending', 'processing', 'overdue')]
     
     # Calculate dues across all completed bookings that have not been settled
     total_unsettled_dues = 0.0
     for b in bookings:
         if b.status in ('completed', 'delivered'):
-            comm_amount = (float(b.total_amount or b.total_price or 0.0) * comm_rate) + comm_fixed
+            booking_total = float(b.total_amount or b.total_price or 0.0)
+            comm_amount = calculate_booking_commission(booking_total, comm_rate_percent)
             existing_inv = next((inv for inv in invoices if inv.booking_id == b.id), None)
             if not existing_inv:
                 period_str = b.event_date.strftime('%B %Y') if b.event_date else 'General'
@@ -2508,22 +2558,35 @@ async def caterer_payments(
                     caterer_id=profile.id,
                     booking_id=b.id,
                     billing_period=period_str,
+                    due_date=billing_period_due_date(period_str, b.event_date),
                     amount=comm_amount,
+                    commission_rate=comm_rate,
                     status="pending"
                 )
                 db.add(commission_record)
                 invoices.insert(0, commission_record)
                 balance_updated = True
                 b.commission_calculated = True
+            elif existing_inv.status in ('pending', 'overdue') and not existing_inv.payment_proof_url:
+                if abs(float(existing_inv.amount or 0.0) - comm_amount) > 0.01 or existing_inv.commission_rate != comm_rate:
+                    existing_inv.amount = comm_amount
+                    existing_inv.commission_rate = comm_rate
+                    balance_updated = True
             
             # Check if this booking's commission is already paid
-            if b.id not in paid_booking_ids and (not existing_inv or existing_inv.status != 'paid'):
+            if b.id not in paid_booking_ids and (
+                not existing_inv or existing_inv.status not in ('paid', 'settled', 'processing')
+            ):
                 total_unsettled_dues += comm_amount
                 b._due_amount = comm_amount
                 unsettled_bookings.append(b)
 
     # Any global pending invoice with booking_id is None
-    global_pending_amount = sum(float(inv.amount or 0) for inv in pending_invoices if inv.booking_id is None)
+    global_pending_amount = sum(
+        float(inv.amount or 0)
+        for inv in pending_invoices
+        if inv.booking_id is None and not inv.payment_proof_url
+    )
     if total_unsettled_dues > 0 or global_pending_amount > 0:
         calculated_dues = max(total_unsettled_dues, global_pending_amount)
         if abs(float(profile.outstanding_balance or 0.0) - calculated_dues) > 0.01:
@@ -2535,6 +2598,9 @@ async def caterer_payments(
 
     if balance_updated:
         db.commit()
+
+    from app.services.reminders import generate_caterer_reminders
+    generate_caterer_reminders(user.id, db)
 
     # ── Post-Paid Commission & Financial Calculations ──────────────────
     from datetime import datetime, timezone, timedelta, date
@@ -2612,17 +2678,21 @@ async def caterer_payments(
 
     # 2. Platform Commission Metrics
     outstanding_commission = float(profile.outstanding_balance or 0.0)
-    total_commission_paid = sum(float(inv.amount or 0.0) for inv in invoices if inv.status == 'paid')
-    total_commission_due = sum(float(inv.amount or 0.0) for inv in invoices)
+    total_commission_paid = sum(
+        float(inv.amount or 0.0)
+        for inv in invoices
+        if inv.status == 'paid' and (inv.booking_id is None or inv.payment_proof_url)
+    )
+    total_commission_due = sum(float(inv.amount or 0.0) for inv in invoices if inv.booking_id is not None)
     if total_commission_due <= 0 and len(valid_bookings) > 0:
         total_commission_due = sum(
-            (float(b.total_amount or b.total_price or 0.0) * comm_rate) + comm_fixed
+            calculate_booking_commission(float(b.total_amount or b.total_price or 0.0), comm_rate_percent)
             for b in valid_bookings if b.status in ('completed', 'delivered')
         )
     
     # Estimated period commission & net earnings
     period_commission_est = sum(
-        (float(b.total_amount or b.total_price or 0.0) * comm_rate) + comm_fixed
+        calculate_booking_commission(float(b.total_amount or b.total_price or 0.0), comm_rate_percent)
         for b in period_bookings if b.status in ('completed', 'delivered')
     )
     period_net_earnings = max(0.0, period_amount_collected - period_commission_est)
@@ -3387,11 +3457,10 @@ async def get_booking_details_api(
 
     # Fetch commission settings
     config = db.query(models.WebsiteConfig).first()
-    comm_rate = config.commission_rate if config else 10.0
-    comm_fixed = config.commission_fixed_amount if config else 20.0
+    comm_rate = get_commission_rate_percent(config)
     
     total = float(booking.total_price or booking.total_amount or 0)
-    commission = (total * (comm_rate / 100.0)) + comm_fixed
+    commission = calculate_booking_commission(total, comm_rate)
     net_amount = total - commission
     # derive entry method from booking_source for UI convenience
     try:
@@ -3712,6 +3781,41 @@ async def get_booking_details_api(
     }
 
 
+@router.post("/api/bookings/{booking_id}/document-link")
+async def create_customer_document_link(
+    booking_id: str,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).filter(
+        models.Booking.id == numeric_id,
+        models.Booking.caterer_id == user.caterer_profile.id
+    ).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    account_email = (booking.user.email if booking.user else "") or ""
+    if (
+        not booking.user_id
+        or not account_email
+        or "@guest.occashare.com" in account_email.lower()
+        or account_email.lower().startswith("walkin_")
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Secure document links are available only for bookings linked to a registered customer account."
+        )
+
+    return {
+        "url": f"/customer/document/{booking.id}",
+        "customer_name": (
+            f"{booking.user.first_name or ''} {booking.user.last_name or ''}".strip()
+            if booking.user else booking.customer_name
+        ),
+        "customer_email": account_email,
+    }
+
+
 @router.get("/api/bookings/{booking_id}/customer-details")
 async def get_booking_customer_details(
     booking_id: str,
@@ -4011,10 +4115,10 @@ async def complete_booking(
 
     # Automatically generate commission record
     config = db.query(models.WebsiteConfig).first()
-    comm_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
-    comm_fixed = config.commission_fixed_amount if config else 20.0
+    comm_rate_percent = get_commission_rate_percent(config)
+    comm_rate = comm_rate_percent / 100.0
     booking_total = float(booking.total_amount or booking.total_price or 0.0)
-    commission_due = (booking_total * comm_rate) + comm_fixed
+    commission_due = calculate_booking_commission(booking_total, comm_rate_percent)
 
     caterer_prof = booking.caterer or user.caterer_profile
 
@@ -4024,6 +4128,10 @@ async def complete_booking(
             caterer_id=booking.caterer_id or (caterer_prof.id if caterer_prof else None),
             booking_id=booking.id,
             billing_period=booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
+            due_date=billing_period_due_date(
+                booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
+                booking.event_date
+            ),
             amount=commission_due,
             commission_rate=comm_rate,
             status='pending'
@@ -4549,15 +4657,14 @@ async def caterer_roi_analytics(
         ).all()
         
         config = db.query(models.WebsiteConfig).first()
-        comm_rate = config.commission_rate if config else 10.0
-        comm_fixed = config.commission_fixed_amount if config else 20.0
+        comm_rate = get_commission_rate_percent(config)
 
         gross_rev = sum(b.total_amount or b.total_price or 0 for b in month_bookings)
         
         total_commission = 0
         for b in month_bookings:
             b_total = b.total_amount or b.total_price or 0
-            total_commission += (b_total * (comm_rate / 100.0)) + comm_fixed
+            total_commission += calculate_booking_commission(b_total, comm_rate)
 
         net_rev = gross_rev - total_commission
 
@@ -7742,6 +7849,9 @@ async def get_calendar_events(
     
     
     for b in bookings:
+        if b.booking_source == "Internal" and b.event_date and b.event_date < today_date:
+            continue
+
         start_dt = str(b.event_date)
         if b.event_time:
             start_dt += f"T{b.event_time}"
@@ -7930,7 +8040,8 @@ async def get_calendar_events(
         
     # Add Internal Schedules from the new table
     internal_schedules = db.query(models.InternalSchedule).filter(
-        models.InternalSchedule.caterer_id == target_caterer_id
+        models.InternalSchedule.caterer_id == target_caterer_id,
+        models.InternalSchedule.date >= today_date
     ).all()
     
     for s in internal_schedules:
@@ -8015,14 +8126,18 @@ async def set_booking_reminder(
     import asyncio
     
     customer_name = f"{booking.user.first_name} {booking.user.last_name}" if booking.user else booking.customer_name
-    asyncio.create_task(send_event_reminder_email(
-        email=user.email,
-        event_name=booking.event_name or booking.event_type or "Event",
-        event_date=str(booking.event_date) if booking.event_date else "TBD",
-        event_time=str(booking.event_time) if booking.event_time else "TBD",
-        venue=booking.venue_address or "TBD",
-        customer_name=customer_name or "Client"
-    ))
+    try:
+        email_sent = await send_event_reminder_email(
+            email=user.email,
+            event_name=booking.event_name or booking.event_type or "Event",
+            event_date=str(booking.event_date) if booking.event_date else "TBD",
+            event_time=str(booking.event_time) if booking.event_time else "TBD",
+            venue=booking.event_address or booking.venue_address or booking.event_location or "TBD",
+            customer_name=customer_name or "Client"
+        )
+    except Exception as exc:
+        print(f"[REMINDER EMAIL ERROR] Failed to send booking reminder: {exc}")
+        raise HTTPException(status_code=502, detail="The reminder was saved, but its email could not be sent.")
 
     # 3. Real-time WebSocket Alert to Caterer (triggers Web Push API on frontend)
     asyncio.create_task(manager.broadcast_to_user(user.id, {
@@ -8033,7 +8148,7 @@ async def set_booking_reminder(
         "count": db.query(models.Notification).filter(models.Notification.user_id == user.id, models.Notification.is_read == False).count()
     }))
 
-    return {"status": "success", "message": "Email reminder sent and push notification scheduled."}
+    return {"status": "success", "email_sent": bool(email_sent), "message": "Reminder email sent and notification scheduled."}
 
 
 @router.get("/api/bookings/{booking_id}/preparation")
@@ -8073,7 +8188,7 @@ async def update_booking_preparation_status(
     ).first()
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
-    if booking.is_archived or booking.status in ["cancelled", "expired"]:
+    if booking.is_archived or booking.status in ["cancelled", "expired", "completed", "delivered"]:
         raise HTTPException(status_code=400, detail="Cannot update preparation on this booking.")
 
     new_key = str(data.get("status") or data.get("preparation_status") or "").strip().lower()
@@ -9554,8 +9669,7 @@ async def financials_page(
     total_expenses = sum(e.amount for e in expenses)
     
     config = db.query(models.WebsiteConfig).first()
-    comm_rate = config.commission_rate if config else 10.0
-    comm_fixed = config.commission_fixed_amount if config else 20.0
+    comm_rate = get_commission_rate_percent(config)
 
     all_completed_bookings = db.query(models.Booking).filter(
         models.Booking.caterer_id == profile.id,
@@ -9567,7 +9681,7 @@ async def financials_page(
     for b in all_completed_bookings:
         amt = float(b.total_amount or b.total_price or 0)
         total_rev += amt
-        total_comm += (amt * (comm_rate / 100.0)) + comm_fixed
+        total_comm += calculate_booking_commission(amt, comm_rate)
         
     net_earnings = total_rev - total_comm
     
@@ -9640,8 +9754,19 @@ async def settle_dues_api(
     import time
     
     profile = user.caterer_profile
-    if profile.outstanding_balance <= 0:
+    settlement_amount = float(profile.outstanding_balance or 0.0)
+    if settlement_amount <= 0:
         raise HTTPException(status_code=400, detail="You do not have any outstanding balance to settle.")
+
+    existing_submission = db.query(models.BillingInvoice).filter(
+        models.BillingInvoice.caterer_id == profile.id,
+        models.BillingInvoice.booking_id.is_(None),
+        models.BillingInvoice.status.in_(('pending', 'processing')),
+        models.BillingInvoice.payment_proof_url.isnot(None),
+        models.BillingInvoice.payment_proof_url != ''
+    ).first()
+    if existing_submission:
+        raise HTTPException(status_code=409, detail="A commission settlement is already awaiting verification.")
         
     from app.services.storage import upload_file_to_cloudinary
     content_bytes = await proof_file.read()
@@ -9649,15 +9774,28 @@ async def settle_dues_api(
     if not proof_url:
         raise HTTPException(status_code=500, detail="Failed to upload payment proof to Cloudinary.")
 
+    config = db.query(models.WebsiteConfig).first()
+    commission_rate = get_commission_rate_percent(config) / 100.0
     
     invoice = models.BillingInvoice(
         caterer_id=profile.id,
         billing_period=billing_period,
-        amount=profile.outstanding_balance,
+        due_date=billing_period_due_date(billing_period),
+        amount=settlement_amount,
+        commission_rate=commission_rate,
         status='pending',
         payment_proof_url=proof_url
     )
     db.add(invoice)
+
+    due_invoices = db.query(models.BillingInvoice).filter(
+        models.BillingInvoice.caterer_id == profile.id,
+        models.BillingInvoice.booking_id.isnot(None),
+        models.BillingInvoice.status.in_(('pending', 'overdue'))
+    ).all()
+    for due_invoice in due_invoices:
+        if not due_invoice.payment_proof_url:
+            due_invoice.status = 'processing'
     
     profile.outstanding_balance = 0.0
     
@@ -10316,6 +10454,20 @@ async def set_schedule_reminder(schedule_id: int, db: Session = Depends(database
     )
     db.add(new_notif)
     db.commit()
+
+    from app.services.email import send_event_reminder_email
+    try:
+        email_sent = await send_event_reminder_email(
+            email=user.email,
+            event_name=schedule.title,
+            event_date=str(schedule.date),
+            event_time=str(schedule.time) if schedule.time else "TBD",
+            venue="Internal schedule",
+            customer_name=user.caterer_profile.business_name or "Caterer"
+        )
+    except Exception as exc:
+        print(f"[REMINDER EMAIL ERROR] Failed to send schedule reminder: {exc}")
+        raise HTTPException(status_code=502, detail="The reminder was saved, but its email could not be sent.")
     
     await manager.broadcast_to_user(user.id, {
         'type': 'push_reminder',
@@ -10324,7 +10476,7 @@ async def set_schedule_reminder(schedule_id: int, db: Session = Depends(database
         'booking_id': schedule.id,
         'count': db.query(models.Notification).filter(models.Notification.user_id == user.id, models.Notification.is_read == False).count()
     })
-    return {'status': 'success'}
+    return {'status': 'success', 'email_sent': bool(email_sent), 'message': 'Reminder email sent and notification scheduled.'}
 
 
 # ---------------------------------------------------------
