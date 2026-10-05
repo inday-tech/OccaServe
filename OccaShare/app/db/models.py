@@ -683,6 +683,7 @@ class Booking(Base):
     preparation_status = Column(String, default="not_started") # not_started, scheduled, in_preparation, ready, completed
     preparation_date = Column(Date, nullable=True)
     customer_archived = Column(Boolean, default=False)
+    customer_deleted = Column(Boolean, default=False)  # [SECURITY] Soft-delete: hides booking from customer view without destroying audit trail
     payment_reference = Column(String, nullable=True)
     payment_proof_url = Column(String, nullable=True)
     balance_proof_url = Column(String, nullable=True)

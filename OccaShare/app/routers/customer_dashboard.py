@@ -41,10 +41,10 @@ async def customer_dashboard(
         return RedirectResponse(url="/admin/dashboard", status_code=status.HTTP_303_SEE_OTHER)
     if user.role != "customer":
         return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
-    # Filter out archived, drafts, and food orders to match Bookings page
+    # Filter out archived, deleted, drafts, and food orders to match Bookings page
     bookings = []
     for b in user.bookings:
-        if b.customer_archived or b.status == 'draft' or b.document_type == 'invoice':
+        if b.customer_archived or getattr(b, 'customer_deleted', False) or b.status == 'draft' or b.document_type == 'invoice':
             continue
         # Catch older or mislabeled food orders: fast track with ONLY food items
         if b.transaction_type == 'fast_track' and b.selected_items:
@@ -331,7 +331,7 @@ async def customer_bookings(
     # Filter out Food Orders (invoice) from the Event Bookings timeline
     active_bookings = []
     for b in user.bookings:
-        if b.customer_archived:
+        if b.customer_archived or getattr(b, 'customer_deleted', False):
             continue
         if b.status == 'draft':
             continue
@@ -383,7 +383,7 @@ async def customer_orders(
     user: models.User = Depends(customer_only)
 ):
     # Calculate Intelligence Stats
-    food_orders = [b for b in user.bookings if not b.customer_archived and b.document_type == 'invoice' and b.status != 'draft']
+    food_orders = [b for b in user.bookings if not b.customer_archived and not getattr(b, 'customer_deleted', False) and b.document_type == 'invoice' and b.status != 'draft']
     total_orders = len(food_orders)
     
     def get_actual_paid(b):
@@ -973,6 +973,11 @@ async def customer_upload_image(
         raise HTTPException(status_code=400, detail="Invalid file type. Only JPG, PNG, and WEBP allowed.")
         
     content_bytes = await profile_image.read()
+    # [SECURITY] Enforce 5MB max file size for profile images
+    MAX_PROFILE_IMG_SIZE = 5 * 1024 * 1024  # 5MB in bytes
+    if len(content_bytes) > MAX_PROFILE_IMG_SIZE:
+        raise HTTPException(status_code=413, detail="Profile picture must be 5MB or smaller.")
+
     if user.profile_image_url:
         delete_file_from_cloudinary(user.profile_image_url)
 
@@ -997,25 +1002,56 @@ async def customer_remove_image(
     return {"success": True, "message": "Profile picture removed."}
 
 
+# [SECURITY] In-memory rate limiter for password verification attempts (per user ID)
+_pw_attempt_tracker: dict = {}
+
 @router.post("/profile/verify-current-password")
 async def customer_verify_current_password(
+    request: Request,
     password: str = Form(...),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
+    import time as _time
+    now = _time.time()
+    key = f"pwcheck:{user.id}"
+    record = _pw_attempt_tracker.get(key, {"count": 0, "window_start": now})
+    # Reset window if older than 60 seconds
+    if now - record["window_start"] > 60:
+        record = {"count": 0, "window_start": now}
+    if record["count"] >= 5:
+        return {"success": False, "message": "Too many attempts. Please wait a minute before trying again."}
+    record["count"] += 1
+    _pw_attempt_tracker[key] = record
+
     is_correct = auth.verify_password(password, user.password_hash)
+    if is_correct:
+        # Reset counter on success
+        _pw_attempt_tracker.pop(key, None)
     return {"success": is_correct}
 
 
 @router.post("/profile/change-password")
 async def customer_change_password(
+    request: Request,
     current_password: str = Form(...),
     new_password: str = Form(...),
     confirm_password: str = Form(...),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
-    import re
+    import re, time as _time
+    # [SECURITY] Rate limit: max 5 change-password attempts per minute per user
+    now = _time.time()
+    key = f"pwchange:{user.id}"
+    record = _pw_attempt_tracker.get(key, {"count": 0, "window_start": now})
+    if now - record["window_start"] > 60:
+        record = {"count": 0, "window_start": now}
+    if record["count"] >= 5:
+        return {"success": False, "message": "Too many attempts. Please wait a minute before trying again."}
+    record["count"] += 1
+    _pw_attempt_tracker[key] = record
+
     if new_password != confirm_password:
         return {"success": False, "message": "New passwords do not match."}
     
@@ -1040,9 +1076,20 @@ async def customer_change_password(
     # Update password
     user.password_hash = auth.get_password_hash(new_password)
     user.must_change_password = False
+
+    # [SECURITY] Revoke all existing refresh tokens to force re-login on all devices
+    try:
+        db.query(models.RefreshToken).filter(
+            models.RefreshToken.user_id == user.id
+        ).delete(synchronize_session=False)
+    except Exception:
+        pass  # Non-critical — password still changed
+
     db.commit()
+    _pw_attempt_tracker.pop(f"pwchange:{user.id}", None)
+    _pw_attempt_tracker.pop(f"pwcheck:{user.id}", None)
     
-    return {"success": True, "message": "Password updated successfully."}
+    return {"success": True, "message": "Password updated successfully. You may need to log in again on other devices."}
 
 @router.post("/profile/delete")
 async def customer_delete_account(
@@ -1593,12 +1640,47 @@ async def process_verification(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
-    # Save ID Document to Cloudinary
+    # [SECURITY] Validate file types for ID document and selfie
+    ALLOWED_KYC_MIME = {"image/jpeg", "image/png", "image/webp"}
+    ALLOWED_KYC_EXT = {".jpg", ".jpeg", ".png", ".webp"}
+    MAX_KYC_FILE_SIZE = 10 * 1024 * 1024  # 10MB per file
+    import os as _os
+
+    # Validate ID Document
+    id_ext = _os.path.splitext(id_document.filename or "")[1].lower()
+    if id_document.content_type not in ALLOWED_KYC_MIME or id_ext not in ALLOWED_KYC_EXT:
+        return RedirectResponse(
+            url="/customer/verification?error=Invalid+ID+document+file+type.+Only+JPG%2C+PNG%2C+or+WEBP+allowed.",
+            status_code=303
+        )
+
+    # Validate Selfie
+    selfie_ext = _os.path.splitext(selfie.filename or "")[1].lower()
+    if selfie.content_type not in ALLOWED_KYC_MIME or selfie_ext not in ALLOWED_KYC_EXT:
+        return RedirectResponse(
+            url="/customer/verification?error=Invalid+selfie+file+type.+Only+JPG%2C+PNG%2C+or+WEBP+allowed.",
+            status_code=303
+        )
+
+    # Read and validate file sizes
     id_content = await id_document.read()
+    if len(id_content) > MAX_KYC_FILE_SIZE:
+        return RedirectResponse(
+            url="/customer/verification?error=ID+document+file+is+too+large.+Maximum+allowed+size+is+10MB.",
+            status_code=303
+        )
+
+    selfie_content = await selfie.read()
+    if len(selfie_content) > MAX_KYC_FILE_SIZE:
+        return RedirectResponse(
+            url="/customer/verification?error=Selfie+file+is+too+large.+Maximum+allowed+size+is+10MB.",
+            status_code=303
+        )
+
+    # Save ID Document to Cloudinary
     id_url = upload_file_to_cloudinary(id_content, folder="valid_ids")
     
     # Save Selfie to Cloudinary
-    selfie_content = await selfie.read()
     selfie_url = upload_file_to_cloudinary(selfie_content, folder="verification")
         
     # Create Verification Record
@@ -1612,7 +1694,6 @@ async def process_verification(
     kyc_record.verification_status = "processing"
     db.commit()
 
-    
     # Run verification in background
     background_tasks.add_task(
         run_customer_verification_bg,
@@ -2030,11 +2111,14 @@ async def delete_customer_booking(
         raise HTTPException(status_code=404, detail="Booking not found")
         
     if not getattr(booking, 'customer_archived', False):
-        raise HTTPException(status_code=400, detail="Only archived bookings can be permanently deleted.")
-        
-    db.delete(booking)
+        raise HTTPException(status_code=400, detail="Only archived bookings can be removed from your view.")
+
+    # [SECURITY] Soft-delete: mark as customer_deleted instead of physical DB deletion.
+    # This preserves the financial audit trail, payment records, and caterer history.
+    # The booking becomes invisible to the customer but remains in the system for compliance.
+    booking.customer_deleted = True
     db.commit()
-    return {"status": "success", "message": "Booking permanently deleted."}
+    return {"status": "success", "message": "Booking removed from your account."}
 
 @router.get("/archives")
 async def customer_archives(
@@ -2044,7 +2128,8 @@ async def customer_archives(
 ):
     archived_bookings = db.query(models.Booking).filter(
         models.Booking.user_id == user.id,
-        models.Booking.customer_archived == True
+        models.Booking.customer_archived == True,
+        models.Booking.customer_deleted == False  # [SECURITY] Exclude soft-deleted bookings
     ).order_by(models.Booking.updated_at.desc()).all()
     
     return templates.TemplateResponse(
