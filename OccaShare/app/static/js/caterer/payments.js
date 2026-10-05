@@ -399,8 +399,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h4 class="modal-section-title"><i class="fas fa-info-circle" style="color: var(--primary-color);"></i> Payment Information</h4>
                     <div class="modal-info-grid">
                         <div class="modal-info-item">
-                            <span class="modal-info-label">Customer</span>
-                            <span class="modal-info-val">${custName} ${custRef ? `<small style="color: #64748b; font-weight: 600;">(${custRef})</small>` : ''}</span>
+                            <span class="modal-info-label">Customer Reference</span>
+                            <span class="modal-info-val" style="font-weight: 700; color: #0f172a;">${custRef || custName}</span>
                         </div>
                         <div class="modal-info-item">
                             <span class="modal-info-label">Booking ID</span>
@@ -517,7 +517,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const balance = parseFloat(booking.balance_amount || booking._pay_balance || (total - paid));
             const commission = parseFloat(booking.commission || (total * 0.10));
             const estEarnings = parseFloat(booking.net_earnings || (paid - commission));
-            const custName = booking.customer_name || (booking.user ? `${booking.user.first_name || ''} ${booking.user.last_name || ''}`.trim() : 'Customer');
+            const custRef = booking.customer_ref || 'Client';
             const status = booking.payment_status || booking.status || 'Pending';
             const method = booking.payment_method || 'Direct';
             const dateStr = booking.event_date ? new Date(booking.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -535,8 +535,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         <h4 class="modal-section-title"><i class="fas fa-info-circle" style="color: var(--primary-color);"></i> Payment Information</h4>
                         <div class="modal-info-grid">
                             <div class="modal-info-item">
-                                <span class="modal-info-label">Customer</span>
-                                <span class="modal-info-val">${custName} ${booking.customer_ref ? `<small style="color: #64748b; font-weight: 600;">(${booking.customer_ref})</small>` : ''}</span>
+                                <span class="modal-info-label">Customer Reference</span>
+                                <span class="modal-info-val" style="font-weight: 700;">${custRef}</span>
                             </div>
                             <div class="modal-info-item">
                                 <span class="modal-info-label">Booking ID</span>
@@ -854,15 +854,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!response.ok) throw new Error("Could not fetch invoice details");
             const data = await response.json();
             
-            let customer = {};
-            try {
-                const customerResponse = await fetch(`/caterer/api/bookings/${bookingId}/customer-details`);
-                if (customerResponse.ok) customer = await customerResponse.json();
-            } catch (ce) {
-                console.warn("Customer details secondary fetch:", ce);
-            }
-
-            const customerName = customer.name || data.customer_name || 'Customer';
+            const customerRef = data.customer_ref || ('Client #' + bookingId);
             const totalAmount = Number(data.total_amount ?? data.total_price ?? 0);
             const formattedAmount = totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 });
             const dateStr = new Date(data.created_at || Date.now()).toLocaleDateString('en-PH', { 
@@ -884,9 +876,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
                         <div>
-                            <h4 style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; margin: 0 0 0.4rem 0; font-weight: 800; letter-spacing: 0.04em;">Customer Details</h4>
-                            <p style="margin: 0; font-weight: 700; font-size: 0.88rem; color: #0f172a;">${customerName} ${data.customer_ref ? `<span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">(${data.customer_ref})</span>` : ''}</p>
-                            ${customer.email ? `<p style="margin: 2px 0 0; font-size: 0.8rem; color: #64748b;">${customer.email}</p>` : ''}
+                            <h4 style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; margin: 0 0 0.4rem 0; font-weight: 800; letter-spacing: 0.04em;">Customer Reference</h4>
+                            <p style="margin: 0; font-weight: 700; font-size: 0.88rem; color: #0f172a;">${customerRef}</p>
+                            <p style="margin: 2px 0 0; font-size: 0.8rem; color: #64748b;">Verified Booking Client</p>
                         </div>
                         <div style="text-align: right;">
                             <h4 style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; margin: 0 0 0.4rem 0; font-weight: 800; letter-spacing: 0.04em;">Service Provider</h4>

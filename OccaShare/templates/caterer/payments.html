@@ -204,7 +204,7 @@
                         data-booking-ref="{{ t.booking_ref }}"
                         data-customer-ref="{{ t.customer_ref }}"
                         data-payment-id="{{ t.id }}"
-                        data-customer="{{ t.customer_name }}"
+                        data-customer="{{ t.customer_ref }}"
                         data-event="{{ t.event_name }}"
                         data-total="{{ t.booking_total }}"
                         data-paid="{{ t.paid_val }}"
@@ -231,8 +231,8 @@
 
                         <!-- 3. Customer -->
                         <td class="premium-cell">
-                            <span class="pay-customer-name">{{ t.customer_name }}</span>
-                            <span style="font-size: 0.72rem; color: #64748b; font-weight: 600;">{{ t.customer_ref }}</span>
+                            <span class="pay-customer-name" style="font-weight: 700; color: #0f172a;">{{ t.customer_ref }}</span>
+                            <span style="font-size: 0.72rem; color: #64748b; font-weight: 500;">Client ID</span>
                         </td>
 
                         <!-- 4. Payment Type -->
@@ -372,7 +372,7 @@
                 <thead>
                     <tr>
                         <th>Booking ID</th>
-                        <th>Customer</th>
+                        <th>Client ID</th>
                         <th>Event Date</th>
                         <th style="text-align: right;">Booking Total</th>
                         <th style="text-align: right;">Amount Paid</th>
@@ -386,7 +386,7 @@
                     {% set b_total = (b.total_amount or b.total_price or 0) | float %}
                     {% set b_paid = (b._pay_verified or 0) | float %}
                     {% set b_bal = (b._pay_balance or 0) | float %}
-                    {% set cust_label = (b.user.first_name ~ ' ' ~ b.user.last_name)|trim if b.user and b.user.first_name else (b.customer_name or b.customer_ref or 'Customer') %}
+                    {% set cust_ref = b.customer_ref or (('CUST-' ~ ('%04d'|format(b.user_id))) if b.user_id else ('WALKIN-BK-' ~ ('%06d'|format(b.id)))) %}
                     <tr class="premium-row">
                         <!-- 1. Booking ID -->
                         <td class="premium-cell">
@@ -397,8 +397,8 @@
 
                         <!-- 2. Customer -->
                         <td class="premium-cell">
-                            <span class="pay-customer-name">{{ cust_label }}</span>
-                            <span style="font-size: 0.72rem; color: #64748b;">{{ b.customer_ref or ('CUST-' ~ ('%04d'|format(b.user_id))) }}</span>
+                            <span class="pay-customer-name" style="font-weight: 700; color: #0f172a;">{{ cust_ref }}</span>
+                            <span style="font-size: 0.72rem; color: #64748b;">Client ID</span>
                         </td>
 
                         <!-- 3. Event Date -->

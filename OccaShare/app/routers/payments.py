@@ -26,6 +26,12 @@ async def process_payment(
     booking = db.query(models.Booking).get(booking_id)
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+        
+    # Tenant / Customer ownership verification
+    if current_user.role == 'customer' and booking.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Unauthorized: this booking does not belong to you.")
+    if current_user.role == 'caterer' and (not current_user.caterer_profile or booking.caterer_id != current_user.caterer_profile.id):
+        raise HTTPException(status_code=403, detail="Unauthorized: this booking does not belong to your business.")
     
     try:
         res_fee = float(booking.reservation_fee or 0)

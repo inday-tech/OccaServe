@@ -209,8 +209,8 @@
             <div class="action-list schedule-card-body" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
                 {% if today_schedule %}
                 {% for event in today_schedule %}
-                {% set cust_today = event.customer_name or (event.user.first_name ~ ' ' ~ event.user.last_name if
-                event.user and (event.user.first_name or event.user.last_name) else 'Walk-in Client') %}
+                {% set cust_ref_today = event.customer_ref or (('CUST-' ~ ('%04d'|format(event.user_id))) if event.user_id else ('WALKIN-BK-' ~ ('%06d'|format(event.id)))) %}
+                {% set b_ref_today = event.booking_ref or ('BK-' ~ ('%06d'|format(event.id))) %}
                 {% set ev_title_today = event.event_name or (event.package.name if event.package else (event.event_type
                 or 'Catering Event')) %}
                 {% set ven_today = event.event_address or event.venue_address or event.event_location %}
@@ -225,8 +225,8 @@
                             <h4 style="font-size: 0.88rem; font-weight: 800; color: #1e293b; margin: 0 0 2px 0;">{{
                                 ev_title_today }}</h4>
                             <p style="font-size: 0.78rem; color: #475569; margin: 0; line-height: 1.35;">
-                                <i class="far fa-user" style="margin-right: 3px; color: #64748b;"></i><strong>{{
-                                    cust_today }}</strong>
+                                <i class="fas fa-user-tag" style="margin-right: 3px; color: #64748b;"></i><strong style="color: #0f172a;">Client {{ cust_ref_today }}</strong>
+                                <span style="color: #94a3b8; font-weight: 600;">({{ b_ref_today }})</span>
                                 &bull; {{ event.guest_count or 0 }} pax
                                 {% if ven_today %}
                                 &bull; <i class="fas fa-map-marker-alt"
@@ -322,8 +322,8 @@
         <div class="action-list">
             {% if upcoming_events_list %}
             {% for b in upcoming_events_list[:5] %}
-            {% set cust_display = b.customer_name or (b.user.first_name ~ ' ' ~ b.user.last_name if b.user and
-            (b.user.first_name or b.user.last_name) else 'Walk-in Client') %}
+            {% set cust_ref = b.customer_ref or (('CUST-' ~ ('%04d'|format(b.user_id))) if b.user_id else ('WALKIN-BK-' ~ ('%06d'|format(b.id)))) %}
+            {% set b_ref = b.booking_ref or ('BK-' ~ ('%06d'|format(b.id))) %}
             {% set event_display = b.event_name or (b.package.name if b.package else (b.event_type or 'Catering Event'))
             %}
             {% set pkg_display = b.package.name if b.package else (b.event_type or 'Custom Catering') %}
@@ -344,9 +344,11 @@
                             b.event_date.strftime('%Y') }}</span>
                     </div>
                     <div>
-                        <!-- Visually stronger Customer Name -->
-                        <div style="font-size: 0.95rem; font-weight: 900; color: #0f172a; margin-bottom: 2px;">{{
-                            cust_display }}</div>
+                        <!-- Booking Ref & Client ID (Secured) -->
+                        <div style="font-size: 0.95rem; font-weight: 900; color: #0f172a; margin-bottom: 2px; display: flex; align-items: center; gap: 6px;">
+                            <span>{{ b_ref }}</span>
+                            <span style="font-size: 0.75rem; font-weight: 700; color: #475569; background: #f1f5f9; padding: 2px 7px; border-radius: 4px; border: 1px solid #e2e8f0;">Client {{ cust_ref }}</span>
+                        </div>
                         <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 2px;">
                             <span style="font-size: 0.82rem; font-weight: 700; color: #334155;">{{ event_display
                                 }}</span>

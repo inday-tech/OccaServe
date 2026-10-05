@@ -108,6 +108,11 @@ async def calculate_quotation(
     booking = db.query(models.Booking).get(booking_id)
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+        
+    is_owner = (booking.user_id == current_user.id)
+    is_caterer = bool(current_user.caterer_profile and booking.caterer_id == current_user.caterer_profile.id)
+    if not is_owner and not is_caterer and current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="Unauthorized")
     
     package = booking.package
     is_customizable = (package and getattr(package, 'pricing_mode', '') == 'customizable') or (booking.custom_requirements and booking.custom_requirements.get('package_type') == 'customizable') or (booking.quotation and booking.quotation.package_details and booking.quotation.package_details.get('package_type') == 'customizable')
@@ -282,9 +287,9 @@ async def sign_contract(
         new_total = Decimal(str(base_total))
         booking.reservation_fee = new_total * dp_factor
 
-    # Strict ID-based identity check (Safer than role-based)
+    # Strict ID-based identity check
     is_customer = (current_user.id == booking.user_id)
-    is_caterer = (booking.caterer and booking.caterer.user_id == current_user.id)
+    is_caterer = bool(booking.caterer and booking.caterer.user_id == current_user.id)
 
     if is_customer:
         quotation.customer_signature = signature_data
@@ -293,15 +298,10 @@ async def sign_contract(
         quotation.caterer_signature = signature_data
         quotation.caterer_signed_at = datetime.now()
     else:
-        # Fallback to role if ID check is ambiguous (should not happen for valid bookings)
-        if current_user.role == 'caterer':
-            quotation.caterer_signature = signature_data
-            quotation.caterer_signed_at = datetime.now()
-            is_caterer = True
-        else:
-            quotation.customer_signature = signature_data
-            quotation.customer_signed_at = datetime.now()
-            is_customer = True
+        raise HTTPException(
+            status_code=403, 
+            detail="Unauthorized: you are not an authorized party to this booking contract."
+        )
 
     # Re-evaluate status based on BOTH signatures
     has_cust = bool(quotation.customer_signature and len(str(quotation.customer_signature)) > 20)

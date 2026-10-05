@@ -269,7 +269,7 @@ async def check_customer_duplicate(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    """Real-time duplicate check for walk-in bookings."""
+    """Real-time duplicate check for walk-in bookings with multi-tenant privacy protection."""
     if not email and not contact:
         return {"exists": False}
         
@@ -278,19 +278,35 @@ async def check_customer_duplicate(
     if email:
         query = query.filter(models.User.email == email)
     elif contact:
-        # Exact match or endswith for contact
         query = query.filter(models.User.phone_number.like(f"%{contact[-10:]}"))
         
     existing_user = query.first()
     
     if existing_user:
-        return {
-            "exists": True, 
-            "name": f"{existing_user.first_name} {existing_user.last_name}".strip(),
-            "email": existing_user.email,
-            "contact": existing_user.phone_number,
-            "role": existing_user.role
-        }
+        # Check if this customer already has an existing booking with THIS caterer
+        has_client_relationship = db.query(models.Booking).filter(
+            models.Booking.user_id == existing_user.id,
+            models.Booking.caterer_id == user.caterer_profile.id
+        ).first() is not None
+        
+        if has_client_relationship:
+            return {
+                "exists": True, 
+                "is_client": True,
+                "name": f"{existing_user.first_name} {existing_user.last_name}".strip(),
+                "email": existing_user.email,
+                "contact": existing_user.phone_number,
+                "role": existing_user.role
+            }
+        else:
+            # Privacy Protection: User belongs to another caterer or platform; do not leak PII
+            return {
+                "exists": True,
+                "is_client": False,
+                "email": email or "",
+                "role": existing_user.role,
+                "message": "Account already registered on platform."
+            }
     return {"exists": False}
 
 
@@ -1367,13 +1383,12 @@ def _get_caterer_stats(profile, bookings, timeframe='month', start_date=None, en
             # Loyalty & Spenders Tracking
             if b.user_id:
                 if b.user_id not in customer_stats:
-                    c_first = b.user.first_name if b.user and b.user.first_name else ""
-                    c_last = b.user.last_name if b.user and b.user.last_name else ""
-                    c_init = (c_first[0].upper() if c_first else "") + (c_last[0].upper() if c_last else "")
+                    c_ref = b.customer_ref or f"Client #{b.user_id}"
                     customer_stats[b.user_id] = {
                         "id": b.user_id,
-                        "name": f"{c_first} {c_last}".strip() if b.user else "Walk-in",
-                        "initials": c_init if c_init else "WI",
+                        "name": f"Client {c_ref}",
+                        "customer_ref": c_ref,
+                        "initials": "CL",
                         "spent": 0,
                         "orders": 0
                     }
@@ -1586,12 +1601,8 @@ async def caterer_dashboard(
             
         amount = float(b.total_amount or b.total_price or 0)
         paid = float(b.amount_paid or 0)
-        cust_name = (
-            b.customer_name 
-            or (f"{b.user.first_name} {b.user.last_name}".strip() if b.user and (b.user.first_name or b.user.last_name) else None)
-            or b.customer_email 
-            or f"Booking #{b.id}"
-        )
+        b_ref = b.booking_ref or getattr(b, "display_booking_ref", f"BK-{b.id:04d}")
+        c_ref = b.customer_ref or _booking_customer_reference(b)
         ev_title = b.event_name or (b.package.name if b.package else (b.event_type or "Catering Event"))
         rem_balance = max(0.0, amount - paid)
         
@@ -1602,16 +1613,16 @@ async def caterer_dashboard(
             if b.event_date and b.event_date <= today + timedelta(days=3):
                 action_center_items.append({
                     'type': 'urgent',
-                    'title': f'Payment Overdue — {cust_name}',
-                    'desc': f'Booking #{b.id} • {ev_title} • Balance: ₱{rem_balance:,.2f} • Date: {b.event_date.strftime("%b %d, %Y")}',
+                    'title': f'Payment Overdue — Client {c_ref}',
+                    'desc': f'{b_ref} • {ev_title} • Balance: ₱{rem_balance:,.2f} • Date: {b.event_date.strftime("%b %d, %Y")}',
                     'icon': 'fa-money-bill-wave',
                     'booking_id': b.id
                 })
             elif b.event_date and b.event_date <= today + timedelta(days=14) and b.status in ['confirmed', 'preparing']:
                 action_center_items.append({
                     'type': 'warning',
-                    'title': f'Final Balance Due — {cust_name}',
-                    'desc': f'Booking #{b.id} • {ev_title} • Balance: ₱{rem_balance:,.2f} • Date: {b.event_date.strftime("%b %d, %Y")}',
+                    'title': f'Final Balance Due — Client {c_ref}',
+                    'desc': f'{b_ref} • {ev_title} • Balance: ₱{rem_balance:,.2f} • Date: {b.event_date.strftime("%b %d, %Y")}',
                     'icon': 'fa-coins',
                     'booking_id': b.id
                 })
@@ -1620,8 +1631,8 @@ async def caterer_dashboard(
         if b.status in ['pending', 'inquiry', 'pending_quotation', 'pending_review', 'awaiting_caterer']:
             action_center_items.append({
                 'type': 'urgent',
-                'title': f'Unconfirmed Booking — {cust_name}',
-                'desc': f'Booking #{b.id} • {ev_title} • Needs your review and confirmation',
+                'title': f'Unconfirmed Booking — Client {c_ref}',
+                'desc': f'{b_ref} • {ev_title} • Needs your review and confirmation',
                 'icon': 'fa-calendar-plus',
                 'booking_id': b.id
             })
@@ -1630,8 +1641,8 @@ async def caterer_dashboard(
         if b.status in ['confirmed', 'preparing'] and not (b.event_address or b.venue_address or b.event_location):
             action_center_items.append({
                 'type': 'warning',
-                'title': f'Missing Venue Location — {cust_name}',
-                'desc': f'Booking #{b.id} • {ev_title} has no event address specified',
+                'title': f'Missing Venue Location — Client {c_ref}',
+                'desc': f'{b_ref} • {ev_title} has no event address specified',
                 'icon': 'fa-map-marker-alt',
                 'booking_id': b.id
             })
@@ -1641,8 +1652,8 @@ async def caterer_dashboard(
             days_left = (b.event_date - today).days
             action_center_items.append({
                 'type': 'warning',
-                'title': f'Event in {days_left} day{"s" if days_left > 1 else ""} — {cust_name}',
-                'desc': f'Booking #{b.id} • {ev_title} • {b.guest_count or 0} pax • {b.event_date.strftime("%B %d, %Y")}',
+                'title': f'Event in {days_left} day{"s" if days_left > 1 else ""} — Client {c_ref}',
+                'desc': f'{b_ref} • {ev_title} • {b.guest_count or 0} pax • {b.event_date.strftime("%B %d, %Y")}',
                 'icon': 'fa-calendar-day',
                 'booking_id': b.id
             })
@@ -1650,8 +1661,8 @@ async def caterer_dashboard(
         if getattr(b, 'contract_status', '') == 'awaiting_signature':
             action_center_items.append({
                 'type': 'warning',
-                'title': f'Contract Pending Signature — {cust_name}',
-                'desc': f'Booking #{b.id} • {ev_title} awaiting customer contract signing',
+                'title': f'Contract Pending Signature — Client {c_ref}',
+                'desc': f'{b_ref} • {ev_title} awaiting contract signing',
                 'icon': 'fa-file-signature',
                 'booking_id': b.id
             })
@@ -1860,16 +1871,16 @@ async def caterer_omni_search(
     ).order_by(models.Booking.event_date.desc()).all()
     
     for b in bookings:
-        b_ref = str(b.id)
-        b_name = f"{b.user.first_name} {b.user.last_name}".lower() if b.user else ""
+        b_ref = b.booking_ref or getattr(b, "display_booking_ref", f"BK-{b.id:04d}")
+        c_ref = b.customer_ref or _booking_customer_reference(b)
         b_type = b.event_type.lower() if b.event_type else ""
         b_status = b.status.lower() if b.status else ""
         b_venue = (b.event_address or "").lower()
         
-        if query in b_ref or query in b_name or query in b_type or query in b_status or query in b_venue:
+        if query in b_ref.lower() or query in c_ref.lower() or query in str(b.id) or query in b_type or query in b_status or query in b_venue:
             results.append({
                 "type": "Booking",
-                "title": f"Booking #{b_ref} - {b_name.title() if b_name else 'Client'}",
+                "title": f"Booking {b_ref} • Client {c_ref}",
                 "subtitle": f"{b.event_type.capitalize() if b.event_type else 'Event'} • {b.status.replace('_', ' ').title() if b.status else 'UNKNOWN'}",
                 "url": f"/caterer/bookings?focus={b.id}",
                 "icon": "fas fa-calendar-check"
@@ -2078,14 +2089,15 @@ async def dashboard_overview_api(
 
     serializable_recent = []
     for b in stats['recent_orders']:
-        c_first = b.user.first_name if b.user and b.user.first_name else ""
-        c_last = b.user.last_name if b.user and b.user.last_name else ""
-        c_init = (c_first[0].upper() if c_first else "") + (c_last[0].upper() if c_last else "")
+        c_ref = b.customer_ref or f"Client #{b.id}"
+        b_ref = b.booking_ref or getattr(b, "display_booking_ref", f"BK-{b.id:04d}")
         
         serializable_recent.append({
             "id": b.id,
-            "customer_name": f"{c_first} {c_last}".strip() if b.user else "Walk-in Customer",
-            "customer_initials": c_init if c_init else "WI",
+            "booking_ref": b_ref,
+            "customer_ref": c_ref,
+            "customer_name": f"Client {c_ref}",
+            "customer_initials": "CL",
             "event_type": b.event_type,
             "total_amount": float(b.total_amount or 0),
             "event_date": b.event_date.strftime('%b %d, %Y') if b.event_date else '',
@@ -9034,20 +9046,34 @@ async def check_customer(
             ).first()
 
     if target:
-        full_name = f"{target.first_name or ''} {target.last_name or ''}".strip()
-        email_taken = False
-        if email and target.email and email.lower() == target.email.lower():
-            email_taken = True
-            
-        return {
-            "exists": True, 
-            "is_taken": email_taken,
-            "match_type": "email" if email_taken else "name",
-            "name": full_name or target.email, 
-            "email": target.email, 
-            "contact": target.phone_number,
-            "message": "Existing customer found." if email_taken else "Similar name found."
-        }
+        has_client_relationship = db.query(models.Booking).filter(
+            models.Booking.user_id == target.id,
+            models.Booking.caterer_id == user.caterer_profile.id
+        ).first() is not None
+
+        email_taken = bool(email and target.email and email.lower() == target.email.lower())
+        
+        if has_client_relationship:
+            full_name = f"{target.first_name or ''} {target.last_name or ''}".strip()
+            return {
+                "exists": True, 
+                "is_taken": email_taken,
+                "is_client": True,
+                "match_type": "email" if email_taken else "name",
+                "name": full_name or target.email, 
+                "email": target.email, 
+                "contact": target.phone_number,
+                "message": "Existing client of your business found." if email_taken else "Similar client name found."
+            }
+        else:
+            # Privacy Protection: Do NOT leak name or phone of unaffiliated platform users
+            return {
+                "exists": True,
+                "is_taken": email_taken,
+                "is_client": False,
+                "match_type": "email" if email_taken else "name",
+                "message": "An account with this email is already registered on the platform." if email_taken else "Account match on platform."
+            }
         
     return {"exists": False}
 
