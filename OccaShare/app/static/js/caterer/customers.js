@@ -112,31 +112,26 @@ window.exportCustomerCSV = function(format = 'csv') {
     }
     
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Client ID,First Name,Last Name,Email,Account Tier,Lifetime Spend,Events,Last Active\n";
+    csvContent += "Client ID,Status,Total Spent,Bookings,Last Active\n";
     
     rows.forEach(row => {
         if (row.style.display === 'none') return;
         try {
             const cells = row.querySelectorAll('td');
-            const id = cells[0].innerText.replace('CUST-', '').trim();
-            const fullName = row.querySelector('.name-text').innerText.trim();
-            const names = fullName.split(' ');
-            const firstName = names[0];
-            const lastName = names.slice(1).join(' ');
-            const email = row.querySelector('.email-text').innerText.trim();
-            const tier = cells[2].innerText.trim();
-            const spend = cells[3].innerText.replace('₱', '').replace(/,/g, '').trim();
-            const events = cells[4].innerText.replace('events', '').trim();
-            const lastSeen = cells[5].innerText.trim();
+            const id = cells[0].innerText.trim();
+            const status = cells[1].innerText.trim();
+            const spend = cells[2].innerText.replace('₱', '').replace(/,/g, '').trim();
+            const bookings = cells[3].innerText.replace('events', '').replace('event', '').trim();
+            const lastSeen = cells[4].innerText.trim();
             
-            csvContent += `"${id}","${firstName}","${lastName}","${email}","${tier}","${spend}","${events}","${lastSeen}"\n`;
+            csvContent += `"${id}","${status}","₱${spend}","${bookings} events","${lastSeen}"\n`;
         } catch(e) {}
     });
     
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", format === 'excel' ? "customer_database.xls" : "customer_database.csv");
+    link.setAttribute("download", format === 'excel' ? "customer_directory_summary.xls" : "customer_directory_summary.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -153,7 +148,7 @@ window.exportCustomerPDF = function() {
     }
 
     let printHtml = `
-    <html><head><title>Customer Database Report</title>
+    <html><head><title>Customer Directory Summary Report</title>
     <style>
         body { font-family: 'Poppins', sans-serif; padding: 2rem; color: #0f172a; }
         h2 { border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
@@ -162,22 +157,21 @@ window.exportCustomerPDF = function() {
         th { background: #f8fafc; font-weight: 800; text-transform: uppercase; color: #64748b; }
         tr:nth-child(even) { background: #fcfcfd; }
     </style></head><body>
-    <h2>OccaServe Caterer - Customer Database Report</h2>
+    <h2>OccaServe Caterer - Customer Directory Summary Report</h2>
     <table><thead><tr>
-        <th>ID</th><th>Name</th><th>Email</th><th>Tier</th><th>LTV (Spend)</th><th>Events</th>
+        <th>Client ID</th><th>Status</th><th>Total Spent</th><th>Bookings</th><th>Last Active</th>
     </tr></thead><tbody>`;
 
     rows.forEach(row => {
         if (row.style.display === 'none') return;
         try {
             const cells = row.querySelectorAll('td');
-            const id = cells[0].innerText.replace('CUST-', '').trim();
-            const fullName = row.querySelector('.name-text').innerText.trim();
-            const email = row.querySelector('.email-text').innerText.trim();
-            const tier = cells[2].innerText.trim();
-            const spend = cells[3].innerText.trim();
-            const events = cells[4].innerText.trim();
-            printHtml += `<tr><td>${id}</td><td>${fullName}</td><td>${email}</td><td>${tier}</td><td>${spend}</td><td>${events}</td></tr>`;
+            const id = cells[0].innerText.trim();
+            const status = cells[1].innerText.trim();
+            const spend = cells[2].innerText.trim();
+            const bookings = cells[3].innerText.trim();
+            const lastActive = cells[4].innerText.trim();
+            printHtml += `<tr><td>${id}</td><td>${status}</td><td>${spend}</td><td>${bookings}</td><td>${lastActive}</td></tr>`;
         } catch(e) {}
     });
 
@@ -473,7 +467,7 @@ function dynamicallyUpdateCustomerRow(c) {
 
     const rowContent = `
         <td class="premium-cell">
-            <span class="pay-id" style="font-weight: 700; color: #0f172a; font-size: 0.88rem;">CUST-${String(c.id).padStart(3, '0')}</span>
+            <span class="pay-id" style="font-weight: 700; color: #0f172a; font-size: 0.88rem;">${c.customer_ref || ('CUST-' + String(c.id).padStart(3, '0'))}</span>
         </td>
         <td class="premium-cell">
             <div class="identity-flex">

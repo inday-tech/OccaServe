@@ -793,9 +793,11 @@
                 {% set is_past_event = (not is_completed_or_cancelled) and booking.event_date and (booking.event_date < today) %}
                 {% set raw_src = (booking.booking_source or '')|lower %}
                 {% set is_manual = (not booking.user_id) or ('walk' in raw_src) or ('internal' in raw_src) or ('manual' in raw_src) or (booking.custom_requirements and booking.custom_requirements.get('is_walk_in')) %}
-                {% set booking_ref = booking.booking_ref or ('BK-' ~ "%06d" | format(booking.id)) %}
+                {% set booking_ref = booking.booking_ref or booking.display_booking_ref or ('BK-' ~ "%06d" | format(booking.id)) %}
                 {% if booking.customer_ref %}
                     {% set customer_ref = booking.customer_ref %}
+                {% elif booking.display_customer_ref %}
+                    {% set customer_ref = booking.display_customer_ref %}
                 {% elif booking.user_id %}
                     {% set customer_ref = 'CUST-' ~ ('%04d'|format(booking.user_id)) %}
                 {% else %}

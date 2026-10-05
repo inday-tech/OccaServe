@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKey, Boolean, Date, Time, DECIMAL, ARRAY
+from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKey, Boolean, Date, Time, DECIMAL, ARRAY, event, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -746,64 +746,55 @@ class Booking(Base):
     payment_records = relationship("BookingPaymentRecord", back_populates="booking", cascade="all, delete-orphan")
 
     def _get_caterer_prefix(self) -> str:
-        """Derive standard uppercase 3-letter caterer prefix from caterer business name."""
+        """Derive standard uppercase 3-letter caterer prefix: REP, DAR, GAB."""
         try:
-            b_name = None
-            if self.caterer and getattr(self.caterer, "business_name", None):
-                b_name = self.caterer.business_name
+            from app.services.id_service import get_caterer_code
+            if self.caterer:
+                return get_caterer_code(self.caterer)
             elif hasattr(self, "_caterer_business_name") and self._caterer_business_name:
-                b_name = self._caterer_business_name
-            
-            if not b_name and self.caterer_id:
+                return get_caterer_code(self._caterer_business_name)
+            elif self.caterer_id:
                 try:
                     from sqlalchemy.orm import object_session
                     sess = object_session(self)
                     if sess:
                         cp = sess.query(CatererProfile).filter(CatererProfile.id == self.caterer_id).first()
-                        if cp and cp.business_name:
-                            b_name = cp.business_name
+                        if cp:
+                            return get_caterer_code(cp)
                 except Exception:
                     pass
-
-            if b_name:
-                import re
-                clean = re.sub(r'[^A-Za-z]', '', str(b_name).strip())
-                if len(clean) >= 3:
-                    return clean[:3].upper()
-                elif len(clean) > 0:
-                    return clean.upper().ljust(3, 'X')
         except Exception:
             pass
-        return "BK"
+        return "CAT"
 
     @hybrid_property
     def booking_ref(self) -> str:
         # Priority 1: Stored value in database column
         if self._booking_ref and str(self._booking_ref).strip():
-            return str(self._booking_ref).strip()
+            ref = str(self._booking_ref).strip()
+            # If format has old style without '-BK-', normalize it
+            prefix = self._get_caterer_prefix()
+            if ref.startswith(f"{prefix}-") and not ref.startswith(f"{prefix}-BK-") and not ref.startswith(f"{prefix}-C-"):
+                # e.g. REP-001 -> REP-BK-001
+                num_part = ref[len(prefix) + 1:]
+                if num_part.isdigit():
+                    return f"{prefix}-BK-{int(num_part):03d}"
+            return ref
 
         # Priority 2: Check custom_requirements
         if self.custom_requirements and isinstance(self.custom_requirements, dict):
             custom_ref = self.custom_requirements.get("booking_ref") or self.custom_requirements.get("booking_reference")
             if custom_ref and str(custom_ref).strip():
                 return str(custom_ref).strip()
-        
-        # Priority 3: Check caterer sequence or format by prefix
-        prefix = self._get_caterer_prefix()
-        if prefix != "BK" and self.caterer_id:
-            try:
-                if self.caterer and hasattr(self.caterer, "bookings") and self.caterer.bookings:
-                    same_caterer = sorted([b for b in self.caterer.bookings if b.id is not None], key=lambda x: x.id)
-                    for idx, b in enumerate(same_caterer, start=1):
-                        if b.id == self.id:
-                            return f"{prefix}-{idx:03d}"
-            except Exception:
-                pass
-            return f"{prefix}-{self.id:03d}"
 
-        # Priority 4: Standard fallback for general bookings
-        fallback_pfx = 'ORD-' if self.document_type == 'invoice' else ('RT-' if (self.document_type == 'rental_agreement' or self.event_type == 'Equipment Rental') else 'BK-')
-        return f"{fallback_pfx}{self.id:06d}"
+        # Priority 3: Fallback sequential format with caterer code
+        prefix = self._get_caterer_prefix()
+        if self._customer_ref and "-C-" in self._customer_ref:
+            parts = self._customer_ref.split("-C-")
+            if len(parts) > 1 and parts[-1].isdigit():
+                return f"{prefix}-BK-{int(parts[-1]):03d}"
+        seq_num = self.id if self.id else 1
+        return f"{prefix}-BK-{seq_num:03d}"
 
     @booking_ref.setter
     def booking_ref(self, value):
@@ -833,23 +824,14 @@ class Booking(Base):
             if custom_cref and str(custom_cref).strip():
                 return str(custom_cref).strip()
 
-        # Priority 3: Check caterer prefix format
+        # Priority 3: Fallback sequential format aligned with booking_ref or caterer code
         prefix = self._get_caterer_prefix()
-        if prefix != "BK" and self.caterer_id:
-            try:
-                if self.caterer and hasattr(self.caterer, "bookings") and self.caterer.bookings:
-                    same_caterer = sorted([b for b in self.caterer.bookings if b.id is not None], key=lambda x: x.id)
-                    for idx, b in enumerate(same_caterer, start=1):
-                        if b.id == self.id:
-                            return f"{prefix}-C-{idx:03d}"
-            except Exception:
-                pass
-            return f"{prefix}-C-{self.id:03d}"
-
-        # Priority 4: Fallback
-        if self.user_id:
-            return f"CUST-{self.user_id:04d}"
-        return f"WALKIN-BK-{self.id:06d}"
+        if self._booking_ref and "-BK-" in self._booking_ref:
+            parts = self._booking_ref.split("-BK-")
+            if len(parts) > 1 and parts[-1].isdigit():
+                return f"{prefix}-C-{int(parts[-1]):03d}"
+        cust_id_num = self.user_id if self.user_id else (self.id if self.id else 1)
+        return f"{prefix}-C-{cust_id_num:03d}"
 
     @customer_ref.setter
     def customer_ref(self, value):
@@ -868,6 +850,19 @@ class Booking(Base):
         return self.customer_ref
 
     @property
+    def invoice_ref(self) -> str:
+        """Linked or derived invoice reference for this booking."""
+        if hasattr(self, "invoices") and self.invoices:
+            for inv in self.invoices:
+                if getattr(inv, "invoice_ref", None):
+                    return inv.invoice_ref
+                elif hasattr(inv, "display_invoice_ref"):
+                    return inv.display_invoice_ref
+        prefix = self._get_caterer_prefix()
+        seq_num = self.id if self.id else 1
+        return f"{prefix}-INV-{seq_num:03d}"
+
+    @property
     def customer(self):
         """Alias to user relationship for backwards compatibility."""
         return self.user
@@ -878,6 +873,7 @@ class BookingPaymentRecord(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     booking_id = Column(Integer, ForeignKey("bookings.id"))
+    payment_ref = Column("payment_ref", String, nullable=True, index=True) # e.g. REP-PAY-001
     amount = Column(Float, nullable=False)
     payment_date = Column(DateTime(timezone=True), server_default=func.now())
     payment_method = Column(String, nullable=True)
@@ -886,6 +882,16 @@ class BookingPaymentRecord(Base):
     recorded_by = Column(String, nullable=True) # "Caterer" or "System"
 
     booking = relationship("Booking", back_populates="payment_records")
+
+    @property
+    def display_payment_ref(self) -> str:
+        if self.payment_ref and str(self.payment_ref).strip():
+            return str(self.payment_ref).strip()
+        prefix = "CAT"
+        if self.booking:
+            prefix = self.booking._get_caterer_prefix()
+        num = self.id if self.id else 1
+        return f"{prefix}-PAY-{num:03d}"
 
 class BookingMessage(Base):
     __tablename__ = "booking_messages"
@@ -1471,6 +1477,7 @@ class BillingInvoice(Base):
     id = Column(Integer, primary_key=True, index=True)
     caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"))
     booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=True)
+    invoice_ref = Column("invoice_ref", String, nullable=True, index=True) # e.g. REP-INV-001
     billing_period = Column(String) # e.g., "May 2026"
     amount = Column(Float, default=0.0)
     commission_rate = Column(Float, default=0.10)
@@ -1481,6 +1488,19 @@ class BillingInvoice(Base):
     
     caterer = relationship("CatererProfile", backref="invoices")
     booking = relationship("Booking", backref="invoices")
+
+    @property
+    def display_invoice_ref(self) -> str:
+        if self.invoice_ref and str(self.invoice_ref).strip():
+            return str(self.invoice_ref).strip()
+        prefix = "CAT"
+        if self.caterer:
+            from app.services.id_service import get_caterer_code
+            prefix = get_caterer_code(self.caterer)
+        elif self.booking:
+            prefix = self.booking._get_caterer_prefix()
+        num = self.id if self.id else 1
+        return f"{prefix}-INV-{num:03d}"
 
 class BusinessExpense(Base):
     __tablename__ = "business_expenses"
@@ -1547,3 +1567,235 @@ class PortfolioImage(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     portfolio = relationship("Portfolio", back_populates="images")
+
+
+class CatererIdSequence(Base):
+    __tablename__ = "caterer_id_sequences"
+
+    caterer_id = Column(Integer, ForeignKey("caterer_profiles.id", ondelete="CASCADE"), primary_key=True)
+    record_type = Column(String(10), primary_key=True)  # 'C', 'BK', 'PAY', 'INV'
+    last_seq = Column(Integer, default=0, nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class CatererCustomer(Base):
+    __tablename__ = "caterer_customers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    caterer_id = Column(Integer, ForeignKey("caterer_profiles.id", ondelete="CASCADE"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    customer_key = Column(String(100), nullable=False, index=True)  # e.g. user_12, email_john@..., name_john doe
+    customer_ref = Column(String(50), nullable=False)  # e.g. REP-C-001
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+@event.listens_for(Booking, 'before_insert')
+def auto_generate_booking_refs(mapper, connection, target):
+    try:
+        # Draft bookings do not consume production sequence numbers
+        if target.status == 'draft':
+            return
+
+        if target.caterer_id:
+            import re
+            from app.services.id_service import get_caterer_code
+            b_name = connection.execute(
+                text("SELECT business_name FROM caterer_profiles WHERE id = :cid"),
+                {"cid": target.caterer_id}
+            ).scalar()
+            code = get_caterer_code(b_name or "")
+
+            # 1. Booking Reference (e.g. REP-BK-001)
+            if not target._booking_ref or not str(target._booking_ref).strip():
+                res = connection.execute(
+                    text("SELECT last_seq FROM caterer_id_sequences WHERE caterer_id = :cid AND record_type = 'BK' FOR UPDATE"),
+                    {"cid": target.caterer_id}
+                ).fetchone()
+                if res:
+                    next_seq = res[0] + 1
+                    connection.execute(
+                        text("UPDATE caterer_id_sequences SET last_seq = :seq, updated_at = NOW() WHERE caterer_id = :cid AND record_type = 'BK'"),
+                        {"seq": next_seq, "cid": target.caterer_id}
+                    )
+                else:
+                    max_res = connection.execute(
+                        text("SELECT COUNT(*) FROM bookings WHERE caterer_id = :cid AND status != 'draft' AND is_archived = false"),
+                        {"cid": target.caterer_id}
+                    ).scalar() or 0
+                    next_seq = max_res + 1
+                    connection.execute(
+                        text("INSERT INTO caterer_id_sequences (caterer_id, record_type, last_seq, updated_at) VALUES (:cid, 'BK', :seq, NOW()) ON CONFLICT (caterer_id, record_type) DO UPDATE SET last_seq = EXCLUDED.last_seq"),
+                        {"cid": target.caterer_id, "seq": next_seq}
+                    )
+                target._booking_ref = f"{code}-BK-{next_seq:03d}"
+
+            # 2. Customer Reference (e.g. REP-C-001)
+            if not target._customer_ref or not str(target._customer_ref).strip():
+                c_key = None
+                if target.user_id:
+                    c_key = f"user_{target.user_id}"
+                elif target.customer_email and str(target.customer_email).strip() and not str(target.customer_email).lower().startswith("walkin@"):
+                    c_key = f"email_{str(target.customer_email).strip().lower()}"
+                elif target.customer_contact and str(target.customer_contact).strip():
+                    digits = re.sub(r'\D', '', str(target.customer_contact).strip())
+                    if len(digits) >= 7:
+                        c_key = f"phone_{digits[-10:]}"
+                elif target.customer_name and str(target.customer_name).strip():
+                    c_key = f"name_{str(target.customer_name).strip().lower()}"
+
+                if c_key:
+                    existing_c = connection.execute(
+                        text("SELECT customer_ref FROM caterer_customers WHERE caterer_id = :cid AND customer_key = :ckey"),
+                        {"cid": target.caterer_id, "ckey": c_key}
+                    ).fetchone()
+                    if existing_c and existing_c[0]:
+                        target._customer_ref = existing_c[0]
+
+                if not target._customer_ref:
+                    res_c = connection.execute(
+                        text("SELECT last_seq FROM caterer_id_sequences WHERE caterer_id = :cid AND record_type = 'C' FOR UPDATE"),
+                        {"cid": target.caterer_id}
+                    ).fetchone()
+                    if res_c:
+                        next_c_seq = res_c[0] + 1
+                        connection.execute(
+                            text("UPDATE caterer_id_sequences SET last_seq = :seq, updated_at = NOW() WHERE caterer_id = :cid AND record_type = 'C'"),
+                            {"seq": next_c_seq, "cid": target.caterer_id}
+                        )
+                    else:
+                        max_c_res = connection.execute(
+                            text("SELECT COUNT(DISTINCT user_id) FROM bookings WHERE caterer_id = :cid AND user_id IS NOT NULL"),
+                            {"cid": target.caterer_id}
+                        ).scalar() or 0
+                        next_c_seq = max_c_res + 1
+                        connection.execute(
+                            text("INSERT INTO caterer_id_sequences (caterer_id, record_type, last_seq, updated_at) VALUES (:cid, 'C', :seq, NOW()) ON CONFLICT (caterer_id, record_type) DO UPDATE SET last_seq = EXCLUDED.last_seq"),
+                            {"cid": target.caterer_id, "seq": next_c_seq}
+                        )
+                    c_ref = f"{code}-C-{next_c_seq:03d}"
+                    target._customer_ref = c_ref
+                    if c_key:
+                        connection.execute(
+                            text("INSERT INTO caterer_customers (caterer_id, user_id, customer_key, customer_ref) VALUES (:cid, :uid, :ckey, :cref) ON CONFLICT (caterer_id, customer_key) DO UPDATE SET customer_ref = EXCLUDED.customer_ref"),
+                            {"cid": target.caterer_id, "uid": target.user_id, "ckey": c_key, "cref": c_ref}
+                        )
+    except Exception:
+        pass
+
+
+@event.listens_for(BookingPaymentRecord, 'before_insert')
+def auto_generate_payment_ref(mapper, connection, target):
+    try:
+        if not target.payment_ref or not str(target.payment_ref).strip():
+            cid = None
+            b_ref = None
+            if target.booking_id:
+                b_row = connection.execute(
+                    text("SELECT caterer_id, booking_ref FROM bookings WHERE id = :bid"),
+                    {"bid": target.booking_id}
+                ).fetchone()
+                if b_row:
+                    cid = b_row[0]
+                    b_ref = b_row[1]
+
+            if cid:
+                from app.services.id_service import get_caterer_code
+                b_name = connection.execute(
+                    text("SELECT business_name FROM caterer_profiles WHERE id = :cid"),
+                    {"cid": cid}
+                ).scalar()
+                code = get_caterer_code(b_name or "")
+
+                # If booking has a standard booking_ref, match payment ref to booking ref
+                if b_ref and "-BK-" in b_ref:
+                    # Check how many payments already exist for this booking
+                    existing_pays = connection.execute(
+                        text("SELECT COUNT(*) FROM booking_payment_records WHERE booking_id = :bid"),
+                        {"bid": target.booking_id}
+                    ).scalar() or 0
+                    if existing_pays == 0:
+                        target.payment_ref = b_ref.replace("-BK-", "-PAY-")
+                        return
+                    else:
+                        target.payment_ref = f"{b_ref.replace('-BK-', '-PAY-')}-{existing_pays + 1}"
+                        return
+
+                res = connection.execute(
+                    text("SELECT last_seq FROM caterer_id_sequences WHERE caterer_id = :cid AND record_type = 'PAY' FOR UPDATE"),
+                    {"cid": cid}
+                ).fetchone()
+                if res:
+                    next_seq = res[0] + 1
+                    connection.execute(
+                        text("UPDATE caterer_id_sequences SET last_seq = :seq, updated_at = NOW() WHERE caterer_id = :cid AND record_type = 'PAY'"),
+                        {"seq": next_seq, "cid": cid}
+                    )
+                else:
+                    max_p = connection.execute(
+                        text("SELECT COUNT(*) FROM booking_payment_records bpr JOIN bookings b ON bpr.booking_id = b.id WHERE b.caterer_id = :cid"),
+                        {"cid": cid}
+                    ).scalar() or 0
+                    next_seq = max_p + 1
+                    connection.execute(
+                        text("INSERT INTO caterer_id_sequences (caterer_id, record_type, last_seq, updated_at) VALUES (:cid, 'PAY', :seq, NOW()) ON CONFLICT (caterer_id, record_type) DO UPDATE SET last_seq = EXCLUDED.last_seq"),
+                        {"cid": cid, "seq": next_seq}
+                    )
+                target.payment_ref = f"{code}-PAY-{next_seq:03d}"
+    except Exception:
+        pass
+
+
+@event.listens_for(BillingInvoice, 'before_insert')
+def auto_generate_invoice_ref(mapper, connection, target):
+    try:
+        if not target.invoice_ref or not str(target.invoice_ref).strip():
+            cid = target.caterer_id
+            b_ref = None
+            if target.booking_id:
+                b_row = connection.execute(
+                    text("SELECT caterer_id, booking_ref FROM bookings WHERE id = :bid"),
+                    {"bid": target.booking_id}
+                ).fetchone()
+                if b_row:
+                    if not cid:
+                        cid = b_row[0]
+                    b_ref = b_row[1]
+
+            if cid:
+                from app.services.id_service import get_caterer_code
+                b_name = connection.execute(
+                    text("SELECT business_name FROM caterer_profiles WHERE id = :cid"),
+                    {"cid": cid}
+                ).scalar()
+                code = get_caterer_code(b_name or "")
+
+                # If invoice is for a specific booking, match invoice ref to booking ref
+                if b_ref and "-BK-" in b_ref:
+                    target.invoice_ref = b_ref.replace("-BK-", "-INV-")
+                    return
+
+                res = connection.execute(
+                    text("SELECT last_seq FROM caterer_id_sequences WHERE caterer_id = :cid AND record_type = 'INV' FOR UPDATE"),
+                    {"cid": cid}
+                ).fetchone()
+                if res:
+                    next_seq = res[0] + 1
+                    connection.execute(
+                        text("UPDATE caterer_id_sequences SET last_seq = :seq, updated_at = NOW() WHERE caterer_id = :cid AND record_type = 'INV'"),
+                        {"seq": next_seq, "cid": cid}
+                    )
+                else:
+                    max_i = connection.execute(
+                        text("SELECT COUNT(*) FROM billing_invoices WHERE caterer_id = :cid"),
+                        {"cid": cid}
+                    ).scalar() or 0
+                    next_seq = max_i + 1
+                    connection.execute(
+                        text("INSERT INTO caterer_id_sequences (caterer_id, record_type, last_seq, updated_at) VALUES (:cid, 'INV', :seq, NOW()) ON CONFLICT (caterer_id, record_type) DO UPDATE SET last_seq = EXCLUDED.last_seq"),
+                        {"cid": cid, "seq": next_seq}
+                    )
+                target.invoice_ref = f"{code}-INV-{next_seq:03d}"
+    except Exception:
+        pass
+
+

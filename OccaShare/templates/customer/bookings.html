@@ -301,7 +301,11 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                     <div class="cell-name">{{ display_title or 'Booking' }}</div>
                     <div class="cell-sub">
                         <span class="type-chip">{{ booking_type_label }}</span>
-                        {% if b.document_type == 'invoice' %}
+                        {% if b.booking_ref %}
+                            <span class="bk-id-chip">{{ b.booking_ref }}</span>
+                        {% elif b.display_booking_ref %}
+                            <span class="bk-id-chip">{{ b.display_booking_ref }}</span>
+                        {% elif b.document_type == 'invoice' %}
                             <span class="bk-id-chip">ORD-{{ "%03d"|format(b.id) }}</span>
                         {% elif b.document_type == 'rental_agreement' or b.event_type == 'Equipment Rental' %}
                             <span class="bk-id-chip">RT-{{ "%03d"|format(b.id) }}</span>

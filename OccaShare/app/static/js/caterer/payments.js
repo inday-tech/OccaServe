@@ -365,7 +365,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const bookingId = row.getAttribute('data-booking-id');
+        const bookingRef = row.getAttribute('data-booking-ref') || (row.querySelector('.pay-booking-ref') ? row.querySelector('.pay-booking-ref').textContent.replace('#', '').trim() : '') || ('BK-' + bookingId);
         const custName = row.getAttribute('data-customer') || 'Customer';
+        const custRef = row.getAttribute('data-customer-ref') || '';
         const total = parseFloat(row.getAttribute('data-total')) || 0;
         const paid = parseFloat(row.getAttribute('data-paid')) || 0;
         const balance = parseFloat(row.getAttribute('data-balance')) || 0;
@@ -398,11 +400,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="modal-info-grid">
                         <div class="modal-info-item">
                             <span class="modal-info-label">Customer</span>
-                            <span class="modal-info-val">${custName}</span>
+                            <span class="modal-info-val">${custName} ${custRef ? `<small style="color: #64748b; font-weight: 600;">(${custRef})</small>` : ''}</span>
                         </div>
                         <div class="modal-info-item">
                             <span class="modal-info-label">Booking ID</span>
-                            <span class="modal-info-val"><a href="/caterer/bookings?booking_id=${bookingId}" class="pay-booking-ref">#BK-${bookingId}</a></span>
+                            <span class="modal-info-val"><a href="/caterer/bookings?booking_id=${bookingId}" class="pay-booking-ref">#${bookingRef}</a></span>
                         </div>
                         <div class="modal-info-item">
                             <span class="modal-info-label">Payment Method</span>
@@ -534,11 +536,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="modal-info-grid">
                             <div class="modal-info-item">
                                 <span class="modal-info-label">Customer</span>
-                                <span class="modal-info-val">${custName}</span>
+                                <span class="modal-info-val">${custName} ${booking.customer_ref ? `<small style="color: #64748b; font-weight: 600;">(${booking.customer_ref})</small>` : ''}</span>
                             </div>
                             <div class="modal-info-item">
                                 <span class="modal-info-label">Booking ID</span>
-                                <span class="modal-info-val"><a href="/caterer/bookings?booking_id=${bookingId}" class="pay-booking-ref">#BK-${bookingId}</a></span>
+                                <span class="modal-info-val"><a href="/caterer/bookings?booking_id=${bookingId}" class="pay-booking-ref">#${booking.booking_ref || booking.booking_reference || ('BK-' + bookingId)}</a></span>
                             </div>
                             <div class="modal-info-item">
                                 <span class="modal-info-label">Payment Method</span>
@@ -657,16 +659,20 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         };
 
+        const row = document.querySelector(`tr[data-booking-id="${bookingId}"]`);
+        const bRef = row ? (row.getAttribute('data-booking-ref') || (row.querySelector('.pay-booking-ref') ? row.querySelector('.pay-booking-ref').textContent.replace('#', '').trim() : '')) : '';
+        const bLabel = bRef ? `#${bRef}` : `#BK-${bookingId}`;
+
         if (typeof window.showConfirm === 'function') {
             window.showConfirm(
-                `Verify payment for booking #BK-${bookingId}? This will mark the transaction as verified and update the booking.`,
+                `Verify payment for booking ${bLabel}? This will mark the transaction as verified and update the booking.`,
                 doVerify,
                 'Verify Payment',
                 'Yes, Verify Payment',
                 'success'
             );
         } else {
-            if (confirm(`Verify payment for booking #BK-${bookingId}? This will confirm the received payment.`)) {
+            if (confirm(`Verify payment for booking ${bLabel}? This will confirm the received payment.`)) {
                 doVerify();
             }
         }
@@ -871,7 +877,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <p style="margin: 4px 0 0; font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;">Official Invoice</p>
                         </div>
                         <div style="text-align: right;">
-                            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a;">#BK-${bookingId}</h3>
+                            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a;">#${data.invoice_ref || data.booking_ref || data.booking_reference || ('BK-' + bookingId)}</h3>
                             <p style="margin: 4px 0 0; font-size: 0.8rem; color: #64748b; font-weight: 600;">Date: ${dateStr}</p>
                         </div>
                     </div>
@@ -879,7 +885,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
                         <div>
                             <h4 style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; margin: 0 0 0.4rem 0; font-weight: 800; letter-spacing: 0.04em;">Customer Details</h4>
-                            <p style="margin: 0; font-weight: 700; font-size: 0.88rem; color: #0f172a;">${customerName}</p>
+                            <p style="margin: 0; font-weight: 700; font-size: 0.88rem; color: #0f172a;">${customerName} ${data.customer_ref ? `<span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">(${data.customer_ref})</span>` : ''}</p>
                             ${customer.email ? `<p style="margin: 2px 0 0; font-size: 0.8rem; color: #64748b;">${customer.email}</p>` : ''}
                         </div>
                         <div style="text-align: right;">

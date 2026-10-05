@@ -79,37 +79,26 @@
         </div>
         
         <div class="table-responsive">
-            <table class="premium-table" id="customersTable" style="border-collapse: collapse; border-spacing: 0; min-width: 900px;">
+            <table class="premium-table" id="customersTable" style="border-collapse: collapse; border-spacing: 0; min-width: 800px;">
                 <thead>
                     <tr>
-                        <th>Client ID</th>
-                        <th>Customer</th>
-                        <th>Status</th>
-                        <th>Total Spent</th>
-                        <th>Total Bookings</th>
-                        <th>Last Active</th>
-                        <th class="text-right">Actions</th>
+                        <th style="width: 22%;">Client ID</th>
+                        <th style="width: 18%;">Status</th>
+                        <th style="width: 18%;">Total Spent</th>
+                        <th style="width: 18%;">Bookings</th>
+                        <th style="width: 14%;">Last Active</th>
+                        <th class="text-right" style="width: 10%;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="customersTableBody">
                     {% for customer in customers %}
-                    <tr class="premium-row" id="row-cust-{{ customer.id }}" data-name="{{ customer.first_name | lower }} {{ customer.last_name | lower }}" data-email="{{ customer.email | lower }}">
+                    <tr class="premium-row" id="row-cust-{{ customer.customer_ref }}" data-ref="{{ customer.customer_ref | lower }}" data-status="{{ customer.tier_label | lower }}">
+                        <!-- 1. Client ID -->
                         <td class="premium-cell">
-                            <span class="pay-id" style="font-weight: 700; color: #0f172a; font-size: 0.88rem;">CUST-{{ "%03d"|format(customer.id) }}</span>
+                            <span class="pay-id" style="font-weight: 800; color: #0f172a; font-size: 0.9rem; letter-spacing: 0.02em;">{{ customer.customer_ref }}</span>
                         </td>
-                        <td class="premium-cell">
-                            <div class="identity-flex">
-                                <div class="avatar-circle-pro">
-                                    {{ (customer.first_name[0]|upper) if customer.first_name else '?' }}{{ (customer.last_name[0]|upper) if customer.last_name else '' }}
-                                </div>
-                                <div class="identity-text">
-                                    <div class="name-text" style="font-weight: 600; color: #334155;">{{ customer.first_name }} {{ customer.last_name }}</div>
-                                    {% set email_parts = (customer.email or '').split('@') %}
-                                    {% set masked_email = (email_parts[0][:2] ~ '***@' ~ email_parts[1]) if (email_parts|length > 1 and email_parts[0]|length > 2) else ('***@' ~ (email_parts[1] if email_parts|length > 1 else 'email.com')) %}
-                                    <div class="email-text" style="font-size: 0.75rem; color: #64748b;" title="Masked for privacy. Click View Profile to view verified details."><i class="fas fa-shield-alt" style="font-size: 0.65rem; color: #94a3b8; margin-right: 3px;"></i>{{ masked_email }}</div>
-                                </div>
-                            </div>
-                        </td>
+
+                        <!-- 2. Status -->
                         <td class="premium-cell">
                             {% if customer.status == 'BLACKLISTED' %}
                                 <span class="premium-status-badge ps-badge-cancelled">Blacklisted</span>
@@ -121,133 +110,42 @@
                                 <span class="premium-status-badge ps-badge-confirmed">Standard</span>
                             {% endif %}
                         </td>
+
+                        <!-- 3. Total Spent -->
                         <td class="premium-cell">
                             <div class="amount-text" style="font-weight: 700; color: #0f172a;">₱{{ "{:,.2f}".format(customer.total_spent or 0) }}</div>
                         </td>
+
+                        <!-- 4. Total Bookings -->
                         <td class="premium-cell">
-                            <span style="font-weight: 600; color: var(--primary-color);">{{ customer.total_bookings }} events</span>
+                            <span style="font-weight: 600; color: var(--primary-color);">{{ customer.total_bookings }} event{{ 's' if customer.total_bookings != 1 else '' }}</span>
                         </td>
+
+                        <!-- 5. Last Active -->
                         <td class="premium-cell">
                             <div class="date-text" style="font-weight: 600; color: #334155;">
                                 {{ customer.last_booking_date.strftime('%b %d, %Y') if customer.last_booking_date else 'No data' }}
                             </div>
                         </td>
+
+                        <!-- 6. Actions (Directs to Booking Management) -->
                         <td class="premium-cell" style="text-align: right;">
-                            <div class="action-dropdown-container">
-                                <button class="btn-icon-dots" onclick="window.toggleActionMenu('cust{{ customer.id }}')" style="background: none; border: none; color: #64748b; cursor: pointer;">
-                                    <i class="fas fa-ellipsis-v"></i>
-                                </button>
-                                <div class="action-dropdown-menu" id="actionMenu-cust{{ customer.id }}">
-                                    <button onclick="window.openCustomerProfile({{ customer.id }})">
-                                        <i class="fas fa-id-card text-primary"></i> View Profile
-                                    </button>
-                                    <button onclick="window.quickEditCustomer({{ customer.id }})">
-                                        <i class="fas fa-pen text-warning"></i> Add Note
-                                    </button>
-                                </div>
-                            </div>
+                            <a href="/caterer/bookings?search={{ customer.customer_ref }}" class="btn-sm-outline" style="text-decoration: none; padding: 5px 12px; font-size: 0.78rem; font-weight: 700; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; color: #1e293b; border: 1px solid #cbd5e1; background: #ffffff; white-space: nowrap;" title="View bookings in Booking Management">
+                                <i class="fas fa-calendar-check" style="color: var(--primary-color);"></i> View Bookings
+                            </a>
                         </td>
                     </tr>
                     {% else %}
                     <tr id="emptyStateRow">
-                        <td colspan="7" class="empty-state-cell">
+                        <td colspan="6" class="empty-state-cell">
                             <div class="empty-icon"><i class="fas fa-users-slash"></i></div>
                             <h4>No Customer Records Found</h4>
-                            <p>Your directory is currently empty. Customers will automatically appear here once they book an event with you.</p>
+                            <p>No customer records found matching your filters. Customers will automatically appear here once they book an event with you.</p>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
-    </div>
-</div>
-
-
-
-<!-- CRM Hub Modal -->
-<div id="customerProfileModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-lg flex-col-modal">
-        <div class="occ-modal-header glass-header">
-            <div>
-                <h3 id="profName" class="occ-modal-title">Analyzing...</h3>
-                <div id="profStatus" class="occ-modal-subtitle status-pill-indicator">Connecting to intelligence stream...</div>
-            </div>
-            <button type="button" class="occ-modal-close" onclick="window.closeModal('customerProfileModal')">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-
-        <div class="tab-header-container bg-primary-dark">
-            <button class="tab-btn-pro active" data-tab="overview" onclick="switchIntelTab('overview', this)">
-                Customer Profile
-            </button>
-            <button class="tab-btn-pro" data-tab="history" onclick="switchIntelTab('history', this)">
-                Transaction History
-            </button>
-        </div>
-
-        <div class="occ-modal-body flex-1 overflow-y-auto modal-padding">
-            <!-- Overview Tab -->
-            <div id="intel-overview" class="intel-content active">
-                
-                <!-- Identity & Location Section -->
-                <div class="dashboard-card p-4 mb-4 border-subtle">
-                    <h4 class="text-xs font-bold text-muted mb-3" style="text-transform: uppercase;">Identity & Location</h4>
-                    <div class="grid-2-col" style="gap: 1.5rem;">
-                        <div>
-                            <label class="text-xs font-semibold text-muted block mb-1" style="text-transform: uppercase;">Full Legal Name</label>
-                            <p class="font-semibold text-sm text-dark m-0" id="profFullName">--</p>
-                        </div>
-                        <div>
-                            <label class="text-xs font-semibold text-muted block mb-1" style="text-transform: uppercase;">Residential Address</label>
-                            <p class="font-semibold text-sm text-muted m-0" id="profAddress">Protected for privacy (See Event Venue)</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid-2-col mb-4">
-                    <div class="dashboard-card p-4 border-subtle">
-                        <label class="text-xs font-semibold text-muted block mb-1">Registered Email</label>
-                        <p class="font-semibold text-sm text-dark m-0" id="profEmail">--</p>
-                    </div>
-                    <div class="dashboard-card p-4 border-subtle">
-                        <label class="text-xs font-semibold text-muted block mb-1">Contact Number</label>
-                        <p class="font-semibold text-sm text-dark m-0" id="profPhone">--</p>
-                    </div>
-                </div>
-
-                <div class="grid-2-col mb-4">
-                    <div class="dashboard-card p-4">
-                        <label class="text-xs font-semibold text-muted text-uppercase mb-1 block">Lifetime Value (LTV)</label>
-                        <div class="text-lg font-bold text-primary" id="profLTV">₱0.00</div>
-                    </div>
-                    <div class="dashboard-card p-4">
-                        <label class="text-xs font-semibold text-muted text-uppercase mb-1 block">Total Engagements</label>
-                        <div class="text-lg font-bold text-dark" id="profEvents">0</div>
-                    </div>
-                </div>
-
-                <div class="dashboard-card p-4 bg-gray-50 border-subtle mt-4">
-                    <label class="text-xs font-semibold text-muted text-uppercase mb-2 block">Internal CRM Notes</label>
-                    <form id="editCustomerForm" onsubmit="window.updateCustomerProfile(event)">
-                        <textarea id="editNotes" name="notes" class="form-control" rows="4" placeholder="Add specific preferences, allergies, or past experiences with this client..." style="margin-bottom: 0.75rem;"></textarea>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span class="field-hint" style="color:#64748b; font-size: 0.75rem; max-width: 70%;">Clients cannot view these notes. Personal fields are locked for data protection.</span>
-                            <button type="submit" class="btn-primary input-sm" id="btnUpdateCustomer">
-                                Save Notes
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- History Tab -->
-            <div id="intel-history" class="intel-content" style="display: none;">
-                <div class="ledger-timeline" id="profHistory">
-                    <!-- Populated dynamically -->
-                </div>
-            </div>
         </div>
     </div>
 </div>

@@ -320,6 +320,13 @@ async def customer_bookings(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
+    from app.services.id_service import sync_and_standardize_caterer_ids
+    seen_cids = set()
+    for b in user.bookings:
+        if b.caterer_id and b.caterer_id not in seen_cids:
+            seen_cids.add(b.caterer_id)
+            sync_and_standardize_caterer_ids(db, b.caterer_id)
+
     # Calculate Intelligence Stats
     # Filter out Food Orders (invoice) from the Event Bookings timeline
     active_bookings = []
@@ -793,6 +800,13 @@ async def customer_payments(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
+    from app.services.id_service import sync_and_standardize_caterer_ids
+    seen_cids = set()
+    for b in user.bookings:
+        if b.caterer_id and b.caterer_id not in seen_cids:
+            seen_cids.add(b.caterer_id)
+            sync_and_standardize_caterer_ids(db, b.caterer_id)
+
     bookings = user.bookings
     return templates.TemplateResponse("customer/payments.html", {
         "request": request,
@@ -1903,9 +1917,10 @@ async def customer_omni_search(
 
     for b in bookings:
         prefix = "ORD-" if b.document_type == 'invoice' else "BK-"
+        ref = b.booking_ref or getattr(b, "display_booking_ref", None) or f"{prefix}{b.id}"
         results.append({
-            "title": b.event_name or b.event_type or f"Booking {prefix}{b.id}",
-            "subtitle": f"ID: {prefix}{b.id} • {(b.status or 'pending').replace('_', ' ').title()}",
+            "title": b.event_name or b.event_type or f"Booking {ref}",
+            "subtitle": f"ID: {ref} • {(b.status or 'pending').replace('_', ' ').title()}",
             "icon": "fas fa-calendar-check" if b.document_type != 'invoice' else "fas fa-shopping-bag",
             "link": f"/customer/bookings/manage/{b.id}",
             "type": "booking"

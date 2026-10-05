@@ -201,6 +201,8 @@
                         data-status="{{ t.status|lower }}"
                         data-type="{{ t.payment_type|lower }}"
                         data-booking-id="{{ t.booking_id }}"
+                        data-booking-ref="{{ t.booking_ref }}"
+                        data-customer-ref="{{ t.customer_ref }}"
                         data-payment-id="{{ t.id }}"
                         data-customer="{{ t.customer_name }}"
                         data-event="{{ t.event_name }}"
@@ -582,7 +584,7 @@
                     <tr class="premium-row" id="commission-invoice-{{ inv.id }}">
                         <!-- 1. Invoice ID -->
                         <td class="premium-cell">
-                            <span class="pay-id">INV-{{ "%04d"|format(inv.id) }}</span>
+                            <span class="pay-id">{{ inv.invoice_ref or inv.display_invoice_ref or ("INV-" ~ "%04d"|format(inv.id)) }}</span>
                         </td>
 
                         <!-- 2. Billing Period -->
@@ -620,8 +622,9 @@
                         <!-- 6. Receipt -->
                         <td class="premium-cell">
                             {% if inv.payment_proof_url %}
+                            {% set receipt_ref = inv.invoice_ref or inv.display_invoice_ref or ('INV-' ~ inv.id) %}
                             <button type="button" class="btn-sm-outline"
-                                onclick="window.showProof('{{ inv.payment_proof_url }}', 'Invoice Receipt - INV-{{ inv.id }}')"
+                                onclick="window.showProof('{{ inv.payment_proof_url }}', 'Invoice Receipt - {{ receipt_ref }}')"
                                 style="padding: 3px 8px; font-size: 0.76rem;">
                                 <i class="fas fa-image"></i> View Receipt
                             </button>
