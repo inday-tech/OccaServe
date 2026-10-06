@@ -2903,6 +2903,9 @@
         <div class="occ-modal-footer" style="flex-shrink: 0; padding: 1rem 1.5rem; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
             <div id="modalFooterLeftActions" style="display: flex; align-items: center; gap: 0.75rem;">
                 <!-- Mutual exclusive: Cancel (active) XOR Archive (completed/cancelled). Visibility controlled by _syncFooterButtons -->
+                <div id="footerCancelBlockedNote" role="note" aria-hidden="true" style="display: none; max-width: 340px; color: #92400e; font-size: 0.78rem; font-weight: 600;">
+                    A payment is verified or under review. Contact support or an administrator to review cancellation and any refund.
+                </div>
                 <button type="button" id="btnFooterCancelBooking" class="btn-secondary-pro is-footer-btn-hidden" aria-hidden="true" tabindex="-1" style="display: none !important; padding: 0.6rem 1.1rem; font-size: 0.85rem; font-weight: 700; color: #dc2626; border: 1px solid #fecaca; background: #fef2f2; border-radius: 8px; cursor: pointer; align-items: center; gap: 6px;">
                     <i class="fas fa-ban"></i> Cancel Booking
                 </button>

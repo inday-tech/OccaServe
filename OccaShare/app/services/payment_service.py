@@ -43,6 +43,12 @@ class PaymentService:
     """Centralised payment helper for OccaServe bookings."""
 
     @staticmethod
+    def has_payment_requiring_cancellation_review(booking: models.Booking) -> bool:
+        """Whether verified funds or a submitted payment need review before cancellation."""
+        summary = PaymentService.get_payment_summary(booking)
+        return summary["verified_paid"] > 0.009 or summary["pending_review"] > 0.009
+
+    @staticmethod
     def required_deposit(booking: models.Booking) -> float:
         """Backend-calculated required deposit (never trust the frontend)."""
         total = float(booking.total_price or booking.total_amount or 0.0)

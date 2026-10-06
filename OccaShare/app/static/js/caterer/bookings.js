@@ -228,6 +228,8 @@ function toggleActionMenuBookings(id, event) {
         const payment = (target.getAttribute('data-payment-status') || '').toLowerCase();
         const totalAmount = parseFloat(target.getAttribute('data-total-amount') || '0');
         const amountPaid = parseFloat(target.getAttribute('data-amount-paid') || '0');
+        const hasPaymentRequiringReview = amountPaid > 0.009
+            || ['deposit_paid', 'paid', 'fully_paid', 'partially_paid', 'proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested', 'pending_verification'].includes(payment);
         const isPackage = (target.getAttribute('data-is-package') || 'false') === 'true';
         const isVerified = (target.getAttribute('data-is-verified') || 'false') === 'true';
         const userId = target.getAttribute('data-user-id') || '';
@@ -349,7 +351,7 @@ function toggleActionMenuBookings(id, event) {
             }
 
             // 7. Cancel Booking (Destructive - Status not completed, cancelled, or expired)
-            if (!['completed', 'cancelled', 'expired'].includes(status)) {
+            if (!['completed', 'cancelled', 'expired'].includes(status) && !hasPaymentRequiringReview) {
                 addSeparator();
                 addAction('Cancel Booking', 'fa-times-circle', function() {
                     if (typeof window.confirmRejectBooking === 'function') {
@@ -1336,24 +1338,23 @@ window.loadCustomerDetails = async function() {
 
 
 // ─── HELPER: Sync Left-Footer Buttons to Booking Status ─────────────────────
-// Active unpaid bookings can be cancelled; closed bookings can be archived.
+// Only bookings without received or review-pending payments can be cancelled.
 // NOTE: .occ-modal-footer .btn-secondary-pro uses display:inline-flex !important,
 // so we must hide via class (.is-footer-btn-hidden) not style.display.
-function _syncFooterButtons(cleanId, normStatus, isFullyPaid) {
+function _syncFooterButtons(cleanId, normStatus, hasPaymentRequiringReview) {
     var cancelBtn = document.getElementById('btnFooterCancelBooking');
     var archiveBtn = document.getElementById('btnFooterArchiveBooking');
+    var cancelBlockedNote = document.getElementById('footerCancelBlockedNote');
     if (!cancelBtn && !archiveBtn) return;
 
     var s = String(normStatus || '').toLowerCase().trim();
     var id = String(cleanId || currentBookingId || '').replace(/\D/g, '') || cleanId;
-    if (typeof isFullyPaid !== 'boolean') {
+    if (typeof hasPaymentRequiringReview !== 'boolean') {
         var viewBtn = document.querySelector(`.view-details[data-id="${id}"]`);
-        var total = Math.max(parseFloat(viewBtn?.dataset?.totalRawAmount) || 0, 0);
         var paid = Math.max(parseFloat(viewBtn?.dataset?.amountPaid) || 0, 0);
-        var balance = Math.max(parseFloat(viewBtn?.dataset?.balance) || (total - paid), 0);
         var paymentStatus = String(viewBtn?.dataset?.paymentStatus || '').toLowerCase();
-        isFullyPaid = (total > 0 && paid >= total - 0.009 && balance <= 0.009)
-            || (total <= 0 && ['paid', 'fully_paid'].includes(paymentStatus));
+        hasPaymentRequiringReview = paid > 0.009
+            || ['deposit_paid', 'paid', 'fully_paid', 'partially_paid', 'proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested', 'pending_verification'].includes(paymentStatus);
     }
 
     // Closed / terminal — Archive only
@@ -1362,7 +1363,7 @@ function _syncFooterButtons(cleanId, normStatus, isFullyPaid) {
         declined: 1, expired: 1, archived: 1, void: 1, released: 1
     };
     var canArchive = !!CLOSED[s];
-    var canCancel = !canArchive && !isFullyPaid;
+    var canCancel = !canArchive && !hasPaymentRequiringReview;
 
     function setFooterBtnVisible(btn, visible) {
         if (!btn) return;
@@ -1377,6 +1378,11 @@ function _syncFooterButtons(cleanId, normStatus, isFullyPaid) {
     }
 
     setFooterBtnVisible(cancelBtn, canCancel);
+    if (cancelBlockedNote) {
+        var showBlockedNote = !canArchive && hasPaymentRequiringReview;
+        cancelBlockedNote.style.display = showBlockedNote ? 'block' : 'none';
+        cancelBlockedNote.setAttribute('aria-hidden', showBlockedNote ? 'false' : 'true');
+    }
     if (cancelBtn) {
         cancelBtn.onclick = function (e) {
             if (e) { e.preventDefault(); e.stopPropagation(); }
@@ -1416,7 +1422,8 @@ function showBookingDetails(btn) {
         paidAmountValue = totalAmountValue;
     }
     var balanceValue = Math.max(parseFloat(data.balance) || (totalAmountValue - paidAmountValue), 0);
-    var isFullyPaidNow = totalAmountValue > 0 && paidAmountValue >= totalAmountValue - 0.009 && balanceValue <= 0.009;
+    var hasPaymentRequiringReviewNow = paidAmountValue > 0.009
+        || ['deposit_paid', 'paid', 'fully_paid', 'partially_paid', 'proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested', 'pending_verification'].includes(paymentStatus);
 
     // Under-review: trust API flag first, then payment_status, then proof+unpaid heuristic
     var reviewStatuses = ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested', 'pending_verification'];
@@ -1456,7 +1463,7 @@ function showBookingDetails(btn) {
     }
 
     // Immediately sync footer buttons so Archive/Cancel visibility is correct before hydration
-    _syncFooterButtons(cleanId, bookingStatus, isFullyPaidNow);
+    _syncFooterButtons(cleanId, bookingStatus, hasPaymentRequiringReviewNow);
 
     // Background hydration (silent, non-blocking)
     if (btn.dataset.workspaceHydrated !== 'true' && btn.dataset.workspaceHydrated !== 'loading') {
@@ -2249,7 +2256,7 @@ function showBookingDetails(btn) {
 
     // ─── 10. FOOTER ACTIONS ──────────────────────────────────────────────────
     // Re-sync after full hydration to ensure status from API is reflected
-    _syncFooterButtons(cleanId, bookingStatus, isFullyPaidNow);
+    _syncFooterButtons(cleanId, bookingStatus, hasPaymentRequiringReviewNow);
 
     var rightActions = document.getElementById('modalFooterRightActions');
     if (rightActions) {
@@ -2765,9 +2772,10 @@ function renderOverviewWorkspace(data, context) {
 
     // Keep footer Cancel/Archive in sync with the same status used by the advisory
     const paidAmount = Math.max(parseFloat(data.amountPaid) || 0, 0);
-    const balance = Math.max(parseFloat(data.balance) || (total - paidAmount), 0);
-    const isFullyPaid = total > 0 && paidAmount >= total - 0.009 && balance <= 0.009;
-    _syncFooterButtons(cleanId, status, isFullyPaid);
+    const paymentStatus = String(data.paymentStatus || '').toLowerCase();
+    const hasPaymentRequiringReview = paidAmount > 0.009
+        || ['deposit_paid', 'paid', 'fully_paid', 'partially_paid', 'proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested', 'pending_verification'].includes(paymentStatus);
+    _syncFooterButtons(cleanId, status, hasPaymentRequiringReview);
 }
 
 // ─── REALTIME BOOKING ACTION FEEDBACK ─────────────────────────────────────────
@@ -3467,7 +3475,17 @@ async function proceedWithAcceptance(bookingId, isPayment) {
 let rejectionBookingId = null;
 
 function confirmRejectBooking(bookingId) {
-    rejectionBookingId = bookingId || currentBookingId || window.currentBookingId || null;
+    const targetId = bookingId || currentBookingId || window.currentBookingId || null;
+    const viewBtn = targetId
+        ? document.querySelector(`.view-details[data-id="${String(targetId).replace(/\D/g, '')}"]`)
+        : null;
+    const paidAmount = Math.max(parseFloat(viewBtn?.dataset?.amountPaid) || 0, 0);
+    const paymentStatus = String(viewBtn?.dataset?.paymentStatus || '').toLowerCase();
+    if (paidAmount > 0.009 || ['deposit_paid', 'paid', 'fully_paid', 'partially_paid', 'proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested', 'pending_verification'].includes(paymentStatus)) {
+        window.showError('This booking has a verified payment or a payment under review. Contact support or an administrator to review cancellation and any refund.');
+        return;
+    }
+    rejectionBookingId = targetId;
     const inputEl = document.getElementById('rejectReasonInput');
     if (inputEl) inputEl.value = '';
     bk_openModal('rejectReasonModal');

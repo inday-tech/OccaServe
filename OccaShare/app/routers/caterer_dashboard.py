@@ -1012,6 +1012,17 @@ async def upload_dispatch_proof(
 class StatusUpdateSchema(BaseModel):
     status: str
 
+
+def ensure_booking_cancellation_has_no_verified_payment(booking: models.Booking) -> None:
+    from app.services.payment_service import PaymentService
+
+    if PaymentService.has_payment_requiring_cancellation_review(booking):
+        raise HTTPException(
+            status_code=409,
+            detail="This booking has a verified payment or a payment under review. Cancellation and any refund must be reviewed by support or an administrator.",
+        )
+
+
 def snapshot_booking_actual_cost(booking):
     # Only snapshot if not already manually set
     if booking.actual_cost and booking.actual_cost > 0:
@@ -1097,6 +1108,9 @@ async def update_booking_status(
     
     if new_status not in allowed_statuses:
         raise HTTPException(status_code=400, detail="Invalid status")
+
+    if new_status == "cancelled":
+        ensure_booking_cancellation_has_no_verified_payment(booking)
 
     # --- STRICT STATE MACHINE ENFORCEMENT ---
     # Normal flow: Pending -> Confirmed -> Completed
@@ -8600,6 +8614,8 @@ async def cancel_booking(
     if booking.status in ['cancelled', 'completed']:
         raise HTTPException(status_code=400, detail=f"Booking is already {booking.status}.")
 
+    ensure_booking_cancellation_has_no_verified_payment(booking)
+
     booking.status = "cancelled"
     
     history = models.BookingHistory(
@@ -8663,6 +8679,8 @@ async def reject_booking(
         raise HTTPException(status_code=400, detail="Cannot reject an archived booking.")
     if booking.status in ['cancelled', 'completed']:
         raise HTTPException(status_code=400, detail=f"Booking is already {booking.status}.")
+
+    ensure_booking_cancellation_has_no_verified_payment(booking)
 
     booking.status = 'cancelled'
     history = models.BookingHistory(booking_id=booking.id, status='cancelled', notes=f"Rejected: {reason}")
