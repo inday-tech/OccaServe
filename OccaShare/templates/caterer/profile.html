@@ -684,10 +684,13 @@
                 </div>
 
                 <div class="space-y-3">
-                    <a href="#packages-section"
-                        class="btn-primary w-full text-sm py-4 text-center block font-bold" style="text-decoration: none;">
-                        <i class="fas fa-box-open mr-1"></i> View Packages
-                    </a>
+                    <button {% if not request.query_params.get('preview') %}onclick="promptBookingAuth()" {% else
+                        %}disabled title="Preview Mode - Action Disabled"
+                        onclick="Swal.fire({icon: 'info', title: 'Preview Mode', text: 'This action is disabled while previewing your profile.', confirmButtonColor: 'var(--brand-primary)'})"
+                        {% endif %}
+                        class="btn-primary w-full text-sm py-4 text-center block font-bold">
+                        <i class="fas fa-calendar-check mr-2"></i> Book Now
+                    </button>
                     <button {% if not request.query_params.get('preview') %}onclick="promptInquiryAuth()" {% else
                         %}disabled title="Preview Mode - Action Disabled"
                         onclick="Swal.fire({icon: 'info', title: 'Preview Mode', text: 'This action is disabled while previewing your profile.', confirmButtonColor: 'var(--brand-primary)'})"
@@ -1818,12 +1821,20 @@
     }
 
     function promptBookingAuth() {
+        {% if user %}
+        window.location.href = "/bookings/start/{{ caterer.id }}";
+        {% else %}
         document.getElementById('auth-choice-modal').classList.remove('hidden');
         document.getElementById('auth-choice-modal').classList.add('flex');
+        {% endif %}
     }
 
     function promptInquiryAuth() {
+        {% if user %}
+        window.location.href = "/customer/messages?caterer_id={{ caterer.id }}";
+        {% else %}
         promptBookingAuth(); // Same auth modal
+        {% endif %}
     }
 
     function closeAuthChoice() {
