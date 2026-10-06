@@ -158,6 +158,7 @@ async def get_recent_notifications(
                 "title": n.title,
                 "message": n.message,
                 "type": n.type,
+                "link": n.link,
                 "is_read": n.is_read,
                 "created_at": n.created_at.isoformat()
             } for n in notifs

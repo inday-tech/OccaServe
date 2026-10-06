@@ -149,7 +149,7 @@
         </thead>
         <tbody>
             {% for inv in pending_invoices %}
-            <tr>
+            <tr id="commission-invoice-{{ inv.id }}">
                 <td><span style="font-weight: 800; color: var(--adm-navy);">#INV-{{ inv.id }}</span></td>
                 <td><span style="font-weight: 800; color: var(--adm-primary);">{% if inv.booking_id %}#BK-{{ inv.booking_id }}{% else %}Settlement batch{% if inv.display_booking_count %} ({{ inv.display_booking_count }} bookings){% endif %}{% endif %}</span></td>
                 <td>
@@ -236,6 +236,20 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+    window.addEventListener('load', () => {
+        const invoiceId = new URLSearchParams(window.location.search).get('invoice_id');
+        const invoiceRow = invoiceId && document.getElementById(`commission-invoice-${invoiceId}`);
+        if (invoiceRow) {
+            invoiceRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            invoiceRow.style.outline = '2px solid var(--adm-primary)';
+            invoiceRow.style.outlineOffset = '-2px';
+            setTimeout(() => {
+                invoiceRow.style.outline = '';
+                invoiceRow.style.outlineOffset = '';
+            }, 3000);
+        }
+    });
+
     async function approveInvoice(id) {
         openDiamondModal({
             title: 'Verify Settlement?',

@@ -9993,7 +9993,7 @@ async def settle_dues_api(
             user_id=admin.id,
             title="Commission Settlement Pending",
             message=f"{profile.business_name} has submitted a proof of payment for {billing_period}.",
-            link="/admin/commissions",
+            link=f"/admin/commissions?invoice_id={invoice.id}",
             type="info"
         )
         db.add(new_notif)
