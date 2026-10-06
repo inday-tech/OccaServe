@@ -26,7 +26,7 @@ PREP_STATUSES = [
     },
     {
         "key": "ready_for_delivery",
-        "label": "Ready for Delivery / Pickup",
+        "label": "Preparation Complete",
         "progress": 60,
         "color": "#0369a1",
         "bg": "#e0f2fe",

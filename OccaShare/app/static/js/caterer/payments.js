@@ -721,12 +721,19 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Settle Dues Modal Logic
-    window.openSettleModal = function() {
+    window.openSettleModal = function(billingPeriod, amountDue) {
         const periodInput = document.getElementById('settlePeriod');
-        if (periodInput && !periodInput.value) {
+        if (periodInput && billingPeriod) {
+            periodInput.value = billingPeriod;
+        } else if (periodInput && !periodInput.value) {
             const now = new Date();
             const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
             periodInput.value = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+        }
+        const amountEl = document.getElementById('settleAmountDue');
+        const selectedAmount = Number(amountDue);
+        if (amountEl && Number.isFinite(selectedAmount) && selectedAmount >= 0) {
+            amountEl.innerText = `₱${selectedAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         }
         window.openModal('settleModal');
     };

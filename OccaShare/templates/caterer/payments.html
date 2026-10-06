@@ -853,13 +853,10 @@
                     Outstanding Platform Commission: ₱{{ "{:,.2f}".format(outstanding_commission) }}
                 </div>
                 <div style="font-size: 0.82rem; color: #b45309; margin-top: 2px;">
-                    Please settle your pending platform commission to maintain your active caterer standing and receipt generation.
+                    Open the pending billing statement below to submit its payment proof.
                 </div>
             </div>
         </div>
-        <button class="btn-primary-pro" onclick="window.openSettleModal()" style="background: #d97706; border-color: #d97706; font-size: 0.85rem; padding: 0.6rem 1.25rem;">
-            <i class="fas fa-hand-holding-usd"></i> Settle Commission Now
-        </button>
     </div>
     {% endif %}
 
@@ -923,13 +920,7 @@
         <div class="pay-card-header">
             <div class="pay-card-header-left">
                 <h3><i class="fas fa-file-invoice" style="color: #6366f1;"></i> Commission Invoices (Billing &amp; Statements)</h3>
-                <p>Platform billing invoices and settlement statements issued by OccaServe.</p>
-            </div>
-            <div class="pay-toolbar">
-                <button type="button" class="btn-primary-pro" onclick="window.openSettleModal()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; font-size: 0.85rem; padding: 0.5rem 1rem;">
-                    <i class="fas fa-hand-holding-usd"></i>
-                    <span>Settle Commission</span>
-                </button>
+                <p>One billing statement per period. Submit payment proof from its pending statement.</p>
             </div>
         </div>
 
@@ -974,14 +965,8 @@
 
                         <!-- Status -->
                         <td class="premium-cell" data-label="Status">
-                            {% if inv.status == 'paid' %}
-                            <span class="premium-status-badge ps-badge-confirmed">Paid</span>
-                            {% elif inv.status == 'settled' %}
+                            {% if inv.status == 'settled' %}
                             <span class="premium-status-badge ps-badge-confirmed">Settled</span>
-                            {% elif inv.status == 'processing' %}
-                            <span class="premium-status-badge ps-badge-payment">Processing</span>
-                            {% elif inv.status == 'overdue' %}
-                            <span class="premium-status-badge ps-badge-danger">Overdue</span>
                             {% else %}
                             <span class="premium-status-badge ps-badge-pending">Pending</span>
                             {% endif %}
@@ -1000,15 +985,18 @@
 
                         <!-- Actions -->
                         <td class="premium-cell" style="text-align: right;">
-                            {% if inv.booking_id %}
-                            <button type="button" class="btn-sm-outline" onclick="window.viewInvoice('{{ inv.booking_id }}')" style="padding: 4px 10px; font-size: 0.78rem;">
-                                <i class="fas fa-file-invoice"></i> View Invoice
-                            </button>
-                            {% else %}
-                            <button type="button" class="btn-sm-outline" onclick="window.print()" style="padding: 4px 10px; font-size: 0.78rem;">
-                                Print Statement
+                            {% if inv.can_settle %}
+                            <button type="button" class="btn-sm-outline"
+                                data-billing-period="{{ inv.billing_period|e }}"
+                                data-amount="{{ inv.amount }}"
+                                onclick="window.openSettleModal(this.dataset.billingPeriod, this.dataset.amount)"
+                                style="padding: 4px 10px; font-size: 0.78rem; margin-right: 0.35rem;">
+                                <i class="fas fa-hand-holding-usd"></i> Submit Payment
                             </button>
                             {% endif %}
+                            <button type="button" class="btn-sm-outline" onclick="window.print()" style="padding: 4px 10px; font-size: 0.78rem;">
+                                <i class="fas fa-file-invoice"></i> View Statement
+                            </button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -1064,8 +1052,8 @@
         <div class="occ-modal-body">
             <div class="pay-details-summary" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <span style="font-weight: 700; color: #64748b; font-size: 0.85rem;">Total Commission Due:</span>
-                    <span style="font-size: 1.35rem; font-weight: 800; color: #991b1b;">₱{{ "{:,.2f}".format(outstanding_commission) }}</span>
+                    <span style="font-weight: 700; color: #64748b; font-size: 0.85rem;">Statement Amount Due:</span>
+                    <span id="settleAmountDue" style="font-size: 1.35rem; font-weight: 800; color: #991b1b;">₱{{ "{:,.2f}".format(outstanding_commission) }}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid #e2e8f0;">
                     <span style="font-weight: 600; color: #64748b; font-size: 0.85rem;">Admin GCash Name:</span>
@@ -1086,7 +1074,7 @@
 
             <div class="pay-form-group" style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 700; margin-bottom: 0.4rem; color: #334155; font-size: 0.85rem;">Billing Period</label>
-                <input type="text" id="settlePeriod" class="pay-input" placeholder="e.g. October 2026" required
+                <input type="text" id="settlePeriod" class="pay-input" placeholder="e.g. October 2026" required readonly
                     style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1.5px solid #cbd5e1;">
             </div>
 

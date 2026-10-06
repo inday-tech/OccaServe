@@ -16,7 +16,11 @@ from ..services.realtime import manager
 from ..services.payment_verification import payment_verification_service
 from ..services.notification import NotificationService
 from ..services.reminders import billing_period_due_date
-from ..services.commission import calculate_booking_commission, get_commission_rate_percent
+from ..services.commission import (
+    build_commission_invoice_rows,
+    calculate_booking_commission,
+    get_commission_rate_percent,
+)
 
 router = APIRouter(prefix="/caterer", tags=["caterer"])
 
@@ -2536,6 +2540,7 @@ async def caterer_payments(
         for due_row in legacy_due_rows:
             if not due_row.payment_proof_url:
                 due_row.status = 'processing'
+                due_row.payment_proof_url = submission.payment_proof_url
                 balance_updated = True
     
     # Map of paid booking IDs from invoices
@@ -2574,11 +2579,10 @@ async def caterer_payments(
                     balance_updated = True
             
             # Check if this booking's commission is already paid
-            if b.id not in paid_booking_ids and (
-                not existing_inv or existing_inv.status not in ('paid', 'settled', 'processing')
-            ):
-                total_unsettled_dues += comm_amount
-                b._due_amount = comm_amount
+            if b.id not in paid_booking_ids:
+                due_amount = float(existing_inv.amount or 0.0) if existing_inv else comm_amount
+                total_unsettled_dues += due_amount
+                b._due_amount = due_amount
                 unsettled_bookings.append(b)
 
     # Any global pending invoice with booking_id is None
@@ -2598,6 +2602,8 @@ async def caterer_payments(
 
     if balance_updated:
         db.commit()
+
+    commission_invoice_rows = build_commission_invoice_rows(invoices)
 
     from app.services.reminders import generate_caterer_reminders
     generate_caterer_reminders(user.id, db)
@@ -2817,7 +2823,7 @@ async def caterer_payments(
         "user": user,
         "config": config,
         "bookings": bookings,
-        "invoices": invoices,
+        "invoices": commission_invoice_rows,
         "unsettled_bookings": unsettled_bookings,
         "period": period,
         "start_date": start_date_param or "",
@@ -9754,19 +9760,27 @@ async def settle_dues_api(
     import time
     
     profile = user.caterer_profile
-    settlement_amount = float(profile.outstanding_balance or 0.0)
-    if settlement_amount <= 0:
-        raise HTTPException(status_code=400, detail="You do not have any outstanding balance to settle.")
-
     existing_submission = db.query(models.BillingInvoice).filter(
         models.BillingInvoice.caterer_id == profile.id,
         models.BillingInvoice.booking_id.is_(None),
+        models.BillingInvoice.billing_period == billing_period,
         models.BillingInvoice.status.in_(('pending', 'processing')),
         models.BillingInvoice.payment_proof_url.isnot(None),
         models.BillingInvoice.payment_proof_url != ''
     ).first()
     if existing_submission:
         raise HTTPException(status_code=409, detail="A commission settlement is already awaiting verification.")
+
+    period_due_invoices = db.query(models.BillingInvoice).filter(
+        models.BillingInvoice.caterer_id == profile.id,
+        models.BillingInvoice.booking_id.isnot(None),
+        models.BillingInvoice.billing_period == billing_period,
+        models.BillingInvoice.status.in_(("pending", "overdue")),
+        (models.BillingInvoice.payment_proof_url.is_(None)) | (models.BillingInvoice.payment_proof_url == "")
+    ).all()
+    settlement_amount = sum(float(invoice.amount or 0.0) for invoice in period_due_invoices)
+    if settlement_amount <= 0:
+        raise HTTPException(status_code=400, detail="This billing period has no outstanding commission to settle.")
         
     from app.services.storage import upload_file_to_cloudinary
     content_bytes = await proof_file.read()
@@ -9788,16 +9802,16 @@ async def settle_dues_api(
     )
     db.add(invoice)
 
-    due_invoices = db.query(models.BillingInvoice).filter(
+    for due_invoice in period_due_invoices:
+        due_invoice.status = 'processing'
+        due_invoice.payment_proof_url = proof_url
+
+    remaining_due_invoices = db.query(models.BillingInvoice).filter(
         models.BillingInvoice.caterer_id == profile.id,
         models.BillingInvoice.booking_id.isnot(None),
-        models.BillingInvoice.status.in_(('pending', 'overdue'))
+        models.BillingInvoice.status.in_(("pending", "processing", "overdue"))
     ).all()
-    for due_invoice in due_invoices:
-        if not due_invoice.payment_proof_url:
-            due_invoice.status = 'processing'
-    
-    profile.outstanding_balance = 0.0
+    profile.outstanding_balance = sum(float(invoice.amount or 0.0) for invoice in remaining_due_invoices)
     
     audit = models.AuditLog(
         user_id=user.id,
@@ -10603,4 +10617,3 @@ async def quick_delete_service(
         "success": True,
         "message": "Service deleted successfully."
     }
-

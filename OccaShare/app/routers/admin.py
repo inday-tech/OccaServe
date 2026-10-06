@@ -881,13 +881,14 @@ async def approve_invoice(
         covered_invoices = db.query(models.BillingInvoice).filter(
             models.BillingInvoice.caterer_id == invoice.caterer_id,
             models.BillingInvoice.booking_id.isnot(None),
+            models.BillingInvoice.billing_period == invoice.billing_period,
             models.BillingInvoice.status == 'processing'
         ).all()
         if not covered_invoices and invoice.created_at:
             covered_invoices = db.query(models.BillingInvoice).filter(
                 models.BillingInvoice.caterer_id == invoice.caterer_id,
                 models.BillingInvoice.booking_id.isnot(None),
-                models.BillingInvoice.status.in_(('pending', 'overdue')),
+                models.BillingInvoice.status.in_(('pending', 'processing', 'overdue')),
                 models.BillingInvoice.created_at <= invoice.created_at
             ).all()
         for covered_invoice in covered_invoices:
@@ -896,7 +897,7 @@ async def approve_invoice(
         remaining_invoices = db.query(models.BillingInvoice).filter(
             models.BillingInvoice.caterer_id == invoice.caterer_id,
             models.BillingInvoice.booking_id.isnot(None),
-            models.BillingInvoice.status.in_(('pending', 'processing'))
+            models.BillingInvoice.status.in_(('pending', 'processing', 'overdue'))
         ).all()
         invoice.caterer.outstanding_balance = sum(float(row.amount or 0.0) for row in remaining_invoices)
     
@@ -932,15 +933,24 @@ async def reject_invoice(
             covered_invoices = db.query(models.BillingInvoice).filter(
                 models.BillingInvoice.caterer_id == invoice.caterer_id,
                 models.BillingInvoice.booking_id.isnot(None),
+                models.BillingInvoice.billing_period == invoice.billing_period,
                 models.BillingInvoice.status == 'processing'
             ).all()
+            if not covered_invoices and invoice.created_at:
+                covered_invoices = db.query(models.BillingInvoice).filter(
+                    models.BillingInvoice.caterer_id == invoice.caterer_id,
+                    models.BillingInvoice.booking_id.isnot(None),
+                    models.BillingInvoice.status.in_(('pending', 'processing', 'overdue')),
+                    models.BillingInvoice.created_at <= invoice.created_at
+                ).all()
             for covered_invoice in covered_invoices:
                 covered_invoice.status = 'pending'
+                covered_invoice.payment_proof_url = None
 
             open_invoices = db.query(models.BillingInvoice).filter(
                 models.BillingInvoice.caterer_id == invoice.caterer_id,
                 models.BillingInvoice.booking_id.isnot(None),
-                models.BillingInvoice.status.in_(('pending', 'processing'))
+                models.BillingInvoice.status.in_(('pending', 'processing', 'overdue'))
             ).all()
             caterer.outstanding_balance = sum(float(row.amount or 0.0) for row in open_invoices)
         

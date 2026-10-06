@@ -1336,18 +1336,25 @@ window.loadCustomerDetails = async function() {
 
 
 // ─── HELPER: Sync Left-Footer Buttons to Booking Status ─────────────────────
-// Simple rule — never both at once:
-//   Active booking  → Cancel Booking
-//   Closed booking  → Archive Booking
+// Active unpaid bookings can be cancelled; closed bookings can be archived.
 // NOTE: .occ-modal-footer .btn-secondary-pro uses display:inline-flex !important,
 // so we must hide via class (.is-footer-btn-hidden) not style.display.
-function _syncFooterButtons(cleanId, normStatus) {
+function _syncFooterButtons(cleanId, normStatus, isFullyPaid) {
     var cancelBtn = document.getElementById('btnFooterCancelBooking');
     var archiveBtn = document.getElementById('btnFooterArchiveBooking');
     if (!cancelBtn && !archiveBtn) return;
 
     var s = String(normStatus || '').toLowerCase().trim();
     var id = String(cleanId || currentBookingId || '').replace(/\D/g, '') || cleanId;
+    if (typeof isFullyPaid !== 'boolean') {
+        var viewBtn = document.querySelector(`.view-details[data-id="${id}"]`);
+        var total = Math.max(parseFloat(viewBtn?.dataset?.totalRawAmount) || 0, 0);
+        var paid = Math.max(parseFloat(viewBtn?.dataset?.amountPaid) || 0, 0);
+        var balance = Math.max(parseFloat(viewBtn?.dataset?.balance) || (total - paid), 0);
+        var paymentStatus = String(viewBtn?.dataset?.paymentStatus || '').toLowerCase();
+        isFullyPaid = (total > 0 && paid >= total - 0.009 && balance <= 0.009)
+            || (total <= 0 && ['paid', 'fully_paid'].includes(paymentStatus));
+    }
 
     // Closed / terminal — Archive only
     var CLOSED = {
@@ -1355,7 +1362,7 @@ function _syncFooterButtons(cleanId, normStatus) {
         declined: 1, expired: 1, archived: 1, void: 1, released: 1
     };
     var canArchive = !!CLOSED[s];
-    var canCancel = !canArchive;
+    var canCancel = !canArchive && !isFullyPaid;
 
     function setFooterBtnVisible(btn, visible) {
         if (!btn) return;
@@ -1409,6 +1416,7 @@ function showBookingDetails(btn) {
         paidAmountValue = totalAmountValue;
     }
     var balanceValue = Math.max(parseFloat(data.balance) || (totalAmountValue - paidAmountValue), 0);
+    var isFullyPaidNow = totalAmountValue > 0 && paidAmountValue >= totalAmountValue - 0.009 && balanceValue <= 0.009;
 
     // Under-review: trust API flag first, then payment_status, then proof+unpaid heuristic
     var reviewStatuses = ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested', 'pending_verification'];
@@ -1448,7 +1456,7 @@ function showBookingDetails(btn) {
     }
 
     // Immediately sync footer buttons so Archive/Cancel visibility is correct before hydration
-    _syncFooterButtons(cleanId, bookingStatus);
+    _syncFooterButtons(cleanId, bookingStatus, isFullyPaidNow);
 
     // Background hydration (silent, non-blocking)
     if (btn.dataset.workspaceHydrated !== 'true' && btn.dataset.workspaceHydrated !== 'loading') {
@@ -2241,7 +2249,7 @@ function showBookingDetails(btn) {
 
     // ─── 10. FOOTER ACTIONS ──────────────────────────────────────────────────
     // Re-sync after full hydration to ensure status from API is reflected
-    _syncFooterButtons(cleanId, bookingStatus);
+    _syncFooterButtons(cleanId, bookingStatus, isFullyPaidNow);
 
     var rightActions = document.getElementById('modalFooterRightActions');
     if (rightActions) {
@@ -2269,13 +2277,24 @@ function showBookingDetails(btn) {
         } else if (bookingStatus === 'confirmed') {
             actionButtonsHtml += `<button type="button" onclick="updateBookingStage('${cleanId}', 'preparing')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: var(--primary-color, #800020); color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-utensils"></i> Start Preparation</button>`;
         } else if (bookingStatus === 'preparing') {
-            actionButtonsHtml += `<button type="button" onclick="window.requestReadyForDelivery('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-truck"></i> Ready for Delivery / Pickup</button>`;
+            actionButtonsHtml += `<button type="button" onclick="window.requestReadyForDelivery('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-clipboard-check"></i> ${isFoodOrder ? 'Ready for Delivery / Pickup' : 'Preparation Complete'}</button>`;
+        } else if (bookingStatus === 'ready_for_delivery') {
+            actionButtonsHtml += `<button type="button" onclick="updateBookingStage('${cleanId}', 'on_the_way')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-truck"></i> ${isFoodOrder ? 'Out for Delivery' : 'Depart for Venue'}</button>`;
+        } else if (bookingStatus === 'on_the_way') {
+            actionButtonsHtml += `<button type="button" onclick="updateBookingStage('${cleanId}', 'arrived')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-map-marker-alt"></i> ${isFoodOrder ? 'Mark Arrived' : 'Mark Arrived at Venue'}</button>`;
+        } else if (bookingStatus === 'ready_for_pickup') {
+            var canCompletePickup = totalAmountValue > 0 && paidAmountValue >= (totalAmountValue - 0.009) && balanceValue <= 0.009;
+            if (canCompletePickup) {
+                actionButtonsHtml += `<button type="button" onclick="window.confirmCompleteBooking('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-check"></i> ${isFoodOrder ? 'Mark Picked Up' : 'Mark Collected'}</button>`;
+            } else {
+                actionButtonsHtml += `<button type="button" onclick="window.openBalanceSettlement('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #ea580c; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-wallet"></i> Settle Remaining Balance First</button>`;
+            }
         } else if (bookingStatus === 'arrived') {
-            actionButtonsHtml += `<button type="button" onclick="updateBookingStage('${cleanId}', 'setup_ongoing')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-tools"></i> Start Setup</button>`;
-        } else if (['ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'in_progress', 'setup_ongoing'].includes(bookingStatus)) {
+            actionButtonsHtml += `<button type="button" onclick="updateBookingStage('${cleanId}', 'setup_ongoing')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-tools"></i> ${isFoodOrder ? 'Start Setup' : 'Start Event Setup'}</button>`;
+        } else if (['in_progress', 'setup_ongoing'].includes(bookingStatus)) {
             var canCompleteNow = totalAmountValue > 0 && paidAmountValue >= (totalAmountValue - 0.009) && balanceValue <= 0.009;
             if (canCompleteNow) {
-                actionButtonsHtml += `<button type="button" onclick="window.confirmCompleteBooking('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-flag-checkered"></i> Mark as Completed</button>`;
+                actionButtonsHtml += `<button type="button" onclick="window.confirmCompleteBooking('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-flag-checkered"></i> ${isFoodOrder ? 'Mark as Completed' : 'Complete Event'}</button>`;
             } else if (paymentStatus === 'balance_proof_submitted') {
                 actionButtonsHtml += `<button type="button" onclick="window.verifyPayment('${cleanId}', true)" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-shield-alt"></i> Verify Balance Proof</button>`;
             } else if (paymentStatus === 'cash_balance_requested') {
@@ -2526,6 +2545,7 @@ function renderOverviewWorkspace(data, context) {
     const isManual = (typeof context.isManual !== 'undefined') 
         ? Boolean(context.isManual) 
         : (sourceKindVal === 'manual' || data.isWalkin === 'true' || data.isManual === 'true' || sourceVal.includes('walk') || sourceVal.includes('manual'));
+    const isFoodOrder = data.isFoodOrder === 'true' || data.isFoodOrder === true;
     const total = Math.max(parseFloat(data.totalRawAmount) || 0, 0);
     const cleanId = data.id;
 
@@ -2590,29 +2610,29 @@ function renderOverviewWorkspace(data, context) {
             primaryBtnText = 'Open Checklist';
             primaryBtnAction = `switchBookingTab('preparation', document.getElementById('tabBtnPreparation'))`;
         } else if (status === 'ready_for_delivery') {
-            primaryTitle = 'Order Ready for Delivery';
-            primaryDesc = 'Items prepared. Dispatch delivery team when ready.';
-            primaryBtnText = 'Out for Delivery';
+            primaryTitle = isFoodOrder ? 'Order Ready for Delivery' : 'Catering Ready for Event Service';
+            primaryDesc = isFoodOrder ? 'Items prepared. Dispatch delivery team when ready.' : 'Food and equipment are prepared. Send the catering team to the venue when ready.';
+            primaryBtnText = isFoodOrder ? 'Out for Delivery' : 'Depart for Venue';
             primaryBtnAction = `window.updateBookingStage(${cleanId}, 'on_the_way')`;
         } else if (status === 'ready_for_pickup') {
-            primaryTitle = 'Order Ready for Customer Pickup';
-            primaryDesc = 'Items are ready. Mark picked up when customer collects.';
-            primaryBtnText = 'Mark Picked Up';
+            primaryTitle = isFoodOrder ? 'Order Ready for Customer Pickup' : 'Catering Ready for Customer Collection';
+            primaryDesc = isFoodOrder ? 'Items are ready. Mark picked up when customer collects.' : 'The catering booking is ready. Mark collected when the customer arrives.';
+            primaryBtnText = isFoodOrder ? 'Mark Picked Up' : 'Mark Collected';
             primaryBtnAction = `window.confirmCompleteBooking(${cleanId})`;
         } else if (status === 'on_the_way') {
-            primaryTitle = 'Order in Transit to Venue';
-            primaryDesc = 'Delivery team is en route.';
-            primaryBtnText = 'Mark Arrived';
+            primaryTitle = isFoodOrder ? 'Order in Transit to Venue' : 'Catering Team En Route';
+            primaryDesc = isFoodOrder ? 'Delivery team is en route.' : 'The catering team is on the way to the event venue.';
+            primaryBtnText = isFoodOrder ? 'Mark Arrived' : 'Mark Arrived at Venue';
             primaryBtnAction = `window.updateBookingStage(${cleanId}, 'arrived')`;
         } else if (status === 'arrived') {
-            primaryTitle = 'Team Arrived at Venue';
-            primaryDesc = 'Begin venue setup and food staging.';
-            primaryBtnText = 'Start Setup';
+            primaryTitle = isFoodOrder ? 'Order Arrived at Venue' : 'Catering Team at Venue';
+            primaryDesc = isFoodOrder ? 'The delivery has arrived at the venue.' : 'Set up the catering stations and prepare for service.';
+            primaryBtnText = isFoodOrder ? 'Confirm Arrival' : 'Start Event Setup';
             primaryBtnAction = `window.updateBookingStage(${cleanId}, 'setup_ongoing')`;
         } else if (status === 'setup_ongoing' || status === 'in_progress') {
             primaryTitle = 'Event Service Ongoing';
             primaryDesc = 'On-site event service in progress. Mark completed when finished.';
-            primaryBtnText = 'Mark Completed';
+            primaryBtnText = isFoodOrder ? 'Mark as Completed' : 'Complete Event';
             primaryBtnAction = `window.confirmCompleteBooking(${cleanId})`;
         }
     } else {
@@ -2689,29 +2709,29 @@ function renderOverviewWorkspace(data, context) {
             primaryBtnText = 'Open Checklist';
             primaryBtnAction = `switchBookingTab('preparation', document.getElementById('tabBtnPreparation'))`;
         } else if (status === 'ready_for_delivery') {
-            primaryTitle = 'Ready for Delivery';
-            primaryDesc = 'Items prepared. Dispatch delivery team when ready.';
-            primaryBtnText = 'Out for Delivery';
+            primaryTitle = isFoodOrder ? 'Ready for Delivery' : 'Catering Ready for Event Service';
+            primaryDesc = isFoodOrder ? 'Items prepared. Dispatch delivery team when ready.' : 'Food and equipment are prepared. Send the catering team to the venue when ready.';
+            primaryBtnText = isFoodOrder ? 'Out for Delivery' : 'Depart for Venue';
             primaryBtnAction = `window.updateBookingStage(${cleanId}, 'on_the_way')`;
         } else if (status === 'ready_for_pickup') {
-            primaryTitle = 'Ready for Pickup';
-            primaryDesc = 'Waiting for customer collection.';
-            primaryBtnText = 'Mark Picked Up';
+            primaryTitle = isFoodOrder ? 'Ready for Pickup' : 'Catering Ready for Customer Collection';
+            primaryDesc = isFoodOrder ? 'Waiting for customer collection.' : 'The catering booking is ready. Mark collected when the customer arrives.';
+            primaryBtnText = isFoodOrder ? 'Mark Picked Up' : 'Mark Collected';
             primaryBtnAction = `window.confirmCompleteBooking(${cleanId})`;
         } else if (status === 'on_the_way') {
-            primaryTitle = 'Order in Transit';
-            primaryDesc = 'Delivery team is en route to venue.';
-            primaryBtnText = 'Mark Arrived';
+            primaryTitle = isFoodOrder ? 'Order in Transit' : 'Catering Team En Route';
+            primaryDesc = isFoodOrder ? 'Delivery team is en route to venue.' : 'The catering team is on the way to the event venue.';
+            primaryBtnText = isFoodOrder ? 'Mark Arrived' : 'Mark Arrived at Venue';
             primaryBtnAction = `window.updateBookingStage(${cleanId}, 'arrived')`;
         } else if (status === 'arrived') {
-            primaryTitle = 'Team Arrived at Venue';
-            primaryDesc = 'Setup catering stations and food.';
-            primaryBtnText = 'Start Setup';
+            primaryTitle = isFoodOrder ? 'Order Arrived at Venue' : 'Catering Team at Venue';
+            primaryDesc = isFoodOrder ? 'The delivery has arrived at the venue.' : 'Set up the catering stations and prepare for service.';
+            primaryBtnText = isFoodOrder ? 'Confirm Arrival' : 'Start Event Setup';
             primaryBtnAction = `window.updateBookingStage(${cleanId}, 'setup_ongoing')`;
         } else if (status === 'setup_ongoing' || status === 'in_progress') {
             primaryTitle = 'Event Service Ongoing';
             primaryDesc = 'Event is in progress. Mark completed when finished.';
-            primaryBtnText = 'Mark Completed';
+            primaryBtnText = isFoodOrder ? 'Mark as Completed' : 'Complete Event';
             primaryBtnAction = `window.confirmCompleteBooking(${cleanId})`;
         }
     }
@@ -2744,7 +2764,10 @@ function renderOverviewWorkspace(data, context) {
     }
 
     // Keep footer Cancel/Archive in sync with the same status used by the advisory
-    _syncFooterButtons(cleanId, status);
+    const paidAmount = Math.max(parseFloat(data.amountPaid) || 0, 0);
+    const balance = Math.max(parseFloat(data.balance) || (total - paidAmount), 0);
+    const isFullyPaid = total > 0 && paidAmount >= total - 0.009 && balance <= 0.009;
+    _syncFooterButtons(cleanId, status, isFullyPaid);
 }
 
 // ─── REALTIME BOOKING ACTION FEEDBACK ─────────────────────────────────────────
@@ -3644,23 +3667,25 @@ function updateBookingStage(bookingId, status) {
         return;
     }
 
+    const viewBtn = document.querySelector(`.view-details[data-id="${String(bookingId).replace(/\D/g, '')}"]`);
+    const isFoodOrder = viewBtn?.dataset?.isFoodOrder === 'true';
     const labels = {
-        'preparing': 'Start cooking and preparation?',
-        'ready_for_delivery': 'Is the order packed and ready for delivery?',
-        'ready_for_pickup': 'Is the order ready for the customer to pick up?',
-        'on_the_way': 'Is the team/rider currently in transit to the location?',
-        'arrived': 'Has the order/team arrived at the venue?',
+        'preparing': 'Start preparation for this event?',
+        'ready_for_delivery': isFoodOrder ? 'Is the order packed and ready for delivery?' : 'Are the food and event equipment prepared and ready to be sent to the venue?',
+        'ready_for_pickup': isFoodOrder ? 'Is the order ready for the customer to pick up?' : 'Is the catering booking ready for customer collection?',
+        'on_the_way': isFoodOrder ? 'Is the team/rider currently in transit to the location?' : 'Has the catering team left for the event venue?',
+        'arrived': isFoodOrder ? 'Has the order/team arrived at the venue?' : 'Has the catering team arrived at the event venue?',
         'setup_ongoing': 'Has the setup and food service started?',
-        'in_progress': 'Has the event serving officially started?'
+        'in_progress': 'Has event service officially started?'
     };
     const titles = {
         'preparing': 'Start Preparation?',
-        'ready_for_delivery': 'Mark as Ready?',
-        'ready_for_pickup': 'Ready for Pickup?',
-        'on_the_way': 'Dispatch Order?',
-        'arrived': 'Order Arrived?',
-        'setup_ongoing': 'Start Setup?',
-        'in_progress': 'Start Event?'
+        'ready_for_delivery': isFoodOrder ? 'Mark as Ready?' : 'Preparation Complete?',
+        'ready_for_pickup': isFoodOrder ? 'Ready for Pickup?' : 'Ready for Collection?',
+        'on_the_way': isFoodOrder ? 'Dispatch Order?' : 'Depart for Venue?',
+        'arrived': isFoodOrder ? 'Order Arrived?' : 'Catering Team Arrived?',
+        'setup_ongoing': 'Start Event Setup?',
+        'in_progress': 'Start Event Service?'
     };
 
     window.showConfirm(labels[status] || 'Are you sure you want to proceed?',
@@ -4051,7 +4076,7 @@ window.openPrepStatusModal = function() {
         : [
             { key: 'not_started', label: 'Not Started', progress: 0, emoji: '⚪' },
             { key: 'preparing', label: 'Preparing', progress: 40, emoji: '🟡' },
-            { key: 'ready_for_delivery', label: 'Ready for Delivery / Pickup', progress: 60, emoji: '🔵' },
+            { key: 'ready_for_delivery', label: 'Preparation Complete', progress: 60, emoji: '🔵' },
             { key: 'setup_in_progress', label: 'Setup in Progress', progress: 80, emoji: '🟠' },
             { key: 'ready_for_event', label: 'Ready for Event', progress: 90, emoji: '🟣' },
             { key: 'completed', label: 'Completed', progress: 100, emoji: '🟢' }
@@ -4872,4 +4897,3 @@ window.toggleModalFullscreen = function(modalId, btn) {
         }
     }
 };
-
