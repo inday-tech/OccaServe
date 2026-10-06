@@ -2988,6 +2988,9 @@ async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_u
             booking.payment_status = 'deposit_paid'
             booking.amount_paid = verify_amt or float(booking.reservation_fee or (total_amt * 0.5))
         booking.status = 'confirmed'
+        booking.expires_at = None
+        if booking.payment_status == 'deposit_paid' and booking.event_date:
+            booking.balance_due_date = datetime.combine(booking.event_date, datetime.min.time())
         
         # Initialize operations checklist
         create_default_booking_tasks(db, booking.id)
@@ -3257,6 +3260,9 @@ async def confirm_cash_payment(
             booking.payment_status = 'deposit_paid'
             booking.amount_paid = amount_received
         booking.status = 'confirmed'
+        booking.expires_at = None
+        if booking.payment_status == 'deposit_paid' and booking.event_date:
+            booking.balance_due_date = datetime.combine(booking.event_date, datetime.min.time())
         history_note = f"Cash payment confirmed by caterer. Amount received: ₱{amount_received:,.2f}."
         if caterer_notes:
             history_note += f" Notes: {caterer_notes}"
@@ -3432,29 +3438,18 @@ async def set_balance_due_date(
     if not booking or (user.caterer_profile and booking.caterer_id != user.caterer_profile.id):
         raise HTTPException(status_code=404, detail="Booking not found")
 
+    if not booking.event_date:
+        raise HTTPException(status_code=400, detail="Booking has no event date for the balance due date.")
+
     try:
-        from datetime import datetime, date
-        # Validate format
-        new_date = datetime.strptime(req.due_date, '%Y-%m-%d').date()
-        today = date.today()
-        
-        # Validation 1: No Past Dates
-        if new_date < today:
-            raise HTTPException(status_code=400, detail="Deadline cannot be set to a past date.")
-            
-        # Validation 2: Event Date Constraint
-        if booking.event_date:
-            event_date = booking.event_date.date() if isinstance(booking.event_date, datetime) else booking.event_date
-            if new_date > event_date:
-                raise HTTPException(status_code=400, detail="Deadline cannot be set after the scheduled Event Date.")
-                
-        booking.balance_due_date = new_date
+        event_due_date = datetime.combine(booking.event_date, datetime.min.time())
+        booking.balance_due_date = event_due_date
         
         # Add History
         history = models.BookingHistory(
             booking_id=booking.id,
             status=booking.status,
-            notes=f"Balance Due Date set to {req.due_date} by Caterer."
+            notes=f"Balance due date set to the event date ({booking.event_date.isoformat()})."
         )
         db.add(history)
         db.commit()
@@ -3464,12 +3459,16 @@ async def set_balance_due_date(
         await NotificationService.notify_status_update(
             db, 
             booking.user_id, 
-            "Balance Payment Deadline Set", 
-            f"The caterer has set the final payment deadline for '{booking.event_name}' to {req.due_date}. Please ensure payment is settled by this date.", 
+            "Balance Due on Event Day",
+            f"The remaining balance for '{booking.event_name}' is due on the event date, {booking.event_date.isoformat()}. You may pay online or in cash to the caterer.",
             f"/customer/bookings/manage/{booking.id}"
         )
         
-        return {"status": "success", "message": "Due date updated and customer notified"}
+        return {
+            "status": "success",
+            "due_date": booking.event_date.isoformat(),
+            "message": "Balance due date set to the event date and customer notified",
+        }
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Invalid date format: {e}")

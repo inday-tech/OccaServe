@@ -259,15 +259,9 @@
                             
                             <!-- Balance Deadline Alert -->
                             {% if (booking.total_amount|float - booking.reservation_fee|float) > 0 %}
-                                {% if booking.balance_due_date %}
-                                    <div class="deadline-alert deadline-urgent" title="Remaining Balance Deadline">
-                                        <i class="fas fa-exclamation-triangle"></i> Due: {{ booking.balance_due_date.strftime('%b %d') }}
-                                    </div>
-                                {% else %}
-                                    <div class="deadline-alert" title="Remaining Balance Deadline" style="background:#fef3c7; color:#b45309; border-color:#fde68a;">
-                                        <i class="fas fa-clock"></i> Balance Pending
-                                    </div>
-                                {% endif %}
+                                <div class="deadline-alert" title="Remaining balance is due on event day" style="background:#fef3c7; color:#b45309; border-color:#fde68a;">
+                                    <i class="fas fa-calendar-day"></i> Due: Event Day
+                                </div>
                             {% endif %}
                         {% endif %}
                     </td>

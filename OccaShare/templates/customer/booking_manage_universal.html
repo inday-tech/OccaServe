@@ -423,7 +423,7 @@
 <!-- ── TAB 1: OVERVIEW & LOGISTICS ── -->
 <div id="tab-overview" class="tab-pane active">
     <!-- ── OUTSTANDING BALANCE BANNER ── -->
-    {% if booking.status in ['confirmed', 'preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress', 'completed'] and booking.payment_plan != 'full' and booking.balance_due_date and booking.payment_status not in ['paid', 'fully_paid', 'proof_submitted', 'balance_proof_submitted', 'cash_balance_requested', 'balance_reupload_requested'] %}
+    {% if booking.status in ['confirmed', 'preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress', 'completed'] and booking.payment_plan != 'full' and booking.event_date and booking.payment_status not in ['paid', 'fully_paid', 'proof_submitted', 'balance_proof_submitted', 'cash_balance_requested', 'balance_reupload_requested'] %}
         {% set total_val = booking.total_amount|float %}
         {% set res_fee = booking.reservation_fee|float if booking.reservation_fee else 0.0 %}
         {% set paid_now = booking.amount_paid|float if booking.amount_paid else res_fee %}
@@ -439,11 +439,8 @@
                     <h3 style="margin: 0 0 4px 0; color: #9a3412; font-size: 1.05rem; font-weight: 850;">Action Required: Outstanding Balance</h3>
                     <p style="margin: 0; color: #c2410c; font-size: 0.85rem; font-weight: 500;">
                         You have a remaining balance of <strong style="font-weight: 850;">₱{{ "{:,.2f}".format(balance_val) }}</strong>. 
-                        Pay via GCash, Bank, or Cash on or before <strong style="font-weight: 850;">{{ booking.balance_due_date.strftime('%B %d, %Y') }}</strong>.
+                        Settle this balance on your event date, <strong style="font-weight: 850;">{{ booking.event_date.strftime('%B %d, %Y') }}</strong>. You may pay online or in cash to your caterer.
                     </p>
-                    <div id="deadlineCountdownPkg" style="margin-top: 6px; font-size: 0.75rem; font-weight: 800; color: #ea580c; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(234, 88, 12, 0.12); border-radius: 20px;">
-                        <i class="fas fa-clock"></i> Calculating time remaining...
-                    </div>
                 </div>
             </div>
             <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange" style="width: auto; padding: 0.75rem 1.75rem; font-size: 0.85rem; background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%) !important; border: none; box-shadow: 0 4px 15px rgba(234, 88, 12, 0.35);">
@@ -451,34 +448,6 @@
             </a>
         </div>
 
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                const dueStr = "{{ booking.balance_due_date.strftime('%Y-%m-%d') }}T23:59:59";
-                const dueDate = new Date(dueStr);
-                const today = new Date();
-                
-                const diffTime = dueDate - today;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
-                const countdownEl = document.getElementById('deadlineCountdownPkg');
-                if (diffDays < 0) {
-                    countdownEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> PAYMENT OVERDUE';
-                    countdownEl.style.color = '#dc2626';
-                    countdownEl.style.background = '#fef2f2';
-                } else if (diffDays === 0) {
-                    countdownEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> DUE TODAY';
-                    countdownEl.style.color = '#dc2626';
-                    countdownEl.style.background = '#fef2f2';
-                } else if (diffDays <= 3) {
-                    countdownEl.innerHTML = '<i class="fas fa-clock"></i> DUE IN ' + diffDays + ' DAY' + (diffDays > 1 ? 'S' : '');
-                    countdownEl.style.color = '#ea580c';
-                } else {
-                    countdownEl.innerHTML = '<i class="fas fa-calendar-check"></i> Due in ' + diffDays + ' days';
-                    countdownEl.style.color = '#64748b';
-                    countdownEl.style.background = '#f1f5f9';
-                }
-            });
-        </script>
         {% endif %}
     {% endif %}
 

@@ -2428,8 +2428,21 @@ async def step_payment_page(booking_id: str, request: Request, db: Session = Dep
     PaymentService.heal_premature_completion(booking, db)
     db.refresh(booking)
 
+    is_balance = request.query_params.get("balance") == "true"
+    payment_summary = PaymentService.get_payment_summary(booking)
+    if is_balance and payment_summary["verified_paid"] <= 0.009:
+        return RedirectResponse(
+            url=f"/customer/bookings/manage/{booking_id_int}?error_msg=Balance+payment+is+available+after+the+downpayment+is+verified.",
+            status_code=303,
+        )
+
     # CONTINUOUS REVALIDATION: Block loading payment page if expired
-    is_valid, error_msg = BookingValidator.validate_booking_state(db, booking, update_if_expired=True)
+    is_valid, error_msg = BookingValidator.validate_booking_state(
+        db,
+        booking,
+        update_if_expired=True,
+        ignore_booking_deadline=is_balance,
+    )
     if not is_valid:
         return RedirectResponse(url=f"/customer/bookings/manage/{booking_id_int}?error_msg={error_msg}", status_code=303)
 
@@ -2463,7 +2476,7 @@ async def step_payment_page(booking_id: str, request: Request, db: Session = Dep
         "user": user,
         "current_step": 4,
         "active_page": "bookings",
-        "is_balance": request.query_params.get("balance") == "true"
+        "is_balance": is_balance
     })
 
 @router.post("/step/payment/{path_booking_id}")
@@ -2498,8 +2511,21 @@ async def step_payment_submit(
     PaymentService.heal_premature_completion(booking, db)
     db.refresh(booking)
 
+    is_balance = str(payment_plan).strip().lower() == "balance"
+    payment_summary = PaymentService.get_payment_summary(booking)
+    if is_balance and payment_summary["verified_paid"] <= 0.009:
+        raise HTTPException(
+            status_code=400,
+            detail="Balance payment is available after the downpayment is verified.",
+        )
+
     # CONTINUOUS REVALIDATION: Block submitting payment if expired
-    is_valid, error_msg = BookingValidator.validate_booking_state(db, booking, update_if_expired=True)
+    is_valid, error_msg = BookingValidator.validate_booking_state(
+        db,
+        booking,
+        update_if_expired=True,
+        ignore_booking_deadline=is_balance,
+    )
     if not is_valid:
         # If ajax request: raise HTTP error, else redirect
         raise HTTPException(status_code=400, detail=error_msg)
@@ -2539,6 +2565,7 @@ async def step_payment_submit(
         else:
             booking.payment_status = 'cash_payment_requested'
             booking.status = 'pending'
+            booking.expires_at = None
             history_note = f"Customer requested Cash payment of \u20b1{expected_fee:,.2f}. Awaiting caterer confirmation."
 
         history = models.BookingHistory(
@@ -2657,6 +2684,7 @@ async def step_payment_submit(
     else:
         booking.payment_status = "proof_submitted"
         booking.status = "pending"
+        booking.expires_at = None
 
         # Create or update ONE BookingPaymentRecord (prevent duplicates on double submit)
         existing_record = db.query(models.BookingPaymentRecord).filter(

@@ -458,16 +458,22 @@ async def set_balance_due_date(
     if booking.status == 'completed':
         raise HTTPException(status_code=400, detail="Cannot change due date for completed bookings.")
         
-    due_date_str = payload.get("due_date")
-    if not due_date_str:
-        raise HTTPException(status_code=400, detail="Due date is required.")
-        
+    if not booking.event_date:
+        raise HTTPException(status_code=400, detail="Booking has no event date for the balance due date.")
+
     try:
-        booking.balance_due_date = datetime.strptime(due_date_str, '%Y-%m-%d')
+        due_date_str = booking.event_date.isoformat()
+        booking.balance_due_date = datetime.combine(booking.event_date, datetime.min.time())
         db.commit()
         
         # --- Trigger Notification ---
-        await NotificationService.notify_status_update(db, booking.user_id, "Balance Due Date Set", f"The caterer has set the balance due date for your event '{booking.event_name}' to {due_date_str}.", f"/customer/bookings/manage/{booking.id}")
+        await NotificationService.notify_status_update(
+            db,
+            booking.user_id,
+            "Balance Due on Event Day",
+            f"The remaining balance for '{booking.event_name}' is due on the event date, {due_date_str}. You may pay online or in cash to the caterer.",
+            f"/customer/bookings/manage/{booking.id}",
+        )
         
         return {"status": "success", "due_date": due_date_str}
     except Exception as e:

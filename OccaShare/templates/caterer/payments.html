@@ -428,7 +428,7 @@
                         <!-- 7. Due Date -->
                         <td class="premium-cell">
                             <span style="font-size: 0.82rem; font-weight: 700; color: #475569;">
-                                {{ b.balance_due_date.strftime('%b %d, %Y') if b.balance_due_date else 'Due on Event Day' }}
+                                {{ b.event_date.strftime('%b %d, %Y') if b.event_date else 'Due on Event Day' }}
                             </span>
                         </td>
 

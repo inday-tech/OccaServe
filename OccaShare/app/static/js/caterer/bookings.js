@@ -3288,32 +3288,30 @@ function toggleDueDateEdit() {
 }
 
 async function saveDueDate() {
-    var newDate = document.getElementById('balanceDueDateInput').value;
-    if (!newDate) { window.showToast('Please select a valid date.', 'error'); return; }
-    var todayStr = new Date().toISOString().split('T')[0];
-    if (newDate < todayStr) { window.showToast('Deadline cannot be set in the past.', 'error'); return; }
-    if (currentEventDate && newDate > currentEventDate) { window.showToast('Deadline cannot be after the event date. It must be settled before or on the event day.', 'error'); return; }
+    const dueDateInput = document.getElementById('balanceDueDateInput');
+    const eventDueDate = currentEventDate || (dueDateInput && dueDateInput.value);
+    if (!eventDueDate) { window.showToast('This booking has no event date.', 'error'); return; }
     
     const cleanId = String(currentBookingId || '').replace(/\D/g, '');
     const data = await window.apiAction('/caterer/api/bookings/' + cleanId + '/set-due-date', {
         method: 'POST',
-        body: JSON.stringify({ due_date: newDate })
+        body: JSON.stringify({ due_date: eventDueDate })
     });
     
     if (data && data.status === 'success') {
         // Local UI Update
-        const parts = newDate.split('-');
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const formatted = `${months[parseInt(parts[1])-1]} ${parts[2]}, ${parts[0]}`;
-        
-        document.getElementById('modalDueDate').innerText = formatted;
+        const effectiveDate = data.due_date || eventDueDate;
+        const effectiveParts = effectiveDate.split('-');
+        const effectiveFormatted = `${months[parseInt(effectiveParts[1])-1]} ${effectiveParts[2]}, ${effectiveParts[0]}`;
+        document.getElementById('modalDueDate').innerText = effectiveFormatted;
         const badgeContainer = document.getElementById('dueDateBadgeContainer');
-        if (badgeContainer) badgeContainer.innerHTML = '<span class="due-date-badge"><i class="fas fa-check-circle"></i> Deadline Set</span>';
+        if (badgeContainer) badgeContainer.innerHTML = '<span class="due-date-badge"><i class="fas fa-check-circle"></i> Due on Event Day</span>';
         
         toggleDueDateEdit();
         
         var btn = document.querySelector('.view-details[data-id="' + cleanId + '"]');
-        if (btn) btn.dataset.balanceDue = newDate;
+        if (btn) btn.dataset.balanceDue = effectiveDate;
     }
 }
 

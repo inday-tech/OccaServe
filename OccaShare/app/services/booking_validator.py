@@ -10,7 +10,12 @@ class BookingValidator:
     """
 
     @staticmethod
-    def validate_booking_state(db: Session, booking: models.Booking, update_if_expired: bool = True) -> tuple[bool, str]:
+    def validate_booking_state(
+        db: Session,
+        booking: models.Booking,
+        update_if_expired: bool = True,
+        ignore_booking_deadline: bool = False,
+    ) -> tuple[bool, str]:
         """
         Validates the booking state. 
         Returns (is_valid: bool, error_message: str).
@@ -57,7 +62,11 @@ class BookingValidator:
                     return False, f"The caterer requires at least {lead_time_days} days advance booking. Your event is only {days_until_event} days away."
 
         # 4. Check Booking General Expiration (if set)
-        if booking.expires_at and booking.expires_at.replace(tzinfo=None) < now:
+        if (
+            not ignore_booking_deadline
+            and booking.expires_at
+            and booking.expires_at.replace(tzinfo=None) < now
+        ):
             BookingValidator._expire_booking(db, booking, "Booking deadline passed", update_if_expired)
             return False, "The booking has expired as it exceeded the allowed timeframe."
 

@@ -36,7 +36,10 @@
     <div class="wizard-header-content">
         {% if is_balance %}
         <h2 class="wizard-title">Pay Remaining Balance</h2>
-        <p class="wizard-subtitle">Pay your remaining balance to finalize your event booking.</p>
+        <p class="wizard-subtitle">
+            Your remaining balance is due on your event date{% if booking.event_date %}, {{ booking.event_date.strftime('%B %d, %Y') }}{% endif %}.
+            You may pay online or in cash to your caterer.
+        </p>
         {% elif booking.document_type == 'invoice' %}
         <h2 class="wizard-title">Pay for Food Order</h2>
         <p class="wizard-subtitle">Pay the required amount to confirm your food order.</p>

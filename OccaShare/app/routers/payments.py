@@ -129,6 +129,12 @@ async def payment_webhook(
                 # Preserve legacy status fields for backward compatibility
                 if pay_type == "dp":
                     booking.status = "confirmed"
+                    booking.expires_at = None
+                    if booking.payment_status == "deposit_paid" and booking.event_date:
+                        booking.balance_due_date = datetime.combine(
+                            booking.event_date,
+                            datetime.min.time(),
+                        )
                 # Note: booking.payment_status is now set by the service
                 
                 booking.payment_reference = external_ref
