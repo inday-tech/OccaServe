@@ -20,6 +20,7 @@ from ..services.commission import (
     build_commission_invoice_rows,
     calculate_booking_commission,
     get_commission_rate_percent,
+    is_pre_deployment_manual_booking,
 )
 
 router = APIRouter(prefix="/caterer", tags=["caterer"])
@@ -899,7 +900,10 @@ async def create_manual_booking(
         create_default_booking_tasks(db, new_booking.id)
 
         # 6. If created as completed, calculate admin platform commission & billing invoice
-        if requested_status in ["completed", "delivered"]:
+        if (
+            requested_status in ["completed", "delivered"]
+            and not is_pre_deployment_manual_booking(new_booking)
+        ):
             config = db.query(models.WebsiteConfig).first()
             comm_rate_percent = get_commission_rate_percent(config)
             comm_rate = comm_rate_percent / 100.0
@@ -1176,7 +1180,11 @@ async def update_booking_status(
     db.add(history)
 
     # BILLING: Calculate Commission and Add to Outstanding Balance
-    if new_status == "completed" and not booking.commission_calculated:
+    if (
+        new_status == "completed"
+        and not booking.commission_calculated
+        and not is_pre_deployment_manual_booking(booking)
+    ):
         caterer_prof = user.caterer_profile
         
         # Use Global Admin Commission Setting
@@ -2543,6 +2551,13 @@ async def caterer_payments(
     invoices = db.query(models.BillingInvoice).filter(
         models.BillingInvoice.caterer_id == profile.id
     ).order_by(models.BillingInvoice.created_at.desc()).all()
+    invoices = [
+        invoice for invoice in invoices
+        if not (
+            invoice.booking
+            and is_pre_deployment_manual_booking(invoice.booking)
+        )
+    ]
 
     invoice_dates_updated = False
     for invoice in invoices:
@@ -2577,6 +2592,8 @@ async def caterer_payments(
             models.BillingInvoice.created_at <= submission.created_at
         ).all()
         for due_row in legacy_due_rows:
+            if due_row.booking and is_pre_deployment_manual_booking(due_row.booking):
+                continue
             if not due_row.payment_proof_url:
                 due_row.status = 'processing'
                 due_row.payment_proof_url = submission.payment_proof_url
@@ -2592,7 +2609,10 @@ async def caterer_payments(
     # Calculate dues across all completed bookings that have not been settled
     total_unsettled_dues = 0.0
     for b in bookings:
-        if b.status in ('completed', 'delivered'):
+        if (
+            b.status in ('completed', 'delivered')
+            and not is_pre_deployment_manual_booking(b)
+        ):
             booking_total = float(b.total_amount or b.total_price or 0.0)
             comm_amount = calculate_booking_commission(booking_total, comm_rate_percent)
             existing_inv = next((inv for inv in invoices if inv.booking_id == b.id), None)
@@ -2635,7 +2655,7 @@ async def caterer_payments(
         if abs(float(profile.outstanding_balance or 0.0) - calculated_dues) > 0.01:
             profile.outstanding_balance = calculated_dues
             balance_updated = True
-    elif (profile.outstanding_balance or 0.0) < 0:
+    elif abs(float(profile.outstanding_balance or 0.0)) > 0.01:
         profile.outstanding_balance = 0.0
         balance_updated = True
 
@@ -4179,35 +4199,35 @@ async def complete_booking(
     )
     db.add(history)
 
-    # Automatically generate commission record
-    config = db.query(models.WebsiteConfig).first()
-    comm_rate_percent = get_commission_rate_percent(config)
-    comm_rate = comm_rate_percent / 100.0
-    booking_total = float(booking.total_amount or booking.total_price or 0.0)
-    commission_due = calculate_booking_commission(booking_total, comm_rate_percent)
+    if not is_pre_deployment_manual_booking(booking):
+        config = db.query(models.WebsiteConfig).first()
+        comm_rate_percent = get_commission_rate_percent(config)
+        comm_rate = comm_rate_percent / 100.0
+        booking_total = float(booking.total_amount or booking.total_price or 0.0)
+        commission_due = calculate_booking_commission(booking_total, comm_rate_percent)
 
-    caterer_prof = booking.caterer or user.caterer_profile
+        caterer_prof = booking.caterer or user.caterer_profile
 
-    existing_inv = db.query(models.BillingInvoice).filter(models.BillingInvoice.booking_id == booking.id).first()
-    if not existing_inv:
-        commission_record = models.BillingInvoice(
-            caterer_id=booking.caterer_id or (caterer_prof.id if caterer_prof else None),
-            booking_id=booking.id,
-            billing_period=booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
-            due_date=billing_period_due_date(
-                booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
-                booking.event_date
-            ),
-            amount=commission_due,
-            commission_rate=comm_rate,
-            status='pending'
-        )
-        db.add(commission_record)
+        existing_inv = db.query(models.BillingInvoice).filter(models.BillingInvoice.booking_id == booking.id).first()
+        if not existing_inv:
+            commission_record = models.BillingInvoice(
+                caterer_id=booking.caterer_id or (caterer_prof.id if caterer_prof else None),
+                booking_id=booking.id,
+                billing_period=booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
+                due_date=billing_period_due_date(
+                    booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
+                    booking.event_date
+                ),
+                amount=commission_due,
+                commission_rate=comm_rate,
+                status='pending'
+            )
+            db.add(commission_record)
+
+            if caterer_prof and not booking.commission_calculated:
+                caterer_prof.outstanding_balance = float(caterer_prof.outstanding_balance or 0.0) + commission_due
         
-        if caterer_prof and not booking.commission_calculated:
-            caterer_prof.outstanding_balance = float(caterer_prof.outstanding_balance or 0.0) + commission_due
-    
-    booking.commission_calculated = True
+        booking.commission_calculated = True
     
     db.commit()
 
@@ -9910,6 +9930,13 @@ async def settle_dues_api(
         models.BillingInvoice.status.in_(("pending", "overdue")),
         (models.BillingInvoice.payment_proof_url.is_(None)) | (models.BillingInvoice.payment_proof_url == "")
     ).all()
+    period_due_invoices = [
+        invoice for invoice in period_due_invoices
+        if not (
+            invoice.booking
+            and is_pre_deployment_manual_booking(invoice.booking)
+        )
+    ]
     settlement_amount = sum(float(invoice.amount or 0.0) for invoice in period_due_invoices)
     if settlement_amount <= 0:
         raise HTTPException(status_code=400, detail="This billing period has no outstanding commission to settle.")
@@ -9943,6 +9970,13 @@ async def settle_dues_api(
         models.BillingInvoice.booking_id.isnot(None),
         models.BillingInvoice.status.in_(("pending", "processing", "overdue"))
     ).all()
+    remaining_due_invoices = [
+        invoice for invoice in remaining_due_invoices
+        if not (
+            invoice.booking
+            and is_pre_deployment_manual_booking(invoice.booking)
+        )
+    ]
     profile.outstanding_balance = sum(float(invoice.amount or 0.0) for invoice in remaining_due_invoices)
     
     audit = models.AuditLog(

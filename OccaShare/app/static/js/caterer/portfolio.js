@@ -11,7 +11,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const highlightsInput = document.getElementById('highlightsInput');
     if (highlightsInput) {
         highlightsTagify = new Tagify(highlightsInput, {
-            maxTags: 8,
             dropdown: {
                 maxItems: 20,
                 classname: "tags-look",

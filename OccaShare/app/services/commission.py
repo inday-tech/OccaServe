@@ -1,3 +1,4 @@
+from datetime import date, datetime
 from types import SimpleNamespace
 from typing import Iterable, Optional
 
@@ -5,6 +6,23 @@ from ..db import models
 
 
 DEFAULT_COMMISSION_RATE_PERCENT = 10.0
+COMMISSION_LAUNCH_DATE = date(2026, 9, 10)
+
+
+def is_pre_deployment_manual_booking(booking: models.Booking) -> bool:
+    event_date = booking.event_date
+    if isinstance(event_date, datetime):
+        event_date = event_date.date()
+    if not event_date or event_date >= COMMISSION_LAUNCH_DATE:
+        return False
+
+    source = (booking.booking_source or "").casefold()
+    is_manual = (
+        not booking.user_id
+        or any(marker in source for marker in ("walk", "manual", "internal"))
+        or bool((booking.custom_requirements or {}).get("is_walk_in"))
+    )
+    return is_manual
 
 
 def get_commission_rate_percent(config: Optional[models.WebsiteConfig]) -> float:
@@ -23,6 +41,10 @@ def build_commission_invoice_rows(
     booking_groups = {}
     settlement_groups = {}
     for invoice in invoices:
+        booking = getattr(invoice, "booking", None)
+        if booking and is_pre_deployment_manual_booking(booking):
+            continue
+
         period_key = (invoice.billing_period or "General").strip().casefold()
         if invoice.booking_id is not None:
             booking_groups.setdefault(period_key, []).append(invoice)
