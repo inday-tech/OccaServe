@@ -1434,18 +1434,12 @@ async function loadCalendarBookingDetails(bookingId, eventProps) {
     if (!bookingNumber) return;
 
     try {
-        const [bookingResponse, customerResponse] = await Promise.all([
-            fetch(`/caterer/api/bookings/${bookingNumber}/details`, {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            }),
-            fetch(`/caterer/api/bookings/${bookingNumber}/customer-details`, {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-        ]);
+        const bookingResponse = await fetch(`/caterer/api/bookings/${bookingNumber}/details`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
         if (!bookingResponse.ok) throw new Error('Booking details could not be loaded.');
 
         const booking = await bookingResponse.json();
-        const customer = customerResponse.ok ? await customerResponse.json() : {};
         const payment = booking.payment_summary || {};
         const pkg = booking.package || {};
         const custom = booking.custom_requirements || {};
@@ -1455,8 +1449,8 @@ async function loadCalendarBookingDetails(bookingId, eventProps) {
         };
         const money = value => `₱${Number(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-        setText('detCustomer', customer.name || booking.customer_ref || eventProps.customer);
-        setText('detContactInfo', [customer.email, customer.phone].filter(Boolean).join(' · '), 'Protected Customer Info');
+        setText('detCustomer', booking.customer_ref || 'Client');
+        setText('detContactInfo', 'Protected: View in Manage Bookings');
         const eventLabel = [booking.event_type, booking.event_name]
             .filter((value, index, values) => value && values.indexOf(value) === index)
             .join(' · ');

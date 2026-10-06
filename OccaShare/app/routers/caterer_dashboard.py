@@ -273,7 +273,7 @@ async def check_customer_duplicate(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    """Real-time duplicate check for walk-in bookings."""
+    """Real-time duplicate check for walk-in bookings with multi-tenant privacy protection."""
     if not email and not contact:
         return {"exists": False}
         
@@ -282,19 +282,35 @@ async def check_customer_duplicate(
     if email:
         query = query.filter(models.User.email == email)
     elif contact:
-        # Exact match or endswith for contact
         query = query.filter(models.User.phone_number.like(f"%{contact[-10:]}"))
         
     existing_user = query.first()
     
     if existing_user:
-        return {
-            "exists": True, 
-            "name": f"{existing_user.first_name} {existing_user.last_name}".strip(),
-            "email": existing_user.email,
-            "contact": existing_user.phone_number,
-            "role": existing_user.role
-        }
+        # Check if this customer already has an existing booking with THIS caterer
+        has_client_relationship = db.query(models.Booking).filter(
+            models.Booking.user_id == existing_user.id,
+            models.Booking.caterer_id == user.caterer_profile.id
+        ).first() is not None
+        
+        if has_client_relationship:
+            return {
+                "exists": True, 
+                "is_client": True,
+                "name": f"{existing_user.first_name} {existing_user.last_name}".strip(),
+                "email": existing_user.email,
+                "contact": existing_user.phone_number,
+                "role": existing_user.role
+            }
+        else:
+            # Privacy Protection: User belongs to another caterer or platform; do not leak PII
+            return {
+                "exists": True,
+                "is_client": False,
+                "email": email or "",
+                "role": existing_user.role,
+                "message": "Account already registered on platform."
+            }
     return {"exists": False}
 
 
@@ -924,7 +940,8 @@ async def create_manual_booking(
         return {
             "status": "success",
             "booking_id": new_booking.id,
-            "booking_ref": getattr(new_booking, "booking_ref", None) or f"BK-{new_booking.id:06d}",
+            "booking_ref": getattr(new_booking, "booking_ref", None) or getattr(new_booking, "display_booking_ref", None) or f"BK-{new_booking.id:06d}",
+            "customer_ref": getattr(new_booking, "customer_ref", None) or getattr(new_booking, "display_customer_ref", None),
             "total_amount": total_amt,
             "services_total": services_total,
             "discount_amount": discount_amount,
@@ -1190,7 +1207,7 @@ async def update_booking_status(
     message = ""
     
     is_food_order = (booking.document_type == 'invoice')
-    ref_id = f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}"
+    ref_id = booking.booking_ref or getattr(booking, "display_booking_ref", None) or (f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}")
     item_type = "food order" if is_food_order else "booking"
     caterer_name = user.caterer_profile.business_name
     event_date_str = booking.event_date.strftime('%B %d, %Y') if booking.event_date else 'TBD'
@@ -1370,13 +1387,12 @@ def _get_caterer_stats(profile, bookings, timeframe='month', start_date=None, en
             # Loyalty & Spenders Tracking
             if b.user_id:
                 if b.user_id not in customer_stats:
-                    c_first = b.user.first_name if b.user and b.user.first_name else ""
-                    c_last = b.user.last_name if b.user and b.user.last_name else ""
-                    c_init = (c_first[0].upper() if c_first else "") + (c_last[0].upper() if c_last else "")
+                    c_ref = b.customer_ref or f"Client #{b.user_id}"
                     customer_stats[b.user_id] = {
                         "id": b.user_id,
-                        "name": f"{c_first} {c_last}".strip() if b.user else "Walk-in",
-                        "initials": c_init if c_init else "WI",
+                        "name": f"Client {c_ref}",
+                        "customer_ref": c_ref,
+                        "initials": "CL",
                         "spent": 0,
                         "orders": 0
                     }
@@ -1589,12 +1605,8 @@ async def caterer_dashboard(
             
         amount = float(b.total_amount or b.total_price or 0)
         paid = float(b.amount_paid or 0)
-        cust_name = (
-            b.customer_name 
-            or (f"{b.user.first_name} {b.user.last_name}".strip() if b.user and (b.user.first_name or b.user.last_name) else None)
-            or b.customer_email 
-            or f"Booking #{b.id}"
-        )
+        b_ref = b.booking_ref or getattr(b, "display_booking_ref", f"BK-{b.id:04d}")
+        c_ref = b.customer_ref or _booking_customer_reference(b)
         ev_title = b.event_name or (b.package.name if b.package else (b.event_type or "Catering Event"))
         rem_balance = max(0.0, amount - paid)
         
@@ -1605,16 +1617,16 @@ async def caterer_dashboard(
             if b.event_date and b.event_date <= today + timedelta(days=3):
                 action_center_items.append({
                     'type': 'urgent',
-                    'title': f'Payment Overdue — {cust_name}',
-                    'desc': f'Booking #{b.id} • {ev_title} • Balance: ₱{rem_balance:,.2f} • Date: {b.event_date.strftime("%b %d, %Y")}',
+                    'title': f'Payment Overdue — Client {c_ref}',
+                    'desc': f'{b_ref} • {ev_title} • Balance: ₱{rem_balance:,.2f} • Date: {b.event_date.strftime("%b %d, %Y")}',
                     'icon': 'fa-money-bill-wave',
                     'booking_id': b.id
                 })
             elif b.event_date and b.event_date <= today + timedelta(days=14) and b.status in ['confirmed', 'preparing']:
                 action_center_items.append({
                     'type': 'warning',
-                    'title': f'Final Balance Due — {cust_name}',
-                    'desc': f'Booking #{b.id} • {ev_title} • Balance: ₱{rem_balance:,.2f} • Date: {b.event_date.strftime("%b %d, %Y")}',
+                    'title': f'Final Balance Due — Client {c_ref}',
+                    'desc': f'{b_ref} • {ev_title} • Balance: ₱{rem_balance:,.2f} • Date: {b.event_date.strftime("%b %d, %Y")}',
                     'icon': 'fa-coins',
                     'booking_id': b.id
                 })
@@ -1623,8 +1635,8 @@ async def caterer_dashboard(
         if b.status in ['pending', 'inquiry', 'pending_quotation', 'pending_review', 'awaiting_caterer']:
             action_center_items.append({
                 'type': 'urgent',
-                'title': f'Unconfirmed Booking — {cust_name}',
-                'desc': f'Booking #{b.id} • {ev_title} • Needs your review and confirmation',
+                'title': f'Unconfirmed Booking — Client {c_ref}',
+                'desc': f'{b_ref} • {ev_title} • Needs your review and confirmation',
                 'icon': 'fa-calendar-plus',
                 'booking_id': b.id
             })
@@ -1633,8 +1645,8 @@ async def caterer_dashboard(
         if b.status in ['confirmed', 'preparing'] and not (b.event_address or b.venue_address or b.event_location):
             action_center_items.append({
                 'type': 'warning',
-                'title': f'Missing Venue Location — {cust_name}',
-                'desc': f'Booking #{b.id} • {ev_title} has no event address specified',
+                'title': f'Missing Venue Location — Client {c_ref}',
+                'desc': f'{b_ref} • {ev_title} has no event address specified',
                 'icon': 'fa-map-marker-alt',
                 'booking_id': b.id
             })
@@ -1644,8 +1656,8 @@ async def caterer_dashboard(
             days_left = (b.event_date - today).days
             action_center_items.append({
                 'type': 'warning',
-                'title': f'Event in {days_left} day{"s" if days_left > 1 else ""} — {cust_name}',
-                'desc': f'Booking #{b.id} • {ev_title} • {b.guest_count or 0} pax • {b.event_date.strftime("%B %d, %Y")}',
+                'title': f'Event in {days_left} day{"s" if days_left > 1 else ""} — Client {c_ref}',
+                'desc': f'{b_ref} • {ev_title} • {b.guest_count or 0} pax • {b.event_date.strftime("%B %d, %Y")}',
                 'icon': 'fa-calendar-day',
                 'booking_id': b.id
             })
@@ -1653,8 +1665,8 @@ async def caterer_dashboard(
         if getattr(b, 'contract_status', '') == 'awaiting_signature':
             action_center_items.append({
                 'type': 'warning',
-                'title': f'Contract Pending Signature — {cust_name}',
-                'desc': f'Booking #{b.id} • {ev_title} awaiting customer contract signing',
+                'title': f'Contract Pending Signature — Client {c_ref}',
+                'desc': f'{b_ref} • {ev_title} awaiting contract signing',
                 'icon': 'fa-file-signature',
                 'booking_id': b.id
             })
@@ -1764,7 +1776,7 @@ async def caterer_dashboard(
         pkg_title = b.package.name if b.package else (b.event_type or "Custom Catering")
         recent_bookings_dashboard.append({
             "id": b.id,
-            "booking_ref": getattr(b, 'booking_ref', None) or f"BK-{b.id:06d}",
+            "booking_ref": getattr(b, 'booking_ref', None) or getattr(b, 'display_booking_ref', None) or f"BK-{b.id:06d}",
             "customer": cust_display,
             "event_type": b.event_type or "Catering Event",
             "event_date": b.event_date,
@@ -1863,16 +1875,16 @@ async def caterer_omni_search(
     ).order_by(models.Booking.event_date.desc()).all()
     
     for b in bookings:
-        b_ref = str(b.id)
-        b_name = f"{b.user.first_name} {b.user.last_name}".lower() if b.user else ""
+        b_ref = b.booking_ref or getattr(b, "display_booking_ref", f"BK-{b.id:04d}")
+        c_ref = b.customer_ref or _booking_customer_reference(b)
         b_type = b.event_type.lower() if b.event_type else ""
         b_status = b.status.lower() if b.status else ""
         b_venue = (b.event_address or "").lower()
         
-        if query in b_ref or query in b_name or query in b_type or query in b_status or query in b_venue:
+        if query in b_ref.lower() or query in c_ref.lower() or query in str(b.id) or query in b_type or query in b_status or query in b_venue:
             results.append({
                 "type": "Booking",
-                "title": f"Booking #{b_ref} - {b_name.title() if b_name else 'Client'}",
+                "title": f"Booking {b_ref} • Client {c_ref}",
                 "subtitle": f"{b.event_type.capitalize() if b.event_type else 'Event'} • {b.status.replace('_', ' ').title() if b.status else 'UNKNOWN'}",
                 "url": f"/caterer/bookings?focus={b.id}",
                 "icon": "fas fa-calendar-check"
@@ -1913,20 +1925,22 @@ async def caterer_omni_search(
                 "icon": "fas fa-box"
             })
             
-    # 4. Search Customers
-    customers = db.query(models.User).join(models.Booking, models.Booking.user_id == models.User.id).filter(
-        models.Booking.caterer_id == profile.id
-    ).distinct().all()
-    for c in customers:
-        c_name = f"{c.first_name} {c.last_name}".lower()
-        c_email = (c.email or "").lower()
-        c_phone = (c.phone_number or "").lower()
-        if query in c_name or query in c_email or query in c_phone:
+    # 4. Search Customers (Strictly non-sensitive Customer Reference)
+    bookings_custs = db.query(models.Booking).filter(
+        models.Booking.caterer_id == profile.id,
+        models.Booking.status != 'draft',
+        models.Booking.is_archived == False
+    ).all()
+    seen_refs = set()
+    for b in bookings_custs:
+        cref = b.customer_ref
+        if cref and cref not in seen_refs and query in cref.lower():
+            seen_refs.add(cref)
             results.append({
                 "type": "Customer",
-                "title": f"{c.first_name} {c.last_name}",
-                "subtitle": c.email or c.phone_number or "Customer",
-                "url": f"/caterer/customers?search={urllib.parse.quote(c.first_name)}",
+                "title": f"Client {cref}",
+                "subtitle": f"{b.event_type or 'Booking'} Client",
+                "url": f"/caterer/customers?search={urllib.parse.quote(cref)}",
                 "icon": "fas fa-user-tag"
             })
 
@@ -2079,14 +2093,15 @@ async def dashboard_overview_api(
 
     serializable_recent = []
     for b in stats['recent_orders']:
-        c_first = b.user.first_name if b.user and b.user.first_name else ""
-        c_last = b.user.last_name if b.user and b.user.last_name else ""
-        c_init = (c_first[0].upper() if c_first else "") + (c_last[0].upper() if c_last else "")
+        c_ref = b.customer_ref or f"Client #{b.id}"
+        b_ref = b.booking_ref or getattr(b, "display_booking_ref", f"BK-{b.id:04d}")
         
         serializable_recent.append({
             "id": b.id,
-            "customer_name": f"{c_first} {c_last}".strip() if b.user else "Walk-in Customer",
-            "customer_initials": c_init if c_init else "WI",
+            "booking_ref": b_ref,
+            "customer_ref": c_ref,
+            "customer_name": f"Client {c_ref}",
+            "customer_initials": "CL",
             "event_type": b.event_type,
             "total_amount": float(b.total_amount or 0),
             "event_date": b.event_date.strftime('%b %d, %Y') if b.event_date else '',
@@ -2125,11 +2140,12 @@ def _booking_customer_reference(booking: models.Booking) -> str:
         return ""
     if getattr(booking, "customer_ref", None):
         return booking.customer_ref
+    if getattr(booking, "display_customer_ref", None):
+        return booking.display_customer_ref
     if getattr(booking, "customer_reference", None):
         return booking.customer_reference
-    if getattr(booking, "user_id", None):
-        return f"CUST-{booking.user_id:04d}"
-    return f"WALKIN-BK-{booking.id:06d}"
+    pref = getattr(booking, "_get_caterer_prefix", lambda: "CAT")()
+    return f"{pref}-C-{booking.id:03d}"
 
 def build_booking_list_projection(booking, today):
     item_categories = set()
@@ -2262,14 +2278,15 @@ def build_booking_list_projection(booking, today):
         "created_by_label": created_by_label, "show_guests": booking_kind == "catering" or bool(booking.guest_count),
         "guest_count": booking.guest_count, "event_date": booking.event_date,
         "event_time": booking.event_time, "is_urgent": bool(booking.event_date and 0 <= (booking.event_date - today).days <= 2 and needs_action),
-        "booking_ref": getattr(booking, "booking_ref", None) or (
+        "booking_ref": getattr(booking, "booking_ref", None) or getattr(booking, "display_booking_ref", None) or (
             f"ORD-{booking.id:06d}" if booking.document_type == 'invoice'
             else f"BK-{booking.id:06d}"
         ),
-        "booking_reference": getattr(booking, "booking_ref", None) or (
+        "booking_reference": getattr(booking, "booking_ref", None) or getattr(booking, "display_booking_ref", None) or (
             f"ORD-{booking.id:06d}" if booking.document_type == 'invoice'
             else f"BK-{booking.id:06d}"
         ),
+        "customer_ref": getattr(booking, "customer_ref", None) or getattr(booking, "display_customer_ref", None) or _booking_customer_reference(booking),
         "amount": total, "has_quote": has_quote, "payment_filter": "paid" if paid >= total and total > 0 else ("partial" if paid > 0 else "pending"),
         "document_type": booking.document_type or "booking"
     }
@@ -2280,6 +2297,11 @@ async def manage_bookings(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    # Auto-synchronize and standardize IDs (Booking, Customer, Payment, Invoice) for this caterer
+    from app.services.id_service import sync_and_standardize_caterer_ids
+    if user.caterer_profile:
+        sync_and_standardize_caterer_ids(db, user.caterer_profile.id)
+
     all_bookings = [b for b in user.caterer_profile.bookings if b.status != 'draft' and not b.is_archived]
     all_bookings.sort(key=lambda x: x.id, reverse=True)
 
@@ -2476,7 +2498,10 @@ async def caterer_payments(
 ):
     from datetime import datetime, timezone
     from app.services.payment_service import PaymentService
+    from app.services.id_service import sync_and_standardize_caterer_ids
     profile = user.caterer_profile
+    if profile:
+        sync_and_standardize_caterer_ids(db, profile.id)
     bookings = [b for b in profile.bookings if b.status not in ['draft', 'pending_review'] and not b.is_archived]
     bookings.sort(key=lambda x: x.id, reverse=True)
 
@@ -2744,12 +2769,12 @@ async def caterer_payments(
                     p_status = "Unpaid"
                     
                 transactions.append({
-                    "id": f"PAY-{rec.id:04d}",
+                    "id": getattr(rec, "payment_ref", None) or getattr(rec, "display_payment_ref", None) or f"PAY-{rec.id:04d}",
                     "payment_id_num": rec.id,
                     "booking_id": b.id,
-                    "booking_ref": b.booking_ref or f"BK-{b.id:06d}",
+                    "booking_ref": b.booking_ref or getattr(b, "display_booking_ref", f"BK-{b.id:06d}"),
                     "customer_name": cust_name,
-                    "customer_ref": b.customer_ref or (f"CUST-{b.user_id:04d}" if b.user_id else f"WALKIN-BK-{b.id:06d}"),
+                    "customer_ref": b.customer_ref or getattr(b, "display_customer_ref", None) or _booking_customer_reference(b),
                     "event_name": b.event_name or b.event_type or "Catering Event",
                     "payment_type": p_type,
                     "amount": t_amt,
@@ -2791,13 +2816,18 @@ async def caterer_payments(
                 t_amt = total_val
                 p_status = "Unpaid"
                 
+            fallback_pay_id = (
+                b.booking_ref.replace("-BK-", "-PAY-") 
+                if (b.booking_ref and "-BK-" in b.booking_ref) 
+                else getattr(b, "display_booking_ref", "").replace("-BK-", "-PAY-") or f"PAY-{b.id:04d}"
+            )
             transactions.append({
-                "id": f"PAY-{b.id:04d}",
+                "id": fallback_pay_id,
                 "payment_id_num": b.id,
                 "booking_id": b.id,
-                "booking_ref": b.booking_ref or f"BK-{b.id:06d}",
+                "booking_ref": b.booking_ref or getattr(b, "display_booking_ref", f"BK-{b.id:06d}"),
                 "customer_name": cust_name,
-                "customer_ref": b.customer_ref or (f"CUST-{b.user_id:04d}" if b.user_id else f"WALKIN-BK-{b.id:06d}"),
+                "customer_ref": b.customer_ref or getattr(b, "display_customer_ref", None) or _booking_customer_reference(b),
                 "event_name": b.event_name or b.event_type or "Catering Event",
                 "payment_type": p_type,
                 "amount": t_amt,
@@ -3669,6 +3699,7 @@ async def get_booking_details_api(
         "booking_ref": getattr(booking, "booking_ref", None) or getattr(booking, "display_booking_ref", None) or f"BK-{booking.id:06d}",
         "booking_reference": getattr(booking, "booking_ref", None) or getattr(booking, "display_booking_ref", None) or f"BK-{booking.id:06d}",
         "customer_ref": getattr(booking, "customer_ref", None) or _booking_customer_reference(booking),
+        "invoice_ref": getattr(booking, "invoice_ref", None) or getattr(booking, "display_invoice_ref", None) or f"{getattr(booking, '_get_caterer_prefix', lambda: 'CAT')()}-INV-{booking.id:03d}",
         "has_registered_customer": bool(booking.user_id),
         "customer_is_verified": bool(booking.user and booking.user.is_verified),
         "status": booking.status,
@@ -3853,8 +3884,23 @@ async def get_booking_customer_details(
         if booking.user else ""
     )
 
+    # Audit Logging: Record authorized access to sensitive customer details (no PII in log)
+    c_ref = booking.customer_ref or _booking_customer_reference(booking)
+    b_ref = booking.booking_ref or getattr(booking, "display_booking_ref", f"BK-{booking.id:04d}")
+    try:
+        audit_entry = models.BookingHistory(
+            booking_id=booking.id,
+            status=booking.status,
+            entry_type="audit",
+            notes=f"Customer contact details viewed for Booking: {b_ref} (Customer: {c_ref}) by Authorized caterer."
+        )
+        db.add(audit_entry)
+        db.commit()
+    except Exception as e:
+        print(f"[AUDIT LOG WARNING] {e}")
+
     return {
-        "customer_ref": _booking_customer_reference(booking),
+        "customer_ref": c_ref,
         "name": customer_name or None,
         "email": None if is_guest_email else raw_email,
         "phone": booking.customer_contact or (booking.user.phone_number if booking.user else None),
@@ -4170,7 +4216,7 @@ async def complete_booking(
     # Notify Customer
     from ..services.notification import NotificationService
     is_food_order = (booking.document_type == 'invoice')
-    ref_id = f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}"
+    ref_id = booking.booking_ref or getattr(booking, "display_booking_ref", None) or (f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}")
     caterer_name = user.caterer_profile.business_name
     notif_link = f"/customer/orders/manage/{booking.id}" if is_food_order else f"/customer/bookings/manage/{booking.id}"
     asyncio.create_task(NotificationService.notify_status_update(
@@ -4515,62 +4561,102 @@ async def caterer_customers(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    
-    # Get unique customers and their stats
-    customer_ids = {b.user_id for b in user.caterer_profile.bookings if b.user and not b.user.email.startswith("walkin@")}
-    customers = []
-    
+    from collections import defaultdict
     from datetime import datetime, timezone
+    from app.services.id_service import sync_and_standardize_caterer_ids, get_caterer_code
+
+    profile = user.caterer_profile
+    if not profile:
+        return RedirectResponse(url="/caterer/setup")
+
+    sync_and_standardize_caterer_ids(db, profile.id)
+    c_code = get_caterer_code(profile, db=db)
+
+    # 1. Fetch only bookings for THIS caterer (ensures strict caterer data isolation)
+    cat_bookings = db.query(models.Booking).filter(
+        models.Booking.caterer_id == profile.id,
+        models.Booking.status != 'draft',
+        models.Booking.is_archived == False
+    ).order_by(models.Booking.id.asc()).all()
+
     now = datetime.now(timezone.utc)
     first_of_month = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
-    
-    total_customers_count = len(customer_ids)
-    vip_customers_count = 0
-    new_customers_this_month_count = 0
-    repeat_customers_count = 0
-    
-    if customer_ids:
-        raw_customers = db.query(models.User).filter(
-            models.User.id.in_(customer_ids)
-        ).all()
-        
-        for c in raw_customers:
-            # Stats for this customer relative to THIS caterer
-            all_bookings = db.query(models.Booking).filter(
-                models.Booking.user_id == c.id,
-                models.Booking.caterer_id == user.caterer_profile.id
-            ).order_by(models.Booking.event_date.desc()).all()
-            
-            # Only count completed bookings for VIP status and total stats
-            completed_bookings = [b for b in all_bookings if b.status == 'completed']
-            bookings_count = len(completed_bookings)
-            
-            total_spent = sum((b.total_price or b.total_amount or 0.0) for b in completed_bookings)
-            last_booking = all_bookings[0] if all_bookings else None
-            first_booking = all_bookings[-1] if all_bookings else None
-            
-            # Status Logic
-            status = "REGULAR"
-            if c.status == "blacklisted":
-                status = "BLACKLISTED"
-            elif bookings_count >= 3:
-                status = "VIP"
-                vip_customers_count += 1
-            elif first_booking and first_booking.created_at >= first_of_month:
-                status = "NEW"
-                new_customers_this_month_count += 1
-            
-            if bookings_count > 1:
-                repeat_customers_count += 1
-            
-            # Attach attributes for template
-            c.total_bookings = bookings_count
-            c.total_spent = total_spent
-            c.last_booking_date = last_booking.event_date if last_booking else None
-            c.status = status
-            customers.append(c)
 
-    repeat_rate = round((repeat_customers_count / total_customers_count * 100), 1) if total_customers_count > 0 else 0
+    # 2. Group bookings by customer reference
+    cust_bookings_map = defaultdict(list)
+    for b in cat_bookings:
+        cref = b.customer_ref
+        if not cref:
+            cref = f"{c_code}-C-{b.id:03d}"
+        cust_bookings_map[cref].append(b)
+
+    customers = []
+    vip_count = 0
+    new_count = 0
+    repeat_count = 0
+
+    for cref, b_list in cust_bookings_map.items():
+        b_list.sort(key=lambda x: x.event_date or datetime.min.date(), reverse=True)
+        completed_bookings = [b for b in b_list if b.status == 'completed']
+        completed_count = len(completed_bookings)
+        total_b_count = len(b_list)
+        total_spent = sum(float(b.total_price or b.total_amount or 0.0) for b in completed_bookings)
+        last_booking = b_list[0] if b_list else None
+        first_booking = b_list[-1] if b_list else None
+
+        # Check blacklist status from associated user record if present
+        is_blacklisted = any(b.user and b.user.status == 'blacklisted' for b in b_list)
+
+        # Status Logic
+        if is_blacklisted:
+            status = "BLACKLISTED"
+            tier_label = "Blacklisted"
+        elif total_b_count >= 3 or completed_count >= 3:
+            status = "VIP"
+            tier_label = "VIP Elite"
+            vip_count += 1
+        elif first_booking and first_booking.created_at and first_booking.created_at >= first_of_month:
+            status = "NEW"
+            tier_label = "New Client"
+            new_count += 1
+        else:
+            status = "REGULAR"
+            tier_label = "Standard"
+
+        if total_b_count > 1:
+            repeat_count += 1
+
+        cancelled_count = sum(1 for b in b_list if b.status in ('cancelled', 'rejected'))
+
+        # Strictly non-sensitive customer management summary (NO name, email, phone, or address)
+        customers.append({
+            "id": last_booking.id if last_booking else 0,
+            "customer_ref": cref,
+            "status": status,
+            "tier_label": tier_label,
+            "total_spent": total_spent,
+            "total_bookings": total_b_count,
+            "completed_bookings": completed_count,
+            "cancelled_bookings": cancelled_count,
+            "last_booking_date": last_booking.event_date if last_booking else None,
+            "latest_booking_ref": last_booking.booking_ref if last_booking else None,
+        })
+
+    # Sort customers sequentially by customer_ref
+    customers.sort(key=lambda c: c["customer_ref"])
+
+    total_customers_count = len(customers)
+    repeat_rate = round((repeat_count / total_customers_count * 100), 1) if total_customers_count > 0 else 0
+
+    # Backend search filtering (strictly isolated to this caterer's customers)
+    search_q = request.query_params.get("search", "").strip().lower()
+    if search_q:
+        customers = [
+            c for c in customers
+            if search_q in c["customer_ref"].lower()
+            or search_q in c["status"].lower()
+            or search_q in c["tier_label"].lower()
+        ]
 
     return templates.TemplateResponse("caterer/customers.html", {
         "request": request,
@@ -4578,14 +4664,14 @@ async def caterer_customers(
         "customers": customers,
         "stats": {
             "total": total_customers_count,
-            "vip": vip_customers_count,
-            "new": new_customers_this_month_count,
+            "vip": vip_count,
+            "new": new_count,
             "repeat": f"{repeat_rate}%"
         },
-        "primary_color": user.caterer_profile.primary_color or "#3b82f6",
+        "search_query": search_q,
+        "primary_color": profile.primary_color or "#3b82f6",
         "active_page": "customers",
         "today": now
-
     })
 
 @router.get("/api/payments/summary")
@@ -8540,7 +8626,7 @@ async def cancel_booking(
     from ..services.notification import NotificationService
     import asyncio
     is_food_order = (booking.document_type == 'invoice')
-    ref_id = f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}"
+    ref_id = booking.booking_ref or getattr(booking, "display_booking_ref", None) or (f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}")
     notif_link = f"/customer/orders" if is_food_order else f"/customer/bookings"
     asyncio.create_task(NotificationService.notify_status_update(
         db, 
@@ -8594,7 +8680,7 @@ async def reject_booking(
     from ..services.notification import NotificationService
     import asyncio
     is_food_order = (booking.document_type == 'invoice')
-    ref_id = f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}"
+    ref_id = booking.booking_ref or getattr(booking, "display_booking_ref", None) or (f"ORD-{booking.id:03d}" if is_food_order else f"BK-{booking.id:03d}")
     notif_link = f"/customer/orders" if is_food_order else f"/customer/bookings"
     asyncio.create_task(NotificationService.notify_status_update(
         db, 
@@ -8966,20 +9052,34 @@ async def check_customer(
             ).first()
 
     if target:
-        full_name = f"{target.first_name or ''} {target.last_name or ''}".strip()
-        email_taken = False
-        if email and target.email and email.lower() == target.email.lower():
-            email_taken = True
-            
-        return {
-            "exists": True, 
-            "is_taken": email_taken,
-            "match_type": "email" if email_taken else "name",
-            "name": full_name or target.email, 
-            "email": target.email, 
-            "contact": target.phone_number,
-            "message": "Existing customer found." if email_taken else "Similar name found."
-        }
+        has_client_relationship = db.query(models.Booking).filter(
+            models.Booking.user_id == target.id,
+            models.Booking.caterer_id == user.caterer_profile.id
+        ).first() is not None
+
+        email_taken = bool(email and target.email and email.lower() == target.email.lower())
+        
+        if has_client_relationship:
+            full_name = f"{target.first_name or ''} {target.last_name or ''}".strip()
+            return {
+                "exists": True, 
+                "is_taken": email_taken,
+                "is_client": True,
+                "match_type": "email" if email_taken else "name",
+                "name": full_name or target.email, 
+                "email": target.email, 
+                "contact": target.phone_number,
+                "message": "Existing client of your business found." if email_taken else "Similar client name found."
+            }
+        else:
+            # Privacy Protection: Do NOT leak name or phone of unaffiliated platform users
+            return {
+                "exists": True,
+                "is_taken": email_taken,
+                "is_client": False,
+                "match_type": "email" if email_taken else "name",
+                "message": "An account with this email is already registered on the platform." if email_taken else "Account match on platform."
+            }
         
     return {"exists": False}
 
@@ -9357,11 +9457,27 @@ async def get_customer_crm_details(
     if len(bookings) >= 3: status = "VIP"
     if target_user.status == "blacklisted": status = "BLACKLISTED"
     
+    cust_ref = None
+    for b in bookings:
+        if b.customer_ref:
+            cust_ref = b.customer_ref
+            break
+    if not cust_ref:
+        from app.services.id_service import get_or_create_customer_ref
+        cust_ref = get_or_create_customer_ref(
+            db,
+            user.caterer_profile.id,
+            user_id=target_user.id,
+            customer_name=f"{target_user.first_name} {target_user.last_name}".strip(),
+            customer_email=target_user.email,
+            customer_contact=target_user.phone_number
+        )
+
     history = []
     for b in bookings:
         history.append({
             "id": b.id,
-            "ref_no": f"{b.id:05d}",
+            "ref_no": b.booking_ref or getattr(b, "display_booking_ref", f"BK-{b.id:06d}"),
             "date": b.event_date.isoformat() if b.event_date else None,
             "amount": float(b.total_price or b.total_amount or 0),
             "status": b.status,
@@ -9369,16 +9485,12 @@ async def get_customer_crm_details(
             "package_name": b.package.name if b.package else (b.event_type or "Custom Event")
         })
 
+    tier_label = "VIP Elite" if status == "VIP" else ("Blacklisted" if status == "BLACKLISTED" else "Standard")
     return {
         "id": target_user.id,
-        "customer_ref": f"CUST-{target_user.id:04d}",
-        "first_name": target_user.first_name,
-        "middle_name": target_user.middle_name,
-        "last_name": target_user.last_name,
-        "email": target_user.email,
-        "phone": target_user.phone_number,
-        "address": "Protected for privacy (See Event Venue)",
+        "customer_ref": cust_ref,
         "status": status,
+        "tier_label": tier_label,
         "total_spent": float(total_spent),
         "total_bookings": len(bookings),
         "created_at": target_user.created_at.isoformat() if target_user.created_at else None,
@@ -9394,43 +9506,29 @@ async def update_customer_crm_profile(
     user: models.User = Depends(caterer_only)
 ):
     try:
+        # Strict caterer data isolation check
+        has_relationship = db.query(models.Booking).filter(
+            models.Booking.user_id == customer_id,
+            models.Booking.caterer_id == user.caterer_profile.id
+        ).first()
+        if not has_relationship:
+            return {"status": "error", "message": "Access restricted: No client relationship found."}
+
         target_user = db.query(models.User).filter(models.User.id == customer_id).first()
         if not target_user:
             return {"status": "error", "message": "Customer not found."}
             
         form_data = await request.form()
-        f_name = form_data.get("first_name", "").strip()
-        l_name = form_data.get("last_name", "").strip()
-        email = form_data.get("email", "").strip()
-        phone = form_data.get("phone", "").strip()
         notes = form_data.get("notes", "").strip()
         
-        if not f_name or not email:
-            return {"status": "error", "message": "First Name and Email are required."}
-
-        # Check if email is used by someone else
-        existing_email = db.query(models.User).filter(models.User.email == email, models.User.id != customer_id).first()
-        if existing_email:
-            return {"status": "error", "message": "This email is already in use by another user."}
-
-        # Check if phone is used by someone else
-        if phone:
-            existing_phone = db.query(models.User).filter(models.User.phone_number == phone, models.User.id != customer_id).first()
-            if existing_phone:
-                return {"status": "error", "message": "This phone number is already registered to another customer."}
-            
-        target_user.first_name = f_name
-        target_user.last_name = l_name
-        target_user.email = email
-        target_user.phone_number = phone
+        # Only allow internal notes update from caterer CRM (do not modify customer personal data)
         target_user.investigation_notes = notes
-        
         db.commit()
-        return {"status": "success", "message": "Customer profile updated successfully."}
+        return {"status": "success", "message": "Internal customer notes saved successfully."}
         
     except Exception as e:
         print(f"[CRM Update] Error: {e}")
-        return {"status": "error", "message": "Failed to update profile due to a system error."}
+        return {"status": "error", "message": "Failed to update notes due to a system error."}
 
 
 @router.post("/api/customers/{customer_id}/blacklist")
@@ -9440,6 +9538,14 @@ async def blacklist_customer_api(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    # Strict caterer data isolation check
+    has_relationship = db.query(models.Booking).filter(
+        models.Booking.user_id == customer_id,
+        models.Booking.caterer_id == user.caterer_profile.id
+    ).first()
+    if not has_relationship:
+        return {"status": "error", "message": "Access restricted: No client relationship found."}
+
     target_user = db.query(models.User).filter(models.User.id == customer_id).first()
     if not target_user:
         return {"status": "error", "message": "Customer not found."}
@@ -9470,7 +9576,15 @@ async def toggle_vip_status_api(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    # For now, VIP is dynamic (>=3 bookings), so we return a helpful message
+    # Strict caterer data isolation check
+    has_relationship = db.query(models.Booking).filter(
+        models.Booking.user_id == customer_id,
+        models.Booking.caterer_id == user.caterer_profile.id
+    ).first()
+    if not has_relationship:
+        return {"status": "error", "message": "Access restricted: No client relationship found."}
+
+    # VIP is calculated dynamically based on completed booking count
     return {"status": "success", "message": "VIP status is calculated automatically based on booking volume (3+ bookings)."}
 
 # ──────────────────────────────────────────────────────

@@ -60,44 +60,39 @@ def _ensure_schema_sync():
         "ALTER TABLE booking_contracts ADD COLUMN IF NOT EXISTS contract_history JSONB;",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_ref VARCHAR;",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_ref VARCHAR;",
-        """
-        UPDATE bookings b
-        SET booking_ref = CONCAT(
-            CASE 
-                WHEN LENGTH(REGEXP_REPLACE(cp.business_name, '[^A-Za-z]', '', 'g')) >= 3 
-                THEN UPPER(SUBSTRING(REGEXP_REPLACE(cp.business_name, '[^A-Za-z]', '', 'g') FROM 1 FOR 3)) 
-                ELSE 'BK' 
-            END, 
-            '-', 
-            LPAD(b.id::text, 3, '0')
-        )
-        FROM caterer_profiles cp
-        WHERE b.caterer_id = cp.id AND (b.booking_ref IS NULL OR b.booking_ref = '' OR b.booking_ref LIKE 'BK-%');
-        """,
-        """
-        UPDATE bookings b
-        SET customer_ref = CONCAT(
-            CASE 
-                WHEN LENGTH(REGEXP_REPLACE(cp.business_name, '[^A-Za-z]', '', 'g')) >= 3 
-                THEN UPPER(SUBSTRING(REGEXP_REPLACE(cp.business_name, '[^A-Za-z]', '', 'g') FROM 1 FOR 3)) 
-                ELSE 'BK' 
-            END, 
-            '-C-', 
-            LPAD(b.id::text, 3, '0')
-        )
-        FROM caterer_profiles cp
-        WHERE b.caterer_id = cp.id AND (b.customer_ref IS NULL OR b.customer_ref = '' OR b.customer_ref LIKE 'WALKIN-BK-%' OR b.customer_ref LIKE 'CUST-%');
-        """,
+        "ALTER TABLE billing_invoices ADD COLUMN IF NOT EXISTS invoice_ref VARCHAR;",
         """
         CREATE TABLE IF NOT EXISTS booking_payment_records (
             id SERIAL PRIMARY KEY,
             booking_id INTEGER REFERENCES bookings(id) ON DELETE CASCADE,
+            payment_ref VARCHAR,
             amount FLOAT NOT NULL,
             payment_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
             payment_method VARCHAR,
             payment_type VARCHAR,
             reference_notes TEXT,
             recorded_by VARCHAR
+        );
+        """,
+        "ALTER TABLE booking_payment_records ADD COLUMN IF NOT EXISTS payment_ref VARCHAR;",
+        """
+        CREATE TABLE IF NOT EXISTS caterer_id_sequences (
+            caterer_id INTEGER NOT NULL,
+            record_type VARCHAR(10) NOT NULL,
+            last_seq INTEGER NOT NULL DEFAULT 0,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (caterer_id, record_type)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS caterer_customers (
+            id SERIAL PRIMARY KEY,
+            caterer_id INTEGER NOT NULL REFERENCES caterer_profiles(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            customer_key VARCHAR(100) NOT NULL,
+            customer_ref VARCHAR(50) NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT uq_caterer_customer_key UNIQUE (caterer_id, customer_key)
         );
         """,
         """
@@ -146,6 +141,17 @@ def _ensure_schema_sync():
                     pass
     except Exception as e:
         print(f"[DB AUTO-SYNC WARNING] {e}")
+
+    # Standardize all existing Customer, Booking, Payment, and Invoice IDs
+    try:
+        from app.services.id_service import sync_and_standardize_all_ids
+        db_session = SessionLocal()
+        try:
+            sync_and_standardize_all_ids(db_session)
+        finally:
+            db_session.close()
+    except Exception as sync_err:
+        print(f"[ID STANDARDIZATION WARNING] {sync_err}")
 
 _ensure_schema_sync()
 

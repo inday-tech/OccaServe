@@ -62,6 +62,7 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS preparation_status VARCHAR DEFAULT 'not_started'",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS preparation_date DATE",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_archived BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_deleted BOOLEAN DEFAULT FALSE",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_reference VARCHAR",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_proof_url VARCHAR",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS balance_proof_url VARCHAR",
@@ -158,32 +159,27 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE booking_contracts ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_ref VARCHAR",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_ref VARCHAR",
+        "ALTER TABLE booking_payment_records ADD COLUMN IF NOT EXISTS payment_ref VARCHAR",
+        "ALTER TABLE billing_invoices ADD COLUMN IF NOT EXISTS invoice_ref VARCHAR",
         """
-        UPDATE bookings b
-        SET booking_ref = CONCAT(
-            CASE 
-                WHEN LENGTH(REGEXP_REPLACE(cp.business_name, '[^A-Za-z]', '', 'g')) >= 3 
-                THEN UPPER(SUBSTRING(REGEXP_REPLACE(cp.business_name, '[^A-Za-z]', '', 'g') FROM 1 FOR 3)) 
-                ELSE 'BK' 
-            END, 
-            '-', 
-            LPAD(b.id::text, 3, '0')
+        CREATE TABLE IF NOT EXISTS caterer_id_sequences (
+            caterer_id INTEGER NOT NULL,
+            record_type VARCHAR(10) NOT NULL,
+            last_seq INTEGER NOT NULL DEFAULT 0,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (caterer_id, record_type)
         )
-        FROM caterer_profiles cp
-        WHERE b.caterer_id = cp.id AND (b.booking_ref IS NULL OR b.booking_ref = '' OR b.booking_ref LIKE 'BK-%');
         """,
         """
-        UPDATE bookings b
-        SET customer_ref = CONCAT(
-            CASE 
-                WHEN LENGTH(REGEXP_REPLACE(cp.business_name, '[^A-Za-z]', '', 'g')) >= 3 
-                THEN UPPER(SUBSTRING(REGEXP_REPLACE(cp.business_name, '[^A-Za-z]', '', 'g') FROM 1 FOR 3)) 
-                ELSE 'BK' 
-            END, 
-            '-C-', 
-            LPAD(b.id::text, 3, '0')
+        CREATE TABLE IF NOT EXISTS caterer_customers (
+            id SERIAL PRIMARY KEY,
+            caterer_id INTEGER NOT NULL REFERENCES caterer_profiles(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            customer_key VARCHAR(100) NOT NULL,
+            customer_ref VARCHAR(50) NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT uq_caterer_customer_key UNIQUE (caterer_id, customer_key)
         )
-        FROM caterer_profiles cp
         """,
         """
         UPDATE catering_packages
@@ -496,6 +492,16 @@ async def lifespan(app: FastAPI):
                 except Exception as upd_err:
                     pass
         print("[STARTUP] Schema sync completed successfully.")
+        try:
+            from .services.id_service import sync_and_standardize_all_ids
+            from .db.database import SessionLocal
+            db_session = SessionLocal()
+            try:
+                sync_and_standardize_all_ids(db_session)
+            finally:
+                db_session.close()
+        except Exception as sync_err:
+            print(f"[STARTUP ID SYNC WARNING] {sync_err}")
     except Exception as e:
         print(f"[STARTUP] Schema sync connection error (non-fatal): {e}")
 
