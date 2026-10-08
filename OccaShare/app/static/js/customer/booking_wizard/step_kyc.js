@@ -20,6 +20,9 @@ const initKyc = () => {
     let stream = null;
     let idFile = null;
     let selfieFrames = [];
+    let livenessSessionToken = null;
+    let livenessSubmitting = false;
+    let livenessResetPromise = Promise.resolve();
     let pollingInterval = null;
     let ws = null;
     let availableDevices = [];
@@ -1354,12 +1357,26 @@ const initKyc = () => {
     const STATE_VERIFYING = 3;
     const STATE_SUCCESS = 4;
     const STATE_FAILED = 5;
+    const STATE_MANUAL_REVIEW = 6;
 
     let currentLivenessState = STATE_ALIGNING;
     let alignedStartTime = 0;
     let countdownValue = 3;
     let countdownInterval = null;
     let blinkStep = 0;
+    let blinkDeadline = 0;
+    const EAR_OPEN_THRESHOLD = Number(window.KYC_EAR_OPEN_THRESHOLD) || 0.22;
+    const EAR_CLOSED_THRESHOLD = Number(window.KYC_EAR_CLOSED_THRESHOLD) || 0.17;
+    const MIN_FACE_EYE_DISTANCE = Number(window.KYC_FACE_MIN_EYE_DISTANCE) || 0.18;
+    const MAX_FACE_EYE_DISTANCE = Number(window.KYC_FACE_MAX_EYE_DISTANCE) || 0.52;
+    const MIN_FACE_HEIGHT = Number(window.KYC_FACE_MIN_HEIGHT) || 0.30;
+    const MAX_FACE_HEIGHT = Number(window.KYC_FACE_MAX_HEIGHT) || 0.82;
+    const FACE_AUDIT_CLEAR_TTL_MS = 5000;
+    let liveFaceAudit = null;
+    let liveFaceAuditExpiresAt = 0;
+    let liveFaceAuditInFlight = false;
+    let lastLiveFaceAuditRequestAt = 0;
+    let liveFaceAuditGeneration = 0;
     selfieFrames = [];
 
     async function initializeFaceLandmarker() {
@@ -1379,14 +1396,13 @@ const initKyc = () => {
                     delegate: "GPU"
                 },
                 runningMode: "VIDEO",
-                numFaces: 1
+                numFaces: 3
             });
             console.log("[KYC] MediaPipe Face Landmarker initialized successfully.");
         } catch (err) {
             console.error("[KYC] Failed to initialize Face Landmarker:", err);
-            if (window.showError) {
-                window.showError("Failed to initialize biometrics engine. Please ensure you are connected to the internet.", "Biometrics Error");
-            }
+            updateInstruction("Device Not Supported", "Please use a supported browser or device to continue identity verification.", 'error');
+            throw err;
         }
     }
 
@@ -1402,16 +1418,74 @@ const initKyc = () => {
         }
     }
 
-    function updateInstruction(mainText, subText) {
+    function updateInstruction(mainText, subText, status = null) {
         const mainEl = document.getElementById('scan-feedback');
         const subEl = document.getElementById('liveness-sub-feedback');
-        if (mainEl) mainEl.innerText = mainText;
-        if (subEl) subEl.innerText = subText;
+        const card = document.getElementById('liveness-status-card');
+        const icon = document.getElementById('liveness-status-icon');
+        if (mainEl && mainEl.innerText !== mainText) mainEl.innerText = mainText;
+        if (subEl && subEl.innerText !== subText) subEl.innerText = subText;
+        if (card) {
+            const content = `${mainText} ${subText}`.toLowerCase();
+            const blocking = status ? status === 'error' : /no face|multiple faces|too far|too close|move closer|move further|move slightly|not centered|center your face|alignment lost|face lost|sunglasses|glasses detected|glare|mask detected|face covered|face obstructed|head position|look at the camera|verification failed|camera unavailable|camera access required|device not supported/i.test(content);
+            const processing = status ? status === 'processing' : /checking face|preparing to capture|preparing camera|loading biometrics|verifying your identity|blink your eyes/i.test(mainText);
+            const kind = blocking ? 'error' : (status || (processing ? 'processing' : 'guidance'));
+            card.classList.remove('status-error', 'status-warning', 'status-processing', 'status-guidance', 'status-success');
+            card.classList.add(`status-${kind}`);
+            if (mainEl) mainEl.classList.toggle('is-error', blocking);
+            if (icon) {
+                const icons = {
+                    error: 'fa-exclamation-circle',
+                    warning: 'fa-exclamation-triangle',
+                    processing: 'fa-circle-notch fa-spin',
+                    success: 'fa-check-circle',
+                    guidance: 'fa-info-circle',
+                };
+                icon.innerHTML = `<i class="fas ${icons[kind] || icons.guidance}" aria-hidden="true"></i>`;
+                icon.setAttribute('aria-hidden', 'true');
+            }
+        }
+    }
+
+    function showLivenessError(title, message) {
+        // Keep recoverable, real-time camera issues in the inline status card.
+        // Toasts interrupt camera use and can stack while the face is moving.
+        updateInstruction(title, message, 'error');
+    }
+
+    function showCameraRetryButton(label = "Try camera again") {
+        const instruction = document.querySelector('.kyc-instruction-container');
+        if (!instruction) return;
+        let button = document.getElementById('liveness-camera-retry');
+        if (!button) {
+            button = document.createElement('button');
+            button.id = 'liveness-camera-retry';
+            button.type = 'button';
+            button.className = 'btn btn-primary';
+            button.style.marginTop = '0.75rem';
+            button.addEventListener('click', async () => {
+                button.disabled = true;
+                button.style.display = 'none';
+                await window.startRealtimeScanner();
+                button.disabled = false;
+            });
+            instruction.appendChild(button);
+        }
+        button.innerText = label;
+        button.style.display = 'inline-flex';
     }
 
     window.startRealtimeScanner = async function () {
         const video = document.getElementById('webcam');
         const startBtn = document.getElementById('btn-start-camera');
+        if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            const message = "Please use a supported browser or device to continue identity verification.";
+            updateInstruction("Device Not Supported", message, 'error');
+            return;
+        }
+        if (isLivenessRunning || currentLivenessState === STATE_VERIFYING || livenessSubmitting) return;
+        const cameraRetry = document.getElementById('liveness-camera-retry');
+        if (cameraRetry) cameraRetry.style.display = 'none';
 
         if (stream) {
             try {
@@ -1421,15 +1495,31 @@ const initKyc = () => {
 
         // Initialize or reset the verification session on the backend
         try {
+            await livenessResetPromise;
             console.log("[KYC] Initializing backend liveness session...");
-            await fetch(`/api/bookings/${bookingId}/kyc/session/init`, { method: 'POST' });
+            const initRes = await fetch(`/api/bookings/${bookingId}/kyc/session/init`, { method: 'POST' });
+            const initData = await initRes.json();
+            if (!initRes.ok || !initData.session_token) throw new Error(initData.detail || "Session initialization failed");
+            livenessSessionToken = initData.session_token;
+            // A new token starts a new attempt. Never let a late result or a
+            // cached visual audit from an earlier camera session authorize it.
+            liveFaceAuditGeneration++;
+            liveFaceAudit = null;
+            liveFaceAuditExpiresAt = 0;
+            liveFaceAuditInFlight = false;
+            lastLiveFaceAuditRequestAt = 0;
         } catch (initErr) {
             console.error("[KYC] Failed to initialize liveness session:", initErr);
+            updateInstruction("Verification Unavailable", "We couldn't start verification right now. Please try again later.", 'error');
+            showCameraRetryButton("Try again");
+            return;
         }
 
         currentLivenessState = STATE_ALIGNING;
         alignedStartTime = 0;
         countdownValue = 3;
+        window._facePositionedCorrectly = false;
+        window._facePositionCanProceed = false;
         if (countdownInterval) clearInterval(countdownInterval);
         countdownInterval = null;
         blinkStep = 0;
@@ -1455,13 +1545,16 @@ const initKyc = () => {
         ];
 
         let success = false;
+        let cameraError = null;
         for (const config of configs) {
             try {
                 stream = await navigator.mediaDevices.getUserMedia(config);
                 success = true;
                 break;
             } catch (err) {
+                cameraError = err;
                 console.warn("Liveness camera failed config", err);
+                if (err.name === "NotAllowedError" || err.name === "SecurityError") break;
             }
         }
 
@@ -1498,7 +1591,14 @@ const initKyc = () => {
             try {
                 await video.play();
             } catch (playErr) {
-                console.warn("[KYC] video.play() failed:", playErr);
+                console.error("[KYC] video.play() failed:", playErr);
+                if (stream) stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                video.srcObject = null;
+                if (startBtn) startBtn.style.display = '';
+                updateInstruction("Camera Unavailable", "We couldn't start the camera. Please check it and try again.", 'error');
+                showCameraRetryButton();
+                return;
             }
 
             isLivenessRunning = true;
@@ -1516,11 +1616,26 @@ const initKyc = () => {
                 }
             }).catch(err => {
                 console.error("[KYC] Asynchronous biometrics load failed:", err);
+                isLivenessRunning = false;
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+                if (stream) stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                video.srcObject = null;
+                if (startBtn) startBtn.style.display = '';
+                updateInstruction("Device Not Supported", "Please use a supported browser or device to continue identity verification.", 'error');
+                showCameraRetryButton("Retry camera setup");
             });
 
             await getCameraDevices();
         } else {
-            if (window.showError) window.showError("Unable to access camera.", "Camera Error");
+            const denied = cameraError && (cameraError.name === "NotAllowedError" || cameraError.name === "SecurityError");
+            const title = denied ? "Camera Access Required" : "Camera Unavailable";
+            const message = denied
+                ? "Please allow camera access to continue."
+                : "We couldn't access your camera. Please check your camera and try again.";
+            updateInstruction(title, message, 'error');
+            showCameraRetryButton(denied ? "Allow camera, then retry" : "Try camera again");
         }
     };
 
@@ -1535,17 +1650,86 @@ const initKyc = () => {
     async function captureFrameToFile(challengeName) {
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('frame-canvas') || document.createElement('canvas');
+        if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return null;
         canvas.width = video.videoWidth || 640;
         canvas.height = video.videoHeight || 480;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        if (!ctx) return null;
+        try {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        } catch (captureErr) {
+            console.warn("[KYC] Could not draw verification frame:", captureErr);
+            return null;
+        }
 
         return new Promise((resolve) => {
-            canvas.toBlob((blob) => {
+            try {
+                canvas.toBlob((blob) => {
+                if (!blob || blob.size < 5120) {
+                    resolve(null);
+                    return;
+                }
                 const file = new File([blob], `selfie_${challengeName}.jpg`, { type: 'image/jpeg' });
                 resolve(file);
-            }, 'image/jpeg', 0.90);
+                }, 'image/jpeg', 0.90);
+            } catch (encodeErr) {
+                console.warn("[KYC] Could not encode verification frame:", encodeErr);
+                resolve(null);
+            }
         });
+    }
+
+    async function requestLiveFaceAudit(video) {
+        if (liveFaceAuditInFlight || !livenessSessionToken) return;
+        if (Date.now() - lastLiveFaceAuditRequestAt < 1800) return;
+        const auditGeneration = liveFaceAuditGeneration;
+        const auditSessionToken = livenessSessionToken;
+        liveFaceAuditInFlight = true;
+        lastLiveFaceAuditRequestAt = Date.now();
+        liveFaceAudit = { status: 'checking' };
+        try {
+            const canvas = document.createElement('canvas');
+            const scale = Math.min(1, 320 / Math.max(video.videoWidth || 320, video.videoHeight || 240));
+            canvas.width = Math.max(160, Math.round((video.videoWidth || 320) * scale));
+            canvas.height = Math.max(120, Math.round((video.videoHeight || 240) * scale));
+            const ctx = canvas.getContext('2d');
+            if (!ctx || video.readyState < 2) throw new Error('Camera frame is unavailable');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.72));
+            if (!blob) throw new Error('Could not capture face check frame');
+
+            const formData = new FormData();
+            formData.append('frame', blob, 'live_face_check.jpg');
+            formData.append('session_token', auditSessionToken);
+            const fetchOptions = {
+                method: 'POST',
+                body: formData,
+            };
+            if (window.AbortSignal && typeof AbortSignal.timeout === 'function') {
+                fetchOptions.signal = AbortSignal.timeout(10000);
+            }
+            const response = await fetch(`/api/bookings/${bookingId}/kyc/obstruction-check`, fetchOptions);
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.detail || 'Face visibility check failed');
+            if (auditGeneration !== liveFaceAuditGeneration || auditSessionToken !== livenessSessionToken) return;
+
+            liveFaceAudit = result;
+            const ttl = result.status === 'clear'
+                ? FACE_AUDIT_CLEAR_TTL_MS
+                : (result.status === 'blocked' ? 4000 : 6000);
+            liveFaceAuditExpiresAt = Date.now() + ttl;
+        } catch (auditError) {
+            if (auditGeneration !== liveFaceAuditGeneration || auditSessionToken !== livenessSessionToken) return;
+            console.warn('[KYC] Live face obstruction audit unavailable:', auditError);
+            liveFaceAudit = {
+                status: 'uncertain',
+                title: 'Face Check Unavailable',
+                message: "We couldn't check your face right now. This verification may require manual review.",
+            };
+            liveFaceAuditExpiresAt = Date.now() + 4000;
+        } finally {
+            if (auditGeneration === liveFaceAuditGeneration) liveFaceAuditInFlight = false;
+        }
     }
 
     async function livenessDetectionLoop() {
@@ -1572,14 +1756,44 @@ const initKyc = () => {
         if (faceLandmarker && video.currentTime !== lastVideoTime) {
             lastVideoTime = video.currentTime;
 
-            const result = faceLandmarker.detectForVideo(video, performance.now());
+            let result;
+            try {
+                result = faceLandmarker.detectForVideo(video, performance.now());
+            } catch (detectErr) {
+                console.error("[KYC] Face landmark detection stopped:", detectErr);
+                isLivenessRunning = false;
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+                if (countdownInterval) clearInterval(countdownInterval);
+                countdownInterval = null;
+                if (stream) stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                video.srcObject = null;
+                updateInstruction("Camera Unavailable", "We couldn't complete camera verification. Please try again.", 'error');
+                showCameraRetryButton();
+                return;
+            }
 
-            if (result.faceLandmarks && result.faceLandmarks.length > 0) {
+            if (result.faceLandmarks && result.faceLandmarks.length === 1) {
                 const landmarks = result.faceLandmarks[0];
 
                 const eye_center_x = (landmarks[33].x + landmarks[263].x) / 2;
                 const eye_dist = Math.abs(landmarks[263].x - landmarks[33].x);
                 const nose_offset = (landmarks[1].x - eye_center_x) / eye_dist;
+                const eye_roll = Math.atan2(
+                    landmarks[263].y - landmarks[33].y,
+                    landmarks[263].x - landmarks[33].x
+                );
+                const nose_eye_left = getDistance(landmarks[1], landmarks[33]);
+                const nose_eye_right = getDistance(landmarks[1], landmarks[263]);
+                const yaw_ratio = nose_eye_left / Math.max(nose_eye_right, 0.001);
+                const isHeadStraight = Math.abs(eye_roll) < 0.20 && yaw_ratio > 0.60 && yaw_ratio < 1.67;
+                const requiredLandmarks = [10, 33, 133, 263, 362, 1, 61, 291, 152];
+                const landmarksVisible = requiredLandmarks.every(index =>
+                    landmarks[index] &&
+                    landmarks[index].x >= 0 && landmarks[index].x <= 1 &&
+                    landmarks[index].y >= 0 && landmarks[index].y <= 1
+                );
 
                 const face_height = Math.abs(landmarks[152].y - landmarks[10].y);
                 const nose_rel_y = (landmarks[1].y - landmarks[10].y) / face_height;
@@ -1588,37 +1802,70 @@ const initKyc = () => {
                 const nose_x = landmarks[1].x;
                 const nose_y = landmarks[1].y;
                 const isScreenCentered = Math.abs(nose_x - 0.5) < 0.15 && Math.abs(nose_y - 0.5) < 0.15;
-                const isCentered = isScreenCentered && Math.abs(nose_offset) < 0.30 && nose_rel_y > 0.35 && nose_rel_y < 0.68;
-                const isProperSize = eye_dist > 0.12 && eye_dist < 0.55;
+                const isCentered = isScreenCentered && Math.abs(nose_offset) < 0.30 && nose_rel_y > 0.35 && nose_rel_y < 0.68 && isHeadStraight && landmarksVisible;
+                const isTooFar = eye_dist < MIN_FACE_EYE_DISTANCE || face_height < MIN_FACE_HEIGHT;
+                const isTooClose = eye_dist > MAX_FACE_EYE_DISTANCE || face_height > MAX_FACE_HEIGHT;
+                const isProperSize = !isTooFar && !isTooClose;
+                const geometryIsReady = isCentered && isProperSize;
+                if (geometryIsReady && Date.now() >= liveFaceAuditExpiresAt) {
+                    requestLiveFaceAudit(video);
+                }
+                const faceAuditIsFresh = Boolean(liveFaceAudit) && Date.now() < liveFaceAuditExpiresAt;
+                const obstructionAllowsProgress = faceAuditIsFresh
+                    && (liveFaceAudit.status === 'clear' || liveFaceAudit.status === 'uncertain');
+                const positionCanProceed = geometryIsReady && obstructionAllowsProgress;
+                // Green is reserved for a fresh visual audit that found no
+                // eyewear or face obstruction. Unknown/uncertain stays orange.
+                window._facePositionedCorrectly = geometryIsReady
+                    && faceAuditIsFresh && liveFaceAudit.status === 'clear';
+                window._facePositionCanProceed = geometryIsReady && obstructionAllowsProgress;
 
                 // Debug frame logging (every 60 frames)
                 if (!window._debugFrameCount) window._debugFrameCount = 0;
                 window._debugFrameCount++;
                 if (window._debugFrameCount % 60 === 0) {
-                    console.log(`[KYC Align Debug] nose_offset: ${nose_offset.toFixed(3)} (target < 0.30), nose_rel_y: ${nose_rel_y.toFixed(3)} (target 0.35 - 0.68), eye_dist: ${eye_dist.toFixed(3)} (target 0.12 - 0.55)`);
+                    console.log(`[KYC Align Debug] nose_offset: ${nose_offset.toFixed(3)}, eye_dist: ${eye_dist.toFixed(3)} (target ${MIN_FACE_EYE_DISTANCE}-${MAX_FACE_EYE_DISTANCE}), face_height: ${face_height.toFixed(3)} (target ${MIN_FACE_HEIGHT}-${MAX_FACE_HEIGHT})`);
                 }
 
                 if (currentLivenessState === STATE_ALIGNING) {
-                    if (!isCentered || !isProperSize) {
+                    if (!geometryIsReady) {
                         window._facePositionedCorrectly = false;
+                        window._facePositionCanProceed = false;
                         alignedStartTime = 0;
 
                         const circleContainer = document.getElementById('camera-circle-container');
                         if (circleContainer) circleContainer.classList.add('pulse-ring');
 
-                        let subPrompt = "Center your face inside the circle";
+                        let subPrompt = !isHeadStraight
+                            ? "Keep your head straight and look at the camera"
+                            : "Center your face inside the circle";
                         if (!isProperSize) {
-                            subPrompt = eye_dist <= 0.16 ? "Move closer to the camera" : "Move further back";
+                            subPrompt = isTooFar ? "Move closer to the camera" : "Move further back";
                         }
                         updateInstruction("Align your face in the circle", subPrompt);
                         setProgressRing(0);
+                    } else if (!faceAuditIsFresh || liveFaceAudit.status === 'blocked') {
+                        window._facePositionedCorrectly = false;
+                        window._facePositionCanProceed = false;
+                        alignedStartTime = 0;
+                        if (liveFaceAudit.status === 'blocked' && faceAuditIsFresh) {
+                            updateInstruction(liveFaceAudit.title || 'Face Obstructed', liveFaceAudit.message || 'Please remove anything blocking your face.');
+                        } else {
+                        updateInstruction('Checking face visibility', 'Keep still while we check for glasses or anything covering your face.', 'processing');
+                        }
+                        setProgressRing(0);
                     } else {
-                        window._facePositionedCorrectly = true;
+                        window._facePositionedCorrectly = liveFaceAudit.status === 'clear';
+                        window._facePositionCanProceed = true;
 
                         const circleContainer = document.getElementById('camera-circle-container');
                         if (circleContainer) circleContainer.classList.add('pulse-ring');
 
-                        updateInstruction("Align your face in the circle", "Keep still...");
+                        if (liveFaceAudit.status === 'uncertain') {
+                            updateInstruction("Face Check Unavailable", "Keep still. This verification may require manual review.", 'warning');
+                        } else {
+                            updateInstruction("Align your face in the circle", "Keep still...");
+                        }
                         setProgressRing(0);
 
                         if (alignedStartTime === 0) {
@@ -1641,6 +1888,12 @@ const initKyc = () => {
 
                             if (countdownInterval) clearInterval(countdownInterval);
                             countdownInterval = setInterval(() => {
+                                if (currentLivenessState !== STATE_COUNTDOWN) {
+                                    clearInterval(countdownInterval);
+                                    countdownInterval = null;
+                                    return;
+                                }
+                                if (!window._facePositionCanProceed) return;
                                 countdownValue--;
                                 if (countdownValue > 0) {
                                     if (countdownEl) countdownEl.innerText = countdownValue;
@@ -1652,14 +1905,19 @@ const initKyc = () => {
                                     currentLivenessState = STATE_BLINK;
                                     blinkStep = 0;
                                     selfieFrames = [];
-                                    updateInstruction("Blink your eyes", "Look straight and blink naturally");
+                                    blinkDeadline = Date.now() + 10000;
+                                    updateInstruction("Blink your eyes", liveFaceAudit.status === 'uncertain'
+                                        ? "Blink naturally. Face visibility could not be confirmed; manual review may be needed."
+                                        : "Look straight and blink naturally");
                                     setProgressRing(0);
                                 }
                             }, 1000);
                         }
                     }
                 } else if (currentLivenessState === STATE_COUNTDOWN) {
-                    if (!isCentered || !isProperSize) {
+                    if (!geometryIsReady) {
+                        window._facePositionedCorrectly = false;
+                        window._facePositionCanProceed = false;
                         if (!window._countdownLostStartTime) {
                             window._countdownLostStartTime = Date.now();
                         } else if (Date.now() - window._countdownLostStartTime > 1000) {
@@ -1674,11 +1932,27 @@ const initKyc = () => {
                             updateInstruction("Align your face in the circle", "Alignment lost, please realign");
                             setProgressRing(0);
                         }
+                    } else if (!obstructionAllowsProgress) {
+                        window._facePositionedCorrectly = false;
+                        window._facePositionCanProceed = false;
+                        window._countdownLostStartTime = 0;
+                        if (liveFaceAudit.status === 'blocked' && faceAuditIsFresh) {
+                            currentLivenessState = STATE_ALIGNING;
+                            alignedStartTime = 0;
+                            clearInterval(countdownInterval);
+                            countdownInterval = null;
+                            const countdownEl = document.getElementById('selfie-countdown');
+                            if (countdownEl) countdownEl.classList.remove('show');
+                            updateInstruction(liveFaceAudit.title || 'Face Obstructed', liveFaceAudit.message || 'Please remove anything blocking your face.');
+                        } else {
+                            updateInstruction('Checking face visibility', 'Keep still while we check for glasses or anything covering your face.', 'processing');
+                        }
                     } else {
                         window._countdownLostStartTime = 0;
+                        window._facePositionCanProceed = true;
                     }
                 } else if (currentLivenessState === STATE_BLINK) {
-                    if (!isCentered || !isProperSize) {
+                    if (!geometryIsReady) {
                         if (!window._blinkLostStartTime) {
                             window._blinkLostStartTime = Date.now();
                         } else if (Date.now() - window._blinkLostStartTime > 2000) {
@@ -1696,29 +1970,85 @@ const initKyc = () => {
                         window._blinkLostStartTime = 0;
                     }
 
+                    // Keep the sequence in progress during small movement, but
+                    // only capture a blink frame while the face is back in range.
+                    if (!positionCanProceed) {
+                        window._facePositionedCorrectly = false;
+                        window._facePositionCanProceed = false;
+                        if (faceAuditIsFresh && liveFaceAudit.status === 'blocked') {
+                            currentLivenessState = STATE_ALIGNING;
+                            alignedStartTime = 0;
+                            blinkStep = 0;
+                            selfieFrames = [];
+                            updateInstruction(liveFaceAudit.title || 'Face Obstructed', liveFaceAudit.message || 'Please remove anything blocking your face.');
+                            setProgressRing(0);
+                        } else if (geometryIsReady) {
+                            updateInstruction('Checking face visibility', 'Keep still while we check for glasses or anything covering your face.', 'processing');
+                        }
+                        if (isLivenessRunning) {
+                            animationFrameId = requestAnimationFrame(livenessDetectionLoop);
+                        }
+                        return;
+                    }
+
+                    if (Date.now() > blinkDeadline) {
+                        blinkStep = 0;
+                        selfieFrames = [];
+                        currentLivenessState = STATE_ALIGNING;
+                        alignedStartTime = 0;
+                        showLivenessError("Blink Verification Failed", "Verification took too long. Please try again.");
+                        setProgressRing(0);
+                        return;
+                    }
                     const ear_left = getDistance(landmarks[159], landmarks[145]) / getDistance(landmarks[33], landmarks[133]);
                     const ear_right = getDistance(landmarks[386], landmarks[374]) / getDistance(landmarks[362], landmarks[263]);
                     const ear_avg = (ear_left + ear_right) / 2;
 
                     if (blinkStep === 0) {
-                        if (ear_avg > 0.22) {
+                        if (ear_avg > EAR_OPEN_THRESHOLD) {
                             const file = await captureFrameToFile("open_1");
+                            if (!file) {
+                                showLivenessError("Blink Verification Failed", "Please try again.");
+                                blinkStep = 0;
+                                selfieFrames = [];
+                                currentLivenessState = STATE_ALIGNING;
+                                alignedStartTime = 0;
+                                return;
+                            }
                             selfieFrames.push(file);
                             blinkStep = 1;
                             setProgressRing(33);
-                            console.log("[KYC] Step 0 completed. Open 1 captured. EAR:", ear_avg);
+                            updateInstruction("Blink your eyes", "Eyes open detected. Now blink naturally.");
+                            console.log("[KYC] Step 0 completed. Open 1 captured.");
                         }
                     } else if (blinkStep === 1) {
-                        if (ear_avg < 0.17) {
+                        if (ear_avg < EAR_CLOSED_THRESHOLD) {
                             const file = await captureFrameToFile("closed");
+                            if (!file) {
+                                showLivenessError("Blink Verification Failed", "Please try again.");
+                                blinkStep = 0;
+                                selfieFrames = [];
+                                currentLivenessState = STATE_ALIGNING;
+                                alignedStartTime = 0;
+                                return;
+                            }
                             selfieFrames.push(file);
                             blinkStep = 2;
                             setProgressRing(66);
-                            console.log("[KYC] Step 1 completed. Closed captured. EAR:", ear_avg);
+                            updateInstruction("Blink your eyes", "Blink detected. Open your eyes again.");
+                            console.log("[KYC] Step 1 completed. Closed frame captured.");
                         }
                     } else if (blinkStep === 2) {
-                        if (ear_avg > 0.22) {
+                        if (ear_avg > EAR_OPEN_THRESHOLD) {
                             const file = await captureFrameToFile("open_2");
+                            if (!file) {
+                                showLivenessError("Blink Verification Failed", "Please try again.");
+                                blinkStep = 0;
+                                selfieFrames = [];
+                                currentLivenessState = STATE_ALIGNING;
+                                alignedStartTime = 0;
+                                return;
+                            }
                             selfieFrames.push(file);
                             blinkStep = 3;
                             setProgressRing(100, "#22c55e");
@@ -1740,7 +2070,21 @@ const initKyc = () => {
                 }
             } else {
                 window._facePositionedCorrectly = false;
-                if (currentLivenessState === STATE_ALIGNING) {
+                window._facePositionCanProceed = false;
+                if (result.faceLandmarks && result.faceLandmarks.length > 1) {
+                    alignedStartTime = 0;
+                    blinkStep = 0;
+                    selfieFrames = [];
+                    if (countdownInterval) clearInterval(countdownInterval);
+                    countdownInterval = null;
+                    currentLivenessState = STATE_ALIGNING;
+                    window._countdownLostStartTime = 0;
+                    window._blinkLostStartTime = 0;
+                    const countdownEl = document.getElementById('selfie-countdown');
+                    if (countdownEl) countdownEl.classList.remove('show');
+                    updateInstruction("Multiple Faces Detected", "Only one person should be visible.");
+                    setProgressRing(0);
+                } else if (currentLivenessState === STATE_ALIGNING) {
                     alignedStartTime = 0;
                     updateInstruction("Align your face in the circle", "No face detected");
                     setProgressRing(0);
@@ -1780,6 +2124,12 @@ const initKyc = () => {
     }
 
     async function autoSubmitLiveness() {
+        if (livenessSubmitting) return;
+        if (!livenessSessionToken || selfieFrames.length !== 3 || selfieFrames.some(file => !file || file.type !== "image/jpeg" || file.size < 5120 || file.size > 5 * 1024 * 1024)) {
+            handleLivenessFailure("Blink Verification Failed | Please follow the blink instructions and try again.");
+            return;
+        }
+        livenessSubmitting = true;
         const activeBox = document.getElementById('active-challenges-box');
         if (activeBox) activeBox.style.display = 'none';
 
@@ -1787,7 +2137,8 @@ const initKyc = () => {
         if (scannerContainer) scannerContainer.style.display = 'none';
 
         document.getElementById('step-processing').style.display = 'block';
-        document.getElementById('status-text').innerText = 'Verifying Biometrics...';
+        currentLivenessState = STATE_VERIFYING;
+        document.getElementById('status-text').innerText = 'Verifying your identity...';
         document.getElementById('status-text').style.color = '';
         document.getElementById('status-subtext').innerText = 'Analyzing your face against the ID. This may take a few seconds.';
         updateStatusTracker(4);
@@ -1795,6 +2146,7 @@ const initKyc = () => {
         const formData = new FormData();
         selfieFrames.forEach(file => formData.append('selfies', file));
         formData.append('completed_challenges', 'blink');
+        formData.append('session_token', livenessSessionToken);
 
         try {
             const res = await fetch(`/api/bookings/${bookingId}/verify-full`, { method: 'POST', body: formData });
@@ -1802,11 +2154,17 @@ const initKyc = () => {
                 initKycWebSocket();
                 startPolling();
             } else {
-                const data = await res.json();
-                handleRejection(data.detail || "Verification failed");
+                livenessSubmitting = false;
+                const data = await res.json().catch(() => ({}));
+                if (res.status >= 500) {
+                    handleRejection("Verification Unavailable | We couldn't complete verification right now. Please try again later.");
+                } else {
+                    handleRejection(data.detail || "Verification failed");
+                }
             }
         } catch (err) {
-            handleRejection("Connection lost.");
+            livenessSubmitting = false;
+            handleRejection("Connection Error | Check your internet connection and try again.");
         }
     }
 
@@ -1900,6 +2258,7 @@ const initKyc = () => {
                     stopPolling();
                     handleApproval(data);
                 } else if (data.status === 'manual_review' || data.status === 'pending_manual_review') {
+                    currentLivenessState = STATE_MANUAL_REVIEW;
                     stopPolling();
                     document.getElementById('step-processing').style.display = 'none';
                     const initLoading = document.getElementById('kyc-loading-init');
@@ -1941,10 +2300,13 @@ const initKyc = () => {
     function initWebSocket(userId) { }
 
     function handleApproval(data) {
+        if (currentLivenessState === STATE_SUCCESS) return;
+        currentLivenessState = STATE_SUCCESS;
         const scannerContainer = document.getElementById('scanner-container');
         const checkmarkOverlay = document.getElementById('success-checkmark-overlay');
 
-        if (scannerContainer && scannerContainer.style.display !== 'none' && checkmarkOverlay) {
+        if (scannerContainer) scannerContainer.style.display = 'block';
+        if (scannerContainer && checkmarkOverlay) {
             checkmarkOverlay.style.display = 'flex';
             updateInstruction("Identity Verified Successfully", "Your identity has been successfully verified. You may now proceed to the next step.");
             setProgressRing(100, "#22c55e");
@@ -1956,11 +2318,7 @@ const initKyc = () => {
 
         const stepProcessing = document.getElementById('step-processing');
         if (stepProcessing) {
-            if (scannerContainer && scannerContainer.style.display !== 'none') {
-                // keep scanner visible to show checkmark
-            } else {
-                stepProcessing.style.display = 'block';
-            }
+            stepProcessing.style.display = 'none';
         }
 
         document.getElementById('status-text').innerText = "Identity Verified Successfully";
@@ -1985,6 +2343,8 @@ const initKyc = () => {
     }
 
     function handleRejection(msg) {
+        if (currentLivenessState === STATE_SUCCESS || currentLivenessState === STATE_FAILED) return;
+        currentLivenessState = STATE_FAILED;
         let title = "Verification Rejected";
         let message = msg;
         if (msg && msg.indexOf(" | ") !== -1) {
@@ -2014,6 +2374,10 @@ const initKyc = () => {
     }
 
     function handleLivenessFailure(msg) {
+        if (currentLivenessState === STATE_SUCCESS || currentLivenessState === STATE_FAILED) return;
+        currentLivenessState = STATE_FAILED;
+        livenessSubmitting = false;
+        livenessSessionToken = null;
         let title = "Verification Failed";
         let message = msg;
         if (msg && msg.indexOf(" | ") !== -1) {
@@ -2045,7 +2409,11 @@ const initKyc = () => {
             }
         }
 
-        fetch('/api/bookings/kyc/reset-liveness', { method: 'POST' }).catch(() => { });
+        livenessResetPromise = fetch(`/api/bookings/kyc/reset-liveness?booking_id=${encodeURIComponent(bookingId)}`, { method: 'POST' })
+            .then((response) => {
+                if (!response.ok) throw new Error("Could not reset this booking's liveness attempt.");
+            })
+            .catch((error) => console.warn("[KYC] Liveness retry reset failed:", error));
 
         selfieFrames = [];
         blinkStep = 0;
@@ -2089,6 +2457,9 @@ const initKyc = () => {
     let livenessFacingMode = "user";
 
     window.switchLivenessCamera = function (mode = null) {
+        isLivenessRunning = false;
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
         if (mode) { livenessFacingMode = mode; }
         else { livenessFacingMode = (livenessFacingMode === "user") ? "environment" : "user"; }
         console.log("[KYC] Liveness Camera Switching to:", livenessFacingMode);

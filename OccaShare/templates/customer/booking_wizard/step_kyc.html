@@ -1936,7 +1936,8 @@
                                     style="font-size: 0.78rem; color: #991b1b; font-weight: 600; padding-left: 1rem; margin: 0; line-height: 1.8;">
                                     <li>Ensure good lighting on your face</li>
                                     <li>Look directly at the camera and blink when prompted</li>
-                                    <li>Avoid glasses, masks, or hats</li>
+                                    <li>Remove glasses, including sunglasses, and avoid glare</li>
+                                    <li>Keep your face clear of masks, hats, hair, and other objects</li>
                                 </ul>
                                 <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
                                     <button type="button" class="btn btn-danger" onclick="retryLiveness()"
@@ -1953,7 +1954,7 @@
                         <div style="margin-bottom: 2rem;">
                             <span style="font-size: 0.7rem; font-weight: 800; color: var(--kyc-accent); text-transform: uppercase; letter-spacing: 0.08em; background: #fff7ed; padding: 0.35rem 0.85rem; border-radius: 2rem; border: 1px solid #fed7aa; display: inline-block; margin-bottom: 0.6rem;"><i class="fas fa-face-smile mr-1"></i> Final Step • Biometric Verification</span>
                             <h3 style="margin: 0 0 0.4rem 0; font-size: 1.35rem; font-weight: 800; color: #1e293b;">Take a Quick Face Selfie</h3>
-                            <p style="margin: 0 auto; font-size: 0.85rem; color: #64748b; font-weight: 600; max-width: 450px; line-height: 1.5;">We use this automated 5-second face check to confirm you match your uploaded ID document.</p>
+                            <p style="margin: 0 auto; font-size: 0.85rem; color: #64748b; font-weight: 600; max-width: 450px; line-height: 1.5;">Center your face, hold still, and blink naturally when prompted. We compare your face with the ID you uploaded.</p>
                         </div>
 
                         <!-- Redesigned Camera Circle with SVG Progress Ring -->
@@ -1981,16 +1982,19 @@
                             </div>
 
                             <!-- Minimalist Instruction Display Pill -->
-                            <div class="kyc-instruction-container" style="background: #f8fafc; border: 1.5px solid #e2e8f0; padding: 1.25rem 1.75rem; border-radius: 1.25rem; width: 100%; max-width: 440px; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
-                                <h2 id="scan-feedback" class="kyc-main-instruction" style="font-size: 1.2rem !important; color: #0f172a !important; margin-bottom: 0.25rem !important;">Preparing camera...</h2>
-                                <p id="liveness-sub-feedback" class="kyc-sub-instruction" style="font-size: 0.82rem !important; color: #64748b !important;">Position your face within the circle</p>
+                            <div id="liveness-status-card" class="kyc-instruction-container status-guidance" role="status" aria-live="polite" aria-atomic="true">
+                                <span id="liveness-status-icon" class="liveness-status-icon" aria-hidden="true"><i class="fas fa-info-circle"></i></span>
+                                <div class="liveness-status-copy">
+                                    <h2 id="scan-feedback" class="kyc-main-instruction">Preparing camera...</h2>
+                                    <p id="liveness-sub-feedback" class="kyc-sub-instruction">Position your face within the circle</p>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Friendly Lighting Tips Bar -->
                         <div style="background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; padding: 0.85rem 1.25rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.6rem; margin-top: 1rem;">
                             <i class="fas fa-lightbulb" style="color: #0284c7; font-size: 1rem;"></i>
-                            <span>Make sure your face is well-lit and remove eyeglasses, masks, or hats.</span>
+                            <span>Use good lighting. Remove glasses and avoid glare; keep your face unobstructed.</span>
                         </div>
                     </div>
 

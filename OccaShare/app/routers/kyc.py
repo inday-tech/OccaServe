@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, BackgroundTasks, Request, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from ..db import database, models
@@ -19,6 +19,9 @@ import asyncio
 import time
 import traceback
 import random
+import secrets
+import hmac
+from datetime import datetime, timedelta, timezone
 
 ALLOWED_MIME_TYPES = ["image/jpeg", "image/png"]
 
@@ -416,29 +419,51 @@ async def init_kyc_session(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    """Initializes/resets the liveness verification session with randomized challenges."""
-    # Find existing session or create a new one
-    session = db.query(models.VerificationSession).filter(models.VerificationSession.user_id == current_user.id).order_by(models.VerificationSession.created_at.desc()).first()
-    
-    if not session or session.status in ["verified", "rejected"]:
+    """Create a booking-bound liveness attempt for the authenticated customer."""
+    booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+    if not booking or booking.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    kyc_record = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.user_id == current_user.id,
+        models.IdentityVerification.booking_id == booking_id
+    ).order_by(models.IdentityVerification.created_at.desc()).first()
+    if not kyc_record or kyc_record.verification_status != "pending_liveliness":
+        raise HTTPException(status_code=400, detail="ID verification is not ready for liveness verification.")
+
+    session = db.query(models.VerificationSession).filter(
+        models.VerificationSession.user_id == current_user.id
+    ).order_by(models.VerificationSession.created_at.desc()).first()
+    session_data = (session.verification_result or {}) if session else {}
+    prior_face_audit_count = int(session_data.get("face_obstruction_audit_count", 0) or 0)
+    if session and session.status == "processing" and session_data.get("booking_id") == booking_id:
+        raise HTTPException(status_code=409, detail="Verification is already processing.")
+    if (not session or session.status != "pending_liveness"
+            or session_data.get("booking_id") != booking_id):
         session = models.VerificationSession(user_id=current_user.id)
         db.add(session)
         db.commit()
         db.refresh(session)
-        
-    # Use only eye-blink detection for liveness verification
+
     challenges = ["blink"]
-    
     session.status = "pending_liveness"
+    session.created_at = datetime.now(timezone.utc)
     session.liveness_score = 0.0
     session.anti_spoof_score = 0.0
     session.face_match_score = 0.0
-    session.verification_result = {"assigned_challenges": challenges}
-    
+    session_token = secrets.token_urlsafe(32)
+    session.verification_result = {
+        "assigned_challenges": challenges,
+        "booking_id": booking_id,
+        "session_token": session_token,
+        "face_obstruction_audit_count": prior_face_audit_count,
+    }
+
     db.commit()
     return {
         "success": True,
         "session_id": session.id,
+        "session_token": session_token,
         "challenges": challenges
     }
 
@@ -450,36 +475,97 @@ async def verify_full(
     request: Request,
     selfies: list[UploadFile] = File(...),
     completed_challenges: str = Form(None), # e.g. "blink,smile,turn_left"
+    session_token: str = Form(...),
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc()).first()
-    if not kyc_record or kyc_record.verification_status == "blocked":
+    booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+    if not booking or booking.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    kyc_record = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.user_id == current_user.id,
+        models.IdentityVerification.booking_id == booking_id
+    ).order_by(models.IdentityVerification.created_at.desc()).first()
+    if not kyc_record or kyc_record.verification_status != "pending_liveliness":
         raise HTTPException(status_code=400, detail="KYC process not initialized or blocked.")
 
-    # Get active VerificationSession
-    session = db.query(models.VerificationSession).filter(models.VerificationSession.user_id == current_user.id).order_by(models.VerificationSession.created_at.desc()).first()
+    session = db.query(models.VerificationSession).filter(
+        models.VerificationSession.user_id == current_user.id
+    ).order_by(models.VerificationSession.created_at.desc()).with_for_update().first()
     if not session:
         raise HTTPException(status_code=400, detail="Liveness session not initialized. Please call init first.")
 
-    selfie_urls = []
-    for i, file in enumerate(selfies[:3]):
+    session_data = session.verification_result or {}
+    stored_token = session_data.get("session_token", "")
+    session_created_at = session.created_at
+    if session_created_at and session_created_at.tzinfo is None:
+        session_created_at = session_created_at.replace(tzinfo=timezone.utc)
+    session_expired = (
+        not session_created_at
+        or datetime.now(timezone.utc) - session_created_at > timedelta(minutes=10)
+    )
+    if (session.status != "pending_liveness"
+            or session_data.get("booking_id") != booking_id
+            or session_expired
+            or not stored_token
+            or not hmac.compare_digest(stored_token, session_token)):
+        raise HTTPException(status_code=409, detail="Verification session is invalid or expired. Please restart verification.")
+
+    attempt_window_start = datetime.now(timezone.utc) - timedelta(hours=24)
+    recent_attempts = db.query(func.count(models.AuditLog.id)).filter(
+        models.AuditLog.user_id == current_user.id,
+        models.AuditLog.action == "kyc_verification",
+        models.AuditLog.timestamp >= attempt_window_start,
+    ).scalar() or 0
+    if recent_attempts >= 3:
+        review_reason = "Verification Attempts Exceeded | You've reached the maximum number of verification attempts. Please wait or wait for manual review."
+        kyc_record.verification_status = "pending_manual_review"
+        kyc_record.failure_reason = review_reason
+        session.status = "pending_manual_review"
+        session.verification_result = {**session_data, "failure_reason": review_reason}
+        db.commit()
+        return {
+            "status": "pending_manual_review",
+            "message": "Verification requires manual review."
+        }
+
+    expected_names = ["selfie_open_1.jpg", "selfie_closed.jpg", "selfie_open_2.jpg"]
+    if len(selfies) != len(expected_names):
+        raise HTTPException(status_code=400, detail="Exactly three blink verification frames are required.")
+
+    from PIL import Image
+    validated_contents = []
+    for index, file in enumerate(selfies):
+        if (file.filename or "").lower() != expected_names[index]:
+            raise HTTPException(status_code=400, detail="Blink verification frames are missing or out of order.")
         content = await file.read()
         file_error = validate_file_type_and_size(content, file.filename)
         if file_error:
-             continue
+            raise HTTPException(status_code=400, detail=file_error)
+        try:
+            with Image.open(io.BytesIO(content)) as image:
+                if image.format not in {"JPEG", "PNG"} or image.width < 160 or image.height < 160:
+                    raise ValueError("Unsupported image dimensions or format")
+                image.verify()
+        except Exception:
+            raise HTTPException(status_code=400, detail="A verification frame is not a valid image.")
+        validated_contents.append(content)
+
+    selfie_urls = []
+    for content in validated_contents:
         c_url = upload_file_to_cloudinary(content, folder="verification")
         if c_url:
             selfie_urls.append(c_url)
-    
-    if not selfie_urls:
-        raise HTTPException(status_code=400, detail="No valid selfie images uploaded.")
 
-    
+    if len(selfie_urls) != 3:
+        raise HTTPException(status_code=502, detail="Verification frames could not be securely uploaded. Please try again.")
+
+
     kyc_record.selfie_url = selfie_urls[0]
     if len(selfie_urls) > 1: kyc_record.selfie_2_url = selfie_urls[1]
     if len(selfie_urls) > 2: kyc_record.selfie_3_url = selfie_urls[2]
-    kyc_record.ip_address = request.client.host
+    kyc_record.ip_address = request.client.host if request.client else None
     kyc_record.verification_status = "processing"
     
     session.status = "processing"
@@ -500,6 +586,8 @@ async def verify_full(
         process_kyc_background,
         current_user.id,
         booking_id,
+        kyc_record.id,
+        session.id,
         kyc_record.document_url,
         selfie_urls,
         full_name,
@@ -514,15 +602,144 @@ async def verify_full(
     return {"status": "processing", "message": "Verification started. Please wait."}
 
 
-async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, full_name, id_number, id_type, dob, address, completed_challenges, assigned_challenges):
+@router.post("/{booking_id}/kyc/obstruction-check")
+async def check_live_face_obstruction(
+    booking_id: int,
+    frame: UploadFile = File(...),
+    session_token: str = Form(...),
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    """Check a transient camera frame before the alignment guide may turn green."""
+    booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+    if not booking or booking.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    session = db.query(models.VerificationSession).filter(
+        models.VerificationSession.user_id == current_user.id
+    ).order_by(models.VerificationSession.created_at.desc()).with_for_update().first()
+    if not session:
+        raise HTTPException(status_code=409, detail="Verification session is invalid or expired.")
+    session_data = session.verification_result or {}
+    stored_token = session_data.get("session_token", "")
+    session_created_at = session.created_at
+    if session_created_at and session_created_at.tzinfo is None:
+        session_created_at = session_created_at.replace(tzinfo=timezone.utc)
+    expired = (
+        not session_created_at
+        or datetime.now(timezone.utc) - session_created_at > timedelta(minutes=10)
+    )
+    if (session.status != "pending_liveness"
+            or session_data.get("booking_id") != booking_id
+            or expired
+            or not stored_token
+            or not hmac.compare_digest(stored_token, session_token)):
+        raise HTTPException(status_code=409, detail="Verification session is invalid or expired.")
+
+    content = await frame.read(512 * 1024 + 1)
+    if len(content) > 512 * 1024:
+        raise HTTPException(status_code=413, detail="Camera frame is too large.")
+    if not content or (frame.content_type or "").lower() not in ALLOWED_MIME_TYPES:
+        raise HTTPException(status_code=400, detail="A valid camera image is required.")
+    from PIL import Image
+    try:
+        with Image.open(io.BytesIO(content)) as image:
+            if (image.format not in {"JPEG", "PNG"}
+                    or image.width < 160 or image.height < 120
+                    or image.width > 4096 or image.height > 4096
+                    or image.width * image.height > 16_000_000):
+                raise ValueError("Unsupported image size or format")
+            image.verify()
+    except Exception:
+        raise HTTPException(status_code=400, detail="A valid camera image is required.")
+
+    now = datetime.now(timezone.utc)
+    last_check = session_data.get("face_obstruction_checked_at")
+    if last_check:
+        try:
+            last_check_at = datetime.fromisoformat(last_check)
+            if last_check_at.tzinfo is None:
+                last_check_at = last_check_at.replace(tzinfo=timezone.utc)
+            if now - last_check_at < timedelta(seconds=2):
+                cached = session_data.get("face_obstruction_result")
+                if isinstance(cached, dict):
+                    return {**cached, "cached": True}
+        except (TypeError, ValueError):
+            pass
+
+    audit_count = int(session_data.get("face_obstruction_audit_count", 0) or 0)
+    if audit_count >= 10:
+        return {
+            "status": "uncertain",
+            "title": "Face Check Unavailable",
+            "message": "We couldn't confirm face visibility. Your verification may require manual review.",
+        }
+
+    session_data = {
+        **session_data,
+        "face_obstruction_checked_at": now.isoformat(),
+        "face_obstruction_result": {
+            "status": "checking",
+            "title": "Checking face visibility",
+            "message": "Please wait while we check your face.",
+        },
+        "face_obstruction_audit_count": audit_count + 1,
+    }
+    session.verification_result = session_data
+    db.commit()
+
+    session_id = session.id
+    try:
+        audit_result = await verification_service.audit_live_face_obstruction(content)
+    except Exception:
+        audit_result = {
+            "status": "uncertain",
+            "title": "Face Check Unavailable",
+            "message": "We couldn't check your face right now. This verification may require manual review.",
+        }
+
+    session = db.query(models.VerificationSession).filter(
+        models.VerificationSession.id == session_id,
+        models.VerificationSession.user_id == current_user.id,
+    ).with_for_update().first()
+    latest_data = (session.verification_result or {}) if session else {}
+    if (not session or session.status != "pending_liveness"
+            or latest_data.get("booking_id") != booking_id
+            or not hmac.compare_digest(latest_data.get("session_token", ""), session_token)):
+        return {
+            "status": "uncertain",
+            "title": "Face Check Unavailable",
+            "message": "Please restart identity verification.",
+        }
+    session.verification_result = {
+        **latest_data,
+        "face_obstruction_result": audit_result,
+    }
+    db.commit()
+    return audit_result
+
+
+async def process_kyc_background(user_id, booking_id, kyc_record_id, session_id, id_path, selfie_paths, full_name, id_number, id_type, dob, address, completed_challenges, assigned_challenges):
     # This simulates the Celery worker / Background task logic
     db = database.SessionLocal()
     try:
         print(f"\n[KYC BACKGROUND] Starting verification for User {user_id}...")
         user = db.query(models.User).get(user_id)
-        booking = db.query(models.Booking).get(booking_id)
-        kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user_id).order_by(models.IdentityVerification.created_at.desc()).first()
-        session = db.query(models.VerificationSession).filter(models.VerificationSession.user_id == user_id).order_by(models.VerificationSession.created_at.desc()).first()
+        booking = db.query(models.Booking).filter(
+            models.Booking.id == booking_id,
+            models.Booking.user_id == user_id
+        ).first()
+        kyc_record = db.query(models.IdentityVerification).filter(
+            models.IdentityVerification.id == kyc_record_id,
+            models.IdentityVerification.user_id == user_id,
+            models.IdentityVerification.booking_id == booking_id
+        ).first()
+        session = db.query(models.VerificationSession).filter(
+            models.VerificationSession.id == session_id,
+            models.VerificationSession.user_id == user_id
+        ).first()
+        if not user or not booking or not kyc_record or not session:
+            raise RuntimeError("Verification attempt records are no longer valid.")
         
         # Simulate processing time
         await asyncio.sleep(0.5)
@@ -546,7 +763,14 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
             session.face_match_score = float(result.get("face_match_score", 0.0))
             # Merge dictionary
             current_res = session.verification_result or {}
-            session.verification_result = {**current_res, **result}
+            # Keep the session payload limited to routing and customer-safe state.
+            # Numeric scores and extracted ID data already belong in their restricted
+            # verification records and must not be duplicated in a JSON status blob.
+            session.verification_result = {
+                "booking_id": booking_id,
+                "assigned_challenges": current_res.get("assigned_challenges", []),
+                "failure_reason": result.get("failure_reason"),
+            }
             db.commit()
             
         # Update User & IdentityVerification records if verified
@@ -579,8 +803,8 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
                 kyc_record.verification_valid_until = valid_until
                 
             db.query(models.Booking).filter(
-                models.Booking.user_id == user_id,
-                models.Booking.caterer_id == booking.caterer_id
+                models.Booking.id == booking_id,
+                models.Booking.user_id == user_id
             ).update({"ocr_verified": True, "liveness_verified": True})
             
             # Send Notification
@@ -640,7 +864,12 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
                 kyc_record.ocr_data = {}
                 
             kyc_record.id_detected = result.get("ocr_match", False) or (isinstance(kyc_record.ocr_data, dict) and kyc_record.ocr_data.get("full_name") is not None)
-            kyc_record.liveness_status = "passed" if result["status"] not in ["liveliness_failed", "failed"] else "failed"
+            if result.get("status") == "verified":
+                kyc_record.liveness_status = "passed"
+            elif result.get("status") == "pending_manual_review":
+                kyc_record.liveness_status = "needs_review"
+            else:
+                kyc_record.liveness_status = "failed"
             
         # Log to Audit
         audit = models.AuditLog(
@@ -648,7 +877,6 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
             action="kyc_verification",
             old_status="processing",
             new_status=result.get("status", "failed"),
-            notes=f"Fraud Score: {result.get('fraud_score', 0)}, OCR Match: {result.get('ocr_match', False)}, Liveness Score: {result.get('liveness_score', 0)}"
         )
         db.add(audit)
         db.commit()
@@ -668,10 +896,17 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
         traceback.print_exc()
         try:
             # Mark session and KYC record as failed so the frontend does not get stuck
-            session = db.query(models.VerificationSession).filter(models.VerificationSession.user_id == user_id).order_by(models.VerificationSession.created_at.desc()).first()
+            session = db.query(models.VerificationSession).filter(
+                models.VerificationSession.id == session_id,
+                models.VerificationSession.user_id == user_id
+            ).first()
             if session:
                 session.status = "failed"
-            kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user_id).order_by(models.IdentityVerification.created_at.desc()).first()
+            kyc_record = db.query(models.IdentityVerification).filter(
+                models.IdentityVerification.id == kyc_record_id,
+                models.IdentityVerification.user_id == user_id,
+                models.IdentityVerification.booking_id == booking_id
+            ).first()
             
             # Map exception / system failure to professional connection/interruption message
             interruption_msg = "Verification Interrupted | The verification process was interrupted due to a connection issue. Please check your internet connection and try again."
@@ -713,12 +948,15 @@ async def reset_kyc_status(
 
 @router.post("/kyc/reset-liveness")
 async def reset_liveness_status(
+    booking_id: int = Query(...),
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    """Resets KYC status back to pending_liveliness so the customer can retake selfies.
-    Called automatically by the frontend when liveness fails, before showing the retry UI."""
-    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc()).first()
+    """Reset only this customer's failed liveness attempt for the selected booking."""
+    kyc_record = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.user_id == current_user.id,
+        models.IdentityVerification.booking_id == booking_id
+    ).order_by(models.IdentityVerification.created_at.desc()).first()
     if kyc_record and kyc_record.verification_status == "liveliness_failed":
         kyc_record.verification_status = "pending_liveliness"
         kyc_record.failure_reason = None
@@ -732,28 +970,36 @@ async def get_kyc_status(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    session = db.query(models.VerificationSession).filter(models.VerificationSession.user_id == current_user.id).order_by(models.VerificationSession.created_at.desc()).first()
-    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc()).first()
+    booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+    if not booking or booking.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    sessions = db.query(models.VerificationSession).filter(
+        models.VerificationSession.user_id == current_user.id
+    ).order_by(models.VerificationSession.created_at.desc()).all()
+    session = next((candidate for candidate in sessions
+                    if (candidate.verification_result or {}).get("booking_id") == booking_id), None)
+    kyc_record = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.user_id == current_user.id,
+        models.IdentityVerification.booking_id == booking_id
+    ).order_by(models.IdentityVerification.created_at.desc()).first()
     
     # If blocked or rejected on the main compliance record, yield that
     if kyc_record and kyc_record.verification_status in ["blocked", "rejected"]:
         return {
             "status": kyc_record.verification_status,
-            "fraud_score": kyc_record.fraud_score,
             "reason": kyc_record.failure_reason
         }
         
     if session:
         return {
             "status": session.status,
-            "fraud_score": int(session.anti_spoof_score),
             "reason": session.verification_result.get("failure_reason") if session.verification_result else None
         }
         
     if kyc_record:
         return {
             "status": kyc_record.verification_status,
-            "fraud_score": kyc_record.fraud_score,
             "reason": kyc_record.failure_reason
         }
         

@@ -176,7 +176,7 @@ class VerificationService:
                     base_options = python.BaseOptions(model_asset_path=model_path)
                     options = vision.FaceLandmarkerOptions(
                         base_options=base_options,
-                        num_faces=1)
+                        num_faces=3)
                     self.landmarker = vision.FaceLandmarker.create_from_options(options)
                 except Exception as init_err:
                     print(f"[KYC DEBUG] Failed to initialize landmarker: {init_err}")
@@ -499,6 +499,9 @@ class VerificationService:
         nose_tips = []
         frames_with_face = 0
         max_faces_in_frame = 0
+        multiple_faces_detected = False
+        open_threshold = float(os.getenv("KYC_EAR_OPEN_THRESHOLD", "0.22"))
+        closed_threshold = float(os.getenv("KYC_EAR_CLOSED_THRESHOLD", "0.17"))
         occlusion_detected = False
         occlusion_reason = None
         
@@ -523,6 +526,8 @@ class VerificationService:
                 num_faces = len(detection_result.face_landmarks)
                 if num_faces > max_faces_in_frame:
                     max_faces_in_frame = num_faces
+                if num_faces > 1:
+                    multiple_faces_detected = True
                 
                 landmarks = detection_result.face_landmarks[0]
                 
@@ -577,27 +582,33 @@ class VerificationService:
               f"occlusion={occlusion_detected} reason='{occlusion_reason}'")
 
         liveness_score = 0.0
-        # Allow at most 1 frame to fail detection in a sequence
-        min_required_frames = max(1, len(img_list) - 1)
-        if frames_with_face >= min_required_frames and not occlusion_detected:
-            liveness_score += 0.4
-            # Lowered EAR variance threshold: 0.0001 is achievable with a real blink across 3 frames
-            # (openâ†’closedâ†’open). Old threshold 0.0003 was too strict.
-            if ear_variance > 0.0001:
-                liveness_score += 0.6  # Blink detected â†’ full liveness credit (total = 1.0)
-                print(f"[KYC LOCAL LIVENESS] Blink DETECTED (ear_variance={ear_variance:.6f} > 0.0001). Score=1.0")
-            elif movement > 0.005:  # Relaxed from 0.01
-                liveness_score += 0.3  # Natural head movement credit
-                print(f"[KYC LOCAL LIVENESS] Movement detected (movement={movement:.6f}). Score=0.7")
+        blink_sequence_detected = (
+            len(ears) == 3
+            and ears[0] >= open_threshold
+            and ears[1] <= closed_threshold
+            and ears[2] >= open_threshold
+        )
+        if multiple_faces_detected:
+            occlusion_detected = True
+            occlusion_reason = "Multiple faces detected. Only one person should be visible."
+        # Require a detected face in every submitted frame. EAR variance and general movement
+        # are supporting observations only; neither substitutes for OPEN -> CLOSED -> OPEN.
+        if frames_with_face == len(img_list) and not occlusion_detected:
+            liveness_score = 0.4
+            if blink_sequence_detected:
+                liveness_score = 1.0
+                print("[KYC LOCAL LIVENESS] Ordered blink sequence detected.")
             else:
-                print(f"[KYC LOCAL LIVENESS] No blink or movement detected. Score=0.4 (face only)")
+                print("[KYC LOCAL LIVENESS] Ordered blink sequence not detected.")
 
         print(f"[KYC LOCAL LIVENESS] Final liveness_score={liveness_score:.2f} ({int(liveness_score*100)}%)")
 
         return {
             "score": liveness_score,
             "face_count": max_faces_in_frame,
+            "multiple_faces_detected": multiple_faces_detected,
             "frames_with_face": frames_with_face,
+            "blink_sequence_detected": blink_sequence_detected,
             "occlusion_detected": occlusion_detected,
             "failure_reason": occlusion_reason,
             "ear_variance": float(ear_variance),
@@ -1071,7 +1082,7 @@ class VerificationService:
         
         # 1. Resolution Check
         if width < 500 or height < 300:
-            return {"valid": False, "reason": "Resolution Too Low | Photo quality is too low. Please take a higher resolution picture."}
+            return {"valid": False, "reason": "Resolution too low | Poor image quality. Please use a clearer, higher-resolution image and try again."}
         
         if not CV2_AVAILABLE:
             print("[KYC WARNING] Skipping detailed quality checks: OpenCV not available.")
@@ -1082,9 +1093,9 @@ class VerificationService:
         # 2. Brightness Check
         mean_brightness = np.mean(gray)
         if mean_brightness < 45:
-            return {"valid": False, "reason": "Image Too Dark | Photo is too dark. Please take the picture in a well-lit room."}
+            return {"valid": False, "reason": "Insufficient Lighting | Move to a brighter location and try again."}
         if mean_brightness > 220:
-            return {"valid": False, "reason": "Image Too Bright | Photo is too bright. Please avoid direct light reflection on your ID."}
+            return {"valid": False, "reason": "Image Too Bright | Reduce strong light or reflection and try again."}
             
         # 3. Blur Detection (Laplacian Variance)
         blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
@@ -1092,13 +1103,13 @@ class VerificationService:
         
         # Require a reasonable sharpness threshold (e.g. 10) for production quality
         if blur_score < 10:
-            return {"valid": False, "reason": "Image Too Blurry | Photo is blurry. Please hold your camera steady and try again."}
+            return {"valid": False, "reason": "Image Too Blurry | Please keep your device steady and try again."}
             
         # 4. Glare Check (Excessive bright spots)
         glare_pixels = np.sum(gray > 250)
         glare_pct = glare_pixels / gray.size
         if glare_pct > 0.25:
-            return {"valid": False, "reason": "Glare Detected | Camera glare detected. Please turn off camera flash or avoid overhead lights."}
+            return {"valid": False, "reason": "Glare Detected | Reduce glare and reflections, then try again."}
             
         return {"valid": True}
 
@@ -1847,7 +1858,7 @@ class VerificationService:
         
         return result
 
-    async def _call_gemini_ocr(self, image_path: str, prompt: str) -> Dict[str, Any]:
+    async def _call_gemini_ocr(self, image_path: Optional[str], prompt: str, *, is_id: bool = True, fast_mode: bool = False, image_bytes: Optional[bytes] = None) -> Dict[str, Any]:
         gemini_key = os.getenv("GEMINI_API_KEY")
         if not gemini_key:
             print("[KYC DEBUG] No Gemini API key found. Skipping Gemini OCR.")
@@ -1855,7 +1866,17 @@ class VerificationService:
         try:
             start_time = time.time()
             # Prepare image for OCR (Resizing to reduce payload size)
-            img = self._prepare_image(image_path)
+            if image_bytes is not None:
+                with Image.open(io.BytesIO(image_bytes)) as pil_img:
+                    pil_img = ImageOps.exif_transpose(pil_img).convert("RGB")
+                    if CV2_AVAILABLE:
+                        img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+                    else:
+                        img = np.array(pil_img)[:, :, ::-1].copy()
+            else:
+                if not image_path:
+                    return None
+                img = self._prepare_image(image_path, is_id=is_id)
             h, w = img.shape[:2]
             
             # Optimization: Resize to a max dimension of 1024 while maintaining aspect ratio
@@ -1887,7 +1908,8 @@ class VerificationService:
                 raw_data = buf.getvalue()
                 
             # Try gemini-2.5-flash, gemini-2.0-flash-lite, and gemini-2.0-flash
-            models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-2.0-flash"]
+            models_to_try = ["gemini-2.5-flash"] if fast_mode else ["gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-2.0-flash"]
+            request_timeout = 8.0 if fast_mode else 30.0
             headers = {"Content-Type": "application/json"}
             base64_image = base64.b64encode(raw_data).decode('utf-8')
             
@@ -1923,19 +1945,19 @@ class VerificationService:
                     print(f"[KYC DEBUG] Trying Gemini model: {model}")
                     debug_logs.append(f"Trying model: {model}")
                     try:
-                        res = await client.post(url, json=payload, headers=headers, timeout=30.0)
+                        res = await client.post(url, json=payload, headers=headers, timeout=request_timeout)
                         debug_logs.append(f"Model {model} returned status code: {res.status_code}")
                         if res.status_code == 200:
                             response = res
                             break
-                        elif res.status_code == 429:
+                        elif res.status_code == 429 and not fast_mode:
                             # Rate limited â€” wait briefly and retry once with this model
                             retry_delay = 5
                             debug_logs.append(f"Model {model} rate limited (429). Retrying in {retry_delay}s...")
                             print(f"[KYC WARNING] Model {model} rate limited. Retrying in {retry_delay}s...")
                             import asyncio
                             await asyncio.sleep(retry_delay)
-                            res2 = await client.post(url, json=payload, headers=headers, timeout=30.0)
+                            res2 = await client.post(url, json=payload, headers=headers, timeout=request_timeout)
                             debug_logs.append(f"Model {model} retry returned status code: {res2.status_code}")
                             if res2.status_code == 200:
                                 response = res2
@@ -1998,6 +2020,77 @@ class VerificationService:
                 pass
             return None
 
+
+    async def audit_live_face_obstruction(self, image_bytes: bytes) -> Dict[str, Any]:
+        """Return a conservative, customer-safe obstruction result for one live frame."""
+        if not os.getenv("GEMINI_API_KEY"):
+            return {
+                "status": "uncertain",
+                "title": "Face Check Unavailable",
+                "message": "We couldn't check your face right now. Please try again later.",
+            }
+
+        prompt = (
+            "Inspect this single live camera frame for KYC capture readiness. "
+            "Return only JSON booleans for all keys below plus a short failure_reason. "
+            "Be conservative: if uncertain, set the relevant check to false. "
+            "Check for exactly one visible face; sunglasses or any eyeglasses; glare over eyes; "
+            "mask; hat, hood or helmet; hair covering facial features; hand or object covering face; "
+            "full face visibility; straight head position; and looking at camera. "
+            "Keys: face_present, single_face, no_sunglasses, no_eyewear, no_glare_on_glasses, "
+            "no_face_mask, no_head_covering, no_hair_obstruction, no_object_obstruction, "
+            "full_face_visible, head_straight, looking_at_camera, all_checks_passed, failure_reason."
+        )
+        audit = await self._call_gemini_ocr(
+            None, prompt, is_id=False, fast_mode=True, image_bytes=image_bytes
+        )
+
+        required = (
+            "face_present", "single_face", "no_sunglasses", "no_eyewear",
+            "no_glare_on_glasses", "no_face_mask", "no_head_covering",
+            "no_hair_obstruction", "no_object_obstruction", "full_face_visible",
+            "head_straight", "looking_at_camera", "all_checks_passed",
+        )
+        if not isinstance(audit, dict) or any(not isinstance(audit.get(key), bool) for key in required):
+            return {
+                "status": "uncertain",
+                "title": "Face Check Unavailable",
+                "message": "We couldn't check your face right now. Please try again.",
+            }
+
+        failures = [key for key in required if audit[key] is False]
+        if not failures and audit["all_checks_passed"]:
+            return {"status": "clear", "title": "Face Check Passed", "message": "Your face is clear."}
+
+        if not audit["face_present"]:
+            title, message = "No Face Detected", "Please look directly at the camera."
+        elif not audit["single_face"]:
+            title, message = "Multiple Faces Detected", "Only one person should be visible."
+        elif not audit["no_sunglasses"]:
+            title, message = "Sunglasses Detected", "Please remove your sunglasses."
+        elif not audit["no_eyewear"]:
+            title, message = "Glasses Detected", "Please remove your glasses."
+        elif not audit["no_glare_on_glasses"]:
+            title, message = "Glasses Glare Detected", "Avoid reflection on your glasses and look directly at the camera."
+        elif not audit["no_face_mask"]:
+            title, message = "Face Mask Detected", "Please remove your face mask."
+        elif not audit["no_head_covering"]:
+            title, message = "Face Covered", "Please remove your hat, hood, or helmet."
+        elif not audit["no_hair_obstruction"]:
+            title, message = "Face Obstructed", "Keep your hair away from your face."
+        elif not audit["no_object_obstruction"] or not audit["full_face_visible"]:
+            title, message = "Face Obstructed", "Please remove anything blocking your face."
+        elif not audit["head_straight"]:
+            title, message = "Head Position", "Keep your head straight and look at the camera."
+        elif not audit["looking_at_camera"]:
+            title, message = "Look at the Camera", "Please look directly at the camera."
+        else:
+            return {
+                "status": "uncertain",
+                "title": "Face Check Unavailable",
+                "message": "We couldn't confirm that your face is unobstructed. Please try again.",
+            }
+        return {"status": "blocked", "title": title, "message": message}
 
     ID_LEGITIMACY_KEYWORDS = [
         "REPUBLIC OF THE PHILIPPINES", "PHILIPPINES", "PASSPORT", "IDENTIFICATION", "SOCIAL SECURITY", 
@@ -3017,52 +3110,67 @@ class VerificationService:
             name_matched = id_result.get("name_matched", False)
             ocr_text = id_result.get("ocr_data", {}).get("raw_text", "")
 
-            # 2. Challenge-Response Validation
-            challenge_completion_score = 100
-            if assigned_challenges is not None:
-                completed_set = set(completed_challenges or [])
-                assigned_set = set(assigned_challenges)
-                if not assigned_set.issubset(completed_set):
-                    intersect_len = len(assigned_set.intersection(completed_set))
-                    challenge_completion_score = int((intersect_len / len(assigned_set)) * 100) if len(assigned_set) > 0 else 0
-
             # Load selfie images in parallel to speed up processing
             tasks = [asyncio.to_thread(self._prepare_image, sp, False) for sp in selfie_paths]
             selfie_imgs = await asyncio.gather(*tasks)
 
             # --- VALIDATIONS FOR LIVELINESS ---
             liveness_failure = None
-            
-            # 1. Face Too Dark Check (Locally processed as it is lightweight)
+            visual_audit_uncertain = not bool(os.getenv("GEMINI_API_KEY"))
+            face_match_uncertain = False
+            explicit_spoof = False
+            verification_uncertain = False
+            server_liveness = await asyncio.to_thread(self._check_liveness_mediapipe, selfie_imgs)
+            server_sequence_verified = bool(server_liveness.get("blink_sequence_detected"))
+            server_sequence_uncertain = bool(server_liveness.get("error")) or not server_sequence_verified
+            # The browser's completed_challenges field is informational only. The
+            # server grants challenge credit solely from its own ordered frame check.
+            challenge_completion_score = 100 if server_sequence_verified else 0
+
+            # Apply the full quality check to every captured frame before face analysis.
+            quality_failure = None
             for img in selfie_imgs:
+                quality = await asyncio.to_thread(self.check_image_quality, img)
+                if not quality.get("valid", False):
+                    quality_failure = quality.get(
+                        "reason",
+                        "Poor Image Quality | Please clean your camera and try again."
+                    )
+                    break
                 mean_brightness = np.mean(img)
-                if mean_brightness < 40: # Threshold for dark environment
-                    liveness_failure = "Insufficient Lighting | The environment is too dark for accurate verification. Please move to a brighter location and try again."
+                if mean_brightness < 40:
+                    quality_failure = "Insufficient Lighting | Move to a brighter location and try again."
                     break
 
+            multiple_faces_detected = bool(server_liveness.get("multiple_faces_detected"))
+            if multiple_faces_detected:
+                liveness_failure = "Multiple Faces Detected | Only one person should be visible."
+
             # 2. Gemini Multi-modal Selfie Audit (Sunglasses, Mask, Obstructions, Tilted head, Multiple faces, etc.)
-            if not liveness_failure and os.getenv("GEMINI_API_KEY") and selfie_paths:
+            if not multiple_faces_detected and os.getenv("GEMINI_API_KEY") and selfie_paths:
                 try:
                     print("[KYC DEBUG] Running Gemini Selfie Audit...")
                     audit_prompt = (
                         "Analyze the uploaded selfie image to ensure it meets strict KYC face verification standards.\n"
                         "Evaluate the following check criteria:\n"
                         "1. No sunglasses: Is the person wearing sunglasses or tinted glasses?\n"
-                        "2. No glare on glasses: If they wear eyeglasses, is there glare/reflection that covers or obstructs their eyes?\n"
-                        "3. No face mask: Is the person wearing a medical mask, dust mask, or cloth mask?\n"
-                        "4. No head/face covering: Is the person wearing a helmet, hood, hat, or anything else that covers their face?\n"
-                        "5. No hair obstruction: Is their hair covering their eyes or face?\n"
-                        "6. No object obstruction: Is there a hand, cellphone, finger, or other object covering any part of their face?\n"
-                        "7. Full face visible: Is their entire face (from forehead to chin, ear to ear) clearly visible?\n"
-                        "8. Correct head tilt: Is the head tilted too much (e.g. tilted up, down, or to the side)?\n"
-                        "9. Looking at camera: Is the person looking straight at the camera?\n"
-                        "10. Single face: Is there exactly one face in the image? (No multiple faces, no background faces).\n"
-                        "11. Face present: Is there a face present in the image?\n\n"
+                        "2. No eyewear: Is the person wearing any glasses, including clear prescription glasses?\n"
+                        "3. No glare on glasses: Is there glare/reflection covering or obstructing their eyes?\n"
+                        "4. No face mask: Is the person wearing a medical mask, dust mask, or cloth mask?\n"
+                        "5. No head covering: Is the person wearing a helmet, hood, or hat?\n"
+                        "6. No hair obstruction: Is their hair covering their eyes or face?\n"
+                        "7. No object obstruction: Is there a hand, cellphone, finger, or other object covering any part of their face?\n"
+                        "8. Full face visible: Is their entire face (from forehead to chin, ear to ear) clearly visible?\n"
+                        "9. Correct head tilt: Is the head tilted too much (e.g. tilted up, down, or to the side)?\n"
+                        "10. Looking at camera: Is the person looking straight at the camera?\n"
+                        "11. Single face: Is there exactly one face in the image? (No multiple faces, no background faces).\n"
+                        "12. Face present: Is there a face present in the image?\n\n"
                         "Return a JSON object in exactly this format:\n"
                         "{\n"
                         "  \"face_present\": true,\n"
                         "  \"single_face\": true,\n"
                         "  \"no_sunglasses\": true,\n"
+                        "  \"no_eyewear\": true,\n"
                         "  \"no_glare_on_glasses\": true,\n"
                         "  \"no_face_mask\": true,\n"
                         "  \"no_face_covering\": true,\n"
@@ -3079,25 +3187,36 @@ class VerificationService:
                         "Do not return any other text, only the raw JSON."
                     )
                     audit_res = await self._call_gemini_ocr(selfie_paths[0], audit_prompt)
-                    if audit_res and isinstance(audit_res, dict):
+                    required_audit_checks = (
+                        "face_present", "single_face", "no_sunglasses", "no_eyewear",
+                        "no_glare_on_glasses", "no_face_mask", "no_face_covering",
+                        "no_hair_obstruction", "no_object_obstruction",
+                        "full_face_visible", "head_straight", "looking_at_camera",
+                        "all_checks_passed",
+                    )
+                    if (audit_res and isinstance(audit_res, dict)
+                            and all(isinstance(audit_res.get(key), bool) for key in required_audit_checks)):
+                        visual_audit_uncertain = False
                         print(f"[KYC DEBUG] Gemini Selfie Audit Result: {audit_res}")
-                        if not audit_res.get("all_checks_passed", True):
+                        if any(audit_res[key] is not True for key in required_audit_checks):
                             if not audit_res.get("face_present", True):
                                 liveness_failure = "No Face Detected | Face not found. Please look at the camera."
                             elif not audit_res.get("single_face", True):
                                 liveness_failure = "Multiple Faces | Only one face should be visible."
                             elif not audit_res.get("no_sunglasses", True):
                                 liveness_failure = "Sunglasses Detected | Please remove your sunglasses."
+                            elif not audit_res.get("no_eyewear", True):
+                                liveness_failure = "Glasses Detected | Please remove your glasses."
                             elif not audit_res.get("no_glare_on_glasses", True):
-                                liveness_failure = "Glasses Glare | Avoid reflection on your glasses."
+                                liveness_failure = "Glasses Glare | Avoid reflection on your glasses and look directly at the camera."
                             elif not audit_res.get("no_face_mask", True):
                                 liveness_failure = "Mask Detected | Please remove your face mask."
                             elif not audit_res.get("no_face_covering", True):
-                                liveness_failure = "Face Covered | Remove your hat, hood, or helmet."
+                                liveness_failure = "Face Covered | Please remove your hat, hood, or helmet."
                             elif not audit_res.get("no_hair_obstruction", True):
                                 liveness_failure = "Hair Obstruction | Keep your hair away from your face."
                             elif not audit_res.get("no_object_obstruction", True):
-                                liveness_failure = "Object Obstruction | Do not block your face."
+                                liveness_failure = "Face Obstructed | Please remove anything blocking your face."
                             elif not audit_res.get("full_face_visible", True):
                                 liveness_failure = "Face Hidden | Ensure your entire face is visible."
                             elif not audit_res.get("head_straight", True):
@@ -3106,8 +3225,16 @@ class VerificationService:
                                 liveness_failure = "Not Looking | Please look straight at the camera."
                             else:
                                 liveness_failure = f"Liveness Failed | {audit_res.get('failure_reason', 'Face verification failed.')}"
+                    else:
+                        visual_audit_uncertain = True
                 except Exception as audit_err:
+                    visual_audit_uncertain = True
                     print(f"[KYC WARNING] Gemini Selfie Audit failed: {audit_err}")
+
+            # Resolve one blocking message only. Multiple faces / a detected
+            # obstruction are more actionable than a general quality warning.
+            if not liveness_failure and quality_failure:
+                liveness_failure = quality_failure
 
             vps_url = os.getenv("VPS_AI_URL")
             vps_api_key = os.getenv("VPS_API_KEY")
@@ -3178,17 +3305,23 @@ class VerificationService:
             if not liveness_failure:
                 if vps_success:
                     # Extract results from VPS
-                    face_match_score = verification_result.get("face_match_score", 0)
-                    if not face_match_score and verification_result.get("success"):
-                        face_match_score = int(verification_result.get("similarity_score", 0.0) * 100)
-                    
-                    # Ensure verified matches mapped to >=90
-                    if verification_result.get("verified") and face_match_score < 90:
-                        face_match_score = 90
+                    raw_match_score = verification_result.get("face_match_score")
+                    if raw_match_score is None and verification_result.get("similarity_score") is not None:
+                        raw_match_score = float(verification_result["similarity_score"]) * 100
+                    if raw_match_score is None:
+                        face_match_uncertain = True
+                        face_match_score = 0
+                    else:
+                        face_match_score = int(raw_match_score)
+                    explicit_spoof = (
+                        liveness_result.get("spoof_detected") is True
+                        or liveness_result.get("is_spoof") is True
+                        or str(liveness_result.get("status", "")).upper() == "SUSPECTED_SPOOF"
+                    )
                         
                     raw_liveness = liveness_result.get("score", 0.0)
                     liveness_score = int(raw_liveness * 100) if raw_liveness <= 1.0 else int(raw_liveness)
-                    anti_spoof_score = int(liveness_result.get("anti_spoof_score", 98))
+                    anti_spoof_score = int(liveness_result.get("anti_spoof_score", 0))
                     
                     face_count = liveness_result.get("face_count", 0)
                     occlusion_detected = liveness_result.get("occlusion_detected", False)
@@ -3201,12 +3334,11 @@ class VerificationService:
                         if "Face could not be detected" in v_err:
                             liveness_failure = "Face Not Detected | We couldn't detect your face clearly. Please position your face inside the frame and try again."
                         else:
-                            liveness_failure = "Liveness Verification Failed | We could not verify that a live person is present. Please try again in a well-lit environment and follow the on-screen instructions carefully."
+                            verification_uncertain = True
                     elif face_count == 0:
                         liveness_failure = "Face Not Detected | We couldn't detect your face clearly. Please position your face inside the frame and try again."
-                    # Bypass strict multiple faces check in VPS path to avoid false positives from background clutter/shadows
-                    # elif face_count > 1:
-                    #     liveness_failure = "Multiple Faces Detected | More than one face was detected. Please ensure only your face is visible during verification."
+                    elif face_count > 1 or server_liveness.get("multiple_faces_detected"):
+                        liveness_failure = "Multiple Faces Detected | Only one person should be visible."
                     elif occlusion_detected:
                         occ_lower = str(occlusion_reason).lower()
                         if "too far" in occ_lower or "far" in occ_lower:
@@ -3216,14 +3348,13 @@ class VerificationService:
                 else:
                     # Fallback to local processing if VPS failed or not configured
                     print("[KYC WARNING] Running local liveness verification...")
-                    # Completely skip local ID loading and dlib face comparison to maximize speed,
-                    # defaulting face match confidence to 92% for automatic verification.
-                    id_faces = [1] # Placeholder
-                    face_match_score = 92
+                    # The local fallback has no reliable ID face matcher or dedicated PAD model.
+                    # Never manufacture passing scores; any otherwise plausible result is manual review.
+                    face_match_score = 0
                     
-                    local_liveness = await asyncio.to_thread(self._check_liveness_mediapipe, selfie_imgs)
+                    local_liveness = server_liveness
                     liveness_score = int(local_liveness["score"] * 100)
-                    anti_spoof_score = 98 if liveness_score >= 40 else 0
+                    anti_spoof_score = 0
                     
                     face_count = local_liveness.get("face_count", 0)
                     occlusion_detected = local_liveness.get("occlusion_detected", False)
@@ -3246,15 +3377,17 @@ class VerificationService:
 
                     if face_count == 0:
                         liveness_failure = "Face Not Detected | We couldn't detect your face clearly. Please position your face inside the frame and try again."
+                    elif face_count > 1:
+                        liveness_failure = "Multiple Faces Detected | Only one person should be visible."
                     
                     if not liveness_failure and occlusion_detected:
                         occ_lower = str(occlusion_reason).lower()
                         if "too far" in occ_lower or "far" in occ_lower:
                             liveness_failure = "Face Too Far from Camera | Please move closer to the camera and keep your face centered within the frame."
+                        elif "multiple face" in occ_lower:
+                            liveness_failure = "Multiple Faces Detected | Only one person should be visible."
                         else:
-                            liveness_failure = "Face Too Close to Camera | Please move your device slightly away and ensure your entire face is visible within the frame."
-                    
-                    print(f"[KYC LOCAL FACE] Bypassed local dlib comparison in fallback path for maximum speed. Set score to 92%")
+                            liveness_failure = "Face Obstructed | Please ensure your entire face is visible."
 
             # Calculate Fraud Score
             fraud_score = self.calculate_fraud_score(
@@ -3279,7 +3412,6 @@ class VerificationService:
                     and anti_spoof_score >= 70
                     and challenge_completion_score >= 100
                 )
-                min_liveness_label = "70% (VPS mode)"
             else:
                 # Local fallback: MediaPipe 3-frame EAR check only
                 # anti_spoof_score is hardcoded 98 (pass) or 0 (fail) â€” not a real engine
@@ -3287,13 +3419,9 @@ class VerificationService:
                     liveness_score >= 40  # At minimum, face was detected in all frames
                     and challenge_completion_score >= 100
                 )
-                min_liveness_label = "40% (local fallback mode)"
 
-            print(f"[KYC VERIFY] FINAL SCORES: liveness={liveness_score}%, "
-                  f"anti_spoof={anti_spoof_score}%, face_match={face_match_score}%, "
-                  f"challenge_completion={challenge_completion_score}%, "
-                  f"vps_success={vps_success}, liveness_passed={liveness_passed}, "
-                  f"liveness_failure='{liveness_failure}'")
+            print(f"[KYC VERIFY] Verification decision: status inputs evaluated; "
+                  f"vps_available={vps_success}, manual_review={not vps_success or server_sequence_uncertain or visual_audit_uncertain}")
 
             if not name_matched:
                 status = "rejected"
@@ -3304,16 +3432,20 @@ class VerificationService:
             elif liveness_failure:
                 status = "liveliness_failed"
                 failure_reason = liveness_failure
-            elif not liveness_passed:
+            elif explicit_spoof:
                 status = "liveliness_failed"
-                if challenge_completion_score < 100:
-                    failure_reason = "Blink Verification Failed | Blink not detected. Please look directly at the camera and blink naturally."
-                elif not vps_success and liveness_score < 40:
-                    failure_reason = "Face Not Detected | Face not detected. Please center your face inside the frame and try again."
-                elif vps_success and anti_spoof_score < 70:
-                    failure_reason = "Verification Rejected | Verification rejected. Please use your live face and avoid using photos or screens."
-                else:
-                    failure_reason = "Blink Verification Failed | Blink not detected. Please look directly at the camera and blink naturally."
+                failure_reason = "Liveness Verification Failed | We couldn't verify that a live person is present. Please try again."
+            elif (
+                not vps_success
+                or server_sequence_uncertain
+                or visual_audit_uncertain
+                or face_match_uncertain
+                or verification_uncertain
+                or not liveness_passed
+                or anti_spoof_score < 70
+            ):
+                status = "pending_manual_review"
+                failure_reason = "Verification Under Review | Your identity verification requires additional review."
             else:
                 # Liveness passed. Check face match score.
                 # Thresholds: >= 80 VERIFIED, 70-79 pending_manual_review, < 70 rejected
@@ -3330,28 +3462,9 @@ class VerificationService:
             # Write liveness and verification details to ocr_debug.log
             try:
                 with open("ocr_debug.log", "a", encoding="utf-8") as f:
-                    f.write(f"\n--- LIVENESS DETECTION ATTEMPT AT {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
-                    f.write(f"User ID: {user_id}\n")
-                    f.write(f"ID Type: {id_type}\n")
-                    f.write(f"ID Path: {id_path}\n")
-                    f.write(f"Selfie Paths: {selfie_paths}\n")
-                    f.write(f"Assigned Challenges: {assigned_challenges}\n")
-                    f.write(f"Completed Challenges: {completed_challenges}\n")
-                    f.write(f"VPS Reachable: {vps_reachable if 'vps_reachable' in locals() else 'N/A'}\n")
-                    f.write(f"VPS Success: {vps_success}\n")
-                    f.write(f"Detected Face Count: {face_count}\n")
-                    f.write(f"Occlusion Detected: {occlusion_detected} (Reason: {occlusion_reason})\n")
-                    if not vps_success and 'local_liveness' in locals():
-                        f.write(f"Local Liveness Details: EAR Variance={local_liveness.get('ear_variance'):.6f}, Movement={local_liveness.get('movement'):.6f}\n")
-                    f.write(f"Liveness Score: {liveness_score}%\n")
-                    f.write(f"Anti-Spoof Score: {anti_spoof_score}%\n")
-                    f.write(f"Face Match Score: {face_match_score}%\n")
-                    f.write(f"OCR Match: {ocr_match}\n")
-                    f.write(f"Pattern Valid: {pattern_valid}\n")
-                    f.write(f"Fraud Score: {fraud_score}\n")
-                    f.write(f"Final Verification Status: {status}\n")
-                    f.write(f"Failure/Review Reason: {failure_reason}\n")
-                    f.write("-" * 50 + "\n")
+                    f.write(f"Verification attempt at {time.strftime('%Y-%m-%d %H:%M:%S')}\\n")
+                    f.write(f"Final verification status: {status}\\n")
+
             except Exception as log_err:
                 print(f"[KYC DEBUG] Failed to write liveness debug log: {log_err}")
 
@@ -3387,7 +3500,7 @@ class VerificationService:
             return {
                 "status": "failed",
                 "fraud_score": 0,
-                "failure_reason": f"System Error: {str(e)}",
+                "failure_reason": "Verification Unavailable | We couldn't complete verification right now. Please try again later.",
                 "ocr_data": {}
             }
 
