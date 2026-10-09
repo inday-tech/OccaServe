@@ -720,6 +720,7 @@ const initKyc = () => {
         document.getElementById('step-id-form').style.display = 'none';
         document.getElementById('id-preview').style.display = 'none';
         document.getElementById('ocr-loading').style.display = 'block';
+        setVerificationInfoVisible(false);
         document.getElementById('extraction-title').innerText = "Scanning Your ID";
         updateStatusTracker(2);
 
@@ -765,6 +766,7 @@ const initKyc = () => {
             clearInterval(progressTimer);
 
             if (res.ok) {
+                setVerificationInfoVisible(true);
                 const result = await res.json();
                 console.log('[KYC] OCR extraction result:', result);
 
@@ -1301,11 +1303,13 @@ const initKyc = () => {
                 }
             } else {
                 const data = await res.json().catch(() => ({}));
+                setVerificationInfoVisible(true);
                 if (window.showError) window.showError(data.detail || "Upload failed", "Upload Error");
                 resetToIdForm();
                 updateStatusTracker(1);
             }
         } catch (err) {
+            setVerificationInfoVisible(true);
             if (window.showError) window.showError("Connection lost.", "Network Error");
             resetToIdForm();
             updateStatusTracker(1);
@@ -1434,6 +1438,7 @@ const initKyc = () => {
         const subEl = document.getElementById('liveness-sub-feedback');
         const card = document.getElementById('liveness-status-card');
         const icon = document.getElementById('liveness-status-icon');
+        const readyGuidance = document.getElementById('liveness-ready-guidance');
         if (mainEl && mainEl.innerText !== mainText) mainEl.innerText = mainText;
         if (subEl && subEl.innerText !== subText) subEl.innerText = subText;
         if (card) {
@@ -1456,6 +1461,14 @@ const initKyc = () => {
                 icon.setAttribute('aria-hidden', 'true');
             }
         }
+        if (readyGuidance) {
+            readyGuidance.hidden = mainText !== 'Align your face in the circle' || status === 'warning';
+        }
+    }
+
+    function setVerificationInfoVisible(visible) {
+        const info = document.getElementById('kyc-info-details');
+        if (info) info.hidden = !visible;
     }
 
     function showLivenessError(title, message) {
@@ -1465,6 +1478,7 @@ const initKyc = () => {
     }
 
     function showStartLoading() {
+        setVerificationInfoVisible(false);
         const state = document.getElementById('liveness-start-state');
         const title = document.getElementById('liveness-start-title');
         const message = document.getElementById('liveness-start-message');
@@ -1489,6 +1503,7 @@ const initKyc = () => {
     }
 
     function showStartError(titleText, messageText) {
+        setVerificationInfoVisible(true);
         const state = document.getElementById('liveness-start-state');
         const title = document.getElementById('liveness-start-title');
         const message = document.getElementById('liveness-start-message');
@@ -1753,6 +1768,7 @@ const initKyc = () => {
             const cameraContent = document.getElementById('liveness-camera-content');
             if (startState) startState.hidden = true;
             if (cameraContent) cameraContent.hidden = false;
+            setVerificationInfoVisible(false);
             await initializeFaceLandmarker().then(() => {
                 console.log("[KYC] Biometrics engine loaded in background");
                 if (currentLivenessState === STATE_ALIGNING) {
@@ -1992,13 +2008,17 @@ const initKyc = () => {
                         const circleContainer = document.getElementById('camera-circle-container');
                         if (circleContainer) circleContainer.classList.add('pulse-ring');
 
-                        let subPrompt = !isHeadStraight
-                            ? "Keep your head straight and look at the camera"
-                            : "Center your face inside the circle";
-                        if (!isProperSize) {
+                        let promptTitle = 'Align your face in the circle';
+                        let subPrompt = 'Center your face inside the circle';
+                        let promptStatus = null;
+                        if (!isHeadStraight) {
+                            promptTitle = 'Keep Your Head Straight';
+                            subPrompt = 'Face the camera directly and keep your head level.';
+                            promptStatus = 'warning';
+                        } else if (!isProperSize) {
                             subPrompt = isTooFar ? "Move closer to the camera" : "Move further back";
                         }
-                        updateInstruction("Align your face in the circle", subPrompt);
+                        updateInstruction(promptTitle, subPrompt, promptStatus);
                         setProgressRing(0);
                     } else if (!faceAuditIsFresh || liveFaceAudit.status === 'blocked') {
                         window._facePositionedCorrectly = false;
@@ -2152,7 +2172,7 @@ const initKyc = () => {
                         selfieFrames = [];
                         currentLivenessState = STATE_ALIGNING;
                         alignedStartTime = 0;
-                        showLivenessError("Blink Verification Failed", "Verification took too long. Please try again.");
+                        handleLivenessFailure("Blink Verification Failed | We couldn't complete the blink check in time. Please try again.");
                         setProgressRing(0);
                         return;
                     }
@@ -2164,10 +2184,9 @@ const initKyc = () => {
                         if (ear_avg > EAR_OPEN_THRESHOLD) {
                             const file = await captureFrameToFile("open_1");
                             if (!file) {
-                                showLivenessError("Blink Verification Failed", "Please try again.");
+                                handleLivenessFailure("Blink Verification Failed | We couldn't complete the blink check in time. Please try again.");
                                 blinkStep = 0;
                                 selfieFrames = [];
-                                currentLivenessState = STATE_ALIGNING;
                                 alignedStartTime = 0;
                                 return;
                             }
@@ -2181,10 +2200,9 @@ const initKyc = () => {
                         if (ear_avg < EAR_CLOSED_THRESHOLD) {
                             const file = await captureFrameToFile("closed");
                             if (!file) {
-                                showLivenessError("Blink Verification Failed", "Please try again.");
+                                handleLivenessFailure("Blink Verification Failed | We couldn't complete the blink check in time. Please try again.");
                                 blinkStep = 0;
                                 selfieFrames = [];
-                                currentLivenessState = STATE_ALIGNING;
                                 alignedStartTime = 0;
                                 return;
                             }
@@ -2198,10 +2216,9 @@ const initKyc = () => {
                         if (ear_avg > EAR_OPEN_THRESHOLD) {
                             const file = await captureFrameToFile("open_2");
                             if (!file) {
-                                showLivenessError("Blink Verification Failed", "Please try again.");
+                                handleLivenessFailure("Blink Verification Failed | We couldn't complete the blink check in time. Please try again.");
                                 blinkStep = 0;
                                 selfieFrames = [];
-                                currentLivenessState = STATE_ALIGNING;
                                 alignedStartTime = 0;
                                 return;
                             }
@@ -2282,7 +2299,7 @@ const initKyc = () => {
     async function autoSubmitLiveness() {
         if (livenessSubmitting) return;
         if (!livenessSessionToken || selfieFrames.length !== 3 || selfieFrames.some(file => !file || file.type !== "image/jpeg" || file.size < 5120 || file.size > 5 * 1024 * 1024)) {
-            handleLivenessFailure("Blink Verification Failed | Please follow the blink instructions and try again.");
+            handleLivenessFailure("Blink Verification Failed | We couldn't complete the blink check in time. Please try again.");
             return;
         }
         livenessSubmitting = true;
@@ -2293,6 +2310,7 @@ const initKyc = () => {
         if (scannerContainer) scannerContainer.style.display = 'none';
 
         document.getElementById('step-processing').style.display = 'block';
+        setVerificationInfoVisible(false);
         currentLivenessState = STATE_VERIFYING;
         document.getElementById('status-text').innerText = 'Verifying your identity...';
         document.getElementById('status-text').style.color = '';
@@ -2314,6 +2332,8 @@ const initKyc = () => {
                 const data = await res.json().catch(() => ({}));
                 if (res.status >= 500) {
                     handleRejection("Verification Unavailable | We couldn't complete verification right now. Please try again later.");
+                } else if (res.status === 409 && /invalid or expired/i.test(data.detail || '')) {
+                    handleLivenessFailure("Verification Session Expired | Your verification session is no longer valid. Start a new session to continue.");
                 } else {
                     handleRejection(data.detail || "Verification failed");
                 }
@@ -2329,6 +2349,12 @@ const initKyc = () => {
     };
 
     window.retryLiveness = function () {
+        const retryAction = document.getElementById('liveness-retry-action');
+        if (retryAction && retryAction.disabled) return;
+        if (retryAction) {
+            retryAction.disabled = true;
+            retryAction.textContent = 'Restarting…';
+        }
         selfieFrames = [];
         blinkStep = 0;
         currentLivenessState = STATE_ALIGNING;
@@ -2361,8 +2387,20 @@ const initKyc = () => {
 
         // On a reload the failed attempt has not been reset by the failure
         // handler in this page instance, so reset it before asking for a token.
-        resetFailedLivenessAttempt();
-        window.startRealtimeScanner();
+        Promise.resolve(livenessResetPromise)
+            .catch(() => {})
+            .then(() => resetFailedLivenessAttempt())
+            .then(() => window.startRealtimeScanner())
+            .catch((error) => {
+                console.warn('[KYC] Could not prepare a fresh liveness attempt:', error);
+                showStartError('Could not restart verification', 'Please check your connection and try again.');
+            })
+            .finally(() => {
+                if (retryAction) {
+                    retryAction.disabled = false;
+                    retryAction.textContent = 'Retry Face Verification';
+                }
+            });
     };
 
     window.submitLiveness = async function () {
@@ -2515,6 +2553,7 @@ const initKyc = () => {
         document.getElementById('kyc-waiting-approval').style.display = 'none';
         const initLoading = document.getElementById('kyc-loading-init');
         if (initLoading) initLoading.style.display = 'none';
+        setVerificationInfoVisible(true);
 
         document.getElementById('step-processing').style.display = 'block';
         document.getElementById('status-text').innerText = title;
@@ -2525,9 +2564,8 @@ const initKyc = () => {
         if (existingBtn) existingBtn.remove();
 
         const btn = document.createElement('button');
-        btn.className = 'btn btn-primary btn-retry-kyc';
-        btn.style.marginTop = '1rem';
-        btn.innerText = 'Retry Verification';
+        btn.className = 'liveness-retry-primary btn-retry-kyc';
+        btn.innerText = 'Restart Verification';
         btn.onclick = () => window.location.reload();
         document.getElementById('step-processing').appendChild(btn);
     }
@@ -2549,17 +2587,16 @@ const initKyc = () => {
         const initLoading = document.getElementById('kyc-loading-init');
         if (initLoading) initLoading.style.display = 'none';
         document.getElementById('step-processing').style.display = 'none';
+        setVerificationInfoVisible(true);
 
         const livenessRetryBanner = document.getElementById('liveness-retry-banner');
         if (livenessRetryBanner) {
-            livenessRetryBanner.style.display = 'block';
-            
-            // Set dynamic title
-            const titleEl = livenessRetryBanner.querySelector('div[style*="font-weight: 800"]');
-            if (titleEl) titleEl.innerText = title;
+            livenessRetryBanner.style.display = 'flex';
+            const titleEl = document.getElementById('liveness-retry-title');
+            if (titleEl) titleEl.textContent = title;
             
             const msgEl = document.getElementById('liveness-retry-message');
-            if (msgEl) msgEl.innerText = message;
+            if (msgEl) msgEl.textContent = message;
         } else {
             if (window.showError) {
                 window.showError(message, title);
@@ -2576,7 +2613,6 @@ const initKyc = () => {
 
         selfieFrames = [];
         blinkStep = 0;
-        currentLivenessState = STATE_ALIGNING;
         alignedStartTime = 0;
         isLivenessRunning = false;
 
@@ -2595,6 +2631,11 @@ const initKyc = () => {
         const checkmarkOverlay = document.getElementById('success-checkmark-overlay');
         if (checkmarkOverlay) checkmarkOverlay.style.display = 'none';
 
+        const startState = document.getElementById('liveness-start-state');
+        if (startState) startState.hidden = true;
+        const cameraContent = document.getElementById('liveness-camera-content');
+        if (cameraContent) cameraContent.hidden = true;
+
         // Stop camera tracks so camera goes offline while waiting for the user to click retake
         if (stream) {
             try {
@@ -2608,7 +2649,6 @@ const initKyc = () => {
 
         document.getElementById('scanner-container').style.display = 'block';
         setProgressRing(0);
-        updateInstruction("Verification failed", "Click 'Retake Verification' to try again");
 
         updateStatusTracker(3);
     }
@@ -2631,15 +2671,18 @@ const initKyc = () => {
     const scannerContainer = document.getElementById('scanner-container');
     if (scannerContainer && scannerContainer.style.display === 'block') {
         const failureBanner = document.getElementById('liveness-retry-banner');
-        const isFailed = failureBanner && failureBanner.style.display === 'block';
+        const isFailed = failureBanner && window.getComputedStyle(failureBanner).display !== 'none';
         if (!isFailed) {
             console.log("[KYC] Page loaded in liveness step. Auto-starting camera...");
             window.startRealtimeScanner();
         } else {
+            currentLivenessState = STATE_FAILED;
             const startState = document.getElementById('liveness-start-state');
             if (startState) startState.hidden = true;
+            const cameraContent = document.getElementById('liveness-camera-content');
+            if (cameraContent) cameraContent.hidden = true;
+            setVerificationInfoVisible(true);
             console.log("[KYC] Page loaded in failed liveness step. Waiting for user to click Retake...");
-            updateInstruction("Verification failed", "Click 'Retake Verification' to try again");
         }
     }
 

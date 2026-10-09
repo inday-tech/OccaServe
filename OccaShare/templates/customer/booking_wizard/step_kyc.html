@@ -1141,7 +1141,7 @@
     /* Premium Processing State Styles */
     .processing-container {
         text-align: center !important;
-        padding: 3rem 1.5rem !important;
+        padding: 1.5rem 1.25rem !important;
         background: radial-gradient(circle at top, rgba(249, 115, 22, 0.03) 0%, transparent 70%) !important;
         border-radius: 1.5rem !important;
         margin: 0 auto !important;
@@ -1152,7 +1152,7 @@
         position: relative !important;
         width: 120px !important;
         height: 120px !important;
-        margin: 0 auto 2.5rem !important;
+        margin: 0 auto 1.25rem !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -1227,7 +1227,7 @@
         font-size: 0.95rem;
         color: var(--kyc-slate-400);
         max-width: 480px;
-        margin: 0 auto 2.5rem;
+        margin: 0 auto 1.25rem;
         line-height: 1.6;
         font-weight: 500;
     }
@@ -1240,7 +1240,7 @@
         border: 1px solid var(--kyc-slate-200) !important;
         border-radius: 1.25rem !important;
         padding: 1.5rem !important;
-        margin: 0 auto 2.5rem !important;
+        margin: 0 auto 1.25rem !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.02) inset !important;
         text-align: left !important;
     }
@@ -1890,51 +1890,33 @@
             <div id="scanner-container"
                 style="display: {% if kyc_status in ['pending_liveliness', 'liveliness_failed'] %}block{% else %}none{% endif %};">
                 <div class="liveness-premium-container" style="text-align: center;">
-                    <!-- Liveness Retry Banner (shown when liveness check fails) -->
-                    <div id="liveness-retry-banner"
-                        style="display: {% if kyc_status == 'liveliness_failed' %}block{% else %}none{% endif %}; background: #fff5f5; border: 1.5px solid #fca5a5; border-radius: 1rem; padding: 1rem 1.25rem; margin: 0 auto 1.5rem; text-align: left; max-width: 420px;">
-                        <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
-                            <div
-                                style="width: 36px; height: 36px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i class="fas fa-exclamation-triangle" style="color: #ef4444; font-size: 0.9rem;"></i>
-                            </div>
-                            <div style="flex: 1;">
-                                <div
-                                    style="font-weight: 800; font-size: 0.9rem; color: #b91c1c; margin-bottom: 0.25rem;">
+                    <!-- Bank-Grade Liveness Selfie Card Wrapper -->
+                    <div id="liveness-camera-card" style="background: #ffffff; border: 1.5px solid var(--kyc-slate-200); border-radius: 1.75rem; padding: 1.75rem 1.5rem; max-width: 620px; margin: 0 auto 1.25rem; box-shadow: 0 15px 35px -10px rgba(0,0,0,0.05); text-align: center;">
+                        <div id="liveness-retry-banner" class="liveness-retry-banner" role="alert"
+                            style="display: {% if kyc_status == 'liveliness_failed' %}flex{% else %}none{% endif %};">
+                            <span class="liveness-retry-icon" aria-hidden="true"><i class="fas fa-exclamation-triangle"></i></span>
+                            <div class="liveness-retry-copy">
+                                <h4 id="liveness-retry-title">
                                     {% if kyc_record and kyc_record.failure_reason and ' | ' in kyc_record.failure_reason %}
                                         {{ kyc_record.failure_reason.split(' | ')[0] }}
                                     {% else %}
                                         Verification Failed
                                     {% endif %}
-                                </div>
-                                <div id="liveness-retry-message"
-                                    style="font-size: 0.82rem; color: #7f1d1d; font-weight: 600; margin-bottom: 0.6rem;">
-                                    {% if kyc_record and kyc_record.failure_reason %}
-                                        {% if ' | ' in kyc_record.failure_reason %}
-                                            {{ kyc_record.failure_reason.split(' | ')[1] }}
-                                        {% else %}
-                                            {{ kyc_record.failure_reason }}
-                                        {% endif %}
-                                    {% endif %}</div>
-                                <ul
-                                    style="font-size: 0.78rem; color: #991b1b; font-weight: 600; padding-left: 1rem; margin: 0; line-height: 1.8;">
-                                    <li>Ensure good lighting on your face</li>
-                                    <li>Look directly at the camera and blink when prompted</li>
-                                    <li>Remove glasses, including sunglasses, and avoid glare</li>
-                                    <li>Keep your face clear of masks, hats, hair, and other objects</li>
-                                </ul>
-                                <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
-                                    <button type="button" class="btn btn-danger" onclick="retryLiveness()"
-                                        style="font-size: 0.8rem; border-radius: 0.75rem; padding: 0.55rem 1.25rem; font-weight: 700; border: none; background: #ef4444; color: white; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: background 0.2s; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2);">
-                                        <i class="fas fa-sync-alt"></i> Retake Verification
-                                    </button>
-                                </div>
+                                </h4>
+                                <p id="liveness-retry-message">
+                                    {% if kyc_record and kyc_record.failure_reason and ' | ' in kyc_record.failure_reason %}
+                                        {{ kyc_record.failure_reason.split(' | ')[1] }}
+                                    {% elif kyc_record and kyc_record.failure_reason %}
+                                        {{ kyc_record.failure_reason }}
+                                    {% else %}
+                                        We could not complete face verification. Start a new attempt to continue.
+                                    {% endif %}
+                                </p>
+                                <button id="liveness-retry-action" type="button" class="liveness-retry-primary" onclick="retryLiveness()">
+                                    <i class="fas fa-redo-alt" aria-hidden="true"></i> Retry Face Verification
+                                </button>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Bank-Grade Liveness Selfie Card Wrapper -->
-                    <div style="background: #ffffff; border: 1.5px solid var(--kyc-slate-200); border-radius: 1.75rem; padding: 2.5rem 2rem; max-width: 620px; margin: 0 auto 2rem; box-shadow: 0 15px 35px -10px rgba(0,0,0,0.05); text-align: center;">
                         <div style="margin-bottom: 2rem;">
                             <span style="font-size: 0.7rem; font-weight: 800; color: var(--kyc-accent); text-transform: uppercase; letter-spacing: 0.08em; background: #fff7ed; padding: 0.35rem 0.85rem; border-radius: 2rem; border: 1px solid #fed7aa; display: inline-block; margin-bottom: 0.6rem;"><i class="fas fa-face-smile mr-1"></i> Final Step • Biometric Verification</span>
                             <h3 style="margin: 0 0 0.4rem 0; font-size: 1.35rem; font-weight: 800; color: #1e293b;">Face Verification</h3>
@@ -1953,7 +1935,7 @@
                         </div>
 
                         <!-- Redesigned Camera Circle with SVG Progress Ring -->
-                        <div id="liveness-camera-content" hidden>
+                        <div id="liveness-camera-content" {% if kyc_status == 'liveliness_failed' %}hidden{% endif %}>
                         <div class="camera-wrapper" style="margin: 1.5rem auto !important;">
                             <div class="camera-circle-container" id="camera-circle-container" style="filter: drop-shadow(0 12px 25px rgba(249, 115, 22, 0.15));">
                                 <svg class="progress-ring-svg" viewBox="0 0 320 320">
@@ -1987,7 +1969,7 @@
                             </div>
                         </div>
 
-                        <div class="liveness-ready-guidance">
+                            <div id="liveness-ready-guidance" class="liveness-ready-guidance">
                             <strong>Before you start</strong>
                             <span>Use good lighting, avoid glare, and keep your face unobstructed.</span>
                         </div>
@@ -2012,7 +1994,7 @@
                 </div>
             </div>
 
-            <div class="kyc-info-details" aria-label="Identity verification information">
+            <div id="kyc-info-details" class="kyc-info-details" aria-label="Identity verification information" {% if kyc_status in ['processing', 'pending_manual_review', 'manual_review'] %}hidden{% endif %}>
                 <details>
                     <summary>Why We Verify Your Identity</summary>
                     <p>We compare your government ID with your account details and use a liveness check to help prevent fraudulent bookings.</p>
