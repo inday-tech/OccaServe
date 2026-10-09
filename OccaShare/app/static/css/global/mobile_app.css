@@ -97,20 +97,36 @@
     /* Event Category Cards Mobile Refinement */
     .event-card {
         padding: 1.5rem 1rem !important;
-        flex-direction: row !important;
+        display: grid !important;
+        grid-template-columns: 80px minmax(0, 1fr);
+        grid-template-rows: auto auto;
         text-align: left !important;
         align-items: center !important;
         gap: 1rem !important;
     }
 
     .event-card i {
+        grid-column: 1;
+        grid-row: 1;
         font-size: 1.75rem !important;
         margin-bottom: 0 !important;
     }
 
     .event-card h3 {
+        grid-column: 2;
+        grid-row: 1;
+        min-width: 0;
+        overflow-wrap: anywhere;
         font-size: 1.1rem !important;
         margin-bottom: 0 !important;
+    }
+
+    .event-card p {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        line-height: 1.5 !important;
     }
 
     /* Step Cards (How it Works) Refinement */
@@ -369,34 +385,49 @@
         display: flex !important;
         flex-direction: column;
         gap: 0.75rem;
-        padding: 0 2.5rem;
+        box-sizing: border-box;
+        align-items: stretch;
+        padding: 0 1.25rem;
         width: 100%;
+        max-width: 24rem;
         margin-top: 1.5rem;
     }
 
-    .nav-auth-mobile .btn-primary {
+    .nav-auth-mobile .btn-primary,
+    .nav-auth-mobile .btn-secondary {
         width: 100%;
-        padding: 0.85rem !important;
+        min-height: 3rem !important;
+        box-sizing: border-box;
+        padding: 0.75rem 1rem !important;
         font-size: 1rem !important;
-        color: #fff !important;
-        background: var(--primary-color, #f97316) !important;
         border-radius: 50px !important;
         text-align: center !important;
-        display: block !important;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
         text-decoration: none !important;
     }
 
+    .nav-auth-mobile .btn-primary {
+        color: #fff !important;
+        background: var(--primary-color, #f97316) !important;
+    }
+
     .nav-auth-mobile .btn-secondary {
-        width: 100%;
-        padding: 0.85rem !important;
-        font-size: 1rem !important;
         color: #ffffff !important;
         background: transparent !important;
         border: 2px solid rgba(255,255,255,0.3) !important;
-        border-radius: 50px !important;
-        text-align: center !important;
-        display: block !important;
-        text-decoration: none !important;
+    }
+
+    .event-card i {
+        flex: 0 0 80px !important;
+        width: 80px !important;
+        min-width: 80px !important;
+        height: 80px !important;
+        min-height: 80px !important;
+        aspect-ratio: 1 / 1;
+        box-sizing: border-box;
+        border-radius: 50% !important;
     }
 
     /* Ensure hamburger is visible when menu is open */

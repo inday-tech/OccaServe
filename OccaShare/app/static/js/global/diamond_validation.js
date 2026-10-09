@@ -92,6 +92,18 @@
         }
     };
 
+    window.normalizePhilippineMobileEntry = function (value) {
+        let digits = String(value || '').replace(/\D/g, '');
+        if (digits.startsWith('63')) digits = digits.slice(2);
+        if (digits.startsWith('0')) digits = digits.slice(1);
+        return digits.slice(0, 10);
+    };
+
+    window.normalizePhilippineMobileNumber = function (value) {
+        const subscriberNumber = window.normalizePhilippineMobileEntry(value);
+        return /^9\d{9}$/.test(subscriberNumber) ? `0${subscriberNumber}` : subscriberNumber;
+    };
+
     // --- CORE VALIDATORS ---
     window.diamondValidators = {
         name: (name) => {
@@ -161,11 +173,10 @@
             return { valid: true };
         },
         mobile: (val) => {
-            const mobileRegex = /^(09|\+639)\d{9}$/;
-            const valClean = val.replace(/\s/g, '');
+            const valClean = window.normalizePhilippineMobileNumber(val);
 
             if (!valClean) return { valid: false, message: "Required" };
-            if (!mobileRegex.test(valClean)) return { valid: false, message: "Format: 09XXXXXXXXX (11 digits)" };
+            if (!/^09\d{9}$/.test(valClean)) return { valid: false, message: "Enter 9XXXXXXXXX; +63 is already added." };
 
             // Check for excessive repeating identical digits (e.g., 09333333333 or 09333354545 with many 3s)
             if (/(.)\1{4,}/.test(valClean)) {
@@ -406,7 +417,7 @@
 
         // 2. Debounced Mobile Phone Uniqueness Check
         const checkPhoneUniqueness = async (input, prefix) => {
-            const val = input.value.replace(/\s/g, '');
+            const val = window.normalizePhilippineMobileNumber(input.value);
             try {
                 const response = await fetch(`/auth/check-phone?phone=${encodeURIComponent(val)}`);
                 const data = await response.json();
@@ -420,6 +431,20 @@
         const debouncedPhoneUnique = debounce(checkPhoneUniqueness, 500);
 
         mobileInputs.forEach(input => {
+            if (input.classList.contains('phone-national-input')) {
+                input.value = window.normalizePhilippineMobileEntry(input.value);
+                if (!input.dataset.phoneEntryFormattingBound) {
+                    input.dataset.phoneEntryFormattingBound = 'true';
+                    input.addEventListener('input', function () {
+                        const normalizedValue = window.normalizePhilippineMobileEntry(this.value);
+                        if (this.value !== normalizedValue) {
+                            this.value = normalizedValue;
+                            this.setSelectionRange(normalizedValue.length, normalizedValue.length);
+                        }
+                    });
+                }
+            }
+
             input.addEventListener('input', function () {
                 const isCat = this.id.includes('cat');
                 const prefix = isCat ? 'mobileCat' : 'mobile';

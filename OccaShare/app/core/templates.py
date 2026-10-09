@@ -1,17 +1,13 @@
 from fastapi.templating import Jinja2Templates
+from jinja2 import pass_context
 from ..db.database import SessionLocal
 from ..db import models
 import os
 from pathlib import Path
-import threading
-import time
 
 # Initialize Jinja2 templates pointing to the top-level "templates" directory
 templates = Jinja2Templates(directory="templates")
 _STATIC_ROOT = (Path(__file__).resolve().parents[1] / "static").resolve()
-_WEBSITE_CONFIG_TTL_SECONDS = 10
-_website_config_lock = threading.Lock()
-_website_config_cache = {"expires_at": 0.0, "value": None}
 
 
 def static_asset_version(asset_path: str) -> str:
@@ -26,60 +22,55 @@ def static_asset_version(asset_path: str) -> str:
         return "0"
 
 
-def website_config():
-    """
-    Fetches and returns website configuration (logo, favicon, branding, etc.)
-    as a plain dict to avoid SQLAlchemy DetachedInstanceError.
-    This is registered as a Jinja2 global so templates can call it directly:
-        {% set wconfig = website_config() %}
-    """
-    now = time.monotonic()
-    cached = _website_config_cache
-    if now < cached["expires_at"]:
-        return dict(cached["value"]) if cached["value"] else None
+def website_config_snapshot(config):
+    return {
+        "id": config.id,
+        "site_name": config.site_name,
+        "support_email": config.support_email,
+        "logo_url": config.logo_url,
+        "favicon_url": config.favicon_url,
+        "facebook_link": config.facebook_link,
+        "instagram_link": config.instagram_link,
+        "twitter_link": config.twitter_link,
+        "commission_rate": config.commission_rate,
+        "commission_fixed_amount": config.commission_fixed_amount,
+        "max_file_size_mb": config.max_file_size_mb,
+        "maintenance_mode": config.maintenance_mode,
+        "maintenance_message": config.maintenance_message,
+    }
 
-    with _website_config_lock:
-        now = time.monotonic()
-        cached = _website_config_cache
-        if now < cached["expires_at"]:
-            return dict(cached["value"]) if cached["value"] else None
 
+@pass_context
+def website_config(context):
+    """Return a plain website config snapshot for templates."""
+    request = context.get("request")
+    request_state = getattr(request, "state", None)
+    cached_config = getattr(request_state, "website_config", None)
+    if cached_config is not None:
+        return cached_config
+
+    db = getattr(request_state, "db", None)
+    owns_db = db is None
+    if owns_db:
         db = SessionLocal()
-        try:
-            config = db.query(models.WebsiteConfig).first()
-            if not config:
-                config = models.WebsiteConfig()
-                db.add(config)
-                db.commit()
-                db.refresh(config)
 
-            value = {
-                "id": config.id,
-                "site_name": config.site_name,
-                "support_email": config.support_email,
-                "logo_url": config.logo_url,
-                "favicon_url": config.favicon_url,
-                "facebook_link": config.facebook_link,
-                "instagram_link": config.instagram_link,
-                "twitter_link": config.twitter_link,
-                "commission_rate": config.commission_rate,
-                "commission_fixed_amount": config.commission_fixed_amount,
-                "max_file_size_mb": config.max_file_size_mb,
-                "maintenance_mode": config.maintenance_mode,
-                "maintenance_message": config.maintenance_message,
-            }
-            _website_config_cache.update(
-                value=value,
-                expires_at=now + _WEBSITE_CONFIG_TTL_SECONDS,
-            )
-            return dict(value)
-        except Exception as e:
-            print(f"[TEMPLATES] website_config() error: {e}")
-            _website_config_cache.update(value=None, expires_at=now + 2)
-            return None
-        finally:
+    try:
+        config = db.query(models.WebsiteConfig).first()
+        if not config:
+            config = models.WebsiteConfig()
+            db.add(config)
+            db.commit()
+            db.refresh(config)
+        snapshot = website_config_snapshot(config)
+        if request_state is not None:
+            request_state.website_config = snapshot
+        return snapshot
+    except Exception as e:
+        print(f"[TEMPLATES] website_config() error: {e}")
+        return None
+    finally:
+        if owns_db:
             db.close()
-
 
 def hex_to_rgb(hex_color: str) -> str:
     """
@@ -119,4 +110,3 @@ def google_maps_api_key():
 templates.env.globals["google_maps_api_key"] = google_maps_api_key
 
 # Trigger template reload and verify changes
-

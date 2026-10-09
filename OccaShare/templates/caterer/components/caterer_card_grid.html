@@ -11,10 +11,11 @@
             <span class="elite-verified-badge" title="Verified Caterer"><i class="fas fa-check-circle"></i></span>
             {% endif %}
         </div>
+        {% set review_stats = caterer_review_stats.get(caterer.id, {"count": 0, "rating": none}) %}
         <div class="elite-card-rating">
             <i class="fas fa-star"></i>
-            {{ "%.1f"|format(caterer.rating) if caterer.rating else 'New' }}
-            <span>({{ caterer.review_count or 0 }} reviews)</span>
+            {{ "%.1f"|format(review_stats["rating"]) if review_stats["count"] else 'New' }}
+            <span>({{ review_stats["count"] }} reviews)</span>
         </div>
         <p class="elite-card-desc" style="flex-grow: 1; margin-bottom: 1rem; text-align: left;">
             {{ (caterer.description or 'Exquisite culinary experiences tailored for your special occasions.')|truncate(100) }}

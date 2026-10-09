@@ -182,7 +182,7 @@
                     } catch (err) { console.error("Email uniqueness check failed", err); }
                 }
                 if (mobileEl && mobileEl.value) {
-                    const cleanPhone = mobileEl.value.replace(/\s/g, '');
+                    const cleanPhone = window.normalizePhilippineMobileNumber(mobileEl.value);
                     try {
                         const response = await fetch(`/auth/check-phone?phone=${encodeURIComponent(cleanPhone)}`);
                         const data = await response.json();
@@ -210,14 +210,6 @@
                 valid = false;
             } else {
                 window.setDiamondError('barangayCat', "", false);
-            }
-
-            const streetEl = document.getElementById('street_cat');
-            if (streetEl && (!streetEl.value || streetEl.value.trim() === '')) {
-                window.setDiamondError('streetCat', "Required");
-                valid = false;
-            } else {
-                window.setDiamondError('streetCat', "", false);
             }
 
             const coverageEl = document.getElementById('coverage_area_cat');
@@ -366,13 +358,15 @@
         const street = document.getElementById('street_cat')?.value || '';
         const hiddenAddress = document.getElementById('address_cat_hidden');
         if (hiddenAddress) {
-            hiddenAddress.value = `${street}, ${brgy}, ${city}, ${prov}`.replace(/^[\s,]+|[\s,]+$/g, '');
+            hiddenAddress.value = [street, brgy, city, prov]
+                .map(part => part.trim())
+                .filter(Boolean)
+                .join(', ');
         }
     }
 
     async function finalExecuteSubmit() {
         const form = document.getElementById('catererForm');
-        const formData = new FormData(form);
         const submitBtn = document.getElementById('nextBtnCat');
 
         const originalHtml = submitBtn ? submitBtn.innerHTML : '<span>Create Account</span> <i class="fas fa-user-plus" style="margin-left: 6px;"></i>';
@@ -383,6 +377,7 @@
 
         try {
             updateAddressCat();
+            const formData = new FormData(form);
 
             // Consolidate checkboxes
             const checkboxes = form.querySelectorAll('input[name="event_type_choice"]:checked');
@@ -400,6 +395,10 @@
             const ln = document.getElementById('last_name_cat')?.value.trim() || '';
             const fn = document.getElementById('first_name_cat')?.value.trim() || '';
             const mn = document.getElementById('middle_name_cat')?.value.trim() || '';
+            const mobileEl = document.getElementById('mobile_number_cat');
+            if (mobileEl) {
+                formData.set('mobile_number', window.normalizePhilippineMobileNumber(mobileEl.value));
+            }
             formData.set('last_name', ln);
             formData.set('first_name', fn);
             formData.set('middle_name', mn);
@@ -511,7 +510,10 @@
         const street = document.getElementById('street_cat')?.value;
         const hiddenAddress = document.getElementById('address_cat_hidden');
         if (hiddenAddress && city && brgy) {
-            hiddenAddress.value = `${street || ''}, ${brgy}, ${city}, ${prov}`;
+            hiddenAddress.value = [street, brgy, city, prov]
+                .map(part => (part || '').trim())
+                .filter(Boolean)
+                .join(', ');
         }
     }
 
@@ -1360,11 +1362,6 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         window.initCatererGeoDropdowns();
-
-        // ── Step 2: Street Address ───────────────────────────────────────────
-        document.getElementById('street_cat')?.addEventListener('input', function () {
-            if (this.value.trim()) window.setDiamondError('streetCat', '', false);
-        });
 
         // ── Step 2: Business Type ────────────────────────────────────────────
         document.getElementById('business_type')?.addEventListener('change', function () {

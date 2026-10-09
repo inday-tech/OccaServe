@@ -12,7 +12,7 @@
 <div class="page-hero-premium">
     <div class="container">
         <h1>Help Center</h1>
-        <p>Find answers to common questions about using OccaServe. Can't find what you need? <a href="/contact"
+        <p>Find answers to common questions about using OccaServe. Can't find what you need? <a href="/#contact"
                 style="color:var(--primary-color); font-weight:600;">Contact our team.</a></p>
     </div>
 </div>
@@ -23,46 +23,60 @@
 
             {% set sections = [
             ("For Customers", "fas fa-user", [
-            ("How do I find a caterer?", "Browse our Featured Caterers on the home page, or use the Event Categories
-            section to filter by event type. You can also search by name or description using the search field."),
-            ("How do I book a caterer?", "Click 'View Profile' on any caterer card to see their full profile, packages,
-            and menu options. Select a package and follow the booking steps. You'll receive a confirmation email once
-            the caterer accepts."),
-            ("Can I request a custom menu?", "Yes! After viewing a caterer's profile, you can message them directly to
-            discuss custom menu options or special dietary requirements before booking."),
-            ("What happens after I book?", "You'll receive an email confirmation with booking details. Your caterer will
-            reach out to finalize logistics. You can track your booking status in your customer dashboard."),
-            ("How do I cancel a booking?", "Go to My Dashboard → My Bookings → select your booking → click 'Cancel'.
-            Cancellation terms depend on the caterer's policy listed on their profile."),
+            ("How do I find a caterer?", "Browse the caterer cards on the home page, search by caterer or offering, or
+            choose an event category. Open a caterer's profile to review their packages, services, and business
+            information."),
+            ("How do I make a booking?", "Choose an offering from a caterer's profile and follow the on-screen booking
+            steps. Depending on the booking, you may need to provide event details, review and sign an agreement, and
+            submit payment. Check your Customer Dashboard for booking updates."),
+            ("Can I ask a caterer about a menu or special request?", "Use the messaging options available from the
+            caterer's profile or your booking to discuss your requirements with that caterer. Availability of custom
+            requests depends on the caterer."),
+            ("Where can I see my booking status?", "Sign in and open your Customer Dashboard or My Bookings to review
+            your booking details and current status."),
+            ("How do I change or cancel a booking?", "Review the agreement and the caterer's cancellation terms for your
+            booking. Contact the caterer through OccaServe messages to discuss a change or cancellation. If you need
+            platform assistance, use the Contact Us form on the home page."),
             ]),
             ("Payments & Billing", "fas fa-credit-card", [
-            ("What payment methods are accepted?", "We accept credit/debit cards (Visa, Mastercard), GCash, Maya, and
-            other digital wallets through our secure PayMongo payment gateway."),
-            ("Is my payment information safe?", "Yes. All payments are processed through PayMongo, which is PCI-DSS
-            compliant. OccaServe never stores your card details."),
-            ("When am I charged?", "Payment is collected upon booking confirmation. Some caterers allow a partial
-            downpayment — this will be clearly indicated during checkout."),
-            ("Can I get a refund?", "Refund eligibility depends on the caterer's cancellation and refund policy. If
-            there's a dispute, contact our support team and we'll help mediate."),
+            ("Which payment methods can I use?", "Available methods depend on the caterer's configured payment options.
+            The payment step shows the methods and instructions for your booking. These may include GCash, Maya, bank
+            transfer, or cash paid to the caterer."),
+            ("How much do I need to pay?", "Review the amount and payment plan shown in your booking. For bookings with
+            an agreement, the caterer sets the available deposit options; any remaining balance and its due date are
+            shown in the booking details."),
+            ("How do I submit payment proof?", "If your selected payment method requires proof, follow the instructions
+            on the payment step and upload the requested receipt or screenshot. Check your booking for payment status
+            or any request to re-upload proof."),
+            ("Can I get a refund?", "Refunds and cancellations are governed by the terms in your booking agreement and
+            the caterer's stated policies. Review those terms and contact the caterer about your booking. For platform
+            assistance, use the Contact Us form."),
             ]),
             ("For Caterers", "fas fa-utensils", [
-            ("How do I join as a caterer?", "Click 'Join as Caterer' in the navigation or footer. Register, complete
-            your caterer profile, submit KYC documents, and await approval from our admin team."),
-            ("How long does approval take?", "Caterer applications are typically reviewed within 3–5 business days.
-            You'll receive an email notification once your account is approved."),
-            ("How do I receive payments?", "Payments are collected by OccaServe on your behalf and disbursed to your
-            registered bank account after the event is completed, minus a small platform fee."),
-            ("Can I set my own packages?", "Yes! Once your account is approved, you can create and manage your own
-            catering packages including pricing, menus, and availability through your Caterer Dashboard."),
+            ("How do I register as a caterer?", "Choose the caterer registration option, complete the account and
+            business details, and submit the requested information and documents. Verify your email using the code
+            sent to your registered address. Caterer accounts are subject to platform review before approval."),
+            ("How can I check my application status?", "Sign in with your registered account and check the status shown
+            in your Caterer Dashboard or approval page. Review timing can vary; OccaServe does not promise a fixed
+            approval period."),
+            ("How do I receive customer payments?", "Payment methods and instructions are configured for your business
+            and shown to customers during checkout. Customers pay using the method selected for their booking. Check
+            your Caterer Dashboard for payment records and any applicable platform fees."),
+            ("Can I manage my packages and services?", "Use your Caterer Dashboard to manage the business information
+            and offerings available in your account, including packages, menus, services, and availability."),
+            ("How can I get help with my caterer account?", "Use the Contact Us form on the home page and include your
+            business name and the email address registered to your caterer account."),
             ]),
             ("Technical Support", "fas fa-cog", [
-            ("I can't log in to my account.", "Try resetting your password using 'Forgot Password' on the login page. If
-            you still have issues, contact our support team with your registered email address."),
-            ("I didn't receive a verification email.", "Check your spam/junk folder. If it's not there, try
-            re-registering. If the issue persists, contact us at support@occaserve.com."),
-            ("The website isn't loading properly.", "Try clearing your browser cache and cookies, then reload. If you're
-            on mobile, ensure you have a stable internet connection. Supported browsers: Chrome, Firefox, Edge,
-            Safari."),
+            ("I can't log in to my account.", "Check that you are using the email address and password registered to
+            your account. If you forgot your password, choose 'Forgot password?' on the login form and follow the
+            instructions sent to your email."),
+            ("I didn't receive my email verification code.", "Check your inbox and spam or junk folder, and make sure
+            you entered the correct email address. On the verification screen, use the option to request another code
+            if it is available. If you still need help, contact us through the home page form."),
+            ("The website isn't loading or a feature isn't working.", "Check your internet connection and reload the
+            page. If the problem continues, contact us through the home page form and include what you were trying to
+            do and any error message you saw."),
             ]),
             ] %}
 
@@ -91,9 +105,8 @@
             <div class="help-contact-cta">
                 <i class="fas fa-headset help-contact-icon"></i>
                 <h3 class="help-contact-title">Still need help?</h3>
-                <p class="help-contact-desc">Our support team is ready to assist you. Reach out and
-                    we'll respond within 24 hours.</p>
-                <a href="/contact" class="btn-primary">Contact Support Team</a>
+                <p class="help-contact-desc">Customers and caterers can send an inquiry using the Contact Us form.</p>
+                <a href="/#contact" class="btn-primary">Contact Us</a>
             </div>
         </div>
     </div>

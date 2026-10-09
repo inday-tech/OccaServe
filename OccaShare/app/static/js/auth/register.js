@@ -89,10 +89,9 @@
             const provEl = regForm.querySelector('#province_cust');
             const cityEl = regForm.querySelector('#city_cust');
             const brgyEl = regForm.querySelector('#barangay_cust');
-            const streetEl = regForm.querySelector('#street_cust');
 
             // Force all fields to mark as touched and validate
-            [firstNameEl, middleNameEl, lastNameEl, emailEl, passEl, confirmEl, mobileEl, provEl, cityEl, brgyEl, streetEl].forEach(input => {
+            [firstNameEl, middleNameEl, lastNameEl, emailEl, passEl, confirmEl, mobileEl, provEl, cityEl, brgyEl].forEach(input => {
                 if (input) {
                     input.classList.add('touched');
                     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -106,8 +105,7 @@
                         else if (input.id === 'province_cust') prefix = 'provinceCust';
                         else if (input.id === 'city_cust') prefix = 'cityCust';
                         else if (input.id === 'barangay_cust') prefix = 'barangayCust';
-                        else if (input.id === 'street_cust') prefix = 'streetCust';
-                        
+
                         if (typeof window.setDiamondError === 'function') {
                             window.setDiamondError(prefix, "Required");
                         }
@@ -127,7 +125,7 @@
             }
 
             if (mobileEl && mobileEl.value && !regForm.querySelector('#mobileWrapper.error')) {
-                const val = mobileEl.value.replace(/\s/g, '');
+                const val = window.normalizePhilippineMobileNumber(mobileEl.value);
                 try {
                     const res = await fetch(`/auth/check-phone?phone=${encodeURIComponent(val)}`);
                     const data = await res.json();
@@ -155,6 +153,9 @@
             formData.set('middle_name', middleName);
             formData.set('last_name', lastName);
             formData.set('full_name', fullName);
+            if (mobileEl) {
+                formData.set('mobile_number', window.normalizePhilippineMobileNumber(mobileEl.value));
+            }
 
             const submitBtn = regForm.querySelector('button[type="submit"]');
             const originalBtnText = submitBtn.innerHTML;
