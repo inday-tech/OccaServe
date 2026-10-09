@@ -6,7 +6,7 @@
 {% block header_title %}Payments & Earnings{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/payments.css') }}?v=14.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/payments.css') }}?v={{ static_asset_version('css/caterer/payments.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -789,7 +789,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="{{ url_for('static', path='/js/caterer/payments.js') }}?v=14.0"></script>
+<script src="{{ url_for('static', path='/js/caterer/payments.js') }}?v={{ static_asset_version('js/caterer/payments.js') }}"></script>
 <script>
     function handlePeriodChange(selectEl) {
         const val = selectEl.value;

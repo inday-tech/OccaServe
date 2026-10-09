@@ -5,7 +5,7 @@
 {% block extra_css %}
 <!-- FullCalendar CSS -->
 <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css' rel='stylesheet' />
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_date.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_date.css') }}?v={{ static_asset_version('css/customer/booking_wizard/step_date.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -58,5 +58,5 @@
     // Set catererId for the external script
     window.catererId = "{{ caterer_id }}";
 </script>
-<script src="{{ url_for('static', path='/js/customer/booking_wizard/step_date.js') }}"></script>
+<script src="{{ url_for('static', path='/js/customer/booking_wizard/step_date.js') }}?v={{ static_asset_version('js/customer/booking_wizard/step_date.js') }}"></script>
 {% endblock %}

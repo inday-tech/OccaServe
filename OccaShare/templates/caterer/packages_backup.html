@@ -54,7 +54,7 @@ window.toggleAllInContainer = function(checkbox, containerSelector) {
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/packages.css') }}?v=12.9">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/packages.css') }}?v={{ static_asset_version('css/caterer/packages.css') }}">
 
 <script>
 window.toggleLibItemSelectCard = function(card, id) {
@@ -700,7 +700,7 @@ window.toggleAllInContainer = function(checkbox, containerSelector) {
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v=12.9"></script>
+<script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v={{ static_asset_version('js/caterer/packages.js') }}"></script>
 <script>
     // Listen to global header search
     window.addEventListener('globalSearch', function(e) {

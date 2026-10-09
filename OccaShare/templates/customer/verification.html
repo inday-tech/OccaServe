@@ -3,7 +3,7 @@
 {% block title %}Identity Verification Console - OccaServe Elite{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/liveness.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/liveness.css') }}?v={{ static_asset_version('css/customer/liveness.css') }}">
 <style>
     :root {
         --up-slate-900: #0f172a;

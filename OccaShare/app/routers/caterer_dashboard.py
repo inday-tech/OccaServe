@@ -1116,6 +1116,15 @@ async def update_booking_status(
     if new_status == "cancelled":
         ensure_booking_cancellation_has_no_verified_payment(booking)
 
+    if new_status in {"preparing", "ready_for_delivery", "on_the_way", "arrived", "setup_ongoing"}:
+        from app.services.payment_service import PaymentService
+        payment_summary = PaymentService.get_payment_summary(booking)
+        if not payment_summary.get("can_start_preparation"):
+            raise HTTPException(
+                status_code=409,
+                detail="The required downpayment must be verified before fulfillment can begin.",
+            )
+
     # --- STRICT STATE MACHINE ENFORCEMENT ---
     # Normal flow: Pending -> Confirmed -> Completed
     # Cancellation: Pending/Confirmed -> Cancelled
@@ -1301,7 +1310,7 @@ async def update_booking_status(
 
     return {"status": "success", "new_status": new_status}
 
-def _get_caterer_stats(profile, bookings, timeframe='month', start_date=None, end_date=None):
+def _get_caterer_stats(profile, bookings, timeframe='month', start_date=None, end_date=None, customer_messages=0):
     from datetime import datetime, date, timedelta
     from dateutil.relativedelta import relativedelta
     
@@ -1509,13 +1518,6 @@ def _get_caterer_stats(profile, bookings, timeframe='month', start_date=None, en
     identity_requests = 0
     pending_contracts = sum(1 for b in bookings if getattr(b, 'contract_status', '') == 'awaiting_signature')
     
-    # Count unread messages (assuming message relation exists, or we just mock/query it, here we mock it to 0 as we don't have direct access in bookings list)
-    customer_messages = 0
-    for b in bookings:
-        for m in getattr(b, 'messages', []):
-            if not getattr(m, 'is_read', True) and getattr(m, 'sender_id') != profile.user_id:
-                customer_messages += 1
-
     pending_actions = {
         "approvals": pending_approvals,
         "payments": pending_payments,
@@ -1556,39 +1558,40 @@ def _get_caterer_stats(profile, bookings, timeframe='month', start_date=None, en
 
 @router.get("/api/bookings/urgent-check")
 async def check_urgent_bookings(
+    db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
     profile = user.caterer_profile
     if not profile:
         return {"has_urgent": False}
-        
+
     today = date.today()
-    urgent_found = False
-    
-    for b in profile.bookings:
-        caterer_action_needed = False
-        
-        is_early_stage = b.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review']
-        
-        if b.status in ['pending', 'awaiting_caterer', 'pending_review']:
-            caterer_action_needed = True
-            
-        # If waiting for customer to re-upload, it is NOT urgent for the caterer
-        if b.payment_status in ['reupload_requested', 'balance_reupload_requested']:
-            caterer_action_needed = False
-            
-        # If customer submitted proof / cash request and it's still early, caterer MUST act
-        if b.payment_status in ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested'] and is_early_stage:
-            caterer_action_needed = True
-        elif (b.payment_proof_url or b.balance_proof_url) and is_early_stage and float(b.amount_paid or 0) <= 0:
-            caterer_action_needed = True
-            
-        if not b.is_archived and caterer_action_needed and b.event_date:
-            if (b.event_date - today).days <= 2:
-                urgent_found = True
-                break
-                
-    return {"has_urgent": urgent_found}
+    from sqlalchemy import and_, func, or_
+    early_stage = ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment', 'pending_review']
+    proof_needs_review = ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested']
+    action_statuses = ['pending', 'awaiting_caterer', 'pending_review']
+    waiting_for_customer = ['reupload_requested', 'balance_reupload_requested']
+    urgent_query = db.query(models.Booking.id).filter(
+        models.Booking.caterer_id == profile.id,
+        models.Booking.is_archived == False,
+        models.Booking.event_date <= today + timedelta(days=2),
+        or_(
+            and_(
+                models.Booking.status.in_(action_statuses),
+                or_(
+                    models.Booking.payment_status.is_(None),
+                    models.Booking.payment_status.notin_(waiting_for_customer),
+                ),
+            ),
+            and_(models.Booking.payment_status.in_(proof_needs_review), models.Booking.status.in_(early_stage)),
+            and_(
+                or_(models.Booking.payment_proof_url.isnot(None), models.Booking.balance_proof_url.isnot(None)),
+                models.Booking.status.in_(early_stage),
+                func.coalesce(models.Booking.amount_paid, 0) <= 0,
+            ),
+        ),
+    ).limit(1).first()
+    return {"has_urgent": urgent_query is not None}
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def caterer_dashboard(
@@ -1604,16 +1607,30 @@ async def caterer_dashboard(
         return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
     profile = user.caterer_profile
-    bookings = [b for b in profile.bookings if b.status not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted'] and not b.is_archived]
+    from sqlalchemy.orm import joinedload
+    from sqlalchemy import func, or_
+    all_bookings = db.query(models.Booking).options(
+        joinedload(models.Booking.package),
+        joinedload(models.Booking.quotation),
+        joinedload(models.Booking.user),
+        joinedload(models.Booking.caterer),
+    ).filter(models.Booking.caterer_id == profile.id).all()
+    bookings = [b for b in all_bookings if b.status not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted'] and not b.is_archived]
+    customer_messages = db.query(func.count(models.BookingMessage.id)).join(
+        models.Booking, models.Booking.id == models.BookingMessage.booking_id
+    ).filter(
+        models.Booking.caterer_id == profile.id,
+        models.BookingMessage.is_read == False,
+        or_(models.BookingMessage.sender_id.is_(None), models.BookingMessage.sender_id != profile.user_id),
+    ).scalar() or 0
     
     timeframe = request.query_params.get('timeframe', 'month')
-    stats = _get_caterer_stats(profile, bookings, timeframe=timeframe)
+    stats = _get_caterer_stats(profile, bookings, timeframe=timeframe, customer_messages=customer_messages)
 
     from datetime import date, timedelta
     today = date.today()
     
     # 1. Operational Dashboard Metrics
-    all_bookings = profile.bookings
     today_events_count = len([b for b in all_bookings if b.event_date == today and b.status not in ['cancelled', 'draft']])
     upcoming_events_count = len([b for b in all_bookings if b.event_date and today < b.event_date <= today + timedelta(days=30) and b.status not in ['cancelled', 'draft']])
     
@@ -1746,7 +1763,7 @@ async def caterer_dashboard(
     elif profile.status == 'Draft' or profile.status == 'Identity Verified':
         next_action = {"title": "Publish Listing", "desc": "You're all set! Publish your listing to start receiving bookings.", "url": "#", "btn": "Publish Now", "onclick": "window.toggleCatererPublish && window.toggleCatererPublish(this)"}
 
-    total_bookings = len([b for b in profile.bookings if b.status not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted', 'cancelled'] and not b.is_archived])
+    total_bookings = len([b for b in all_bookings if b.status not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted', 'cancelled'] and not b.is_archived])
     
     import datetime as dt_module
     today_schedule = [b for b in all_bookings if b.event_date == today and b.status not in ['cancelled', 'draft']]
@@ -2075,19 +2092,30 @@ async def dashboard_overview_api(
         print(f'Reminder generation error: {e}')
     from fastapi.responses import JSONResponse
     profile = user.caterer_profile
-    bookings = [b for b in profile.bookings if b.status not in ['draft', 'pending_quotation', 'pending_review'] and not b.is_archived]
+    from sqlalchemy.orm import joinedload
+    from sqlalchemy import func, or_
+    all_bookings = db.query(models.Booking).options(
+        joinedload(models.Booking.package),
+        joinedload(models.Booking.quotation),
+        joinedload(models.Booking.user),
+        joinedload(models.Booking.caterer),
+    ).filter(models.Booking.caterer_id == profile.id).all()
+    bookings = [b for b in all_bookings if b.status not in ['draft', 'pending_quotation', 'pending_review'] and not b.is_archived]
+    customer_messages = db.query(func.count(models.BookingMessage.id)).join(
+        models.Booking, models.Booking.id == models.BookingMessage.booking_id
+    ).filter(
+        models.Booking.caterer_id == profile.id,
+        models.BookingMessage.is_read == False,
+        or_(models.BookingMessage.sender_id.is_(None), models.BookingMessage.sender_id != profile.user_id),
+    ).scalar() or 0
     
     timeframe = request.query_params.get('timeframe', 'month')
     start_date = request.query_params.get('start_date')
     end_date = request.query_params.get('end_date')
-    stats = _get_caterer_stats(profile, bookings, timeframe=timeframe, start_date=start_date, end_date=end_date)
-    
-    # Generate intelligent calendar reminders proactively
-    try:
-        from app.services.reminders import generate_caterer_reminders
-        generate_caterer_reminders(user.id, db)
-    except Exception as e:
-        print(f"Error generating reminders: {e}")
+    stats = _get_caterer_stats(
+        profile, bookings, timeframe=timeframe, start_date=start_date, end_date=end_date,
+        customer_messages=customer_messages,
+    )
     
     # Process complex objects for JSON
     serializable_upcoming = []
@@ -2949,19 +2977,45 @@ async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_u
     # Heal drifted payment_status so verification works when customer already submitted
     PaymentService.sync_review_status(booking, db)
 
+    if not is_manual_accept and booking.payment_status in {"cash_payment_requested", "cash_balance_requested"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Cash must be confirmed through the cash-received action after it has actually been received.",
+        )
+
     old_payment_status = booking.payment_status
     if old_payment_status in ['deposit_paid', 'paid', 'fully_paid'] and booking.status == 'confirmed':
         raise HTTPException(status_code=400, detail="This payment has already been processed.")
 
     history_note = "Booking confirmed by caterer."
     pay_summary = PaymentService.get_payment_summary(booking)
+
+    # Manual acceptance means the caterer accepts the job without verifying a
+    # payment. Keep payment figures unchanged; actual cash/proof confirmation
+    # belongs to the dedicated payment actions.
+    if is_manual_accept:
+        if pay_summary.get("is_under_review"):
+            raise HTTPException(
+                status_code=409,
+                detail="A submitted payment is awaiting review. Verify the payment or confirm received cash instead.",
+            )
+        booking.status = "confirmed"
+        booking.expires_at = None
+        history_note = "Booking manually accepted by caterer; no payment was recorded."
+        create_default_booking_tasks(db, booking.id)
+        await NotificationService.notify_status_update(
+            db, booking.user_id,
+            "Booking Accepted",
+            f"Your booking for '{booking.event_name}' was accepted. Any outstanding payment remains due.",
+            f"/customer/bookings/manage/{booking.id}"
+        )
     
     # CASE 1: Downpayment Verification or Initial Acceptance (including Cash)
     initial_review_statuses = [
         'proof_submitted', 'reupload_requested', 'pending',
         'cash_payment_requested', 'pending_verification', 'unpaid'
     ]
-    if (
+    if not is_manual_accept and (
         booking.payment_status in initial_review_statuses
         or booking.status == 'pending'
         or pay_summary.get("is_under_review")
@@ -3227,6 +3281,8 @@ async def confirm_cash_payment(
     is_balance = booking.payment_status == 'cash_balance_requested'
     pay_summary = PaymentService.get_payment_summary(booking)
     total_amt = float(booking.total_amount or booking.total_price or 0)
+    if total_amt <= 0:
+        raise HTTPException(status_code=409, detail="Cannot confirm cash for a booking without a payable total.")
     default_amount = (
         pay_summary.get("pending_review")
         or (max(0.0, total_amt - float(booking.amount_paid or 0)) if is_balance else PaymentService.required_deposit(booking))
@@ -3240,34 +3296,59 @@ async def confirm_cash_payment(
     if amount_received <= 0:
         amount_received = float(default_amount or 0)
 
+    previously_verified = float(pay_summary.get("verified_paid") or 0)
+    outstanding = max(0.0, total_amt - previously_verified)
+    if amount_received > outstanding + 0.01:
+        raise HTTPException(status_code=400, detail=f"Amount received exceeds the outstanding balance of ₱{outstanding:,.2f}.")
+    verified_total = min(total_amt, previously_verified + amount_received)
+    required_deposit = PaymentService.required_deposit(booking)
+
     payment_date = data.get("payment_date") or datetime.now(timezone.utc).strftime("%Y-%m-%d")
     caterer_notes = data.get("notes") or ""
 
     if is_balance:
-        booking.payment_status = 'paid'
-        booking.amount_paid = total_amt
+        booking.payment_status = 'paid' if total_amt > 0 and verified_total >= total_amt - 0.01 else 'partially_paid'
+        booking.amount_paid = verified_total
         history_note = f"Cash balance payment confirmed by caterer. Amount received: ₱{amount_received:,.2f}."
         if caterer_notes:
             history_note += f" Notes: {caterer_notes}"
-        notification_title = "Cash Balance Confirmed!"
-        notification_msg = f"Your remaining cash balance for '{booking.event_name}' has been confirmed by {booking.caterer.business_name}. Your booking is now fully paid."
+        notification_title = "Cash Balance Confirmed!" if booking.payment_status == "paid" else "Cash Balance Payment Recorded"
+        notification_msg = (
+            f"Your remaining cash balance for '{booking.event_name}' has been confirmed by {booking.caterer.business_name}. Your booking is fully paid."
+            if booking.payment_status == "paid"
+            else f"A cash balance payment was recorded for '{booking.event_name}'. The remaining amount is still due."
+        )
         payment_type = "Balance"
     else:
-        if booking.payment_plan == 'full' or amount_received >= total_amt > 0:
+        if total_amt > 0 and verified_total >= total_amt - 0.01:
             booking.payment_status = 'paid'
-            booking.amount_paid = amount_received if amount_received >= total_amt else total_amt
-        else:
+            booking.amount_paid = verified_total
+        elif verified_total >= required_deposit > 0:
             booking.payment_status = 'deposit_paid'
-            booking.amount_paid = amount_received
-        booking.status = 'confirmed'
-        booking.expires_at = None
+            booking.amount_paid = verified_total
+        else:
+            booking.payment_status = 'partially_paid'
+            booking.amount_paid = verified_total
+        if verified_total >= required_deposit > 0:
+            booking.status = 'confirmed'
+            booking.expires_at = None
         if booking.payment_status == 'deposit_paid' and booking.event_date:
             booking.balance_due_date = datetime.combine(booking.event_date, datetime.min.time())
-        history_note = f"Cash payment confirmed by caterer. Amount received: ₱{amount_received:,.2f}."
+        history_note = f"Cash payment recorded by caterer. Amount received: ₱{amount_received:,.2f}. Verified total: ₱{verified_total:,.2f}."
         if caterer_notes:
             history_note += f" Notes: {caterer_notes}"
-        notification_title = "Cash Payment Confirmed!"
-        notification_msg = f"Your cash payment for '{booking.event_name}' has been confirmed by {booking.caterer.business_name}. Your booking is now confirmed."
+        notification_title = (
+            "Cash Payment Confirmed!" if booking.payment_status == "paid"
+            else "Cash Downpayment Confirmed!" if booking.payment_status == "deposit_paid"
+            else "Cash Payment Recorded"
+        )
+        notification_msg = (
+            f"Your cash payment for '{booking.event_name}' has been confirmed by {booking.caterer.business_name}. Your booking is fully paid."
+            if booking.payment_status == "paid"
+            else f"Your cash downpayment for '{booking.event_name}' was confirmed by {booking.caterer.business_name}. The remaining balance is still due."
+            if booking.payment_status == "deposit_paid"
+            else f"A cash payment was recorded for '{booking.event_name}'. More payment is needed before preparation can begin."
+        )
         payment_type = "Full" if booking.payment_status == 'paid' else "Deposit"
         create_default_booking_tasks(db, booking.id)
 

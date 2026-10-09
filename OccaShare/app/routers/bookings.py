@@ -358,6 +358,17 @@ async def alacarte_checkout_draft(
 ):
     user = get_current_user_from_session(request, db)
     if not user: return {"success": False, "message": "Unauthorized"}
+    if user.role != "customer":
+        raise HTTPException(status_code=403, detail="Only customers can create online bookings.")
+    if booking_id:
+        existing_draft = db.query(models.Booking).get(booking_id)
+        if (
+            not existing_draft
+            or existing_draft.user_id != user.id
+            or existing_draft.caterer_id != caterer_id
+            or existing_draft.status != "draft"
+        ):
+            raise HTTPException(status_code=404, detail="Draft booking not found")
     
     if user.role == 'customer':
         is_complete, _, missing = is_customer_profile_complete(user)
@@ -631,6 +642,8 @@ async def alacarte_checkout_submit(
     user = get_current_user_from_session(request, db)
     if not user:
         return {"success": False, "message": "Unauthorized"}
+    if user.role != "customer":
+        raise HTTPException(status_code=403, detail="Only customers can create online bookings.")
 
     # Check if transaction contains equipment or services
     has_equipment = False
@@ -692,6 +705,14 @@ async def alacarte_checkout_submit(
             return {"success": False, "message": avail_check["message"]}
             
         booking = db.query(models.Booking).get(booking_id) if booking_id else None
+
+        if booking_id and (
+            not booking
+            or booking.user_id != user.id
+            or booking.caterer_id != caterer_id
+            or booking.status != "draft"
+        ):
+            raise HTTPException(status_code=404, detail="Draft booking not found")
         
         # CONTINUOUS REVALIDATION
         if booking:
@@ -1408,6 +1429,8 @@ async def custom_booking_submit(
     user = get_current_user_from_session(request, db)
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/custom/request/{caterer_id}", status_code=303)
+    if user.role != "customer":
+        raise HTTPException(status_code=403, detail="Only customers can create online bookings.")
     
     if user.role == 'customer':
         is_complete, _, missing = is_customer_profile_complete(user)
@@ -1865,6 +1888,8 @@ async def step_details_submit(
     if not user:
         print("[StepDetails REJECT] User not logged in, redirecting to /auth/login")
         return RedirectResponse(url=f"/auth/login?next={redirect_base}", status_code=303)
+    if user.role != "customer":
+        raise HTTPException(status_code=403, detail="Only customers can create online bookings.")
 
     if user.role == 'customer':
         is_complete, _, missing = is_customer_profile_complete(user)
@@ -1876,6 +1901,12 @@ async def step_details_submit(
 
     if booking_id_int:
         existing_booking = db.query(models.Booking).get(booking_id_int)
+        if (
+            not existing_booking
+            or existing_booking.user_id != user.id
+            or existing_booking.caterer_id != caterer_id
+        ):
+            raise HTTPException(status_code=404, detail="Booking not found")
         if existing_booking and existing_booking.status not in ["draft", "pending", "pending_quotation", "awaiting_caterer"]:
             print("[StepDetails REJECT] Booking is locked")
             return RedirectResponse(url=f"{redirect_base}?booking_error=Booking+is+already+locked+and+cannot+be+modified.", status_code=303)
@@ -2264,6 +2295,8 @@ async def step_kyc_page(booking_id: int, request: Request, return_to: Optional[s
         
     booking = db.query(models.Booking).get(booking_id)
     if not booking: raise HTTPException(status_code=404)
+    if booking.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
 
     # Dynamic Routing for Fast-Track (only when not explicitly directed to KYC)
     if booking.transaction_type == 'fast_track' and not return_to:
@@ -2292,6 +2325,8 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
         
     booking = db.query(models.Booking).get(booking_id)
     if not booking: raise HTTPException(status_code=404)
+    if booking.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
     
     # Dynamic Routing for Fast-Track
     if booking.transaction_type == 'fast_track' and booking.document_type == 'invoice':
@@ -2506,6 +2541,12 @@ async def step_payment_submit(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
+    user = get_current_user_from_session(request, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if user.role != "customer" or booking.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
     # Heal premature completion before validating / accepting payment
     from ..services.payment_service import PaymentService
     PaymentService.heal_premature_completion(booking, db)
@@ -2535,12 +2576,15 @@ async def step_payment_submit(
         if not booking.quotation or booking.quotation.status != 'signed':
             return RedirectResponse(url=f"/bookings/step/quotation/{actual_booking_id}?error_msg=Both+parties+must+sign+the+contract+before+proceeding+to+payment", status_code=303)
 
+    plan_key = str(payment_plan or "").strip().lower()
+    if plan_key not in {"balance", "full", "100", "downpayment"}:
+        signed_downpayment = int(booking.quotation.downpayment_percent or 0) if booking.quotation else 0
+        if not plan_key.isdigit() or int(plan_key) != signed_downpayment:
+            raise HTTPException(status_code=400, detail="Payment plan does not match the signed quotation.")
+    payment_plan = "full" if plan_key == "100" else plan_key
+
     # Save payment plan
     booking.payment_plan = payment_plan
-
-    user = get_current_user_from_session(request, db)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
 
     # ── CASH PAYMENT: Separate flow (no proof required) ──────────────────────
     if payment_method == 'Cash':
@@ -3061,6 +3105,10 @@ async def pay_balance_submit(
 async def booking_success_page(request: Request, booking_id: int, db: Session = Depends(database.get_db)):
     booking = db.query(models.Booking).get(booking_id)
     user = get_current_user_from_session(request, db)
+    if not user:
+        return RedirectResponse(url=f"/auth/login?next=/bookings/success/{booking_id}", status_code=303)
+    if not booking or booking.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
     return templates.TemplateResponse("customer/booking_success.html", {
         "request": request,
         "booking": booking,

@@ -9,12 +9,17 @@ from ..db import database, models
 from ..core import security as auth
 from ..core.utils import is_dummy_email, is_dummy_name, is_dummy_phone, is_dummy_address, is_valid_person_name, is_valid_business_name
 from ..services.email import EmailService
-from datetime import datetime, timedelta
-from sqlalchemy import func, String, or_
+from datetime import date, datetime, timedelta, timezone
+from sqlalchemy import case, func, String, or_
 import json, re, asyncio
 from ..services.realtime import manager
 from ..services.verification import verification_service
-from ..services.commission import get_commission_rate_percent
+from ..services.commission import (
+    calculate_booking_commission,
+    get_commission_rate_percent,
+    is_pre_deployment_manual_booking,
+)
+from ..services.reminders import billing_period_due_date
 from sqlalchemy import or_
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -425,20 +430,29 @@ async def admin_dashboard(
     
     # Caterer Metrics
     total_caterers = db.query(models.CatererProfile).join(models.User).filter(models.User.is_archived == False).count()
-    pending_caterers = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status.in_(["Pending", "Pending Review"]), models.User.is_archived == False).all()
+    pending_caterers = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status.in_(["Pending", "Pending Review"]), models.User.is_archived == False).order_by(models.CatererProfile.id.desc()).limit(5).all()
     approved_caterers_count = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Verified", models.User.is_archived == False).count()
     approved_caterers = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Verified", models.User.is_archived == False).order_by(models.CatererProfile.rating.desc()).limit(5).all()
     rejected_caterers_count = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Rejected", models.User.is_archived == False).count()
     
-    all_bookings = db.query(models.Booking).all()
-    booking_count = len(all_bookings)
-    
-    # Ensure we get proper floats for currency logic
-    total_sales = float(sum((b.total_amount or b.total_price or 0.0) for b in all_bookings if b.status not in ['cancelled', 'inquiry', 'negotiating', 'quoted']) or 0.0)
-    
-    # Platform earnings only based on completed/paid bookings effectively
-    paid_bookings = [b for b in all_bookings if b.payment_status == 'paid']
-    total_revenue = float(sum((b.total_amount or b.total_price or 0.0) for b in paid_bookings) or 0.0)
+    # Keep dashboard aggregates in SQL; materializing every booking and then
+    # making 12 more month queries made this page scale with database history.
+    booking_amount = func.coalesce(models.Booking.total_amount, models.Booking.total_price, 0.0)
+    excluded_sales_statuses = ['cancelled', 'inquiry', 'negotiating', 'quoted']
+    booking_count, total_sales, total_revenue = db.query(
+        func.count(models.Booking.id),
+        func.coalesce(func.sum(case(
+            (models.Booking.status.not_in(excluded_sales_statuses), booking_amount),
+            else_=0.0,
+        )), 0.0),
+        func.coalesce(func.sum(case(
+            (models.Booking.payment_status == 'paid', booking_amount),
+            else_=0.0,
+        )), 0.0),
+    ).one()
+    booking_count = int(booking_count or 0)
+    total_sales = float(total_sales or 0.0)
+    total_revenue = float(total_revenue or 0.0)
     
     # Dynamic commission check 
     config = db.query(models.WebsiteConfig).first()
@@ -446,44 +460,52 @@ async def admin_dashboard(
     
     platform_earnings = total_revenue * commission_rate
 
-    pending_customers = db.query(models.User).filter(
-        models.User.role == "customer",
-        models.User.is_verified == False
-    ).all()
-
     # --- Analytics Chart Data (Last 6 Months) ---
     chart_data = {"months": [], "sales": [], "earnings": [], "bookings": [], "new_users": []}
-    for i in range(5, -1, -1):
-        target_date = datetime.now() - timedelta(days=i*30)
-        month_name = target_date.strftime("%b")
-        first_day_of_month = target_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        if i == 0:
-            last_day_of_month = datetime.now()
-        else:
-            next_month = first_day_of_month + timedelta(days=32)
-            last_day_of_month = next_month.replace(day=1) - timedelta(seconds=1)
+    now = datetime.now()
+    current_month = datetime(now.year, now.month, 1)
+    month_starts = []
+    for months_back in range(5, -1, -1):
+        month_index = current_month.year * 12 + current_month.month - 1 - months_back
+        month_starts.append(datetime(month_index // 12, month_index % 12 + 1, 1))
+    next_month_index = current_month.year * 12 + current_month.month
+    month_range_end = datetime(next_month_index // 12, next_month_index % 12 + 1, 1)
+    month_bucket = func.date_trunc('month', models.Booking.created_at)
+    monthly_bookings = db.query(
+        month_bucket.label('month'),
+        func.count(case((models.Booking.status.not_in(excluded_sales_statuses), models.Booking.id))).label('booking_count'),
+        func.coalesce(func.sum(case(
+            (models.Booking.status.not_in(excluded_sales_statuses), booking_amount), else_=0.0
+        )), 0.0).label('sales'),
+        func.coalesce(func.sum(case(
+            (models.Booking.payment_status == 'paid', booking_amount), else_=0.0
+        )), 0.0).label('paid_sales'),
+    ).filter(
+        models.Booking.created_at >= month_starts[0],
+        models.Booking.created_at < month_range_end,
+    ).group_by(month_bucket).all()
+    monthly_bookings_by_key = {(row.month.year, row.month.month): row for row in monthly_bookings}
 
-        month_bookings = db.query(models.Booking).filter(
-            models.Booking.created_at >= first_day_of_month,
-            models.Booking.created_at <= last_day_of_month,
-            models.Booking.status.not_in(['cancelled', 'inquiry', 'negotiating', 'quoted'])
-        ).all()
+    user_month_bucket = func.date_trunc('month', models.User.created_at)
+    monthly_users = db.query(
+        user_month_bucket.label('month'),
+        func.count(models.User.id).label('user_count'),
+    ).filter(
+        models.User.created_at >= month_starts[0],
+        models.User.created_at < month_range_end,
+    ).group_by(user_month_bucket).all()
+    monthly_users_by_key = {(row.month.year, row.month.month): row.user_count for row in monthly_users}
 
-        month_new_users = db.query(models.User).filter(
-            models.User.created_at >= first_day_of_month,
-            models.User.created_at <= last_day_of_month
-        ).count()
-        
-        month_sales = float(sum((b.total_amount or b.total_price or 0.0) for b in month_bookings) or 0.0)
-        month_paid_bookings = [b for b in month_bookings if b.payment_status == 'paid']
-        month_paid_total = float(sum((b.total_amount or b.total_price or 0.0) for b in month_paid_bookings) or 0.0)
-        month_earnings = month_paid_total * commission_rate
-
-        chart_data["months"].append(month_name)
-        chart_data["sales"].append(month_sales)
-        chart_data["earnings"].append(month_earnings)
-        chart_data["bookings"].append(len(month_bookings))
-        chart_data["new_users"].append(month_new_users)
+    for first_day in month_starts:
+        key = (first_day.year, first_day.month)
+        booking_row = monthly_bookings_by_key.get(key)
+        sales = float(booking_row.sales or 0.0) if booking_row else 0.0
+        paid_sales = float(booking_row.paid_sales or 0.0) if booking_row else 0.0
+        chart_data["months"].append(first_day.strftime("%b"))
+        chart_data["sales"].append(sales)
+        chart_data["earnings"].append(paid_sales * commission_rate)
+        chart_data["bookings"].append(int(booking_row.booking_count or 0) if booking_row else 0)
+        chart_data["new_users"].append(int(monthly_users_by_key.get(key, 0) or 0))
 
     # --- Extra Stats for Analytics Cards ---
     avg_rating_result = db.query(func.avg(models.Review.rating)).filter(models.Review.is_archived == False).scalar()
@@ -545,7 +567,6 @@ async def admin_dashboard(
         "confirmed_bookings_count": confirmed_bookings_count,
         "completed_bookings_count": completed_bookings_count,
         "cancelled_bookings_count": cancelled_bookings_count,
-        "pending_customers": pending_customers,
         "recent_yields": recent_yields,
         "pending_settlements": pending_settlements
     })
@@ -2176,13 +2197,15 @@ async def review_verification(
 @router.get("/api/bookings")
 async def api_list_bookings(
     status: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
     query = db.query(models.Booking)
     if status:
         query = query.filter(models.Booking.status == status)
-    return query.all()
+    return query.order_by(models.Booking.created_at.desc(), models.Booking.id.desc()).offset(max(0, offset)).limit(min(max(1, limit), 500)).all()
 
 @router.get("/bookings/{booking_id}/kyc")
 async def view_booking_kyc(
@@ -2817,20 +2840,62 @@ async def admin_bookings(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    bookings = db.query(models.Booking).filter(models.Booking.is_archived == False).order_by(models.Booking.created_at.desc()).all()
+    PENDING_STATUSES = ['pending', 'pending_quotation', 'awaiting_payment', 'pending_payment', 'awaiting_caterer', 'pending_review']
+    DISPUTED_STATUSES = ['disputed', 'under_dispute']
+    page_size = 100
+    try:
+        page = max(1, int(request.query_params.get('page', '1')))
+    except (TypeError, ValueError):
+        page = 1
+    status_filter = request.query_params.get('status', 'all')
+    date_filter = request.query_params.get('date', 'all')
+    caterer_id_filter = request.query_params.get('caterer_id', 'all')
+
+    base_query = db.query(models.Booking).filter(models.Booking.is_archived == False)
+    if status_filter == 'pending':
+        base_query = base_query.filter(models.Booking.status.in_(PENDING_STATUSES))
+    elif status_filter == 'disputed':
+        base_query = base_query.filter(models.Booking.status.in_(DISPUTED_STATUSES))
+    elif status_filter in {'confirmed', 'completed', 'cancelled'}:
+        base_query = base_query.filter(models.Booking.status == status_filter)
+
+    today = date.today()
+    if date_filter == 'today':
+        base_query = base_query.filter(models.Booking.event_date == today)
+    elif date_filter == 'this_week':
+        week_start = today - timedelta(days=today.weekday())
+        base_query = base_query.filter(models.Booking.event_date >= week_start, models.Booking.event_date < week_start + timedelta(days=7))
+    elif date_filter == 'this_month':
+        month_start = today.replace(day=1)
+        next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        base_query = base_query.filter(models.Booking.event_date >= month_start, models.Booking.event_date < next_month)
+    if caterer_id_filter != 'all' and str(caterer_id_filter).isdigit():
+        base_query = base_query.filter(models.Booking.caterer_id == int(caterer_id_filter))
+
+    total_filtered = base_query.count()
+    total_pages = max(1, (total_filtered + page_size - 1) // page_size)
+    page = min(page, total_pages)
+    from sqlalchemy.orm import joinedload, selectinload
+    bookings = base_query.options(
+        joinedload(models.Booking.user),
+        joinedload(models.Booking.caterer),
+        joinedload(models.Booking.package),
+        selectinload(models.Booking.payment_records),
+    ).order_by(models.Booking.created_at.desc(), models.Booking.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
 
     # ─── Booking Intelligence Metrics ───
     # NOTE: "awaiting action" mirrors the statuses used by the table filters below.
-    PENDING_STATUSES = ['pending', 'pending_quotation', 'awaiting_payment', 'pending_payment', 'awaiting_caterer', 'pending_review']
-    DISPUTED_STATUSES = ['disputed', 'under_dispute']
-
-    pending_bookings = sum(1 for b in bookings if (b.status or '').lower() in PENDING_STATUSES)
-    completed_bookings = sum(1 for b in bookings if b.status == 'completed')
-    disputed_bookings = sum(1 for b in bookings if (b.status or '').lower() in DISPUTED_STATUSES)
-    cancelled_bookings = sum(1 for b in bookings if b.status == 'cancelled')
+    pending_bookings = db.query(func.count(models.Booking.id)).filter(models.Booking.is_archived == False, models.Booking.status.in_(PENDING_STATUSES)).scalar() or 0
+    completed_bookings = db.query(func.count(models.Booking.id)).filter(models.Booking.is_archived == False, models.Booking.status == 'completed').scalar() or 0
+    disputed_bookings = db.query(func.count(models.Booking.id)).filter(models.Booking.is_archived == False, models.Booking.status.in_(DISPUTED_STATUSES)).scalar() or 0
+    cancelled_bookings = db.query(func.count(models.Booking.id)).filter(models.Booking.is_archived == False, models.Booking.status == 'cancelled').scalar() or 0
+    total_bookings = db.query(func.count(models.Booking.id)).filter(models.Booking.is_archived == False).scalar() or 0
+    caterers = db.query(models.CatererProfile).join(
+        models.Booking, models.Booking.caterer_id == models.CatererProfile.id
+    ).filter(models.Booking.is_archived == False).distinct().order_by(models.CatererProfile.business_name).all()
 
     metrics = {
-        "total_bookings": len(bookings),
+        "total_bookings": total_bookings,
         "pending_bookings": pending_bookings,
         "completed_bookings": completed_bookings,
         "disputed_bookings": disputed_bookings,
@@ -2842,6 +2907,14 @@ async def admin_bookings(
         "user": user,
         "bookings": bookings,
         "metrics": metrics,
+        "caterers": caterers,
+        "page": page,
+        "page_size": page_size,
+        "total_filtered": total_filtered,
+        "total_pages": total_pages,
+        "status_filter": status_filter,
+        "date_filter": date_filter,
+        "caterer_id_filter": caterer_id_filter,
         "active_page": "bookings"
     })
 
@@ -3365,9 +3438,38 @@ async def reconcile_booking_payment(
     booking = db.query(models.Booking).get(booking_id)
     if not booking:
         return {"success": False, "message": "Booking not found"}
-    
+
+    from ..services.payment_service import PaymentService
+    if booking.status in {"cancelled", "expired"}:
+        raise HTTPException(status_code=409, detail="A cancelled or expired booking cannot be reconciled as paid.")
+    summary = PaymentService.get_payment_summary(booking)
+    total_amount = float(summary.get("total_amount") or 0)
+    if total_amount <= 0:
+        raise HTTPException(status_code=409, detail="The booking has no payable total to reconcile.")
+
+    reconciliation = db.query(models.BookingPaymentRecord).filter(
+        models.BookingPaymentRecord.booking_id == booking.id,
+        models.BookingPaymentRecord.recorded_by == "Admin",
+        models.BookingPaymentRecord.payment_type == "Admin Reconciliation",
+    ).first()
+    if reconciliation:
+        reconciliation.amount = total_amount
+        reconciliation.payment_date = datetime.now(timezone.utc)
+        reconciliation.reference_notes = notes.strip()
+    else:
+        db.add(models.BookingPaymentRecord(
+            booking_id=booking.id,
+            amount=total_amount,
+            payment_date=datetime.now(timezone.utc),
+            payment_method="Manual reconciliation",
+            payment_type="Admin Reconciliation",
+            reference_notes=notes.strip(),
+            recorded_by="Admin",
+        ))
+    booking.amount_paid = total_amount
     booking.payment_status = "paid"
-    booking.status = "confirmed"
+    if booking.status != "completed":
+        booking.status = "confirmed"
     
     prefix = "ORD" if booking.document_type == "invoice" else "BK"
     word = "Order" if booking.document_type == "invoice" else "Booking"
@@ -3379,6 +3481,11 @@ async def reconcile_booking_payment(
         notes=f"Administrative payment reconciliation for #{prefix}-{booking_id}. Reason: {notes}"
     )
     db.add(audit)
+    db.add(models.BookingHistory(
+        booking_id=booking.id,
+        status=booking.status,
+        notes=f"Payment reconciled by admin {user.id}: {notes.strip()}",
+    ))
     db.commit()
     
     return {"success": True, "message": f"{word} #{prefix}-{booking_id} has been manually verified and reconciled."}
@@ -3393,9 +3500,41 @@ async def force_complete_booking(
     booking = db.query(models.Booking).get(booking_id)
     if not booking:
         return {"success": False, "message": "Booking not found"}
-    
+    from ..services.payment_service import PaymentService
+    completion_gate = PaymentService.assert_can_mark_completed(booking)
+    if not completion_gate["ok"]:
+        raise HTTPException(status_code=409, detail=completion_gate["message"])
+
+    old_status = booking.status
     booking.status = "completed"
-    booking.payment_status = "paid"
+    booking.preparation_status = "completed"
+
+    # Keep the same commission accounting performed by caterer completion.
+    if not booking.commission_calculated and not is_pre_deployment_manual_booking(booking):
+        caterer_profile = booking.caterer
+        if caterer_profile:
+            config = db.query(models.WebsiteConfig).first()
+            commission_percent = get_commission_rate_percent(config)
+            commission_amount = calculate_booking_commission(
+                float(booking.total_amount or booking.total_price or 0),
+                commission_percent,
+            )
+            billing_period = booking.event_date.strftime("%B %Y") if booking.event_date else "General"
+            invoice_exists = db.query(models.BillingInvoice.id).filter(
+                models.BillingInvoice.booking_id == booking.id
+            ).first()
+            if not invoice_exists:
+                caterer_profile.outstanding_balance = float(caterer_profile.outstanding_balance or 0) + commission_amount
+                db.add(models.BillingInvoice(
+                    caterer_id=booking.caterer_id,
+                    booking_id=booking.id,
+                    billing_period=billing_period,
+                    due_date=billing_period_due_date(billing_period, booking.event_date),
+                    amount=commission_amount,
+                    commission_rate=commission_percent / 100.0,
+                    status="pending",
+                ))
+            booking.commission_calculated = True
     
     prefix = "ORD" if booking.document_type == "invoice" else "BK"
     word = "Order" if booking.document_type == "invoice" else "Booking"
@@ -3407,6 +3546,11 @@ async def force_complete_booking(
         notes=f"Administrative force completion for #{prefix}-{booking_id}. Reason: {notes}"
     )
     db.add(audit)
+    db.add(models.BookingHistory(
+        booking_id=booking.id,
+        status="completed",
+        notes=f"Admin force-completed booking from {old_status}: {notes.strip()}",
+    ))
     db.commit()
     
     return {"success": True, "message": f"{word} #{prefix}-{booking_id} marked as completed via administrative override."}
@@ -3421,15 +3565,19 @@ async def administrative_cancel_booking(
     booking = db.query(models.Booking).get(booking_id)
     if not booking:
         return {"success": False, "message": "Booking not found"}
-    
+    from ..services.payment_service import PaymentService
+    if PaymentService.has_payment_requiring_cancellation_review(booking):
+        raise HTTPException(
+            status_code=409,
+            detail="This booking has verified funds or payment awaiting review. Resolve payment and any refund before cancelling.",
+        )
     booking.status = "cancelled"
-    booking.payment_status = "cancelled"
     
     prefix = "ORD" if booking.document_type == "invoice" else "BK"
     word = "Order" if booking.document_type == "invoice" else "Booking"
 
     # Timeline
-    history = models.BookingHistory(booking_id=booking.id, status="CANCELLED BY ADMIN", notes=reason)
+    history = models.BookingHistory(booking_id=booking.id, status="cancelled", notes=f"Cancelled by admin: {reason.strip()}")
     db.add(history)
     
     # Log action
@@ -3540,13 +3688,75 @@ async def admin_verify_payment(
     booking = db.query(models.Booking).get(booking_id)
     if not booking:
         return {"success": False, "message": "Booking not found"}
+
+    if action not in {"approve", "reject"}:
+        raise HTTPException(status_code=400, detail="Action must be approve or reject.")
+
+    from ..services.payment_service import PaymentService
+    PaymentService.sync_review_status(booking, db)
+    if booking.payment_status in {"cash_payment_requested", "cash_balance_requested"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Cash requests must be confirmed by the caterer after the money is received.",
+        )
+    payment_summary = PaymentService.get_payment_summary(booking)
+    is_balance_review = booking.payment_status in {"balance_proof_submitted", "cash_balance_requested"}
+    is_initial_review = booking.payment_status in {"proof_submitted", "cash_payment_requested", "pending_verification"}
+    if not is_balance_review and not is_initial_review:
+        raise HTTPException(status_code=409, detail="This booking has no payment awaiting verification.")
         
     prefix = "ORD" if booking.document_type == "invoice" else "BK"
     word = "Order" if booking.document_type == "invoice" else "Booking"
 
     if action == "approve":
-        booking.payment_status = "verified"
-        history = models.BookingHistory(booking_id=booking.id, status="PAYMENT VERIFIED", notes="Payment proof verified by Administration")
+        total_amount = float(payment_summary.get("total_amount") or 0)
+        pending_amount = float(payment_summary.get("pending_review") or 0)
+        if pending_amount <= 0:
+            pending_amount = (
+                max(0.0, total_amount - float(payment_summary.get("verified_paid") or 0))
+                if is_balance_review
+                else float(payment_summary.get("required_deposit") or 0)
+            )
+        if pending_amount <= 0:
+            raise HTTPException(status_code=409, detail="Could not determine the amount awaiting verification.")
+
+        payment_type = "Balance" if is_balance_review else ("Full" if total_amount > 0 and pending_amount >= total_amount else "Deposit")
+        candidates = db.query(models.BookingPaymentRecord).filter(
+            models.BookingPaymentRecord.booking_id == booking.id,
+            func.lower(models.BookingPaymentRecord.recorded_by) == "customer",
+        ).all()
+        matching_record = next((record for record in candidates if (
+            (payment_type == "Balance" and (record.payment_type or "").strip().lower() in {"balance", "installment", "final", "balance_payment"})
+            or (payment_type != "Balance" and (record.payment_type or "").strip().lower() in {"deposit", "full", "downpayment"})
+        )), None)
+        if matching_record:
+            matching_record.recorded_by = "Admin"
+            matching_record.amount = pending_amount
+            matching_record.reference_notes = ((matching_record.reference_notes or "") + " | Approved by admin").strip(" |")
+        else:
+            db.add(models.BookingPaymentRecord(
+                booking_id=booking.id,
+                amount=pending_amount,
+                payment_date=datetime.now(timezone.utc),
+                payment_method=booking.payment_method or "Manual verification",
+                payment_type=payment_type,
+                reference_notes="Payment proof approved by administration.",
+                recorded_by="Admin",
+            ))
+
+        verified_total = min(total_amount, float(payment_summary.get("verified_paid") or 0) + pending_amount)
+        booking.amount_paid = verified_total
+        required_deposit = float(payment_summary.get("required_deposit") or 0)
+        if total_amount > 0 and verified_total >= total_amount:
+            booking.payment_status = "paid"
+        elif verified_total >= required_deposit > 0:
+            booking.payment_status = "deposit_paid"
+        else:
+            booking.payment_status = "partially_paid"
+        if not is_balance_review and booking.status in {"pending", "pending_payment", "awaiting_payment", "pending_review"}:
+            booking.status = "confirmed"
+            booking.expires_at = None
+        history = models.BookingHistory(booking_id=booking.id, status=booking.status, notes=f"Payment proof approved by Administration ({payment_type}, {pending_amount:.2f}).")
         db.add(history)
         
         # Notify
@@ -3556,8 +3766,8 @@ async def admin_verify_payment(
             db.add(models.Notification(user_id=booking.caterer.user_id, title="Payment Verified", message=f"Payment for {word} #{prefix}-{booking.id} has been verified.", type="success"))
             
     elif action == "reject":
-        booking.payment_status = "pending"
-        history = models.BookingHistory(booking_id=booking.id, status="PAYMENT REJECTED", notes="Payment proof rejected by Administration")
+        booking.payment_status = "balance_reupload_requested" if is_balance_review else "reupload_requested"
+        history = models.BookingHistory(booking_id=booking.id, status=booking.status, notes="Payment proof rejected by Administration; a replacement is required.")
         db.add(history)
         
         # Notify

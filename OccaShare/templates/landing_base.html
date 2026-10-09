@@ -5,17 +5,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}OccaServe - Book the Best Catering Services Near You{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}?v=11.0">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}?v={{ static_asset_version('css/styles.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/landing_base.css') }}?v=10.0">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/landing_base.css') }}?v={{ static_asset_version('css/landing_base.css') }}">
 
     {% set wconfig = website_config() %}
     <script>window.MAX_UPLOAD_SIZE_MB = {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }};</script>
-    <script src="{{ url_for('static', path='/js/global/upload_limits.js') }}?v=1.0"></script>
+    <script src="{{ url_for('static', path='/js/global/upload_limits.js') }}?v={{ static_asset_version('js/global/upload_limits.js') }}"></script>
     {% if wconfig and wconfig.favicon_url %}
     <link rel="icon" href="{{ wconfig.favicon_url }}">
     {% endif %}
@@ -26,10 +26,10 @@
 
     {% block head %}{% endblock %}
     {% block extra_css %}{% endblock %}
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=12.1">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v=10.0">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/diamond_auth_modals.css') }}?v=11.4">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/mobile_app.css') }}?v=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v={{ static_asset_version('css/global/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v={{ static_asset_version('css/global/responsive.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/diamond_auth_modals.css') }}?v={{ static_asset_version('css/global/diamond_auth_modals.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/mobile_app.css') }}?v={{ static_asset_version('css/global/mobile_app.css') }}">
 </head>
 
 <body data-nav-page="{{ nav_page | default('') }}">
@@ -177,14 +177,14 @@
     {% endif %}
 
     {% include "shared/auth_modals.html" %}
-    <script src="{{ url_for('static', path='/js/main.js') }}?v=4.3"></script>
-    <script src="{{ url_for('static', path='/js/landing_base.js') }}?v=31.0"></script>
-    <script src="{{ url_for('static', path='/js/global/diamond_auth_modals.js') }}?v=33.0"></script>
-    <script src="{{ url_for('static', path='/js/global/diamond_validation.js') }}?v=35.0"></script>
-    <script src="{{ url_for('static', path='/js/global/diamond_caterer_auth.js') }}?v=35.0"></script>
-    <script src="{{ url_for('static', path='/js/auth/register.js') }}?v=35.0"></script>
-    <script src="{{ url_for('static', path='/js/auth/verify_email.js') }}?v=31.0"></script>
-    <script src="{{ url_for('static', path='/js/global/dynamic_landing.js') }}?v=3.0"></script>
+    <script src="{{ url_for('static', path='/js/main.js') }}?v={{ static_asset_version('js/main.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/landing_base.js') }}?v={{ static_asset_version('js/landing_base.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/global/diamond_auth_modals.js') }}?v={{ static_asset_version('js/global/diamond_auth_modals.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/global/diamond_validation.js') }}?v={{ static_asset_version('js/global/diamond_validation.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/global/diamond_caterer_auth.js') }}?v={{ static_asset_version('js/global/diamond_caterer_auth.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/auth/register.js') }}?v={{ static_asset_version('js/auth/register.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/auth/verify_email.js') }}?v={{ static_asset_version('js/auth/verify_email.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/global/dynamic_landing.js') }}?v={{ static_asset_version('js/global/dynamic_landing.js') }}"></script>
 
     {% block scripts %}{% endblock %}
 </body>

@@ -4,7 +4,7 @@
 {% block title %}Manage Packages - OccaServe Caterer{% endblock %}
 
 {% block extra_css %}
-<link href="{{ url_for('static', path='/css/caterer/packages.css') }}?v=26.7" rel="stylesheet" />
+<link href="{{ url_for('static', path='/css/caterer/packages.css') }}?v={{ static_asset_version('css/caterer/packages.css') }}" rel="stylesheet" />
 {% endblock %}
 
 {% block content %}
@@ -175,7 +175,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v=26.2"></script>
+<script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v={{ static_asset_version('js/caterer/packages.js') }}"></script>
 <script>
     // Listen to global header search
     window.addEventListener('globalSearch', function (e) {

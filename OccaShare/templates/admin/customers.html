@@ -3,7 +3,7 @@
 {% block title %}Customer Intelligence Registry - Admin Terminal{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ static_asset_version('css/admin/dashboard.css') }}">
 <style>
     :root {
         --adm-danger: #ef4444;

@@ -4,8 +4,8 @@
 
 {% block step_css %}
 <link rel="stylesheet"
-    href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}?v={{ range(1, 9999) | random }}">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v=19.0">
+    href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}?v={{ static_asset_version('css/customer/booking_wizard/step_details.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v={{ static_asset_version('css/customer/booking_wizard/wizard_navigation.css') }}">
 <style>
     /* --- Dynamic Caterer Branding --- */
     :root {
@@ -628,5 +628,5 @@
     window.customization = {{ (customization or {}) | tojson | safe }};
 </script>
 <script
-    src="{{ url_for('static', path='/js/customer/booking_wizard/step_details.js') }}?v={{ range(1, 9999) | random }}"></script>
+    src="{{ url_for('static', path='/js/customer/booking_wizard/step_details.js') }}?v={{ static_asset_version('js/customer/booking_wizard/step_details.js') }}"></script>
 {% endblock %}

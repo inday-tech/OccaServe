@@ -3,7 +3,7 @@
 {% block title %}Operational Bookings - Admin Intelligence{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ static_asset_version('css/admin/dashboard.css') }}">
 <style>
     /* Diamond Standard Layout Alignment */
     .table-card-clean {
@@ -305,30 +305,28 @@
     <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; gap: 10px;">
         <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase;">Booking List</h3>
         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <select id="statusFilter" onchange="filterBookings()" class="btn-clean" style="padding: 6px 12px; font-size: 0.75rem; background: #fff; border: 1px solid #e2e8f0; color: var(--adm-navy);">
-                <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="disputed">Disputed / Under Review</option>
+            <form method="get" action="/admin/bookings" style="display: contents;">
+            <select id="statusFilter" name="status" onchange="this.form.submit()" class="btn-clean" style="padding: 6px 12px; font-size: 0.75rem; background: #fff; border: 1px solid #e2e8f0; color: var(--adm-navy);">
+                <option value="all" {{ 'selected' if status_filter == 'all' else '' }}>All Status</option>
+                <option value="pending" {{ 'selected' if status_filter == 'pending' else '' }}>Pending</option>
+                <option value="confirmed" {{ 'selected' if status_filter == 'confirmed' else '' }}>Confirmed</option>
+                <option value="completed" {{ 'selected' if status_filter == 'completed' else '' }}>Completed</option>
+                <option value="cancelled" {{ 'selected' if status_filter == 'cancelled' else '' }}>Cancelled</option>
+                <option value="disputed" {{ 'selected' if status_filter == 'disputed' else '' }}>Disputed / Under Review</option>
             </select>
-            <select id="dateFilter" onchange="filterBookings()" class="btn-clean" style="padding: 6px 12px; font-size: 0.75rem; background: #fff; border: 1px solid #e2e8f0; color: var(--adm-navy);">
-                <option value="all">All Date</option>
-                <option value="today">Today</option>
-                <option value="this_week">This Week</option>
-                <option value="this_month">This Month</option>
+            <select id="dateFilter" name="date" onchange="this.form.submit()" class="btn-clean" style="padding: 6px 12px; font-size: 0.75rem; background: #fff; border: 1px solid #e2e8f0; color: var(--adm-navy);">
+                <option value="all" {{ 'selected' if date_filter == 'all' else '' }}>All Date</option>
+                <option value="today" {{ 'selected' if date_filter == 'today' else '' }}>Today</option>
+                <option value="this_week" {{ 'selected' if date_filter == 'this_week' else '' }}>This Week</option>
+                <option value="this_month" {{ 'selected' if date_filter == 'this_month' else '' }}>This Month</option>
             </select>
-            <select id="catererFilter" onchange="filterBookings()" class="btn-clean" style="padding: 6px 12px; font-size: 0.75rem; background: #fff; border: 1px solid #e2e8f0; color: var(--adm-navy);">
-                <option value="all">All Caterer</option>
-                {% set unique_caterers = [] %}
-                {% for b in bookings %}
-                    {% if b.caterer and b.caterer.business_name not in unique_caterers %}
-                        {% set _ = unique_caterers.append(b.caterer.business_name) %}
-                        <option value="{{ b.caterer.business_name }}">{{ b.caterer.business_name }}</option>
-                    {% endif %}
+            <select id="catererFilter" name="caterer_id" onchange="this.form.submit()" class="btn-clean" style="padding: 6px 12px; font-size: 0.75rem; background: #fff; border: 1px solid #e2e8f0; color: var(--adm-navy);">
+                <option value="all" {{ 'selected' if caterer_id_filter == 'all' else '' }}>All Caterer</option>
+                {% for caterer in caterers %}
+                    <option value="{{ caterer.id }}" {{ 'selected' if caterer_id_filter|string == caterer.id|string else '' }}>{{ caterer.business_name }}</option>
                 {% endfor %}
             </select>
+            </form>
             
             <div class="action-menu-dm">
                 <button class="btn-clean dropdown-trigger" style="background: #fff; color: var(--adm-navy); border: 1px solid #e2e8f0; padding: 6px 12px; font-size: 0.75rem;" onclick="toggleActionDropdown(this, event)">
@@ -372,8 +370,8 @@
                     <td>
                         <div
                             style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem; display: block; margin-bottom: 2px;">
-                            {{ booking.user.first_name }} {{ booking.user.last_name }}</div>
-                        <div style="font-size: 0.7rem; color: #64748b; font-weight: 700;">{{ booking.user.email }}</div>
+                            {{ ((booking.user.first_name or '') ~ ' ' ~ (booking.user.last_name or '')).strip() if booking.user else (booking.customer_name or 'Walk-in Customer') }}</div>
+                        <div style="font-size: 0.7rem; color: #64748b; font-weight: 700;">{{ booking.user.email if booking.user else (booking.customer_email or 'No customer account') }}</div>
                     </td>
                     <td>
                         <div
@@ -466,6 +464,21 @@
             <button class="pag-btn" id="nextBtn" onclick="changePage(1)">
                 Next <i class="fas fa-chevron-right"></i>
             </button>
+        </div>
+    </div>
+
+    <div class="pagination-terminal" style="border-top: 0; padding-top: 0;">
+        <div style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700;">
+            Showing {{ ((page - 1) * page_size) + (1 if total_filtered else 0) }}–{{ ((page - 1) * page_size) + bookings|length }} of {{ total_filtered }} matching bookings
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            {% if page > 1 %}
+            <a class="pag-btn" href="/admin/bookings?page={{ page - 1 }}&status={{ status_filter }}&date={{ date_filter }}&caterer_id={{ caterer_id_filter }}">Older bookings</a>
+            {% endif %}
+            <span style="font-size: 0.75rem; color: var(--adm-muted);">Page {{ page }} of {{ total_pages }}</span>
+            {% if page < total_pages %}
+            <a class="pag-btn" href="/admin/bookings?page={{ page + 1 }}&status={{ status_filter }}&date={{ date_filter }}&caterer_id={{ caterer_id_filter }}">Newer bookings</a>
+            {% endif %}
         </div>
     </div>
 </div>

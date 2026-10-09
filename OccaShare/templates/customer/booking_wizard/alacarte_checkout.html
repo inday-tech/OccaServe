@@ -10,8 +10,8 @@ false %}
 Carte Checkout') }}{% endblock %}
 
 {% block step_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_kyc.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}?v={{ static_asset_version('css/customer/booking_wizard/step_details.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_kyc.css') }}?v={{ static_asset_version('css/customer/booking_wizard/step_kyc.css') }}">
 <style>
     /* Diamond Standard: Core Checkout Framework */
     :root {
@@ -1382,5 +1382,5 @@ Carte Checkout') }}{% endblock %}
     window.requiresKycStep = {{ 'true' if requires_kyc else 'false' }};
 </script>
 <script
-    src="{{ url_for('static', path='/js/customer/alacarte_checkout.js') }}?v={{ range(1, 9999) | random }}"></script>
+    src="{{ url_for('static', path='/js/customer/alacarte_checkout.js') }}?v={{ static_asset_version('js/customer/alacarte_checkout.js') }}"></script>
 {% endblock %}

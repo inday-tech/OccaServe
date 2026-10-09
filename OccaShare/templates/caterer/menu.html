@@ -4,7 +4,7 @@
 {% block title %}Menu Library - OccaServe Caterer{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v={{ range(1, 10000) | random }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v={{ static_asset_version('css/caterer/menu.css') }}">
 {% endblock %}
 
 {% block content %}

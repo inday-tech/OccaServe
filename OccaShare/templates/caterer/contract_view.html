@@ -3,7 +3,7 @@
 {% block title %}Contract for {{ booking.user.first_name }} {{ booking.user.last_name }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v={{ static_asset_version('css/shared/contract_formal.css') }}">
 {% endblock %}
 
 {% block content %}

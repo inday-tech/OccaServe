@@ -3,7 +3,7 @@
 {% block title %}{% block wizard_title %}Booking{% endblock %} - OccaServe{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_base.css') }}?v={{ range(1, 9999) | random }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_base.css') }}?v={{ static_asset_version('css/customer/booking_wizard/wizard_base.css') }}">
 
 {% block step_css %}{% endblock %}
 {% endblock %}

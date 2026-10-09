@@ -3,7 +3,7 @@
 {% block title %}Financial Hub - Secure Settlement Terminal{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ static_asset_version('css/admin/dashboard.css') }}">
 <style>
     /* Financial Hub Customizations to match Diamond Standard */
     .kpi-icon-req { background: #fee2e2; color: #ef4444; }

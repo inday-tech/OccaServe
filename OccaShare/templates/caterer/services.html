@@ -4,8 +4,8 @@
 {% block title %}Services - OccaServe Caterer{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v={{ range(1, 10000) | random }}">
-<link href="{{ url_for('static', path='/css/caterer/packages.css') }}?v=26.7" rel="stylesheet" />
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v={{ static_asset_version('css/caterer/menu.css') }}">
+<link href="{{ url_for('static', path='/css/caterer/packages.css') }}?v={{ static_asset_version('css/caterer/packages.css') }}" rel="stylesheet" />
 {% endblock %}
 
 {% block content %}
@@ -1398,7 +1398,7 @@
     }
 </script>
 
-<script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v={{ range(1, 99999) | random }}"></script>
+<script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v={{ static_asset_version('js/caterer/packages.js') }}"></script>
 <script>
     // Listen to global header search for packages
     window.addEventListener('globalSearch', function (e) {

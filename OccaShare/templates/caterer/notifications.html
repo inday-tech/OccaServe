@@ -4,7 +4,7 @@
 {% block title %}Notifications - OccaServe Caterer{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/notifications.css') }}?v=76303dff">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/notifications.css') }}?v={{ static_asset_version('css/caterer/notifications.css') }}">
 {% endblock %}
 
 {% block content %}

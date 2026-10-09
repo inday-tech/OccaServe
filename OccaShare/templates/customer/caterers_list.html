@@ -4,7 +4,7 @@
 {% block title %}Browse Caterers - OccaServe{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/landing_neutral.css') }}?v=9">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/landing_neutral.css') }}?v={{ static_asset_version('css/landing_neutral.css') }}">
 <style>
     .mkt-hero-section {
         padding: 80px 0 3rem;

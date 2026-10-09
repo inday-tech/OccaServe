@@ -3,7 +3,7 @@
 {% block title %}Financials & Overhead - OccaServe{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/bookings.css') }}?v=12.9">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/bookings.css') }}?v={{ static_asset_version('css/caterer/bookings.css') }}">
 {% endblock %}
 
 {% block content %}

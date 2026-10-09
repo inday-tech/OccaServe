@@ -3,7 +3,7 @@
 {% block title %}Request Custom Event - OccaServe{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}?v={{ range(1, 9999) | random }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}?v={{ static_asset_version('css/customer/booking_wizard/step_details.css') }}">
 <style>
     .wizard-title { font-size: 2rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
     .wizard-subtitle { font-size: 1rem; color: #64748b; margin-bottom: 2.5rem; }

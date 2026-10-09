@@ -3,7 +3,7 @@
 {% block title %}Sign Service Agreement - Booking #BK-{{ booking.id }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v={{ static_asset_version('css/shared/contract_formal.css') }}">
 <style>
     :root {
         --caterer-primary: #2563eb;
@@ -1194,7 +1194,7 @@
 
 {% block extra_js %}
 <!-- SignaturePad Library -->
-<script src="{{ url_for('static', path='/js/signature_pad.js') }}"></script>
+<script src="{{ url_for('static', path='/js/signature_pad.js') }}?v={{ static_asset_version('js/signature_pad.js') }}"></script>
 
 <script>
     // Configuration & State

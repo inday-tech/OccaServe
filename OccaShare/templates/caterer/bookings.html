@@ -4,9 +4,9 @@
 {% block title %}Manage Bookings - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/bookings.css') }}?v=2.3">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/contract_view.css') }}?v=1.6">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v=1.6">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/bookings.css') }}?v={{ static_asset_version('css/caterer/bookings.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/contract_view.css') }}?v={{ static_asset_version('css/caterer/contract_view.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v={{ static_asset_version('css/shared/contract_formal.css') }}">
 <style>
     /* Override .occ-modal-footer .btn-secondary-pro { display:inline-flex !important } */
     #bookingDetailModal .occ-modal-footer #btnFooterCancelBooking.is-footer-btn-hidden,
@@ -3255,8 +3255,8 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/auth/location_data.js') }}"></script>
-<script src="{{ url_for('static', path='/js/caterer/bookings.js') }}?v={{ range(10000, 99999) | random }}"></script>
+<script src="{{ url_for('static', path='/js/auth/location_data.js') }}?v={{ static_asset_version('js/auth/location_data.js') }}"></script>
+<script src="{{ url_for('static', path='/js/caterer/bookings.js') }}?v={{ static_asset_version('js/caterer/bookings.js') }}"></script>
 
 <script>
     function openReportModal(bookingId) {

@@ -3,7 +3,7 @@
 {% block title %}Settings - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/profile_edit.css') }}?v=13.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/profile_edit.css') }}?v={{ static_asset_version('css/caterer/profile_edit.css') }}">
 <style>
 .day-chip-box.active {
     background: var(--primary-color, #800000) !important;
@@ -25,8 +25,27 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/node-vibrant/3.1.6/vibrant.min.js"></script>
-<script src="{{ url_for('static', path='/js/caterer/profile_edit.js') }}?v=12.9"></script>
+<script>
+window.gm_authFailure = function() {
+    console.warn("Google Maps failed to load/authenticate. The address picker will use its manual address fallback.");
+    const pickerMapEl = document.getElementById('pickerMap');
+    if (pickerMapEl) {
+        pickerMapEl.style.height = 'auto';
+        pickerMapEl.style.border = 'none';
+        pickerMapEl.innerHTML = `
+            <div class="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center space-y-2">
+                <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                    <i class="fas fa-map-marker-alt text-xl"></i>
+                </div>
+                <h4 class="text-xs font-bold text-slate-800">Location Picker Offline</h4>
+                <p class="text-[11px] text-slate-500 max-w-xs">The interactive location pin picker is currently offline. You can still manually input your address in the form below.</p>
+            </div>`;
+    }
+};
+</script>
+<script defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key() }}&libraries=places"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/node-vibrant/3.1.6/vibrant.min.js"></script>
+<script src="{{ url_for('static', path='/js/caterer/profile_edit.js') }}?v={{ static_asset_version('js/caterer/profile_edit.js') }}"></script>
 {% endblock %}
 
 {% block content %}

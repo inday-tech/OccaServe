@@ -6,8 +6,8 @@
 {% block extra_css %}
 <!-- FullCalendar CSS -->
 <link href='https://unpkg.com/fullcalendar@5.10.1/main.min.css' rel='stylesheet' />
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/calendar.css') }}?v={{ range(1, 10000) | random }}">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v=12.9">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/calendar.css') }}?v={{ static_asset_version('css/caterer/calendar.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v={{ static_asset_version('css/caterer/menu.css') }}">
 <style>
     :root {
         --caterer-primary: {{ primary_color }};
@@ -1245,5 +1245,5 @@
     window.MIN_BOOKING_DATE = "{{ min_booking_date.strftime('%Y-%m-%d') }}";
     window.MAX_BOOKING_DATE = "{{ max_booking_date.strftime('%Y-%m-%d') }}";
 </script>
-<script src="{{ url_for('static', path='/js/caterer/calendar.js') }}?v={{ range(1, 10000) | random }}"></script>
+<script src="{{ url_for('static', path='/js/caterer/calendar.js') }}?v={{ static_asset_version('js/caterer/calendar.js') }}"></script>
 {% endblock %}

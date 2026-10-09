@@ -3,7 +3,7 @@
 {% block title %}{% if booking.status in ['draft', 'pending_review'] %}Inquiry Details{% else %}Manage Booking{% endif %} #{% if booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental' %}RT-{% elif booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ "%03d" | format(booking.id) }} - OccaServe Elite{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_manage.css') }}?v=13.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_manage.css') }}?v={{ static_asset_version('css/customer/booking_manage.css') }}">
 <style>
     :root {
         --up-slate-900: #0f172a;

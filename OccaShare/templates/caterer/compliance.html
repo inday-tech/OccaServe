@@ -3,7 +3,7 @@
 {% block title %}KYC & Compliance Queue - OccaServe{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/compliance.css') }}?v={{ range(1, 9999) | random }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/compliance.css') }}?v={{ static_asset_version('css/caterer/compliance.css') }}">
 {% endblock %}
 
 {% block content %}

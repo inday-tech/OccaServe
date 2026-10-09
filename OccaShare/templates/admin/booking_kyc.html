@@ -3,7 +3,7 @@
 {% block title %}KYC Audit: Booking #{{ booking.id }} - Admin{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/booking_kyc.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/booking_kyc.css') }}?v={{ static_asset_version('css/admin/booking_kyc.css') }}">
 {% endblock %}
 
 {% block content %}

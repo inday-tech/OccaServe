@@ -1,7 +1,7 @@
 {% extends "caterer/layout.html" %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/customers.css') }}?v=12.9">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/customers.css') }}?v={{ static_asset_version('css/caterer/customers.css') }}">
 <style>
     .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2rem; }
     .table-dashboard th, .table-dashboard td { white-space: nowrap; }
@@ -168,7 +168,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/caterer/customers.js') }}?v=12.9"></script>
+<script src="{{ url_for('static', path='/js/caterer/customers.js') }}?v={{ static_asset_version('js/caterer/customers.js') }}"></script>
 <script>
     window.openIframeModal = function(url, title) {
         const modal = document.getElementById('iframeModal');

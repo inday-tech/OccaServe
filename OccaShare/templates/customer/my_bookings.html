@@ -5,14 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Bookings - OccaServe</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}?v={{ static_asset_version('css/styles.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/my_bookings.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/my_bookings.css') }}?v={{ static_asset_version('css/customer/my_bookings.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v={{ static_asset_version('css/global/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v={{ static_asset_version('css/global/responsive.css') }}">
 </head>
 
 <body>

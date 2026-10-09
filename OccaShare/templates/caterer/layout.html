@@ -6,16 +6,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <!-- CACHE BUSTING (Temp to ensure updates apply) -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
     <script>window.MAX_UPLOAD_SIZE_MB = {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }};</script>
-    <script src="{{ url_for('static', path='/js/global/upload_limits.js') }}?v=1.0"></script>
+    <script src="{{ url_for('static', path='/js/global/upload_limits.js') }}?v={{ static_asset_version('js/global/upload_limits.js') }}"></script>
     <title>{% block title %}Caterer Dashboard - OccaServe{% endblock %}</title>
 
     <!-- Core Assets -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}?v={{ static_asset_version('css/styles.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Google Fonts: Premium Selection -->
@@ -26,34 +22,11 @@
 
     <!-- Design System Base -->
     <link rel="stylesheet"
-        href="{{ url_for('static', path='/css/caterer/layout.css') }}?v={{ range(10000000, 99999999) | random }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/dashboard_premium.css') }}?v=12.9">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=12.9">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=12.9">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v=13.0">
-    <!-- Google Maps API -->
-    <script>
-        window.gm_authFailure = function() {
-            console.warn("Google Maps failed to load/authenticate (ApiTargetBlockedMapError or other restriction). Using fallback.");
-            const pickerMapEl = document.getElementById('pickerMap');
-            if (pickerMapEl) {
-                pickerMapEl.style.height = 'auto';
-                pickerMapEl.style.border = 'none';
-                pickerMapEl.innerHTML = `
-                    <div class="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center space-y-2">
-                        <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-                            <i class="fas fa-map-marker-alt text-xl"></i>
-                        </div>
-                        <h4 class="text-xs font-bold text-slate-800">Location Picker Offline</h4>
-                        <p class="text-[11px] text-slate-500 max-w-xs">The interactive location pin picker is currently offline. You can still manually input your address in the form below.</p>
-                    </div>
-                `;
-            }
-        };
-    </script>
-    <script
-        src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key() }}&libraries=places"></script>
-
+        href="{{ url_for('static', path='/css/caterer/layout.css') }}?v={{ static_asset_version('css/caterer/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/dashboard_premium.css') }}?v={{ static_asset_version('css/shared/dashboard_premium.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v={{ static_asset_version('css/caterer/alert_modal.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v={{ static_asset_version('css/global/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v={{ static_asset_version('css/global/responsive.css') }}">
     {% if wconfig and wconfig.favicon_url %}
     <link rel="icon" href="{{ wconfig.favicon_url }}">
     {% endif %}
@@ -2137,16 +2110,16 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="{{ url_for('static', path='js/main.js') }}?v=aca5396d"></script>
+    <script src="{{ url_for('static', path='/js/main.js') }}?v={{ static_asset_version('js/main.js') }}"></script>
     <script
-        src="{{ url_for('static', path='/js/global/diamond_validation.js') }}?v={{ range(1, 10000) | random }}"></script>
+        src="{{ url_for('static', path='/js/global/diamond_validation.js') }}?v={{ static_asset_version('js/global/diamond_validation.js') }}"></script>
     <script>
         window.catererConfig = {
             userId: {{ user.id if user else 'null' }}
         };
     </script>
-    <script src="{{ url_for('static', path='/js/caterer/layout.js') }}?v={{ range(1, 10000) | random }}"></script>
-    <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v={{ range(1, 10000) | random }}"></script>
+    <script src="{{ url_for('static', path='/js/caterer/layout.js') }}?v={{ static_asset_version('js/caterer/layout.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v={{ static_asset_version('js/caterer/alert_modal.js') }}"></script>
 
     <script>
         function toggleSidebar() {
@@ -2371,7 +2344,7 @@
     </script>
 
     <!-- Chat JS must load before floating_chat.html on all pages -->
-    <script src="{{ url_for('static', path='/js/chat.js') }}?v=12.9"></script>
+    <script src="{{ url_for('static', path='/js/chat.js') }}?v={{ static_asset_version('js/chat.js') }}"></script>
 
     {% if active_page != 'messages' %}
     {# Removed floating chat as requested by user #}

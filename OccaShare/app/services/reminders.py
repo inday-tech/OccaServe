@@ -1,7 +1,6 @@
 import datetime
 import calendar
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from app.db.models import Booking, BillingInvoice, Notification, CatererProfile, User
 
 
@@ -30,6 +29,18 @@ def generate_caterer_reminders(user_id: int, db: Session):
         Booking.caterer_id == profile.id,
         Booking.status.notin_(['draft', 'pending_quotation', 'cancelled', 'completed'])
     ).all()
+
+    # Load existing daily reminders once. The old loop issued a SELECT and
+    # committed separately for every overdue/near-term booking.
+    day_start = datetime.datetime.combine(today, datetime.time.min)
+    day_end = day_start + datetime.timedelta(days=1)
+    existing_daily = db.query(Notification.title, Notification.link).filter(
+        Notification.user_id == user_id,
+        Notification.created_at >= day_start,
+        Notification.created_at < day_end,
+    ).all()
+    existing_daily_keys = {(title, link) for title, link in existing_daily}
+    new_notifications = []
     
     for booking in active_bookings:
         if not booking.event_date: continue
@@ -72,24 +83,15 @@ def generate_caterer_reminders(user_id: int, db: Session):
         
         # Only create if not already created today
         if title:
-            # Check if this exact reminder was already fired today
-            existing = db.query(Notification).filter(
-                Notification.user_id == user_id,
-                Notification.title == title,
-                func.date(Notification.created_at) == today,
-                Notification.link == link
-            ).first()
-            
-            if not existing:
-                new_notif = Notification(
+            if (title, link) not in existing_daily_keys:
+                new_notifications.append(Notification(
                     user_id=user_id,
                     title=title,
                     message=message,
                     type=n_type,
                     link=link
-                )
-                db.add(new_notif)
-                db.commit()
+                ))
+                existing_daily_keys.add((title, link))
 
     invoices = db.query(BillingInvoice).filter(
         BillingInvoice.caterer_id == profile.id,
@@ -97,6 +99,12 @@ def generate_caterer_reminders(user_id: int, db: Session):
         BillingInvoice.payment_proof_url.is_(None)
     ).all()
     invoice_changes = False
+    existing_invoice_reminders = {
+        (row.title, row.link) for row in db.query(Notification.title, Notification.link).filter(
+            Notification.user_id == user_id,
+            Notification.link.like('/caterer/payments#commission-invoice-%'),
+        ).all()
+    }
 
     for invoice in invoices:
         fallback_date = invoice.created_at.date() if invoice.created_at else today
@@ -121,20 +129,18 @@ def generate_caterer_reminders(user_id: int, db: Session):
             f"(₱{float(invoice.amount or 0):,.2f}) is due on {due_date:%b %d, %Y}. "
             "Please submit the payment proof before the due date."
         )
-        existing = db.query(Notification).filter(
-            Notification.user_id == user_id,
-            Notification.title == title,
-            Notification.link == link
-        ).first()
-        if not existing:
-            db.add(Notification(
+        if (title, link) not in existing_invoice_reminders:
+            new_notifications.append(Notification(
                 user_id=user_id,
                 title=title,
                 message=message,
                 type="alert" if is_overdue else "reminder",
                 link=link
             ))
+            existing_invoice_reminders.add((title, link))
             invoice_changes = True
 
-    if invoice_changes:
+    if new_notifications:
+        db.add_all(new_notifications)
+    if invoice_changes or new_notifications:
         db.commit()

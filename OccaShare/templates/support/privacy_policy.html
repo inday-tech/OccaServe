@@ -1,7 +1,7 @@
 {% extends "landing_base.html" %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/support/privacy_policy.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/support/privacy_policy.css') }}?v={{ static_asset_version('css/support/privacy_policy.css') }}">
 {% endblock %}
 
 

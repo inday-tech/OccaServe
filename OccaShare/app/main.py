@@ -556,42 +556,40 @@ async def maintenance_middleware(request: Request, call_next):
     if path.startswith("/static") or path.startswith("/admin") or path.startswith("/api/admin") or path == "/favicon.ico":
         return await call_next(request)
 
-    # 2. Fetch Config (Optimized: Check if it's in request state if we had it, but for now fetch)
-    db = SessionLocal()
-    try:
-        config = db.query(models.WebsiteConfig).first()
-        if config and config.maintenance_mode:
-            # 3. Check if current user is an admin
-            token = request.cookies.get("access_token")
-            is_admin = False
-            if token:
-                if token.startswith("Bearer "): token = token.split(" ")[1]
-                try:
-                    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-                    email: str = payload.get("sub")
-                    user = db.query(models.User).filter(models.User.email == email).first()
-                    if user and user.role == "admin":
-                        is_admin = True
-                except: pass
-            
-            if not is_admin:
-                # Return Maintenance Page (HTML) or JSON if API
-                if "text/html" in request.headers.get("accept", ""):
-                    from .core.templates import templates
-                    return templates.TemplateResponse("maintenance.html", {
-                        "request": request,
-                        "message": config.maintenance_message,
-                        "config": config
-                    }, status_code=503)
-                else:
-                    return JSONResponse(
-                        status_code=503,
-                        content={"success": False, "message": config.maintenance_message}
-                    )
-    except Exception as e:
-        print(f"[MAINTENANCE CHECK ERROR] Non-fatal config query error: {e}")
-    finally:
-        db.close()
+    # Reuse the short-lived config cache shared with template rendering.
+    from .core.templates import templates, website_config
+    config = website_config()
+    if config and config.get("maintenance_mode"):
+        token = request.cookies.get("access_token")
+        is_admin = False
+        if token:
+            if token.startswith("Bearer "):
+                token = token.split(" ", 1)[1]
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                email = payload.get("sub")
+                if email:
+                    db = SessionLocal()
+                    try:
+                        user = db.query(models.User).filter(models.User.email == email).first()
+                        is_admin = bool(user and user.role == "admin")
+                    finally:
+                        db.close()
+            except JWTError:
+                pass
+
+        if not is_admin:
+            message = config.get("maintenance_message")
+            if "text/html" in request.headers.get("accept", ""):
+                return templates.TemplateResponse("maintenance.html", {
+                    "request": request,
+                    "message": message,
+                    "config": config,
+                }, status_code=503)
+            return JSONResponse(
+                status_code=503,
+                content={"success": False, "message": message},
+            )
 
     return await call_next(request)
 

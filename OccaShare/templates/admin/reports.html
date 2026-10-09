@@ -2,8 +2,12 @@
 
 {% block title %}Reports - Admin Dashboard{% endblock %}
 
+{% block extra_head_js %}
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ static_asset_version('css/admin/dashboard.css') }}">
     /* Dashboard Specific Intelligence Extensions */
 {% endblock %}
 
@@ -139,7 +143,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const ctx = document.getElementById('bookingTrendChart').getContext('2d');

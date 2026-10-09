@@ -590,9 +590,9 @@
 {% endblock %}
 
 {% block step_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v=12.8">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_quotation.css') }}?v=16.0">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v=19.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v={{ static_asset_version('css/shared/contract_formal.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_quotation.css') }}?v={{ static_asset_version('css/customer/booking_wizard/step_quotation.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v={{ static_asset_version('css/customer/booking_wizard/wizard_navigation.css') }}">
 {% endblock %}
 
 {% block step_js %}
@@ -602,8 +602,8 @@
     window.userId = "{{ user.id }}";
     window.addonTotal = "{{ quotation.addons | sum(attribute='price') if quotation.addons else 0 }}";
 </script>
-<script src="{{ url_for('static', path='/js/signature_pad.js') }}"></script>
-<script src="{{ url_for('static', path='/js/customer/booking_wizard/step_quotation.js') }}"></script>
+<script src="{{ url_for('static', path='/js/signature_pad.js') }}?v={{ static_asset_version('js/signature_pad.js') }}"></script>
+<script src="{{ url_for('static', path='/js/customer/booking_wizard/step_quotation.js') }}?v={{ static_asset_version('js/customer/booking_wizard/step_quotation.js') }}"></script>
 <script>
     async function approveQuotation(e) {
         const btn = e.currentTarget;
@@ -686,4 +686,4 @@
 })();
 </script>
 {% endif %}
-{% endblock %}
+{% endblock %}

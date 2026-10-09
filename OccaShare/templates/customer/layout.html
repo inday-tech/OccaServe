@@ -7,18 +7,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <script>window.MAX_UPLOAD_SIZE_MB = {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }};</script>
-    <script src="{{ url_for('static', path='/js/global/upload_limits.js') }}?v=1.0"></script>
+    <script src="{{ url_for('static', path='/js/global/upload_limits.js') }}?v={{ static_asset_version('js/global/upload_limits.js') }}"></script>
     <title>{% block title %}Dashboard - OccaServe{% endblock %}</title>
 
     <!-- Core Assets -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/layout.css') }}?v=5.7">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=1.4">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v=5.0">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/customer_mobile.css') }}?v=2.2">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=1.5">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/layout.css') }}?v={{ static_asset_version('css/customer/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v={{ static_asset_version('css/global/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v={{ static_asset_version('css/global/responsive.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/customer_mobile.css') }}?v={{ static_asset_version('css/customer/customer_mobile.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v={{ static_asset_version('css/caterer/alert_modal.css') }}">
 
     {% if wconfig and wconfig.favicon_url %}
     <link rel="icon" href="{{ wconfig.favicon_url }}">
@@ -440,9 +440,9 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="{{ url_for('static', path='/js/main.js') }}?v=7414d5fc"></script>
-    <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=1.4"></script>
-    <script src="{{ url_for('static', path='/js/customer/layout.js') }}?v=3.5"></script>
+    <script src="{{ url_for('static', path='/js/main.js') }}?v={{ static_asset_version('js/main.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v={{ static_asset_version('js/caterer/alert_modal.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/customer/layout.js') }}?v={{ static_asset_version('js/customer/layout.js') }}"></script>
 
 
     

@@ -42,8 +42,14 @@ async def customer_dashboard(
     if user.role != "customer":
         return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
     # Filter out archived, deleted, drafts, and food orders to match Bookings page
+    from sqlalchemy.orm import joinedload, selectinload
+    user_bookings = db.query(models.Booking).options(
+        joinedload(models.Booking.caterer),
+        joinedload(models.Booking.review),
+        selectinload(models.Booking.selected_items),
+    ).filter(models.Booking.user_id == user.id).all()
     bookings = []
-    for b in user.bookings:
+    for b in user_bookings:
         if b.customer_archived or getattr(b, 'customer_deleted', False) or b.status == 'draft' or b.document_type == 'invoice':
             continue
         # Catch older or mislabeled food orders: fast track with ONLY food items
@@ -121,39 +127,53 @@ async def customer_dashboard(
             
         display_bookings.append(b_data)
 
-    # Build conversations list for Live Messages widget
-    from sqlalchemy import or_
-    all_msgs = db.query(models.ChatMessage).filter(
+    # Select the latest message per conversation in one query. This avoids
+    # loading a customer's entire message history and issuing N+1 user queries.
+    from sqlalchemy import case, func
+    peer_id_expr = case(
+        (models.ChatMessage.sender_id == user.id, models.ChatMessage.receiver_id),
+        else_=models.ChatMessage.sender_id,
+    )
+    latest_message_rows = db.query(
+        models.ChatMessage.id.label("message_id"),
+        peer_id_expr.label("peer_id"),
+        func.row_number().over(
+            partition_by=peer_id_expr,
+            order_by=(models.ChatMessage.created_at.desc(), models.ChatMessage.id.desc()),
+        ).label("row_number"),
+    ).filter(
         or_(models.ChatMessage.sender_id == user.id, models.ChatMessage.receiver_id == user.id)
-    ).order_by(models.ChatMessage.created_at.desc()).all()
+    ).subquery()
+    latest_conversations = db.query(models.ChatMessage, models.User).options(
+        joinedload(models.User.caterer_profile)
+    ).join(
+        latest_message_rows, models.ChatMessage.id == latest_message_rows.c.message_id
+    ).join(
+        models.User, models.User.id == latest_message_rows.c.peer_id
+    ).filter(
+        latest_message_rows.c.row_number == 1
+    ).order_by(models.ChatMessage.created_at.desc(), models.ChatMessage.id.desc()).limit(4).all()
 
-    conversations_dict = {}
-    for msg in all_msgs:
-        peer_id = msg.receiver_id if msg.sender_id == user.id else msg.sender_id
-        if peer_id not in conversations_dict:
-            peer = db.query(models.User).get(peer_id)
-            if peer:
-                c_name = (
-                    peer.caterer_profile.business_name
-                    if peer.role == 'caterer' and peer.caterer_profile
-                    else (f"{peer.first_name or ''} {peer.last_name or ''}").strip() or peer.email
-                )
-                if msg.message_type == 'image':
-                    text = "📷 Photo"
-                elif msg.message_type == 'file':
-                    text = "📄 File"
-                else:
-                    text = msg.content or ""
-                if msg.sender_id == user.id:
-                    text = "You: " + text
-                conversations_dict[peer_id] = {
-                    "caterer_name": c_name,
-                    "last_msg_time": msg.created_at.strftime('%I:%M %p').lstrip('0'),
-                    "last_msg_text": text
-                }
-    conversations_list = list(conversations_dict.values())[:4]
-
-
+    conversations_list = []
+    for msg, peer in latest_conversations:
+        c_name = (
+            peer.caterer_profile.business_name
+            if peer.role == 'caterer' and peer.caterer_profile
+            else (f"{peer.first_name or ''} {peer.last_name or ''}").strip() or peer.email
+        )
+        if msg.message_type == 'image':
+            text = "\U0001F4F7 Photo"
+        elif msg.message_type == 'file':
+            text = "\U0001F4C4 File"
+        else:
+            text = msg.content or ""
+        if msg.sender_id == user.id:
+            text = "You: " + text
+        conversations_list.append({
+            "caterer_name": c_name,
+            "last_msg_time": msg.created_at.strftime('%I:%M %p').lstrip('0'),
+            "last_msg_text": text
+        })
     # Elite Tier Data Additions
     reviews_count = db.query(models.Review).filter(models.Review.user_id == user.id).count()
     

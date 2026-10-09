@@ -3,7 +3,7 @@
 {% block wizard_title %}Verify Identity{% endblock %}
 
 {% block step_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_verify.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_verify.css') }}?v={{ static_asset_version('css/customer/booking_wizard/step_verify.css') }}">
 {% endblock %}
 
 {% block wizard_content %}
@@ -57,5 +57,5 @@
 {% endblock %}
 
 {% block step_js %}
-<script src="{{ url_for('static', path='/js/customer/booking_wizard/step_verify.js') }}"></script>
+<script src="{{ url_for('static', path='/js/customer/booking_wizard/step_verify.js') }}?v={{ static_asset_version('js/customer/booking_wizard/step_verify.js') }}"></script>
 {% endblock %}

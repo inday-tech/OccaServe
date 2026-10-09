@@ -3,9 +3,9 @@
 {% block wizard_title %}Secure Payment{% endblock %}
 
 {% block step_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v=11.0">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_payment.css') }}?v=19.0">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v=19.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v={{ static_asset_version('css/shared/contract_formal.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_payment.css') }}?v={{ static_asset_version('css/customer/booking_wizard/step_payment.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v={{ static_asset_version('css/customer/booking_wizard/wizard_navigation.css') }}">
 <style>
     body { background-color: #f8fafc !important; }
     

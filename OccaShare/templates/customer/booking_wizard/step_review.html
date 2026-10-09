@@ -3,7 +3,7 @@
 {% block title %}Review Your Booking - OccaServe{% endblock %}
 
 {% block step_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_review.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_review.css') }}?v={{ static_asset_version('css/customer/booking_wizard/step_review.css') }}">
 {% endblock %}
 
 {% block wizard_content %}

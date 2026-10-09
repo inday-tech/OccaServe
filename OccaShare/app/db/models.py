@@ -676,8 +676,8 @@ class Booking(Base):
     reservation_fee = Column(DECIMAL, nullable=True)
     travel_fee = Column(Float, default=0.0)
     travel_fee_status = Column(String, default="confirmed") # "confirmed", "tbd", "pending_quote"
-    status = Column(String, default="pending")
-    payment_status = Column(String, default="pending") # unpaid, partially_paid, fully_paid, overdue
+    status = Column(String, default="pending") # e.g. draft, pending_quotation, awaiting_payment, confirmed, completed, cancelled
+    payment_status = Column(String, default="pending") # pending, proof_submitted, reupload_requested, cash_payment_requested, deposit_paid, balance_proof_submitted, paid
     payment_method = Column(String, nullable=True) # GCash, Credit Card, etc.
     amount_paid = Column(Float, default=0.0)
     preparation_status = Column(String, default="not_started") # not_started, scheduled, in_preparation, ready, completed

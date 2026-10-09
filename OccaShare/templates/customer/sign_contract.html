@@ -3,7 +3,7 @@
 {% block title %}Sign Contract - OccaServe{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v={{ static_asset_version('css/shared/contract_formal.css') }}">
 <style>
     .signing-container {
         max-width: 900px;
@@ -137,7 +137,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/signature_pad.js') }}"></script>
+<script src="{{ url_for('static', path='/js/signature_pad.js') }}?v={{ static_asset_version('js/signature_pad.js') }}"></script>
 <script>
     const signaturePad = new SignaturePad('signature-pad');
 

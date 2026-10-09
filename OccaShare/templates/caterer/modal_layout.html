@@ -14,10 +14,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Core Assets -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/layout.css') }}?v=12.9">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/dashboard_premium.css') }}?v=12.9">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=12.9">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}?v={{ static_asset_version('css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/layout.css') }}?v={{ static_asset_version('css/caterer/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/dashboard_premium.css') }}?v={{ static_asset_version('css/shared/dashboard_premium.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v={{ static_asset_version('css/global/global.css') }}">
     
     <style>
         :root {

@@ -1305,8 +1305,8 @@
     }
 </style>
 <link rel="stylesheet"
-    href="{{ url_for('static', path='/css/customer/booking_wizard/step_kyc.css') }}?v={{ range(10000000, 99999999) | random }}">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v=19.0">
+    href="{{ url_for('static', path='/css/customer/booking_wizard/step_kyc.css') }}?v={{ static_asset_version('css/customer/booking_wizard/step_kyc.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v={{ static_asset_version('css/customer/booking_wizard/wizard_navigation.css') }}">
 {% endblock %}
 
 {% block wizard_content %}
@@ -2145,5 +2145,5 @@
     window.catererId = "{{ booking.caterer_id }}";
 </script>
 <script type="module"
-    src="{{ url_for('static', path='/js/customer/booking_wizard/step_kyc.js') }}?v={{ range(10000000, 99999999) | random }}"></script>
+    src="{{ url_for('static', path='/js/customer/booking_wizard/step_kyc.js') }}?v={{ static_asset_version('js/customer/booking_wizard/step_kyc.js') }}"></script>
 {% endblock %}

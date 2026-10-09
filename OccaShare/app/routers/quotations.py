@@ -43,6 +43,8 @@ async def create_quote_request(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    if current_user.role != "customer":
+        raise HTTPException(status_code=403, detail="Only customers can request a quotation.")
     if guest_count < 1 or guest_count > 999:
         raise HTTPException(status_code=400, detail="Number of guests must be between 1 and 999.")
 
@@ -58,7 +60,7 @@ async def create_quote_request(
         raise HTTPException(status_code=400, detail="Date is unavailable")
 
     package = db.query(models.CateringPackage).get(package_id)
-    if not package:
+    if not package or package.caterer_id != caterer_id:
          raise HTTPException(status_code=404, detail="Package not found")
 
     # Create pending booking (was draft, now visible to caterer)
@@ -108,7 +110,7 @@ async def calculate_quotation(
     booking = db.query(models.Booking).get(booking_id)
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
-        
+
     is_owner = (booking.user_id == current_user.id)
     is_caterer = bool(current_user.caterer_profile and booking.caterer_id == current_user.caterer_profile.id)
     if not is_owner and not is_caterer and current_user.role != 'admin':
@@ -183,6 +185,14 @@ async def generate_quotation(
     booking = db.query(models.Booking).get(booking_id)
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+
+    is_owner = booking.user_id == current_user.id
+    is_assigned_caterer = bool(
+        current_user.caterer_profile
+        and booking.caterer_id == current_user.caterer_profile.id
+    )
+    if not is_owner and not is_assigned_caterer and current_user.role != "admin":
+        raise HTTPException(status_code=404, detail="Booking not found")
     
     try:
         # Dynamic downpayment percent from caterer profile
@@ -223,6 +233,24 @@ async def sign_contract(
 
     booking = quotation.booking
 
+    # Authorize before changing quote or booking data. The quote service may
+    # commit internally when it rebuilds a customizable quotation.
+    is_customer = current_user.id == booking.user_id
+    is_caterer = bool(booking.caterer and booking.caterer.user_id == current_user.id)
+    if not is_customer and not is_caterer:
+        raise HTTPException(
+            status_code=403,
+            detail="Unauthorized: you are not an authorized party to this booking contract.",
+        )
+
+    package_details = quotation.package_details or {}
+    is_customizable = (
+        package_details.get("package_type") == "customizable"
+        or (booking.package and getattr(booking.package, "pricing_mode", "") == "customizable")
+        or (booking.custom_requirements and booking.custom_requirements.get("package_type") == "customizable")
+    )
+    has_prior_signature = bool(quotation.customer_signature or quotation.caterer_signature)
+
     # CONTINUOUS REVALIDATION: Check if booking is still valid before signing
     is_valid, error_msg = BookingValidator.validate_booking_state(db, booking, update_if_expired=True)
     if not is_valid:
@@ -231,7 +259,16 @@ async def sign_contract(
     # Update Downpayment Percentage
     downpayment_percent = data.get("downpayment_percent")
     if downpayment_percent is not None:
-        quotation.downpayment_percent = int(downpayment_percent)
+        try:
+            downpayment_percent = int(downpayment_percent)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Invalid downpayment percentage.")
+        max_downpayment = 100 if is_customizable else 50
+        if not 30 <= downpayment_percent <= max_downpayment:
+            raise HTTPException(status_code=400, detail=f"Downpayment must be between 30% and {max_downpayment}%.")
+        if has_prior_signature and quotation.downpayment_percent is not None and downpayment_percent != quotation.downpayment_percent:
+            raise HTTPException(status_code=409, detail="The downpayment terms cannot change after either party has signed.")
+        quotation.downpayment_percent = downpayment_percent
     
     # Use 30 as default if not set to avoid crash in Decimal calculation
     current_dp = quotation.downpayment_percent if quotation.downpayment_percent is not None else 30
@@ -247,9 +284,11 @@ async def sign_contract(
         if guest_count < 1 or guest_count > 999:
             raise HTTPException(status_code=400, detail="Number of guests must be between 1 and 999.")
 
-    is_customizable = (quotation.package_details and quotation.package_details.get("package_type") == "customizable") or (booking.package and getattr(booking.package, "pricing_mode", "") == "customizable") or (booking.custom_requirements and booking.custom_requirements.get("package_type") == "customizable")
-    
-    if guest_count and guest_count != quotation.package_details.get("guest_count"):
+    quoted_guest_count = int(package_details.get("guest_count") or booking.guest_count or 0)
+    if has_prior_signature and guest_count is not None and guest_count != quoted_guest_count:
+        raise HTTPException(status_code=409, detail="Guest count cannot change after either party has signed.")
+
+    if guest_count and guest_count != package_details.get("guest_count"):
         new_guest_count = int(guest_count)
         booking.guest_count = new_guest_count
         
@@ -260,19 +299,19 @@ async def sign_contract(
             booking.reservation_fee = new_total * dp_factor
         else:
             # Fixed package calculation
-            unit_price = Decimal(str(quotation.package_details.get("unit_price", 0)))
-            p_mode = quotation.package_details.get("pricing_mode", "per_pax")
-            p_unit = quotation.package_details.get("price_unit", "per_guest")
+            unit_price = Decimal(str(package_details.get("unit_price", 0)))
+            p_mode = package_details.get("pricing_mode", "per_pax")
+            p_unit = package_details.get("price_unit", "per_guest")
             
             if p_mode == "fixed" or p_unit != "per_guest":
-                new_base_amount = Decimal(str(quotation.package_details.get("base_amount", 0)))
+                new_base_amount = Decimal(str(package_details.get("base_amount", 0)))
             else:
                 new_base_amount = unit_price * new_guest_count
             
             addon_total = sum(Decimal(str(a.get("price", 0))) for a in (quotation.addons or []))
             new_total = new_base_amount + addon_total
             
-            details = quotation.package_details.copy()
+            details = package_details.copy()
             details["guest_count"] = new_guest_count
             details["base_amount"] = float(new_base_amount)
             quotation.package_details = details
@@ -286,10 +325,6 @@ async def sign_contract(
         base_total = quotation.total_amount if quotation.total_amount is not None else 0
         new_total = Decimal(str(base_total))
         booking.reservation_fee = new_total * dp_factor
-
-    # Strict ID-based identity check
-    is_customer = (current_user.id == booking.user_id)
-    is_caterer = bool(booking.caterer and booking.caterer.user_id == current_user.id)
 
     if is_customer:
         quotation.customer_signature = signature_data

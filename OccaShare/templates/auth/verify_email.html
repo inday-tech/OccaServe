@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verify Email - OccaServe</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}?v={{ static_asset_version('css/styles.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -174,8 +174,8 @@
             text-align: left;
         }
     </style>
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v={{ static_asset_version('css/global/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v={{ static_asset_version('css/global/responsive.css') }}">
 </head>
 
 <body class="auth-page">
@@ -222,6 +222,6 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', path='/js/auth/verify_email.js') }}?v={{ range(100000, 999999) | random }}"></script>
+    <script src="{{ url_for('static', path='/js/auth/verify_email.js') }}?v={{ static_asset_version('js/auth/verify_email.js') }}"></script>
 </body>
 </html>

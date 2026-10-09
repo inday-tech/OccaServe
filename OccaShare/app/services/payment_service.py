@@ -28,6 +28,8 @@ VERIFIED_STATUSES = {
     "fully_paid",
     "partially_paid",
     "confirmed",
+    # Legacy admin verification state; new actions write a canonical paid state.
+    "verified",
 }
 
 REJECTED_STATUSES = {
@@ -328,6 +330,10 @@ class PaymentService:
                 verified_paid = max(verified_paid, total_amount)
             elif payment_status in {"deposit_paid", "partially_paid"}:
                 verified_paid = max(verified_paid, required_deposit or (total_amount * 0.5))
+            elif payment_status == "verified":
+                # Older admin approvals did not persist payment records or
+                # amount_paid, so retain at least the required deposit.
+                verified_paid = max(verified_paid, legacy_paid, required_deposit)
 
         if total_amount > 0:
             verified_paid = min(verified_paid, total_amount)

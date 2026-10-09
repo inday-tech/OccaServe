@@ -3,7 +3,7 @@
 {% block title %}Central Verification: {{ target_user.first_name }} - OccaServe{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ static_asset_version('css/admin/dashboard.css') }}">
 <style>
     .verify-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
     @media (min-width: 1024px) { .verify-grid { grid-template-columns: 2fr 1fr; } }

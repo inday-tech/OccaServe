@@ -340,7 +340,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/chat.js') }}"></script>
+<script src="{{ url_for('static', path='/js/chat.js') }}?v={{ static_asset_version('js/chat.js') }}"></script>
 <script>
     let chatClient;
     let currentPeerId = null;

@@ -3,7 +3,7 @@
 {% block title %}Reviews - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/reviews.css') }}?v={{ range(10000000, 99999999) | random }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/reviews.css') }}?v={{ static_asset_version('css/caterer/reviews.css') }}">
 {% endblock %}
 
 {% block content %}

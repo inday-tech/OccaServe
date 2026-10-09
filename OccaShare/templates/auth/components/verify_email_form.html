@@ -44,4 +44,4 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', path='/js/auth/verify_email.js') }}?v={{ range(100000, 999999) | random }}"></script>
+<script src="{{ url_for('static', path='/js/auth/verify_email.js') }}?v={{ static_asset_version('js/auth/verify_email.js') }}"></script>
