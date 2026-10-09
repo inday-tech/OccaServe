@@ -89,10 +89,9 @@
             const provEl = regForm.querySelector('#province_cust');
             const cityEl = regForm.querySelector('#city_cust');
             const brgyEl = regForm.querySelector('#barangay_cust');
-            const streetEl = regForm.querySelector('#street_cust');
 
             // Force all fields to mark as touched and validate
-            [firstNameEl, middleNameEl, lastNameEl, emailEl, passEl, confirmEl, mobileEl, provEl, cityEl, brgyEl, streetEl].forEach(input => {
+            [firstNameEl, middleNameEl, lastNameEl, emailEl, passEl, confirmEl, mobileEl, provEl, cityEl, brgyEl].forEach(input => {
                 if (input) {
                     input.classList.add('touched');
                     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -106,8 +105,7 @@
                         else if (input.id === 'province_cust') prefix = 'provinceCust';
                         else if (input.id === 'city_cust') prefix = 'cityCust';
                         else if (input.id === 'barangay_cust') prefix = 'barangayCust';
-                        else if (input.id === 'street_cust') prefix = 'streetCust';
-                        
+
                         if (typeof window.setDiamondError === 'function') {
                             window.setDiamondError(prefix, "Required");
                         }

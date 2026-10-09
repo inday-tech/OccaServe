@@ -728,6 +728,8 @@ body.modal-open {
     background: var(--auth-primary);
     color: white;
     animation: badgePulse 1.5s infinite;
+}
+
 /* ===================================================
    ELITE KYC GRID & CARDS (Rock-Solid Stability)
    =================================================== */
@@ -1843,8 +1845,11 @@ body.modal-open {
 /* --- MOBILE (max 600px) --- */
 @media (max-width: 600px) {
     .auth-modal-overlay {
-        padding: 1rem 0 !important;
-        align-items: flex-start !important;
+        height: 100dvh !important;
+        min-height: 100dvh;
+        box-sizing: border-box;
+        padding: 0.75rem 0 max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
+        align-items: center !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch;
     }
@@ -1853,8 +1858,8 @@ body.modal-open {
         width: 95% !important;
         height: auto !important;
         max-width: 95% !important;
-        max-height: none !important;
-        margin: 1rem auto !important;
+        max-height: calc(100dvh - 1.5rem) !important;
+        margin: auto !important;
         border-radius: 1.25rem !important;
         transform: scale(0.95) translateY(20px) !important;
         box-shadow: 0 10px 40px rgba(0,0,0,0.2) !important;
@@ -1870,8 +1875,10 @@ body.modal-open {
 
     .auth-modal-content {
         height: auto !important;
-        max-height: none !important;
-        overflow-y: visible !important;
+        max-height: calc(100dvh - 1.5rem) !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
         border-radius: 1.25rem !important;
     }
 
@@ -1883,14 +1890,21 @@ body.modal-open {
     }
 
     .auth-modal-close {
-        top: 1rem !important;
-        right: 1rem !important;
+        width: 44px !important;
+        height: 44px !important;
+        min-width: 44px !important;
+        min-height: 44px !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+        aspect-ratio: 1 / 1;
+        flex: 0 0 44px;
+        top: 0.75rem !important;
+        right: 0.75rem !important;
         z-index: 10010 !important;
+        border-radius: 50% !important;
         background: rgba(255,255,255,0.95) !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important;
     }
-    }
-}
 
     /* Progress steps — hide text labels, shrink circles */
     .progress-step .step-label {
@@ -1954,11 +1968,24 @@ body.modal-open {
 
     .btn-container .btn-primary,
     .btn-container .btn-secondary,
-    .btn-nav {
+    .btn-nav,
+    #authModalLogin .btn-primary-action,
+    #authModalSignup .btn-luxury-submit,
+    #authModalForgot .btn-primary-action,
+    #authModalVerify .btn-primary-action,
+    #catererNavButtonsContainer > button {
         width: 100% !important;
         min-width: unset !important;
+        max-width: none !important;
+        box-sizing: border-box !important;
+        align-self: stretch;
         padding: 0.9rem 1rem !important;
         font-size: 0.95rem !important;
+    }
+
+    #catererNavButtonsContainer {
+        flex-direction: column-reverse !important;
+        align-items: stretch !important;
     }
 
     /* Primary action button always full-width */
@@ -2021,4 +2048,3 @@ body.modal-open {
         font-size: 0.9rem !important;
     }
 }
-

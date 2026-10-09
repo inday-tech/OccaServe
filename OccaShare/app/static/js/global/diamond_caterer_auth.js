@@ -212,14 +212,6 @@
                 window.setDiamondError('barangayCat', "", false);
             }
 
-            const streetEl = document.getElementById('street_cat');
-            if (streetEl && (!streetEl.value || streetEl.value.trim() === '')) {
-                window.setDiamondError('streetCat', "Required");
-                valid = false;
-            } else {
-                window.setDiamondError('streetCat', "", false);
-            }
-
             const coverageEl = document.getElementById('coverage_area_cat');
             if (coverageEl && (!coverageEl.value || coverageEl.value.trim() === '')) {
                 window.setDiamondError('coverageAreaCat', "Required");
@@ -366,13 +358,15 @@
         const street = document.getElementById('street_cat')?.value || '';
         const hiddenAddress = document.getElementById('address_cat_hidden');
         if (hiddenAddress) {
-            hiddenAddress.value = `${street}, ${brgy}, ${city}, ${prov}`.replace(/^[\s,]+|[\s,]+$/g, '');
+            hiddenAddress.value = [street, brgy, city, prov]
+                .map(part => part.trim())
+                .filter(Boolean)
+                .join(', ');
         }
     }
 
     async function finalExecuteSubmit() {
         const form = document.getElementById('catererForm');
-        const formData = new FormData(form);
         const submitBtn = document.getElementById('nextBtnCat');
 
         const originalHtml = submitBtn ? submitBtn.innerHTML : '<span>Create Account</span> <i class="fas fa-user-plus" style="margin-left: 6px;"></i>';
@@ -383,6 +377,7 @@
 
         try {
             updateAddressCat();
+            const formData = new FormData(form);
 
             // Consolidate checkboxes
             const checkboxes = form.querySelectorAll('input[name="event_type_choice"]:checked');
@@ -511,7 +506,10 @@
         const street = document.getElementById('street_cat')?.value;
         const hiddenAddress = document.getElementById('address_cat_hidden');
         if (hiddenAddress && city && brgy) {
-            hiddenAddress.value = `${street || ''}, ${brgy}, ${city}, ${prov}`;
+            hiddenAddress.value = [street, brgy, city, prov]
+                .map(part => (part || '').trim())
+                .filter(Boolean)
+                .join(', ');
         }
     }
 
@@ -1360,11 +1358,6 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         window.initCatererGeoDropdowns();
-
-        // ── Step 2: Street Address ───────────────────────────────────────────
-        document.getElementById('street_cat')?.addEventListener('input', function () {
-            if (this.value.trim()) window.setDiamondError('streetCat', '', false);
-        });
 
         // ── Step 2: Business Type ────────────────────────────────────────────
         document.getElementById('business_type')?.addEventListener('change', function () {

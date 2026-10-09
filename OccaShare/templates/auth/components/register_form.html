@@ -105,10 +105,9 @@
                 </div>
             </div>
             <div class="form-group">
-                <label for="street_cust">Street / Landmark <span style="color:#ef4444;">*</span></label>
+                <label for="street_cust">Street / Landmark (Optional)</label>
                 <div class="input-wrapper" id="streetCustWrapper">
-                    <input type="text" id="street_cust" name="street_address" class="minimal-input" required>
-                    <div id="streetCustError" class="error-drawer">Required</div>
+                    <input type="text" id="street_cust" name="street_address" class="minimal-input">
                 </div>
             </div>
         </div>
@@ -187,7 +186,10 @@
 
             function updateHiddenAddress() {
                 if(hiddenAddress) {
-                    hiddenAddress.value = `${streetInput?.value || ''}, ${brgySelect?.value || ''}, ${citySelect?.value || ''}, ${provSelect?.value || ''}`;
+                    hiddenAddress.value = [streetInput?.value, brgySelect?.value, citySelect?.value, provSelect?.value]
+                        .map(part => (part || '').trim())
+                        .filter(Boolean)
+                        .join(', ');
                 }
             }
 

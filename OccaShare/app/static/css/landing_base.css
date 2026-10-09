@@ -1,8 +1,52 @@
 /* Fix for overlapping header on tablet/small desktop */
+@media (min-width: 1025px) {
+    .navbar .nav-container {
+        width: calc(100% - clamp(48px, 8vw, 160px)) !important;
+        max-width: none !important;
+        padding-right: 0 !important;
+        padding-left: 0 !important;
+        position: relative;
+    }
+
+    .navbar .nav-menu {
+        flex: 1;
+        min-width: 0;
+        justify-content: flex-end;
+        gap: 0;
+    }
+
+    .navbar .nav-links {
+        position: absolute;
+        left: 50%;
+        margin: 0;
+        transform: translateX(-50%);
+    }
+
+    .navbar .nav-auth {
+        flex-shrink: 0;
+        margin: 0;
+    }
+
+    .navbar .nav-auth #navLoginBtn,
+    .navbar .nav-auth #navSignupBtn {
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 44px !important;
+        min-height: 44px;
+        line-height: 1;
+        margin: 0;
+        padding: 0 1rem !important;
+        vertical-align: middle;
+    }
+}
+
 @media (min-width: 1025px) and (max-width: 1200px) {
     .nav-links { gap: 0.85rem !important; }
     .nav-links a { font-size: 0.85rem !important; }
     .nav-auth { gap: 0.5rem !important; }
+    .navbar .nav-auth { margin: 0; }
     .nav-auth .btn-text, .nav-auth .btn-primary { font-size: 0.85rem !important; padding: 0.4rem 0.8rem !important; }
 }
 
@@ -45,6 +89,21 @@
 .nav-auth .btn-primary.active-page {
     background: var(--primary-dark, #E66A45) !important;
     box-shadow: 0 0 0 3px rgba(255, 123, 84, 0.3);
+}
+
+.nav-auth #navSignupBtn,
+.nav-auth #navSignupBtn:hover,
+.nav-auth #navSignupBtn.active-page {
+    background: transparent !important;
+    color: var(--primary-color, #FF7B54) !important;
+    padding: 0.5rem 1rem !important;
+    border: 0 !important;
+    border-bottom: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0;
+    text-decoration: none !important;
+    transform: none;
 }
 
 /* ===== FOOTER ===== */
