@@ -24,6 +24,7 @@ const initKyc = () => {
     let livenessSubmitting = false;
     let livenessStartPromise = null;
     let livenessResetPromise = Promise.resolve();
+    let idSubmissionInFlight = false;
     let pollingInterval = null;
     let ws = null;
     let availableDevices = [];
@@ -1184,7 +1185,12 @@ const initKyc = () => {
 
     // ─── SAVE & CONTINUE → COMPLIANCE → UPLOAD → LIVENESS ────────────
     window.saveOcrAndContinue = async function () {
+        if (idSubmissionInFlight) return;
+        idSubmissionInFlight = true;
         const modal = document.getElementById('ocr-verification-modal');
+        const saveButton = modal && modal.querySelector('.btn-modal-primary');
+        if (saveButton) saveButton.disabled = true;
+        try {
         modal.classList.remove('visible');
         setTimeout(() => { modal.style.display = 'none'; }, 350);
 
@@ -1226,6 +1232,10 @@ const initKyc = () => {
         // After compliance animation, proceed to actual upload
         document.getElementById('compliance-checking').style.display = 'none';
         await performIdUpload();
+        } finally {
+            idSubmissionInFlight = false;
+            if (saveButton) saveButton.disabled = false;
+        }
     };
 
     async function runComplianceAnimation() {
@@ -1459,6 +1469,7 @@ const initKyc = () => {
         const title = document.getElementById('liveness-start-title');
         const message = document.getElementById('liveness-start-message');
         const retry = document.getElementById('liveness-start-retry');
+        const returnToId = document.getElementById('liveness-return-to-id');
         const icon = state && state.querySelector('.liveness-start-icon');
         const cameraContent = document.getElementById('liveness-camera-content');
         if (state) {
@@ -1474,6 +1485,7 @@ const initKyc = () => {
             retry.disabled = true;
             retry.textContent = 'Retrying…';
         }
+        if (returnToId) returnToId.hidden = true;
     }
 
     function showStartError(titleText, messageText) {
@@ -1481,6 +1493,7 @@ const initKyc = () => {
         const title = document.getElementById('liveness-start-title');
         const message = document.getElementById('liveness-start-message');
         const retry = document.getElementById('liveness-start-retry');
+        const returnToId = document.getElementById('liveness-return-to-id');
         const icon = state && state.querySelector('.liveness-start-icon');
         const cameraContent = document.getElementById('liveness-camera-content');
         if (cameraContent) cameraContent.hidden = true;
@@ -1496,7 +1509,41 @@ const initKyc = () => {
             retry.disabled = false;
             retry.textContent = 'Try Again';
         }
+        if (returnToId) returnToId.hidden = true;
     }
+
+    function showIdPrerequisiteError() {
+        showStartError(
+            'Complete your ID verification first',
+            'Your ID verification must be completed before we can start the face verification step.'
+        );
+        const retry = document.getElementById('liveness-start-retry');
+        const returnToId = document.getElementById('liveness-return-to-id');
+        if (retry) retry.hidden = true;
+        if (returnToId) returnToId.hidden = false;
+    }
+
+    function resetFailedLivenessAttempt() {
+        livenessResetPromise = fetch(`/api/bookings/kyc/reset-liveness?booking_id=${encodeURIComponent(bookingId)}`, { method: 'POST' })
+            .then((response) => {
+                if (!response.ok) throw new Error('Could not reset this booking’s liveness attempt.');
+            });
+        return livenessResetPromise;
+    }
+
+    window.returnToIdVerification = function () {
+        const scanner = document.getElementById('scanner-container');
+        const idForm = document.getElementById('step-id-form');
+        const mainContent = document.getElementById('kyc-main-content');
+        if (scanner) scanner.style.display = 'none';
+        if (mainContent) mainContent.style.display = 'block';
+        if (idForm) {
+            idForm.classList.add('active');
+            idForm.style.display = 'block';
+            idForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        if (typeof updateStatusTracker === 'function') updateStatusTracker(1);
+    };
 
     window.retryLivenessStart = async function () {
         const retry = document.getElementById('liveness-start-retry');
@@ -1506,14 +1553,9 @@ const initKyc = () => {
             retry.textContent = 'Retrying…';
         }
 
-        // A previous liveness attempt may have been marked liveliness_failed
-        // while this page was unloaded. Reset that attempt before requesting a
-        // fresh session; the endpoint only changes failed attempts and is
-        // scoped to the authenticated user and this booking.
-        livenessResetPromise = fetch(`/api/bookings/kyc/reset-liveness?booking_id=${encodeURIComponent(bookingId)}`, { method: 'POST' })
-            .then((response) => {
-                if (!response.ok) throw new Error('Could not reset this booking’s liveness attempt.');
-            });
+        // The endpoint changes only failed attempts and is scoped to this user
+        // and booking. It is safe when a prior attempt already reset in-page.
+        resetFailedLivenessAttempt();
         await window.startRealtimeScanner();
     };
 
@@ -1564,6 +1606,7 @@ const initKyc = () => {
             if (!initRes.ok || !initData.session_token) {
                 const initError = new Error('Liveness session initialization failed');
                 initError.status = initRes.status;
+                initError.detail = initData.detail || '';
                 throw initError;
             }
             livenessSessionToken = initData.session_token;
@@ -1578,21 +1621,30 @@ const initKyc = () => {
             console.error("[KYC] Failed to initialize liveness session:", initErr);
             const timedOut = initErr.name === 'AbortError';
             const alreadyProcessing = initErr.status === 409;
-            const sessionNeedsRestart = initErr.status === 400;
+            const idVerificationIncomplete = initErr.status === 400
+                && initErr.detail === 'ID verification is not ready for liveness verification.';
             const sessionExpired = initErr.status === 401 || initErr.status === 403;
             const initTitle = timedOut || initErr.status >= 500 || !initErr.status
                 ? 'Verification Temporarily Unavailable'
                 : alreadyProcessing
                     ? 'Verification already in progress'
+                    : idVerificationIncomplete
+                        ? 'Complete your ID verification first'
                     : sessionExpired
                         ? 'Sign-in required'
-                        : 'Verification needs to restart';
+                        : initErr.status === 400
+                            ? 'Verification request could not be accepted'
+                            : 'Verification could not be started';
+            if (idVerificationIncomplete) {
+                showIdPrerequisiteError();
+                return;
+            }
             showStartError(initTitle, timedOut
                 ? 'The verification service took too long to respond. Please try again in a moment.'
                 : alreadyProcessing
                     ? 'Verification is already in progress. Refresh this page in a moment to check its status.'
-                    : sessionNeedsRestart
-                        ? 'This verification step needs to be restarted. Refresh the page and try again.'
+                    : initErr.status === 400
+                        ? (initErr.detail || 'The verification request is not valid in the current step.')
                         : sessionExpired
                             ? 'Your sign-in may have expired. Sign in again, then retry verification.'
                             : 'We could not start face verification. Check your connection and try again.');
@@ -2307,6 +2359,9 @@ const initKyc = () => {
         setProgressRing(0);
         updateInstruction("Preparing camera...", "Position your face within the circle");
 
+        // On a reload the failed attempt has not been reset by the failure
+        // handler in this page instance, so reset it before asking for a token.
+        resetFailedLivenessAttempt();
         window.startRealtimeScanner();
     };
 

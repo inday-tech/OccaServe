@@ -147,7 +147,7 @@ async def extract_id(
         )
     
     # Update/Create verification record as pending_confirmation
-    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc()).first()
+    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc(), models.IdentityVerification.id.desc()).first()
     if not kyc_record or kyc_record.verification_status in ['VERIFIED', 'EXPIRED', 'rejected', 'blocked', 'verified']:
         kyc_record = models.IdentityVerification(user_id=current_user.id)
         db.add(kyc_record)
@@ -191,7 +191,7 @@ async def upload_id(
     # Fintech Attempt Limiter
     if current_user.kyc_attempts >= 3:
         # Check if they already have an IdentityVerification record to block
-        kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc()).first()
+        kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc(), models.IdentityVerification.id.desc()).first()
         if kyc_record:
             kyc_record.verification_status = "blocked"
             kyc_record.failure_reason = "Maximum KYC attempts (3) reached. Please contact support."
@@ -227,7 +227,7 @@ async def upload_id(
 
 
     # Create/Update Verification Record
-    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc()).first()
+    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc(), models.IdentityVerification.id.desc()).first()
     if not kyc_record or kyc_record.verification_status in ['VERIFIED', 'EXPIRED', 'rejected', 'blocked', 'verified']:
         kyc_record = models.IdentityVerification(user_id=current_user.id, booking_id=booking_id)
         db.add(kyc_record)
@@ -345,10 +345,13 @@ async def upload_id(
         address=address
     )
     
-    if id_result.get("status") in ["rejected", "mismatched", "error"] and id_result.get("failure_reason"):
+    if id_result.get("status") in ["rejected", "mismatched", "error"]:
+        kyc_record.verification_status = "failed"
+        kyc_record.failure_reason = id_result.get("failure_reason") or "ID document could not be verified."
+        db.commit()
         raise HTTPException(
             status_code=400,
-            detail=f"Identity Verification Failed | {id_result.get('failure_reason')}"
+            detail=f"Identity Verification Failed | {kyc_record.failure_reason}"
         )
 
     if id_result.get("name_matched") == False:
@@ -361,14 +364,20 @@ async def upload_id(
         if isinstance(ocr_last, dict): ocr_last = ocr_last.get("value", "")
         
         if not str(ocr_first).strip() and not str(ocr_last).strip():
+            kyc_record.verification_status = "failed"
+            kyc_record.failure_reason = "Extraction Error | Could not read your ID. Please make sure the photo is clear and not blurry."
+            db.commit()
             raise HTTPException(
                 status_code=400,
-                detail="Extraction Error | Could not read your ID. Please make sure the photo is clear and not blurry."
+                detail=kyc_record.failure_reason
             )
             
+        kyc_record.verification_status = "failed"
+        kyc_record.failure_reason = "Identity Verification Failed | The name on your ID does not match your registered name. Please upload your own valid ID."
+        db.commit()
         raise HTTPException(
             status_code=400,
-            detail="Identity Verification Failed | The name on your ID does not match your registered name. Please upload your own valid ID."
+            detail=kyc_record.failure_reason
         )
         
     # Ensure ocr_data is populated even if verification service fails to extract it
@@ -427,7 +436,7 @@ async def init_kyc_session(
     kyc_record = db.query(models.IdentityVerification).filter(
         models.IdentityVerification.user_id == current_user.id,
         models.IdentityVerification.booking_id == booking_id
-    ).order_by(models.IdentityVerification.created_at.desc()).first()
+    ).order_by(models.IdentityVerification.created_at.desc(), models.IdentityVerification.id.desc()).first()
     if not kyc_record or kyc_record.verification_status != "pending_liveliness":
         raise HTTPException(status_code=400, detail="ID verification is not ready for liveness verification.")
 
@@ -486,7 +495,7 @@ async def verify_full(
     kyc_record = db.query(models.IdentityVerification).filter(
         models.IdentityVerification.user_id == current_user.id,
         models.IdentityVerification.booking_id == booking_id
-    ).order_by(models.IdentityVerification.created_at.desc()).first()
+    ).order_by(models.IdentityVerification.created_at.desc(), models.IdentityVerification.id.desc()).first()
     if not kyc_record or kyc_record.verification_status != "pending_liveliness":
         raise HTTPException(status_code=400, detail="KYC process not initialized or blocked.")
 
@@ -933,7 +942,7 @@ async def reset_kyc_status(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc()).first()
+    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).order_by(models.IdentityVerification.created_at.desc(), models.IdentityVerification.id.desc()).first()
     if kyc_record:
         kyc_record.verification_status = "pending"
         kyc_record.failure_reason = None
@@ -956,7 +965,7 @@ async def reset_liveness_status(
     kyc_record = db.query(models.IdentityVerification).filter(
         models.IdentityVerification.user_id == current_user.id,
         models.IdentityVerification.booking_id == booking_id
-    ).order_by(models.IdentityVerification.created_at.desc()).first()
+    ).order_by(models.IdentityVerification.created_at.desc(), models.IdentityVerification.id.desc()).first()
     if kyc_record and kyc_record.verification_status == "liveliness_failed":
         kyc_record.verification_status = "pending_liveliness"
         kyc_record.failure_reason = None
@@ -982,7 +991,7 @@ async def get_kyc_status(
     kyc_record = db.query(models.IdentityVerification).filter(
         models.IdentityVerification.user_id == current_user.id,
         models.IdentityVerification.booking_id == booking_id
-    ).order_by(models.IdentityVerification.created_at.desc()).first()
+    ).order_by(models.IdentityVerification.created_at.desc(), models.IdentityVerification.id.desc()).first()
     
     # If blocked or rejected on the main compliance record, yield that
     if kyc_record and kyc_record.verification_status in ["blocked", "rejected"]:

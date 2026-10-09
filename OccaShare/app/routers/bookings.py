@@ -2305,11 +2305,22 @@ async def step_kyc_page(booking_id: int, request: Request, return_to: Optional[s
         elif booking.document_type == 'service_agreement':
             return RedirectResponse(url=f"/bookings/step/quotation/{booking.id}", status_code=303)
 
+    # KYC is booking-bound. Do not let a verification from another booking
+    # drive this page's step visibility or trigger a premature liveness init.
+    kyc_record = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.user_id == user.id,
+        models.IdentityVerification.booking_id == booking_id
+    ).order_by(
+        models.IdentityVerification.created_at.desc(),
+        models.IdentityVerification.id.desc()
+    ).first()
+
     return templates.TemplateResponse("customer/booking_wizard/step_kyc.html", {
         "request": request,
         "booking_id": booking_id,
         "booking": booking,
         "user": user,
+        "kyc_record": kyc_record,
         "current_step": 2,
         "active_page": "bookings",
         "return_to": return_to,

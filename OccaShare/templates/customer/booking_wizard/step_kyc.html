@@ -1329,7 +1329,7 @@
         </div>
         {% endif %}
 
-        {% set kyc = user.identity_verification %}
+        {% set kyc = kyc_record %}
         {% if kyc and kyc.verification_status == 'rejected' %}
         <div class="alert alert-danger">
             <i class="fas fa-times-circle"></i>
@@ -1358,7 +1358,7 @@
             </div>
         </div>
         
-        {% if user.identity_verification and user.identity_verification.document_url %}
+        {% if kyc_record and kyc_record.document_url %}
         <!-- Executive Verified Identity Pass Card -->
         <div class="kyc-locked-preview" style="background: #ffffff; border: 1.5px solid var(--kyc-slate-200); border-radius: 1.75rem; padding: 2.5rem 2rem; max-width: 800px; margin: 0 auto 2.5rem; box-shadow: 0 15px 35px -10px rgba(0,0,0,0.05); text-align: center; animation: fadeIn 0.5s ease;">
             <div style="margin-bottom: 2rem;">
@@ -1378,15 +1378,15 @@
                             <span style="background: #ecfdf5; color: #059669; font-size: 0.7rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 1rem; border: 1px solid #a7f3d0;"><i class="fas fa-check mr-1"></i> Validated</span>
                         </div>
                         <div style="background: #0f172a; border-radius: 0.85rem; padding: 0.5rem; display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 180px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); margin-bottom: 1rem;">
-                            <img src="{{ user.identity_verification.document_url }}" alt="Submitted ID" style="max-height: 220px; width: auto; max-width: 100%; object-fit: contain; border-radius: 0.5rem;">
+                            <img src="{{ kyc_record.document_url }}" alt="Submitted ID" style="max-height: 220px; width: auto; max-width: 100%; object-fit: contain; border-radius: 0.5rem;">
                         </div>
                     </div>
                     <div style="font-size: 0.9rem; font-weight: 800; color: #1e293b; background: #ffffff; padding: 0.6rem 1rem; border-radius: 0.75rem; border: 1px solid #cbd5e1; display: inline-block;">
-                        <i class="fas fa-fingerprint text-muted mr-1"></i> {{ user.identity_verification.id_type or 'Official Government ID' }}
+                        <i class="fas fa-fingerprint text-muted mr-1"></i> {{ kyc_record.id_type or 'Official Government ID' }}
                     </div>
                 </div>
 
-                {% if user.identity_verification.selfie_url %}
+                {% if kyc_record.selfie_url %}
                 <!-- Biometric Selfie Display Box -->
                 <div style="flex: 1; min-width: 240px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 1.25rem; padding: 1.5rem; text-align: center; display: flex; flex-direction: column; justify-content: space-between; box-shadow: inset 0 2px 4px rgba(0,0,0,0.01);">
                     <div>
@@ -1396,7 +1396,7 @@
                         </div>
                         <div style="padding: 0.5rem 0; display: flex; justify-content: center; align-items: center;">
                             <div style="position: relative; display: inline-block;">
-                                <img src="{{ user.identity_verification.selfie_url }}" alt="Submitted Selfie" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid #10b981; box-shadow: 0 8px 25px rgba(16, 185, 129, 0.25); object-position: center top;">
+                                <img src="{{ kyc_record.selfie_url }}" alt="Submitted Selfie" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid #10b981; box-shadow: 0 8px 25px rgba(16, 185, 129, 0.25); object-position: center top;">
                                 <div style="position: absolute; bottom: 4px; right: 4px; width: 32px; height: 32px; background: #10b981; color: white; border-radius: 50%; border: 3px solid #ffffff; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; box-shadow: 0 2px 6px rgba(0,0,0,0.2);">
                                     <i class="fas fa-check"></i>
                                 </div>
@@ -1448,10 +1448,10 @@
         </script>
         {% endif %}
         <!-- Enhanced Step Indicator with Icons -->
-        {% set kyc_status = user.identity_verification.verification_status if user.identity_verification else 'pending'
+        {% set kyc_status = kyc_record.verification_status if kyc_record else 'pending'
         %}
         <div class="kyc-stepper-minimal">
-            <div class="step-node {% if kyc_status in ['pending', 'pending_confirmation', 'rejected', 'failed'] %}active{% elif user.identity_verification and user.identity_verification.document_url and kyc_status != 'pending_confirmation' %}completed{% endif %}"
+            <div class="step-node {% if kyc_status in ['pending', 'pending_confirmation', 'rejected', 'failed'] %}active{% elif kyc_record and kyc_record.document_url and kyc_status != 'pending_confirmation' %}completed{% endif %}"
                 id="node-1">
                 <div class="node-icon"><i class="fas fa-id-card"></i></div>
                 <span class="node-label">ID Details</span>
@@ -1573,7 +1573,7 @@
 
         <div id="kyc-main-content">
             <!-- Phase 1: Form & Options -->
-            {% set kyc_status = user.identity_verification.verification_status if user.identity_verification else
+            {% set kyc_status = kyc_record.verification_status if kyc_record else
             'pending' %}
             <div id="step-id-form"
                 class="kyc-substep {% if kyc_status in ['pending', 'pending_confirmation', 'failed', 'rejected'] %}active{% endif %}"
@@ -1901,19 +1901,19 @@
                             <div style="flex: 1;">
                                 <div
                                     style="font-weight: 800; font-size: 0.9rem; color: #b91c1c; margin-bottom: 0.25rem;">
-                                    {% if user.identity_verification and user.identity_verification.failure_reason and ' | ' in user.identity_verification.failure_reason %}
-                                        {{ user.identity_verification.failure_reason.split(' | ')[0] }}
+                                    {% if kyc_record and kyc_record.failure_reason and ' | ' in kyc_record.failure_reason %}
+                                        {{ kyc_record.failure_reason.split(' | ')[0] }}
                                     {% else %}
                                         Verification Failed
                                     {% endif %}
                                 </div>
                                 <div id="liveness-retry-message"
                                     style="font-size: 0.82rem; color: #7f1d1d; font-weight: 600; margin-bottom: 0.6rem;">
-                                    {% if user.identity_verification and user.identity_verification.failure_reason %}
-                                        {% if ' | ' in user.identity_verification.failure_reason %}
-                                            {{ user.identity_verification.failure_reason.split(' | ')[1] }}
+                                    {% if kyc_record and kyc_record.failure_reason %}
+                                        {% if ' | ' in kyc_record.failure_reason %}
+                                            {{ kyc_record.failure_reason.split(' | ')[1] }}
                                         {% else %}
-                                            {{ user.identity_verification.failure_reason }}
+                                            {{ kyc_record.failure_reason }}
                                         {% endif %}
                                     {% endif %}</div>
                                 <ul
@@ -1947,6 +1947,7 @@
                             <p id="liveness-start-message">Connecting to the verification service and camera…</p>
                             <div class="liveness-start-actions">
                                 <button id="liveness-start-retry" type="button" class="liveness-start-primary" onclick="retryLivenessStart()" hidden>Try Again</button>
+                                <button id="liveness-return-to-id" type="button" class="liveness-start-primary" onclick="returnToIdVerification()" hidden>Complete ID Verification</button>
                                 <a class="liveness-start-help" href="/support/help-center">Get Help</a>
                             </div>
                         </div>
@@ -2038,7 +2039,7 @@
 
             <!-- WAITING FOR CATERER APPROVAL -->
             <div id="kyc-waiting-approval"
-                style="display: {% if user.identity_verification and user.identity_verification.verification_status in ['manual_review', 'pending_manual_review'] %}block{% else %}none{% endif %};" class="processing-container">
+                style="display: {% if kyc_record and kyc_record.verification_status in ['manual_review', 'pending_manual_review'] %}block{% else %}none{% endif %};" class="processing-container">
                 <div class="premium-scanner-box">
                     <div class="spinner-ring spinner-ring-outer"></div>
                     <div class="spinner-ring spinner-ring-middle"></div>
