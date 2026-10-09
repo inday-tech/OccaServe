@@ -87,10 +87,14 @@
                 <div class="form-group">
                     <label for="mobile_number_cat">Contact Number <span style="color:#ef4444;">*</span></label>
                     <div class="input-wrapper" id="mobileCatWrapper">
-                        <input type="tel" id="mobile_number_cat" name="mobile_number" class="minimal-input" required
-                            maxlength="11"
-                            value="{{ user.phone_number if user else '' }}">
-                        <div id="mobileCatError" class="error-drawer">Format: 09XXXXXXXXX</div>
+                        <div class="phone-input-control">
+                            <span class="phone-country-code" aria-hidden="true">+63</span>
+                            <input type="tel" id="mobile_number_cat" name="mobile_number"
+                                class="minimal-input phone-national-input" required inputmode="numeric"
+                                autocomplete="tel-national" maxlength="16" placeholder="9XXXXXXXXX"
+                                value="{{ user.phone_number if user else '' }}">
+                        </div>
+                        <div id="mobileCatError" class="error-drawer">Enter 9XXXXXXXXX; +63 is already added.</div>
                     </div>
                 </div>
                 {% if not user or user.auth_provider == 'email' %}

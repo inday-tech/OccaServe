@@ -65,9 +65,13 @@
         <div class="form-group">
             <label for="mobile_number">Mobile Number <span style="color:#ef4444;">*</span></label>
             <div class="input-wrapper" id="mobileWrapper">
-                <input type="tel" id="mobile_number" name="mobile_number" class="minimal-input" required
-                    maxlength="11"
+                <div class="phone-input-control">
+                    <span class="phone-country-code" aria-hidden="true">+63</span>
+                    <input type="tel" id="mobile_number" name="mobile_number"
+                        class="minimal-input phone-national-input" required inputmode="numeric"
+                        autocomplete="tel-national" maxlength="16" placeholder="9XXXXXXXXX"
                     value="{{ user.phone_number if user else (submitted_data.mobile_number if submitted_data else '') }}">
+                </div>
                 <div id="mobileError" class="error-drawer">Required</div>
             </div>
         </div>

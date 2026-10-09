@@ -125,7 +125,7 @@
             }
 
             if (mobileEl && mobileEl.value && !regForm.querySelector('#mobileWrapper.error')) {
-                const val = mobileEl.value.replace(/\s/g, '');
+                const val = window.normalizePhilippineMobileNumber(mobileEl.value);
                 try {
                     const res = await fetch(`/auth/check-phone?phone=${encodeURIComponent(val)}`);
                     const data = await res.json();
@@ -153,6 +153,9 @@
             formData.set('middle_name', middleName);
             formData.set('last_name', lastName);
             formData.set('full_name', fullName);
+            if (mobileEl) {
+                formData.set('mobile_number', window.normalizePhilippineMobileNumber(mobileEl.value));
+            }
 
             const submitBtn = regForm.querySelector('button[type="submit"]');
             const originalBtnText = submitBtn.innerHTML;

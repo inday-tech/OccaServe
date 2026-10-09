@@ -182,7 +182,7 @@
                     } catch (err) { console.error("Email uniqueness check failed", err); }
                 }
                 if (mobileEl && mobileEl.value) {
-                    const cleanPhone = mobileEl.value.replace(/\s/g, '');
+                    const cleanPhone = window.normalizePhilippineMobileNumber(mobileEl.value);
                     try {
                         const response = await fetch(`/auth/check-phone?phone=${encodeURIComponent(cleanPhone)}`);
                         const data = await response.json();
@@ -395,6 +395,10 @@
             const ln = document.getElementById('last_name_cat')?.value.trim() || '';
             const fn = document.getElementById('first_name_cat')?.value.trim() || '';
             const mn = document.getElementById('middle_name_cat')?.value.trim() || '';
+            const mobileEl = document.getElementById('mobile_number_cat');
+            if (mobileEl) {
+                formData.set('mobile_number', window.normalizePhilippineMobileNumber(mobileEl.value));
+            }
             formData.set('last_name', ln);
             formData.set('first_name', fn);
             formData.set('middle_name', mn);

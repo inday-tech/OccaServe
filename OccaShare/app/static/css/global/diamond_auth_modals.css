@@ -178,6 +178,28 @@
     font-family: 'Poppins', sans-serif;
 }
 
+.phone-input-control {
+    position: relative;
+}
+
+.phone-country-code {
+    position: absolute;
+    top: 50%;
+    left: 1.15rem;
+    z-index: 1;
+    color: var(--auth-slate-600);
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.phone-input-control .phone-national-input {
+    padding-left: 4rem !important;
+}
+
 .auth-modal-content .minimal-input:focus {
     outline: none;
     border-color: var(--auth-primary);
