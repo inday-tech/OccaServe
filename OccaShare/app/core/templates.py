@@ -1,4 +1,5 @@
 from fastapi.templating import Jinja2Templates
+from jinja2 import pass_context
 from ..db.database import SessionLocal
 from ..db import models
 import os
@@ -7,14 +8,43 @@ import os
 templates = Jinja2Templates(directory="templates")
 
 
-def website_config():
+def website_config_snapshot(config):
+    return {
+        "id": config.id,
+        "site_name": config.site_name,
+        "support_email": config.support_email,
+        "logo_url": config.logo_url,
+        "favicon_url": config.favicon_url,
+        "facebook_link": config.facebook_link,
+        "instagram_link": config.instagram_link,
+        "twitter_link": config.twitter_link,
+        "commission_rate": config.commission_rate,
+        "commission_fixed_amount": config.commission_fixed_amount,
+        "max_file_size_mb": config.max_file_size_mb,
+        "maintenance_mode": config.maintenance_mode,
+        "maintenance_message": config.maintenance_message,
+    }
+
+
+@pass_context
+def website_config(context):
     """
     Fetches and returns website configuration (logo, favicon, branding, etc.)
     as a plain dict to avoid SQLAlchemy DetachedInstanceError.
     This is registered as a Jinja2 global so templates can call it directly:
         {% set wconfig = website_config() %}
     """
-    db = SessionLocal()
+    request = context.get("request")
+    request_state = getattr(request, "state", None)
+    cached_config = getattr(request_state, "website_config", None)
+    if cached_config is not None:
+        return cached_config
+
+    db = getattr(request_state, "db", None)
+    owns_db = db is None
+    if owns_db:
+        db = SessionLocal()
+
     try:
         config = db.query(models.WebsiteConfig).first()
         if not config:
@@ -24,26 +54,16 @@ def website_config():
             db.commit()
             db.refresh(config)
 
-        return {
-            "id": config.id,
-            "site_name": config.site_name,
-            "support_email": config.support_email,
-            "logo_url": config.logo_url,
-            "favicon_url": config.favicon_url,
-            "facebook_link": config.facebook_link,
-            "instagram_link": config.instagram_link,
-            "twitter_link": config.twitter_link,
-            "commission_rate": config.commission_rate,
-            "commission_fixed_amount": config.commission_fixed_amount,
-            "max_file_size_mb": config.max_file_size_mb,
-            "maintenance_mode": config.maintenance_mode,
-            "maintenance_message": config.maintenance_message,
-        }
+        snapshot = website_config_snapshot(config)
+        if request_state is not None:
+            request_state.website_config = snapshot
+        return snapshot
     except Exception as e:
         print(f"[TEMPLATES] website_config() error: {e}")
         return None
     finally:
-        db.close()
+        if owns_db:
+            db.close()
 
 
 def hex_to_rgb(hex_color: str) -> str:
@@ -83,4 +103,3 @@ def google_maps_api_key():
 templates.env.globals["google_maps_api_key"] = google_maps_api_key
 
 # Trigger template reload and verify changes
-

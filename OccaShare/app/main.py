@@ -556,10 +556,17 @@ async def maintenance_middleware(request: Request, call_next):
     if path.startswith("/static") or path.startswith("/admin") or path.startswith("/api/admin") or path == "/favicon.ico":
         return await call_next(request)
 
-    # 2. Fetch Config (Optimized: Check if it's in request state if we had it, but for now fetch)
-    db = SessionLocal()
+    # Reuse the request DB session so config checks do not open a second connection.
+    db = getattr(request.state, "db", None)
+    owns_db = db is None
+    if owns_db:
+        db = SessionLocal()
     try:
         config = db.query(models.WebsiteConfig).first()
+        if config:
+            from .core.templates import website_config_snapshot
+            request.state.website_config = website_config_snapshot(config)
+
         if config and config.maintenance_mode:
             # 3. Check if current user is an admin
             token = request.cookies.get("access_token")
@@ -591,7 +598,8 @@ async def maintenance_middleware(request: Request, call_next):
     except Exception as e:
         print(f"[MAINTENANCE CHECK ERROR] Non-fatal config query error: {e}")
     finally:
-        db.close()
+        if owns_db:
+            db.close()
 
     return await call_next(request)
 
@@ -816,5 +824,3 @@ async def trigger_base64_migration():
     thread = threading.Thread(target=run_migration)
     thread.start()
     return {"status": "started", "message": "Base64 to Cloudinary migration started in background thread."}
-
-

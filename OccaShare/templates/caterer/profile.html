@@ -49,6 +49,142 @@
         --brand-highlight: {{ caterer.highlight_color if caterer.highlight_color else "#fdba74" }};
     }
 
+    .pkg-food-grid,
+    .pkg-service-list {
+        max-height: 15rem;
+        overflow-y: auto;
+        padding: 2px 4px 2px 2px;
+    }
+
+    .pkg-food-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .pkg-food-card,
+    .pkg-offer-card {
+        min-width: 0;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #fff;
+        padding: 8px;
+    }
+
+    .pkg-food-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .pkg-food-image,
+    .pkg-offer-image {
+        width: 40px;
+        height: 40px;
+        flex: 0 0 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        border-radius: 9px;
+        background: #f1f5f9;
+    }
+
+    .pkg-food-image img,
+    .pkg-offer-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .pkg-item-name {
+        min-width: 0;
+        color: #0f172a;
+        font-size: 0.76rem;
+        font-weight: 800;
+        line-height: 1.3;
+        overflow-wrap: anywhere;
+    }
+
+    .pkg-item-details {
+        margin-top: 5px;
+        color: #475569;
+        font-size: 0.72rem;
+        line-height: 1.4;
+    }
+
+    .pkg-item-details summary {
+        width: fit-content;
+        color: #475569;
+        font-size: 0.68rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .pkg-item-details p {
+        margin: 4px 0 0;
+        overflow-wrap: anywhere;
+    }
+
+    .portfolio-gallery-close {
+        position: absolute !important;
+        top: max(0.75rem, env(safe-area-inset-top)) !important;
+        right: max(0.75rem, env(safe-area-inset-right)) !important;
+        z-index: 30 !important;
+        width: 48px !important;
+        min-width: 48px !important;
+        height: 48px !important;
+        min-height: 48px !important;
+        aspect-ratio: 1 / 1;
+        flex: 0 0 48px !important;
+        padding: 0 !important;
+        border-radius: 9999px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        touch-action: manipulation;
+    }
+
+    .pkg-modal-close {
+        width: 44px !important;
+        min-width: 44px !important;
+        max-width: 44px !important;
+        height: 44px !important;
+        min-height: 44px !important;
+        flex: 0 0 44px !important;
+    }
+
+    .pkg-book-button {
+        display: flex !important;
+        width: 100% !important;
+        max-width: 28rem;
+        margin: 0 auto !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    @media (max-width: 480px) {
+        .pkg-food-grid {
+            gap: 6px;
+        }
+
+        .pkg-food-card {
+            gap: 6px;
+            padding: 7px;
+        }
+
+        .pkg-food-image {
+            width: 34px;
+            height: 34px;
+            flex-basis: 34px;
+        }
+
+        .pkg-food-grid,
+        .pkg-service-list {
+            max-height: 13rem;
+        }
+    }
+
     body {
         font-family: '{{ caterer.font_family if caterer.font_family else "Poppins" }}',
         sans-serif;
@@ -717,24 +853,24 @@
 </div>
 
 <!-- Package Details Modal -->
-<div id="public-pkg-modal" class="fixed inset-0 z-[2000] hidden items-center justify-center p-4">
+<div id="public-pkg-modal" class="fixed inset-0 z-[2000] hidden items-center justify-center p-2 sm:p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePublicPkg()"></div>
-    <div class="relative bg-white w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden rounded-3xl shadow-2xl animate-in zoom-in-95 duration-300 border border-slate-100">
-        <div class="shrink-0 flex items-center justify-between gap-4 px-5 py-4 sm:px-7 border-b border-slate-100">
-            <div class="min-w-0">
+    <div class="relative bg-white w-full max-w-3xl max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl shadow-2xl animate-in zoom-in-95 duration-300 border border-slate-100">
+        <div class="shrink-0 flex items-start justify-between gap-3 px-4 py-3 sm:px-7 sm:py-4 border-b border-slate-100">
+            <div class="min-w-0 flex-1">
                 <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Package details</div>
-                <div class="flex items-center gap-2 min-w-0">
-                    <h2 id="public-pkg-title" class="text-lg font-black text-slate-900 truncate">Package</h2>
+                <div class="flex flex-wrap items-center gap-2 min-w-0 mt-1">
+                    <h2 id="public-pkg-title" class="text-base sm:text-lg font-black leading-tight text-slate-900 break-words">Package</h2>
                     <span id="public-pkg-mode-badge" class="shrink-0 inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wide text-white px-2 py-1 rounded-full"></span>
                 </div>
             </div>
-            <button type="button" aria-label="Close package details" class="shrink-0 w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors border border-slate-100" onclick="closePublicPkg()">
+            <button type="button" aria-label="Close package details" class="pkg-modal-close rounded-full bg-slate-50 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors border border-slate-100" onclick="closePublicPkg()">
                 <i class="fas fa-times text-sm"></i>
             </button>
         </div>
-        <div id="public-pkg-content" class="p-5 sm:p-7 overflow-y-auto min-h-0 flex-1 custom-scrollbar"></div>
-        <div class="shrink-0 p-4 sm:px-7 border-t border-slate-100 bg-white">
-            <button type="button" onclick="promptBookingAuth()" class="w-full py-3 bg-slate-900 text-white hover:bg-slate-800 rounded-2xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2">
+        <div id="public-pkg-content" class="p-4 sm:p-7 overflow-y-auto min-h-0 flex-1 custom-scrollbar"></div>
+        <div class="shrink-0 p-3 sm:p-4 sm:px-7 border-t border-slate-100 bg-white">
+            <button type="button" onclick="promptBookingAuth()" class="pkg-book-button min-h-[48px] py-3 px-4 bg-slate-900 text-white hover:bg-slate-800 rounded-2xl text-sm font-bold transition-all shadow-sm gap-2">
                 <i class="fas fa-calendar-check"></i> Book this Package
             </button>
         </div>
@@ -778,10 +914,10 @@
 </div>
 
 <!-- Portfolio Gallery Modal -->
-<div id="portfolio-gallery-modal" class="fixed inset-0 z-[2500] hidden items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md transition-all duration-300">
+<div id="portfolio-gallery-modal" class="fixed inset-0 z-[2500] hidden items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md transition-all duration-300">
     <div class="absolute inset-0 bg-transparent" onclick="closePortfolioGallery()"></div>
-    <div class="relative bg-white w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
-        <button class="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-slate-900/50 flex items-center justify-center text-white hover:bg-slate-900 transition-colors shadow-sm border border-slate-700" onclick="closePortfolioGallery()">
+    <div class="relative bg-white w-full max-w-5xl rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] animate-in zoom-in-95 duration-300">
+        <button type="button" aria-label="Close portfolio gallery" class="portfolio-gallery-close bg-slate-900/70 text-white hover:bg-slate-900 transition-colors shadow-sm border border-slate-500" onclick="closePortfolioGallery()">
             <i class="fas fa-times text-sm"></i>
         </button>
         <div class="flex flex-col md:flex-row h-full w-full overflow-y-auto md:overflow-hidden">
@@ -1101,18 +1237,17 @@
         const showDesc = desc.length > 2;
         const icon = fallbackIcon || 'fa-utensils';
         return `
-            <div style="display:flex;gap:12px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:0.75rem;align-items:flex-start;">
-                <div style="width:64px;height:64px;border-radius:10px;overflow:hidden;background:#f1f5f9;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#cbd5e1;">
+            <article class="pkg-offer-card" style="display:flex;gap:8px;align-items:flex-start;">
+                <div class="pkg-offer-image" style="color:${accentColor || '#64748b'};">
                     ${img
                         ? `<img src="${esc(img)}" alt="" onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas ${icon}\\'></i>';" style="width:100%;height:100%;object-fit:cover;">`
                         : `<i class="fas ${icon}"></i>`}
                 </div>
                 <div style="min-width:0;flex:1;">
-                    <div style="font-size:0.88rem;font-weight:800;color:#0f172a;line-height:1.3;">${esc(item.name || '')}</div>
-                    ${item.category ? `<div style="font-size:0.68rem;font-weight:700;color:${accentColor || '#64748b'};margin-top:3px;text-transform:uppercase;letter-spacing:0.03em;">${esc(item.category)}</div>` : ''}
-                    ${showDesc ? `<p style="font-size:0.78rem;color:#64748b;line-height:1.45;margin:6px 0 0;">${esc(desc)}</p>` : ''}
+                    <div class="pkg-item-name">${esc(item.name || '')}</div>
+                    ${showDesc ? `<details class="pkg-item-details"><summary>View details</summary><p>${esc(desc)}</p></details>` : ''}
                 </div>
-            </div>
+            </article>
         `;
     }
 
@@ -1982,53 +2117,37 @@
                 'Other': { title: 'Other Inclusions', icon: 'fas fa-box-open', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0', cardIcon: 'fa-box-open' }
             };
 
-            const activeCats = Object.keys(groupedInc).filter(cat => groupedInc[cat] && groupedInc[cat].length > 0);
-            if (activeCats.length > 1) {
-                incHtml += `
-                <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:1rem;" class="custom-scrollbar">
-                    ${activeCats.map(cat => {
-                        const count = groupedInc[cat].length;
-                        const label = cat === 'Menu / Food' ? 'Food' : cat;
-                        const activeStyle = cat === activeCats[0]
-                            ? 'border:1.5px solid var(--brand-primary);background:var(--brand-primary);color:#fff;'
-                            : 'border:1px solid #cbd5e1;background:#f8fafc;color:#475569;';
-                        const tabLabel = cat === 'Service' ? 'Services' : label;
-                        return `<button type="button" class="pkg-detail-pill" onclick="switchPkgDetailCat('${cat}', this)" style="padding:5px 12px;font-size:0.75rem;font-weight:700;border-radius:20px;${activeStyle}cursor:pointer;white-space:nowrap;">${tabLabel} (${count})</button>`;
-                    }).join('')}
-                </div>`;
-            }
-
             for (const [cat, items] of Object.entries(groupedInc)) {
                 if (!items || items.length === 0) continue;
                 const theme = catThemes[cat] || catThemes['Other'];
+                const isFood = cat === 'Menu / Food';
                 incHtml += `
-                    <div class="pkg-detail-cat-group" data-cat="${cat}" style="margin-bottom: 1.25rem;${cat === activeCats[0] ? '' : 'display:none;'}">
-                    <h4 style="font-size: 0.72rem; font-weight: 800; color: ${theme.color}; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px;">
+                    <section class="pkg-detail-cat-group" data-cat="${cat}" style="margin-bottom:1rem;padding:0.85rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;">
+                    <h4 style="font-size:0.72rem;font-weight:800;color:${theme.color};text-transform:uppercase;letter-spacing:0.08em;margin:0 0 0.65rem;display:flex;align-items:center;gap:6px;">
                         <i class="${theme.icon}"></i> ${theme.title}
                         <span style="font-size: 0.68rem; background: ${theme.bg}; border: 1px solid ${theme.border}; padding: 1px 7px; border-radius: 12px; margin-left: auto;">${items.length}</span>
                     </h4>
-                        <div style="display:grid;grid-template-columns:repeat(${cat === 'Menu / Food' ? '2' : '1'},minmax(0,1fr));gap:8px;max-height:16rem;overflow-y:auto;padding:2px 4px 2px 2px;" class="custom-scrollbar">
-                            ${items.map(item => cat === 'Menu / Food'
-                                ? `<div style="display:flex;gap:8px;align-items:center;min-width:0;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:8px;">
-                                    <div style="width:40px;height:40px;border-radius:9px;overflow:hidden;background:#f1f5f9;flex:0 0 40px;display:flex;align-items:center;justify-content:center;color:#16a34a;">
+                        <div class="${isFood ? 'pkg-food-grid' : 'pkg-service-list custom-scrollbar'}">
+                            ${items.map(item => isFood
+                                ? `<article class="pkg-food-card">
+                                    <div class="pkg-food-image" style="color:#16a34a;">
                                         ${item.image_url
                                             ? `<img src="${esc(item.image_url)}" alt="" onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-utensils\\'></i>';" style="width:100%;height:100%;object-fit:cover;">`
                                             : '<i class="fas fa-utensils"></i>'}
                                     </div>
                                     <div style="min-width:0;flex:1;">
-                                        <div style="font-size:0.78rem;font-weight:800;color:#0f172a;line-height:1.3;overflow-wrap:anywhere;">${esc(item.name)}</div>
-                                        ${isUsefulDesc(item.description) ? `<p style="font-size:0.68rem;color:#64748b;line-height:1.35;margin:4px 0 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(item.description)}</p>` : ''}
+                                        <div class="pkg-item-name">${esc(item.name)}</div>
+                                        ${isUsefulDesc(item.description) ? `<details class="pkg-item-details"><summary>View details</summary><p>${esc(item.description)}</p></details>` : ''}
                                     </div>
-                                </div>`
+                                </article>`
                                 : renderOfferMediaCard({
                                     name: item.name,
-                                    category: item.catalog_category || '',
                                     description: item.description || '',
                                     image_url: item.image_url || ''
                                 }, theme.color, theme.cardIcon)
                             ).join('')}
                         </div>
-                </div>`;
+                    </section>`;
             }
         }
 
@@ -2142,27 +2261,6 @@
         document.getElementById('public-img-modal').classList.add('hidden');
         document.getElementById('public-img-modal').classList.remove('flex');
     }
-
-    window.switchPkgDetailCat = function(targetCat, btn) {
-        const parent = btn.closest('#public-pkg-content');
-        if (!parent) return;
-        parent.querySelectorAll('.pkg-detail-pill').forEach(b => {
-            b.style.background = '#f8fafc';
-            b.style.color = '#475569';
-            b.style.borderColor = '#cbd5e1';
-        });
-        btn.style.background = 'var(--brand-primary, #FF6B00)';
-        btn.style.color = '#fff';
-        btn.style.borderColor = 'var(--brand-primary, #FF6B00)';
-
-        parent.querySelectorAll('.pkg-detail-cat-group').forEach(group => {
-            if (group.getAttribute('data-cat') === targetCat) {
-                group.style.display = 'block';
-            } else {
-                group.style.display = 'none';
-            }
-        });
-    };
 
     let currentPortfolioId = null;
     let currentPortfolioImgIndex = 0;
