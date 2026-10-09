@@ -1,12 +1,65 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from typing import Optional
-from sqlalchemy.orm import Session
+from sqlalchemy import func
+from sqlalchemy.orm import Session, joinedload
 from ..core.templates import templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from ..db import database, models, crud
 from ..core import security as auth
 
 router = APIRouter(prefix="/caterers", tags=["caterers"])
+
+
+def get_public_review_page(db: Session, caterer_id: int, page: int, rating: Optional[int]):
+    review_query = db.query(models.Review).filter(
+        models.Review.caterer_id == caterer_id,
+        models.Review.is_archived.is_(False),
+    )
+    rating_counts = dict(
+        db.query(models.Review.rating, func.count(models.Review.id))
+        .filter(
+            models.Review.caterer_id == caterer_id,
+            models.Review.is_archived.is_(False),
+        )
+        .group_by(models.Review.rating)
+        .all()
+    )
+    total_reviews = sum(rating_counts.values())
+
+    if rating is not None:
+        review_query = review_query.filter(models.Review.rating == rating)
+
+    filtered_total = review_query.count()
+    total_pages = max(1, (filtered_total + 4) // 5)
+    page = min(page, total_pages)
+    reviews = (
+        review_query.options(joinedload(models.Review.user))
+        .order_by(models.Review.created_at.desc(), models.Review.id.desc())
+        .offset((page - 1) * 5)
+        .limit(5)
+        .all()
+    )
+
+    return {
+        "reviews": reviews,
+        "review_total": total_reviews,
+        "review_filtered_total": filtered_total,
+        "review_page": page,
+        "review_total_pages": total_pages,
+        "review_rating": rating,
+        "review_rating_options": [(stars, rating_counts.get(stars, 0)) for stars in range(5, 0, -1)],
+    }
+
+
+def parse_review_rating(value: Optional[str]) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        rating = int(value)
+    except ValueError:
+        return None
+    return rating if 1 <= rating <= 5 else None
+
 
 @router.get("/", response_class=HTMLResponse)
 def list_caterers(request: Request, db: Session = Depends(database.get_db)):
@@ -30,7 +83,13 @@ def list_caterers(request: Request, db: Session = Depends(database.get_db)):
     })
 
 @router.get("/{caterer_id}", response_class=HTMLResponse)
-def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends(database.get_db)):
+def get_caterer_profile(
+    request: Request,
+    caterer_id: int,
+    review_page: int = Query(default=1, ge=1),
+    rating: Optional[str] = Query(default=None),
+    db: Session = Depends(database.get_db),
+):
     token = request.cookies.get("access_token")
     user = None
     if token:
@@ -179,6 +238,7 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
     public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public' and not getattr(p, 'is_archived', False)]
 
     db.refresh(caterer)
+    review_data = get_public_review_page(db, caterer.id, review_page, parse_review_rating(rating))
     response = templates.TemplateResponse("caterer/profile.html", {
         "request": request, 
         "caterer": caterer,
@@ -189,16 +249,22 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
         "active_services": active_services,
         "public_portfolios": public_portfolios,
         "gallery_items": [g for g in caterer.gallery_items if not getattr(g, 'is_archived', False)],
-        "reviews": caterer.reviews,
         "user": user,
         "active_page": "caterers",
-        "nav_page": "caterers"
+        "nav_page": "caterers",
+        **review_data,
     })
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return response
 
 @router.get("/caterer/{slug}", response_class=HTMLResponse)
-def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(database.get_db)):
+def get_caterer_by_slug(
+    request: Request,
+    slug: str,
+    review_page: int = Query(default=1, ge=1),
+    rating: Optional[str] = Query(default=None),
+    db: Session = Depends(database.get_db),
+):
     caterer = db.query(models.CatererProfile).filter(models.CatererProfile.slug == slug).first()
     if not caterer:
         # Fallback: check if slug is actually an ID
@@ -334,6 +400,7 @@ def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(datab
     public_portfolios = [p for p in getattr(caterer, 'portfolios', []) if getattr(p, 'visibility', 'Public') == 'Public' and not getattr(p, 'is_archived', False)]
 
     db.refresh(caterer)
+    review_data = get_public_review_page(db, caterer.id, review_page, parse_review_rating(rating))
     response = templates.TemplateResponse("caterer/profile.html", {
         "request": request, 
         "caterer": caterer,
@@ -344,10 +411,10 @@ def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(datab
         "active_services": active_services,
         "public_portfolios": public_portfolios,
         "gallery_items": [g for g in caterer.gallery_items if not getattr(g, 'is_archived', False)],
-        "reviews": caterer.reviews,
         "user": user,
         "active_page": "caterers",
-        "nav_page": "caterers"
+        "nav_page": "caterers",
+        **review_data,
     })
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return response
