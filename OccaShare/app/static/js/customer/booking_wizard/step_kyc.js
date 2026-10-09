@@ -22,6 +22,7 @@ const initKyc = () => {
     let selfieFrames = [];
     let livenessSessionToken = null;
     let livenessSubmitting = false;
+    let livenessStartPromise = null;
     let livenessResetPromise = Promise.resolve();
     let pollingInterval = null;
     let ws = null;
@@ -1453,34 +1454,70 @@ const initKyc = () => {
         updateInstruction(title, message, 'error');
     }
 
-    function showCameraRetryButton(label = "Try camera again") {
-        const instruction = document.querySelector('.kyc-instruction-container');
-        if (!instruction) return;
-        let button = document.getElementById('liveness-camera-retry');
-        if (!button) {
-            button = document.createElement('button');
-            button.id = 'liveness-camera-retry';
-            button.type = 'button';
-            button.className = 'btn btn-primary';
-            button.style.marginTop = '0.75rem';
-            button.addEventListener('click', async () => {
-                button.disabled = true;
-                button.style.display = 'none';
-                await window.startRealtimeScanner();
-                button.disabled = false;
-            });
-            instruction.appendChild(button);
+    function showStartLoading() {
+        const state = document.getElementById('liveness-start-state');
+        const title = document.getElementById('liveness-start-title');
+        const message = document.getElementById('liveness-start-message');
+        const retry = document.getElementById('liveness-start-retry');
+        const icon = state && state.querySelector('.liveness-start-icon');
+        const cameraContent = document.getElementById('liveness-camera-content');
+        if (state) {
+            state.hidden = false;
+            state.dataset.state = 'loading';
         }
-        button.innerText = label;
-        button.style.display = 'inline-flex';
+        if (cameraContent) cameraContent.hidden = true;
+        if (title) title.textContent = 'Preparing face verification';
+        if (message) message.textContent = 'Connecting to the verification service and camera…';
+        if (icon) icon.innerHTML = '<i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i>';
+        if (retry) {
+            retry.hidden = true;
+            retry.disabled = true;
+            retry.textContent = 'Retrying…';
+        }
     }
 
-    window.startRealtimeScanner = async function () {
+    function showStartError(titleText, messageText) {
+        const state = document.getElementById('liveness-start-state');
+        const title = document.getElementById('liveness-start-title');
+        const message = document.getElementById('liveness-start-message');
+        const retry = document.getElementById('liveness-start-retry');
+        const icon = state && state.querySelector('.liveness-start-icon');
+        const cameraContent = document.getElementById('liveness-camera-content');
+        if (cameraContent) cameraContent.hidden = true;
+        if (state) {
+            state.hidden = false;
+            state.dataset.state = 'error';
+        }
+        if (title) title.textContent = titleText;
+        if (message) message.textContent = messageText;
+        if (icon) icon.innerHTML = '<i class="fas fa-exclamation-circle" aria-hidden="true"></i>';
+        if (retry) {
+            retry.hidden = false;
+            retry.disabled = false;
+            retry.textContent = 'Try Again';
+        }
+    }
+
+    window.retryLivenessStart = async function () {
+        const retry = document.getElementById('liveness-start-retry');
+        if (livenessStartPromise || (retry && retry.disabled)) return;
+        if (retry) {
+            retry.disabled = true;
+            retry.textContent = 'Retrying…';
+        }
+        await window.startRealtimeScanner();
+    };
+
+    function showCameraRetryButton() {
+        showStartError('Camera verification stopped', 'We could not continue camera verification. Please try again.');
+    }
+
+    async function startRealtimeScannerInternal() {
+        showStartLoading();
         const video = document.getElementById('webcam');
         const startBtn = document.getElementById('btn-start-camera');
         if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            const message = "Please use a supported browser or device to continue identity verification.";
-            updateInstruction("Device Not Supported", message, 'error');
+            showStartError('Camera access unavailable', 'Camera verification requires a supported browser and a secure connection (HTTPS).');
             return;
         }
         if (isLivenessRunning || currentLivenessState === STATE_VERIFYING || livenessSubmitting) return;
@@ -1495,11 +1532,31 @@ const initKyc = () => {
 
         // Initialize or reset the verification session on the backend
         try {
-            await livenessResetPromise;
-            console.log("[KYC] Initializing backend liveness session...");
-            const initRes = await fetch(`/api/bookings/${bookingId}/kyc/session/init`, { method: 'POST' });
+            const controller = new AbortController();
+            let timeoutId;
+            const startupTimeout = new Promise((resolve, reject) => {
+                timeoutId = setTimeout(() => {
+                    controller.abort();
+                    reject(new DOMException('Verification startup timed out', 'AbortError'));
+                }, 12000);
+            });
+            let initRes;
+            try {
+                await Promise.race([livenessResetPromise, startupTimeout]);
+                console.log("[KYC] Initializing backend liveness session...");
+                initRes = await fetch(`/api/bookings/${bookingId}/kyc/session/init`, {
+                    method: 'POST',
+                    signal: controller.signal
+                });
+            } finally {
+                clearTimeout(timeoutId);
+            }
             const initData = await initRes.json();
-            if (!initRes.ok || !initData.session_token) throw new Error(initData.detail || "Session initialization failed");
+            if (!initRes.ok || !initData.session_token) {
+                const initError = new Error('Liveness session initialization failed');
+                initError.status = initRes.status;
+                throw initError;
+            }
             livenessSessionToken = initData.session_token;
             // A new token starts a new attempt. Never let a late result or a
             // cached visual audit from an earlier camera session authorize it.
@@ -1510,8 +1567,26 @@ const initKyc = () => {
             lastLiveFaceAuditRequestAt = 0;
         } catch (initErr) {
             console.error("[KYC] Failed to initialize liveness session:", initErr);
-            updateInstruction("Verification Unavailable", "We couldn't start verification right now. Please try again later.", 'error');
-            showCameraRetryButton("Try again");
+            const timedOut = initErr.name === 'AbortError';
+            const alreadyProcessing = initErr.status === 409;
+            const sessionNeedsRestart = initErr.status === 400;
+            const sessionExpired = initErr.status === 401 || initErr.status === 403;
+            const initTitle = timedOut || initErr.status >= 500 || !initErr.status
+                ? 'Verification Temporarily Unavailable'
+                : alreadyProcessing
+                    ? 'Verification already in progress'
+                    : sessionExpired
+                        ? 'Sign-in required'
+                        : 'Verification needs to restart';
+            showStartError(initTitle, timedOut
+                ? 'The verification service took too long to respond. Please try again in a moment.'
+                : alreadyProcessing
+                    ? 'Verification is already in progress. Refresh this page in a moment to check its status.'
+                    : sessionNeedsRestart
+                        ? 'This verification step needs to be restarted. Refresh the page and try again.'
+                        : sessionExpired
+                            ? 'Your sign-in may have expired. Sign in again, then retry verification.'
+                            : 'We could not start face verification. Check your connection and try again.');
             return;
         }
 
@@ -1596,8 +1671,10 @@ const initKyc = () => {
                 stream = null;
                 video.srcObject = null;
                 if (startBtn) startBtn.style.display = '';
-                updateInstruction("Camera Unavailable", "We couldn't start the camera. Please check it and try again.", 'error');
-                showCameraRetryButton();
+                const permissionDenied = playErr.name === 'NotAllowedError' || playErr.name === 'SecurityError';
+                showStartError(permissionDenied ? 'Camera permission needed' : 'Camera unavailable', permissionDenied
+                    ? 'Allow camera access in your browser settings, then try again.'
+                    : 'We could not start the camera. Check that it is connected and not being used by another app.');
                 return;
             }
 
@@ -1609,8 +1686,12 @@ const initKyc = () => {
             }
 
             updateInstruction("Align your face in the circle", "Loading biometrics...");
-            initializeFaceLandmarker().then(() => {
+            await initializeFaceLandmarker().then(() => {
                 console.log("[KYC] Biometrics engine loaded in background");
+                const startState = document.getElementById('liveness-start-state');
+                const cameraContent = document.getElementById('liveness-camera-content');
+                if (startState) startState.hidden = true;
+                if (cameraContent) cameraContent.hidden = false;
                 if (currentLivenessState === STATE_ALIGNING) {
                     updateInstruction("Align your face in the circle", "Position your face within the circle");
                 }
@@ -1623,20 +1704,32 @@ const initKyc = () => {
                 stream = null;
                 video.srcObject = null;
                 if (startBtn) startBtn.style.display = '';
-                updateInstruction("Device Not Supported", "Please use a supported browser or device to continue identity verification.", 'error');
-                showCameraRetryButton("Retry camera setup");
+                showStartError('Verification Temporarily Unavailable', 'We could not load face verification. Check your connection and try again.');
             });
 
             await getCameraDevices();
         } else {
             const denied = cameraError && (cameraError.name === "NotAllowedError" || cameraError.name === "SecurityError");
-            const title = denied ? "Camera Access Required" : "Camera Unavailable";
+            const noDevice = cameraError && (cameraError.name === 'NotFoundError' || cameraError.name === 'DevicesNotFoundError');
+            const deviceBusy = cameraError && cameraError.name === 'NotReadableError';
+            const title = denied ? 'Camera permission needed' : 'Camera unavailable';
             const message = denied
-                ? "Please allow camera access to continue."
-                : "We couldn't access your camera. Please check your camera and try again.";
-            updateInstruction(title, message, 'error');
-            showCameraRetryButton(denied ? "Allow camera, then retry" : "Try camera again");
+                ? 'Allow camera access in your browser settings, then try again.'
+                : noDevice
+                    ? 'No camera is available. Connect or enable a camera, then try again.'
+                    : deviceBusy
+                        ? 'The camera could not start. Close other apps using it, then try again.'
+                        : 'We could not access the camera. Check that it is connected, then try again.';
+            showStartError(title, message);
         }
+    }
+
+    window.startRealtimeScanner = function () {
+        if (livenessStartPromise) return livenessStartPromise;
+        livenessStartPromise = startRealtimeScannerInternal().finally(() => {
+            livenessStartPromise = null;
+        });
+        return livenessStartPromise;
     };
 
     function getDistance(p1, p2) {
@@ -2477,10 +2570,21 @@ const initKyc = () => {
             console.log("[KYC] Page loaded in liveness step. Auto-starting camera...");
             window.startRealtimeScanner();
         } else {
+            const startState = document.getElementById('liveness-start-state');
+            if (startState) startState.hidden = true;
             console.log("[KYC] Page loaded in failed liveness step. Waiting for user to click Retake...");
             updateInstruction("Verification failed", "Click 'Retake Verification' to try again");
         }
     }
+
+    window.addEventListener('pagehide', () => {
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        if (countdownInterval) clearInterval(countdownInterval);
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+    }, { once: true });
 
     const waitingEl = document.getElementById('kyc-waiting-approval');
     const loadingInitEl = document.getElementById('kyc-loading-init');

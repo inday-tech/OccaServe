@@ -1319,13 +1319,8 @@
     </div>
 
     <div class="wizard-header-content">
-        {% if booking.document_type == 'rental_agreement' %}
-        <h1 class="wizard-title">Verify Your Identity</h1>
-        <p class="wizard-subtitle">Please verify your ID for secure equipment rental</p>
-        {% else %}
-        <h1 class="wizard-title">Verify Your Identity</h1>
-        <p class="wizard-subtitle">Verify your identity to help protect your booking and prevent fraudulent bookings.</p>
-        {% endif %}
+        <h1 class="wizard-title">Identity Verification</h1>
+        <p class="wizard-subtitle">Verify your identity to help protect your account and bookings.</p>
 
         {% if request.query_params.get('auth_needed') %}
         <div class="alert alert-warning">
@@ -1577,17 +1572,6 @@
         {% endif %}
 
         <div id="kyc-main-content">
-            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 1rem; padding: 1.25rem 1.5rem; margin: 0 auto 1.5rem; max-width: 680px; text-align: left;">
-                <h3 style="margin: 0 0 0.5rem; font-size: 1rem; font-weight: 800; color: #065f46;">Why we verify your identity</h3>
-                <p style="margin: 0 0 1rem; font-size: 0.85rem; color: #166534; line-height: 1.55;">
-                    We check your government ID against your account details. The liveness check confirms that a real person is completing the check, rather than a photo or recording. Together, these checks help protect your identity and booking and prevent fraudulent bookings.
-                </p>
-                <h3 style="margin: 0 0 0.5rem; font-size: 1rem; font-weight: 800; color: #065f46;">Data Privacy</h3>
-                <p style="margin: 0; font-size: 0.85rem; color: #166534; line-height: 1.55;">
-                    Your ID image, liveness captures, and details read from your ID are stored with your account's verification record and processed for identity and security checks. Verification pages require sign-in, and these materials are not shown on your public profile. We keep them for verification, security, and applicable record-keeping needs.
-                </p>
-            </div>
-
             <!-- Phase 1: Form & Options -->
             {% set kyc_status = user.identity_verification.verification_status if user.identity_verification else
             'pending' %}
@@ -1953,11 +1937,22 @@
                     <div style="background: #ffffff; border: 1.5px solid var(--kyc-slate-200); border-radius: 1.75rem; padding: 2.5rem 2rem; max-width: 620px; margin: 0 auto 2rem; box-shadow: 0 15px 35px -10px rgba(0,0,0,0.05); text-align: center;">
                         <div style="margin-bottom: 2rem;">
                             <span style="font-size: 0.7rem; font-weight: 800; color: var(--kyc-accent); text-transform: uppercase; letter-spacing: 0.08em; background: #fff7ed; padding: 0.35rem 0.85rem; border-radius: 2rem; border: 1px solid #fed7aa; display: inline-block; margin-bottom: 0.6rem;"><i class="fas fa-face-smile mr-1"></i> Final Step • Biometric Verification</span>
-                            <h3 style="margin: 0 0 0.4rem 0; font-size: 1.35rem; font-weight: 800; color: #1e293b;">Take a Quick Face Selfie</h3>
-                            <p style="margin: 0 auto; font-size: 0.85rem; color: #64748b; font-weight: 600; max-width: 450px; line-height: 1.5;">Center your face, hold still, and blink naturally when prompted. We compare your face with the ID you uploaded.</p>
+                            <h3 style="margin: 0 0 0.4rem 0; font-size: 1.35rem; font-weight: 800; color: #1e293b;">Face Verification</h3>
+                            <p style="margin: 0 auto; font-size: 0.85rem; color: #64748b; font-weight: 600; max-width: 450px; line-height: 1.5;">Complete a quick liveness check to confirm that you are a real person. We also compare your face with the ID you uploaded.</p>
+                        </div>
+
+                        <div id="liveness-start-state" class="liveness-start-state" role="status" aria-live="polite" aria-atomic="true">
+                            <span class="liveness-start-icon" aria-hidden="true"><i class="fas fa-circle-notch fa-spin"></i></span>
+                            <h4 id="liveness-start-title">Preparing face verification</h4>
+                            <p id="liveness-start-message">Connecting to the verification service and camera…</p>
+                            <div class="liveness-start-actions">
+                                <button id="liveness-start-retry" type="button" class="liveness-start-primary" onclick="retryLivenessStart()" hidden>Try Again</button>
+                                <a class="liveness-start-help" href="/support/help-center">Get Help</a>
+                            </div>
                         </div>
 
                         <!-- Redesigned Camera Circle with SVG Progress Ring -->
+                        <div id="liveness-camera-content" hidden>
                         <div class="camera-wrapper" style="margin: 1.5rem auto !important;">
                             <div class="camera-circle-container" id="camera-circle-container" style="filter: drop-shadow(0 12px 25px rgba(249, 115, 22, 0.15));">
                                 <svg class="progress-ring-svg" viewBox="0 0 320 320">
@@ -1991,10 +1986,10 @@
                             </div>
                         </div>
 
-                        <!-- Friendly Lighting Tips Bar -->
-                        <div style="background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; padding: 0.85rem 1.25rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.6rem; margin-top: 1rem;">
-                            <i class="fas fa-lightbulb" style="color: #0284c7; font-size: 1rem;"></i>
-                            <span>Use good lighting. Remove glasses and avoid glare; keep your face unobstructed.</span>
+                        <div class="liveness-ready-guidance">
+                            <strong>Before you start</strong>
+                            <span>Use good lighting, avoid glare, and keep your face unobstructed.</span>
+                        </div>
                         </div>
                     </div>
 
@@ -2014,6 +2009,17 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div class="kyc-info-details" aria-label="Identity verification information">
+                <details>
+                    <summary>Why We Verify Your Identity</summary>
+                    <p>We compare your government ID with your account details and use a liveness check to help prevent fraudulent bookings.</p>
+                </details>
+                <details>
+                    <summary>Data Privacy</summary>
+                    <p>Your ID image, liveness captures, and details read from your ID are stored with your account's verification record and processed for identity and security checks. Verification pages require sign-in, and these materials are not shown on your public profile. We keep them for verification, security, and applicable record-keeping needs.</p>
+                </details>
             </div>
 
             <!-- Liveness Review -->
