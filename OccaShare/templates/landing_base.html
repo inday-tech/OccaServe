@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}?v={{ static_asset_version('css/styles.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -15,7 +17,7 @@
 
     {% set wconfig = website_config() %}
     <script>window.MAX_UPLOAD_SIZE_MB = {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }};</script>
-    <script src="{{ url_for('static', path='/js/global/upload_limits.js') }}?v={{ static_asset_version('js/global/upload_limits.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/global/upload_limits.js') }}?v={{ static_asset_version('js/global/upload_limits.js') }}" defer></script>
     {% if wconfig and wconfig.favicon_url %}
     <link rel="icon" href="{{ wconfig.favicon_url }}">
     {% endif %}
@@ -184,7 +186,9 @@
     <script src="{{ url_for('static', path='/js/global/diamond_caterer_auth.js') }}?v={{ static_asset_version('js/global/diamond_caterer_auth.js') }}" defer></script>
     <script src="{{ url_for('static', path='/js/auth/register.js') }}?v={{ static_asset_version('js/auth/register.js') }}" defer></script>
     <script src="{{ url_for('static', path='/js/auth/verify_email.js') }}?v={{ static_asset_version('js/auth/verify_email.js') }}" defer></script>
+    {% if request.url.path == '/' %}
     <script src="{{ url_for('static', path='/js/global/dynamic_landing.js') }}?v={{ static_asset_version('js/global/dynamic_landing.js') }}" defer></script>
+    {% endif %}
 
     {% block scripts %}{% endblock %}
 </body>

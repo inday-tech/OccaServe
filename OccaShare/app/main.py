@@ -617,7 +617,13 @@ async def add_security_headers(request: Request, call_next):
     
     # Allow browser to cache static assets (images, CSS, JS, fonts)
     if path.startswith("/static"):
-        response.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400"
+        # Versioned CSS/JS URLs change whenever the source file metadata changes,
+        # so they can be cached for a year without hiding deployments from clients.
+        # Uploaded files keep the shorter lifetime because their URLs may be stable.
+        if path.endswith((".css", ".js")) and request.query_params.get("v"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            response.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400"
         return response
     
     # Prevent browser from caching dashboard HTML pages (Back/Forward button security)
