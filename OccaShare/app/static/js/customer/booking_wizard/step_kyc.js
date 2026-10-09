@@ -1505,6 +1505,15 @@ const initKyc = () => {
             retry.disabled = true;
             retry.textContent = 'Retrying…';
         }
+
+        // A previous liveness attempt may have been marked liveliness_failed
+        // while this page was unloaded. Reset that attempt before requesting a
+        // fresh session; the endpoint only changes failed attempts and is
+        // scoped to the authenticated user and this booking.
+        livenessResetPromise = fetch(`/api/bookings/kyc/reset-liveness?booking_id=${encodeURIComponent(bookingId)}`, { method: 'POST' })
+            .then((response) => {
+                if (!response.ok) throw new Error('Could not reset this booking’s liveness attempt.');
+            });
         await window.startRealtimeScanner();
     };
 
