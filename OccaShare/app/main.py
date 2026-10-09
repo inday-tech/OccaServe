@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv(override=True)
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.gzip import GZipMiddleware
 from .db.database import engine, Base, get_db, SessionLocal
 from .routers import website, auth, admin, bookings, social_auth, caterers, packages, caterer_dashboard, customer_dashboard, verification, kyc, quotations, payments, contact, notifications, chat, caterer_feed, inventory_api, caterer_portfolio, service_bookings, admin_caterer_verification
 from .db import models
@@ -508,6 +509,7 @@ async def lifespan(app: FastAPI):
     yield  # App runs here
 
 app = FastAPI(lifespan=lifespan, dependencies=[Depends(validate_upload_size)])
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 
 import traceback

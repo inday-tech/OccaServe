@@ -1686,12 +1686,14 @@ const initKyc = () => {
             }
 
             updateInstruction("Align your face in the circle", "Loading biometrics...");
+            // The backend session and camera are ready. Show the live preview
+            // and positioning guide while the face model finishes downloading.
+            const startState = document.getElementById('liveness-start-state');
+            const cameraContent = document.getElementById('liveness-camera-content');
+            if (startState) startState.hidden = true;
+            if (cameraContent) cameraContent.hidden = false;
             await initializeFaceLandmarker().then(() => {
                 console.log("[KYC] Biometrics engine loaded in background");
-                const startState = document.getElementById('liveness-start-state');
-                const cameraContent = document.getElementById('liveness-camera-content');
-                if (startState) startState.hidden = true;
-                if (cameraContent) cameraContent.hidden = false;
                 if (currentLivenessState === STATE_ALIGNING) {
                     updateInstruction("Align your face in the circle", "Position your face within the circle");
                 }

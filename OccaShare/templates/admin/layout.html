@@ -7,19 +7,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <script>window.MAX_UPLOAD_SIZE_MB = {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }};</script>
-    <script src="{{ url_for('static', path='/js/global/upload_limits.js') }}?v={{ static_asset_version('js/global/upload_limits.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/global/upload_limits.js') }}?v={{ static_asset_version('js/global/upload_limits.js') }}" defer></script>
     <title>{% block title %}Admin Dashboard - OccaServe{% endblock %}</title>
 
     <!-- Core Assets -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/layout.css') }}?v={{ static_asset_version('css/admin/layout.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v={{ static_asset_version('css/caterer/alert_modal.css') }}">
-    <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v={{ static_asset_version('js/caterer/alert_modal.js') }}"></script>
-    <script src="{{ url_for('static', path='/js/main.js') }}?v={{ static_asset_version('js/main.js') }}"></script>
-
-
     {% if wconfig and wconfig.favicon_url %}
     <link rel="icon" href="{{ wconfig.favicon_url }}">
     {% endif %}
