@@ -39,10 +39,29 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
             models.CatererProfile.verification_status == 'Verified',
             models.CatererProfile.account_status == 'Active'
         ).order_by(models.CatererProfile.rating.desc()).limit(5).all()
+
+        caterer_review_stats = {
+            caterer.id: {"count": 0, "rating": None}
+            for caterer in caterers
+        }
+        if caterers:
+            review_stats = db.query(
+                models.Review.caterer_id,
+                func.count(models.Review.id),
+                func.avg(models.Review.rating)
+            ).filter(
+                models.Review.caterer_id.in_([caterer.id for caterer in caterers]),
+                models.Review.is_archived.is_(False)
+            ).group_by(models.Review.caterer_id).all()
+            caterer_review_stats.update({
+                caterer_id: {"count": count, "rating": rating}
+                for caterer_id, count, rating in review_stats
+            })
     except Exception as e:
         print(f"[HOMEPAGE ERROR] Failed to load caterers: {e}")
         db.rollback()
         caterers = []
+        caterer_review_stats = {}
 
     try:
         highlighted_reviews = db.query(models.PlatformFeedback).filter(
@@ -97,6 +116,7 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
         "request": request,
         "packages": packages,
         "caterers": caterers,
+        "caterer_review_stats": caterer_review_stats,
         "highlighted_reviews": highlighted_reviews,
         "user": user,
         "nav_page": "home",

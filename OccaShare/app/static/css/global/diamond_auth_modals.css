@@ -200,6 +200,10 @@
     padding-left: 4rem !important;
 }
 
+.auth-modal-content .phone-input-control .phone-national-input {
+    padding-left: 4rem !important;
+}
+
 .auth-modal-content .minimal-input:focus {
     outline: none;
     border-color: var(--auth-primary);

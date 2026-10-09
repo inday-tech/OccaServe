@@ -448,9 +448,28 @@ def unified_search_api(request: Request, q: str = "", lat: Optional[float] = Non
         profile.distance_km = dist
         caterers.append(profile)
 
+    caterer_review_stats = {
+        caterer.id: {"count": 0, "rating": None}
+        for caterer in caterers
+    }
+    if caterers:
+        review_stats = db.query(
+            models.Review.caterer_id,
+            func.count(models.Review.id),
+            func.avg(models.Review.rating)
+        ).filter(
+            models.Review.caterer_id.in_([caterer.id for caterer in caterers]),
+            models.Review.is_archived.is_(False)
+        ).group_by(models.Review.caterer_id).all()
+        caterer_review_stats.update({
+            caterer_id: {"count": count, "rating": rating}
+            for caterer_id, count, rating in review_stats
+        })
+
     return templates.TemplateResponse("caterer/components/caterer_card_grid.html", {
         "request": request,
-        "caterers": caterers
+        "caterers": caterers,
+        "caterer_review_stats": caterer_review_stats
     })
 
 @router.get("/api/filter", response_class=HTMLResponse)
