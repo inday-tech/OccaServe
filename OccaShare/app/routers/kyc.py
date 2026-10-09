@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, BackgroundTasks, Request, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from ..db import database, models
 from ..core import security as auth
 from ..services.verification import verification_service
@@ -9,7 +9,15 @@ from ..core.utils import validate_file_type_and_size
 from fastapi.responses import Response
 from ..services.notification import NotificationService
 from ..services.realtime import manager
-from ..services.storage import upload_file_to_cloudinary, delete_file_from_cloudinary
+from ..services.identity_storage import (
+    MAX_IDENTITY_IMAGE_BYTES,
+    delete_identity_image,
+    identity_image_url,
+    load_identity_image,
+    private_identity_filename,
+    store_identity_image,
+    validate_identity_image,
+)
 import os
 
 import uuid
@@ -23,7 +31,7 @@ import secrets
 import hmac
 from datetime import datetime, timedelta, timezone
 
-ALLOWED_MIME_TYPES = ["image/jpeg", "image/png"]
+ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"]
 
 router = APIRouter(prefix="/api/bookings", tags=["kyc"])
 
@@ -86,22 +94,22 @@ async def extract_id(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """Endpoint for Section B: Extracts data from ID for the booking form."""
-    content = await id_document.read()
+    content = await id_document.read(MAX_IDENTITY_IMAGE_BYTES + 1)
+    try:
+        validate_identity_image(content, id_document.filename or "")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    id_url = store_identity_image(content, id_document.filename or "")
     
-    # 1. File Type Validation
-    import os
-    ext = os.path.splitext(id_document.filename)[1].lower()
-    if ext not in [".jpg", ".jpeg", ".png"]:
-        raise HTTPException(status_code=400, detail="Invalid file type. Please upload JPG or PNG image only.")
-    
-    id_url = upload_file_to_cloudinary(content, folder="valid_ids")
-    if not id_url:
-        raise HTTPException(status_code=500, detail="Failed to upload ID document to Cloudinary.")
-    
-    result = await verification_service.extract_id_data(id_url, id_type)
+    try:
+        result = await verification_service.extract_id_data(id_url, id_type)
+    except Exception:
+        raise
 
     
-    if not result["success"]:
+    if not result.get("success"):
+        delete_identity_image(id_url)
         raise HTTPException(status_code=400, detail=result.get("error"))
         
     # Check if the extracted name matches the registered customer's name
@@ -135,12 +143,14 @@ async def extract_id(
     )
     
     if not ocr_first_name.strip() and not ocr_last_name.strip():
+        delete_identity_image(id_url)
         raise HTTPException(
             status_code=400,
             detail="Extraction Error | Could not read your ID. Please make sure the photo is clear and not blurry."
         )
         
     if not name_matched:
+        delete_identity_image(id_url)
         raise HTTPException(
             status_code=400,
             detail="The name on your ID does not match your account details. Please upload your own valid ID or update your account information."
@@ -154,7 +164,9 @@ async def extract_id(
     
     kyc_record.verification_status = "pending_confirmation"
     # Use cropped URL if auto-crop succeeded
-    final_doc_url = result.get("cropped_id_url") if result.get("autocrop_succeeded") else id_url
+    # Cropped previews may be returned as data URIs; persist only the encrypted
+    # original upload, never a base64 image or a public CDN URL in the database.
+    final_doc_url = id_url
     kyc_record.document_url = final_doc_url
     kyc_record.verification_type = id_type
     db.commit()
@@ -163,7 +175,7 @@ async def extract_id(
         "success": True,
         "extracted_data": result["data"],
         "quality": result["quality"],
-        "temp_id_url": id_url,
+        "temp_id_url": identity_image_url(id_url),
         "cropped_id_url": result.get("cropped_id_url", id_url),
         "autocrop_succeeded": result.get("autocrop_succeeded", False)
     }
@@ -185,7 +197,7 @@ async def upload_id(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     booking = db.query(models.Booking).get(booking_id)
-    if not booking or (booking.user_id != current_user.id and current_user.role != 'admin'):
+    if not booking or booking.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
     # Fintech Attempt Limiter
@@ -209,21 +221,15 @@ async def upload_id(
         db.commit()
         raise HTTPException(status_code=403, detail="Maximum KYC attempts reached. Your account has been blocked for verification. Please contact support.")
 
-    # Increment attempts
+    content = await id_document.read(MAX_IDENTITY_IMAGE_BYTES + 1)
+    try:
+        validate_identity_image(content, id_document.filename or "")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    # Only a valid, decodable image consumes a KYC attempt.
     current_user.kyc_attempts += 1
-
-    # Read file content
-    content = await id_document.read()
-
-    # 1. File Type Validation
-    import os
-    ext = os.path.splitext(id_document.filename)[1].lower()
-    if ext not in [".jpg", ".jpeg", ".png"]:
-        raise HTTPException(status_code=400, detail="Invalid file type. Please upload JPG or PNG image only.")
-    
-    id_url = upload_file_to_cloudinary(content, folder="valid_ids")
-    if not id_url:
-        raise HTTPException(status_code=500, detail="Failed to upload ID document to Cloudinary.")
+    id_url = store_identity_image(content, id_document.filename or "")
 
 
     # Create/Update Verification Record
@@ -252,6 +258,7 @@ async def upload_id(
     )
     
     if not submitted_name_matched:
+        delete_identity_image(id_url)
         kyc_record.verification_status = "failed"
         kyc_record.failure_reason = "Name Mismatch | Ang pangalan sa iyong in-upload na ID ay hindi tugma sa iyong registered name."
         db.commit()
@@ -266,6 +273,7 @@ async def upload_id(
         try:
             submitted_dob_obj = datetime.strptime(dob, '%Y-%m-%d').date()
             if submitted_dob_obj != current_user.dob:
+                delete_identity_image(id_url)
                 kyc_record.verification_status = "failed"
                 kyc_record.failure_reason = "DOB Mismatch | The date of birth on your ID does not match the date of birth registered on your account."
                 db.commit()
@@ -278,6 +286,7 @@ async def upload_id(
             import math
             age = (datetime.now().date() - submitted_dob_obj).days / 365.2425
             if age < 18:
+                delete_identity_image(id_url)
                 kyc_record.verification_status = "blocked"
                 kyc_record.failure_reason = "Age Eligibility Failed | Based on the information extracted from your ID, you do not meet the minimum age requirement of 18 years old."
                 current_user.kyc_attempts = 3 # Max out attempts to lock the verification
@@ -288,21 +297,6 @@ async def upload_id(
                 )
         except ValueError:
             pass # Ignore invalid date formats
-
-    # Update User Profile with provided KYC data if available
-    if first_name: current_user.first_name = first_name
-    if middle_name: current_user.middle_name = middle_name
-    if last_name: current_user.last_name = last_name
-    if address: 
-        current_user.address = address
-        booking.current_address = address
-    
-    if dob:
-        try:
-            from datetime import datetime
-            current_user.dob = datetime.strptime(dob, '%Y-%m-%d').date()
-        except Exception:
-            pass # Ignore invalid date format if it was empty
 
     kyc_record.document_url = id_url
     kyc_record.id_number = id_number
@@ -329,10 +323,11 @@ async def upload_id(
 
     # --- Run OCR Matching to populate ocr_data (but NEVER auto-reject or block) ---
     print(f"[KYC] Running ID document matching for User {current_user.id} to save data...")
-    full_name_parts = [first_name]
-    if middle_name: full_name_parts.append(middle_name)
-    full_name_parts.append(last_name)
-    full_name = " ".join(full_name_parts)
+    # Compare OCR output with the account as it existed before this request.
+    # KYC cannot be used to overwrite account identity fields.
+    full_name = user_full_name
+    account_dob = current_user.dob.strftime('%Y-%m-%d') if current_user.dob else None
+    account_address = current_user.address or None
 
     id_result = await verification_service.verify_id_document(
         id_url, 
@@ -341,11 +336,12 @@ async def upload_id(
         id_type,
         db=db,
         user_id=current_user.id,
-        dob=dob,
-        address=address
+        dob=account_dob,
+        address=account_address
     )
     
     if id_result.get("status") in ["rejected", "mismatched", "error"]:
+        delete_identity_image(id_url)
         kyc_record.verification_status = "failed"
         kyc_record.failure_reason = id_result.get("failure_reason") or "ID document could not be verified."
         db.commit()
@@ -353,6 +349,18 @@ async def upload_id(
             status_code=400,
             detail=f"Identity Verification Failed | {kyc_record.failure_reason}"
         )
+
+    if id_result.get("status") == "needs_review":
+        kyc_record.ocr_data = id_result.get("ocr_data") or {}
+        kyc_record.ocr_status = "needs_review"
+        kyc_record.verification_status = "pending_manual_review"
+        kyc_record.failure_reason = "ID Review | Your ID details need a manual review before face verification can begin."
+        db.commit()
+        return {
+            "success": True,
+            "status": "pending_manual_review",
+            "message": "Your ID submission is awaiting review. We will notify you when the review is complete.",
+        }
 
     if id_result.get("name_matched") == False:
         ocr_data = id_result.get("ocr_data", {})
@@ -364,6 +372,7 @@ async def upload_id(
         if isinstance(ocr_last, dict): ocr_last = ocr_last.get("value", "")
         
         if not str(ocr_first).strip() and not str(ocr_last).strip():
+            delete_identity_image(id_url)
             kyc_record.verification_status = "failed"
             kyc_record.failure_reason = "Extraction Error | Could not read your ID. Please make sure the photo is clear and not blurry."
             db.commit()
@@ -372,6 +381,7 @@ async def upload_id(
                 detail=kyc_record.failure_reason
             )
             
+        delete_identity_image(id_url)
         kyc_record.verification_status = "failed"
         kyc_record.failure_reason = "Identity Verification Failed | The name on your ID does not match your registered name. Please upload your own valid ID."
         db.commit()
@@ -380,42 +390,23 @@ async def upload_id(
             detail=kyc_record.failure_reason
         )
         
-    # Ensure ocr_data is populated even if verification service fails to extract it
+    # OCR that did not produce structured fields is inconclusive. Do not convert
+    # user-entered form values into fabricated OCR fields or confidence scores.
     ocr_data = id_result.get("ocr_data", {})
     if not ocr_data or not isinstance(ocr_data, dict) or not ocr_data.get("fields"):
-        fallback_fields = {
-            "id_number": {"value": id_number, "confidence": 100},
-            "last_name": {"value": last_name or "", "confidence": 100},
-            "first_name": {"value": first_name or "", "confidence": 100},
-            "middle_name": {"value": middle_name or "", "confidence": 100},
-            "date_of_birth": {"value": dob or "", "confidence": 100},
-            "address": {"value": address or "", "confidence": 100}
-        }
-        
-        # Add ID type specific fields
-        if id_type in ["PhilSys / PhilID", "PhilID (National ID)", "philsys", "PhilID"]:
-            fallback_fields["given_names"] = {"value": first_name or "", "confidence": 100}
-        elif id_type == "Driver's License":
-            fallback_fields["license_number"] = {"value": id_number, "confidence": 100}
-        elif id_type == "Passport":
-            fallback_fields["passport_number"] = {"value": id_number, "confidence": 100}
-            fallback_fields["given_names"] = {"value": first_name or "", "confidence": 100}
-
-        ocr_data = {
-            "id_type": id_type,
-            "extraction_method": "manual_input",
-            "document_type_detected": id_type,
-            "confidence_score": 1.0,
-            "face_visible": True,
-            "fields": fallback_fields,
-            "full_name": f"{first_name or ''} {middle_name + ' ' if middle_name else ''}{last_name or ''}".strip(),
-            "id_number": id_number,
-            "birth_date": dob,
-            "address": address,
-            "raw_text": f"MANUAL_FALLBACK: {first_name} {last_name} {id_number}"
+        kyc_record.ocr_data = {}
+        kyc_record.ocr_status = "needs_review"
+        kyc_record.verification_status = "pending_manual_review"
+        kyc_record.failure_reason = "ID Review | We could not reliably read the required ID details. Your submission is awaiting a manual review."
+        db.commit()
+        return {
+            "success": True,
+            "status": "pending_manual_review",
+            "message": "Your ID submission is awaiting review. We will notify you when the review is complete.",
         }
     
     kyc_record.ocr_data = ocr_data
+    kyc_record.ocr_status = "passed"
     kyc_record.verification_status = "pending_liveliness"
     kyc_record.failure_reason = None
     db.commit()
@@ -563,9 +554,7 @@ async def verify_full(
 
     selfie_urls = []
     for content in validated_contents:
-        c_url = upload_file_to_cloudinary(content, folder="verification")
-        if c_url:
-            selfie_urls.append(c_url)
+        selfie_urls.append(store_identity_image(content, file.filename or "selfie.jpg"))
 
     if len(selfie_urls) != 3:
         raise HTTPException(status_code=502, detail="Verification frames could not be securely uploaded. Please try again.")
@@ -867,6 +856,10 @@ async def process_kyc_background(user_id, booking_id, kyc_record_id, session_id,
             # Conditionally save ocr_data only if result has valid ocr_data with fields
             new_ocr = result.get("ocr_data")
             if new_ocr and isinstance(new_ocr, dict) and new_ocr.get("fields"):
+                new_ocr = {
+                    key: value for key, value in new_ocr.items()
+                    if key not in {"raw_text", "raw_ocr", "extracted_text_preview"}
+                }
                 kyc_record.ocr_data = new_ocr
             # Fallback in case ocr_data is currently None in the DB (initialize as empty dict)
             elif kyc_record.ocr_data is None:
@@ -1014,6 +1007,47 @@ async def get_kyc_status(
         
     return {"status": "pending"}
 
+@router.get("/kyc/private/{filename}")
+async def view_private_kyc_document(
+    filename: str,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Serve encrypted identity files only to their owner or an administrator."""
+    try:
+        safe_filename = private_identity_filename(f"/api/bookings/kyc/private/{filename}")
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Document not found.")
+    reference = f"/api/bookings/kyc/private/{safe_filename}"
+
+    record = db.query(models.IdentityVerification).filter(or_(
+        models.IdentityVerification.document_url == reference,
+        models.IdentityVerification.document_back_url == reference,
+        models.IdentityVerification.selfie_url == reference,
+        models.IdentityVerification.selfie_2_url == reference,
+        models.IdentityVerification.selfie_3_url == reference,
+    )).first()
+    if not record or (current_user.role != "admin" and record.user_id != current_user.id):
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    try:
+        image_data = load_identity_image(reference)
+    except (ValueError, OSError):
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    mime_type = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}.get(os.path.splitext(filename)[1].lower(), "application/octet-stream")
+    return Response(
+        content=image_data,
+        media_type=mime_type,
+        headers={
+            "Cache-Control": "private, no-store, max-age=0",
+            "Pragma": "no-cache",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Disposition": f'inline; filename="identity{os.path.splitext(filename)[1].lower()}"',
+        },
+    )
+
+
 @router.get("/kyc/view/{filename}")
 async def view_kyc_document(
     filename: str,
@@ -1021,6 +1055,8 @@ async def view_kyc_document(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """Secure proxy to decrypt and view KYC documents."""
+    if filename != os.path.basename(filename.replace("\\", "/")) or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=404, detail="Document not found.")
     # RBAC: Only admin, the document owner, or their caterer can view
     is_admin = current_user.role == "admin"
     is_owner = (
@@ -1105,7 +1141,7 @@ async def view_kyc_document(
         }
         for sig, detected_mime in image_signatures.items():
             if file_data[:len(sig)] == sig:
-                print(f"[KYC VIEW] File '{filename}' is not encrypted, serving raw {detected_mime}")
+                print("[KYC VIEW] A legacy verification file was read without encryption.")
                 return Response(content=file_data, media_type=detected_mime)
         
         # If not matched above, we can fallback to standard checking
@@ -1121,7 +1157,7 @@ async def view_kyc_document(
             return Response(content=file_data, media_type=mime_type)
         
         # Neither valid decryption nor valid raw image — file is truly corrupted
-        print(f"[KYC VIEW ERROR] Cannot decrypt or read file '{filename}': {e}")
+        print("[KYC VIEW ERROR] Unable to decrypt or read a verification document.")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
             detail="Document cannot be displayed. The file may be corrupted or the encryption key has changed. Please ask the user to re-upload."

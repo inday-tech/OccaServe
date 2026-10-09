@@ -1,10 +1,12 @@
 import asyncio
+import io
 from io import BytesIO
 from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi import BackgroundTasks, HTTPException, UploadFile
+from PIL import Image
 
 from app.db import models
 from app.routers import kyc
@@ -67,6 +69,13 @@ def make_user():
     )
 
 
+def make_jpeg_bytes():
+    image = Image.new("RGB", (320, 240), color="white")
+    output = BytesIO()
+    image.save(output, format="JPEG", quality=90)
+    return output.getvalue()
+
+
 def make_booking():
     return SimpleNamespace(
         id=86,
@@ -84,11 +93,11 @@ def test_id_upload_persists_booking_state_before_liveness_init(monkeypatch):
             "ocr_data": {"fields": {"last_name": "Customer"}},
         }
 
-    monkeypatch.setattr(kyc, "upload_file_to_cloudinary", lambda *args, **kwargs: "https://files.test/id.jpg")
+    monkeypatch.setattr(kyc, "store_identity_image", lambda *args, **kwargs: "/api/bookings/kyc/private/" + "a" * 32 + ".jpg")
     monkeypatch.setattr(kyc.verification_service, "verify_id_document", valid_id_result)
     user = make_user()
     db = FakeDB(make_booking())
-    upload = UploadFile(filename="id.jpg", file=BytesIO(b"valid-test-image"))
+    upload = UploadFile(filename="id.jpg", file=BytesIO(make_jpeg_bytes()))
 
     result = asyncio.run(kyc.upload_id(
         booking_id=86,
@@ -109,10 +118,90 @@ def test_id_upload_persists_booking_state_before_liveness_init(monkeypatch):
     assert result["success"] is True
     assert record.booking_id == 86
     assert record.verification_status == "pending_liveliness"
-
     initialized = asyncio.run(kyc.init_kyc_session(86, db=db, current_user=user))
     assert initialized["success"] is True
     assert initialized["session_token"]
+
+
+def test_id_upload_routes_missing_structured_ocr_to_manual_review(monkeypatch):
+    async def inconclusive_id_result(*args, **kwargs):
+        return {"status": "matched", "name_matched": True, "ocr_data": {}}
+
+    monkeypatch.setattr(kyc, "store_identity_image", lambda *args, **kwargs: "/api/bookings/kyc/private/" + "a" * 32 + ".jpg")
+    monkeypatch.setattr(kyc.verification_service, "verify_id_document", inconclusive_id_result)
+    db = FakeDB(make_booking())
+
+    result = asyncio.run(kyc.upload_id(
+        booking_id=86,
+        id_type="Passport",
+        id_number="P1234567A",
+        first_name="Test",
+        middle_name=None,
+        last_name="Customer",
+        dob=None,
+        address=None,
+        id_address_extracted=None,
+        id_document=UploadFile(filename="id.jpg", file=BytesIO(make_jpeg_bytes())),
+        db=db,
+        current_user=make_user(),
+    ))
+
+    record = db.records[models.IdentityVerification]
+    assert result["status"] == "pending_manual_review"
+    assert record.verification_status == "pending_manual_review"
+    assert record.ocr_status == "needs_review"
+    assert record.ocr_data == {}
+
+
+def test_id_upload_routes_account_conflict_to_manual_review(monkeypatch):
+    async def review_id_result(*args, **kwargs):
+        return {
+            "status": "needs_review",
+            "name_matched": False,
+            "ocr_data": {"fields": {"last_name": {"value": "Different", "confidence": 90}}},
+        }
+
+    monkeypatch.setattr(kyc, "store_identity_image", lambda *args, **kwargs: "/api/bookings/kyc/private/" + "a" * 32 + ".jpg")
+    monkeypatch.setattr(kyc.verification_service, "verify_id_document", review_id_result)
+    db = FakeDB(make_booking())
+
+    result = asyncio.run(kyc.upload_id(
+        booking_id=86,
+        id_type="Passport",
+        id_number="P1234567A",
+        first_name="Test",
+        middle_name=None,
+        last_name="Customer",
+        dob=None,
+        address=None,
+        id_address_extracted=None,
+        id_document=UploadFile(filename="id.jpg", file=BytesIO(make_jpeg_bytes())),
+        db=db,
+        current_user=make_user(),
+    ))
+
+    assert result["status"] == "pending_manual_review"
+    assert db.records[models.IdentityVerification].verification_status == "pending_manual_review"
+
+
+def test_id_upload_does_not_allow_another_customer_booking(monkeypatch):
+    db = FakeDB(SimpleNamespace(id=86, user_id=99, current_address=None, id_address=None))
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(kyc.upload_id(
+            booking_id=86,
+            id_type="Passport",
+            id_number="P1234567A",
+            first_name="Test",
+            middle_name=None,
+            last_name="Customer",
+            dob=None,
+            address=None,
+            id_address_extracted=None,
+            id_document=UploadFile(filename="id.jpg", file=BytesIO(make_jpeg_bytes())),
+            db=db,
+            current_user=make_user(),
+        ))
+    assert error.value.status_code == 404
 
 
 def test_failed_id_validation_is_persisted_and_cannot_start_liveness(monkeypatch):
@@ -124,11 +213,11 @@ def test_failed_id_validation_is_persisted_and_cannot_start_liveness(monkeypatch
             "ocr_data": {"fields": {"last_name": "Different"}},
         }
 
-    monkeypatch.setattr(kyc, "upload_file_to_cloudinary", lambda *args, **kwargs: "https://files.test/id.jpg")
+    monkeypatch.setattr(kyc, "store_identity_image", lambda *args, **kwargs: "/api/bookings/kyc/private/" + "a" * 32 + ".jpg")
     monkeypatch.setattr(kyc.verification_service, "verify_id_document", rejected_id_result)
     user = make_user()
     db = FakeDB(make_booking())
-    upload = UploadFile(filename="id.jpg", file=BytesIO(b"invalid-test-image"))
+    upload = UploadFile(filename="id.jpg", file=BytesIO(make_jpeg_bytes()))
 
     with pytest.raises(HTTPException) as error:
         asyncio.run(kyc.upload_id(

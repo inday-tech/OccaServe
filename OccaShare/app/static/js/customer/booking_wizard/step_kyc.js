@@ -1278,6 +1278,20 @@ const initKyc = () => {
         try {
             const res = await fetch(`/api/bookings/${bookingId}/upload-id`, { method: 'POST', body: formData });
             if (res.ok) {
+                const data = await res.json().catch(() => ({}));
+                if (data.status === 'pending_manual_review') {
+                    document.getElementById('scanner-container').style.display = 'none';
+                    document.getElementById('face-compare-row').style.display = 'none';
+                    const reviewState = document.getElementById('kyc-waiting-approval');
+                    if (reviewState) reviewState.style.display = 'block';
+                    const reviewTitle = reviewState && reviewState.querySelector('.processing-title');
+                    const reviewMessage = reviewState && reviewState.querySelector('.processing-subtitle');
+                    if (reviewTitle) reviewTitle.textContent = 'ID verification is awaiting review';
+                    if (reviewMessage) reviewMessage.textContent = data.message || 'Your ID submission is awaiting review. We will notify you when the review is complete.';
+                    setVerificationInfoVisible(false);
+                    updateStatusTracker(4);
+                    return;
+                }
                 // Transition to Premium Liveness Detection
                 document.getElementById('scanner-container').style.display = 'block';
                 document.getElementById('face-compare-row').style.display = 'flex';

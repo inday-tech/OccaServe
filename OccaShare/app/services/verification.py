@@ -325,6 +325,12 @@ class VerificationService:
         if not path_or_url:
             raise ValueError("No image path or URL provided.")
 
+        # New identity documents are encrypted in storage outside the public
+        # /static tree and referenced with an opaque private URI.
+        if path_or_url.startswith("private-kyc://") or path_or_url.startswith("/api/bookings/kyc/private/"):
+            from .identity_storage import load_identity_image
+            return load_identity_image(path_or_url)
+
         # 1. Base64 Data URI
         if path_or_url.startswith("data:"):
             import base64
@@ -343,8 +349,8 @@ class VerificationService:
                 except Exception:
                     return raw_data
             except Exception as http_err:
-                print(f"[KYC ERROR] Failed to fetch image from URL '{path_or_url}': {http_err}")
-                raise FileNotFoundError(f"KYC document could not be downloaded from URL: {path_or_url}")
+                print("[KYC ERROR] Failed to fetch identity image from configured storage.")
+                raise FileNotFoundError("KYC document could not be downloaded from configured storage.") from http_err
 
         # 3. Local File System
         target_path = path_or_url
@@ -1603,14 +1609,14 @@ class VerificationService:
         
         # Check if text is sparse or missing fields, triggering retry logic
         parsed = self._parse_ocr_fields_advanced(text, word_data, id_type)
-        print(f"[KYC DEBUG] Pass 1 - Extracted {len(text)} chars, full_name: '{parsed.get('full_name')}', id_number: '{parsed.get('id_number')}'")
+        print("[KYC DEBUG] Completed the first OCR extraction pass.")
         
         if parsed.get("_all_not_detected", True) or len(text.strip()) < 50:
             print("[KYC OCR] Pass 1 failed. Retrying with aggressive preprocessing...")
             thresh_agg = self._preprocess_for_ocr_advanced(image, aggressive=True)
             text_agg, word_data_agg = self._extract_with_confidence(thresh_agg, [11, 4, 6])
             parsed_agg = self._parse_ocr_fields_advanced(text_agg, word_data_agg, id_type)
-            print(f"[KYC DEBUG] Pass 2 - Extracted {len(text_agg)} chars, full_name: '{parsed_agg.get('full_name')}', id_number: '{parsed_agg.get('id_number')}'")
+            print("[KYC DEBUG] Completed the second OCR extraction pass.")
             
             # Use aggressive run if it's better
             if not parsed_agg.get("_all_not_detected", True) or len(text_agg) > len(text):
@@ -1737,7 +1743,7 @@ class VerificationService:
                             print(f"[KYC DEBUG] VPS OCR Succeeded: {len(text)} characters extracted.")
                             return text, parsed, word_data
                     
-                    print(f"[KYC WARNING] VPS OCR failed: status={response.status_code}, response={response.text}")
+                    print(f"[KYC WARNING] VPS OCR failed with HTTP status {response.status_code}.")
             except Exception as e:
                 print(f"[KYC ERROR] VPS OCR delegation failed: {e}")
                 traceback.print_exc()
@@ -1963,25 +1969,15 @@ class VerificationService:
                                 response = res2
                                 break
                             else:
-                                debug_logs.append(f"Model {model} retry error body: {res2.text[:300]}")
+                                debug_logs.append(f"Model {model} retry returned HTTP {res2.status_code}.")
                                 print(f"[KYC WARNING] Model {model} retry also failed: {res2.status_code}")
                         else:
-                            debug_logs.append(f"Model {model} error body: {res.text}")
-                            print(f"[KYC WARNING] Model {model} failed with status {res.status_code}: {res.text[:200]}")
+                            debug_logs.append(f"Model {model} returned HTTP {res.status_code}.")
+                            print(f"[KYC WARNING] Model {model} failed with status {res.status_code}.")
                     except Exception as err:
                         debug_logs.append(f"Model {model} request exception: {str(err)}")
                         print(f"[KYC WARNING] Request failed for model {model}: {err}")
             
-            # Write debug logs to a file
-            try:
-                with open("ocr_debug.log", "a", encoding="utf-8") as f:
-                    f.write(f"\n--- OCR ATTEMPT AT {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
-                    f.write("\n".join(debug_logs) + "\n")
-                    if response:
-                        f.write(f"Response: {response.text}\n")
-            except Exception as log_err:
-                print(f"[KYC DEBUG] Failed to write debug log: {log_err}")
-
             if response and response.status_code == 200:
                 data = response.json()
                 text = data['candidates'][0]['content']['parts'][0]['text']
@@ -2000,24 +1996,12 @@ class VerificationService:
                     return json.loads(clean_text)
                 except json.JSONDecodeError as e:
                     print(f"[GEMINI OCR ERROR] JSON Decode Error: {e}")
-                    print(f"[GEMINI RAW TEXT] {text}")
-                    try:
-                        with open("ocr_debug.log", "a", encoding="utf-8") as f:
-                            f.write(f"JSON Decode Error: {e}\nRaw Text: {text}\n")
-                    except Exception:
-                        pass
                     return None
             else:
                 print(f"[GEMINI OCR ERROR] All models failed or returned non-200 status code.")
                 return None
         except Exception as e:
             print(f"[GEMINI OCR ERROR] {e}")
-            traceback.print_exc()
-            try:
-                with open("ocr_debug.log", "a", encoding="utf-8") as f:
-                    f.write(f"Unexpected Exception: {str(e)}\n")
-            except Exception:
-                pass
             return None
 
 
@@ -2826,7 +2810,7 @@ class VerificationService:
             gemini_id_extracted = re.sub(r'[^A-Z0-9]', '', (rich_data.get("id_number") or "").upper())
             id_number_matched = False
             
-            print(f"[KYC DEBUG] ID Matching - Input: {norm_id_input}, Gemini: {gemini_id_extracted}, OCR contains: {norm_id_input in norm_id_ocr}")
+            print(f"[KYC DEBUG] ID number comparison completed; supplied_number_present={bool(norm_id_input)}.")
             
             if norm_id_input and gemini_id_extracted:
                 # Exact match
@@ -2835,7 +2819,7 @@ class VerificationService:
                 # Lenient fuzzy: lower threshold from 0.85 to 0.75 to catch OCR errors
                 elif difflib.SequenceMatcher(None, norm_id_input, gemini_id_extracted).ratio() > 0.75:
                     id_number_matched = True
-                    print(f"[KYC DEBUG] ID number fuzzy match (75%): input='{norm_id_input}' vs extracted='{gemini_id_extracted}'")
+                    print("[KYC DEBUG] ID number comparison accepted an OCR-tolerant match.")
             
             # Fallback: Check if ID number exists anywhere in raw OCR text
             if not id_number_matched and norm_id_input:
@@ -2849,12 +2833,11 @@ class VerificationService:
                     digit_ratio = difflib.SequenceMatcher(None, norm_id_input, norm_id_ocr).ratio()
                     if digit_ratio > 0.75:
                         id_number_matched = True
-                        print(f"[KYC DEBUG] ID number partial match (75% digit ratio): {digit_ratio:.2f}")
+                        print("[KYC DEBUG] ID number comparison accepted a partial OCR-tolerant match.")
             
             if norm_id_input and not id_number_matched:
-                detected_id = gemini_id_extracted or rich_data.get('id_number') or 'Not extracted'
-                print(f"[KYC DEBUG] ID Number mismatch: Input='{norm_id_input}', Detected='{detected_id}'")
-                reasons.append(f"ID Number mismatch. Detected: {detected_id}")
+                print("[KYC DEBUG] OCR could not reliably match the ID number.")
+                reasons.append("ID number requires review.")
             
             # C. Name Cross-Reference: Match registration name against OCR-extracted name
             name_matched = self.match_name(
@@ -2865,12 +2848,19 @@ class VerificationService:
                 rich_data.get("middle_name"), 
                 ocr_text
             )
-            print(f"[KYC DEBUG] Name matching - Input: '{full_name}', Extracted: '{rich_data.get('full_name')}', Match: {name_matched}")
+            print(f"[KYC DEBUG] ID name comparison completed; matched={name_matched}.")
             
             if not name_matched:
-                detected_name = rich_data.get("full_name") or "None"
-                print(f"[KYC DEBUG] Name mismatch: Input='{full_name}', Detected='{detected_name}'")
-                reasons.append(f"Name mismatch. Detected: {detected_name}")
+                print("[KYC DEBUG] The extracted ID name did not match the account name.")
+                reasons.append("Name requires review.")
+
+            # Date and address are compared only when the account already has
+            # a value. Formatting differences are normalized by the helpers;
+            # an unclear OCR value is a review case, not a rejection.
+            if dob and not match_dob(dob, rich_data.get("extracted_dob", ""), ocr_text):
+                reasons.append("Date of birth requires review.")
+            if address and not match_address(address, rich_data.get("extracted_address", ""), ocr_text):
+                reasons.append("Address requires review.")
             
             # D. Tampering / AI-Editing Detection
             if rich_data.get("is_tampered"):
@@ -2880,8 +2870,18 @@ class VerificationService:
             # E. Pattern validation
             if not pattern_valid:
                 reasons.append(f"Invalid format for '{id_type}'.")
-            
-            status = "matched" if not reasons else "rejected"
+
+            # OCR uncertainty and account-detail conflicts are reviewed by an
+            # authorized person. Definite document-integrity failures remain
+            # rejected; neither route can advance straight to liveness.
+            review_reasons = {
+                "ID number requires review.",
+                "Name requires review.",
+                "Date of birth requires review.",
+                "Address requires review.",
+            }
+            definitive_reasons = [reason for reason in reasons if reason not in review_reasons]
+            status = "matched" if not reasons else ("rejected" if definitive_reasons else "needs_review")
 
 
             # Merge structured OCR into return data
@@ -2894,7 +2894,6 @@ class VerificationService:
                 "birth_date": rich_data.get("extracted_dob", ""),
                 "address": rich_data.get("extracted_address", "")
             }
-            final_ocr_data["raw_text"] = ocr_text
             final_ocr_data["full_name_extracted"] = rich_data.get("full_name")
             final_ocr_data["dob_extracted"] = rich_data.get("extracted_dob")
             final_ocr_data["address_extracted"] = rich_data.get("extracted_address")
@@ -2912,12 +2911,11 @@ class VerificationService:
                 "id_number_matched": id_number_matched if norm_id_input else True,
                 "name_matched": name_matched,
                 "failure_reason": "<br>".join(reasons) if reasons else None,
-                "extracted_text_preview": ocr_text[:200],
                 "ocr_data": final_ocr_data
             }
-        except Exception as e:
-            traceback.print_exc()
-            return {"status": "error", "failure_reason": f"System Error during ID scan: {str(e)}"}
+        except Exception:
+            print("[KYC ERROR] ID scanning failed unexpectedly.")
+            return {"status": "error", "failure_reason": "ID scanning is temporarily unavailable. Please try again later."}
 
     def _get_permit_ocr_prompt(self) -> str:
         return (
@@ -3294,7 +3292,7 @@ class VerificationService:
                         vps_success = True
                         print("[KYC DEBUG] VPS Verification and Liveness call succeeded!")
                     else:
-                        print(f"[KYC WARNING] VPS Verify failed with status {response.status_code}: {response.text}")
+                        print(f"[KYC WARNING] VPS verification failed with HTTP status {response.status_code}.")
                 except Exception as e:
                     print(f"[KYC ERROR] VPS Verify request failed: {e}")
                     traceback.print_exc()
@@ -3459,15 +3457,6 @@ class VerificationService:
                     status = "rejected"
                     failure_reason = "Identity Verification Failed | Your selfie does not match the photo on your ID. Please upload a clear photo of yourself."
 
-            # Write liveness and verification details to ocr_debug.log
-            try:
-                with open("ocr_debug.log", "a", encoding="utf-8") as f:
-                    f.write(f"Verification attempt at {time.strftime('%Y-%m-%d %H:%M:%S')}\\n")
-                    f.write(f"Final verification status: {status}\\n")
-
-            except Exception as log_err:
-                print(f"[KYC DEBUG] Failed to write liveness debug log: {log_err}")
-
             return {
                 "status": status,
                 "fraud_score": fraud_score,
@@ -3479,24 +3468,13 @@ class VerificationService:
                 "ocr_match": ocr_match,
                 "pattern_valid": pattern_valid,
                 "failure_reason": failure_reason,
-                "raw_text": ocr_text,
-                "extracted_text_preview": ocr_text[:200],
                 "ocr_data": {
                     **id_result.get("ocr_data", {}),
                     "faces_in_id": len(id_faces) if id_faces else 1,
-                    "raw_ocr": ocr_text
                 }
             }
-        except Exception as e:
-            traceback.print_exc()
-            try:
-                with open("ocr_debug.log", "a", encoding="utf-8") as f:
-                    f.write(f"\n--- LIVENESS DETECTION SYSTEM ERROR AT {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
-                    f.write(f"Error: {str(e)}\n")
-                    f.write(f"Traceback: {traceback.format_exc()}\n")
-                    f.write("-" * 50 + "\n")
-            except Exception:
-                pass
+        except Exception:
+            print("[KYC ERROR] The identity verification provider returned an unexpected error.")
             return {
                 "status": "failed",
                 "fraud_score": 0,

@@ -71,6 +71,9 @@ class Settings:
 
     # KYC CONFIG
     KYC_ENCRYPTION_KEY = os.getenv("KYC_ENCRYPTION_KEY", "")
+    # Mount this path to durable private storage in production. It must never be
+    # inside the public static directory.
+    KYC_PRIVATE_STORAGE_DIR = os.getenv("KYC_PRIVATE_STORAGE_DIR", "")
 
     # PAYMONGO CONFIG
     PAYMONGO_SECRET_KEY = os.getenv("PAYMONGO_SECRET_KEY", "")

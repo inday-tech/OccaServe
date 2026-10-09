@@ -6,42 +6,43 @@ import os
 ENCRYPTION_KEY = settings.KYC_ENCRYPTION_KEY
 
 _key_source = "env"
+_secret_key = settings.SECRET_KEY or ""
+_secure_key_available = bool(ENCRYPTION_KEY)
+
+
+def _has_configured_secret(secret: str) -> bool:
+    normalized = secret.strip().lower()
+    return len(secret) >= 32 and not any(
+        marker in normalized for marker in ("your-secret", "change-me", "changeme", "default", "example")
+    )
 
 if not ENCRYPTION_KEY:
     import base64
     import hashlib
     # Derive a key from SECRET_KEY so that all worker processes share the same key
-    secret = settings.SECRET_KEY or "occaserve_default_fallback_secret_key"
+    secret = _secret_key or "occaserve_default_fallback_secret_key"
     hashed = hashlib.sha256(secret.encode()).digest()
     ENCRYPTION_KEY = base64.urlsafe_b64encode(hashed).decode()
-    _key_source = "derived"
-    print(f"\n{'='*60}")
-    print(f"[SECURITY] No KYC_ENCRYPTION_KEY found in environment variables.")
-    print(f"[SECURITY] Derived key from SECRET_KEY for multi-worker consistency.")
-    print(f"[SECURITY] Derived key: {ENCRYPTION_KEY}")
-    print(f"[SECURITY] Please add this variable to your environment/Railway settings to persist it:")
-    print(f"  KYC_ENCRYPTION_KEY={ENCRYPTION_KEY}")
-    print(f"{'='*60}\n")
+    _key_source = "derived-secret" if _has_configured_secret(_secret_key) else "unsafe-fallback"
 
 try:
     cipher_suite = Fernet(ENCRYPTION_KEY.encode())
-    if _key_source == "env":
-        print(f"[SECURITY] KYC_ENCRYPTION_KEY loaded successfully from environment")
-except Exception as e:
+except Exception:
     import base64
     import hashlib
     # Fallback to key derived from SECRET_KEY so workers don't mismatch
-    secret = settings.SECRET_KEY or "occaserve_default_fallback_secret_key"
+    secret = _secret_key or "occaserve_default_fallback_secret_key"
     hashed = hashlib.sha256(secret.encode()).digest()
     ENCRYPTION_KEY = base64.urlsafe_b64encode(hashed).decode()
     cipher_suite = Fernet(ENCRYPTION_KEY.encode())
-    print(f"\n{'='*60}")
-    print(f"[SECURITY CRITICAL] KYC_ENCRYPTION_KEY is INVALID: {e}")
-    print(f"[SECURITY CRITICAL] Derived fallback key from SECRET_KEY.")
-    print(f"[SECURITY CRITICAL] Fallback key: {ENCRYPTION_KEY}")
-    print(f"[SECURITY CRITICAL] Please update your environment variables:")
-    print(f"  KYC_ENCRYPTION_KEY={ENCRYPTION_KEY}")
-    print(f"{'='*60}\n")
+    _key_source = "derived-secret" if _has_configured_secret(_secret_key) else "unsafe-fallback"
+    _secure_key_available = False
+
+
+def require_secure_encryption_key() -> None:
+    """Prevent new sensitive files being stored with a known development key."""
+    if not _secure_key_available and _key_source == "unsafe-fallback":
+        raise RuntimeError("Configure KYC_ENCRYPTION_KEY or a strong SECRET_KEY before storing identity documents.")
 
 def encrypt_data(data: bytes) -> bytes:
     """Encrypt binary data."""

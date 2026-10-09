@@ -25,6 +25,7 @@ from sqlalchemy import text
 #     print(f"[STARTUP ERROR] Master database schema migrations failed: {e}")
 from starlette.middleware.sessions import SessionMiddleware
 from .core.config import settings
+from .core import security as auth_security
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from .core.security import SECRET_KEY, ALGORITHM
 from .core.upload_limits import validate_upload_size
@@ -812,8 +813,16 @@ from fastapi import UploadFile, File
 from .services.storage import upload_image_with_metadata
 
 @app.post("/upload-test")
-async def test_cloudinary_upload(file: UploadFile = File(...), folder: str = "gallery"):
+async def test_cloudinary_upload(
+    file: UploadFile = File(...),
+    folder: str = "gallery",
+    current_user: models.User = Depends(auth_security.get_current_user),
+):
     """Test endpoint for Cloudinary integration validation."""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Administrator access required")
+    if file.content_type not in {"image/jpeg", "image/png", "image/webp"}:
+        raise HTTPException(status_code=400, detail="Upload a JPEG, PNG, or WebP image.")
     content = await file.read()
     res = upload_image_with_metadata(content, folder=folder)
     if not res:
