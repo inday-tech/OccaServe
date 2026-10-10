@@ -163,6 +163,35 @@
         justify-content: center !important;
     }
 
+    .profile-gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 190px));
+        gap: 12px;
+        justify-content: start;
+    }
+
+    .profile-gallery-item {
+        display: block;
+        width: 100% !important;
+        min-width: 0 !important;
+        aspect-ratio: 1 / 1;
+        justify-self: stretch;
+        padding: 0;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: #fff;
+        cursor: pointer;
+        text-align: left;
+    }
+
+    .profile-gallery-item img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
     @media (max-width: 480px) {
         .pkg-food-grid {
             gap: 6px;
@@ -182,6 +211,11 @@
         .pkg-food-grid,
         .pkg-service-list {
             max-height: 13rem;
+        }
+
+        .profile-gallery-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
         }
     }
 
@@ -576,17 +610,16 @@
                 <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
                     <span class="w-8 h-[1px] bg-slate-200"></span> Gallery
                 </h2>
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                <div class="profile-gallery-grid">
                     {% for item in public_portfolios %}
                     {% set cover_img = (item.images | selectattr('is_cover', 'equalto', True) | first) %}
                     {% set img_url = cover_img.image_url if cover_img else (item.images[0].image_url if item.images else
                     '/static/images/default-portfolio.jpg') %}
-                    <button type="button" aria-label="View {{ item.title }} gallery" class="aspect-square rounded-2xl overflow-hidden bg-white border border-slate-200 transition-all hover:scale-[1.02] hover:shadow-lg cursor-pointer group relative p-0 text-left"
-                        onclick="openPortfolioGallery('{{ item.id }}')">
-                        <div class="w-full h-full rounded-xl overflow-hidden relative">
-                            <img src="{{ img_url }}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" alt="{{ item.title }} gallery photo">
-                        </div>
-                    </button>
+                    <div role="button" tabindex="0" aria-label="View {{ item.title }} gallery" class="profile-gallery-item transition-all hover:scale-[1.02] hover:shadow-lg group relative"
+                        onclick="openPortfolioGallery('{{ item.id }}')"
+                        onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openPortfolioGallery('{{ item.id }}');}">
+                        <img src="{{ img_url }}" class="transition-transform duration-300 group-hover:scale-105" alt="{{ item.title }} gallery photo">
+                    </div>
                     {% endfor %}
                 </div>
             </section>
