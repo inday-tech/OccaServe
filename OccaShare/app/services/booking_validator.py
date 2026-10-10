@@ -44,8 +44,9 @@ class BookingValidator:
         now = datetime.now()
         current_date = now.date()
         
-        # 2. Check Event Date Passed
-        if booking.event_date < current_date:
+        # 2. Check Event Date Passed. Remaining balance settlement is allowed
+        # after the event; completion still requires verified full payment.
+        if booking.event_date < current_date and not ignore_booking_deadline:
             BookingValidator._expire_booking(db, booking, "Event date has already passed", update_if_expired)
             return False, "The scheduled event date has already passed. This booking cannot be continued."
 

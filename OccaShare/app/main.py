@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, Request, HTTPException, WebSocket, WebSocketDisconnect
+import asyncio
 # Trigger reload for DB schema sync
 from fastapi.responses import RedirectResponse, JSONResponse, Response
 import os
@@ -99,6 +100,16 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS transaction_type VARCHAR DEFAULT 'contract_track'",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS document_type VARCHAR",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS custom_requirements JSONB",
+        """DO $$ DECLARE constraint_row RECORD; BEGIN
+            FOR constraint_row IN
+                SELECT conname FROM pg_constraint
+                WHERE conrelid = 'quotations'::regclass
+                  AND contype = 'c'
+                  AND pg_get_constraintdef(oid) ILIKE '%downpayment_percent%'
+            LOOP
+                EXECUTE format('ALTER TABLE quotations DROP CONSTRAINT %I', constraint_row.conname);
+            END LOOP;
+        END $$""",
         "ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS full_name VARCHAR",
         "ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS birthdate DATE",
         "ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS id_address_extracted TEXT",
@@ -455,6 +466,7 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE business_expenses ADD COLUMN IF NOT EXISTS amount FLOAT DEFAULT 0.0",
         "ALTER TABLE business_expenses ADD COLUMN IF NOT EXISTS date_incurred DATE",
         "ALTER TABLE business_expenses ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+        "UPDATE bookings SET expires_at = created_at + INTERVAL '24 hours' WHERE status = 'draft' AND expires_at IS NULL AND created_at IS NOT NULL",
 
         # booking_payment_records
         """
@@ -507,7 +519,30 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[STARTUP] Schema sync connection error (non-fatal): {e}")
 
-    yield  # App runs here
+    async def expire_abandoned_drafts():
+        while True:
+            try:
+                from .services.draft_expiration import cancel_expired_booking_drafts
+                db_session = SessionLocal()
+                try:
+                    cancelled_count = cancel_expired_booking_drafts(db_session)
+                    if cancelled_count:
+                        print(f"[DRAFT EXPIRATION] Automatically cancelled {cancelled_count} abandoned booking draft(s).")
+                finally:
+                    db_session.close()
+            except Exception as expiry_error:
+                print(f"[DRAFT EXPIRATION WARNING] {expiry_error}")
+            await asyncio.sleep(60)
+
+    expiration_task = asyncio.create_task(expire_abandoned_drafts())
+    try:
+        yield  # App runs here
+    finally:
+        expiration_task.cancel()
+        try:
+            await expiration_task
+        except asyncio.CancelledError:
+            pass
 
 app = FastAPI(lifespan=lifespan, dependencies=[Depends(validate_upload_size)])
 app.add_middleware(GZipMiddleware, minimum_size=500)

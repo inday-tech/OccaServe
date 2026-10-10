@@ -47,10 +47,27 @@ class QuotationService:
         selected_services = []
         selected_equipment = []
 
+        # Customizable packages still have a configured base rate.  The
+        # customer's food selections carry upgrade fees on top of that rate;
+        # they are not the catalog item's full selling price.
+        base_price = Decimal("0")
+        if sess_cust and isinstance(sess_cust, dict):
+            raw_base = sess_cust.get("base_price")
+            if raw_base is not None:
+                try:
+                    base_price = Decimal(str(raw_base))
+                except (TypeError, ValueError):
+                    base_price = Decimal("0")
+        if base_price <= 0 and package:
+            base_price = Decimal(str(getattr(package, "price_per_head", None) or getattr(package, "price", 0) or 0))
+        base_total = base_price * Decimal(str(guest_count))
+
         # From stored customization payload
         if sess_cust and isinstance(sess_cust, dict):
             for food in sess_cust.get("selected_food", []):
-                u_price = float(food.get("price", 0))
+                # Menu selections are included in the per-guest package rate.
+                # Only services/equipment add separate charges.
+                u_price = 0.0
                 # Serving unit is usually per pax / guest
                 unit_str = str(food.get("unit", "pax")).lower()
                 qty = guest_count if ("pax" in unit_str or "guest" in unit_str or not food.get("qty") or food.get("qty") == 1) else int(food.get("qty", guest_count))
@@ -149,7 +166,7 @@ class QuotationService:
         food_total = sum(Decimal(str(f["subtotal"])) for f in selected_food)
         services_total = sum(Decimal(str(s["subtotal"])) for s in selected_services)
         equipment_total = sum(Decimal(str(e["subtotal"])) for e in selected_equipment)
-        customized_subtotal = food_total + services_total + equipment_total
+        customized_subtotal = base_total + food_total + services_total + equipment_total
 
         addons = []
         travel_fee = Decimal(str(getattr(booking, 'travel_fee', 0) or 0))
@@ -165,8 +182,8 @@ class QuotationService:
 
         total_amount = customized_subtotal + travel_fee
 
-        # Ensure downpayment is within 30-100%
-        if not (30 <= downpayment_percent <= 100):
+        # Accept deposit choices from 30% to 100% in 10% increments.
+        if downpayment_percent not in range(30, 101, 10):
             downpayment_percent = 30
 
         package_details = {
@@ -181,6 +198,9 @@ class QuotationService:
             "food_total": float(food_total),
             "services_total": float(services_total),
             "equipment_total": float(equipment_total),
+            "base_price": float(base_price),
+            "base_package_total": float(base_total),
+            "food_upgrade_total": float(food_total),
             "customized_total": float(customized_subtotal),
             "base_amount": float(customized_subtotal) # Available for backward compat
         }
@@ -314,8 +334,8 @@ class QuotationService:
 
         total_amount = base_amount + addon_total
 
-        # Ensure downpayment is within 30-50%
-        if not (30 <= downpayment_percent <= 50):
+        # Accept deposit choices from 30% to 100% in 10% increments.
+        if downpayment_percent not in range(30, 101, 10):
             downpayment_percent = 30
 
         if existing_quote:

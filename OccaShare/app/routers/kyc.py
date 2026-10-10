@@ -985,6 +985,12 @@ async def get_kyc_status(
         models.IdentityVerification.user_id == current_user.id,
         models.IdentityVerification.booking_id == booking_id
     ).order_by(models.IdentityVerification.created_at.desc(), models.IdentityVerification.id.desc()).first()
+
+    # Manual approval is account-level and may not update an older booking's
+    # verification session. Treat the completed account verification as final
+    # so the KYC page can show success and advance to quotation.
+    if current_user.is_verified and current_user.is_kyc_complete:
+        return {"status": "verified"}
     
     # If blocked or rejected on the main compliance record, yield that
     if kyc_record and kyc_record.verification_status in ["blocked", "rejected"]:

@@ -518,6 +518,21 @@ document.addEventListener('DOMContentLoaded', function () {
         filteredRows = allRows;
         showPage(1);
 
+        // A contract notification may deep-link here. Open the regular booking
+        // details modal, where the caterer can choose the Sign Agreement action.
+        const openBookingId = new URLSearchParams(window.location.search).get('open_booking');
+        if (openBookingId && /^\d+$/.test(openBookingId)) {
+            const bookingButton = document.querySelector(`.view-details[data-id="${openBookingId}"]`);
+            if (bookingButton) {
+                window.setTimeout(() => showBookingDetails(bookingButton), 120);
+                const cleanUrl = new URL(window.location.href);
+                cleanUrl.searchParams.delete('open_booking');
+                window.history.replaceState({}, '', cleanUrl);
+            } else if (window.showToast) {
+                window.showToast('This booking is not available in the current bookings list.', 'warning');
+            }
+        }
+
         // 5. Wire search input (visible) to filtering with debounce
         const searchEl = document.getElementById('bookingSearchInput');
         if (searchEl) {
@@ -1229,6 +1244,7 @@ function hydrateButtonDataset(btn, detail) {
                 ? detail.payment_summary.remaining_balance
                 : Math.max(Number(detail.total_amount || 0) - Number(detail.amount_paid || 0), 0)),
         pendingAmount: detail.pending_amount != null ? detail.pending_amount : (btn.dataset.pendingAmount || 0),
+        cashRequestedAmount: detail.cash_requested_amount != null ? detail.cash_requested_amount : (btn.dataset.cashRequestedAmount || 0),
         remainingAfterVerification: detail.remaining_after_verification != null ? detail.remaining_after_verification : (btn.dataset.remainingAfterVerification || 0),
         isUnderReview: String(Boolean(detail.is_under_review || detail.needs_verification || ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested'].includes(detail.payment_status))),
         needsVerification: String(Boolean(detail.needs_verification || detail.is_under_review)),
@@ -1382,6 +1398,13 @@ function _syncFooterButtons(cleanId, normStatus, hasPaymentRequiringReview) {
         var showBlockedNote = !canArchive && hasPaymentRequiringReview;
         cancelBlockedNote.style.display = showBlockedNote ? 'block' : 'none';
         cancelBlockedNote.setAttribute('aria-hidden', showBlockedNote ? 'false' : 'true');
+        var viewBtn = document.querySelector(`.view-details[data-id="${id}"]`);
+        var paymentStatus = String(viewBtn?.dataset?.paymentStatus || '').toLowerCase();
+        if (paymentStatus === 'cash_payment_requested' || paymentStatus === 'cash_balance_requested') {
+            cancelBlockedNote.textContent = 'Cash payment was requested but has not been confirmed. Confirm receipt only after you have physically received the cash.';
+        } else {
+            cancelBlockedNote.textContent = 'A payment is verified or under review. Contact support or an administrator to review cancellation and any refund.';
+        }
     }
     if (cancelBtn) {
         cancelBtn.onclick = function (e) {
@@ -1553,7 +1576,8 @@ function showBookingDetails(btn) {
         } else if (bookingStatus === 'pending' || bookingStatus === 'pending_review' || bookingStatus === 'inquiry' || bookingStatus === 'awaiting_payment') {
             stBg = '#fef3c7'; stColor = '#92400e'; stBorder = '#fde68a';
             if (bookingStatus === 'pending_review') statusLabel = 'NEW INQUIRY';
-            else if (bookingStatus === 'pending' || bookingStatus === 'awaiting_payment') statusLabel = 'PENDING PAY';
+            else if (bookingStatus === 'pending') statusLabel = 'PENDING PAY';
+            else if (bookingStatus === 'awaiting_payment') statusLabel = 'AWAITING CUSTOMER PAYMENT';
         }
         stBadge.innerText = statusLabel;
         stBadge.style.background = stBg;
@@ -1568,6 +1592,9 @@ function showBookingDetails(btn) {
         if (isFullyPaidNow) {
             payBadge.innerText = 'FULLY PAID';
             payBadge.style.background = '#dcfce7'; payBadge.style.color = '#166534'; payBadge.style.borderColor = '#bbf7d0';
+        } else if (paymentStatus === 'cash_payment_requested' || paymentStatus === 'cash_balance_requested') {
+            payBadge.innerText = paymentStatus === 'cash_balance_requested' ? 'CASH BALANCE REQUESTED' : 'AWAITING CASH RECEIPT';
+            payBadge.style.background = '#fef3c7'; payBadge.style.color = '#92400e'; payBadge.style.borderColor = '#fde68a';
         } else if (isUnderReview) {
             payBadge.innerText = 'PAYMENT UNDER REVIEW';
             payBadge.style.background = '#fef3c7'; payBadge.style.color = '#92400e'; payBadge.style.borderColor = '#fde68a';
@@ -1686,7 +1713,7 @@ function showBookingDetails(btn) {
                 ? 'CONFIRM CASH'
                 : (paymentStatus === 'balance_proof_submitted' ? 'VERIFY BALANCE' : 'VERIFY PAYMENT');
         } else if (bookingStatus === 'pending' || bookingStatus === 'awaiting_payment') {
-            ovSt.innerText = 'PENDING PAY';
+            ovSt.innerText = bookingStatus === 'awaiting_payment' ? 'AWAITING CUSTOMER PAYMENT' : 'PENDING PAY';
         } else {
             ovSt.innerText = (bookingStatus || 'pending').replace(/_/g, ' ').toUpperCase();
         }
@@ -1700,7 +1727,7 @@ function showBookingDetails(btn) {
     // Paid display: show submitted-under-review vs verified-paid
     var ovPd = document.getElementById('ovPaidDisplay');
     if (ovPd) {
-        if (isUnderReview && pendingReviewAmount > 0) {
+        if (isUnderReview && pendingReviewAmount > 0 && paymentStatus !== 'cash_payment_requested' && paymentStatus !== 'cash_balance_requested') {
             ovPd.innerHTML = `<span style="color:#92400e; font-weight:700;">Submitted: ${formattedPending}</span> <span style="color:#94a3b8; font-size:0.78em;">(Under Review)</span><br><span style="color:#16a34a; font-size:0.85em;">Verified: ${formattedPaid}</span>`;
         } else {
             ovPd.innerText = formattedPaid;
@@ -1711,6 +1738,8 @@ function showBookingDetails(btn) {
         var isFullyPaidOv = totalAmountValue > 0 && paidAmountValue >= totalAmountValue - 0.009 && balanceValue <= 0.009;
         if (isFullyPaidOv) {
             ovPaySt.innerText = 'FULLY PAID'; ovPaySt.style.color = '#10b981';
+        } else if (paymentStatus === 'cash_payment_requested' || paymentStatus === 'cash_balance_requested') {
+            ovPaySt.innerText = paymentStatus === 'cash_balance_requested' ? 'CASH BALANCE REQUESTED' : 'AWAITING CASH RECEIPT'; ovPaySt.style.color = '#d97706';
         } else if (isUnderReview) {
             ovPaySt.innerText = 'UNDER REVIEW'; ovPaySt.style.color = '#d97706';
         } else if (totalAmountValue > 0 && (paidAmountValue > 0 || paymentStatus.includes('partial') || paymentStatus === 'deposit_paid')) {
@@ -2272,7 +2301,7 @@ function showBookingDetails(btn) {
                 }
             } else if (isManual) {
                 actionButtonsHtml += `<button type="button" onclick="openRecordPaymentModal()" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-plus-circle"></i> Record Payment</button>`;
-            } else {
+            } else if (bookingStatus !== 'awaiting_payment') {
                 actionButtonsHtml += `<button type="button" onclick="window.copyInvoiceLink('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #ea580c; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-link"></i> Copy Payment Link</button>`;
             }
         } else if (data.paymentStatus === 'balance_proof_submitted' || data.paymentStatus === 'cash_balance_requested') {
@@ -2294,7 +2323,7 @@ function showBookingDetails(btn) {
             if (canCompletePickup) {
                 actionButtonsHtml += `<button type="button" onclick="window.confirmCompleteBooking('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-check"></i> ${isFoodOrder ? 'Mark Picked Up' : 'Mark Collected'}</button>`;
             } else {
-                actionButtonsHtml += `<button type="button" onclick="window.openBalanceSettlement('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #ea580c; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-wallet"></i> Settle Remaining Balance First</button>`;
+                actionButtonsHtml += `<button type="button" disabled title="The customer must be fully paid before the booking can be completed." class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: not-allowed; background: #cbd5e1; color: #64748b; border: none; display: inline-flex; align-items: center; gap: 6px; opacity: .85;"><i class="fas fa-lock"></i> ${isFoodOrder ? 'Mark Picked Up' : 'Mark Collected'} — Full Payment Required</button>`;
             }
         } else if (bookingStatus === 'arrived') {
             actionButtonsHtml += `<button type="button" onclick="updateBookingStage('${cleanId}', 'setup_ongoing')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-tools"></i> ${isFoodOrder ? 'Start Setup' : 'Start Event Setup'}</button>`;
@@ -2307,7 +2336,7 @@ function showBookingDetails(btn) {
             } else if (paymentStatus === 'cash_balance_requested') {
                 actionButtonsHtml += `<button type="button" onclick="window.confirmCashPayment('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-money-bill-wave"></i> Confirm Cash Balance</button>`;
             } else {
-                actionButtonsHtml += `<button type="button" onclick="window.openBalanceSettlement('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #ea580c; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-wallet"></i> Settle Remaining Balance First</button>`;
+                actionButtonsHtml += `<button type="button" disabled title="The customer must be fully paid before the booking can be completed." class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: not-allowed; background: #cbd5e1; color: #64748b; border: none; display: inline-flex; align-items: center; gap: 6px; opacity: .85;"><i class="fas fa-lock"></i> ${isFoodOrder ? 'Mark as Completed' : 'Complete Event'} — Full Payment Required</button>`;
             }
         }
 
@@ -2583,10 +2612,16 @@ function renderOverviewWorkspace(data, context) {
     let primaryBtnText = 'Start Preparation';
     let primaryBtnAction = `window.updateBookingStage(${cleanId}, 'preparing')`;
     let primaryEyebrow = isManual ? 'MANUAL BOOKING ADVISORY' : 'ONLINE BOOKING ADVISORY';
+    const preparationStatus = String(data.preparationStatus || '').toLowerCase();
 
     if (status === 'cancelled' || status === 'canceled' || status === 'rejected') {
         primaryTitle = 'Booking Cancelled';
         primaryDesc = 'This booking is closed. Use Archive Booking below to remove it from your active list.';
+        primaryBtnText = '';
+        primaryBtnAction = '';
+    } else if (preparationStatus === 'completed') {
+        primaryTitle = 'Event Completed';
+        primaryDesc = 'The catering service is complete. Complete the booking only after final payment is verified.';
         primaryBtnText = '';
         primaryBtnAction = '';
     } else if (status === 'completed') {
@@ -2637,10 +2672,10 @@ function renderOverviewWorkspace(data, context) {
             primaryBtnText = isFoodOrder ? 'Confirm Arrival' : 'Start Event Setup';
             primaryBtnAction = `window.updateBookingStage(${cleanId}, 'setup_ongoing')`;
         } else if (status === 'setup_ongoing' || status === 'in_progress') {
-            primaryTitle = 'Event Service Ongoing';
-            primaryDesc = 'On-site event service in progress. Mark completed when finished.';
-            primaryBtnText = isFoodOrder ? 'Mark as Completed' : 'Complete Event';
-            primaryBtnAction = `window.confirmCompleteBooking(${cleanId})`;
+            primaryTitle = 'Preparation Status: Setup in Progress';
+            primaryDesc = 'Use the Preparation tab to update the customer-facing preparation stage. Complete the booking only after the event and final payment are settled.';
+            primaryBtnText = 'Open Preparation';
+            primaryBtnAction = `switchBookingTab('preparation', document.getElementById('tabBtnPreparation'))`;
         }
     } else {
         // Online booking workflow
@@ -2664,7 +2699,28 @@ function renderOverviewWorkspace(data, context) {
             primaryDesc = 'Customer needs to sign the agreement to proceed.';
             primaryBtnText = '';
             primaryBtnAction = '';
-        } else if (status === 'pending' || status === 'awaiting_payment' || status === 'pending_payment') {
+        } else if (status === 'awaiting_payment') {
+            const ps = (data.paymentStatus || '').toLowerCase();
+            const underReview = data.isUnderReview === 'true' || ['proof_submitted', 'cash_payment_requested', 'pending_verification'].includes(ps) || Boolean(data.proofUrl);
+            if (underReview) {
+                if (ps === 'cash_payment_requested') {
+                    primaryTitle = 'Customer Requested Cash Payment';
+                    primaryDesc = 'Confirm only after you have physically received the cash payment.';
+                    primaryBtnText = 'Confirm Cash Received';
+                    primaryBtnAction = `window.confirmCashPayment(${cleanId})`;
+                } else {
+                    primaryTitle = 'Customer Submitted Payment Proof';
+                    primaryDesc = 'Verify payment receipt and confirm booking. Deposit verification secures the booking and allows preparation.';
+                    primaryBtnText = 'Verify & Confirm';
+                    primaryBtnAction = `window.verifyPayment(${cleanId}, false)`;
+                }
+            } else {
+                primaryTitle = 'Agreement Signed - Awaiting Customer Payment';
+                primaryDesc = 'The customer has been notified and can continue to payment from their booking. No action is needed unless they ask for a payment link.';
+                primaryBtnText = '';
+                primaryBtnAction = '';
+            }
+        } else if (status === 'pending' || status === 'pending_payment') {
             const ps = (data.paymentStatus || '').toLowerCase();
             const underReview = data.isUnderReview === 'true' || ['proof_submitted', 'cash_payment_requested', 'pending_verification'].includes(ps) || Boolean(data.proofUrl);
             if (underReview) {
@@ -2736,10 +2792,10 @@ function renderOverviewWorkspace(data, context) {
             primaryBtnText = isFoodOrder ? 'Confirm Arrival' : 'Start Event Setup';
             primaryBtnAction = `window.updateBookingStage(${cleanId}, 'setup_ongoing')`;
         } else if (status === 'setup_ongoing' || status === 'in_progress') {
-            primaryTitle = 'Event Service Ongoing';
-            primaryDesc = 'Event is in progress. Mark completed when finished.';
-            primaryBtnText = isFoodOrder ? 'Mark as Completed' : 'Complete Event';
-            primaryBtnAction = `window.confirmCompleteBooking(${cleanId})`;
+            primaryTitle = 'Preparation Status: Setup in Progress';
+            primaryDesc = 'Use the Preparation tab to update the customer-facing preparation stage. Complete the booking only after the event and final payment are settled.';
+            primaryBtnText = 'Open Preparation';
+            primaryBtnAction = `switchBookingTab('preparation', document.getElementById('tabBtnPreparation'))`;
         }
     }
 
@@ -2781,7 +2837,7 @@ function renderOverviewWorkspace(data, context) {
 // ─── REALTIME BOOKING ACTION FEEDBACK ─────────────────────────────────────────
 const BOOKING_ACTION_TOASTS = {
     preparing: 'Preparation started. Customer notified.',
-    ready_for_delivery: 'Marked ready for delivery. Customer notified.',
+    ready_for_delivery: 'Preparation marked complete. Customer notified.',
     ready_for_pickup: 'Marked ready for pickup. Customer notified.',
     on_the_way: 'Out for delivery. Customer notified.',
     arrived: 'Marked arrived at venue. Customer notified.',
@@ -3289,7 +3345,7 @@ function toggleDueDateEdit() {
 
 async function saveDueDate() {
     const dueDateInput = document.getElementById('balanceDueDateInput');
-    const eventDueDate = currentEventDate || (dueDateInput && dueDateInput.value);
+    const eventDueDate = (dueDateInput && dueDateInput.value) || currentEventDate;
     if (!eventDueDate) { window.showToast('This booking has no event date.', 'error'); return; }
     
     const cleanId = String(currentBookingId || '').replace(/\D/g, '');
@@ -3306,7 +3362,7 @@ async function saveDueDate() {
         const effectiveFormatted = `${months[parseInt(effectiveParts[1])-1]} ${effectiveParts[2]}, ${effectiveParts[0]}`;
         document.getElementById('modalDueDate').innerText = effectiveFormatted;
         const badgeContainer = document.getElementById('dueDateBadgeContainer');
-        if (badgeContainer) badgeContainer.innerHTML = '<span class="due-date-badge"><i class="fas fa-check-circle"></i> Due on Event Day</span>';
+        if (badgeContainer) badgeContainer.innerHTML = '<span class="due-date-badge"><i class="fas fa-check-circle"></i> Balance Due Date Set</span>';
         
         toggleDueDateEdit();
         
@@ -3816,9 +3872,19 @@ function confirmCashPayment(bookingId, customerName, amount, paymentStatus) {
     if (!amountVal || isNaN(amountVal)) {
         const btn = document.querySelector(`.view-details[data-id="${cleanId}"]`);
         if (btn) {
-            amountVal = parseFloat(btn.dataset.pendingAmount) || parseFloat(btn.dataset.verifiedPaid) || 0;
+            const status = String(paymentStatus || btn.dataset.paymentStatus || '').toLowerCase();
+            const requestedAmount = parseFloat(btn.dataset.cashRequestedAmount) || 0;
+            amountVal = requestedAmount || parseFloat(btn.dataset.pendingAmount) || 0;
             const total = parseFloat(btn.dataset.totalRawAmount) || 0;
             const paid = parseFloat(btn.dataset.amountPaid) || 0;
+            if (!amountVal && (status === 'cash_balance_requested' || status === 'balance_proof_submitted')) {
+                amountVal = Math.max(total - paid, 0);
+            }
+            if (!amountVal && status === 'cash_payment_requested') {
+                const plan = String(btn.dataset.paymentPlan || '').toLowerCase();
+                const percent = parseFloat(plan);
+                amountVal = plan === 'full' ? total : (!isNaN(percent) ? total * percent / 100 : 0);
+            }
             if (!amountVal) amountVal = Math.max(total - paid, 0) || total;
         }
     }
@@ -3843,8 +3909,8 @@ function confirmCashPayment(bookingId, customerName, amount, paymentStatus) {
             if (result && (result.status === 'success' || result.success)) {
                 await refreshBookingUiRealtime(cleanId, {
                     toast: BOOKING_ACTION_TOASTS.cash_received,
-                    newStatus: 'confirmed',
-                    newPaymentStatus: 'paid'
+                        newStatus: result.new_status || 'confirmed',
+                        newPaymentStatus: result.new_payment_status || 'deposit_paid'
                 });
             }
         },
@@ -4013,9 +4079,9 @@ window._prepCache = { status: 'not_started', progress: 0, label: 'Not Started', 
 
 const PREP_PROGRESS_FALLBACK = {
     not_started: 0,
-    preparing: 40,
-    ready_for_delivery: 60,
-    setup_in_progress: 80,
+    preparing: 25,
+    ready_for_delivery: 50,
+    setup_in_progress: 75,
     ready_for_event: 90,
     completed: 100
 };
@@ -4040,6 +4106,7 @@ function _renderPrepStatusUI(prep) {
     const pctEl = document.getElementById('prepProgressPercent');
     const bar = document.getElementById('prepProgressBar');
     const updated = document.getElementById('prepLastUpdated');
+    const statusButton = document.getElementById('btnUpdatePrepStatus');
 
     const emoji = prep.emoji || '⚪';
     const label = prep.label || 'Not Started';
@@ -4053,6 +4120,43 @@ function _renderPrepStatusUI(prep) {
     if (pctEl) pctEl.innerText = progress + '%';
     if (bar) bar.style.width = progress + '%';
     if (updated) updated.innerText = _prepFormatUpdated(prep.last_updated);
+    if (statusButton) {
+        const isPreparationComplete = prep.status === 'completed';
+        statusButton.disabled = isPreparationComplete;
+        statusButton.title = isPreparationComplete
+            ? 'Event preparation is complete.'
+            : 'Update preparation status';
+        statusButton.innerHTML = isPreparationComplete
+            ? '<i class="fas fa-check-circle"></i> Event Completed'
+            : '<i class="fas fa-sync-alt"></i> Update Status';
+        statusButton.style.opacity = isPreparationComplete ? '0.65' : '1';
+        statusButton.style.cursor = isPreparationComplete ? 'not-allowed' : 'pointer';
+    }
+}
+
+// Update the visible booking row immediately after a preparation change. The
+// table refresh remains a background consistency check, so the caterer does
+// not have to wait for a full page fetch to see the new status.
+function _updatePreparationRowStatus(bookingId, prep, bookingStatus) {
+    const btn = document.querySelector('.view-details[data-id="' + String(bookingId) + '"]');
+    const row = btn && btn.closest('tr');
+    if (!row || !prep) return;
+
+    if (btn) {
+        btn.dataset.preparationStatus = prep.status || '';
+        if (bookingStatus) btn.dataset.status = bookingStatus;
+    }
+    const badge = row.querySelector('.badge-status');
+    if (!badge) return;
+    const labels = {
+        not_started: 'Not Started',
+        preparing: 'Preparing',
+        ready_for_delivery: 'Preparation Complete',
+        setup_in_progress: 'Setup in Progress',
+        ready_for_event: 'Ready for Event',
+        completed: 'Event Completed'
+    };
+    badge.textContent = labels[prep.status] || prep.label || 'Preparation Updated';
 }
 
 async function loadBookingTasks(bookingId) {
@@ -4077,8 +4181,9 @@ async function loadBookingTasks(bookingId) {
 }
 
 window.openPrepStatusModal = function() {
-    if (['completed', 'delivered'].includes(String(window.currentBookingStatus || '').toLowerCase())) {
-        if (window.showToast) window.showToast('Completed bookings are locked.', 'error');
+    if (['completed', 'delivered'].includes(String(window.currentBookingStatus || '').toLowerCase())
+        || (window._prepCache && window._prepCache.status === 'completed')) {
+        if (window.showToast) window.showToast('Event preparation is already completed.', 'info');
         return;
     }
 
@@ -4091,11 +4196,11 @@ window.openPrepStatusModal = function() {
         ? window._prepCache.statuses
         : [
             { key: 'not_started', label: 'Not Started', progress: 0, emoji: '⚪' },
-            { key: 'preparing', label: 'Preparing', progress: 40, emoji: '🟡' },
-            { key: 'ready_for_delivery', label: 'Preparation Complete', progress: 60, emoji: '🔵' },
-            { key: 'setup_in_progress', label: 'Setup in Progress', progress: 80, emoji: '🟠' },
+            { key: 'preparing', label: 'Preparing', progress: 25, emoji: '🟡' },
+            { key: 'ready_for_delivery', label: 'Preparation Complete', progress: 50, emoji: '🔵' },
+            { key: 'setup_in_progress', label: 'Setup in Progress', progress: 75, emoji: '🟠' },
             { key: 'ready_for_event', label: 'Ready for Event', progress: 90, emoji: '🟣' },
-            { key: 'completed', label: 'Completed', progress: 100, emoji: '🟢' }
+            { key: 'completed', label: 'Event Completed', progress: 100, emoji: '🟢' }
         ];
 
     list.innerHTML = statuses.map(function(s) {
@@ -4120,12 +4225,14 @@ window.closePrepStatusModal = function() {
 window.selectPrepStatus = async function(statusKey) {
     const cleanId = String(currentBookingId || '').replace(/\D/g, '');
     if (!cleanId || !statusKey) return;
-    if (['completed', 'delivered'].includes(String(window.currentBookingStatus || '').toLowerCase())) {
-        if (window.showToast) window.showToast('Completed bookings are locked.', 'error');
+    if (['completed', 'delivered'].includes(String(window.currentBookingStatus || '').toLowerCase())
+        || (window._prepCache && window._prepCache.status === 'completed')) {
+        if (window.showToast) window.showToast('Event preparation is already completed.', 'info');
         closePrepStatusModal();
         return;
     }
 
+    if (window.showToast) window.showToast('Updating preparation status…', 'info');
     try {
         const res = await fetch('/caterer/api/bookings/' + cleanId + '/preparation-status', {
             method: 'POST',
@@ -4135,14 +4242,18 @@ window.selectPrepStatus = async function(statusKey) {
         const data = await res.json().catch(function() { return {}; });
         if (!res.ok) throw new Error(data.detail || 'Failed to update preparation status');
 
-        if (data.preparation) _renderPrepStatusUI(data.preparation);
+        if (data.preparation) {
+            _renderPrepStatusUI(data.preparation);
+            _updatePreparationRowStatus(cleanId, data.preparation, data.booking_status);
+        }
         if (data.booking_status) window.currentBookingStatus = data.booking_status;
 
         closePrepStatusModal();
         if (window.showToast) window.showToast(data.message || 'Preparation status updated.', 'success');
 
-        if (window.refreshBookingsTable) window.refreshBookingsTable();
+        // Refresh the server-rendered table after the optimistic row update.
         setTimeout(function() {
+            if (window.refreshBookingsTable) window.refreshBookingsTable();
             const btn = document.querySelector('.view-details[data-id="' + cleanId + '"]');
             const modalEl = document.getElementById('bookingDetailModal');
             if (btn && modalEl && modalEl.classList.contains('active')) {
@@ -4160,14 +4271,21 @@ window.requestReadyForDelivery = async function(bookingId) {
     if (!cleanId) return;
 
     try {
-        await fetch('/caterer/api/bookings/' + cleanId + '/preparation-status', {
+        const response = await fetch('/caterer/api/bookings/' + cleanId + '/preparation-status', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             body: JSON.stringify({ status: 'ready_for_delivery' })
         });
-    } catch (e) {}
-
-    updateBookingStage(cleanId, 'ready_for_delivery');
+        const data = await response.json().catch(function() { return {}; });
+        if (!response.ok) throw new Error(data.detail || 'Could not update preparation status.');
+        await refreshBookingUiRealtime(cleanId, {
+            toast: BOOKING_ACTION_TOASTS.ready_for_delivery,
+            newStatus: data.booking_status || 'ready_for_delivery',
+            newPaymentStatus: ''
+        });
+    } catch (e) {
+        if (window.showError) window.showError(e.message || 'Could not update preparation status.');
+    }
 };
 
 // Compatibility stubs (old checklist helpers no longer used by Preparation tab)

@@ -107,7 +107,16 @@
 
                 <div class="grid-2-col">
                     <!-- Event Type: Locked to selected package -->
-                    <div class="form-group">
+                <div class="form-group">
+                    {% if package and package.pricing_mode == 'customizable' %}
+                        <label class="form-label"><span>Event Type</span><small style="color: #64748b; font-weight: normal;">(Choose for your event)</small></label>
+                        <select name="event_type" id="event_type_select" class="filter-select-pro form-input" required>
+                            {% set selected_event_type = booking.event_type if booking and booking.event_type else '' %}
+                            {% for event_option in ['Wedding', 'Birthday', 'Corporate', 'Debut', 'Baptism', 'Anniversary', 'Other'] %}
+                            <option value="{{ event_option }}" {% if selected_event_type == event_option %}selected{% endif %}>{{ event_option }}</option>
+                            {% endfor %}
+                        </select>
+                    {% else %}
                         <label class="form-label">
                             <span>Event Type</span>
                             <small style="color: #64748b; font-weight: normal;">(From Package)</small>
@@ -122,15 +131,16 @@
                             </span>
                         </div>
                         <input type="hidden" name="event_type" id="event_type_hidden" value="{{ package.service_type if package and package.service_type else (booking.event_type if booking else 'General Catering') }}">
+                    {% endif %}
                         <span class="field-error" id="err-type">Please select a valid package.</span>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">Guest Count <small id="guest_range_label">(min <span id="min_guests_span">{{ package.min_guests or caterer.min_pax or 50 }}</span>, max <span id="max_guests_span">{{ [package.max_guests or 999, 999] | min }}</span> pax)</small></label>
                         <input type="text" inputmode="numeric" id="guest_count_display" class="form-input"
-                            maxlength="3" pattern="[0-9]{1,3}" value="{{ [booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50), 999] | min }}" oninput="formatGuestCount(this); updateCalculator()">
+                            maxlength="3" pattern="[0-9]{1,3}" value="{{ initial_guest_count or 1 }}" oninput="formatGuestCount(this); updateCalculator()">
                         <input type="hidden" name="guest_count" id="guest_count"
-                            value="{{ [booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50), 999] | min }}">
+                            value="{{ initial_guest_count or 1 }}">
                         <span class="field-error" id="err-guests">Number of guests must be between 1 and 999.</span>
                     </div>
                 </div>
@@ -471,7 +481,7 @@
                 <h3 class="calc-title">Price Estimate</h3>
 
                 <div class="calc-row">
-                    <span class="calc-label">Package Price</span>
+                    <span class="calc-label">{% if package and package.pricing_mode == 'customizable' %}Menu Included{% else %}Package Price{% endif %}</span>
                     <span class="calc-val" id="calc-pkg-price-label">{% if package and package.pricing_mode == 'customizable' %}{% if customization and customization.estimated_total is defined and customization.estimated_total > 0 %}₱{{ "{:,.2f}".format(customization.estimated_total) }} (Customization){% else %}See choices above{% endif %}{% elif package and (package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest') %}₱{{ "{:,.2f}".format(package.price_per_head or 0) }}/pax{% else %}₱{{ "{:,.2f}".format(package.price or 0) }} total{% endif %}</span>
                 </div>
                 <div class="calc-row">
@@ -479,7 +489,7 @@
                     <span class="calc-val" id="calc-guests">0</span>
                 </div>
                 <div class="calc-row">
-                    <span class="calc-label">Add-ons (<span id="calc-addons-count">0</span>)</span>
+                    <span class="calc-label">{% if package and package.pricing_mode == 'customizable' %}Selected Upgrades{% else %}Add-ons{% endif %} (<span id="calc-addons-count">0</span>)</span>
                     <span class="calc-val" id="calc-addons-total">+₱0.00</span>
                 </div>
                 <div class="calc-row">
@@ -490,7 +500,7 @@
                 <div class="calc-divider"></div>
 
                 <div class="calc-total">
-                    <span class="total-label">Estimated Total Price</span>
+                    <span class="total-label">{% if package and package.pricing_mode == 'customizable' %}Estimated Customized Total{% else %}Estimated Total Price{% endif %}</span>
                     <span class="total-price" id="calc-grand-total">₱0.00</span>
                 </div>
 
@@ -610,7 +620,7 @@
     {% if package %}
     window.pricingMode = "{{ package.pricing_mode or ('per_pax' if package.price_unit == 'per_guest' else 'fixed') }}";
     window.pricePerHead = parseFloat("{{ package.price_per_head or package.price or 0 }}") || 0;
-    window.basePrice = parseFloat("{{ package.price or package.price_per_head or 0 }}") || 0;
+    window.basePrice = parseFloat("{{ package.price_per_head or package.price or 0 }}") || 0;
     window.additionalGuestPrice = parseFloat("{{ package.additional_guest_price or 0 }}") || 0;
     window.minGuests = parseInt("{{ package.min_guests or caterer.min_pax or 1 }}") || 1;
     window.maxGuests = parseInt("{{ package.max_guests or 0 }}") || 0;

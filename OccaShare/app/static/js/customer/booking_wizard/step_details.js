@@ -126,7 +126,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // 2. Update pricing & capacity state
         window.pricingMode = pkg.pricing_mode || 'per_pax';
         window.pricePerHead = Number(pkg.price_per_head || 0);
-        window.basePrice = Number(pkg.price || 0);
+        // Customizable packages use the per-head rate as their base; the
+        // legacy `price` field is only a fallback.
+        window.basePrice = Number(pkg.price_per_head || pkg.price || 0);
         window.additionalGuestPrice = Number(pkg.additional_guest_price || 0);
         window.minGuests = Number(pkg.min_guests || 1);
         window.maxGuests = Math.min(Number(pkg.max_guests || 999), 999);
@@ -143,11 +145,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const calcPkgPriceLabel = document.getElementById('calc-pkg-price-label');
         if (calcPkgPriceLabel) {
             if (window.pricingMode === 'customizable') {
-                const custTotal = window.customization && parseFloat(window.customization.estimated_total || 0);
-                if (custTotal > 0) {
-                    calcPkgPriceLabel.innerText = `₱${custTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })} (Customization)`;
+                const baseRate = Number(window.basePrice || 0);
+                if (baseRate > 0) {
+                    calcPkgPriceLabel.innerText = `₱${baseRate.toLocaleString(undefined, { minimumFractionDigits: 2 })}/pax`;
                 } else {
-                    calcPkgPriceLabel.innerText = 'See choices above';
+                    calcPkgPriceLabel.innerText = 'Pay per selection';
                 }
             } else if (window.pricingMode === 'per_pax' || pkg.price_unit === 'per_guest') {
                 calcPkgPriceLabel.innerText = `₱${window.pricePerHead.toLocaleString(undefined, { minimumFractionDigits: 2 })}/pax`;
@@ -279,11 +281,19 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             total = basePackageTotal + excessGuestsTotal;
         } else if (window.pricingMode === 'customizable') {
-            // For customizable packages, compute strictly from customer's selected food, services, and equipment
-            if (window.customization && Array.isArray(window.customization.selected_food) && window.customization.selected_food.length > 0) {
+            // Customizable total = base package rate + selection upgrade fees
+            // + services/equipment. Keep this identical to QuotationService.
+            const basePrice = Number(window.basePrice || 0);
+            basePackageTotal = basePrice * guests;
+            if (window.customization && (
+                (Array.isArray(window.customization.selected_food) && window.customization.selected_food.length > 0) ||
+                (Array.isArray(window.customization.selected_services) && window.customization.selected_services.length > 0) ||
+                (Array.isArray(window.customization.selected_equipment) && window.customization.selected_equipment.length > 0)
+            )) {
                 let foodTot = 0;
                 window.customization.selected_food.forEach(f => {
-                    const price = parseFloat(f.price || f.unit_price || 0);
+                    // Selected menu items are included in the per-guest rate.
+                    const price = 0;
                     const unit = String(f.unit || 'pax').toLowerCase();
                     const qty = (unit.includes('pax') || unit.includes('guest') || !f.qty || f.qty === 1) ? guests : (parseInt(f.qty) || guests);
                     foodTot += price * qty;
@@ -300,47 +310,54 @@ document.addEventListener('DOMContentLoaded', function () {
                     const qty = parseInt(e.qty) || 1;
                     eqTot += price * qty;
                 });
-                basePackageTotal = foodTot + srvTot + eqTot;
-            } else if (window.customization && window.customization.estimated_total > 0) {
-                basePackageTotal = parseFloat(window.customization.estimated_total) || 0;
-            } else {
-                basePackageTotal = activeBasePrice;
+                basePackageTotal += foodTot + srvTot + eqTot;
+            } else if (window.customization) {
+                // Older saved payloads may have totals but no item arrays.
+                const savedTotal = parseFloat(window.customization.estimated_total) || 0;
+                if (savedTotal > 0) basePackageTotal = savedTotal;
             }
 
             total = basePackageTotal;
 
-            // Update Package Price label in sidebar to show the customization total
+            // Keep the package row as the base rate; the total row below shows selections.
             const calcPkgLabel = document.getElementById('calc-pkg-price-label');
-            if (calcPkgLabel && basePackageTotal > 0) {
-                calcPkgLabel.innerText = '₱' + basePackageTotal.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ' (Customization)';
-            } else if (calcPkgLabel && basePackageTotal === 0) {
-                calcPkgLabel.innerText = 'See choices above';
+            const baseRate = Number(window.basePrice || 0);
+            if (calcPkgLabel && baseRate > 0) {
+                calcPkgLabel.innerText = '\u20b1' + baseRate.toLocaleString(undefined, { minimumFractionDigits: 2 }) + '/pax';
+            } else if (calcPkgLabel) {
+                calcPkgLabel.innerText = 'Pay per selection';
             }
         } else {
             total = guests * activePricePerHead;
         }
 
-        // Add-ons price
+        // Fixed-package add-ons are separate from customizable selections.
+        // Customizable pricing is already complete above; adding these DOM
+        // values here would make the estimate disagree with the server quote.
         let addonsTotal = 0;
-        document.querySelectorAll('input[name="selected_addons"]:checked').forEach(cb => {
-            const price = parseFloat(cb.getAttribute('data-price')) || 0;
-            addonsTotal += price * guests; // Menu Add-ons are per pax
-        });
-        document.querySelectorAll('input[name="selected_equipment_addons"]:checked, input[name="selected_service_addons"]:checked').forEach(cb => {
-            const price = parseFloat(cb.getAttribute('data-price')) || 0;
-            addonsTotal += price; // Equipment and Services are flat fees
-        });
+        if (window.pricingMode !== 'customizable') {
+            document.querySelectorAll('input[name="selected_addons"]:checked').forEach(cb => {
+                const price = parseFloat(cb.getAttribute('data-price')) || 0;
+                addonsTotal += price * guests; // Menu Add-ons are per pax
+            });
+            document.querySelectorAll('input[name="selected_equipment_addons"]:checked, input[name="selected_service_addons"]:checked').forEach(cb => {
+                const price = parseFloat(cb.getAttribute('data-price')) || 0;
+                addonsTotal += price; // Equipment and Services are flat fees
+            });
+        }
 
         // Upgrades price (Swapped / Premium Items)
         let upgradesTotal = 0;
-        document.querySelectorAll('.menu-item-card.selectable input[type="checkbox"]:checked').forEach(cb => {
-            const fee = parseFloat(cb.getAttribute('data-upgrade-fee')) || 0;
-            upgradesTotal += fee * guests;
-        });
-        document.querySelectorAll('.slot-input').forEach(input => {
-            const fee = parseFloat(input.getAttribute('data-upgrade-fee')) || 0;
-            upgradesTotal += fee * guests;
-        });
+        if (window.pricingMode !== 'customizable') {
+            document.querySelectorAll('.menu-item-card.selectable input[type="checkbox"]:checked').forEach(cb => {
+                const fee = parseFloat(cb.getAttribute('data-upgrade-fee')) || 0;
+                upgradesTotal += fee * guests;
+            });
+            document.querySelectorAll('.slot-input').forEach(input => {
+                const fee = parseFloat(input.getAttribute('data-upgrade-fee')) || 0;
+                upgradesTotal += fee * guests;
+            });
+        }
 
         const addonsCount = document.querySelectorAll('.menu-item-card.addon input[type="checkbox"]:checked').length;
         if (calcAddonsCount) calcAddonsCount.innerText = addonsCount;

@@ -403,7 +403,16 @@ async def customer_orders(
     user: models.User = Depends(customer_only)
 ):
     # Calculate Intelligence Stats
-    food_orders = [b for b in user.bookings if not b.customer_archived and not getattr(b, 'customer_deleted', False) and b.document_type == 'invoice' and b.status != 'draft']
+    visible_orders = [
+        b for b in user.bookings
+        if not b.customer_archived
+        and not getattr(b, 'customer_deleted', False)
+        and (
+            b.status == 'draft'
+            or (b.document_type == 'invoice' and b.status != 'draft')
+        )
+    ]
+    food_orders = [b for b in visible_orders if b.document_type == 'invoice' and b.status != 'draft']
     total_orders = len(food_orders)
     
     def get_actual_paid(b):
@@ -422,7 +431,7 @@ async def customer_orders(
     return templates.TemplateResponse("customer/orders.html", {
         "request": request,
         "user": user,
-        "bookings": sorted(food_orders, key=lambda x: x.id, reverse=True),
+        "bookings": sorted(visible_orders, key=lambda x: x.id, reverse=True),
         "stats": {
             "total_reservations": total_orders,
             "total_spent": total_spent,
@@ -447,6 +456,7 @@ async def manage_booking(
     from ..services.payment_service import PaymentService
     if PaymentService.heal_premature_completion(booking, db):
         db.refresh(booking)
+    payment_summary = PaymentService.get_payment_summary(booking)
     
     # Calculate status progress for timeline
     current_status = (booking.status or "pending").lower()
@@ -549,7 +559,8 @@ async def manage_booking(
         "current_step_idx": current_step_idx,
         "active_page": "orders" if is_food_order else "bookings",
         "today": date_cls.today(),
-        "now": datetime_cls.now()
+        "now": datetime_cls.now(),
+        "payment_summary": payment_summary,
     })
 
 @router.get("/bookings/{booking_id}/contract", response_class=HTMLResponse)

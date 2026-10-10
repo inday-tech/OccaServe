@@ -42,6 +42,20 @@
     border-color: #cbd5e1;
 }
 
+/* Let the custom time menu extend outside the event-details card. */
+.form-area > .c-card-premium:first-child {
+    overflow: visible;
+    z-index: 5;
+}
+
+#custom-time-select {
+    z-index: 20;
+}
+
+#time-dropdown-menu {
+    z-index: 1000 !important;
+}
+
 /* ===== SECTION HEADERS ===== */
 .section-header-wrap {
     display: flex;

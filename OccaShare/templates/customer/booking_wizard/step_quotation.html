@@ -218,9 +218,15 @@
 
                     <!-- ITEMIZED FINANCIAL LINES FOR CUSTOMIZABLE -->
                     <div class="order-lines-clean">
+                        {% if quotation.package_details.base_package_total is defined and quotation.package_details.base_package_total|float > 0 %}
+                        <div class="order-line">
+                            <span class="order-label">Menu Package <small>(₱{{ "{:,.2f}".format(quotation.package_details.base_price|float) }} × {{ quotation.package_details.guest_count }} pax; selected menu included)</small></span>
+                            <span class="order-val">₱{{ "{:,.2f}".format(quotation.package_details.base_package_total|float) }}</span>
+                        </div>
+                        {% endif %}
                         {% if quotation.package_details.food_total is defined and quotation.package_details.food_total|float > 0 %}
                         <div class="order-line">
-                            <span class="order-label">Dishes &amp; Beverages Subtotal</span>
+                            <span class="order-label">Food Upgrade Subtotal</span>
                             <span class="order-val">₱{{ "{:,.2f}".format(quotation.package_details.food_total|float) }}</span>
                         </div>
                         {% endif %}
@@ -405,28 +411,16 @@
                     </div>
 
                     <div class="dp-selector-clean">
-                        {% set terms = booking.caterer.accepted_payment_terms if booking.caterer.accepted_payment_terms else [30, 50, 100] %}
-                        {% set initial_term = quotation.downpayment_percent if quotation.downpayment_percent else ((terms|sort)[0] if terms else 50) %}
-                        {% for term in terms %}
-                        <div class="dp-card-clean {% if initial_term|int == term|int %}active{% endif %}"
-                            {% if not quotation.customer_signature %}onclick="setDPTier({{ term|int }})" {% endif %}>
-                            <div class="dp-radio-indicator"></div>
-                            <div class="dp-text-content">
-                                <div class="dp-header-row">
-                                    <span class="dp-pct">{{ term }}%</span>
-                                    <span class="dp-tier-name">
-                                        {% if term|int < 50 %}Minimum Deposit
-                                        {% elif term|int < 100 %}Standard Deposit
-                                        {% else %}100% Full Payment{% endif %}
-                                    </span>
-                                </div>
-                                <span class="dp-sub">
-                                    {% if term|int < 100 %}Pay remaining balance on or before your event date
-                                    {% else %}Pay the full booking amount today{% endif %}
-                                </span>
-                            </div>
-                        </div>
-                        {% endfor %}
+                        {% set dp_options = [30, 40, 50, 60, 70, 80, 90, 100] %}
+                        {% set initial_term = quotation.downpayment_percent if quotation.downpayment_percent in dp_options else 30 %}
+                        <label for="dp-percent-select" class="fin-label-bold" style="display:block; margin-bottom:.5rem;">Deposit percentage</label>
+                        <select id="dp-percent-select" class="control-pro dp-percent-select" onchange="setDPTier(parseInt(this.value, 10))" {% if quotation.customer_signature or quotation.caterer_signature %}disabled{% endif %}>
+                            {% for term in dp_options %}
+                            <option value="{{ term }}" {% if initial_term|int == term %}selected{% endif %}>
+                                {% if term == 100 %}100% &mdash; Full payment{% else %}{{ term }}% &mdash; Pay remaining balance by event date{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
                     </div>
 
                     <!-- CLEAN FINANCIAL BREAKDOWN TABLE -->
@@ -475,7 +469,7 @@
 
                     <!-- Hidden inputs for JS -->
                     <input type="hidden" id="dp-percent-input" value="{{ initial_term }}">
-                    <input type="hidden" id="signed-input" value="{{ 'true' if quotation.customer_signature else 'false' }}">
+                    <input type="hidden" id="signed-input" value="{{ 'true' if quotation.customer_signature or quotation.caterer_signature else 'false' }}">
                     <input type="hidden" id="total-amount-input" value="{{ quotation.total_amount }}">
                 </section>
             </div>
@@ -497,6 +491,7 @@
                 <div class="sig-section-up">
                     <div class="card-glass-header">
                         <h3 class="inv-section-title">Your Signature</h3>
+                        <div class="sig-progress-track" aria-label="Signature progress"><span></span></div>
                     </div>
 
                     <div class="sig-container-modern">
@@ -515,9 +510,16 @@
                         </div>
                         {% else %}
                         <div class="signature-input-box">
+                            <div class="signature-instructions">
+                                <i class="fas fa-info-circle" aria-hidden="true"></i>
+                                <div>
+                                    <h4>Please confirm the following</h4>
+                                    <p>By checking each box, you acknowledge and agree to the terms of this catering agreement.</p>
+                                </div>
+                            </div>
+
                             <!-- Policy Checkpoints -->
                             <div class="policy-checkpoints-pro">
-                                <h4 class="policy-title" style="font-family: 'Poppins', sans-serif; font-weight: 850; font-size: 0.85rem; margin-bottom: 1rem; color: var(--up-slate-900);">Please confirm the following:</h4>
                                 <div class="check-list-pro">
                                     <label class="check-box-pro">
                                         <input type="checkbox" class="policy-check" id="check_payment" onchange="toggleApplyButton()">
@@ -536,7 +538,12 @@
 
                             <div class="signature-pad-premium">
                                 <canvas id="signature-pad"></canvas>
-                                <div id="sig-placeholder">Sign above the line</div>
+                                <div id="sig-placeholder">
+                                    <i class="fas fa-pen-nib" aria-hidden="true"></i>
+                                    <strong>Sign above the line</strong>
+                                    <span>Use your mouse, touch, or stylus to sign</span>
+                                    <div class="sig-writing-line"></div>
+                                </div>
                             </div>
                             <div class="sig-name-overlay">
                                 <div class="sig-line"></div>
@@ -590,6 +597,29 @@
 {% endblock %}
 
 {% block step_css %}
+<style>
+    .dp-selector-clean { width: 100%; }
+    .dp-percent-select {
+        display: block;
+        width: 100%;
+        min-height: 52px;
+        padding: .75rem 3rem .75rem 1rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        background: #fff;
+        color: #0f172a;
+        font: inherit;
+        font-weight: 700;
+        line-height: 1.4;
+        white-space: normal;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+    }
+    .dp-percent-select:focus {
+        outline: 3px solid rgba(249, 115, 22, .18);
+        border-color: #f97316;
+    }
+    .dp-percent-select:disabled { opacity: .7; cursor: not-allowed; }
+</style>
 <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v={{ static_asset_version('css/shared/contract_formal.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_quotation.css') }}?v={{ static_asset_version('css/customer/booking_wizard/step_quotation.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v={{ static_asset_version('css/customer/booking_wizard/wizard_navigation.css') }}">

@@ -377,6 +377,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const contractUrl = row.getAttribute('data-contract') || '';
         const status = row.getAttribute('data-status') || 'Pending';
         const ptype = row.getAttribute('data-type') || 'Payment';
+        const isCashRequest = status.toLowerCase().includes('cash requested');
         
         // Commission estimate
         const commissionAttr = row.getAttribute('data-commission');
@@ -389,7 +390,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let statusBadgeClass = 'badge-pstatus-unpaid';
         if (status.includes('fully') || status.includes('paid')) statusBadgeClass = 'badge-pstatus-paid';
         else if (status.includes('partial')) statusBadgeClass = 'badge-pstatus-partial';
-        else if (status.includes('verify')) statusBadgeClass = 'badge-pstatus-review';
+        else if (status.includes('verify') || isCashRequest) statusBadgeClass = 'badge-pstatus-review';
         else if (status.includes('refund')) statusBadgeClass = 'badge-pstatus-refunded';
 
         content.innerHTML = `
@@ -415,7 +416,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <span class="modal-info-val"><span class="badge-pstatus ${statusBadgeClass}">${status}</span></span>
                         </div>
                         <div class="modal-info-item">
-                            <span class="modal-info-label">Payment Date</span>
+                            <span class="modal-info-label">${isCashRequest ? 'Request Date' : 'Payment Date'}</span>
                             <span class="modal-info-val">${dateStr}</span>
                         </div>
                         <div class="modal-info-item">
@@ -469,13 +470,33 @@ document.addEventListener('DOMContentLoaded', function() {
                         <button type="button" class="btn-sm-outline" onclick="window.viewInvoice('${bookingId}')">
                             <i class="fas fa-file-invoice"></i> View Invoice
                         </button>
-                        <a href="/caterer/bookings?booking_id=${bookingId}" class="btn-sm-outline">
+                        <a href="/caterer/bookings?open_booking=${bookingId}" class="btn-sm-outline">
                             <i class="fas fa-external-link-alt"></i> View Booking
                         </a>
                     </div>
                 </div>
             </div>
         `;
+
+        if (isCashRequest) {
+            const currency = '\u20B1';
+            const sections = content.querySelector('.modal-detail-sections');
+            if (sections) {
+                sections.insertAdjacentHTML('afterbegin', '<div class="cash-request-notice"><i class="fas fa-info-circle"></i> This is a cash payment request only. No cash has been received or recorded yet. Confirm it only after physically receiving the money.</div>');
+            }
+            const breakdownRows = Array.from(content.querySelectorAll('.modal-breakdown-row'));
+            if (breakdownRows.length >= 5) {
+                const requestedAmount = parseFloat(row.getAttribute('data-current')) || 0;
+                breakdownRows[0].insertAdjacentHTML('afterend', `<div class="modal-breakdown-row"><span class="row-label">Cash Requested (not yet received):</span><span class="row-val" style="color:#b45309;">${currency}${requestedAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>`);
+                breakdownRows.slice(3).forEach(breakdownRow => breakdownRow.remove());
+            }
+            const noProof = content.querySelector('.no-doc');
+            if (noProof) noProof.textContent = 'No receipt is expected until the cash is received.';
+            const documentActions = content.querySelector('.modal-docs-actions');
+            if (documentActions) {
+                documentActions.insertAdjacentHTML('beforeend', `<button type="button" class="btn-sm-outline" onclick="window.confirmCashPayment('${bookingId}')"><i class="fas fa-money-bill-wave"></i> Confirm Cash Received</button>`);
+            }
+        }
 
         if (typeof window.openModal === 'function') {
             window.openModal('detailsModal');
@@ -519,12 +540,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const estEarnings = parseFloat(booking.net_earnings || (paid - commission));
             const custRef = booking.customer_ref || 'Client';
             const status = booking.payment_status || booking.status || 'Pending';
+            const normalizedStatus = String(status).toLowerCase();
+            const isCashRequest = normalizedStatus === 'cash_payment_requested' || normalizedStatus === 'cash_balance_requested';
+            const cashRequestLabel = normalizedStatus === 'cash_balance_requested' ? 'Cash Balance Requested' : 'Awaiting Cash Receipt';
             const method = booking.payment_method || 'Direct';
-            const dateStr = booking.event_date ? new Date(booking.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+            const displayDate = isCashRequest ? (booking.created_at || booking.event_date) : booking.event_date;
+            const dateStr = displayDate ? new Date(displayDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
             const proofUrl = booking.payment_proof_url || booking.balance_proof_url || '';
 
             let statusBadgeClass = 'badge-pstatus-unpaid';
-            if (status.includes('paid')) statusBadgeClass = 'badge-pstatus-paid';
+            if (isCashRequest) statusBadgeClass = 'badge-pstatus-review';
+            else if (status.includes('paid')) statusBadgeClass = 'badge-pstatus-paid';
             else if (status.includes('partial')) statusBadgeClass = 'badge-pstatus-partial';
             else if (status.includes('review') || status.includes('proof')) statusBadgeClass = 'badge-pstatus-review';
 
@@ -548,10 +574,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                             <div class="modal-info-item">
                                 <span class="modal-info-label">Payment Status</span>
-                                <span class="modal-info-val"><span class="badge-pstatus ${statusBadgeClass}">${status}</span></span>
+                                <span class="modal-info-val"><span class="badge-pstatus ${statusBadgeClass}">${isCashRequest ? cashRequestLabel : status}</span></span>
                             </div>
                             <div class="modal-info-item">
-                                <span class="modal-info-label">Event Date</span>
+                                <span class="modal-info-label">${isCashRequest ? 'Request Date' : 'Event Date'}</span>
                                 <span class="modal-info-val">${dateStr}</span>
                             </div>
                             <div class="modal-info-item">
@@ -612,6 +638,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
             `;
+
+            if (isCashRequest) {
+                const currency = '\u20B1';
+                const sections = content.querySelector('.modal-detail-sections');
+                const breakdownRows = Array.from(content.querySelectorAll('.modal-breakdown-row'));
+                const requestedAmount = parseFloat(booking.cash_requested_amount || booking.pending_amount || 0);
+                if (sections) {
+                    sections.insertAdjacentHTML('afterbegin', '<div class="cash-request-notice"><i class="fas fa-info-circle"></i> Cash was requested but has not been received or recorded. Confirm receipt only after physically receiving the money.</div>');
+                }
+                if (breakdownRows.length >= 5) {
+                    breakdownRows[0].insertAdjacentHTML('afterend', `<div class="modal-breakdown-row"><span class="row-label">Cash Requested (not yet received):</span><span class="row-val" style="color:#b45309;">${currency}${requestedAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>`);
+                    breakdownRows.slice(3).forEach(item => item.remove());
+                }
+                const noProof = content.querySelector('.no-doc');
+                if (noProof) noProof.textContent = 'No receipt is expected until the cash is received.';
+                const actions = content.querySelector('.modal-docs-actions');
+                if (actions) actions.insertAdjacentHTML('beforeend', `<button type="button" class="btn-sm-outline" onclick="window.confirmCashPayment('${bookingId}')"><i class="fas fa-money-bill-wave"></i> Confirm Cash Received</button>`);
+            }
         } catch (err) {
             console.error("View payment details error:", err);
             content.innerHTML = `<div style="text-align: center; color: #dc2626; padding: 2rem;"><i class="fas fa-exclamation-triangle fa-2x"></i><p style="margin-top: 0.5rem; font-weight: 600;">${err.message}</p></div>`;

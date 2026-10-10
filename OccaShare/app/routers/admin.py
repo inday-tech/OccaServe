@@ -3204,6 +3204,7 @@ async def kyc_manual_action(
                 valid_until = datetime.combine(id_expiry, datetime.min.time())
         kyc.verification_valid_until = valid_until
         target_user.is_verified = True
+        target_user.is_kyc_complete = True
         target_user.status = "active"
         
         # Log action

@@ -326,7 +326,13 @@ window.handleGlobalNotifClick = async function(id, link, isUnread) {
             window.fetchGlobalNotifications(true);
         } catch(e) {}
     }
-    if (link) window.location.href = link;
+    if (link) {
+        // Legacy contract alerts used to open the oversized sign page directly.
+        // Open the booking workspace first so the caterer can use its Sign Agreement action.
+        const signRoute = link.match(/^\/caterer\/bookings\/(\d+)\/sign(?:\?.*)?$/);
+        if (signRoute) link = `/caterer/bookings?open_booking=${signRoute[1]}`;
+        window.location.href = link;
+    }
 }
 
 

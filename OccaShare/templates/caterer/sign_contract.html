@@ -1156,7 +1156,7 @@
                     </div>
                     <h3 class="sig-completed-title">Contract Successfully Signed!</h3>
                     <p class="sig-completed-desc">
-                        Your countersignature has been permanently applied to Booking #BK-{{ booking.id }}. The agreement is now fully executed and legally binding.
+                        Your countersignature has been saved for Booking #BK-{{ booking.id }}. Select Done to return to the refreshed booking details and continue with customer payment.
                     </p>
                     <div class="sig-preview-img-box" id="successSigPreviewBox">
                         <!-- Rendered dynamically -->
@@ -1233,19 +1233,25 @@
     // Modal Close Helper (handles iframe or standalone redirect)
     function handleModalClose() {
         if (window.parent && typeof window.parent.closeIframeModal === 'function') {
+            if (typeof window.parent.refreshOpenBookingWorkspace === 'function') {
+                window.parent.refreshOpenBookingWorkspace(bookingId);
+            }
             window.parent.closeIframeModal();
             return;
         }
         if (window.top && window.top !== window) {
             const modal = window.top.document.getElementById('iframeModal');
             if (modal) {
+                if (typeof window.top.refreshOpenBookingWorkspace === 'function') {
+                    window.top.refreshOpenBookingWorkspace(bookingId);
+                }
                 modal.classList.remove('active');
                 modal.style.display = 'none';
                 return;
             }
         }
         // Fallback for standalone window
-        window.location.href = '/caterer/bookings';
+        window.location.href = `/caterer/bookings?open_booking=${bookingId}`;
     }
 
     // Zoom Controls for Document Viewer
@@ -1456,14 +1462,6 @@
         // 6. Show success toast notification
         showSignToast('✅ Contract signed successfully! The customer has been notified.');
 
-        // 7. Notify parent window if inside iframe
-        if (window.parent && typeof window.parent.bk_fetchBookings === 'function') {
-            try {
-                window.parent.bk_fetchBookings();
-            } catch (e) {
-                console.warn('Could not refresh parent bookings table:', e);
-            }
-        }
     }
 
     // Toast notification helper

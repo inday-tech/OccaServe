@@ -18,7 +18,7 @@ PREP_STATUSES = [
     {
         "key": "preparing",
         "label": "Preparing",
-        "progress": 40,
+        "progress": 25,
         "color": "#b45309",
         "bg": "#fffbeb",
         "emoji": "🟡",
@@ -27,7 +27,7 @@ PREP_STATUSES = [
     {
         "key": "ready_for_delivery",
         "label": "Preparation Complete",
-        "progress": 60,
+        "progress": 50,
         "color": "#0369a1",
         "bg": "#e0f2fe",
         "emoji": "🔵",
@@ -36,7 +36,7 @@ PREP_STATUSES = [
     {
         "key": "setup_in_progress",
         "label": "Setup in Progress",
-        "progress": 80,
+        "progress": 75,
         "color": "#c2410c",
         "bg": "#fff7ed",
         "emoji": "🟠",
@@ -53,7 +53,7 @@ PREP_STATUSES = [
     },
     {
         "key": "completed",
-        "label": "Completed",
+        "label": "Event Completed",
         "progress": 100,
         "color": "#166534",
         "bg": "#f0fdf4",
