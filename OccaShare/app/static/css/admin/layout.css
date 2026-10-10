@@ -241,6 +241,7 @@ html, body {
     border-radius: 12px;
     padding: 0 1rem;
     height: 44px;
+    box-sizing: border-box;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: text;
 }
@@ -307,6 +308,17 @@ html, body {
 .header-icon-btn:hover { background: #f1f5f9; color: var(--primary-color); border-color: #e2e8f0; }
 .header-icon-btn.plus-btn { background: var(--primary-color); border: none; color: #fff; box-shadow: 0 4px 10px rgba(var(--primary-color-rgb), 0.25); }
 .header-icon-btn.plus-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(var(--primary-color-rgb), 0.35); background: #ea580c; }
+.header-icon-btn.plus-btn,
+.header-icon-btn.mobile-search-toggle {
+    box-sizing: border-box;
+    width: 44px !important;
+    min-width: 0 !important;
+    height: 44px !important;
+    min-height: 44px;
+    padding: 0 16px;
+    flex: 0 0 44px;
+    border-radius: 12px;
+}
 
 .premium-dropdown {
     position: absolute; top: calc(100% + 12px); right: 0;
@@ -895,6 +907,88 @@ html, body {
     }
 }
 
+/* Shared mobile admin search */
+.search-feedback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 1rem;
+    color: #64748b;
+    font-size: 0.8rem;
+    text-align: center;
+}
+.search-feedback .fa-triangle-exclamation { color: #ef4444; }
+.mobile-search-wrap { display: none; position: relative; }
+.mobile-search-panel { display: none; }
+
+@media (max-width: 768px) {
+    .header-left { gap: 0.5rem; }
+    .mobile-search-wrap {
+        display: block;
+        flex: 0 0 44px;
+        width: 44px;
+        height: 48px;
+    }
+    .mobile-search-toggle {
+        display: flex;
+    }
+    .mobile-search-panel.open {
+        display: block;
+        position: fixed;
+        top: calc(var(--topbar-height) + 8px);
+        left: 3vw;
+        right: 3vw;
+        z-index: 1200;
+        padding: 12px;
+        background: #fff;
+        border: 1px solid var(--dm-slate-200);
+        border-radius: 16px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.16);
+    }
+    .mobile-search-panel .header-search {
+        display: flex !important;
+        width: 100%;
+        border: 1px solid var(--dm-slate-200);
+        background: #f8fafc;
+    }
+    .mobile-search-panel .omni-results-panel {
+        position: relative;
+        inset: auto;
+        max-height: min(calc(100dvh - var(--topbar-height) - 120px), 420px);
+        margin-top: 8px;
+        box-shadow: none;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .mobile-search-panel .results-scroller {
+        min-height: 0;
+        max-height: min(calc(100dvh - var(--topbar-height) - 120px), 420px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+    .header-icon-btn.plus-btn {
+        background: #fff;
+        border: 1px solid var(--dm-slate-200);
+        color: var(--dm-slate-600);
+        box-shadow: none;
+    }
+    .header-icon-btn.plus-btn:hover,
+    .header-icon-btn.plus-btn:focus-visible {
+        background: var(--dm-slate-50);
+        border-color: rgba(249, 115, 22, 0.3);
+        color: var(--primary-color);
+        box-shadow: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .mobile-search-panel.open {
+        left: 2vw;
+        right: 2vw;
+    }
+}
 
 /* CUSTOMER HDR DROPDOWN IMPORTED FOR CONSISTENCY */
 /* HEADER ACTION BUTTONS */
@@ -1052,4 +1146,3 @@ html, body {
 .hdr-profile-links li a i { font-size: 0.95rem; width: 18px; text-align: center; }
 .hdr-profile-links li a.link-danger { color: #ef4444; }
 .hdr-profile-links li a.link-danger:hover { background: rgba(239,68,68,0.06); color: #ef4444; }
-

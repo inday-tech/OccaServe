@@ -37,6 +37,41 @@
 
     .chart-container-flex { display: flex; gap: 20px; flex-wrap: wrap; }
     .chart-box { flex: 1; min-width: 300px; background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 1.5rem; position: relative; }
+    .chart-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 1rem; }
+    .chart-title-row .card-title-clean { margin: 0 !important; }
+    .chart-help { position: relative; flex-shrink: 0; }
+    .chart-help summary {
+        list-style: none;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #e2e8f0;
+        border-radius: 50%;
+        color: #64748b;
+        cursor: pointer;
+        transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+    .chart-help summary::-webkit-details-marker { display: none; }
+    .chart-help summary:hover,
+    .chart-help[open] summary { color: var(--adm-primary); border-color: #fed7aa; background: #fff7ed; }
+    .chart-help-popover {
+        position: absolute;
+        z-index: 10;
+        top: calc(100% + 8px);
+        right: 0;
+        width: min(240px, calc(100vw - 48px));
+        padding: 10px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+        color: #475569;
+        font-size: 0.75rem;
+        font-weight: 500;
+        line-height: 1.5;
+    }
     
     .recent-activity-item {
         display: flex; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid #e2e8f0; align-items: flex-start;
@@ -95,12 +130,24 @@
 <!-- Analytics Split (MIDDLE) -->
 <div class="chart-container-flex" style="margin-bottom: 1.5rem;">
     <div class="chart-box" style="flex: 2;">
-        <div class="card-title-clean" style="margin-bottom:1rem;">Booking Overview</div>
+        <div class="chart-title-row">
+            <div class="card-title-clean">Booking Overview</div>
+            <details class="chart-help">
+                <summary aria-label="About Booking Overview"><i class="fas fa-circle-info"></i></summary>
+                <div class="chart-help-popover" role="note">Shows the number of bookings each month to reveal trends.</div>
+            </details>
+        </div>
         <div class="chart-container-clean" style="height: 300px;"><canvas id="bookingTrendChart"></canvas></div>
     </div>
 
     <div class="chart-box" style="flex: 1;">
-        <div class="card-title-clean" style="margin-bottom:1rem;">Booking Status</div>
+        <div class="chart-title-row">
+            <div class="card-title-clean">Booking Status</div>
+            <details class="chart-help">
+                <summary aria-label="About Booking Status"><i class="fas fa-circle-info"></i></summary>
+                <div class="chart-help-popover" role="note">Shows the number of bookings in each current status.</div>
+            </details>
+        </div>
         <div class="chart-container-clean" style="height: 300px;"><canvas id="statusChart"></canvas></div>
     </div>
 </div>
@@ -109,11 +156,15 @@
 <div class="analytics-split-clean">
     <!-- Pending Caterer Approvals -->
     <div class="card-clean">
-        <div class="card-title-clean" style="display: flex; justify-content: space-between; align-items: center;">
-            Pending Caterer Approvals
+        <div class="chart-title-row">
+            <div class="card-title-clean">Pending Caterer Approvals</div>
+            <details class="chart-help">
+                <summary aria-label="About Pending Caterer Approvals"><i class="fas fa-circle-info"></i></summary>
+                <div class="chart-help-popover" role="note">Review caterer applications and approve or reject them.</div>
+            </details>
         </div>
-        <div style="overflow-x: auto; margin-top: 10px;">
-            <table class="clean-table">
+        <div class="approval-table-wrap">
+            <table class="clean-table pending-approvals-table">
                 <thead>
                     <tr>
                         <th>Caterer Name</th>
@@ -126,12 +177,12 @@
                     {% if pending_caterers %}
                     {% for c in pending_caterers %}
                     <tr>
-                        <td>
+                        <td data-label="Caterer">
                             <span style="font-weight: 700; color: var(--adm-navy);">{{ c.business_name }}</span>
                         </td>
-                        <td>{{ c.created_at.strftime('%b %d, %Y') if c.created_at else 'N/A' }}</td>
-                        <td><span class="badge-clean badge-pending">PENDING</span></td>
-                        <td style="text-align: right;">
+                        <td data-label="Registered">{{ c.registered_at_display }}</td>
+                        <td data-label="Status"><span class="badge-clean badge-pending">PENDING</span></td>
+                        <td data-label="Action" class="approval-action-cell">
                             <a href="/admin/verify/{{ c.user_id }}" class="btn-export" style="text-decoration:none; padding: 6px 12px; background: white; border: 1px solid #cbd5e1; color: #475569; font-size: 0.7rem; font-weight: 700; border-radius: 6px; cursor: pointer; transition: all 0.2s;">Review</a>
                         </td>
                     </tr>
@@ -144,38 +195,28 @@
         </div>
     </div>
 
-    <!-- Recent System Activities -->
+    <!-- Recent Login Logs -->
     <div class="card-clean">
         <div class="card-title-clean" style="display: flex; justify-content: space-between; align-items: center;">
-            Recent System Activities
+            Recent Login Logs
             <a href="/admin/audit-logs" style="font-size: 0.75rem; color: var(--adm-primary); text-decoration: none; font-weight: 600;">View All</a>
         </div>
         <div style="margin-top: 15px; max-height: 400px; overflow-y: auto;">
-            {% if recent_activities %}
-                {% for act in recent_activities %}
+            {% if recent_system_logs %}
+                {% for log in recent_system_logs %}
                 <div class="recent-activity-item">
                     <div class="activity-icon">
-                        {% if 'booking' in act.action.lower() %}
-                            <i class="fas fa-calendar-alt"></i>
-                        {% elif 'user' in act.action.lower() or 'account' in act.action.lower() %}
-                            <i class="fas fa-user-edit"></i>
-                        {% elif 'caterer' in act.action.lower() or 'verify' in act.action.lower() %}
-                            <i class="fas fa-utensils"></i>
-                        {% else %}
-                            <i class="fas fa-bolt"></i>
-                        {% endif %}
+                        <i class="fas fa-right-to-bracket"></i>
                     </div>
                     <div class="activity-details">
-                        <span class="activity-title">{{ act.notes or act.action }}</span>
-                        <span class="activity-meta">
-                            {% if act.user %}By {{ act.user.first_name }} {{ act.user.last_name }}{% else %}System{% endif %} &bull; 
-                            {{ act.timestamp.strftime('%b %d, %I:%M %p') }}
-                        </span>
+                        <span class="activity-title">{{ log.name }} <span class="login-role">{{ log.role }}</span></span>
+                        <span class="activity-meta">{{ log.email }}{% if log.email %} &bull; {% endif %}IP {{ log.ip_address }}</span>
+                        <time class="activity-meta login-timestamp">{{ log.timestamp }}</time>
                     </div>
                 </div>
                 {% endfor %}
             {% else %}
-                <div style="text-align: center; padding: 2rem; color: var(--adm-muted);">No recent activities found.</div>
+                <div style="text-align: center; padding: 2rem; color: var(--adm-muted);">No login records found.</div>
             {% endif %}
         </div>
     </div>
@@ -195,7 +236,7 @@
             data: {
                 labels: realLabels,
                 datasets: [{
-                    label: 'Completed Bookings',
+                    label: 'Bookings',
                     data: realBookings,
                     borderColor: '#0f172a',
                     backgroundColor: 'rgba(15, 23, 42, 0.1)',
@@ -217,13 +258,23 @@
 
         // --- Booking Status Pie Chart ---
         const ctxStat = document.getElementById('statusChart').getContext('2d');
+        const statusLabels = {{ booking_status_chart['labels'] | tojson }};
+        const statusValues = {{ booking_status_chart['values'] | tojson }};
+        const statusColors = {
+            completed: '#10b981',
+            confirmed: '#3b82f6',
+            pending: '#f59e0b',
+            cancelled: '#ef4444',
+            rejected: '#991b1b',
+            draft: '#94a3b8'
+        };
         new Chart(ctxStat, {
             type: 'doughnut',
             data: {
-                labels: ['Completed', 'Pending', 'Cancelled'],
+                labels: statusLabels,
                 datasets: [{
-                    data: [{{ completed_bookings_count }}, {{ pending_bookings_count }}, {{ cancelled_bookings_count }}],
-                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                    data: statusValues,
+                    backgroundColor: statusLabels.map((label, index) => statusColors[label.toLowerCase()] || ['#8b5cf6', '#06b6d4', '#f97316', '#64748b'][index % 4]),
                     borderWidth: 0
                 }]
             },

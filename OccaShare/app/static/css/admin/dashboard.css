@@ -96,6 +96,7 @@ textarea {
     gap: 1.15rem;
     transition: all 0.3s ease;
     position: relative;
+    min-width: 0;
 }
 
 .kpi-card-clean:hover {
@@ -122,6 +123,11 @@ textarea {
     text-transform: uppercase;
     letter-spacing: 0.06em;
     margin: 0 0 0.2rem 0;
+    overflow-wrap: anywhere;
+}
+
+.kpi-info {
+    min-width: 0;
 }
 
 .kpi-value {
@@ -130,6 +136,7 @@ textarea {
     color: var(--adm-navy);
     line-height: 1.1;
     display: block;
+    overflow-wrap: anywhere;
 }
 
 /* Trend Badges */
@@ -157,14 +164,14 @@ textarea {
 /* Analytics Split */
 .analytics-split-clean {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
     margin-bottom: 1.25rem;
 }
 
 @media (min-width: 1200px) {
     .analytics-split-clean {
-        grid-template-columns: 1.4fr 0.6fr;
+        grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.6fr);
     }
 }
 
@@ -261,6 +268,31 @@ textarea {
     width: 100%;
     min-height: 350px;
     /* Prevents dropdown menu clipping */
+}
+
+.approval-table-wrap {
+    width: 100%;
+    margin-top: 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.login-role {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.35rem;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--adm-primary-soft);
+    color: var(--adm-primary);
+    font-size: 0.65rem;
+    font-weight: 700;
+    vertical-align: middle;
+}
+
+.login-timestamp {
+    font-weight: 700;
+    color: var(--adm-navy);
 }
 
 @media (max-width: 768px) {
@@ -378,8 +410,56 @@ textarea {
     }
 }
 
+@media (max-width: 600px) {
+    .approval-table-wrap {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-x: contain;
+        scrollbar-width: thin;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .pending-approvals-table {
+        min-width: 600px;
+        width: 100%;
+    }
+
+    .pending-approvals-table th,
+    .pending-approvals-table td {
+        white-space: nowrap;
+    }
+
+    .chart-container-flex {
+        gap: 0.75rem;
+    }
+
+    .chart-container-flex .chart-box {
+        flex: 1 1 100% !important;
+        min-width: 0 !important;
+        padding: 1rem;
+    }
+}
+
 @media (max-width: 480px) {
     .kpi-grid-clean {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.6rem;
+    }
+
+    .kpi-card-clean {
+        padding: 0.7rem;
+    }
+
+    .kpi-value {
+        font-size: 1rem;
+    }
+
+    .trend-badge {
+        font-size: 0.58rem;
+        padding: 2px 4px;
     }
 }

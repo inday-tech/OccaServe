@@ -306,6 +306,7 @@
         <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase;">Booking List</h3>
         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <form method="get" action="/admin/bookings" style="display: contents;">
+            <input type="hidden" name="search" value="{{ search_query }}">
             <select id="statusFilter" name="status" onchange="this.form.submit()" class="btn-clean" style="padding: 6px 12px; font-size: 0.75rem; background: #fff; border: 1px solid #e2e8f0; color: var(--adm-navy);">
                 <option value="all" {{ 'selected' if status_filter == 'all' else '' }}>All Status</option>
                 <option value="pending" {{ 'selected' if status_filter == 'pending' else '' }}>Pending</option>
@@ -473,11 +474,11 @@
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
             {% if page > 1 %}
-            <a class="pag-btn" href="/admin/bookings?page={{ page - 1 }}&status={{ status_filter }}&date={{ date_filter }}&caterer_id={{ caterer_id_filter }}">Older bookings</a>
+            <a class="pag-btn" href="/admin/bookings?page={{ page - 1 }}&status={{ status_filter }}&date={{ date_filter }}&caterer_id={{ caterer_id_filter }}&search={{ search_query|urlencode }}">Older bookings</a>
             {% endif %}
             <span style="font-size: 0.75rem; color: var(--adm-muted);">Page {{ page }} of {{ total_pages }}</span>
             {% if page < total_pages %}
-            <a class="pag-btn" href="/admin/bookings?page={{ page + 1 }}&status={{ status_filter }}&date={{ date_filter }}&caterer_id={{ caterer_id_filter }}">Newer bookings</a>
+            <a class="pag-btn" href="/admin/bookings?page={{ page + 1 }}&status={{ status_filter }}&date={{ date_filter }}&caterer_id={{ caterer_id_filter }}&search={{ search_query|urlencode }}">Newer bookings</a>
             {% endif %}
         </div>
     </div>
@@ -611,7 +612,7 @@
 
             let matchStatus = true;
             if (statusFilter !== 'all') {
-                if (statusFilter === 'pending') matchStatus = ['pending', 'pending_quotation', 'awaiting_payment'].includes(rowStatus);
+                if (statusFilter === 'pending') matchStatus = ['pending', 'pending_quotation', 'awaiting_payment', 'pending_payment', 'awaiting_caterer', 'pending_review'].includes(rowStatus);
                 else matchStatus = rowStatus === statusFilter;
             }
 

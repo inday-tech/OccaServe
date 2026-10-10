@@ -10,6 +10,7 @@ from ..core import security as auth
 from ..core.utils import is_dummy_email, is_dummy_name, is_dummy_phone, is_dummy_address, is_valid_person_name, is_valid_business_name
 from ..services.email import EmailService
 from datetime import date, datetime, timedelta, timezone
+from urllib.parse import quote
 from sqlalchemy import case, func, String, or_
 import json, re, asyncio
 from ..services.realtime import manager
@@ -28,6 +29,21 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 admin_only = auth.RoleChecker(["admin"])
 
 logger = logging.getLogger(__name__)
+MANILA_TIMEZONE = timezone(timedelta(hours=8), name="PHT")
+
+
+def _format_manila_timestamp(value, date_format="%b %d, %Y %I:%M:%S %p PHT"):
+    if value is None:
+        return "N/A"
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(MANILA_TIMEZONE).strftime(date_format)
+
+
+def _search_like_pattern(query: str) -> str:
+    escaped_query = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped_query}%"
+
 
 @router.get("/api/omni-search")
 async def omni_search(
@@ -35,10 +51,12 @@ async def omni_search(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    if not q or len(q) < 2:
+    q = q.strip()[:100]
+    if len(q) < 2:
         return {"success": True, "results": []}
     
     q_low = q.lower()
+    like_pattern = _search_like_pattern(q)
     results = []
     
     # 1. System Pages (Static Links)
@@ -47,6 +65,10 @@ async def omni_search(
         {"title": "Caterer Partners", "link": "/admin/caterers", "tags": ["vendors", "business", "partners", "verify"]},
         {"title": "Customer Directory", "link": "/admin/customers", "tags": ["users", "clients", "directory"]},
         {"title": "All Bookings", "link": "/admin/bookings", "tags": ["orders", "events", "calendar", "manage"]},
+        {"title": "Caterer Applications", "link": "/admin/caterer-verification", "tags": ["verification", "approval", "applications"]},
+        {"title": "Notifications", "link": "/admin/notifications", "tags": ["alerts", "messages"]},
+        {"title": "Commissions", "link": "/admin/commissions", "tags": ["revenue", "payouts", "payments"]},
+        {"title": "Reports & Analytics", "link": "/admin/reports", "tags": ["reports", "analytics", "statistics"]},
         {"title": "Site Settings", "link": "/admin/settings", "tags": ["config", "branding", "system"]},
         {"title": "Audit Logs", "link": "/admin/audit-logs", "tags": ["security", "logs", "history"]},
         {"title": "Archives", "link": "/admin/archives", "tags": ["deleted", "trash", "history"]},
@@ -62,16 +84,35 @@ async def omni_search(
             })
 
     # 2. Search Caterers
-    caterers = db.query(models.CatererProfile).filter(
-        models.CatererProfile.business_name.ilike(f"%{q}%")
-    ).limit(5).all()
-    for c in caterers:
+    caterers = db.query(models.CatererProfile).join(
+        models.User, models.CatererProfile.user_id == models.User.id
+    ).filter(
+        models.User.is_archived == False,
+        models.CatererProfile.verification_status.in_(["Verified", "Suspended"]),
+        or_(
+            models.CatererProfile.business_name.ilike(like_pattern, escape="\\"),
+            models.CatererProfile.city.ilike(like_pattern, escape="\\"),
+            models.CatererProfile.contact_phone.ilike(like_pattern, escape="\\"),
+            models.User.first_name.ilike(like_pattern, escape="\\"),
+            models.User.last_name.ilike(like_pattern, escape="\\"),
+            models.User.email.ilike(like_pattern, escape="\\")
+        )
+    ).order_by(models.CatererProfile.business_name).limit(11).all()
+    for c in caterers[:10]:
         results.append({
             "type": "Caterer", 
             "title": c.business_name, 
-            "subtitle": f"Status: {c.verification_status}", 
-            "link": f"/admin/caterers?search={c.business_name}",
+            "subtitle": f"{c.city or 'Location not set'} · Status: {c.verification_status}",
+            "link": f"/admin/caterers?search={quote(c.business_name or '', safe='')}",
             "icon": "fas fa-utensils"
+        })
+    if len(caterers) > 10:
+        results.append({
+            "type": "More Results",
+            "title": "View all matching caterers",
+            "subtitle": "Open the caterer directory with this search",
+            "link": f"/admin/caterers?search={quote(q, safe='')}",
+            "icon": "fas fa-list"
         })
     
     # 3. Search Customers
@@ -82,35 +123,71 @@ async def omni_search(
         func.trim(models.User.email) != "",
         func.coalesce(models.User.auth_provider, "email") != "manual_entry",
         or_(
-            models.User.first_name.ilike(f"%{q}%"),
-            models.User.last_name.ilike(f"%{q}%"),
-            models.User.email.ilike(f"%{q}%")
+            models.User.first_name.ilike(like_pattern, escape="\\"),
+            models.User.last_name.ilike(like_pattern, escape="\\"),
+            models.User.email.ilike(like_pattern, escape="\\"),
+            models.User.phone_number.ilike(like_pattern, escape="\\")
         )
-    ).limit(5).all()
-    for u in customers:
+    ).order_by(models.User.last_name, models.User.first_name).limit(11).all()
+    for u in customers[:10]:
+        customer_name = " ".join(filter(None, [u.first_name, u.last_name]))
         results.append({
             "type": "Customer", 
-            "title": f"{u.first_name} {u.last_name}", 
-            "subtitle": u.email, 
-            "link": f"/admin/customers?search={u.email}",
+            "title": customer_name or "Customer",
+            "subtitle": u.email or u.phone_number or "Customer account",
+            "link": f"/admin/customers?search={quote(u.email or customer_name, safe='')}",
             "icon": "fas fa-user"
+        })
+    if len(customers) > 10:
+        results.append({
+            "type": "More Results",
+            "title": "View all matching customers",
+            "subtitle": "Open the customer directory with this search",
+            "link": f"/admin/customers?search={quote(q, safe='')}",
+            "icon": "fas fa-list"
         })
     
     # 4. Search Bookings
-    bookings = db.query(models.Booking).join(models.User).filter(
+    bookings = db.query(models.Booking).outerjoin(
+        models.User, models.Booking.user_id == models.User.id
+    ).outerjoin(
+        models.CatererProfile, models.Booking.caterer_id == models.CatererProfile.id
+    ).outerjoin(
+        models.CateringPackage, models.Booking.package_id == models.CateringPackage.id
+    ).filter(
+        models.Booking.is_archived == False,
         or_(
-            func.cast(models.Booking.id, String).ilike(f"%{q}%"),
-            models.User.first_name.ilike(f"%{q}%"),
-            models.User.last_name.ilike(f"%{q}%")
+            func.cast(models.Booking.id, String).ilike(like_pattern, escape="\\"),
+            models.User.first_name.ilike(like_pattern, escape="\\"),
+            models.User.last_name.ilike(like_pattern, escape="\\"),
+            models.User.email.ilike(like_pattern, escape="\\"),
+            models.Booking.customer_name.ilike(like_pattern, escape="\\"),
+            models.Booking.customer_email.ilike(like_pattern, escape="\\"),
+            models.Booking.customer_contact.ilike(like_pattern, escape="\\"),
+            models.Booking.event_name.ilike(like_pattern, escape="\\"),
+            models.Booking.event_type.ilike(like_pattern, escape="\\"),
+            models.CatererProfile.business_name.ilike(like_pattern, escape="\\"),
+            models.CateringPackage.name.ilike(like_pattern, escape="\\")
         )
-    ).limit(5).all()
-    for b in bookings:
+    ).order_by(models.Booking.created_at.desc()).limit(11).all()
+    for b in bookings[:10]:
+        booking_customer_name = b.customer_name
+        if not booking_customer_name and b.user:
+            booking_customer_name = " ".join(filter(None, [b.user.first_name, b.user.last_name]))
         results.append({
             "type": "Booking", 
-            "title": f"Order #{str(b.id)[:8]}", 
-            "subtitle": f"₱{float(b.total_amount or 0):,.2f} - {(b.status or 'UNKNOWN').upper()}",
+            "title": f"Booking #BK-{b.id}",
+            "subtitle": f"{booking_customer_name or 'Customer'} · {(b.status or 'UNKNOWN').upper()}",
             "link": f"/admin/bookings?search={b.id}",
             "icon": "fas fa-calendar-check"
+        })
+    if len(bookings) > 10:
+        results.append({
+            "type": "More Results",
+            "title": "View all matching bookings",
+            "subtitle": "Open the bookings list with this search",
+            "link": f"/admin/bookings?search={quote(q, safe='')}",
+            "icon": "fas fa-list"
         })
         
     return {"success": True, "results": results}
@@ -437,6 +514,12 @@ async def admin_dashboard(
     
     # Keep dashboard aggregates in SQL; materializing every booking and then
     # making 12 more month queries made this page scale with database history.
+    for caterer in pending_caterers:
+        caterer.registered_at_display = _format_manila_timestamp(
+            caterer.created_at,
+            "%b %d, %Y",
+        )
+
     booking_amount = func.coalesce(models.Booking.total_amount, models.Booking.total_price, 0.0)
     excluded_sales_statuses = ['cancelled', 'inquiry', 'negotiating', 'quoted']
     booking_count, total_sales, total_revenue = db.query(
@@ -449,7 +532,7 @@ async def admin_dashboard(
             (models.Booking.payment_status == 'paid', booking_amount),
             else_=0.0,
         )), 0.0),
-    ).one()
+    ).filter(models.Booking.is_archived == False).one()
     booking_count = int(booking_count or 0)
     total_sales = float(total_sales or 0.0)
     total_revenue = float(total_revenue or 0.0)
@@ -462,18 +545,18 @@ async def admin_dashboard(
 
     # --- Analytics Chart Data (Last 6 Months) ---
     chart_data = {"months": [], "sales": [], "earnings": [], "bookings": [], "new_users": []}
-    now = datetime.now()
-    current_month = datetime(now.year, now.month, 1)
+    now = datetime.now(MANILA_TIMEZONE)
+    current_month = datetime(now.year, now.month, 1, tzinfo=MANILA_TIMEZONE)
     month_starts = []
     for months_back in range(5, -1, -1):
         month_index = current_month.year * 12 + current_month.month - 1 - months_back
-        month_starts.append(datetime(month_index // 12, month_index % 12 + 1, 1))
+        month_starts.append(datetime(month_index // 12, month_index % 12 + 1, 1, tzinfo=MANILA_TIMEZONE))
     next_month_index = current_month.year * 12 + current_month.month
-    month_range_end = datetime(next_month_index // 12, next_month_index % 12 + 1, 1)
-    month_bucket = func.date_trunc('month', models.Booking.created_at)
+    month_range_end = datetime(next_month_index // 12, next_month_index % 12 + 1, 1, tzinfo=MANILA_TIMEZONE)
+    month_bucket = func.date_trunc('month', func.timezone("+08:00", models.Booking.created_at))
     monthly_bookings = db.query(
         month_bucket.label('month'),
-        func.count(case((models.Booking.status.not_in(excluded_sales_statuses), models.Booking.id))).label('booking_count'),
+        func.count(models.Booking.id).label('booking_count'),
         func.coalesce(func.sum(case(
             (models.Booking.status.not_in(excluded_sales_statuses), booking_amount), else_=0.0
         )), 0.0).label('sales'),
@@ -483,16 +566,18 @@ async def admin_dashboard(
     ).filter(
         models.Booking.created_at >= month_starts[0],
         models.Booking.created_at < month_range_end,
+        models.Booking.is_archived == False,
     ).group_by(month_bucket).all()
     monthly_bookings_by_key = {(row.month.year, row.month.month): row for row in monthly_bookings}
 
-    user_month_bucket = func.date_trunc('month', models.User.created_at)
+    user_month_bucket = func.date_trunc('month', func.timezone("+08:00", models.User.created_at))
     monthly_users = db.query(
         user_month_bucket.label('month'),
         func.count(models.User.id).label('user_count'),
     ).filter(
         models.User.created_at >= month_starts[0],
         models.User.created_at < month_range_end,
+        models.User.is_archived == False,
     ).group_by(user_month_bucket).all()
     monthly_users_by_key = {(row.month.year, row.month.month): row.user_count for row in monthly_users}
 
@@ -512,24 +597,43 @@ async def admin_dashboard(
     avg_rating = round(float(avg_rating_result), 1) if avg_rating_result else 0.0
     total_reviews = db.query(models.Review).filter(models.Review.is_archived == False).count()
 
-    pending_bookings_count = db.query(models.Booking).filter(
+    booking_status_rows = db.query(
+        models.Booking.status,
+        func.count(models.Booking.id),
+    ).filter(
         models.Booking.is_archived == False,
-        models.Booking.status == 'pending'
-    ).count()
-    confirmed_bookings_count = db.query(models.Booking).filter(
-        models.Booking.is_archived == False,
-        models.Booking.status == 'confirmed'
-    ).count()
-    completed_bookings_count = db.query(models.Booking).filter(
-        models.Booking.is_archived == False,
-        models.Booking.status == 'completed'
-    ).count()
-    cancelled_bookings_count = db.query(models.Booking).filter(
-        models.Booking.is_archived == False,
-        models.Booking.status == 'cancelled'
-    ).count()
+    ).group_by(models.Booking.status).order_by(models.Booking.status).all()
+    booking_status_chart = {
+        "labels": [
+            " ".join((status or "unknown").replace("_", " ").split()).title()
+            for status, _ in booking_status_rows
+        ],
+        "values": [int(count or 0) for _, count in booking_status_rows],
+    }
 
     from sqlalchemy.orm import joinedload
+    recent_login_logs = db.query(models.AuditLog).options(
+        joinedload(models.AuditLog.user)
+    ).filter(
+        models.AuditLog.action == "login",
+    ).order_by(models.AuditLog.timestamp.desc()).limit(8).all()
+    recent_system_logs = []
+    for log in recent_login_logs:
+        logged_user = log.user
+        full_name = " ".join(
+            part for part in (
+                getattr(logged_user, "first_name", None),
+                getattr(logged_user, "last_name", None),
+            ) if part
+        ) if logged_user else ""
+        recent_system_logs.append({
+            "name": full_name or (logged_user.email if logged_user else "Unknown account"),
+            "email": logged_user.email if logged_user else "",
+            "role": (logged_user.role or "user").title() if logged_user else "Unknown",
+            "ip_address": log.ip_address or "Unavailable",
+            "timestamp": _format_manila_timestamp(log.timestamp),
+        })
+
     pending_settlements = db.query(models.Payout).options(
         joinedload(models.Payout.caterer)
     ).filter(
@@ -549,6 +653,7 @@ async def admin_dashboard(
         "user": user,
         "metrics": {
             "user_count": user_count,
+            "total_caterers": total_caterers,
             "customer_count": customer_count,
             "approved_caterers_count": approved_caterers_count,
             "booking_count": booking_count,
@@ -557,16 +662,14 @@ async def admin_dashboard(
             "commission_rate": round(commission_rate * 100, 1)
         },
         "pending_caterers": pending_caterers,
+        "recent_system_logs": recent_system_logs,
         "approved_caterers": approved_caterers,
         "active_page": "dashboard",
         "chart_data": chart_data,
         "recent_notifications": db.query(models.Notification).filter(models.Notification.user_id == user.id).order_by(models.Notification.created_at.desc()).limit(5).all(),
         "avg_rating": avg_rating,
         "total_reviews": total_reviews,
-        "pending_bookings_count": pending_bookings_count,
-        "confirmed_bookings_count": confirmed_bookings_count,
-        "completed_bookings_count": completed_bookings_count,
-        "cancelled_bookings_count": cancelled_bookings_count,
+        "booking_status_chart": booking_status_chart,
         "recent_yields": recent_yields,
         "pending_settlements": pending_settlements
     })
@@ -2850,8 +2953,30 @@ async def admin_bookings(
     status_filter = request.query_params.get('status', 'all')
     date_filter = request.query_params.get('date', 'all')
     caterer_id_filter = request.query_params.get('caterer_id', 'all')
+    search_query = request.query_params.get('search', '').strip()[:100]
 
     base_query = db.query(models.Booking).filter(models.Booking.is_archived == False)
+    if len(search_query) >= 2:
+        search_pattern = _search_like_pattern(search_query)
+        base_query = base_query.outerjoin(
+            models.User, models.Booking.user_id == models.User.id
+        ).outerjoin(
+            models.CatererProfile, models.Booking.caterer_id == models.CatererProfile.id
+        ).outerjoin(
+            models.CateringPackage, models.Booking.package_id == models.CateringPackage.id
+        ).filter(or_(
+            func.cast(models.Booking.id, String).ilike(search_pattern, escape="\\"),
+            models.User.first_name.ilike(search_pattern, escape="\\"),
+            models.User.last_name.ilike(search_pattern, escape="\\"),
+            models.User.email.ilike(search_pattern, escape="\\"),
+            models.Booking.customer_name.ilike(search_pattern, escape="\\"),
+            models.Booking.customer_email.ilike(search_pattern, escape="\\"),
+            models.Booking.customer_contact.ilike(search_pattern, escape="\\"),
+            models.Booking.event_name.ilike(search_pattern, escape="\\"),
+            models.Booking.event_type.ilike(search_pattern, escape="\\"),
+            models.CatererProfile.business_name.ilike(search_pattern, escape="\\"),
+            models.CateringPackage.name.ilike(search_pattern, escape="\\")
+        ))
     if status_filter == 'pending':
         base_query = base_query.filter(models.Booking.status.in_(PENDING_STATUSES))
     elif status_filter == 'disputed':
@@ -2915,6 +3040,7 @@ async def admin_bookings(
         "status_filter": status_filter,
         "date_filter": date_filter,
         "caterer_id_filter": caterer_id_filter,
+        "search_query": search_query,
         "active_page": "bookings"
     })
 

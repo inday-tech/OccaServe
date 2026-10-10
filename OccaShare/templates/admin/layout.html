@@ -144,14 +144,6 @@
             <span class="nav-section-label brand-text-label">System</span>
             <ul class="nav-list">
                 <li>
-                    <a href="/admin/notifications" class="nav-item {{ 'active' if active_page == 'notifications' }}"
-                        id="adminNotifLink" onclick="closeSidebar()">
-                        <div class="nav-icon"><i class="fas fa-bell"></i></div>
-                        <span class="nav-label">Notifications</span>
-                        <span class="nav-badge nav-badge-red" id="adminNotifBadge" style="display:none;">0</span>
-                    </a>
-                </li>
-                <li>
                     <a href="/admin/audit-logs" class="nav-item {{ 'active' if active_page == 'audit-logs' }}"
                         onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-list-ul"></i></div>
@@ -192,7 +184,7 @@
                 <div class="command-search-wrap">
                     <div class="header-search" id="omniSearchTrigger">
                         <i class="fas fa-magnifying-glass"></i>
-                        <input type="text" id="globalSearchInput" placeholder="Search platform..." autocomplete="off">
+                        <input type="text" id="globalSearchInput" value="{{ request.query_params.get('search', '') }}" placeholder="Search platform..." autocomplete="off">
                         <div class="search-kbd">
                             <span>Ctrl</span><span>K</span>
                         </div>
@@ -220,30 +212,33 @@
 
                 <div class="header-separator"></div>
 
+                <div class="mobile-search-wrap">
+                    <button type="button" class="header-icon-btn mobile-search-toggle" id="mobileSearchToggle"
+                        aria-label="Search platform" aria-expanded="false" aria-controls="mobileSearchPanel">
+                        <i class="fas fa-magnifying-glass"></i>
+                    </button>
+                    <div class="mobile-search-panel" id="mobileSearchPanel">
+                        <div class="header-search">
+                            <i class="fas fa-magnifying-glass"></i>
+                            <input type="text" id="mobileSearchInput" value="{{ request.query_params.get('search', '') }}" placeholder="Search platform..." autocomplete="off">
+                        </div>
+                        <div id="omniSearchResultsMobile" class="omni-results-panel">
+                            <div class="results-scroller" id="searchResultsScrollerMobile"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="header-dropdown-wrapper">
-                    <button class="header-icon-btn plus-btn" title="Quick Actions"
+                    <button class="header-icon-btn plus-btn" title="Quick Links" aria-label="Quick Links"
                         onclick="toggleHeaderDropdown('quickActionsDropdown', this)">
                         <i class="fas fa-plus"></i>
                     </button>
                     <div class="premium-dropdown" id="quickActionsDropdown">
-                        <style>
-                            .mobile-search-dropdown-wrap { display: none; padding: 12px; border-bottom: 1px solid #f1f5f9; }
-                            @media (max-width: 768px) { .mobile-search-dropdown-wrap { display: block; } }
-                            .mobile-search-dropdown-wrap .header-search { display: flex !important; width: 100%; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 12px; height: 40px; align-items: center; gap: 8px; background: #f8fafc; }
-                            .mobile-search-dropdown-wrap .header-search input { border: none; background: transparent; width: 100%; outline: none; font-size: 0.85rem; color: var(--adm-navy); }
-                        </style>
-                        <div class="mobile-search-dropdown-wrap">
-                            <div class="header-search">
-                                <i class="fas fa-magnifying-glass" style="color: #64748b;"></i>
-                                <input type="text" id="mobileSearchInput" placeholder="Search platform..." autocomplete="off">
-                            </div>
-                            <div id="omniSearchResultsMobile" class="omni-results-panel" style="position: relative; top: 10px; box-shadow: none; border: none; padding: 0; background: transparent; max-height: none;"></div>
-                        </div>
-                        <div class="dropdown-header">Quick Commands</div>
+                        <div class="dropdown-header">Quick Links</div>
                         <ul class="dropdown-links">
-                            <li><a href="/admin/caterers?action=verify"><i class="fas fa-shield-halved"></i> Manual Verification</a></li>
-                            <li><a href="/admin/settings?tab=announcements"><i class="fas fa-bullhorn"></i> Push Announcement</a></li>
-                            <li><a href="/admin/bookings?view=urgent"><i class="fas fa-fire-flame-curved"></i> Review Urgent Bookings</a></li>
+                            <li><a href="/admin/caterer-verification"><i class="fas fa-shield-halved"></i> Review Caterer Applications</a></li>
+                            <li><a href="/admin/bookings?status=pending"><i class="fas fa-calendar-check"></i> Review Pending Bookings</a></li>
+                            <li><a href="/admin/settings"><i class="fas fa-sliders"></i> Platform Settings</a></li>
                         </ul>
                     </div>
                 </div>
@@ -598,10 +593,17 @@
             }
 
             function updateBadge(count) {
-                const badge = document.getElementById('adminNotifBadge');
-                const dot = document.getElementById('headerNotifDot');
-                if (badge) { badge.textContent = count > 99 ? '99+' : count; badge.style.display = count > 0 ? 'inline-block' : 'none'; }
-                if (dot) { dot.style.display = count > 0 ? 'block' : 'none'; }
+                const badge = document.getElementById('nav-notif-badge');
+                const dropdownBadge = document.getElementById('dropdown-notif-badge');
+                const displayCount = count > 99 ? '99+' : count;
+                if (badge) {
+                    badge.textContent = displayCount;
+                    badge.style.display = count > 0 ? 'flex' : 'none';
+                }
+                if (dropdownBadge) {
+                    dropdownBadge.textContent = `${displayCount} NEW`;
+                    dropdownBadge.style.display = count > 0 ? 'inline-block' : 'none';
+                }
             }
 
             function connectWebSocket() {
@@ -680,78 +682,6 @@
 
 
 
-        // ===== OMNI-SEARCH =====
-        (function () {
-            const configs = [
-                { input: document.getElementById('globalSearchInput'), resBox: document.getElementById('omniSearchResults') },
-                { input: document.getElementById('mobileSearchInput'), resBox: document.getElementById('omniSearchResultsMobile') }
-            ];
-
-            let timeout = null;
-
-            configs.forEach(conf => {
-                if (!conf.input || !conf.resBox) return;
-                conf.input.addEventListener('input', (e) => {
-                    clearTimeout(timeout);
-                    const q = e.target.value.trim();
-                    if (q.length < 2) { conf.resBox.classList.remove('active'); conf.resBox.innerHTML = ''; return; }
-                    timeout = setTimeout(async () => {
-                        try {
-                            conf.resBox.innerHTML = '<div style="padding:1rem;text-align:center;color:#94a3b8;font-size:0.8rem;"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
-                            conf.resBox.classList.add('active');
-                            const r = await fetch(`/admin/api/omni-search?q=${encodeURIComponent(q)}`);
-                            const data = await r.json();
-                            if (data.success && data.results.length > 0) {
-                                conf.resBox.innerHTML = '<div class="results-scroller">' + data.results.map(i => `
-                                    <a href="${i.link}" class="omni-result-item">
-                                        <div class="omni-result-icon"><i class="${i.icon}"></i></div>
-                                        <div class="omni-result-info">
-                                            <span class="omni-result-title">${i.title}</span>
-                                            <span class="omni-result-subtitle">${i.subtitle}</span>
-                                        </div>
-                                        <span class="omni-result-type">${i.type}</span>
-                                    </a>
-                                `).join('') + '</div>';
-                            } else {
-                                conf.resBox.innerHTML = '<div style="padding:1.5rem;text-align:center;color:#94a3b8;font-size:0.8rem;"><i class="fas fa-search" style="display:block;font-size:1.5rem;margin-bottom:0.5rem;opacity:0.4;"></i>No results found for "<b>' + q + '</b>"</div>';
-                            }
-                        } catch (e) {
-                            conf.resBox.innerHTML = '<div style="padding:1rem;text-align:center;color:#ef4444;font-size:0.8rem;">Search error. Try again.</div>';
-                            console.error("Search error:", e);
-                        }
-                    }, 280);
-                });
-            });
-
-            // Close on outside click
-            document.addEventListener('click', (e) => {
-                configs.forEach(conf => {
-                    if (conf.input && conf.resBox) {
-                        const isInsideInput = conf.input.contains(e.target) || (conf.input.closest('.header-search-wrap') && conf.input.closest('.header-search-wrap').contains(e.target));
-                        const isInsideDropdown = conf.input.closest('.premium-dropdown') && conf.input.closest('.premium-dropdown').contains(e.target);
-                        if (!isInsideInput && !isInsideDropdown) {
-                            conf.resBox.classList.remove('active');
-                        }
-                    }
-                });
-            });
-
-            // Ctrl+K / Cmd+K shortcut
-            document.addEventListener('keydown', (e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key === 'k') { 
-                    e.preventDefault(); 
-                    if(configs[0].input) { configs[0].input.focus(); configs[0].input.select(); }
-                }
-                if (e.key === 'Escape') { 
-                    configs.forEach(conf => {
-                        if (conf.input && conf.resBox) {
-                            conf.resBox.classList.remove('active');
-                            conf.input.blur();
-                        }
-                    });
-                }
-            });
-        })();
     </script>
 
 
