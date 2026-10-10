@@ -47,7 +47,6 @@ async def create_quote_request(
         raise HTTPException(status_code=403, detail="Only customers can request a quotation.")
     if guest_count < 1 or guest_count > 999:
         raise HTTPException(status_code=400, detail="Number of guests must be between 1 and 999.")
-
     # check availability
     date_obj = datetime.strptime(event_date, '%Y-%m-%d').date()
     availability = db.query(models.Availability).filter(
@@ -106,6 +105,8 @@ async def calculate_quotation(
 
     if guest_count < 1 or guest_count > 999:
         raise HTTPException(status_code=400, detail="Number of guests must be between 1 and 999.")
+    if downpayment_percent not in range(30, 101, 10):
+        raise HTTPException(status_code=400, detail="Deposit percentage must be 30% to 100% in 10% increments.")
 
     booking = db.query(models.Booking).get(booking_id)
     if not booking:
@@ -263,9 +264,8 @@ async def sign_contract(
             downpayment_percent = int(downpayment_percent)
         except (TypeError, ValueError):
             raise HTTPException(status_code=400, detail="Invalid downpayment percentage.")
-        max_downpayment = 100 if is_customizable else 50
-        if not 30 <= downpayment_percent <= max_downpayment:
-            raise HTTPException(status_code=400, detail=f"Downpayment must be between 30% and {max_downpayment}%.")
+        if downpayment_percent not in range(30, 101, 10):
+            raise HTTPException(status_code=400, detail="Downpayment must be 30% to 100% in 10% increments.")
         if has_prior_signature and quotation.downpayment_percent is not None and downpayment_percent != quotation.downpayment_percent:
             raise HTTPException(status_code=409, detail="The downpayment terms cannot change after either party has signed.")
         quotation.downpayment_percent = downpayment_percent
@@ -353,7 +353,7 @@ async def sign_contract(
         quotation.status = "awaiting_caterer"
         booking.status = "awaiting_caterer"
         
-        background_tasks.add_task(NotificationService.notify_status_update, db, booking.caterer.user_id, "Action Required: Sign Contract", f"Customer {current_user.first_name} has signed the contract.", f"/caterer/bookings/{booking.id}/sign")
+        background_tasks.add_task(NotificationService.notify_status_update, db, booking.caterer.user_id, "Action Required: Sign Contract", f"Customer {current_user.first_name} has signed the contract.", f"/caterer/bookings?open_booking={booking.id}")
     elif has_cat:
         quotation.status = "awaiting_customer"
         booking.status = "awaiting_customer"
@@ -422,15 +422,23 @@ async def update_dp(
     if not quotation: raise HTTPException(status_code=404)
     
     # LOCK: Prevent changing DP if already signed
-    if quotation.customer_signature:
+    if quotation.customer_signature or quotation.caterer_signature:
         raise HTTPException(status_code=400, detail="Downpayment cannot be changed once the contract is signed.")
     
-    percent = int(payload.get("percent", 30))
+    try:
+        raw_percent = payload.get("percent", 30)
+        percent = int(raw_percent)
+        if float(raw_percent) != percent:
+            raise ValueError("percentage must be a whole number")
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid deposit percentage.")
+    if percent not in range(30, 101, 10):
+        raise HTTPException(status_code=400, detail="Deposit percentage must be 30% to 100% in 10% increments.")
     quotation.downpayment_percent = percent
     
     from decimal import Decimal
     dp_factor = Decimal(str(percent)) / Decimal("100")
-    new_deposit = Decimal(str(quotation.total_amount)) * dp_factor
+    new_deposit = (Decimal(str(quotation.total_amount)) * dp_factor).quantize(Decimal("0.01"))
     booking.reservation_fee = float(new_deposit)
     
     db.commit()
@@ -497,16 +505,20 @@ async def set_balance_due_date(
         raise HTTPException(status_code=400, detail="Booking has no event date for the balance due date.")
 
     try:
-        due_date_str = booking.event_date.isoformat()
-        booking.balance_due_date = datetime.combine(booking.event_date, datetime.min.time())
+        from datetime import date as date_cls
+        requested_due = date_cls.fromisoformat(str(payload.get("due_date") or booking.event_date).strip())
+        if requested_due < date_cls.today():
+            raise ValueError("Due date cannot be in the past.")
+        due_date_str = requested_due.isoformat()
+        booking.balance_due_date = datetime.combine(requested_due, datetime.min.time())
         db.commit()
         
         # --- Trigger Notification ---
         await NotificationService.notify_status_update(
             db,
             booking.user_id,
-            "Balance Due on Event Day",
-            f"The remaining balance for '{booking.event_name}' is due on the event date, {due_date_str}. You may pay online or in cash to the caterer.",
+            "Balance Due Date Updated",
+            f"The remaining balance for '{booking.event_name}' is due by {due_date_str}. You may pay online via GCash or Bank, or request cash payment from the caterer.",
             f"/customer/bookings/manage/{booking.id}",
         )
         

@@ -1284,7 +1284,7 @@ class Quotation(Base):
     package_details = Column(JSONB)
     addons = Column(JSONB)
     total_amount = Column(DECIMAL)
-    downpayment_percent = Column(Integer) # CHECK (downpayment_percent BETWEEN 30 AND 50) - handle in app logic or custom CheckConstraint
+    downpayment_percent = Column(Integer) # Validated against supported deposit tiers in the quotation routes.
     contract_url = Column(String, nullable=True) # signed PDF
     status = Column(String(20), default='draft') # draft, sent, signed, rejected
     

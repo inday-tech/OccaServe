@@ -151,7 +151,7 @@
     <form action="/bookings/step/payment/{{ booking.id }}" method="POST" enctype="multipart/form-data" class="payment-form" id="wizard-payment-form">
         <input type="hidden" name="booking_id" value="{{ booking.id }}">
         <input type="hidden" name="payment_method" id="selected-method" value="">
-        <input type="hidden" name="payment_plan" id="selected-plan" value="{% if is_balance %}balance{% else %}downpayment{% endif %}">
+        <input type="hidden" name="payment_plan" id="selected-plan" value="{% if is_balance %}balance{% elif quotation and quotation.downpayment_percent == 100 %}full{% else %}downpayment{% endif %}">
 
         <!-- ── AUTHENTIC 2-COLUMN CHECKOUT DASHBOARD ── -->
         <div class="pay-grid-layout">
@@ -167,7 +167,6 @@
                             <h3 class="pay-section-title"><i class="fas fa-file-contract text-emerald-600"></i> Contract Payment Terms</h3>
                             <span class="pay-section-subtitle">Agreed in your contract</span>
                         </div>
-                        <input type="hidden" name="payment_plan" id="selected-plan" value="full">
                         <div class="plan-card-clean active" style="cursor: default;">
                             <div class="plan-left">
                                 <div class="plan-radio" style="background: var(--pay-emerald-600); border-color: var(--pay-emerald-600);"></div>
@@ -238,7 +237,7 @@
                     </div>
 
                     <div class="method-grid-clean">
-                        {% if profile.gcash_qr_url %}
+                        {% if profile.gcash_qr_url or profile.gcash_number %}
                         <div class="method-card-clean" onclick="openPaymentModal('GCash')">
                             <div class="method-logo-box">
                                 <div class="brand-badge-gcash"><i class="fas fa-wallet"></i> GCash</div>
@@ -248,7 +247,7 @@
                         </div>
                         {% endif %}
                         
-                        {% if profile.maya_qr_url %}
+                        {% if profile.maya_qr_url or profile.maya_number %}
                         <div class="method-card-clean" onclick="openPaymentModal('Maya')">
                             <div class="method-logo-box">
                                 <div class="brand-badge-maya"><i class="fas fa-credit-card"></i> Maya</div>
@@ -258,7 +257,7 @@
                         </div>
                         {% endif %}
                         
-                        {% if profile.bank_name %}
+                        {% if profile.bank_name and profile.bank_account_number %}
                         <div class="method-card-clean" onclick="openPaymentModal('Bank')">
                             <div class="method-logo-box">
                                 <div class="brand-badge-bank"><i class="fas fa-university"></i> Bank</div>
@@ -326,15 +325,15 @@
                             {% if is_balance %}
                             <div class="fin-item">
                                 <span class="label">Amount Already Paid</span>
-                                <span class="value" style="color: var(--pay-emerald-600);">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</span>
+                                <span class="value" style="color: var(--pay-emerald-600);">₱{{ "{:,.2f}".format(verified_paid or 0) }}</span>
                             </div>
                             <div class="fin-item highlight-pay">
                                 <span class="label">Amount to Pay Today</span>
-                                <span class="value" id="to-pay-val">₱{{ "{:,.2f}".format((booking.total_amount|float or 0.0) - (booking.reservation_fee|float or 0.0)) }}</span>
+                                <span class="value" id="to-pay-val">₱{{ "{:,.2f}".format(verified_balance or 0) }}</span>
                             </div>
                             {% else %}
                             <div class="fin-item" id="plan-breakdown-row">
-                                <span class="label">Required Deposit (50%)</span>
+                                <span class="label">Required Deposit ({{ quotation.downpayment_percent if quotation and quotation.downpayment_percent else 30 }}%)</span>
                                 <span class="value" id="summary-tier-val">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</span>
                             </div>
                             
@@ -388,108 +387,120 @@
         <div id="paymentModalCard" class="modal-card-clean">
             
             <div class="modal-header-clean">
-                <h3 id="modalTitle">
-                    <i class="fas fa-wallet text-slate-700"></i> Upload Payment Screenshot
-                </h3>
-                <button type="button" class="btn-close-modal" onclick="closePaymentModal()"><i class="fas fa-times"></i></button>
+                <div class="payment-modal-heading">
+                    <span class="payment-modal-icon"><i class="fas fa-wallet"></i></span>
+                    <div>
+                        <h3 id="modalTitle">Upload Payment Screenshot</h3>
+                        <p id="modalSubtitle">Scan the QR code or send the exact amount to complete your payment.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close-modal" aria-label="Close payment dialog" onclick="closePaymentModal()"><i class="fas fa-times"></i></button>
             </div>
             
             <div class="modal-body-clean">
                 <!-- GCash Channel Sheet -->
                 <div id="modalContentGCash" style="display: none;">
                     <div class="payment-channel-box">
-                        <div class="qr-frame">
+                        {% if profile.gcash_qr_url %}<div class="qr-frame">
                             <img src="{{ profile.gcash_qr_url }}" alt="GCash QR">
-                        </div>
+                        </div>{% endif %}
                         <h4 class="channel-name">{{ profile.business_name }}</h4>
-                        <div class="channel-number">{{ profile.gcash_number }}</div>
+                        <div class="channel-number">{{ profile.gcash_number if profile.gcash_number and profile.gcash_number|string|lower != 'none' else 'No GCash number available' }}</div>
+                        {% if profile.gcash_number %}
                         <button type="button" class="btn-copy-num" onclick="navigator.clipboard.writeText('{{ profile.gcash_number }}'); Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'GCash Number Copied!', showConfirmButton: false, timer: 1500, customClass: { popup: 'small-toast-popup', title: 'small-toast-title' }});"><i class="far fa-copy"></i> Copy Number</button>
+                        {% endif %}
                     </div>
                     <div class="instruction-steps-clean mb-3">
-                        <div class="inst-step"><i class="fas fa-mobile-alt"></i> 1. Open your GCash App and select Scan QR or Send Money</div>
-                        <div class="inst-step"><i class="fas fa-qrcode"></i> 2. Send the exact amount shown in the summary</div>
-                        <div class="inst-step"><i class="fas fa-camera"></i> 3. Take a clear screenshot of your receipt</div>
+                        <h4>How to Pay and Upload</h4>
+                        <div class="inst-step"><span class="inst-number">1</span><i class="fas fa-mobile-alt"></i><span>Open your GCash App and select Scan QR or Send Money</span></div>
+                        <div class="inst-step"><span class="inst-number">2</span><i class="fas fa-qrcode"></i><span>Send the exact amount shown in the summary</span></div>
+                        <div class="inst-step"><span class="inst-number">3</span><i class="fas fa-camera"></i><span>Take a clear screenshot of your receipt</span></div>
                     </div>
                 </div>
                 
                 <!-- Maya Channel Sheet -->
                 <div id="modalContentMaya" style="display: none;">
                     <div class="payment-channel-box">
-                        <div class="qr-frame">
+                        {% if profile.maya_qr_url %}<div class="qr-frame">
                             <img src="{{ profile.maya_qr_url }}" alt="Maya QR">
-                        </div>
+                        </div>{% endif %}
                         <h4 class="channel-name">{{ profile.business_name }}</h4>
-                        <div class="channel-number emerald">{{ profile.maya_number }}</div>
+                        <div class="channel-number emerald">{{ profile.maya_number if profile.maya_number and profile.maya_number|string|lower != 'none' else 'No Maya number available' }}</div>
+                        {% if profile.maya_number %}
                         <button type="button" class="btn-copy-num" onclick="navigator.clipboard.writeText('{{ profile.maya_number }}'); Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'Maya Number Copied!', showConfirmButton: false, timer: 1500, customClass: { popup: 'small-toast-popup', title: 'small-toast-title' }});"><i class="far fa-copy"></i> Copy Number</button>
+                        {% endif %}
                     </div>
                     <div class="instruction-steps-clean mb-3">
-                        <div class="inst-step"><i class="fas fa-wallet"></i> 1. Open your Maya App and select Scan QR or Send Money</div>
-                        <div class="inst-step"><i class="fas fa-qrcode"></i> 2. Send the exact amount shown in the summary</div>
-                        <div class="inst-step"><i class="fas fa-camera"></i> 3. Take a clear screenshot of your receipt</div>
+                        <h4>How to Pay and Upload</h4>
+                        <div class="inst-step"><span class="inst-number">1</span><i class="fas fa-wallet"></i><span>Open your Maya App and select Scan QR or Send Money</span></div>
+                        <div class="inst-step"><span class="inst-number">2</span><i class="fas fa-qrcode"></i><span>Send the exact amount shown in the summary</span></div>
+                        <div class="inst-step"><span class="inst-number">3</span><i class="fas fa-camera"></i><span>Take a clear screenshot of your receipt</span></div>
                     </div>
                 </div>
                 
                 <!-- Bank Transfer Channel Sheet -->
                 <div id="modalContentBank" style="display: none;">
-                    <div class="payment-channel-box">
-                        <div style="width: 54px; height: 54px; background: white; color: #b45309; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 1.6rem; margin-bottom: 0.75rem; border: 1px solid var(--pay-slate-200); box-shadow: var(--pay-shadow-sm);">
+                    <div class="payment-channel-box bank-channel-box">
+                        <div class="bank-channel-icon">
                             <i class="fas fa-university"></i>
                         </div>
-                        <h4 class="channel-name">{{ profile.bank_name }}</h4>
-                        <div style="font-size: 0.85rem; font-weight: 600; color: var(--pay-slate-600); margin-bottom: 0.25rem;">Account Name: {{ profile.bank_account_name }}</div>
-                        <div class="channel-number amber">{{ profile.bank_account_number }}</div>
-                        <button type="button" class="btn-copy-num" onclick="navigator.clipboard.writeText('{{ profile.bank_account_number }}'); Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'Account Number Copied!', showConfirmButton: false, timer: 1500, customClass: { popup: 'small-toast-popup', title: 'small-toast-title' }});"><i class="far fa-copy"></i> Copy Account Number</button>
+                        <h4 class="channel-name">{{ profile.bank_name if profile.bank_name and profile.bank_name|string|lower != 'none' else 'Bank transfer' }}</h4>
+                        <div class="bank-account-name"><span>Account name</span><strong>{{ profile.bank_account_name if profile.bank_account_name and profile.bank_account_name|string|lower != 'none' else 'Not provided' }}</strong></div>
+                        <div class="bank-account-number">
+                            <span>Account number</span>
+                            <strong>{{ profile.bank_account_number if profile.bank_account_number and profile.bank_account_number|string|lower != 'none' else 'No account number available' }}</strong>
+                        </div>
+                        {% if profile.bank_account_number and profile.bank_account_number|string|lower != 'none' %}
+                        <button type="button" class="btn-copy-num bank-copy-button" onclick="navigator.clipboard.writeText('{{ profile.bank_account_number }}'); Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'Account Number Copied!', showConfirmButton: false, timer: 1500, customClass: { popup: 'small-toast-popup', title: 'small-toast-title' }});"><i class="far fa-copy"></i> Copy Account Number</button>
+                        {% endif %}
                     </div>
                     <div class="instruction-steps-clean mb-3">
-                        <div class="inst-step"><i class="fas fa-university"></i> 1. Open your Bank App and select InstaPay or PESONet</div>
-                        <div class="inst-step"><i class="fas fa-exchange-alt"></i> 2. Send the exact amount to the bank account above</div>
-                        <div class="inst-step"><i class="fas fa-camera"></i> 3. Take a clear screenshot of your transfer receipt</div>
+                        <h4>How to Pay and Upload</h4>
+                        <div class="inst-step"><span class="inst-number">1</span><i class="fas fa-university"></i><span>Open your Bank App and select InstaPay or PESONet</span></div>
+                        <div class="inst-step"><span class="inst-number">2</span><i class="fas fa-exchange-alt"></i><span>Send the exact amount to the bank account above</span></div>
+                        <div class="inst-step"><span class="inst-number">3</span><i class="fas fa-camera"></i><span>Take a clear screenshot of your transfer receipt</span></div>
                     </div>
                 </div>
 
                 <!-- Cash Payment Channel Sheet -->
                 <div id="modalContentCash" style="display: none;">
-                    <div class="payment-channel-box" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #86efac; border-radius: 12px; padding: 1.5rem; text-align: center; margin-bottom: 1rem;">
-                        <div style="width: 64px; height: 64px; background: #16a34a; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 2rem; color: white; margin-bottom: 0.75rem; box-shadow: 0 4px 15px rgba(22, 163, 74, 0.3);">
-                            <i class="fas fa-money-bill-wave"></i>
-                        </div>
-                        <h4 class="channel-name" style="color: #14532d; margin-bottom: 0.5rem;">Cash Payment Request</h4>
-                        <p style="font-size: 0.82rem; color: #166534; margin: 0;">You will pay the caterer directly in cash. No upload required.</p>
+                    <div class="cash-payment-hero">
+                        <span class="cash-payment-hero-icon"><i class="fas fa-money-bill-wave"></i></span>
+                        <h4>Cash Payment Request</h4>
+                        <p>You will pay the caterer directly in cash. No upload required.</p>
                     </div>
 
                     <!-- Cash Payment Summary -->
-                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                            <span style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Payment Type</span>
+                    <div class="cash-payment-summary">
+                        <div class="cash-summary-row">
+                            <span>Payment Type</span>
                             <span id="cashPaymentTypeLabel" style="font-size: 0.82rem; font-weight: 800; color: #0f172a; background: #f1f5f9; padding: 3px 10px; border-radius: 20px;">—</span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                            <span style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Amount to Pay</span>
+                        <div class="cash-summary-row">
+                            <span>Amount to Pay</span>
                             <span id="cashAmountLabel" style="font-size: 1.1rem; font-weight: 900; color: #16a34a;">₱0.00</span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 0.5rem;">
-                            <span style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Caterer</span>
+                        <div class="cash-summary-row">
+                            <span>Caterer</span>
                             <span style="font-size: 0.82rem; font-weight: 800; color: #0f172a;">{{ profile.business_name }}</span>
                         </div>
                     </div>
 
-                    <div class="instruction-steps-clean mb-3">
-                        <div class="inst-step"><i class="fas fa-hand-holding-usd" style="color: #16a34a;"></i> 1. Coordinate with <strong>{{ profile.business_name }}</strong> on the collection schedule</div>
-                        <div class="inst-step"><i class="fas fa-clock" style="color: #f59e0b;"></i> 2. The caterer will confirm receipt once cash is received</div>
-                        <div class="inst-step"><i class="fas fa-check-circle" style="color: #16a34a;"></i> 3. Your booking becomes <strong>Confirmed</strong> only after caterer confirms</div>
+                    <div class="instruction-steps-clean mb-3 cash-instructions">
+                        <h4>How to Complete Cash Payment</h4>
+                        <div class="cash-instruction-step"><span class="cash-step-number">1</span><span class="cash-step-icon cash-step-icon-blue"><i class="fas fa-map-marker-alt"></i></span><span class="cash-step-copy"><strong>Coordinate with the caterer</strong><small>Confirm the payment location and schedule with {{ profile.business_name }}.</small></span></div>
+                        <div class="cash-instruction-step"><span class="cash-step-number">2</span><span class="cash-step-icon cash-step-icon-amber"><i class="fas fa-hand-holding-usd"></i></span><span class="cash-step-copy"><strong>Pay the agreed amount</strong><small>Give the exact amount directly to the caterer.</small></span></div>
+                        <div class="cash-instruction-step"><span class="cash-step-number">3</span><span class="cash-step-icon cash-step-icon-green"><i class="fas fa-check"></i></span><span class="cash-step-copy"><strong>Wait for confirmation</strong><small>The caterer will confirm receipt in OccaServe.</small></span></div>
                     </div>
 
-                    <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 0.85rem; margin-bottom: 1rem; font-size: 0.78rem; color: #78350f; font-weight: 600;">
-                        <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
-                        <strong>Important:</strong> Selecting Cash does <em>not</em> automatically confirm your booking. The caterer must physically receive the cash and confirm it in their dashboard.
+                    <div class="cash-payment-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span><strong>Important:</strong> Requesting cash payment does <em>not</em> automatically confirm your booking. The caterer must receive the cash and confirm it in their dashboard.</span>
                     </div>
 
                     <!-- Hidden cash form fields baked into main wizard form -->
                     <input type="hidden" id="cashMethodInput" name="_cash_method_marker" value="1">
 
-                    <button type="button" id="cashSubmitBtn" class="btn-submit-modal" style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); box-shadow: 0 6px 20px rgba(22,163,74,0.35);" onclick="submitCashPayment()">
-                        <i class="fas fa-hand-holding-usd"></i> Request Cash Payment
-                    </button>
                 </div>
                 
                 <!-- Receipt Upload Box -->
@@ -502,10 +513,17 @@
                     
                     <div id="uploadErrorMsg" style="display: none; background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; padding: 0.85rem; border-radius: 8px; font-size: 0.82rem; margin-bottom: 1rem; font-weight: 500; text-align: left;"></div>
 
-                    <input type="file" id="proofImageInput" name="payment_proof" form="wizard-payment-form" accept="image/png, image/jpeg, image/jpg" class="file-input-clean">
-                    
-                    <input type="text" id="referenceNoInput" name="reference_no" form="wizard-payment-form" placeholder="Reference Number (Optional)" pattern="[a-zA-Z0-9]+" maxlength="30" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" class="ref-input-clean">
+                    <label class="file-input-shell" for="proofImageInput">
+                        <span class="file-input-button"><i class="far fa-file-alt"></i> Choose File</span>
+                        <span id="proofFileName" class="file-input-name">No file chosen</span>
+                        <input type="file" id="proofImageInput" name="payment_proof" form="wizard-payment-form" accept="image/png, image/jpeg, image/jpg" class="file-input-clean" onchange="document.getElementById('proofFileName').textContent = this.files?.[0]?.name || 'No file chosen'">
+                    </label>
                 </div>
+
+                <label id="referenceField" class="reference-field" for="referenceNoInput">
+                    <span>Reference Number <small>(Required for GCash/Bank)</small></span>
+                    <span class="reference-input-wrap"><i class="fas fa-hashtag"></i><input type="text" id="referenceNoInput" name="reference_no" form="wizard-payment-form" placeholder="Enter the reference shown on your receipt" pattern="[a-zA-Z0-9]+" maxlength="30" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" class="ref-input-clean"></span>
+                </label>
 
                 {% set doc_type_display = "Booking Agreement" %}
                 {% if booking.document_type == "service_agreement" %}
@@ -521,17 +539,21 @@
                     <label class="terms-label-clean">
                         <input type="checkbox" id="termsAgreementCheckbox" name="terms_agreement" form="wizard-payment-form" required class="terms-checkbox">
                         <span>
-                            I confirm that this screenshot is real and correct, and I agree to the payment terms of <strong>{{ profile.business_name }}</strong>.
+                            <span id="onlineAgreementText">I agree to the payment terms of <strong>{{ profile.business_name }}</strong> and confirm that the payment details I submit are accurate.</span>
+                            <span id="cashAgreementText" style="display:none;">I understand that this is only a cash payment request. My booking will be updated after <strong>{{ profile.business_name }}</strong> receives and confirms the cash.</span>
                         </span>
                     </label>
                 </div>
 
-                <button type="submit" id="submit-payment-btn" form="wizard-payment-form" class="btn-submit-modal">
+                <button type="submit" id="submit-payment-btn" form="wizard-payment-form" class="btn-submit-modal" disabled aria-disabled="true">
                     {% if booking.payment_status == 'reupload_requested' %}
                     Submit New Screenshot <i class="fas fa-check-circle"></i>
                     {% else %}
                     Submit Screenshot & Complete Booking <i class="fas fa-paper-plane"></i>
                     {% endif %}
+                </button>
+                <button type="button" id="cashSubmitBtn" class="btn-submit-modal cash-request-button" disabled aria-disabled="true" onclick="submitCashPayment()">
+                    <i class="fas fa-hand-holding-usd"></i> Request Cash Payment
                 </button>
             </div>
         </div>
@@ -576,6 +598,33 @@
         document.getElementById('selected-method').value = method;
         const overlay = document.getElementById('paymentModalOverlay');
         const card = document.getElementById('paymentModalCard');
+        const isCash = method === 'Cash';
+        const modalTitle = document.getElementById('modalTitle');
+        const modalSubtitle = document.getElementById('modalSubtitle');
+        const modalIcon = document.querySelector('.payment-modal-icon i');
+        const uploadSection = document.getElementById('uploadSection');
+        const referenceField = document.getElementById('referenceField');
+        const onlineSubmitButton = document.getElementById('submit-payment-btn');
+        const cashSubmitButton = document.getElementById('cashSubmitBtn');
+        const onlineTerms = document.getElementById('onlineAgreementText');
+        const cashTerms = document.getElementById('cashAgreementText');
+        const termsCheckbox = document.getElementById('termsAgreementCheckbox');
+
+        if (modalTitle) modalTitle.textContent = isCash ? 'Cash Payment' : 'Upload Payment Screenshot';
+        if (modalSubtitle) modalSubtitle.textContent = isCash
+            ? 'Request cash payment and wait for the caterer to confirm receipt.'
+            : 'Scan the QR code or send the exact amount to complete your payment.';
+        if (modalIcon) modalIcon.className = isCash ? 'fas fa-money-bill-wave' : 'fas fa-wallet';
+        if (uploadSection) uploadSection.style.display = isCash ? 'none' : '';
+        if (referenceField) referenceField.style.display = isCash ? 'none' : '';
+        if (onlineSubmitButton) onlineSubmitButton.style.display = isCash ? 'none' : 'flex';
+        if (cashSubmitButton) cashSubmitButton.style.display = isCash ? 'flex' : 'none';
+        if (onlineTerms) onlineTerms.style.display = isCash ? 'none' : '';
+        if (cashTerms) cashTerms.style.display = isCash ? '' : 'none';
+        if (termsCheckbox) {
+            termsCheckbox.checked = false;
+            termsCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+        }
         
         overlay.style.display = 'flex';
         card.style.animation = 'modalFadeIn 0.25s ease forwards';
@@ -592,7 +641,7 @@
             // Populate Cash modal with live plan amounts
             const planVal = document.getElementById('selected-plan').value;
             const totalAmt = {{ booking.total_amount or 0 }};
-            const resFee = {{ booking.reservation_fee|float if booking.reservation_fee else 0.0 }};
+            const resFee = {{ verified_paid|float if verified_paid else 0.0 }};
             let cashAmt = 0;
             let cashType = 'Downpayment';
 
@@ -603,8 +652,9 @@
                 cashAmt = totalAmt;
                 cashType = 'Full Payment (100%)';
             } else if (!isNaN(parseFloat(planVal))) {
-                cashAmt = totalAmt * (parseFloat(planVal) / 100);
-                cashType = planVal + '% Downpayment';
+                const selectedPercent = parseFloat(planVal);
+                cashAmt = totalAmt * (selectedPercent / 100);
+                cashType = selectedPercent >= 100 ? 'Full Payment (100%)' : `${selectedPercent}% Deposit`;
             } else {
                 cashAmt = resFee;
             }
@@ -617,9 +667,13 @@
             // For Cash: remove file required attr
             const fileInput = document.getElementById('proofImageInput');
             if(fileInput) fileInput.removeAttribute('required');
+            const refInput = document.getElementById('referenceNoInput');
+            if (refInput) refInput.removeAttribute('required');
         } else {
             const fileInput = document.getElementById('proofImageInput');
             if(fileInput) fileInput.setAttribute('required', 'required');
+            const refInput = document.getElementById('referenceNoInput');
+            if (refInput) refInput.setAttribute('required', 'required');
         }
     }
 
@@ -629,6 +683,23 @@
 
     // Form Validation & URL Error Handling
     document.addEventListener('DOMContentLoaded', () => {
+        const termsCheckbox = document.getElementById('termsAgreementCheckbox');
+        const agreementButtons = [
+            document.getElementById('submit-payment-btn'),
+            document.getElementById('cashSubmitBtn')
+        ].filter(Boolean);
+        const syncAgreementButtons = () => {
+            const agreed = Boolean(termsCheckbox && termsCheckbox.checked);
+            agreementButtons.forEach(button => {
+                button.disabled = !agreed;
+                button.setAttribute('aria-disabled', agreed ? 'false' : 'true');
+            });
+        };
+        if (termsCheckbox) {
+            termsCheckbox.addEventListener('change', syncAgreementButtons);
+            syncAgreementButtons();
+        }
+
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('error')) {
             const errorType = urlParams.get('error');
@@ -654,6 +725,24 @@
                     icon: 'warning',
                     confirmButtonColor: 'var(--pay-emerald-600)'
                 });
+            } else if (errorType === 'missing_reference') {
+                Swal.fire('Reference Number Required', 'Enter the reference number exactly as shown on your GCash or Bank receipt.', 'warning');
+                openPaymentModal(errorMethod || 'GCash');
+            } else if (errorType === 'amount_mismatch') {
+                Swal.fire('Amount Does Not Match', 'The amount detected on the receipt does not match the required payment amount.', 'error');
+                openPaymentModal(errorMethod || 'GCash');
+            } else if (errorType === 'payment_method_mismatch') {
+                Swal.fire('Payment Method Does Not Match', 'The receipt does not appear to be from the selected payment method.', 'error');
+                openPaymentModal(errorMethod || 'GCash');
+            } else if (errorType === 'reference_mismatch') {
+                Swal.fire('Reference Does Not Match', 'The reference number you entered must exactly match the reference shown on the receipt.', 'error');
+                openPaymentModal(errorMethod || 'GCash');
+            } else if (errorType === 'ai_receipt_failed') {
+                Swal.fire('Receipt Verification Failed', 'Gemini could not verify this as a valid payment receipt. Upload a clear, complete receipt and try again.', 'error');
+                openPaymentModal(errorMethod || 'GCash');
+            } else if (errorType === 'duplicate_ref') {
+                Swal.fire('Reference Already Used', 'This reference number has already been submitted for another booking.', 'error');
+                openPaymentModal(errorMethod || 'GCash');
             }
             window.history.replaceState({}, document.title, window.location.pathname);
         }
@@ -704,6 +793,11 @@
                             Swal.fire('Invalid Reference Number', 'Reference number looks incorrect. Please enter your real reference number.', 'warning');
                             return;
                         }
+                    }
+                    if (refInput && !refInput.value.trim()) {
+                        e.preventDefault();
+                        Swal.fire('Reference Number Required', 'Enter the reference number shown on your receipt.', 'warning');
+                        return;
                     }
 
                     if(submitBtn) {

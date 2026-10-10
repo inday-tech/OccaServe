@@ -1,6 +1,8 @@
 {% extends "customer/layout.html" %}
 
-{% block title %}Booking Confirmed - OccaServe{% endblock %}
+{% block title %}
+{% if booking.payment_status in ['cash_payment_requested', 'cash_balance_requested'] %}Cash Payment Requested{% elif booking.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}Payment Proof Submitted{% else %}Payment Update{% endif %} - OccaServe
+{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -129,6 +131,13 @@
         color: var(--up-slate-900);
     }
 
+    .cash-request-summary { margin: -0.5rem 0 1.5rem; padding: 1rem 1.15rem; border: 1px solid #e2e8f0; border-radius: 16px; background: #f8fafc; text-align: left; }
+    .cash-request-row { display: grid; grid-template-columns: minmax(105px, 0.8fr) minmax(0, 1.2fr); gap: 0.75rem; align-items: center; padding: 0.5rem 0; color: #64748b; font-size: 0.85rem; }
+    .cash-request-row + .cash-request-row { border-top: 1px solid #e8edf3; }
+    .cash-request-row strong { color: #1e293b; font-weight: 800; text-align: right; overflow-wrap: anywhere; }
+    .cash-pending-badge { justify-self: end; padding: 0.35rem 0.65rem; border-radius: 999px; background: #fef3c7; color: #b45309 !important; font-size: 0.75rem; }
+    .cash-request-reminder { margin: 0 0 1.5rem; padding: 0.9rem 1rem; border: 1px solid #bfdbfe; border-radius: 12px; background: #eff6ff; color: #1d4ed8; text-align: left; font-size: 0.82rem; line-height: 1.5; }
+
     .redirect-countdown-bar {
         background: #f1f5f9;
         height: 4px;
@@ -208,11 +217,26 @@
     <div class="success-card-premium">
         <div class="success-icon-wrap">
             <div class="confetti-ring"></div>
+            {% if booking.payment_status in ['cash_payment_requested', 'cash_balance_requested', 'proof_submitted', 'balance_proof_submitted'] %}
+            <i class="fas fa-clock success-icon-main" style="color:#d97706;"></i>
+            {% else %}
             <i class="fas fa-check success-icon-main"></i>
+            {% endif %}
         </div>
 
+        {% if booking.payment_status in ['cash_payment_requested', 'cash_balance_requested'] %}
+        <h1 class="success-title">Cash Payment Requested</h1>
+        <p class="success-subtitle">Your request to pay <strong>{{ booking.caterer.business_name }}</strong> in cash has been sent. The payment is not confirmed until the caterer receives and records the cash.</p>
+        {% elif booking.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
+        <h1 class="success-title">Payment Proof Submitted</h1>
+        <p class="success-subtitle">Your receipt was sent to <strong>{{ booking.caterer.business_name }}</strong> for review. Your payment and booking are not confirmed until the caterer verifies the proof.</p>
+        {% elif booking.payment_status in ['deposit_paid', 'paid', 'fully_paid', 'confirmed'] %}
         <h1 class="success-title">Payment Confirmed!</h1>
-        <p class="success-subtitle">Your booking with <strong>{{ booking.caterer.business_name }}</strong> is now secured. The caterer has been notified of your payment.</p>
+        <p class="success-subtitle">Your payment has been verified and your booking with <strong>{{ booking.caterer.business_name }}</strong> is secured.</p>
+        {% else %}
+        <h1 class="success-title">Payment Update</h1>
+        <p class="success-subtitle">Your payment request for <strong>{{ booking.caterer.business_name }}</strong> has been recorded. Check your booking for the latest status.</p>
+        {% endif %}
 
         <div class="booking-token-box">
             <div class="token-item">
@@ -225,6 +249,17 @@
             </div>
         </div>
 
+        {% if booking.payment_status in ['cash_payment_requested', 'cash_balance_requested'] %}
+        <div class="cash-request-summary" aria-label="Cash payment request details">
+            <div class="cash-request-row"><span><i class="far fa-file-alt"></i> Booking No.</span><strong>BK-{{ booking.id }}</strong></div>
+            <div class="cash-request-row"><span><i class="far fa-money-bill-alt"></i> Amount to Pay</span><strong>₱{{ '{:,.2f}'.format(cash_request_amount or 0) }}</strong></div>
+            <div class="cash-request-row"><span><i class="fas fa-store"></i> Caterer</span><strong>{{ booking.caterer.business_name }}</strong></div>
+            <div class="cash-request-row"><span><i class="far fa-clock"></i> Requested At</span><strong>{% if cash_requested_at %}{{ cash_requested_at.strftime('%b %d, %Y %I:%M %p') }}{% else %}Just now{% endif %}</strong></div>
+            <div class="cash-request-row"><span><i class="fas fa-info-circle"></i> Payment Status</span><strong class="cash-pending-badge">Pending Confirmation</strong></div>
+        </div>
+        <div class="cash-request-reminder"><i class="fas fa-info-circle"></i> Please pay the agreed amount directly to the caterer. Your booking will be updated after the caterer confirms receipt.</div>
+        {% endif %}
+
         <div class="redirect-section">
             <div class="redirect-countdown-bar">
                 <div class="countdown-fill" id="countdown-bar"></div>
@@ -233,7 +268,7 @@
         </div>
 
         <div class="action-group">
-            <a href="/customer/bookings" class="btn-primary-elite">
+            <a href="{% if booking.document_type == 'invoice' %}/customer/orders{% else %}/customer/bookings{% endif %}" class="btn-primary-elite">
                 Go to My Bookings <i class="fas fa-arrow-right"></i>
             </a>
             <a href="/" class="btn-secondary-soft">Return to Marketplace</a>
@@ -243,6 +278,7 @@
 
 <script>
     let timeLeft = 10;
+    const successRedirectUrl = "{% if booking.document_type == 'invoice' %}/customer/orders{% else %}/customer/bookings{% endif %}";
     const timerText = document.getElementById('timer-text');
     const timerBar = document.getElementById('countdown-bar');
 
@@ -256,7 +292,7 @@
 
         if (timeLeft <= 0) {
             clearInterval(countdown);
-            window.location.href = '/customer/bookings';
+            window.location.href = successRedirectUrl;
         }
     }, 1000);
 </script>

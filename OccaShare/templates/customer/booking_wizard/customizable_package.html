@@ -1159,12 +1159,13 @@ function updateCustomizationState() {
     document.querySelectorAll('.food-checkbox').forEach(cb => {
         const id = cb.value;
         const subtotalPill = document.getElementById(`subtotal_food_${id}`);
-        const upgradeFee = parseFloat(cb.dataset.upgradeFee) || 0;
+        // Menu choices are included in the per-guest package rate.
+        const upgradeFee = 0;
 
         if (cb.checked) {
             foodSelectedCount++;
-            const itemUpgradeTotal = upgradeFee * currentGuestCount;
-            foodUpgradeSubtotal += itemUpgradeTotal;
+            const itemUpgradeTotal = 0;
+            // Menu selections are included in the package rate.
 
             if (subtotalPill) {
                 subtotalPill.style.display = 'inline-block';
@@ -1244,7 +1245,7 @@ function updateCustomizationState() {
     }
 
     // 5. Grand Estimated Total: (base_price + sum(upgrade_fees)) * guest_count + servicesSubtotal
-    const grandTotal = basePackageTotal + foodUpgradeSubtotal + servicesSubtotal;
+    const grandTotal = basePackageTotal + servicesSubtotal;
     const txtTotal = document.getElementById('summaryEstimatedTotal');
     if (txtTotal) {
         txtTotal.innerText = `₱${grandTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
@@ -1313,9 +1314,9 @@ function validateAndSubmitCustomization() {
     let foodUpgradeSubtotal = 0;
     const foodPayload = selectedFoodBoxes.map(cb => {
         const id = parseInt(cb.value, 10);
-        const upgradeFee = parseFloat(cb.dataset.upgradeFee) || 0;
+        const upgradeFee = 0;
         const price = parseFloat(cb.dataset.price) || 0;
-        const subtotal = upgradeFee * guestVal;
+        const subtotal = 0;
         foodUpgradeSubtotal += subtotal;
 
         return {
@@ -1348,7 +1349,7 @@ function validateAndSubmitCustomization() {
     });
 
     const basePackageTotal = isPerPax ? (basePackagePrice * guestVal) : basePackagePrice;
-    const grandTotal = basePackageTotal + foodUpgradeSubtotal + servicesSubtotal;
+    const grandTotal = basePackageTotal + servicesSubtotal;
     const specialReq = document.getElementById('custSpecialRequests')?.value || '';
 
     const finalPayload = {
@@ -1358,10 +1359,10 @@ function validateAndSubmitCustomization() {
         guest_count: guestVal,
         base_price: basePackagePrice,
         base_package_total: basePackageTotal,
-        food_upgrade_total: foodUpgradeSubtotal,
+        food_upgrade_total: 0,
         selected_food: foodPayload,
         selected_services: servicesPayload,
-        food_total: foodUpgradeSubtotal,
+        food_total: 0,
         services_total: servicesSubtotal,
         estimated_total: grandTotal,
         special_requests: specialReq

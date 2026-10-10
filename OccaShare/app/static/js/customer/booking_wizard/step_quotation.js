@@ -13,17 +13,18 @@ function initSignatureWebSocket() {
             
             // If it was signed by the other party, we need to refresh to show the button/signatures
             if (data.role === 'caterer') {
+                const paymentUrl = `/bookings/step/payment/${window.bookingId}`;
                 if (window.showToast) {
-                    window.showToast("The caterer has signed the contract. Loading the next step...", "info");
-                    setTimeout(() => window.location.reload(), 2000);
+                    window.showToast("The agreement is fully signed. Taking you to payment...", "success");
+                    setTimeout(() => window.location.assign(paymentUrl), 1500);
                 } else {
                     Swal.fire({
-                        icon: 'info',
-                        title: 'Contract Updated',
-                        text: 'The caterer has signed the contract. Loading the next step...',
-                        timer: 2000,
+                        icon: 'success',
+                        title: 'Agreement Fully Signed',
+                        text: 'Taking you to the payment step...',
+                        timer: 1500,
                         showConfirmButton: false
-                    }).then(() => window.location.reload());
+                    }).then(() => window.location.assign(paymentUrl));
                 }
             }
         }
@@ -165,57 +166,61 @@ window.clearSignature = function () {
     }
 };
 
+let dpUpdateRequest = 0;
 window.setDPTier = async function (percent) {
     const isSigned = document.getElementById('signed-input')?.value === 'true';
     if (isSigned) return;
 
-    const bookingId = window.location.pathname.split('/').pop();
+    percent = Number(percent);
+    if (![30, 40, 50, 60, 70, 80, 90, 100].includes(percent)) return;
+
+    const bookingId = window.bookingId || window.location.pathname.split('/').pop();
     const dpValEl = document.getElementById('deposit-val');
     const input = document.getElementById('dp-percent-input');
-    
-    // UI Feedback for options
-    document.querySelectorAll('.dp-card-clean').forEach(opt => {
-        opt.classList.remove('active');
-        if (opt.querySelector('.dp-pct').textContent.includes(percent + '%')) {
-            opt.classList.add('active');
-        }
-    });
-    
+    const totalInput = document.getElementById('total-amount-input');
+    const totalVal = totalInput ? Number(totalInput.value) : 0;
+    const calculatedDeposit = Math.round((totalVal * percent / 100 + Number.EPSILON) * 100) / 100;
+    const formattedDeposit = calculatedDeposit.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const remainingBal = Math.max(0, totalVal - calculatedDeposit);
+
+    // Update the breakdown immediately so every supported percentage recalculates on selection.
+    if (input) input.value = percent;
+    if (dpValEl) dpValEl.textContent = `\u20B1${formattedDeposit}`;
+    const tierLabel = document.getElementById('selected-tier-label');
+    if (tierLabel) tierLabel.textContent = percent === 100 ? '100% Full Payment' : `${percent}% Deposit`;
+    const balValEl = document.getElementById('remaining-balance-val');
+    if (balValEl) balValEl.textContent = `\u20B1${remainingBal.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    const balBox = document.getElementById('balance-box');
+    if (balBox) balBox.style.display = (percent === 100 || remainingBal <= 0) ? 'none' : 'flex';
+    const contractPct = document.getElementById('contract-dp-pct');
+    const contractVal = document.getElementById('contract-dp-val');
+    if (contractPct) contractPct.innerText = percent;
+    if (contractVal) contractVal.innerText = formattedDeposit;
+
+    const requestId = ++dpUpdateRequest;
     try {
         const response = await fetch(`/api/bookings/${bookingId}/update-dp`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({ percent: percent })
         });
-        
-        const data = await response.json();
-        if (data.success) {
-            input.value = percent;
-            const formattedDeposit = data.new_deposit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            if (dpValEl) dpValEl.textContent = formattedDeposit;
-            
-            // Update Pro Dashboard Elements
-            const tierLabel = document.getElementById('selected-tier-label');
-            if (tierLabel) tierLabel.textContent = `${percent}% Deposit`;
-
-            const totalInput = document.getElementById('total-amount-input');
-            const totalVal = totalInput ? parseFloat(totalInput.value) : 0;
-            const remainingBal = totalVal - data.new_deposit;
-            const balValEl = document.getElementById('remaining-balance-val');
-            if (balValEl) balValEl.textContent = '₱' + remainingBal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-
-            const balBox = document.getElementById('balance-box');
-            if (balBox) balBox.style.display = (percent == 100 || remainingBal <= 0) ? 'none' : 'flex';
-            
-            // Update contract text REAL-TIME
-            const contractPct = document.getElementById('contract-dp-pct');
-            const contractVal = document.getElementById('contract-dp-val');
-            
-            if (contractPct) contractPct.innerText = percent;
-            if (contractVal) contractVal.innerText = formattedDeposit;
+        const responseText = await response.text();
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (_) {
+            throw new Error(`The server could not save the deposit option (HTTP ${response.status}). Please reload and try again.`);
         }
+        if (!response.ok || !data.success) {
+            throw new Error(data.detail || data.error || 'The deposit option could not be saved. Please try again.');
+        }
+        // Ignore stale replies if the customer selected another percentage while this request was pending.
+        if (requestId !== dpUpdateRequest) return;
     } catch (error) {
         console.error('Error updating DP tier:', error);
+        if (requestId === dpUpdateRequest && window.showError) {
+            window.showError(error.message || 'The deposit option could not be saved. Please try again.', 'Deposit not saved');
+        }
     }
 };
 
@@ -227,84 +232,79 @@ window.submitSignature = async function () {
             icon: 'error',
             title: 'Action Required',
             text: 'Please sign before finalizing.',
-            customClass: {
-                popup: 'up-swal-popup',
-                title: 'up-swal-title',
-                html: 'up-swal-html',
-                confirmButton: 'up-swal-confirm'
-            }
+            customClass: { popup: 'up-swal-popup', title: 'up-swal-title', html: 'up-swal-html', confirmButton: 'up-swal-confirm' }
         });
         return;
     }
 
     const signatureData = sigPad.toDataURL();
+    const saveButton = document.getElementById('btn-sign');
+    const originalButtonText = saveButton ? saveButton.innerHTML : '';
+    if (saveButton) {
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving signature...';
+    }
 
     Swal.fire({
-        title: 'Finalizing Agreement...',
-        text: 'Securing your booking and contract',
+        title: 'Saving your signature...',
+        text: 'Please wait while we save your signed agreement.',
         allowOutsideClick: false,
-        customClass: {
-            popup: 'up-swal-popup',
-            title: 'up-swal-title',
-            html: 'up-swal-html'
-        },
-        didOpen: () => { Swal.showLoading(); }
+        showConfirmButton: false,
+        customClass: { popup: 'up-swal-popup', title: 'up-swal-title', html: 'up-swal-html' },
+        didOpen: () => Swal.showLoading()
     });
 
     try {
         const response = await fetch(`/api/bookings/${window.bookingId}/contract/sign?role=customer`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({ signature_data: signatureData })
         });
+        const responseText = await response.text();
+        let result;
+        try {
+            result = JSON.parse(responseText);
+        } catch (_) {
+            throw new Error(`The server could not save your signature (HTTP ${response.status}). Please try again.`);
+        }
+        if (!response.ok || !result.success) {
+            throw new Error(result.detail || result.error || result.message || 'Failed to save your signature.');
+        }
 
-        const result = await response.json();
-        if (result.success) {
-            if (result.status === 'signed') {
-                // Both signed! Move directly to payment
-                if (window.showToast) {
-                    window.showToast("Redirecting to payment step...", "success");
-                    setTimeout(() => window.location.href = `/bookings/step/payment/${window.bookingId}`, 2000);
-                } else {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Contract Successfully Signed!',
-                        text: 'Redirecting to payment step...',
-                        timer: 2000,
-                        showConfirmButton: false,
-                        customClass: {
-                            popup: 'up-swal-popup',
-                            title: 'up-swal-title',
-                            html: 'up-swal-html'
-                        }
-                    }).then(() => window.location.href = `/bookings/step/payment/${window.bookingId}`);
-                }
-            } else {
-                // Only customer signed, awaiting caterer
-                if (window.showToast) {
-                    window.showToast("Contract awaiting caterer's signature.", "success");
-                    setTimeout(() => window.location.reload(), 2000);
-                } else {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Your Signature Applied!',
-                        text: 'The contract is now awaiting the caterer\'s signature. We will notify you once they sign.',
-                        confirmButtonText: 'View Status',
-                        customClass: {
-                            popup: 'up-swal-popup',
-                            title: 'up-swal-title',
-                            html: 'up-swal-html',
-                            confirmButton: 'up-swal-confirm'
-                        }
-                    }).then(() => window.location.reload());
-                }
-            }
+        if (result.status === 'signed') {
+            const confirmation = await Swal.fire({
+                icon: 'success',
+                title: 'Signature saved successfully!',
+                text: 'Both parties have signed the agreement. You can continue to payment now.',
+                confirmButtonText: 'Continue to payment',
+                allowOutsideClick: false,
+                customClass: { popup: 'up-swal-popup', title: 'up-swal-title', html: 'up-swal-html', confirmButton: 'up-swal-confirm' }
+            });
+            if (confirmation.isConfirmed) window.location.href = `/bookings/step/payment/${window.bookingId}`;
         } else {
-            throw new Error(result.error || 'Failed to sign contract');
+            await Swal.fire({
+                icon: 'success',
+                title: 'Signature saved successfully!',
+                text: 'Your agreement is now waiting for the caterer’s signature. You will be notified when they sign.',
+                confirmButtonText: 'View status',
+                allowOutsideClick: false,
+                customClass: { popup: 'up-swal-popup', title: 'up-swal-title', html: 'up-swal-html', confirmButton: 'up-swal-confirm' }
+            });
+            window.location.reload();
         }
     } catch (error) {
         console.error('Error signing:', error);
-        if (window.showError) window.showError(error.message || 'An error occurred while signing.', 'Error'); else Swal.fire('Error', error.message || 'An error occurred while signing.', 'error');
+        await Swal.fire({
+            icon: 'error',
+            title: 'Signature was not saved',
+            text: error.message || 'An error occurred while signing. Please try again.',
+            confirmButtonText: 'Try again',
+            customClass: { popup: 'up-swal-popup', title: 'up-swal-title', html: 'up-swal-html', confirmButton: 'up-swal-confirm' }
+        });
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.innerHTML = originalButtonText;
+        }
     }
 };
 window.scrollToContract = function() {

@@ -3,21 +3,52 @@
 {% block title %}Share Your Feedback - OccaServe{% endblock %}
 
 {% block content %}
-<div class="page-header" style="text-align: center; margin-bottom: 3rem;">
-    <h1>Rate Your Experience</h1>
-    <p>How was the service provided by {{ booking.caterer.business_name }}?</p>
-</div>
+<style>
+    .feedback-page { max-width: 900px; margin: 0 auto; padding: .75rem 0 1.5rem; }
+    .feedback-card-modern { background:#fff; border:1px solid #dbe4ef; border-radius:22px; padding:1.75rem 2.25rem 2rem; box-shadow:0 14px 32px rgba(31,55,87,.1); }
+    .feedback-hero { text-align:center; margin-bottom:1.35rem; }
+    .feedback-hero-icon { width:58px; height:58px; margin:0 auto .7rem; border-radius:50%; display:grid; place-items:center; background:#fff0ed; color:#ff7254; font-size:1.55rem; }
+    .feedback-hero h1 { margin:0; color:#101a35; font-size:2rem; font-weight:900; }
+    .feedback-hero p { margin:.25rem 0 0; color:#71829e; font-size:1rem; }
+    .rating-panel { background:#f7faff; border-radius:15px; padding:1rem; text-align:center; margin-bottom:1.35rem; }
+    .star-rating { display:flex; justify-content:center; gap:.85rem; color:#dce5f0; font-size:3rem; line-height:1; }
+    .star-rating i { cursor:pointer; transition:transform .15s,color .15s; }
+    .star-rating i:hover { transform:translateY(-2px) scale(1.04); }
+    .rating-caption { margin:.65rem 0 0; color:#5f718f; font-size:1rem; font-weight:700; }
+    .feedback-label-row { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:.5rem; }
+    .feedback-label-row label { color:#101a35; font-weight:850; font-size:1.1rem; }
+    .feedback-counter { color:#71829e; font-size:.95rem; }
+    .feedback-textarea { width:100%; min-height:125px; resize:vertical; padding:1rem; border-radius:14px; border:1px solid #d2ddeb; color:#17223b; font-size:.95rem; box-sizing:border-box; }
+    .feedback-textarea:focus { outline:none; border-color:#7aa9f8; box-shadow:0 0 0 4px rgba(37,125,244,.12); }
+    .survey-panel { background:#fff8f5; border:1px solid #ffe1d5; border-radius:17px; padding:1rem; margin:1.35rem 0; }
+    .survey-heading { display:flex; gap:.9rem; align-items:center; margin-bottom:1rem; }
+    .survey-icon { width:48px; height:48px; border-radius:14px; background:#ffeadf; color:#ff7254; display:grid; place-items:center; font-size:1.25rem; }
+    .survey-heading h2 { margin:0; color:#101a35; font-size:1.35rem; }
+    .survey-heading p { margin:.2rem 0 0; color:#71829e; font-size:.95rem; }
+    .survey-option { display:flex; align-items:flex-start; gap:.8rem; background:#fff; border:1px solid #ffe5dc; border-radius:13px; padding:.8rem 1rem; margin-top:.65rem; cursor:pointer; }
+    .survey-option input { width:22px; height:22px; accent-color:#1677f2; margin-top:.15rem; flex:none; }
+    .survey-option strong { display:block; color:#15213c; font-size:1.05rem; }
+    .survey-option small { display:block; color:#71829e; margin-top:.2rem; font-size:.9rem; }
+    .feedback-actions { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .feedback-actions button, .feedback-actions a { min-height:52px; border-radius:13px; font-size:1rem; font-weight:850; display:flex; align-items:center; justify-content:center; text-decoration:none; }
+    .feedback-cancel { border:1px solid #aebbd0; color:#5d6d87; background:#fff; }
+    .feedback-submit { border:0; color:#fff; background:linear-gradient(135deg,#ff7254,#ff6041); box-shadow:0 10px 20px rgba(255,105,75,.24); cursor:pointer; }
+    @media (max-width:700px) { .feedback-card-modern { padding:1.5rem; border-radius:20px; } .feedback-hero h1 { font-size:2rem; } .star-rating { font-size:2.8rem; gap:.65rem; } .feedback-actions { grid-template-columns:1fr; } }
+</style>
 
-<div style="max-width: 600px; margin: 0 auto;">
-    <div
-        style="background: white; border-radius: 2rem; padding: 3rem; box-shadow: var(--shadow-md); border: 1px solid var(--border-color);">
+<div class="feedback-page">
+    <div class="feedback-card-modern">
+        <div class="feedback-hero">
+            <div class="feedback-hero-icon"><i class="fas fa-comment-star"></i></div>
+            <h1>Service Rating</h1>
+            <p>Tell us about your experience with this caterer.</p>
+        </div>
+
         <form action="/bookings/review" method="POST">
             <input type="hidden" name="booking_id" value="{{ booking.id }}">
 
-            <div style="text-align: center; margin-bottom: 2.5rem;">
-                <h3 style="font-size: 1.1rem; color: var(--text-light); margin-bottom: 1rem;">Service Rating</h3>
-                <div class="star-rating"
-                    style="display: flex; justify-content: center; gap: 0.75rem; font-size: 2.5rem; color: #e2e8f0;">
+            <div class="rating-panel">
+                <div class="star-rating">
                     <i class="fas fa-star" data-value="1" style="cursor: pointer;"></i>
                     <i class="fas fa-star" data-value="2" style="cursor: pointer;"></i>
                     <i class="fas fa-star" data-value="3" style="cursor: pointer;"></i>
@@ -25,35 +56,25 @@
                     <i class="fas fa-star" data-value="5" style="cursor: pointer;"></i>
                 </div>
                 <input type="hidden" name="rating" id="rating-input" required>
+                <div class="rating-caption" id="rating-caption">Select a rating</div>
             </div>
 
-            <div class="form-group" style="margin-bottom: 2rem;">
-                <label style="display: block; font-weight: 600; margin-bottom: 0.75rem;">Your Feedback</label>
-                <textarea name="comment" class="form-input" rows="5" required
-                    placeholder="What did you love? Any areas for improvement?"
-                    style="width: 100%; padding: 1rem; border-radius: 1rem; border: 1px solid var(--border-color);"></textarea>
+            <div class="form-group">
+                <div class="feedback-label-row"><label for="feedback-comment">Your Feedback <span style="color:#ff6548;">*</span></label><span class="feedback-counter"><span id="comment-count">0</span>/500</span></div>
+                <textarea id="feedback-comment" name="comment" class="feedback-textarea" maxlength="500" required
+                    placeholder="Write your feedback here..."></textarea>
             </div>
 
-            <div
-                style="background: var(--background-light); padding: 1.5rem; border-radius: 1.25rem; margin-bottom: 2.5rem;">
-                <h4 style="font-size: 0.95rem; margin-bottom: 1rem;"><i class="fas fa-poll-h"
-                        style="margin-right: 0.5rem; color: var(--primary-color);"></i> Satisfaction Survey</h4>
-                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                    <label
-                        style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; cursor: pointer;">
-                        <input type="checkbox" name="recommend" value="yes"> Would you recommend this caterer to others?
-                    </label>
-                    <label
-                        style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; cursor: pointer;">
-                        <input type="checkbox" name="ontime" value="yes"> Was the caterer punctual?
-                    </label>
-                </div>
+            <div class="survey-panel">
+                <div class="survey-heading"><div class="survey-icon"><i class="fas fa-clipboard-list"></i></div><div><h2>Satisfaction Survey</h2><p>Help us improve by answering a few questions.</p></div></div>
+                <div class="survey-option"><input type="checkbox" id="recommend" name="recommend" value="yes"><span><strong>Would you recommend this caterer to others?</strong><small>Your answer helps other customers find reliable caterers.</small></span></div>
+                <div class="survey-option"><input type="checkbox" id="ontime" name="ontime" value="yes"><span><strong>Was the caterer punctual?</strong><small>Let us know if the caterer arrived on time.</small></span></div>
             </div>
 
-            <button type="submit" class="btn-primary"
-                style="width: 100%; padding: 1.25rem; font-size: 1.1rem; border-radius: 1.25rem;">
-                Submit Feedback
-            </button>
+            <div class="feedback-actions">
+                <a href="/customer/bookings/manage/{{ booking.id }}" class="feedback-cancel">Cancel</a>
+                <button type="submit" class="feedback-submit"><i class="fas fa-paper-plane" style="margin-right:.6rem;"></i>Submit Feedback</button>
+            </div>
         </form>
     </div>
 </div>
@@ -72,6 +93,11 @@
         });
     });
 
+    const ratingCaption = document.getElementById('rating-caption');
+    const comment = document.getElementById('feedback-comment');
+    const count = document.getElementById('comment-count');
+    const ratingText = ['','1 out of 5 stars','2 out of 5 stars','3 out of 5 stars','4 out of 5 stars','5 out of 5 stars'];
+    comment.addEventListener('input', () => count.textContent = comment.value.length);
     document.querySelector('.star-rating').addEventListener('mouseleave', function () {
         const currentVal = document.getElementById('rating-input').value;
         highlightStars(currentVal || 0, currentVal > 0);
@@ -86,6 +112,7 @@
                 star.style.color = '#e2e8f0';
             }
         });
+        if (ratingCaption) ratingCaption.textContent = ratingText[val] || 'Select a rating';
     }
 </script>
 {% endblock %}

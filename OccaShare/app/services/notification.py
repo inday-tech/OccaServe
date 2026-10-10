@@ -295,6 +295,88 @@ class NotificationService:
         })
 
     @staticmethod
+    async def notify_payment_proof_submitted(db: Session, booking: models.Booking, amount: float, payment_type: str = "Deposit"):
+        """Notify both parties that proof arrived; do not imply payment is verified."""
+        caterer_user = booking.caterer.user if booking.caterer else None
+        customer = booking.user
+        if not caterer_user or not customer:
+            return
+
+        db.add(models.Notification(
+            user_id=caterer_user.id,
+            title="Payment Proof Submitted",
+            message=f"The customer submitted {payment_type.lower()} proof for PHP {amount:,.2f} for '{booking.event_name}'. Please review and verify it.",
+            type="Payment",
+            link=f"/caterer/bookings?open_booking={booking.id}",
+        ))
+        db.add(models.Notification(
+            user_id=customer.id,
+            title="Payment Proof Submitted",
+            message=f"Your {payment_type.lower()} proof for PHP {amount:,.2f} was submitted and is awaiting verification. Your booking is not confirmed yet.",
+            type="info",
+            link=f"/customer/bookings/manage/{booking.id}",
+        ))
+        db.commit()
+
+        phone = booking.caterer.contact_phone or caterer_user.phone_number
+        if phone:
+            await NotificationService._send_sms(
+                phone,
+                f"OccaServe: Payment proof for PHP {amount:,.2f} was submitted for '{booking.event_name}'. Please verify it in your dashboard."
+            )
+        await manager.broadcast_to_user(caterer_user.id, {
+            "type": "payment_update",
+            "booking_id": booking.id,
+            "message": f"Payment proof submitted: PHP {amount:,.2f}. Verification is required.",
+        })
+        await manager.broadcast_to_user(customer.id, {
+            "type": "payment_update",
+            "booking_id": booking.id,
+            "message": "Payment proof submitted and awaiting verification.",
+        })
+
+    @staticmethod
+    async def notify_cash_payment_requested(db: Session, booking: models.Booking, amount: float, payment_type: str = "Deposit"):
+        """Notify both parties that cash was requested, not yet received."""
+        caterer_user = booking.caterer.user if booking.caterer else None
+        customer = booking.user
+        if not caterer_user or not customer:
+            return
+
+        db.add(models.Notification(
+            user_id=caterer_user.id,
+            title="Cash Payment Requested",
+            message=f"The customer requested to pay {payment_type.lower()} of PHP {amount:,.2f} in cash for '{booking.event_name}'. Confirm only after receiving the money.",
+            type="Payment",
+            link=f"/caterer/bookings?open_booking={booking.id}",
+        ))
+        db.add(models.Notification(
+            user_id=customer.id,
+            title="Cash Payment Requested",
+            message=f"Your cash {payment_type.lower()} request for PHP {amount:,.2f} was sent. The booking will be confirmed after the caterer receives and records the cash.",
+            type="info",
+            link=f"/customer/bookings/manage/{booking.id}",
+        ))
+        db.commit()
+
+        phone = booking.caterer.contact_phone or caterer_user.phone_number
+        if phone:
+            await NotificationService._send_sms(
+                phone,
+                f"OccaServe: Cash payment request for PHP {amount:,.2f} for '{booking.event_name}'. Confirm after receiving the cash."
+            )
+        await manager.broadcast_to_user(caterer_user.id, {
+            "type": "payment_update",
+            "booking_id": booking.id,
+            "message": f"Cash payment requested: PHP {amount:,.2f}. Awaiting cash receipt.",
+        })
+        await manager.broadcast_to_user(customer.id, {
+            "type": "payment_update",
+            "booking_id": booking.id,
+            "message": "Cash payment request submitted. Awaiting caterer confirmation.",
+        })
+
+    @staticmethod
     async def notify_proof_rejected(db: Session, booking: models.Booking, reason: str):
         """Notifies customer that their payment proof was rejected."""
         # 1. In-App

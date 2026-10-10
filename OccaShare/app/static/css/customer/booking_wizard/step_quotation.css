@@ -1805,3 +1805,210 @@
 
 
 }
+
+/* Modern signing card matching the agreement signature reference. */
+.sig-section-up {
+    margin: 2rem auto 0;
+    padding: 2rem;
+    width: min(100%, 930px);
+    border: 1px solid #e2e8f0;
+    border-radius: 22px;
+    background: linear-gradient(145deg, #fff 0%, #fbfdff 100%);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, .08);
+}
+
+.sig-section-up .card-glass-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin: 0 0 1.5rem;
+    padding: 0 0 1rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.sig-section-up .inv-section-title {
+    color: #ff7b54;
+    font-size: 1.15rem;
+}
+
+.sig-progress-track {
+    width: 150px;
+    height: 5px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #dbe4ef;
+}
+
+.sig-progress-track span {
+    display: block;
+    width: 40%;
+    height: 100%;
+    border-radius: inherit;
+    background: #ff7b54;
+}
+
+.sig-container-modern {
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.signature-input-box {
+    width: 100%;
+    gap: 1.25rem;
+}
+
+.signature-instructions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    padding: 1rem 1.25rem;
+    border: 1px solid #dce6f2;
+    border-radius: 14px;
+    background: #f2f6fb;
+    color: #38506f;
+}
+
+.signature-instructions > i {
+    flex: 0 0 auto;
+    color: #3182ce;
+    font-size: 1.6rem;
+}
+
+.signature-instructions h4 {
+    margin: 0 0 .2rem;
+    color: #334966;
+    font-size: .98rem;
+    font-weight: 800;
+}
+
+.signature-instructions p {
+    margin: 0;
+    color: #7186a3;
+    font-size: .88rem;
+    line-height: 1.5;
+}
+
+.policy-checkpoints-pro {
+    width: 100%;
+    padding: .25rem 1.5rem;
+}
+
+.check-list-pro {
+    display: grid;
+    gap: .15rem;
+}
+
+.check-box-pro {
+    min-height: 48px;
+    padding: .5rem 0;
+    color: #50627d;
+    font-size: .95rem;
+}
+
+.check-box-pro input {
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    accent-color: #ff7b54;
+}
+
+.signature-pad-premium {
+    height: 280px;
+    padding: 1rem;
+    border: 1px solid #dce5f0;
+    border-radius: 18px;
+    background: #f8fafc;
+    cursor: crosshair;
+}
+
+.signature-pad-premium::before {
+    position: absolute;
+    inset: 1rem;
+    border: 2px dashed #d2dce9;
+    border-radius: 12px;
+    content: "";
+    pointer-events: none;
+}
+
+#signature-pad {
+    position: absolute;
+    z-index: 2;
+    inset: 1rem;
+    width: calc(100% - 2rem);
+    height: calc(100% - 2rem);
+    touch-action: none;
+}
+
+#sig-placeholder {
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    width: calc(100% - 4rem);
+    color: #50627d;
+    text-align: center;
+}
+
+#sig-placeholder i {
+    margin-bottom: .35rem;
+    color: #27364b;
+    font-size: 1.65rem;
+}
+
+#sig-placeholder strong {
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+#sig-placeholder span {
+    color: #8a9bb3;
+    font-size: .9rem;
+}
+
+.sig-writing-line {
+    width: 88%;
+    margin-top: 2.6rem;
+    border-bottom: 1px solid #aebdce;
+}
+
+.signature-input-box .sig-name-overlay {
+    margin-top: -.25rem;
+}
+
+.signature-input-box .sig-line {
+    display: none;
+}
+
+.sig-footer-actions {
+    max-width: 620px;
+    margin: .5rem auto 0 !important;
+}
+
+.sig-footer-actions .btn-clear,
+.sig-footer-actions .btn-primary-sm {
+    min-height: 58px;
+    border-radius: 13px !important;
+    font-size: .98rem;
+}
+
+@media (max-width: 640px) {
+    .sig-section-up {
+        padding: 1.1rem;
+        border-radius: 16px;
+    }
+
+    .sig-section-up .card-glass-header {
+        align-items: flex-start;
+    }
+
+    .sig-progress-track { width: 78px; margin-top: .4rem; }
+    .signature-instructions { padding: .9rem; }
+    .policy-checkpoints-pro { padding: .15rem .25rem; }
+    .check-box-pro { font-size: .88rem; }
+    .signature-pad-premium { height: 220px; }
+    .sig-footer-actions { grid-template-columns: 1fr !important; }
+}

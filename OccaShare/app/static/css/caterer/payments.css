@@ -1535,3 +1535,22 @@
         font-size: 1.2rem;
     }
 }
+.cash-request-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid #fcd34d;
+    border-radius: 10px;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 0.88rem;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.cash-request-notice i {
+    margin-top: 0.15rem;
+    color: #d97706;
+}

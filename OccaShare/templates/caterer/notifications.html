@@ -353,6 +353,8 @@
             await markAsRead(id);
         }
         if (link) {
+            const signRoute = link.match(/^\/caterer\/bookings\/(\d+)\/sign(?:\?.*)?$/);
+            if (signRoute) link = `/caterer/bookings?open_booking=${signRoute[1]}`;
             window.location.href = link;
         }
     }

@@ -169,6 +169,24 @@
         margin-bottom: 0.5rem;
     }
     .prep-status-option:hover { border-color: #fed7aa; background: #fff7ed; }
+    .prep-status-option.disabled,
+    .prep-status-option:disabled {
+        cursor: not-allowed;
+        opacity: 0.58;
+        background: #f8fafc;
+        color: #64748b;
+    }
+    .prep-status-option.disabled:hover,
+    .prep-status-option:disabled:hover { border-color: #e2e8f0; background: #f8fafc; }
+    .prep-lock-note {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin-left: 8px;
+        color: #b45309;
+        font-size: 0.68rem;
+        font-weight: 700;
+    }
     .prep-status-option.active {
         border-color: var(--primary-color, #800020);
         background: #fff7ed;
@@ -990,6 +1008,24 @@
                             {% set status_label = 'Cancelled' %}
                         {% endif %}
 
+                        {# Preparation is the customer-facing progress source for catering events. #}
+                        {% if not is_under_review and booking.preparation_status == 'preparing' %}
+                            {% set badge_class = 'badge-preparing' %}
+                            {% set status_label = 'Preparing' %}
+                        {% elif not is_under_review and booking.preparation_status == 'ready_for_delivery' %}
+                            {% set badge_class = 'badge-active' %}
+                            {% set status_label = 'Preparation Complete' %}
+                        {% elif not is_under_review and booking.preparation_status == 'setup_in_progress' %}
+                            {% set badge_class = 'badge-in_progress' %}
+                            {% set status_label = 'Setup in Progress' %}
+                        {% elif not is_under_review and booking.preparation_status == 'ready_for_event' %}
+                            {% set badge_class = 'badge-active' %}
+                            {% set status_label = 'Ready for Event' %}
+                        {% elif not is_under_review and booking.preparation_status == 'completed' %}
+                            {% set badge_class = 'badge-completed' %}
+                            {% set status_label = 'Completed' %}
+                        {% endif %}
+
                         {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
                             {% set badge_class = 'badge-reupload' %}
                             {% set status_label = 'Re-upload' %}
@@ -1059,6 +1095,7 @@
                             data-status="{{ booking.status or '' }}"
                             data-payment-status="{{ booking.payment_status or 'no_payment' }}"
                             data-pending-amount="{{ pending_val }}"
+                            data-cash-requested-amount="{% if booking.payment_status == 'cash_balance_requested' %}{{ balance_val }}{% elif booking.payment_status == 'cash_payment_requested' %}{{ booking.reservation_fee or 0 }}{% else %}0{% endif %}"
                             data-verified-paid="{{ paid_val }}"
                             data-remaining-after-verification="{{ remaining_after }}"
                             data-source="{{ ('Manual Booking' if is_manual else (booking.booking_source or 'Online Booking'))|e }}"
@@ -2853,10 +2890,10 @@
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.75rem; flex-wrap:wrap;">
                         <div>
                             <div style="font-size: 1.05rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
-                                <i class="fas fa-clipboard-check" style="color: var(--primary-color, #800020);"></i> Event Preparation
+                                <i class="fas fa-clipboard-check" style="color: var(--primary-color, #800020);"></i> Preparation &amp; Event Status
                             </div>
                             <div style="font-size: 0.78rem; color: #64748b; font-weight: 600; margin-top: 0.2rem;">
-                                Track overall preparation status for this booking
+                                Track preparation progress and event completion for this booking
                             </div>
                         </div>
                         <button type="button" id="btnUpdatePrepStatus" onclick="openPrepStatusModal()" class="btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 800; border-radius: 8px; background: var(--primary-color, #800020); color: #fff; border: none; cursor: pointer;">

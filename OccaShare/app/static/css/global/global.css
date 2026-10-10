@@ -212,7 +212,8 @@ h6 {
 .premium-swal-popup {
     border-radius: var(--border-radius, 1.5rem) !important;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
-    padding: 2rem !important;
+    width: min(90vw, 420px) !important;
+    padding: 1.25rem 1.5rem !important;
     border: 1px solid #e2e8f0 !important;
     font-family: var(--font-family, 'Poppins', sans-serif) !important;
 }
@@ -220,14 +221,22 @@ h6 {
 .premium-swal-popup .swal2-title {
     font-weight: 800 !important;
     color: #1e293b !important;
-    font-size: 1.5rem !important;
+    font-size: 1.2rem !important;
+    margin: 0.35rem 0 0 !important;
 }
 
 .premium-swal-popup .swal2-html-container {
     font-weight: 500 !important;
     color: #475569 !important;
-    font-size: 0.95rem !important;
-    line-height: 1.6 !important;
+    font-size: 0.88rem !important;
+    line-height: 1.45 !important;
+    margin: 0.5rem 0 0 !important;
+}
+
+.premium-swal-popup .swal2-icon {
+    width: 3.25rem !important;
+    height: 3.25rem !important;
+    margin: 0.25rem auto 0.5rem !important;
 }
 
 .premium-swal-btn {

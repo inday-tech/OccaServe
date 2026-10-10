@@ -291,6 +291,8 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                         <span class="bk-badge badge-draft">Draft</span>
                     {% elif bs == 'preparing' %}
                         <span class="bk-badge badge-preparing">Preparing</span>
+                    {% elif bs == 'ready_for_delivery' and b.document_type != 'invoice' %}
+                        <span class="bk-badge badge-active">Preparation Complete</span>
                     {% elif bs in ['on_the_way','ready_for_delivery','arrived'] %}
                         <span class="bk-badge badge-active">On the Way</span>
                     {% elif bs in ['in_progress','setup_ongoing'] %}

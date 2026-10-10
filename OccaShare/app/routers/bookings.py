@@ -4,7 +4,7 @@ from ..core.templates import templates
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from typing import Optional
-from datetime import date, time, datetime, timedelta
+from datetime import date, time, datetime, timedelta, timezone
 from ..db import database, models
 from ..core import security as auth
 from ..services.verification import verification_service
@@ -51,6 +51,29 @@ def get_current_user_from_session(request: Request, db: Session):
         return user
     except:
         return None
+
+
+def cancel_expired_draft_if_due(db: Session, booking: models.Booking) -> bool:
+    if booking.status != "draft" or not booking.expires_at:
+        return False
+    expires_at = booking.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at > datetime.now(timezone.utc):
+        return False
+
+    booking.status = "cancelled"
+    note = "Automatically cancelled because the customer did not continue the draft within 24 hours."
+    db.add(models.BookingHistory(booking_id=booking.id, status="cancelled", notes=note))
+    db.add(models.Notification(
+        user_id=booking.user_id,
+        title="Draft booking cancelled",
+        message="Your unfinished booking was automatically cancelled after 24 hours. You can start a new booking anytime.",
+        type="warning",
+        link="/customer/orders",
+    ))
+    db.commit()
+    return True
 
 def save_upload_file(upload_file: UploadFile, folder: str = "general") -> str:
     from app.services.storage import upload_file_to_cloudinary
@@ -362,6 +385,8 @@ async def alacarte_checkout_draft(
         raise HTTPException(status_code=403, detail="Only customers can create online bookings.")
     if booking_id:
         existing_draft = db.query(models.Booking).get(booking_id)
+        if existing_draft and existing_draft.user_id == user.id:
+            cancel_expired_draft_if_due(db, existing_draft)
         if (
             not existing_draft
             or existing_draft.user_id != user.id
@@ -435,6 +460,10 @@ async def alacarte_checkout_draft(
         # Check for existing draft booking to update or create new
         new_booking = db.query(models.Booking).get(booking_id) if booking_id else None
         if new_booking and new_booking.user_id == user.id:
+            if new_booking.status != "draft":
+                return {"success": False, "message": "This draft is no longer available to continue."}
+            if not new_booking.expires_at:
+                new_booking.expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
             new_booking.event_name = event_name
             new_booking.event_type = event_type
             new_booking.event_date = event_date_obj
@@ -467,6 +496,7 @@ async def alacarte_checkout_draft(
                 reservation_fee=downpayment_amt,
                 payment_plan=payment_plan_val,
                 status="draft",
+                expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
                 transaction_type="fast_track",
                 document_type=document_type,
                 custom_requirements={
@@ -1131,7 +1161,7 @@ async def alacarte_checkout_submit(
         from ..services.notification import NotificationService
         await NotificationService.notify_new_booking(db, booking)
         if proof_url:
-            await NotificationService.notify_payment_received(db, booking, float(total_amount), "Payment")
+            await NotificationService.notify_payment_proof_submitted(db, booking, float(total_amount), "Payment")
             
         return {"success": True, "booking_id": booking.id}
     except Exception as e:
@@ -1229,6 +1259,14 @@ async def customize_package_page(
     actual_pkg_id = package_id or sess_data.get("package_id")
     if not actual_pkg_id:
         return RedirectResponse(url=f"/customer/caterer/{caterer_id}", status_code=303)
+
+    # This CTA starts a new package-selection flow. Do not let a stale
+    # booking_id from a previous draft override the package in this URL.
+    sess_data["caterer_id"] = caterer_id
+    sess_data["package_id"] = actual_pkg_id
+    sess_data["user_id"] = user.id
+    sess_data.pop("booking_id", None)
+    request.session["booking_data"] = sess_data
 
     package = db.query(models.CateringPackage).get(actual_pkg_id)
     if not package or package.caterer_id != caterer.id:
@@ -1359,6 +1397,8 @@ async def save_customization_selection(
     booking_data["caterer_id"] = caterer_id
     booking_data["package_id"] = package_id
     booking_data["user_id"] = user.id
+    # Prevent step_details_page from reopening an unrelated old draft.
+    booking_data.pop("booking_id", None)
     booking_data["customization"] = parsed_customization
     if "guest_count" in parsed_customization:
         try:
@@ -1531,6 +1571,9 @@ async def continue_draft_booking(booking_id: int, request: Request, db: Session 
     booking = db.query(models.Booking).get(booking_id)
     if not booking or booking.user_id != user.id:
         return RedirectResponse(url="/customer/dashboard?error_msg=Booking+not+found", status_code=303)
+
+    if cancel_expired_draft_if_due(db, booking):
+        return RedirectResponse(url="/customer/orders?error_msg=Draft+expired", status_code=303)
         
     # Valid in-progress statuses before payment is completed
     valid_statuses = [
@@ -1745,12 +1788,27 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
     if not customization and booking and booking.custom_requirements:
         customization = booking.custom_requirements.get("customization")
 
+    # Preserve the guest count entered on the customization step when the
+    # user continues to event details. A new draft has no Booking row yet.
+    initial_guest_count = (
+        (booking.guest_count if booking else None)
+        or data.get("guest_count")
+        or (package.min_guests if package else None)
+        or caterer.min_pax
+        or 50
+    )
+    try:
+        initial_guest_count = min(max(int(initial_guest_count), 1), 999)
+    except (TypeError, ValueError):
+        initial_guest_count = 50
+
     return templates.TemplateResponse("customer/booking_wizard/step_details.html", {
         "request": request,
         "booking_data": data,
         "booking": booking,
         "package": package,
         "customization": customization,
+        "initial_guest_count": initial_guest_count,
         "caterer_packages": caterer_packages,
         "packages_map": packages_map,
         "grouped_inclusions": grouped_inclusions,
@@ -1907,6 +1965,8 @@ async def step_details_submit(
             or existing_booking.caterer_id != caterer_id
         ):
             raise HTTPException(status_code=404, detail="Booking not found")
+        if cancel_expired_draft_if_due(db, existing_booking):
+            return RedirectResponse(url="/customer/orders?error_msg=Draft+expired", status_code=303)
         if existing_booking and existing_booking.status not in ["draft", "pending", "pending_quotation", "awaiting_caterer"]:
             print("[StepDetails REJECT] Booking is locked")
             return RedirectResponse(url=f"{redirect_base}?booking_error=Booking+is+already+locked+and+cannot+be+modified.", status_code=303)
@@ -2082,6 +2142,7 @@ async def step_details_submit(
             reservation_fee=reservation_fee,
             special_requests=special_requests,
             status="draft",
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
             document_type="booking_agreement",
             custom_requirements=new_custom_reqs if new_custom_reqs else None
         )
@@ -2139,7 +2200,8 @@ async def step_details_submit(
         # Sync guest count into customization payload
         sess_cust["guest_count"] = guest_count_int
 
-        # Customizable Package Dynamic Pricing: Total = (base_price + sum(upgrade_fees)) * guest_count + services
+        # Customizable Package Dynamic Pricing: the per-guest rate includes
+        # the selected menu. Services/equipment are priced separately.
         base_price = float(sess_cust.get("base_price", 0)) or float((package.price_per_head or package.price or 0) if package else 0)
         is_fixed = bool(package and getattr(package, 'pricing_mode', '') == 'fixed')
         base_pkg_tot = base_price if is_fixed else (base_price * guest_count_int)
@@ -2150,7 +2212,7 @@ async def step_details_submit(
         # Save customizable selected food items with upgrade fees
         for food in sess_cust.get("selected_food", []):
             f_id = food.get("id")
-            f_price = float(food.get("upgrade_fee", food.get("price", 0)))
+            f_price = 0.0
             f_qty = guest_count_int
             food["qty"] = f_qty
             f_sub = f_price * f_qty
@@ -2203,7 +2265,7 @@ async def step_details_submit(
         sess_cust["food_total"] = food_tot
         sess_cust["services_total"] = srv_tot
         sess_cust["equipment_total"] = eq_tot
-        computed_total = base_pkg_tot + food_tot + srv_tot + eq_tot + float(booking.travel_fee or 0.0)
+        computed_total = base_pkg_tot + srv_tot + eq_tot + float(booking.travel_fee or 0.0)
         sess_cust["estimated_total"] = computed_total
         
         c_req = booking.custom_requirements or {}
@@ -2298,12 +2360,21 @@ async def step_kyc_page(booking_id: int, request: Request, return_to: Optional[s
     if booking.user_id != user.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
+    if cancel_expired_draft_if_due(db, booking):
+        return RedirectResponse(url="/customer/orders?error_msg=Draft+expired", status_code=303)
+
     # Dynamic Routing for Fast-Track (only when not explicitly directed to KYC)
     if booking.transaction_type == 'fast_track' and not return_to:
         if booking.document_type == 'invoice':
             return RedirectResponse(url=f"/bookings/step/payment/{booking.id}", status_code=303)
         elif booking.document_type == 'service_agreement':
             return RedirectResponse(url=f"/bookings/step/quotation/{booking.id}", status_code=303)
+
+    # A completed verification should always advance this booking to quotation.
+    # Admin approval sets the account-level KYC flags, while automatic approval
+    # may also be tied to this booking's verification record.
+    if user.is_verified and user.is_kyc_complete:
+        return RedirectResponse(url=f"/bookings/step/quotation/{booking.id}", status_code=303)
 
     # KYC is booking-bound. Do not let a verification from another booking
     # drive this page's step visibility or trigger a premature liveness init.
@@ -2338,6 +2409,9 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
     if not booking: raise HTTPException(status_code=404)
     if booking.user_id != user.id:
         raise HTTPException(status_code=404, detail="Booking not found")
+
+    if cancel_expired_draft_if_due(db, booking):
+        return RedirectResponse(url="/customer/orders?error_msg=Draft+expired", status_code=303)
     
     # Dynamic Routing for Fast-Track
     if booking.transaction_type == 'fast_track' and booking.document_type == 'invoice':
@@ -2353,6 +2427,7 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
     # NEW: Transition status from draft to pending_quotation so it's visible to caterer
     if booking.status == 'draft':
         booking.status = 'pending_quotation'
+        booking.expires_at = None
         db.commit()
     
     # Ensure quotation exists or create/refresh one (default 30% downpayment)
@@ -2403,19 +2478,19 @@ async def _validate_receipt_with_gemini(b64_string: str, payment_method: str, ex
     models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
     prompt = (
         f"You are verifying a Philippine mobile payment receipt for OccaServe catering marketplace. "
-        f"The customer claims this is a {payment_method} payment screenshot. "
-        "Your job is to check if this is a legitimate payment confirmation image.\n\n"
+        f"The customer claims this is a {payment_method} payment screenshot for PHP {expected_amount:,.2f}. "
+        "Check whether it is a payment confirmation and compare any clearly visible amount and channel with the expected values.\n\n"
         "IMPORTANT RULES:\n"
         "1. Set is_valid: TRUE for any of these: GCash Express Send / Send Money confirmation, "
         "Maya payment confirmation, bank transfer receipt, deposit slip, BDO/BPI/Metrobank/UnionBank "
         "online transfer confirmation, or any Philippine e-wallet transaction success screen.\n"
+        f"2. If a readable amount differs from PHP {expected_amount:,.2f} by more than PHP 0.01, set is_valid: FALSE.\n"
+        f"3. If the receipt clearly shows a different channel than {payment_method}, set is_valid: FALSE.\n"
         "2. GCash receipts often show masked names like 'MI••Y MA•••T J.' or '+63 9••••1719' — "
         "this is NORMAL and is a valid GCash receipt. Do NOT fail these.\n"
         "3. Set is_valid: FALSE ONLY for: selfie photos, food photos, random screenshots unrelated to payments, "
         "blank images, or obviously fake/edited receipts.\n"
-        "4. Do NOT fail a receipt just because names are masked, amounts seem small, "
-        "or you cannot read every field clearly.\n"
-        "5. If there is ANY doubt and the image looks like a payment receipt, set is_valid: TRUE.\n\n"
+        "6. If amount or channel cannot be read, pass it for manual caterer review by setting is_valid: TRUE.\n\n"
         'Respond ONLY with a valid JSON: {"is_valid": true_or_false, "reason": "brief explanation"}'
     )
 
@@ -2474,11 +2549,31 @@ async def step_payment_page(booking_id: str, request: Request, db: Session = Dep
     PaymentService.heal_premature_completion(booking, db)
     db.refresh(booking)
 
+    quotation = booking.quotation
+    if quotation and quotation.status == "signed" and booking.transaction_type != "fast_track":
+        signed_percent = int(quotation.downpayment_percent or 30)
+        signed_total = round(float(quotation.total_amount or 0), 2)
+        signed_deposit = round(signed_total * signed_percent / 100, 2)
+        if (
+            round(float(booking.total_amount or 0), 2) != signed_total
+            or round(float(booking.reservation_fee or 0), 2) != signed_deposit
+        ):
+            booking.total_amount = signed_total
+            booking.total_price = signed_total
+            booking.reservation_fee = signed_deposit
+            db.commit()
+            db.refresh(booking)
+
     is_balance = request.query_params.get("balance") == "true"
     payment_summary = PaymentService.get_payment_summary(booking)
     if is_balance and payment_summary["verified_paid"] <= 0.009:
         return RedirectResponse(
             url=f"/customer/bookings/manage/{booking_id_int}?error_msg=Balance+payment+is+available+after+the+downpayment+is+verified.",
+            status_code=303,
+        )
+    if is_balance and booking.preparation_status != "completed":
+        return RedirectResponse(
+            url=f"/customer/bookings/manage/{booking_id_int}?error_msg=Balance+payment+will+be+available+after+preparation+is+completed+(100%25).",
             status_code=303,
         )
 
@@ -2512,6 +2607,7 @@ async def step_payment_page(booking_id: str, request: Request, db: Session = Dep
         return RedirectResponse(url=f"/customer/bookings/manage/{booking_id}", status_code=303)
 
     template_name = "customer/booking_wizard/step_payment.html"
+    verified_paid = float(payment_summary.get("verified_paid") or 0.0)
     
     return templates.TemplateResponse(template_name, {
         "request": request,
@@ -2522,7 +2618,9 @@ async def step_payment_page(booking_id: str, request: Request, db: Session = Dep
         "user": user,
         "current_step": 4,
         "active_page": "bookings",
-        "is_balance": is_balance
+        "is_balance": is_balance,
+        "verified_paid": verified_paid,
+        "verified_balance": max(float(booking.total_amount or booking.total_price or 0) - verified_paid, 0.0)
     })
 
 @router.post("/step/payment/{path_booking_id}")
@@ -2535,6 +2633,7 @@ async def step_payment_submit(
     payment_plan: str = Form("downpayment"),
     payment_proof: Optional[UploadFile] = File(None),
     reference_no: Optional[str] = Form(None),
+    terms_agreement: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
     import re
@@ -2563,12 +2662,24 @@ async def step_payment_submit(
     PaymentService.heal_premature_completion(booking, db)
     db.refresh(booking)
 
+    if booking.quotation and booking.quotation.status == "signed" and booking.transaction_type != "fast_track":
+        signed_percent = int(booking.quotation.downpayment_percent or 30)
+        signed_total = round(float(booking.quotation.total_amount or 0), 2)
+        booking.total_amount = signed_total
+        booking.total_price = signed_total
+        booking.reservation_fee = round(signed_total * signed_percent / 100, 2)
+
     is_balance = str(payment_plan).strip().lower() == "balance"
     payment_summary = PaymentService.get_payment_summary(booking)
     if is_balance and payment_summary["verified_paid"] <= 0.009:
         raise HTTPException(
             status_code=400,
             detail="Balance payment is available after the downpayment is verified.",
+        )
+    if is_balance and booking.preparation_status != "completed":
+        raise HTTPException(
+            status_code=400,
+            detail="Balance payment will be available after preparation is completed (100%).",
         )
 
     # CONTINUOUS REVALIDATION: Block submitting payment if expired
@@ -2587,6 +2698,28 @@ async def step_payment_submit(
         if not booking.quotation or booking.quotation.status != 'signed':
             return RedirectResponse(url=f"/bookings/step/quotation/{actual_booking_id}?error_msg=Both+parties+must+sign+the+contract+before+proceeding+to+payment", status_code=303)
 
+    allowed_methods = {"GCash", "Maya", "Bank", "Cash"}
+    if payment_method not in allowed_methods:
+        raise HTTPException(status_code=400, detail="Choose a supported payment method.")
+    profile = booking.caterer
+    method_is_configured = (
+        payment_method == "Cash"
+        or (payment_method == "GCash" and bool(profile and (profile.gcash_qr_url or profile.gcash_number)))
+        or (payment_method == "Maya" and bool(profile and (profile.maya_qr_url or profile.maya_number)))
+        or (payment_method == "Bank" and bool(profile and profile.bank_name and profile.bank_account_number))
+    )
+    if not method_is_configured:
+        raise HTTPException(status_code=400, detail="This caterer has not configured that payment method.")
+    if terms_agreement not in {"on", "true", "1"}:
+        raise HTTPException(status_code=400, detail="Please agree to the payment terms before submitting.")
+
+    # Online receipts must always include a reference that can be matched to the receipt image.
+    if payment_method != "Cash" and not str(reference_no or "").strip():
+        return RedirectResponse(
+            url=f"/bookings/step/payment/{booking.id}?error=missing_reference&method={payment_method}",
+            status_code=303,
+        )
+
     plan_key = str(payment_plan or "").strip().lower()
     if plan_key not in {"balance", "full", "100", "downpayment"}:
         signed_downpayment = int(booking.quotation.downpayment_percent or 0) if booking.quotation else 0
@@ -2603,7 +2736,7 @@ async def step_payment_submit(
 
         # Compute expected fee for reservation_fee tracking
         if payment_plan == 'balance':
-            expected_fee = float(booking.total_amount or 0) - float(booking.reservation_fee or 0)
+            expected_fee = max(0.0, float(booking.total_amount or booking.total_price or 0) - float(payment_summary.get("verified_paid") or 0))
         elif payment_plan == 'full':
             expected_fee = float(booking.total_amount or 0)
             booking.reservation_fee = expected_fee
@@ -2632,7 +2765,10 @@ async def step_payment_submit(
         db.commit()
 
         # Notify caterer about cash payment request
-        await NotificationService.notify_new_booking(db, booking)
+        await NotificationService.notify_cash_payment_requested(
+            db, booking, expected_fee,
+            "Balance" if payment_plan == "balance" else ("Full payment" if payment_plan == "full" else "Deposit")
+        )
 
         if payment_plan == 'balance':
             return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?cash_requested=1", status_code=303)
@@ -2653,7 +2789,7 @@ async def step_payment_submit(
         # Check if reference number was already used
         existing_ref = db.query(models.Booking).filter(
             models.Booking.special_requests.like(f"%[Payment Ref: {reference_no}]%"),
-            models.Booking.id != booking_id
+            models.Booking.id != booking.id
         ).first()
         if existing_ref:
             request.session["flash_error"] = "This Reference Number has already been used in another transaction."
@@ -2686,7 +2822,7 @@ async def step_payment_submit(
 
         plan_key = str(payment_plan or "").strip().lower()
         if plan_key == 'balance':
-            paid_or_res = float(booking.reservation_fee or (total_amt * (dp_percent / 100.0)))
+            paid_or_res = float(payment_summary.get("verified_paid") or 0.0)
             expected_fee = round(max(0.0, total_amt - paid_or_res), 2)
             payment_type = "Balance"
         elif plan_key in ['full', '100']:
@@ -2703,12 +2839,52 @@ async def step_payment_submit(
             booking.reservation_fee = expected_fee
             payment_type = "Deposit"
             
-        is_valid_receipt = await _validate_receipt_with_gemini(proof_url, payment_method, expected_amount=expected_fee)
+        # Gemini checks the receipt type, payment channel, amount, and visible reference.
+        booking.payment_method = payment_method
+        ai_result = await payment_verification_service.check_for_fraud(
+            db, booking, proof_url, expected_amount=expected_fee
+        )
+        extracted = ai_result.get("extracted_data") or {}
+        extracted_amount = extracted.get("amount")
+        extracted_reference = str(extracted.get("reference_no") or "").strip()
+        submitted_reference = str(reference_no or "").strip()
+        normalized_submitted = re.sub(r"[^A-Za-z0-9]", "", submitted_reference).upper()
+        normalized_extracted = re.sub(r"[^A-Za-z0-9]", "", extracted_reference).upper()
+        detected_method = str(extracted.get("bank") or "").upper()
+        expected_method = str(payment_method or "").upper()
+        method_matches = (
+            detected_method in {"", "OTHER"}
+            or (expected_method == "GCASH" and "GCASH" in detected_method)
+            or (expected_method == "BANK" and "BANK" in detected_method)
+            or (expected_method == "MAYA" and "MAYA" in detected_method)
+        )
+        amount_matches = False
+        try:
+            amount_matches = extracted_amount is not None and abs(float(extracted_amount) - float(expected_fee)) <= 0.01
+        except (TypeError, ValueError):
+            amount_matches = False
 
-        if not is_valid_receipt:
-            # Encode URL manually for redirect since we can't use complex URL building easily
-            request.session["flash_error"] = "Invalid Receipt Detected: Our AI could not verify the Reference Number or Amount. Please ensure the screenshot is clear."
-            return RedirectResponse(url=f"/bookings/step/payment/{booking.id}?error=invalid_receipt&method={payment_method}", status_code=303)
+        if ai_result.get("is_duplicate_ref"):
+            error_code = "duplicate_ref"
+        elif not ai_result.get("confidence", 0) or not ai_result.get("extracted_data"):
+            error_code = "ai_receipt_failed"
+        elif not method_matches:
+            error_code = "payment_method_mismatch"
+        elif not amount_matches:
+            error_code = "amount_mismatch"
+        elif not normalized_extracted or normalized_extracted != normalized_submitted:
+            error_code = "reference_mismatch"
+        else:
+            error_code = ""
+
+        if error_code:
+            return RedirectResponse(
+                url=f"/bookings/step/payment/{booking.id}?error={error_code}&method={payment_method}",
+                status_code=303,
+            )
+
+        # Keep the normalized receipt reference as the booking's canonical reference.
+        booking.payment_reference = submitted_reference
         
         if payment_plan == 'balance':
             booking.balance_proof_url = proof_url
@@ -2726,6 +2902,30 @@ async def step_payment_submit(
     
     if payment_plan == 'balance':
         booking.payment_status = "balance_proof_submitted"
+        # Persist one pending balance record so the unified payment summary
+        # retains the verified deposit and the balance under review.
+        from datetime import datetime, timezone
+        balance_record = db.query(models.BookingPaymentRecord).filter(
+            models.BookingPaymentRecord.booking_id == booking.id,
+            models.BookingPaymentRecord.recorded_by == "Customer",
+            models.BookingPaymentRecord.payment_type == "Balance",
+        ).first()
+        balance_notes = f"Balance proof submitted via {payment_method}. Ref: {reference_no or 'N/A'}"
+        if balance_record:
+            balance_record.amount = expected_fee
+            balance_record.payment_method = payment_method
+            balance_record.payment_date = datetime.now(timezone.utc)
+            balance_record.reference_notes = balance_notes
+        else:
+            db.add(models.BookingPaymentRecord(
+                booking_id=booking.id,
+                amount=expected_fee,
+                payment_date=datetime.now(timezone.utc),
+                payment_method=payment_method,
+                payment_type="Balance",
+                reference_notes=balance_notes,
+                recorded_by="Customer",
+            ))
         history = models.BookingHistory(
             booking_id=booking.id,
             status=booking.status,
@@ -2734,7 +2934,7 @@ async def step_payment_submit(
         db.add(history)
         db.commit()
         if proof_url:
-            await NotificationService.notify_payment_received(db, booking, expected_fee, "Balance Proof")
+            await NotificationService.notify_payment_proof_submitted(db, booking, expected_fee, "Balance")
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
     else:
         booking.payment_status = "proof_submitted"
@@ -2775,9 +2975,8 @@ async def step_payment_submit(
         )
         db.add(history)
         db.commit()
-        await NotificationService.notify_new_booking(db, booking)
         if proof_url:
-            await NotificationService.notify_payment_received(db, booking, expected_fee, f"{payment_type} Proof")
+            await NotificationService.notify_payment_proof_submitted(db, booking, expected_fee, payment_type)
         return RedirectResponse(url=f"/bookings/success/{booking.id}", status_code=303)
 
 
@@ -2884,7 +3083,7 @@ async def alacarte_manage_payment_submit(
     # Notify
     from ..services.notification import NotificationService
     import asyncio
-    asyncio.create_task(NotificationService.notify_payment_received(db, booking, float(booking.total_amount or 0), "Payment"))
+    asyncio.create_task(NotificationService.notify_payment_proof_submitted(db, booking, float(booking.total_amount or 0), "Payment"))
     
     return {"success": True}
 
@@ -3006,7 +3205,7 @@ async def reupload_proof_submit(
     )
     db.add(history)
     
-    await NotificationService.notify_payment_received(db, booking, float(booking.reservation_fee or 0), "New Downpayment Proof")
+    await NotificationService.notify_payment_proof_submitted(db, booking, float(booking.reservation_fee or 0), "Deposit")
 
     db.commit()
     return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?success_msg=New+proof+submitted!+Please+wait+for+verification.", status_code=303)
@@ -3018,8 +3217,11 @@ async def pay_balance_submit(
     request: Request,
     payment_method: str = Form("Paymongo"),
     payment_proof: Optional[UploadFile] = File(None),
+    reference_no: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
+    import re
+    from ..services.payment_service import PaymentService
     user = get_current_user_from_session(request, db)
     if not user: raise HTTPException(status_code=401)
     
@@ -3027,13 +3229,23 @@ async def pay_balance_submit(
     if not booking or booking.user_id != user.id:
         raise HTTPException(status_code=404, detail="Booking not found")
         
-    if booking.status in ['completed', 'cancelled', 'draft']:
+    PaymentService.heal_premature_completion(booking, db)
+    db.refresh(booking)
+    if booking.status in ['cancelled', 'draft']:
         raise HTTPException(status_code=400, detail=f"Booking status '{booking.status}' does not allow balance payments.")
 
-    outstanding_balance = float(booking.total_amount or 0) - float(booking.reservation_fee or 0)
+    balance_summary = PaymentService.get_payment_summary(booking)
+    outstanding_balance = max(
+        float(booking.total_amount or booking.total_price or 0)
+        - float(balance_summary.get("verified_paid") or 0),
+        0.0,
+    )
     
     if outstanding_balance <= 0:
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?info=balance_zero", status_code=303)
+
+    if payment_method != "Cash" and not str(reference_no or "").strip():
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error_msg=Reference+number+is+required", status_code=303)
 
     # Handle Payment Proof Upload (Prioritized for Direct Payout Flow)
     proof_url = None
@@ -3055,7 +3267,9 @@ async def pay_balance_submit(
         booking.total_amount = outstanding_balance
         booking.payment_method = payment_method
         
-        verify_results = await payment_verification_service.check_for_fraud(db, booking, proof_url)
+        verify_results = await payment_verification_service.check_for_fraud(
+            db, booking, proof_url, expected_amount=outstanding_balance
+        )
         
         # Revert
         booking.total_amount = original_amount
@@ -3068,7 +3282,15 @@ async def pay_balance_submit(
             error_msg = urllib.parse.quote(f"Invalid Receipt Detected: {error_detail}")
             return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error_msg={error_msg}", status_code=303)
             
+        extracted = verify_results.get("extracted_data") or {}
+        submitted_ref = str(reference_no or "").strip()
+        extracted_ref = str(extracted.get("reference_no") or "").strip()
+        normalize_ref = lambda value: re.sub(r"[^A-Za-z0-9]", "", value).upper()
+        if not extracted_ref or normalize_ref(extracted_ref) != normalize_ref(submitted_ref):
+            return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error_msg=Reference+number+does+not+match+the+receipt", status_code=303)
+
         booking.balance_proof_url = proof_url
+        booking.payment_reference = submitted_ref
         booking.payment_method = payment_method
         booking.payment_status = "balance_proof_submitted"
 
@@ -3104,7 +3326,7 @@ async def pay_balance_submit(
         db.add(history)
         
         # --- Trigger Notification (In-App, Email, SMS) ---
-        await NotificationService.notify_payment_received(db, booking, outstanding_balance, "Balance Payment Proof")
+        await NotificationService.notify_payment_proof_submitted(db, booking, outstanding_balance, "Balance")
 
         db.commit()
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?success_msg=Balance+payment+proof+submitted!+Please+wait+for+verification.", status_code=303)
@@ -3114,16 +3336,34 @@ async def pay_balance_submit(
 
 @router.get("/success/{booking_id}", response_class=HTMLResponse)
 async def booking_success_page(request: Request, booking_id: int, db: Session = Depends(database.get_db)):
+    from ..services.payment_service import PaymentService
     booking = db.query(models.Booking).get(booking_id)
     user = get_current_user_from_session(request, db)
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/success/{booking_id}", status_code=303)
     if not booking or booking.user_id != user.id:
         raise HTTPException(status_code=404, detail="Booking not found")
+    cash_request_amount = None
+    cash_requested_at = None
+    if booking.payment_status in {"cash_payment_requested", "cash_balance_requested"}:
+        if booking.payment_status == "cash_balance_requested":
+            cash_summary = PaymentService.get_payment_summary(booking)
+            cash_request_amount = max(float(booking.total_amount or booking.total_price or 0) - float(cash_summary.get("verified_paid") or 0), 0)
+        elif str(booking.payment_plan or "").lower() in {"full", "100"}:
+            cash_request_amount = float(booking.total_amount or booking.total_price or 0)
+        else:
+            cash_request_amount = float(booking.reservation_fee or booking.total_amount or booking.total_price or 0)
+        cash_history = db.query(models.BookingHistory).filter(
+            models.BookingHistory.booking_id == booking.id,
+            models.BookingHistory.notes.ilike("%Cash%Awaiting caterer confirmation%"),
+        ).order_by(models.BookingHistory.created_at.desc()).first()
+        cash_requested_at = cash_history.created_at if cash_history else None
     return templates.TemplateResponse("customer/booking_success.html", {
         "request": request,
         "booking": booking,
         "user": user,
+        "cash_request_amount": cash_request_amount,
+        "cash_requested_at": cash_requested_at,
         "active_page": "bookings"
     })
 

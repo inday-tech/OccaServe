@@ -2861,6 +2861,14 @@ async def caterer_payments(
                 p_type = "Full Payment"
                 t_amt = total_val
                 p_status = "Fully Paid"
+            elif b.payment_status in ('cash_payment_requested', 'cash_balance_requested'):
+                p_type = "Balance Payment" if b.payment_status == 'cash_balance_requested' else ("Full Payment" if b.payment_plan == 'full' else "Downpayment")
+                t_amt = (
+                    max(0.0, total_val - paid_val)
+                    if b.payment_status == 'cash_balance_requested'
+                    else (pending_val if pending_val > 0 else (b.reservation_fee or total_val * 0.5))
+                )
+                p_status = "Cash Requested - Awaiting Receipt"
             elif b._pay_is_under_review:
                 p_type = "Balance Payment" if b.payment_status in ('balance_proof_submitted', 'cash_balance_requested') else "Downpayment"
                 t_amt = pending_val if pending_val > 0 else (b.reservation_fee or total_val * 0.5)
@@ -2903,6 +2911,7 @@ async def caterer_payments(
                 "paid_val": paid_val,
                 "balance_val": balance_val,
                 "is_under_review": (p_status == "Payment Pending Verification"),
+                "needs_cash_confirmation": (p_status == "Cash Requested - Awaiting Receipt"),
                 "proof_url": b.payment_proof_url or b.balance_proof_url,
                 "recorded_by": "System",
                 "booking": b
@@ -2970,7 +2979,13 @@ async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_u
 
     # CONTINUOUS REVALIDATION: Protect Caterer from accepting expired bookings
     from ..services.booking_validator import BookingValidator
-    is_valid, error_msg = BookingValidator.validate_booking_state(db, booking, update_if_expired=True)
+    is_balance_review = booking.payment_status in {
+        'balance_proof_submitted', 'balance_reupload_requested', 'cash_balance_requested'
+    }
+    is_valid, error_msg = BookingValidator.validate_booking_state(
+        db, booking, update_if_expired=True,
+        ignore_booking_deadline=is_balance_review,
+    )
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
 
@@ -3169,6 +3184,9 @@ async def confirm_caterer_payment(
 
     if booking.is_archived:
         raise HTTPException(status_code=400, detail="Cannot confirm payment for an archived booking.")
+    from app.services.payment_service import PaymentService
+    if PaymentService.heal_premature_completion(booking, db):
+        db.refresh(booking)
     if booking.status in ['cancelled', 'completed']:
         raise HTTPException(status_code=400, detail=f"Cannot modify payment for a booking that is already {booking.status}.")
         
@@ -3523,14 +3541,18 @@ async def set_balance_due_date(
         raise HTTPException(status_code=400, detail="Booking has no event date for the balance due date.")
 
     try:
-        event_due_date = datetime.combine(booking.event_date, datetime.min.time())
-        booking.balance_due_date = event_due_date
+        from datetime import date as date_cls
+        requested_due_date = date_cls.fromisoformat(str(req.due_date).strip()) if req.due_date else booking.event_date
+        if requested_due_date < date_cls.today():
+            raise ValueError("Due date cannot be in the past.")
+        due_datetime = datetime.combine(requested_due_date, datetime.min.time())
+        booking.balance_due_date = due_datetime
         
         # Add History
         history = models.BookingHistory(
             booking_id=booking.id,
             status=booking.status,
-            notes=f"Balance due date set to the event date ({booking.event_date.isoformat()})."
+            notes=f"Balance due date set to {requested_due_date.isoformat()} by caterer."
         )
         db.add(history)
         db.commit()
@@ -3540,15 +3562,15 @@ async def set_balance_due_date(
         await NotificationService.notify_status_update(
             db, 
             booking.user_id, 
-            "Balance Due on Event Day",
-            f"The remaining balance for '{booking.event_name}' is due on the event date, {booking.event_date.isoformat()}. You may pay online or in cash to the caterer.",
+            "Balance Due Date Updated",
+            f"The remaining balance for '{booking.event_name}' is due by {requested_due_date.isoformat()}. You may pay online via GCash or Bank, or request cash payment from the caterer.",
             f"/customer/bookings/manage/{booking.id}"
         )
         
         return {
             "status": "success",
-            "due_date": booking.event_date.isoformat(),
-            "message": "Balance due date set to the event date and customer notified",
+            "due_date": requested_due_date.isoformat(),
+            "message": "Balance due date saved and customer notified",
         }
     except Exception as e:
         db.rollback()
@@ -3840,6 +3862,13 @@ async def get_booking_details_api(
         "total_price": total_price,
         "amount_paid": actual_paid,
         "pending_amount": pending_amount,
+        "cash_requested_amount": (
+            max(0.0, float(booking.total_amount or booking.total_price or 0) - actual_paid)
+            if booking.payment_status == "cash_balance_requested"
+            else float(booking.reservation_fee or 0)
+            if booking.payment_status == "cash_payment_requested"
+            else 0.0
+        ),
         "balance_amount": balance_amount,
         "remaining_after_verification": remaining_after_verification,
         "payment_summary": pay_summary,
@@ -8407,6 +8436,16 @@ async def update_booking_preparation_status(
     old_key = normalize_prep_status(booking.preparation_status, booking.status)
     old_meta = get_prep_meta(old_key)
     new_meta = get_prep_meta(new_key)
+    if old_key == "completed" and new_key != "completed":
+        raise HTTPException(
+            status_code=400,
+            detail="Event preparation is already completed and cannot be changed.",
+        )
+    if new_meta["progress"] < old_meta["progress"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Preparation status cannot move backward. Choose the current or next stage.",
+        )
 
     booking.preparation_status = new_key
 
@@ -8438,6 +8477,27 @@ async def update_booking_preparation_status(
     db.add(history)
     db.commit()
     db.refresh(booking)
+
+    # Notify the customer immediately so they can see preparation progress from
+    # the notification center and open the live booking page.
+    prep_titles = {
+        "preparing": ("Preparation Started", "has started preparing"),
+        "ready_for_delivery": ("Preparation Complete", "has finished preparing"),
+        "setup_in_progress": ("Event Setup in Progress", "is setting up your event"),
+        "ready_for_event": ("Ready for Your Event", "has marked your booking ready for the event"),
+        "completed": ("Event Completed", "has completed the catering service for"),
+    }
+    if booking.user_id and new_key in prep_titles:
+        prep_title, prep_phrase = prep_titles[new_key]
+        caterer_name = booking.caterer.business_name if booking.caterer else "Your caterer"
+        await NotificationService.notify_status_update(
+            db,
+            booking.user_id,
+            prep_title,
+            f"{caterer_name} {prep_phrase} '{booking.event_name}'.",
+            f"/customer/bookings/manage/{booking.id}",
+            notif_type="Booking",
+        )
 
     return {
         "status": "success",
