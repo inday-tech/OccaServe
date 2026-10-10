@@ -782,10 +782,17 @@ window.apiAction = async function(url, options = {}, btn = null) {
 window.openModal = function(id) {
     const overlay = document.getElementById(id);
     if (!overlay) { console.warn('[Modal] No element found with id:', id); return; }
-    // Close all others first to prevent stacking
+    // Keep booking details open while a tab-specific modal is displayed above it.
+    const bookingDetails = document.getElementById('bookingDetailModal');
+    const preserveBookingDetails = bookingDetails?.classList.contains('active') && id !== 'bookingDetailModal';
     document.querySelectorAll('.occ-modal-overlay.active').forEach(el => {
-        if (el.id !== id) _dismissModal(el);
+        if (el.id !== id && !(preserveBookingDetails && el === bookingDetails)) _dismissModal(el);
     });
+    if (preserveBookingDetails) {
+        const parentZ = parseInt(getComputedStyle(bookingDetails).zIndex, 10) || 1000;
+        const childZ = parseInt(getComputedStyle(overlay).zIndex, 10) || 0;
+        if (childZ <= parentZ) overlay.style.zIndex = String(parentZ + 10);
+    }
     overlay.style.display = 'flex';
     // Force reflow so CSS transition fires
     void overlay.offsetHeight;
@@ -799,7 +806,8 @@ window.closeModal = function(id) {
         _dismissModal(overlay);
     } else {
         // If no id given, close the topmost active modal
-        const active = document.querySelector('.occ-modal-overlay.active');
+        const active = [...document.querySelectorAll('.occ-modal-overlay.active')]
+            .reduce((top, el) => (parseInt(getComputedStyle(el).zIndex, 10) || 0) >= (top ? (parseInt(getComputedStyle(top).zIndex, 10) || 0) : -1) ? el : top, null);
         if (active) _dismissModal(active);
     }
 };

@@ -14,9 +14,22 @@
     <!-- 1. HEADER & GREETING                                       -->
     <!-- ─────────────────────────────────────────────────────────── -->
     <div class="dash-greeting-section">
-        <div class="greeting-text">
-            <h1>Good afternoon, {{ user.first_name }}. 👋</h1>
-            <p>Here's what needs your attention today.</p>
+        <div class="dash-greeting-row">
+            <div class="greeting-text">
+                <h1>Welcome, {{ user.first_name }}.</h1>
+                <p>Here's what needs your attention today.</p>
+            </div>
+            <div class="quick-actions-dropdown">
+                <button class="btn-quick-dropdown-toggle" id="quickActionsDropdownBtn" type="button"
+                    onclick="window.toggleQuickActionsMenu(event)" aria-expanded="false" aria-controls="quickActionsMenu">
+                    Quick Actions <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                </button>
+                <div class="quick-actions-dropdown-menu" id="quickActionsMenu" style="display: none;">
+                    <a href="/caterer/calendar?action=walkin" class="dropdown-item"><i class="fas fa-person-walking" aria-hidden="true"></i><span>Add Walk-in</span></a>
+                    <a href="/caterer/payments" class="dropdown-item"><i class="fas fa-receipt" aria-hidden="true"></i><span>Record Payment</span></a>
+                    <a href="/caterer/packages" class="dropdown-item"><i class="fas fa-box-open" aria-hidden="true"></i><span>Create Package</span></a>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -29,7 +42,7 @@
                     style="position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                     <svg style="width: 48px; height: 48px; transform: rotate(-90deg);" viewBox="0 0 48 48">
                         <circle cx="24" cy="24" r="19" stroke="#f1f5f9" stroke-width="4.5" fill="transparent" />
-                        <circle cx="24" cy="24" r="19" stroke="#f97316" stroke-width="4.5" fill="transparent"
+                        <circle cx="24" cy="24" r="19" stroke="var(--primary-color)" stroke-width="4.5" fill="transparent"
                             stroke-dasharray="119.3"
                             stroke-dashoffset="{{ 119.3 - (119.3 * (completion_percentage or 0) / 100) }}"
                             stroke-linecap="round" style="transition: stroke-dashoffset 0.8s ease;" />
@@ -70,78 +83,40 @@
     <!-- 2. TODAY'S BUSINESS SNAPSHOT (5 EQUAL METRIC CARDS + QA)    -->
     <!-- ─────────────────────────────────────────────────────────── -->
     <div>
-        <div class="dashboard-section-title">
-            <h2
-                style="margin: 0; font-size: 0.98rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 6px;">
-                <i class="fas fa-chart-simple" style="color: var(--primary-color, #c2414f);"></i> Today's Business
-                Snapshot
-                <span class="live-badge">Live Operations</span>
-            </h2>
-
-            <!-- Quick Actions Dropdown Button -->
-            <div class="quick-actions-dropdown" style="position: relative; display: inline-block;">
-                <button class="btn-quick-dropdown-toggle" id="quickActionsDropdownBtn" type="button"
-                    onclick="window.toggleQuickActionsMenu(event)"
-                    style="display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0.45rem 0.85rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 9px; color: #0f172a; font-size: 0.8rem; font-weight: 700; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.05); outline: none;">
-                    <i class="fas fa-bolt" style="color: #ea580c;"></i> Quick Actions <i class="fas fa-chevron-down"
-                        style="font-size: 0.65rem; margin-left: 2px;"></i>
-                </button>
-                <div class="quick-actions-dropdown-menu" id="quickActionsMenu"
-                    style="display: none; position: absolute; right: 0; top: 100%; margin-top: 6px; width: 190px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.05); z-index: 9999; padding: 6px 0;">
-                    <a href="/caterer/bookings" class="dropdown-item"
-                        style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; color: #1e293b; font-size: 0.8rem; font-weight: 700; text-decoration: none;">
-                        <i class="fas fa-calendar-plus" style="color: #c2414f; width: 16px;"></i> Add Booking
-                    </a>
-                    <a href="/caterer/calendar?action=walkin" class="dropdown-item"
-                        style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; color: #1e293b; font-size: 0.8rem; font-weight: 700; text-decoration: none;">
-                        <i class="fas fa-walking" style="color: #ea580c; width: 16px;"></i> Add Walk-in
-                    </a>
-                    <a href="/caterer/payments" class="dropdown-item"
-                        style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; color: #1e293b; font-size: 0.8rem; font-weight: 700; text-decoration: none;">
-                        <i class="fas fa-receipt" style="color: #16a34a; width: 16px;"></i> Record Payment
-                    </a>
-                    <a href="/caterer/services" class="dropdown-item"
-                        style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; color: #1e293b; font-size: 0.8rem; font-weight: 700; text-decoration: none;">
-                        <i class="fas fa-utensils" style="color: #7c3aed; width: 16px;"></i> Add Menu/Service
-                    </a>
-                </div>
-            </div>
-        </div>
-
         <div class="snapshot-grid-5">
             <!-- 1. Active Bookings -->
             <div class="snapshot-card">
                 <span class="snapshot-label">Active Bookings</span>
-                <span class="snapshot-value" style="color: #0284c7;">{{ accurate_active_bookings }}</span>
+                <span class="snapshot-value">{{ accurate_active_bookings }}</span>
                 <span class="snapshot-subtext">Confirmed &amp; in prep</span>
             </div>
 
             <!-- 2. Pending Bookings -->
             <div class="snapshot-card">
                 <span class="snapshot-label">Pending Bookings</span>
-                <span class="snapshot-value" style="color: #ea580c;">{{ accurate_pending_bookings }}</span>
+                <span class="snapshot-value">{{ accurate_pending_bookings }}</span>
                 <span class="snapshot-subtext">Inquiries &amp; awaiting pay</span>
             </div>
 
             <!-- 3. Action Required -->
             <div class="snapshot-card">
                 <span class="snapshot-label">Action Required</span>
-                <span class="snapshot-value" style="color: #ef4444;">{{ action_required_count }}</span>
+                <span class="snapshot-value">{{ action_required_count }}</span>
                 <span class="snapshot-subtext">Items needing attention</span>
             </div>
 
             <!-- 4. Upcoming Events -->
             <div class="snapshot-card">
                 <span class="snapshot-label">Upcoming Events</span>
-                <span class="snapshot-value" style="color: #8b5cf6;">{{ upcoming_events_count }}</span>
+                <span class="snapshot-value">{{ upcoming_events_count }}</span>
                 <span class="snapshot-subtext">Next 30 days scheduled</span>
             </div>
 
             <!-- 5. Outstanding Balance (Same Height & Style) -->
             <div class="snapshot-card snapshot-card-balance">
-                <span class="snapshot-label" style="color: #b45309;">Outstanding Balance</span>
-                <span class="snapshot-value" style="color: #b45309;">₱{{ "{:,.2f}".format(outstanding_balance) }}</span>
-                <span class="snapshot-subtext" style="color: #78350f;">{{ outstanding_count }} booking(s) with
+                <span class="snapshot-label">Outstanding Balance</span>
+                <span class="snapshot-value">₱{{ "{:,.2f}".format(outstanding_balance) }}</span>
+                <span class="snapshot-subtext">{{ outstanding_count }} booking(s) with
                     balance</span>
             </div>
         </div>
@@ -150,41 +125,25 @@
     <!-- ─────────────────────────────────────────────────────────── -->
     <!-- 3. ACTION CENTER (URGENT NOTIFICATIONS & ALERTS)            -->
     <!-- ─────────────────────────────────────────────────────────── -->
-    <div class="dash-card-clean">
-        <div class="card-head" style="background: #fffbeb; border-bottom: 1px solid #fef3c7;">
-            <h3 class="card-head-title" style="color: #b45309;">
-                <i class="fas fa-bell" style="color: #f59e0b;"></i> Action Center
-            </h3>
+    <div class="dash-card-clean action-center-card">
+        <div class="card-head">
+            <h3 class="card-head-title">Action Center</h3>
+            <span class="action-center-count">{{ action_required_count }} open</span>
         </div>
         <div class="action-list">
             {% if action_center_items %}
             {% for item in action_center_items %}
-            <div class="list-item"
-                style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 0.8rem 1.15rem; border-bottom: 1px solid #f1f5f9; gap: 0.75rem;">
-                <div style="display: flex; align-items: flex-start; gap: 0.75rem; flex: 1; min-width: 200px;">
-                    <div style="font-size: 1rem; margin-top: 2px;">
-                        {{ '🔴' if item.type == 'urgent' else '🟡' }}
-                    </div>
-                    <div>
-                        <h4 style="font-weight: 800; color: #0f172a; margin: 0 0 0.15rem 0; font-size: 0.88rem;">{{
-                            item.title }}</h4>
-                        <p style="color: #475569; margin: 0; font-size: 0.78rem; line-height: 1.35;">{{ item.desc }}</p>
-                    </div>
+            <div class="action-center-row">
+                <div class="action-center-copy">
+                    <span class="action-priority {{ 'urgent' if item.type == 'urgent' else 'warning' }}">{{ 'Urgent' if item.type == 'urgent' else 'Review' }}</span>
+                    <h4>{{ item.title }}</h4>
+                    <p>{{ item.desc }}</p>
                 </div>
-                <div>
-                    <a href="{% if item.booking_id %}/caterer/bookings?booking_id={{ item.booking_id }}{% else %}/caterer/bookings{% endif %}"
-                        class="btn-secondary-pro"
-                        style="padding: 0.28rem 0.75rem; font-size: 0.74rem; font-weight: 700; white-space: nowrap;">View
-                        Details &rarr;</a>
-                </div>
+                <a href="{% if item.booking_id %}/caterer/bookings?booking_id={{ item.booking_id }}{% else %}/caterer/bookings{% endif %}" class="action-center-link">View details</a>
             </div>
             {% endfor %}
             {% else %}
-            <div class="empty-state" style="padding: 1.2rem 1rem; text-align: center;">
-                <i class="fas fa-check-circle"
-                    style="font-size: 1.5rem; color: #10b981; margin-bottom: 0.2rem; display: block;"></i>
-                <span style="color: #64748b; font-size: 0.85rem; font-weight: 600;">✓ No urgent actions required.</span>
-            </div>
+            <div class="empty-state action-center-empty">No action is needed right now.</div>
             {% endif %}
         </div>
     </div>
@@ -197,9 +156,7 @@
         <!-- Left: Today's Schedule -->
         <div class="dash-card-clean today-schedule-card" style="display: flex; flex-direction: column; height: 100%; align-self: stretch; min-height: 0;">
             <div class="card-head">
-                <h3 class="card-head-title">
-                    <i class="fas fa-clock" style="color: var(--primary-color, #c2414f);"></i> Today's Schedule
-                </h3>
+                <h3 class="card-head-title">Today's Schedule</h3>
                 {% if today_schedule %}
                 <span
                     style="font-size: 0.68rem; font-weight: 800; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 20px;">{{
@@ -214,45 +171,19 @@
                 {% set ev_title_today = event.event_name or (event.package.name if event.package else (event.event_type
                 or 'Catering Event')) %}
                 {% set ven_today = event.event_address or event.venue_address or event.event_location %}
-                <div class="list-item"
-                    style="display: flex; align-items: flex-start; justify-content: space-between; padding: 0.8rem 1.15rem; border-bottom: 1px solid #f1f5f9; gap: 0.75rem;">
-                    <div style="display: flex; align-items: flex-start; gap: 0.75rem; flex: 1;">
-                        <div
-                            style="min-width: 65px; text-align: right; color: #0f172a; font-weight: 800; font-size: 0.8rem; margin-top: 2px;">
-                            {{ event.event_time.strftime('%I:%M %p') if event.event_time else 'All Day' }}
-                        </div>
-                        <div class="list-item-content">
-                            <h4 style="font-size: 0.88rem; font-weight: 800; color: #1e293b; margin: 0 0 2px 0;">{{
-                                ev_title_today }}</h4>
-                            <p style="font-size: 0.78rem; color: #475569; margin: 0; line-height: 1.35;">
-                                <i class="fas fa-user-tag" style="margin-right: 3px; color: #64748b;"></i><strong style="color: #0f172a;">Client {{ cust_ref_today }}</strong>
-                                <span style="color: #94a3b8; font-weight: 600;">({{ b_ref_today }})</span>
-                                &bull; {{ event.guest_count or 0 }} pax
-                                {% if ven_today %}
-                                &bull; <i class="fas fa-map-marker-alt"
-                                    style="margin-right: 2px; color: #ef4444;"></i>{{ ven_today|truncate(35) }}
-                                {% endif %}
-                            </p>
-                        </div>
+                {% set customer_today = event.customer_name or (('%s %s'|format(event.user.first_name or '', event.user.last_name or '')|trim) if event.user else '') or ('Client ' ~ cust_ref_today) %}
+                <article class="today-event-row">
+                    <time class="today-event-time">{{ event.event_time.strftime('%I:%M %p') if event.event_time else 'All day' }}</time>
+                    <div class="today-event-copy">
+                        <h4>{{ ev_title_today }}</h4>
+                        <p><strong>{{ customer_today }}</strong><span> · {{ b_ref_today }} · {{ event.guest_count or 0 }} guests</span></p>
+                        {% if ven_today %}<p class="today-event-venue">{{ ven_today|truncate(48) }}</p>{% endif %}
                     </div>
-                    <div>
-                        <a href="/caterer/bookings?booking_id={{ event.id }}" class="btn-secondary-pro"
-                            style="padding: 0.28rem 0.7rem; font-size: 0.74rem; white-space: nowrap;">Details &rarr;</a>
-                    </div>
-                </div>
+                    <a href="/caterer/bookings?booking_id={{ event.id }}" class="today-event-link">Details</a>
+                </article>
                 {% endfor %}
                 {% else %}
-                <div class="empty-state" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2.5rem 1.5rem; text-align: center; min-height: 220px;">
-                    <div style="width: 48px; height: 48px; border-radius: 50%; background: #ecfdf5; display: flex; align-items: center; justify-content: center; margin-bottom: 0.65rem;">
-                        <i class="fas fa-calendar-check" style="font-size: 1.5rem; color: #10b981;"></i>
-                    </div>
-                    <h5 style="margin: 0 0 4px 0; font-size: 0.92rem; font-weight: 800; color: #1e293b;">No Events
-                        Scheduled Today</h5>
-                    <p style="margin: 0 0 10px 0; color: #64748b; font-size: 0.8rem;">Check your calendar for future bookings.</p>
-                    <a href="/caterer/calendar"
-                        style="color: var(--primary-color, #c2414f); font-weight: 700; font-size: 0.8rem; text-decoration: none;">View
-                        Full Schedule &rarr;</a>
-                </div>
+                <div class="empty-state today-empty-state">No events scheduled today. <a href="/caterer/calendar">View calendar</a></div>
                 {% endif %}
             </div>
         </div>
@@ -260,15 +191,13 @@
         <!-- Right: Quick Calendar -->
         <div class="dash-card-clean mini-calendar-card" id="miniCalendarCard" style="display: flex; flex-direction: column; height: 100%; align-self: stretch; min-height: 0;">
             <div class="card-head">
-                <h3 class="card-head-title">
-                    <i class="fas fa-calendar-alt" style="color: var(--primary-color, #c2414f);"></i> Quick Calendar
-                </h3>
+                <h3 class="card-head-title">Quick Calendar</h3>
                 <a href="/caterer/calendar"
                     style="color: var(--primary-color, #c2414f); font-weight: 700; font-size: 0.78rem; text-decoration: none;">View
                     Calendar &rarr;</a>
             </div>
             <div class="dash-card-body-fill mini-calendar-body" style="padding: 0.85rem 1rem 1rem 1rem; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
-                <div id="miniCalendar"></div>
+                <div class="mini-calendar-scroll"><div id="miniCalendar"></div></div>
                 <div
                     style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 8px; font-size: 0.68rem; color: #64748b;">
                     <div style="display: flex; align-items: center; gap: 4px;"><span
@@ -285,7 +214,7 @@
                 <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e2e8f0;">
                     <div
                         style="font-size: 0.68rem; font-weight: 800; color: #b45309; text-transform: uppercase; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
-                        <i class="fas fa-thumbtack" style="font-size: 0.6rem;"></i> Pinned Schedules ({{
+                        Pinned Schedules ({{
                         pinned_schedules|length }})
                     </div>
                     {% for sched in pinned_schedules[:2] %}
@@ -311,13 +240,8 @@
     <!-- ─────────────────────────────────────────────────────────── -->
     <div class="dash-card-clean">
         <div class="card-head">
-            <h3 class="card-head-title">
-                <i class="fas fa-calendar-alt" style="color: var(--primary-color, #c2414f);"></i> Upcoming Events &amp;
-                Bookings
-            </h3>
-            <a href="/caterer/bookings"
-                style="font-size: 0.78rem; font-weight: 700; color: var(--primary-color, #c2414f); text-decoration: none;">View
-                All Bookings &rarr;</a>
+            <h3 class="card-head-title">Upcoming Events &amp; Bookings</h3>
+            <a href="/caterer/bookings" class="dashboard-link">View all</a>
         </div>
         <div class="action-list">
             {% if upcoming_events_list %}
@@ -329,74 +253,20 @@
             {% set pkg_display = b.package.name if b.package else (b.event_type or 'Custom Catering') %}
             {% set venue_display = b.event_address or b.venue_address or b.event_location %}
             {% set rem_bal = (b.total_amount or b.total_price or 0) - (b.amount_paid or 0) %}
-            <div class="list-item"
-                style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 0.8rem 1.15rem; border-bottom: 1px solid #f1f5f9; gap: 0.75rem;">
-                <div style="display: flex; align-items: flex-start; gap: 0.85rem; flex: 1; min-width: 220px;">
-                    <div
-                        style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 9px; padding: 5px 8px; text-align: center; min-width: 48px; flex-shrink: 0;">
-                        <span
-                            style="display: block; font-size: 0.6rem; font-weight: 800; text-transform: uppercase; color: #ea580c; line-height: 1;">{{
-                            b.event_date.strftime('%b') }}</span>
-                        <span
-                            style="display: block; font-size: 1.1rem; font-weight: 900; color: #0f172a; line-height: 1.1;">{{
-                            b.event_date.strftime('%d') }}</span>
-                        <span style="display: block; font-size: 0.58rem; font-weight: 600; color: #64748b;">{{
-                            b.event_date.strftime('%Y') }}</span>
-                    </div>
-                    <div>
-                        <!-- Booking Ref & Client ID (Secured) -->
-                        <div style="font-size: 0.95rem; font-weight: 900; color: #0f172a; margin-bottom: 2px; display: flex; align-items: center; gap: 6px;">
-                            <span>{{ b_ref }}</span>
-                            <span style="font-size: 0.75rem; font-weight: 700; color: #475569; background: #f1f5f9; padding: 2px 7px; border-radius: 4px; border: 1px solid #e2e8f0;">Client {{ cust_ref }}</span>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 2px;">
-                            <span style="font-size: 0.82rem; font-weight: 700; color: #334155;">{{ event_display
-                                }}</span>
-                            <span style="font-size: 0.65rem; font-weight: 800; padding: 2px 6px; border-radius: 10px; text-transform: uppercase;
-                                    {% if b.status == 'confirmed' %}background: #dcfce7; color: #166534;
-                                    {% elif b.status == 'preparing' %}background: #e0f2fe; color: #075985;
-                                    {% elif b.status in ['completed', 'delivered'] %}background: #eff6ff; color: #1d4ed8;
-                                    {% else %}background: #fef3c7; color: #92400e;{% endif %}">
-                                {{ b.status|replace('_', ' ')|title }}
-                            </span>
-                            {% if rem_bal > 0 %}
-                            <span
-                                style="font-size: 0.65rem; font-weight: 800; background: #fff1f2; color: #be123c; padding: 2px 6px; border-radius: 10px;">
-                                Bal: ₱{{ "{:,.2f}".format(rem_bal) }}
-                            </span>
-                            {% else %}
-                            <span
-                                style="font-size: 0.65rem; font-weight: 800; background: #f0fdf4; color: #15803d; padding: 2px 6px; border-radius: 10px;">
-                                Fully Paid
-                            </span>
-                            {% endif %}
-                        </div>
-                        <p style="color: #64748b; margin: 0; font-size: 0.78rem; line-height: 1.35;">
-                            {{ b.guest_count or 0 }} pax
-                            &bull; <i class="fas fa-box-open" style="margin-right: 2px; color: #8b5cf6;"></i>{{
-                            pkg_display }}
-                            {% if b.event_time %}
-                            &bull; <i class="far fa-clock" style="margin-right: 2px;"></i>{{
-                            b.event_time.strftime('%I:%M %p') }}
-                            {% endif %}
-                            {% if venue_display %}
-                            &bull; <i class="fas fa-map-marker-alt" style="margin-right: 2px; color: #ef4444;"></i>{{
-                            venue_display|truncate(28) }}
-                            {% endif %}
-                        </p>
-                    </div>
+            {% set customer_display = b.customer_name or (('%s %s'|format(b.user.first_name or '', b.user.last_name or '')|trim) if b.user else '') or ('Client ' ~ cust_ref) %}
+            <article class="upcoming-booking-row">
+                <time class="upcoming-date-box"><span>{{ b.event_date.strftime('%b') }}</span><strong>{{ b.event_date.strftime('%d') }}</strong><small>{{ b.event_date.strftime('%Y') }}</small></time>
+                <div class="upcoming-booking-copy">
+                    <div class="upcoming-booking-heading"><h4>{{ event_display }}</h4><span class="booking-status">{{ b.status|replace('_',' ')|title }}</span></div>
+                    <p class="upcoming-booking-customer">{{ customer_display }} <span>· {{ b_ref }} · {{ b.guest_count or 0 }} guests</span></p>
+                    <p class="upcoming-booking-meta">{{ pkg_display }}{% if b.event_time %} · {{ b.event_time.strftime('%I:%M %p') }}{% endif %}{% if venue_display %} · {{ venue_display|truncate(48) }}{% endif %}</p>
+                    {% if rem_bal > 0 %}<span class="booking-balance">Balance: ₱{{ "{:,.2f}".format(rem_bal) }}</span>{% endif %}
                 </div>
-                <div>
-                    <a href="/caterer/bookings?booking_id={{ b.id }}" class="btn-secondary-pro"
-                        style="padding: 0.3rem 0.75rem; font-size: 0.75rem; font-weight: 700; white-space: nowrap;">View
-                        Booking &rarr;</a>
-                </div>
-            </div>
+                <a href="/caterer/bookings?booking_id={{ b.id }}" class="upcoming-booking-link">Details</a>
+            </article>
             {% endfor %}
             {% else %}
             <div class="empty-state" style="padding: 2rem 1rem; text-align: center;">
-                <i class="fas fa-calendar-check"
-                    style="font-size: 1.6rem; color: #10b981; margin-bottom: 0.3rem; display: block;"></i>
                 <span style="color: #64748b; font-size: 0.85rem; font-weight: 600;">No upcoming events scheduled.</span>
             </div>
             {% endif %}
@@ -456,15 +326,6 @@
             calendar.render();
         }
 
-        // Global search filtering on Caterer Dashboard
-        window.addEventListener('globalSearch', (e) => {
-            const q = (e.detail?.value || '').toLowerCase().trim();
-            const items = document.querySelectorAll('.dash-container .list-item, .dash-container tbody tr');
-            items.forEach(item => {
-                const text = item.textContent.toLowerCase();
-                item.style.display = (!q || text.includes(q)) ? '' : 'none';
-            });
-        });
     });
 </script>
 {% endblock %}

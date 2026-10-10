@@ -1,6 +1,6 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Customer Intelligence Registry - Admin Terminal{% endblock %}
+{% block title %}Customer Management - Admin Dashboard{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ static_asset_version('css/admin/dashboard.css') }}">
@@ -40,6 +40,106 @@
         background: #fef3c7;
         color: #92400e;
         border: 1px solid #fde68a;
+    }
+
+    .customer-filter-card {
+        width: 100%;
+        min-width: 0;
+        min-height: 104px !important;
+        height: auto !important;
+        padding: 1.15rem !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        color: inherit;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .customer-filter-card .kpi-info {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .customer-filter-card:hover {
+        transform: translateY(-3px);
+        border-color: var(--adm-primary) !important;
+        box-shadow: var(--adm-shadow) !important;
+    }
+
+    .customer-filter-card[aria-pressed="true"] {
+        border-color: var(--adm-primary) !important;
+        box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.12) !important;
+    }
+
+    .customer-filter-card:focus-visible {
+        outline: 3px solid rgba(249, 115, 22, 0.35);
+        outline-offset: 2px;
+    }
+
+    .customer-section-heading td {
+        padding: 0.8rem 1.1rem !important;
+        background: #f8fafc;
+        color: var(--adm-navy);
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .customer-empty-row td {
+        padding: 2rem !important;
+        color: var(--adm-muted);
+        text-align: center;
+    }
+
+    .customer-details-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .booking-summary-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .booking-summary-grid .customer-detail-card { padding:10px 12px; }
+    .identity-review-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    .identity-document-card { min-width:0; padding:12px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; }
+    .identity-document-card img { width:100%; height:210px; object-fit:contain; background:#fff; border-radius:8px; }
+    .identity-review-facts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    @media(max-width:420px) { .booking-summary-grid { gap:7px; } .booking-summary-grid .customer-detail-card { padding:8px; } .booking-summary-grid .customer-detail-value { font-size:.75rem; } }
+
+    .customer-detail-card {
+        min-width: 0;
+        padding: 12px 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+    }
+
+    .customer-detail-card.span-2 { grid-column: 1 / -1; }
+    .customer-detail-label {
+        display: block;
+        margin-bottom: 5px;
+        color: var(--adm-muted);
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+    .customer-detail-value {
+        color: var(--adm-navy);
+        font-size: 0.85rem;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 600px) {
+        .customer-details-grid { grid-template-columns: minmax(0, 1fr); }
+        .customer-detail-card.span-2 { grid-column: auto; }
+        .identity-review-grid { grid-template-columns:minmax(0,1fr); }
+        #intelligenceModal .modal-header-clean,
+        #intelligenceModal .modal-body-clean { padding-left: 1rem !important; padding-right: 1rem !important; }
+        .pagination-terminal { flex-wrap: wrap; gap: 12px; padding: 1rem; }
     }
 
     .action-dots-adm {
@@ -197,71 +297,100 @@
 <div class="dashboard-header-clean">
     <div class="header-title-area">
         <h1>Customer Management</h1>
-        <p>Monitor and manage customer accounts on the platform.</p>
+        <p>View customer accounts, verification, and booking activity.</p>
     </div>
 </div>
 
-<!-- Elite KPI Matrix -->
+<!-- Customer summary cards also filter the directory. -->
 <div class="kpi-grid-clean">
-    <div class="kpi-card-clean">
+    <button type="button" class="kpi-card-clean customer-filter-card" data-customer-filter="all" aria-pressed="true" onclick="setCustomerFilter('all')">
         <div class="kpi-info">
             <h4>Total Customers</h4>
             <span class="kpi-value">{{ metrics.total_customers }}</span>
-            <span class="trend-badge trend-up">All Registered</span>
+            <span class="trend-badge trend-up">All accounts</span>
         </div>
-    </div>
-    <div class="kpi-card-clean">
+    </button>
+    <button type="button" class="kpi-card-clean customer-filter-card" data-customer-filter="verified" aria-pressed="false" onclick="setCustomerFilter('verified')">
         <div class="kpi-info">
-            <h4>Active Customers</h4>
-            <span class="kpi-value">{{ metrics.active_customers }}</span>
-            <span class="trend-badge trend-up">Trusted</span>
+            <h4>Verified</h4>
+            <span class="kpi-value">{{ metrics.verified_customers }}</span>
+            <span class="trend-badge trend-up">Identity checked</span>
         </div>
-    </div>
-    <div class="kpi-card-clean">
+    </button>
+    <button type="button" class="kpi-card-clean customer-filter-card" data-customer-filter="pending" aria-pressed="false" onclick="setCustomerFilter('pending')">
         <div class="kpi-info">
             <h4>Pending Verification</h4>
             <span class="kpi-value">{{ metrics.pending_customers }}</span>
-            <span class="trend-badge" style="background: #fef3c7; color: #92400e;">KYC Not Complete</span>
+            <span class="trend-badge" style="background: #fef3c7; color: #92400e;">Identity not verified</span>
         </div>
-    </div>
-    <div class="kpi-card-clean">
+    </button>
+    <button type="button" class="kpi-card-clean customer-filter-card" data-customer-filter="suspended" aria-pressed="false" onclick="setCustomerFilter('suspended')">
         <div class="kpi-info">
             <h4>Suspended</h4>
             <span class="kpi-value">{{ metrics.suspended_customers }}</span>
-            <span class="trend-badge trend-down">Restricted</span>
+            <span class="trend-badge trend-down">Access paused</span>
         </div>
-    </div>
-    <div class="kpi-card-clean">
-        <div class="kpi-info">
-            <h4>Flagged for Review</h4>
-            <span class="kpi-value">{{ metrics.flagged_customers }}</span>
-            <span class="trend-badge" style="background: #fef3c7; color: #92400e;">Needs Action</span>
-        </div>
-    </div>
+    </button>
 </div>
 
-<!-- Identity Registry Terminal -->
+{% macro customer_row(customer, section) %}
+<tr class="cust-row" data-customer-section="{{ section }}" data-verification-status="{{ 'verified' if customer.is_verified else 'pending' }}" data-account-status="{{ (customer.status or 'active')|lower }}">
+    <td style="padding: 1rem 1.25rem;">
+        <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+            <div class="registry-avatar" aria-hidden="true" style="width:44px;height:44px;flex:0 0 44px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;border:1px solid #e2e8f0;">
+                {{ (customer.first_name or ' ')[0] }}{{ (customer.last_name or ' ')[0] }}
+            </div>
+            <div style="min-width:0;">
+                <div style="font-weight:800;color:var(--adm-navy);overflow-wrap:anywhere;">{{ customer.first_name or '' }} {{ customer.last_name or '' }}</div>
+                <div style="font-size:.7rem;color:#64748b;font-weight:700;">Customer ID #{{ "%05d"|format(customer.id) }}</div>
+            </div>
+        </div>
+    </td>
+    <td>
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:5px;">
+            <span class="status-badge-dm {{ 'status-active' if customer.is_verified else ('status-suspended' if (customer.status or '')|lower == 'rejected' else 'status-flagged') }}">{{ 'Verified' if customer.is_verified else ('Rejected' if (customer.status or '')|lower == 'rejected' else 'Pending verification') }}</span>
+            {% if (customer.status or '')|lower == 'suspended' %}<span class="status-badge-dm status-suspended">Suspended</span>
+            {% elif (customer.status or '')|lower == 'flagged' %}<span class="status-badge-dm status-flagged">Flagged for review</span>
+            {% elif (customer.status or '')|lower not in ['active', 'rejected', 'suspended', 'flagged'] %}<span class="status-badge-dm status-flagged">{{ (customer.status or 'unknown')|replace('_', ' ')|title }}</span>{% else %}<span class="status-badge-dm status-active">{{ (customer.status or 'active')|replace('_', ' ')|title }}</span>{% endif %}
+            <span style="font-size:.75rem;color:#64748b;overflow-wrap:anywhere;">{{ customer.email or 'No email on file' }}</span>
+        </div>
+    </td>
+    <td>{{ customer.bookings|length if customer.bookings else 0 }}</td>
+    <td>{{ customer.created_at.strftime('%b %d, %Y') if customer.created_at else 'Not recorded' }}</td>
+    <td style="text-align:right;padding-right:1.25rem;">
+        <div class="action-menu-dm">
+            <button type="button" class="action-dots-adm" aria-label="Actions for {{ customer.first_name }} {{ customer.last_name }}" aria-expanded="false" onclick="toggleActionMenu(this, event)"><i class="fas fa-ellipsis-h" aria-hidden="true"></i></button>
+            <div class="dropdown-menu-dm">
+                <button type="button" class="dropdown-item-dm" data-id="{{ customer.id }}" data-name="{{ customer.first_name or '' }} {{ customer.last_name or '' }}" onclick="viewCustomerDetails(this)"><i class="fas fa-id-card" aria-hidden="true"></i> View details</button>
+                <div class="dropdown-divider"></div>
+                {% if (customer.status or '')|lower == 'suspended' %}
+                <button type="button" class="dropdown-item-dm" style="color:#2563eb;" onclick="reactivateAccount('{{ customer.id }}')"><i class="fas fa-undo" aria-hidden="true"></i>Reactivate account</button>
+                {% elif (customer.status or '')|lower == 'flagged' %}
+                <button type="button" class="dropdown-item-dm" style="color:#10b981;" onclick="clearFlag('{{ customer.id }}')"><i class="fas fa-check-circle" aria-hidden="true"></i>Clear review flag</button>
+                {% else %}
+                {% if not customer.is_verified %}<button type="button" class="dropdown-item-dm" data-id="{{ customer.id }}" data-name="{{ customer.first_name or '' }} {{ customer.last_name or '' }}" onclick="openCustomerIdentityReview(this.dataset.id, this.dataset.name)"><i class="fas fa-user-shield" aria-hidden="true"></i>Review identity</button>{% endif %}
+                <button type="button" class="dropdown-item-dm danger" onclick="suspendAccount('{{ customer.id }}')"><i class="fas fa-ban" aria-hidden="true"></i>Suspend account</button>
+                <button type="button" class="dropdown-item-dm" onclick="flagAccount('{{ customer.id }}')"><i class="fas fa-flag" aria-hidden="true"></i>Flag for review</button>
+                {% endif %}
+            </div>
+        </div>
+    </td>
+</tr>
+{% endmacro %}
+
+<!-- Customer directory -->
 <div class="table-card-clean" style="margin-top: 1rem;">
     <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; gap: 10px;">
         <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase;">Customer Directory</h3>
         <div style="display: flex; gap: 10px; align-items: center;">
             <select id="statusFilter" onchange="filterRegistry()" class="btn-clean" style="padding: 6px 12px; font-size: 0.75rem; background: #fff; border: 1px solid #e2e8f0; color: var(--adm-navy);">
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="pending">Pending Verification</option>
+                <option value="all">All customers</option>
+                <option value="verified">Verified</option>
+                <option value="pending">Pending verification</option>
                 <option value="suspended">Suspended</option>
-                <option value="flagged">Flagged</option>
+                <option value="flagged">Flagged for review</option>
             </select>
-            <div class="actions-dropdown">
-                <button class="btn-clean dropdown-trigger" style="background: #fff; color: var(--adm-navy); border: 1px solid #e2e8f0; padding: 6px 12px; font-size: 0.75rem;" onclick="toggleActionDropdown(this, event)">
-                    <i class="fas fa-download"></i> Export <i class="fas fa-chevron-down" style="font-size: 0.6rem; margin-left: 4px;"></i>
-                </button>
-                <div class="dropdown-menu-dm">
-                    <button class="dropdown-item-dm" onclick="alert('Exporting to PDF...')"><i class="fas fa-file-pdf"></i> Export PDF</button>
-                    <button class="dropdown-item-dm" onclick="alert('Exporting to Excel...')"><i class="fas fa-file-excel"></i> Export Excel</button>
-                    <button class="dropdown-item-dm" onclick="alert('Exporting to Word...')"><i class="fas fa-file-word"></i> Export Word</button>
-                </div>
-            </div>
+            <button type="button" class="btn-clean" onclick="downloadCustomerCsv()" style="background:#fff;color:var(--adm-navy);border:1px solid #e2e8f0;padding:6px 12px;font-size:.75rem;">Download CSV</button>
         </div>
     </div>
 
@@ -269,109 +398,21 @@
         <table class="clean-table" id="registryTable">
             <thead>
                 <tr>
-                    <th style="padding-left: 1.5rem;">Customer Name</th>
-                    <th>Status</th>
-                    <th>Total Bookings</th>
-                    <th>Date Joined</th>
+                    <th style="padding-left: 1.5rem;">Customer</th>
+                    <th>Verification and account status</th>
+                    <th>Bookings</th>
+                    <th>Date joined</th>
                     <th style="text-align: right; padding-right: 1.5rem;">Actions</th>
                 </tr>
             </thead>
-            <tbody id="registryBody">
-                {% for customer in customers %}
-                <tr class="cust-row">
-                    <td style="padding: 1.5rem 0 1.5rem 2rem;">
-                        <div class="user-profile-cell"
-                            style="display: flex; align-items: center; gap: 14px; min-height: 52px;">
-                            <div class="registry-avatar"
-                                style="width: 52px; height: 52px; font-size: 1.1rem; background: #f1f5f9; border: 1.5px solid #e2e8f0; display: flex; align-items: center; justify-content: center;">
-                                {{ customer.first_name[0] }}{{ customer.last_name[0] }}</div>
-                            <div style="display: flex; flex-direction: column; justify-content: center;">
-                                <span
-                                    style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem; display: block; line-height: 1.2; margin-bottom: 2px;">{{
-                                    customer.first_name }} {{ customer.last_name }}</span>
-                                <span
-                                    style="font-size: 0.7rem; color: #64748b; font-weight: 700; letter-spacing: 0.02em; line-height: 1;">CUSTOMER
-                                    ID
-                                    #{{ "%05d"|format(customer.id) }}</span>
-                            </div>
-                        </div>
-                    </td>
-                    <td>
-                        <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <span class="status-badge-dm {% if customer.status == 'suspended' %}status-suspended{% elif customer.is_verified %}status-active{% else %}status-flagged{% endif %}">
-                                <i class="fas {% if customer.status == 'suspended' %}fa-ban{% elif customer.is_verified %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
-                                {% if customer.status == 'suspended' %}
-                                    SUSPENDED
-                                {% elif customer.status == 'flagged' %}
-                                    FLAGGED
-                                {% else %}
-                                    {{ 'ACTIVE' if customer.is_verified else 'PENDING KYC' }}
-                                {% endif %}
-                            </span>
-                            <div
-                                style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #64748b; font-weight: 600;">
-                                <i class="fas fa-envelope" style="font-size: 0.7rem; color: #94a3b8;"></i> {{
-                                customer.email }}
-                            </div>
-                        </div>
-                    </td>
-                    <td data-label="Total Bookings">
-                        <div class="ltv-value">{{ customer.bookings|length if customer.bookings else 0 }} bookings</div>
-                    </td>
-                    <td>
-                        <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.85rem; margin-bottom: 2px;">
-                            {{ customer.created_at.strftime('%b %d, %Y') if customer.created_at else 'Jan 01, 2024' }}
-                        </div>
-                        <span
-                            style="font-size: 0.65rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Established</span>
-                    </td>
-                    <td style="text-align: right; padding-right: 2rem;">
-                        <div class="action-menu-dm" style="display: inline-block;">
-                            <div class="action-dots-adm" onclick="toggleActionMenu(this, event)">
-                                <i class="fas fa-ellipsis-h"></i>
-                            </div>                            <div class="dropdown-menu-dm">
-                                <button class="dropdown-item-dm" 
-                                    data-id="{{ customer.id }}"
-                                    data-name="{{ customer.first_name }} {{ customer.last_name }}"
-                                    data-email="{{ customer.email }}"
-                                    data-phone="{{ customer.phone_number or 'N/A' }}"
-                                    data-joined="{{ customer.created_at.strftime('%b %d, %Y') if customer.created_at else 'N/A' }}"
-                                    data-bookings="{{ customer.bookings|length if customer.bookings else 0 }}"
-                                    data-status="{{ 'SUSPENDED' if customer.status == 'suspended' else ('FLAGGED' if customer.status == 'flagged' else ('ACTIVE' if customer.is_verified else 'PENDING KYC')) }}"
-                                    onclick="viewCustomerDetails(this)">
-                                    <i class="fas fa-id-card"></i> View Details
-                                </button>
-                                <div class="dropdown-divider"></div>
-                                
-                                {% if customer.status == 'suspended' %}
-                                <button class="dropdown-item-dm" style="color: #2563eb;" onclick="reactivateAccount('{{ customer.id }}')">
-                                    <i class="fas fa-undo"></i> Reactivate Account
-                                </button>
-                                {% elif customer.status == 'flagged' %}
-                                <button class="dropdown-item-dm" onclick="viewCustomerDetails(this)" data-id="{{ customer.id }}" data-name="{{ customer.first_name }} {{ customer.last_name }}" data-email="{{ customer.email }}" data-phone="{{ customer.phone_number or 'N/A' }}" data-joined="{{ customer.created_at.strftime('%b %d, %Y') if customer.created_at else 'N/A' }}" data-bookings="{{ customer.bookings|length if customer.bookings else 0 }}" data-status="FLAGGED">
-                                    <i class="fas fa-search"></i> Review Account
-                                </button>
-                                <button class="dropdown-item-dm" style="color: #10b981;" onclick="clearFlag('{{ customer.id }}')">
-                                    <i class="fas fa-check-circle"></i> Clear Flag
-                                </button>
-                                {% else %}
-                                {% if not customer.is_verified %}
-                                <button class="dropdown-item-dm" style="color: #10b981;" onclick="window.location.href='/admin/verify/{{ customer.id }}'">
-                                    <i class="fas fa-user-shield"></i> Review KYC
-                                </button>
-                                {% endif %}
-                                <button class="dropdown-item-dm danger" onclick="suspendAccount('{{ customer.id }}')">
-                                    <i class="fas fa-ban"></i> Suspend Account
-                                </button>
-                                <button class="dropdown-item-dm" style="color: #f59e0b;" onclick="flagAccount('{{ customer.id }}')">
-                                    <i class="fas fa-flag"></i> Flag for Review
-                                </button>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
+            <tbody>
+                <tr class="customer-section-heading" data-section-heading="verified"><td colspan="5">Verified customers</td></tr>
+                {% for customer in verified_customers %}{{ customer_row(customer, 'verified') }}{% endfor %}
+            </tbody>
+            <tbody>
+                <tr class="customer-section-heading" data-section-heading="pending"><td colspan="5">Pending verification</td></tr>
+                {% for customer in pending_verification_customers %}{{ customer_row(customer, 'pending') }}{% endfor %}
+                <tr class="customer-empty-row" id="customerEmptyRow" style="display:none;"><td colspan="5">No customers match this filter or search.</td></tr>
             </tbody>
         </table>
     </div>
@@ -380,7 +421,7 @@
     <div class="pagination-terminal">
         <div style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700;">
             Showing <span id="entryStart">1</span> to <span id="entryEnd">10</span> of <span id="totalEntries">{{
-                customers|length }}</span> participants
+                customers|length }}</span> customers
         </div>
         <div style="display: flex; gap: 8px;">
             <button class="pag-btn" id="prevBtn" onclick="changePage(-1)" disabled>
@@ -395,26 +436,27 @@
 
 <!-- Intelligence Modals -->
 <div id="intelligenceModal" class="admin-modal-overlay">
-    <div class="admin-modal-card" style="max-width: 650px;">
+    <div class="admin-modal-card" style="max-width: 760px; width: min(760px, calc(100vw - 24px)); max-height: 90vh; display:flex; flex-direction:column;">
         <div class="modal-header-clean">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div
-                    style="background: var(--adm-primary-soft); color: var(--adm-primary); width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-fingerprint"></i>
-                </div>
-                <div>
-                    <h3 style="font-size: 0.95rem; font-weight: 800; text-transform: uppercase; margin: 0;">Customer Overview</h3>
-                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Account details and metrics.</p>
-                </div>
+            <div>
+                <h3 id="customerDetailsTitle" style="font-size: 0.95rem; font-weight: 800; margin: 0;">Customer details</h3>
+                <p style="font-size: 0.75rem; color: var(--adm-muted); margin: 4px 0 0;">Account, verification, and booking information.</p>
             </div>
-            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
+            <button type="button" aria-label="Close customer details" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
                 onclick="closeIntelligenceModal()">&times;</button>
         </div>
-        <div class="modal-body-clean" id="intelligenceBody" style="padding: 1.5rem;"></div>
-        <div class="modal-footer-clean" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between;">
-            <button class="btn-clean" style="background: white; color: var(--adm-navy); border: 1px solid #e2e8f0;" onclick="closeIntelligenceModal()">Close</button>
-            <button class="btn-clean" style="background: var(--adm-navy); color: white;" onclick="alert('Editing administrative information...')"><i class="fas fa-edit"></i> Edit Information</button>
+        <div class="modal-body-clean" id="intelligenceBody" style="padding: 1.25rem 1.5rem; overflow:auto;"></div>
+    </div>
+</div>
+
+<div id="customerIdentityModal" class="admin-modal-overlay" onclick="if(event.target===this) closeCustomerIdentityReview()">
+    <div class="admin-modal-card" style="max-width:900px;width:min(900px,calc(100vw - 24px));max-height:92vh;display:flex;flex-direction:column;">
+        <div class="modal-header-clean">
+            <div><h3 id="identityReviewTitle" style="font-size:.95rem;font-weight:800;margin:0;">Review customer identity</h3><p style="font-size:.75rem;color:var(--adm-muted);margin:4px 0 0;">Check the submitted ID and selfie before deciding.</p></div>
+            <button type="button" aria-label="Close identity review" style="background:none;border:0;font-size:1.5rem;cursor:pointer;color:var(--adm-muted);" onclick="closeCustomerIdentityReview()">&times;</button>
         </div>
+        <div id="identityReviewBody" class="modal-body-clean" style="padding:1.25rem 1.5rem;overflow:auto;"></div>
+        <div id="identityReviewActions" style="display:flex;justify-content:flex-end;gap:8px;padding:1rem 1.5rem;border-top:1px solid #e2e8f0;flex-wrap:wrap;"></div>
     </div>
 </div>
 
@@ -430,6 +472,7 @@
     let currentPage = 1;
     const entriesPerPage = 10;
     const rows = Array.from(document.querySelectorAll('.cust-row'));
+    let filteredCustomerRows = rows;
 
     function filterRegistry() {
         const status = document.getElementById('statusFilter').value;
@@ -437,22 +480,55 @@
         const query = globalSearch ? globalSearch.value.toLowerCase().trim() : '';
 
         const filteredRows = rows.filter(row => {
-            const badgeEl = row.querySelector('.status-badge-dm');
-            const badge = badgeEl ? badgeEl.innerText.toLowerCase() : '';
+            const verificationStatus = row.dataset.verificationStatus;
+            const accountStatus = row.dataset.accountStatus;
             const textContent = row.innerText.toLowerCase();
 
-            const matchesStatus = (status === 'all') ||
-                (status === 'active' && badge.includes('active')) ||
-                (status === 'pending' && badge.includes('pending')) ||
-                (status === 'flagged' && badge.includes('flagged')) ||
-                (status === 'suspended' && badge.includes('suspended'));
+            const matchesStatus = status === 'all' ||
+                (status === 'verified' && verificationStatus === 'verified') ||
+                (status === 'pending' && verificationStatus === 'pending') ||
+                (status === 'suspended' && accountStatus === 'suspended') ||
+                (status === 'flagged' && accountStatus === 'flagged');
 
             const matchesQuery = query === '' || textContent.includes(query);
 
             return matchesStatus && matchesQuery;
         });
 
+        filteredCustomerRows = filteredRows;
+        document.querySelectorAll('.customer-filter-card').forEach(card => {
+            card.setAttribute('aria-pressed', String(card.dataset.customerFilter === status));
+        });
         updatePagination(filteredRows);
+    }
+
+    function setCustomerFilter(status) {
+        document.getElementById('statusFilter').value = status;
+        currentPage = 1;
+        filterRegistry();
+    }
+
+    function downloadCustomerCsv() {
+        const visibleRows = filteredCustomerRows;
+        const values = [['Customer', 'Customer ID', 'Email', 'Verification', 'Account status', 'Bookings', 'Date joined']];
+        visibleRows.forEach(row => {
+            const cells = row.cells;
+            values.push([
+                cells[0].innerText.replace(/\s+/g, ' ').trim(),
+                cells[0].innerText.match(/#\d+/)?.[0] || '',
+                cells[1].innerText.split('\n').map(value => value.trim()).filter(Boolean).at(-1) || '',
+                row.dataset.verificationStatus,
+                row.dataset.accountStatus,
+                cells[2].innerText.trim(),
+                cells[3].innerText.trim()
+            ]);
+        });
+        const csv = values.map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+        link.download = 'customers.csv';
+        link.click();
+        URL.revokeObjectURL(link.href);
     }
 
     function updatePagination(filteredRows) {
@@ -465,7 +541,13 @@
         const end = start + entriesPerPage;
 
         rows.forEach(row => row.style.display = 'none');
-        filteredRows.slice(start, end).forEach(row => row.style.display = '');
+        const pageRows = filteredRows.slice(start, end);
+        pageRows.forEach(row => row.style.display = '');
+        document.querySelectorAll('.customer-section-heading').forEach(heading => {
+            const section = heading.dataset.sectionHeading;
+            heading.style.display = pageRows.some(row => row.dataset.customerSection === section) ? '' : 'none';
+        });
+        document.getElementById('customerEmptyRow').style.display = total === 0 ? '' : 'none';
 
         document.getElementById('entryStart').innerText = total === 0 ? 0 : start + 1;
         document.getElementById('entryEnd').innerText = Math.min(end, total);
@@ -483,7 +565,7 @@
     // Hook Global Header Search to Table
     const gSearch = document.getElementById('globalSearchInput');
     if (gSearch) {
-        gSearch.placeholder = "Search customers by name, email...";
+        gSearch.placeholder = "Search customers by name or email...";
         gSearch.addEventListener('input', () => {
             currentPage = 1;
             filterRegistry();
@@ -505,92 +587,131 @@
     };
 
     function viewCustomerDetails(btn) {
-        const id = btn.getAttribute('data-id');
-        const name = btn.getAttribute('data-name');
-        const email = btn.getAttribute('data-email');
-        const phone = btn.getAttribute('data-phone');
-        const joined = btn.getAttribute('data-joined');
-        const bookings = btn.getAttribute('data-bookings');
-        const status = btn.getAttribute('data-status');
-
-        const badgeClass = status === 'ACTIVE' ? 'status-active' : (status === 'SUSPENDED' ? 'status-suspended' : 'status-flagged');
-
-        document.getElementById('intelligenceBody').innerHTML = `
-            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-                <!-- Personal Information -->
-                <div>
-                    <div style="font-size: 0.75rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #f1f5f9;">Personal Information</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.8rem;">
-                        <div><span style="color: var(--adm-muted); font-weight: 600;">Name:</span> <span style="font-weight: 700; color: var(--adm-navy);">${name}</span></div>
-                        <div><span style="color: var(--adm-muted); font-weight: 600;">Email:</span> <span style="font-weight: 700; color: var(--adm-navy);">${email}</span></div>
-                        <div><span style="color: var(--adm-muted); font-weight: 600;">Contact Number:</span> <span style="font-weight: 700; color: var(--adm-navy);">${phone}</span></div>
-                        <div><span style="color: var(--adm-muted); font-weight: 600;">Customer ID:</span> <span style="font-weight: 700; color: var(--adm-navy);">#${String(id).padStart(5, '0')}</span></div>
-                    </div>
-                </div>
-
-                <!-- Account Information -->
-                <div>
-                    <div style="font-size: 0.75rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #f1f5f9;">Account Information</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.8rem;">
-                        <div><span style="color: var(--adm-muted); font-weight: 600;">Status:</span> <span class="status-badge-dm ${badgeClass}" style="padding: 2px 6px; font-size: 0.6rem;">${status}</span></div>
-                        <div><span style="color: var(--adm-muted); font-weight: 600;">Date Registered:</span> <span style="font-weight: 700; color: var(--adm-navy);">${joined}</span></div>
-                        <div><span style="color: var(--adm-muted); font-weight: 600;">Last Login:</span> <span style="font-weight: 700; color: var(--adm-navy);">Recently</span></div>
-                    </div>
-                </div>
-
-                <!-- Booking Summary -->
-                <div>
-                    <div style="font-size: 0.75rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #f1f5f9;">Booking Summary</div>
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; font-size: 0.8rem; text-align: center;">
-                        <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                            <div style="font-weight: 800; color: var(--adm-navy); font-size: 1.1rem;">${bookings}</div>
-                            <div style="font-size: 0.65rem; color: var(--adm-muted); font-weight: 700; text-transform: uppercase;">Total</div>
-                        </div>
-                        <div style="background: #f0fdf4; padding: 10px; border-radius: 8px; border: 1px solid #dcfce7;">
-                            <div style="font-weight: 800; color: #166534; font-size: 1.1rem;">${bookings}</div>
-                            <div style="font-size: 0.65rem; color: #166534; font-weight: 700; text-transform: uppercase;">Completed</div>
-                        </div>
-                        <div style="background: #fffbeb; padding: 10px; border-radius: 8px; border: 1px solid #fef3c7;">
-                            <div style="font-weight: 800; color: #b45309; font-size: 1.1rem;">0</div>
-                            <div style="font-size: 0.65rem; color: #b45309; font-weight: 700; text-transform: uppercase;">Pending</div>
-                        </div>
-                        <div style="background: #fef2f2; padding: 10px; border-radius: 8px; border: 1px solid #fee2e2;">
-                            <div style="font-weight: 800; color: #b91c1c; font-size: 1.1rem;">0</div>
-                            <div style="font-size: 0.65rem; color: #b91c1c; font-weight: 700; text-transform: uppercase;">Cancelled</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Recent Activity -->
-                <div>
-                    <div style="font-size: 0.75rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #f1f5f9;">Recent Activity</div>
-                    <div style="font-size: 0.8rem; color: var(--adm-muted); padding: 10px; background: #f8fafc; border-radius: 8px; text-align: center; border: 1px dashed #cbd5e1;">
-                        No recent activity logs available.
-                    </div>
-                </div>
-            </div>
-        `;
+        const customerId = btn.dataset.id;
+        const body = document.getElementById('intelligenceBody');
+        document.getElementById('customerDetailsTitle').textContent = `${btn.dataset.name || 'Customer'} details`;
+        body.replaceChildren();
+        const loading = document.createElement('p');
+        loading.className = 'customer-detail-value';
+        loading.textContent = 'Loading current customer details...';
+        body.appendChild(loading);
         document.getElementById('intelligenceModal').classList.add('active');
+
+        fetch(`/admin/api/customers/${encodeURIComponent(customerId)}/audit`)
+            .then(response => response.json())
+            .then(result => {
+                if (!result.success || !result.data) throw new Error(result.message || 'Customer details are not available.');
+                const data = result.data;
+                body.replaceChildren();
+                const section = (title, fields, gridClass = 'customer-details-grid') => {
+                    const wrapper = document.createElement('section');
+                    const heading = document.createElement('h4');
+                    heading.textContent = title;
+                    heading.style.cssText = 'margin:0 0 10px;color:var(--adm-navy);font-size:.75rem;text-transform:uppercase;';
+                    const grid = document.createElement('div');
+                    grid.className = gridClass;
+                    fields.forEach(([label, value, wide]) => {
+                        const card = document.createElement('div');
+                        card.className = `customer-detail-card${wide ? ' span-2' : ''}`;
+                        const fieldLabel = document.createElement('span');
+                        fieldLabel.className = 'customer-detail-label';
+                        fieldLabel.textContent = label;
+                        const fieldValue = document.createElement('div');
+                        fieldValue.className = 'customer-detail-value';
+                        fieldValue.textContent = value == null || value === '' ? 'Not available' : String(value);
+                        card.append(fieldLabel, fieldValue);
+                        grid.appendChild(card);
+                    });
+                    wrapper.append(heading, grid);
+                    wrapper.style.marginBottom = '18px';
+                    body.appendChild(wrapper);
+                };
+                const formatDate = value => value ? new Date(value).toLocaleString() : 'No login recorded';
+                const accountStatus = String(data.status || 'unknown').replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+                section('Personal details', [
+                    ['Name', data.full_name], ['Email', data.email], ['Phone', data.phone_number], ['Customer ID', `#${String(customerId).padStart(5, '0')}`]
+                ]);
+                section('Account details', [
+                    ['Identity verification', data.is_verified ? 'Verified' : 'Pending verification'], ['Account status', accountStatus],
+                    ['Date joined', data.join_date], ['Last login', formatDate(data.last_login)], ['Review note', data.status_reason || data.investigation_notes, true]
+                ]);
+                section('Booking summary', [
+                    ['Total bookings', data.total_bookings], ['Completed bookings', data.completed_bookings],
+                    ['Cancelled bookings', data.cancelled_bookings], ['Completed booking spend', new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(data.lifetime_value || 0))]
+                ], 'booking-summary-grid');
+            })
+            .catch(error => {
+                body.replaceChildren();
+                const message = document.createElement('p');
+                message.className = 'customer-detail-value';
+                message.textContent = error.message || 'Could not load customer details.';
+                body.appendChild(message);
+            });
+    }
+
+    function closeCustomerIdentityReview() { document.getElementById('customerIdentityModal').classList.remove('active'); }
+
+    function openCustomerIdentityReview(id, name) {
+        const modal = document.getElementById('customerIdentityModal');
+        const body = document.getElementById('identityReviewBody');
+        const actions = document.getElementById('identityReviewActions');
+        document.getElementById('identityReviewTitle').textContent = `${name || 'Customer'} identity review`;
+        body.textContent = 'Loading submitted identity documents…';
+        actions.replaceChildren();
+        modal.classList.add('active');
+        fetch(`/admin/api/customers/${encodeURIComponent(id)}/kyc-audit`)
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) throw new Error(data.message || 'No identity submission was found.');
+                body.replaceChildren();
+                const documents = document.createElement('div');
+                documents.className = 'identity-review-grid';
+                [['Government ID front', data.document_url], ['Government ID back', data.document_back_url], ['Selfie', data.selfie_url], ['Additional selfie 2', data.selfie_2_url], ['Additional selfie 3', data.selfie_3_url]].forEach(([label, url]) => {
+                    if (!url) return;
+                    const card = document.createElement('div'); card.className = 'identity-document-card';
+                    const title = document.createElement('strong'); title.textContent = label; title.style.cssText = 'display:block;margin-bottom:8px;color:var(--adm-navy);font-size:.8rem;';
+                    const image = document.createElement('img'); image.src = url; image.alt = label; image.loading = 'lazy';
+                    card.append(title, image); documents.appendChild(card);
+                });
+                body.appendChild(documents);
+                const facts = document.createElement('div'); facts.className = 'identity-review-facts'; facts.style.marginTop = '14px';
+                const rows = [['ID type', data.id_type], ['ID number', data.id_number], ['ID expiry', data.id_expiry_date], ['Submission status', data.verification_status], ['OCR check', data.ocr_status], ['Liveness check', data.liveness_status], ['Face match', data.match_status], ['Fraud score', data.fraud_score], ['Review note', data.failure_reason]];
+                rows.forEach(([label, value]) => { if (value == null || value === '') return; const card=document.createElement('div'); card.className='customer-detail-card'; const l=document.createElement('span');l.className='customer-detail-label';l.textContent=label;const v=document.createElement('div');v.className='customer-detail-value';v.textContent=String(value);card.append(l,v);facts.appendChild(card); });
+                if (facts.childElementCount) body.appendChild(facts);
+                if (!documents.childElementCount) { const empty=document.createElement('p');empty.textContent='No identity images were submitted for this customer.';body.prepend(empty); }
+                [['Approve identity','approve','success'],['Request new documents','resubmit','warning'],['Reject identity','reject','danger']].forEach(([label, action, style]) => {
+                    const button=document.createElement('button');button.type='button';button.className=`btn-clean ${style === 'danger' ? 'btn-danger' : ''}`;button.textContent=label;
+                    button.style.cssText='padding:9px 13px;';button.onclick=()=>submitIdentityDecision(id, action);actions.appendChild(button);
+                });
+            })
+            .catch(error => { body.textContent = error.message || 'Could not load identity documents.'; });
+    }
+
+    function submitIdentityDecision(id, action) {
+        const prompts = {approve:'Confirm that the identity details and images match.',resubmit:'Select why the customer must submit documents again.',reject:'Select the reason for rejecting this identity submission.'};
+        const choices = action === 'approve' ? ['Documents reviewed','Identity matches account details'] : action === 'resubmit' ? ['ID image is unclear','Back of ID is missing','Selfie is missing or unclear','Details do not match','Other'] : ['ID appears invalid','Details do not match','Possible document tampering','Other'];
+        const options = choices.map(value => `<option value="${value}">${value}</option>`).join('');
+        openDiamondModal({title: action === 'approve' ? 'Approve identity?' : action === 'resubmit' ? 'Request new documents?' : 'Reject identity?',desc:prompts[action],html:`<label for="identityDecisionReason" style="display:block;margin-bottom:6px;font-size:.8rem;font-weight:700;">Review reason</label><select id="identityDecisionReason" style="width:100%;padding:11px;border:1px solid #e2e8f0;border-radius:8px;">${options}</select><textarea id="identityDecisionOther" style="display:none;width:100%;margin-top:8px;padding:11px;border:1px solid #e2e8f0;border-radius:8px;" placeholder="Add the reason"></textarea>`,variant:action==='reject'?'danger':action==='approve'?'success':'warning',confirmText:action==='approve'?'Approve':action==='resubmit'?'Request documents':'Reject',didOpen:()=>{const select=document.getElementById('identityDecisionReason');select.onchange=()=>document.getElementById('identityDecisionOther').style.display=select.value==='Other'?'block':'none';},preConfirm:()=>{const selected=document.getElementById('identityDecisionReason').value;const other=document.getElementById('identityDecisionOther').value.trim();return selected==='Other'?(other||false):selected;},onConfirm:reason=>{
+            const fd=new FormData();fd.append('target_user_id',id);fd.append('action',action);fd.append('reason',reason);
+            fetch('/admin/verify/manual-action',{method:'POST',body:fd,headers:{'Accept':'application/json'}}).then(response=>response.json()).then(result=>{if(!result.success)throw new Error(result.message||'Could not save the review.');Swal.fire('Review saved',result.message||'Identity review completed.','success').then(()=>location.reload());}).catch(error=>Swal.fire('Error',error.message||'Could not save the review.','error'));
+        }});
     }
 
     function suspendAccount(id) {
         openDiamondModal({
             title: 'Suspend Account?',
-            desc: 'Provide a reason for the suspension. The customer will lose platform access.',
+            desc: 'Suspension blocks sign-in until an admin reactivates the account. Use it when access must stop.',
             html: `
-                <input id="suspendReason" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif;" placeholder="Enter reason for suspension" autocomplete="off">
-                <div id="suspendReasonError" style="color: #ef4444; font-size: 0.75rem; display: none; margin-top: 4px;">Reason is required.</div>
+                <select id="suspendReason" style="width:100%;padding:12px;border:1px solid #e2e8f0;border-radius:8px;font-family:'Poppins',sans-serif"><option value="">Choose a reason</option><option>Security concern</option><option>Terms of service violation</option><option>Repeated booking abuse</option><option>Payment issue</option><option>Customer request</option><option>Other</option></select>
+                <textarea id="suspendReasonOther" style="display:none;width:100%;margin-top:8px;padding:12px;border:1px solid #e2e8f0;border-radius:8px" placeholder="Add details"></textarea>
             `,
+            didOpen: () => { const select=document.getElementById('suspendReason'); select.onchange=()=>document.getElementById('suspendReasonOther').style.display=select.value==='Other'?'block':'none'; },
             variant: 'danger',
             confirmText: 'Suspend Account',
             preConfirm: () => {
-                const reason = document.getElementById('suspendReason').value.trim();
-                if (!reason) {
-                    document.getElementById('suspendReasonError').style.display = 'block';
-                    document.getElementById('suspendReason').style.borderColor = '#ef4444';
-                    return false;
-                }
-                return reason;
+                const selected=document.getElementById('suspendReason').value;
+                const other=document.getElementById('suspendReasonOther').value.trim();
+                return selected ? (selected==='Other' ? (other || false) : selected) : false;
             },
             onConfirm: (reason) => {
                 Swal.fire({ title: 'Suspending...', didOpen: () => Swal.showLoading() });
@@ -629,21 +750,18 @@
     function flagAccount(id) {
         openDiamondModal({
             title: 'Flag Account for Review?',
-            desc: 'Provide a reason for flagging this account.',
+            desc: 'Flags mark the account for investigation. Flagged accounts also cannot sign in until an admin clears the flag.',
             html: `
-                <input id="flagReason" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif;" placeholder="Enter reason for flagging" autocomplete="off">
-                <div id="flagReasonError" style="color: #ef4444; font-size: 0.75rem; display: none; margin-top: 4px;">Reason is required.</div>
+                <select id="flagReason" style="width:100%;padding:12px;border:1px solid #e2e8f0;border-radius:8px;font-family:'Poppins',sans-serif"><option value="">Choose a reason</option><option>Unusual account activity</option><option>Possible fraud</option><option>Repeated cancellations</option><option>Customer report received</option><option>Identity details need review</option><option>Other</option></select>
+                <textarea id="flagReasonOther" style="display:none;width:100%;margin-top:8px;padding:12px;border:1px solid #e2e8f0;border-radius:8px" placeholder="Add details"></textarea>
             `,
+            didOpen: () => { const select=document.getElementById('flagReason'); select.onchange=()=>document.getElementById('flagReasonOther').style.display=select.value==='Other'?'block':'none'; },
             variant: 'warning',
             confirmText: 'Flag Account',
             preConfirm: () => {
-                const reason = document.getElementById('flagReason').value.trim();
-                if (!reason) {
-                    document.getElementById('flagReasonError').style.display = 'block';
-                    document.getElementById('flagReason').style.borderColor = '#ef4444';
-                    return false;
-                }
-                return reason;
+                const selected=document.getElementById('flagReason').value;
+                const other=document.getElementById('flagReasonOther').value.trim();
+                return selected ? (selected==='Other' ? (other || false) : selected) : false;
             },
             onConfirm: (reason) => {
                 Swal.fire({ title: 'Flagging...', didOpen: () => Swal.showLoading() });

@@ -976,6 +976,8 @@ def login(
          
          if user.status == "suspended":
              error_msg = f"Your account has been suspended. Reason: {user.status_reason or 'No reason provided.'}"
+         elif user.status == "flagged":
+             error_msg = f"Your account is under review and sign-in is paused. Contact support with this reason: {user.status_reason or 'Account review required.'}"
          elif user.status == "rejected":
              error_msg = f"Your account application was rejected. Reason: {user.status_reason or 'Identity verification failed.'}"
          elif user.status == "investigation":

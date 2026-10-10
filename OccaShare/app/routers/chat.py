@@ -12,6 +12,76 @@ from datetime import datetime
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
+@router.get("/contacts")
+async def get_message_contacts(
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Return the people each admin or caterer can start a direct conversation with."""
+    if current_user.role == "admin":
+        contacts = db.query(models.User).filter(
+            models.User.role == "caterer",
+            models.User.is_archived == False,
+        ).order_by(models.User.first_name, models.User.last_name).all()
+    elif current_user.role == "caterer":
+        contacts = db.query(models.User).filter(
+            models.User.role == "admin",
+            models.User.is_archived == False,
+        ).order_by(models.User.id.asc()).all()
+        profile = current_user.caterer_profile
+        if profile:
+            booking_user_ids = db.query(models.Booking.user_id).filter(
+                models.Booking.caterer_id == profile.id,
+                models.Booking.user_id.isnot(None),
+            )
+            inquiry_user_ids = db.query(models.Inquiry.user_id).filter(
+                models.Inquiry.caterer_id == profile.id,
+                models.Inquiry.user_id.isnot(None),
+            )
+            inquiry_emails = [email for (email,) in db.query(models.Inquiry.email).filter(
+                models.Inquiry.caterer_id == profile.id,
+                models.Inquiry.email.isnot(None),
+                models.Inquiry.email != "",
+            ).distinct().all()]
+            customer_contacts = db.query(models.User).filter(
+                models.User.role == "customer",
+                models.User.is_archived == False,
+                or_(
+                    models.User.id.in_(booking_user_ids),
+                    models.User.id.in_(inquiry_user_ids),
+                    models.User.email.in_(inquiry_emails) if inquiry_emails else False,
+                ),
+            ).order_by(models.User.created_at.desc()).limit(250).all()
+            contacts.extend(customer_contacts)
+    else:
+        return []
+
+    result = []
+    for contact in contacts:
+        name = f"{contact.first_name or ''} {contact.last_name or ''}".strip() or contact.email
+        if contact.role == "caterer" and contact.caterer_profile:
+            name = contact.caterer_profile.business_name or name
+        contact_group = "customers" if contact.role == "customer" else "admin" if contact.role == "admin" else "caterers"
+        if current_user.role == "caterer" and contact.role == "customer" and current_user.caterer_profile:
+            booked = db.query(models.Booking.id).filter(
+                models.Booking.caterer_id == current_user.caterer_profile.id,
+                models.Booking.user_id == contact.id,
+            ).first() is not None
+            inquired = db.query(models.Inquiry.id).filter(
+                models.Inquiry.caterer_id == current_user.caterer_profile.id,
+                or_(models.Inquiry.user_id == contact.id, models.Inquiry.email == contact.email),
+            ).first() is not None
+            contact_group = "booked" if booked else "inquired" if inquired else "customers"
+        result.append({
+            "id": contact.id,
+            "name": name,
+            "email": contact.email,
+            "role": contact.role,
+            "contact_group": contact_group,
+            "is_online": contact.id in manager.user_connections,
+        })
+    return result
+
 @router.get("/history/{other_user_id}", response_model=List[schemas.ChatMessageResponse])
 async def get_chat_history(
     other_user_id: int,

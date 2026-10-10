@@ -1419,73 +1419,55 @@
             }
 
             .hdr-btn {
-                width: 36px !important;
-                height: 36px !important;
+                width: 38px !important;
+                height: 38px !important;
                 font-size: 0.95rem !important;
             }
 
-            .hdr-btn.plus-btn {
-                width: 36px !important;
-                height: 36px !important;
-                font-size: 1rem !important;
-                border-radius: 10px !important;
-            }
-
-            .mobile-search-dropdown-wrap {
-                display: block;
-                padding: 12px;
-                border-bottom: 1px solid #f1f5f9;
-            }
-
-            .mobile-search-dropdown-wrap .header-search {
-                display: flex !important;
-                width: 100%;
-                border: none;
-                border-radius: var(--border-radius, 99px);
-                padding: 0 1rem;
-                height: 44px;
-                align-items: center;
-                gap: 8px;
-                background: #f1f5f9;
-            }
-
-            .mobile-search-dropdown-wrap .header-search input {
-                border: none;
-                background: transparent;
-                width: 100%;
-                outline: none;
-                font-size: 0.9rem;
-                color: #1e293b;
-                font-weight: 500;
-            }
         }
 
-        @media (min-width: 769px) {
-            .mobile-search-dropdown-wrap {
+        .mobile-search-wrap { display:none;position:relative; }
+        .header-dropdown-wrapper { order:2; }
+        #catererMessagesButton { order:1; }
+        .header-actions > .hdr-btn,
+        .header-dropdown-wrapper > .hdr-btn,
+        .mobile-search-toggle { transition:color .16s ease,background-color .16s ease,box-shadow .16s ease; }
+        .header-actions > .hdr-btn:hover,
+        .header-dropdown-wrapper > .hdr-btn:hover,
+        .mobile-search-toggle:hover,
+        .mobile-search-toggle[aria-expanded="true"] { color:var(--primary-color) !important;background:rgba(var(--primary-color-rgb),.12) !important; }
+        .header-actions > .hdr-btn:active,
+        .header-dropdown-wrapper > .hdr-btn:active,
+        .mobile-search-toggle:active { color:var(--primary-color) !important;background:rgba(var(--primary-color-rgb),.2) !important; }
+        .header-actions > .hdr-btn:focus-visible,
+        .header-dropdown-wrapper > .hdr-btn:focus-visible,
+        .mobile-search-toggle:focus-visible { outline:2px solid var(--primary-color);outline-offset:2px; }
+        @media (max-width: 1024px) {
+            .mobile-search-wrap { display:flex;align-items:center;justify-content:center;flex:0 0 38px;width:38px;height:38px;align-self:center; }
+            .header-right,.header-actions { align-items:center !important; }
+            .header-actions > .header-dropdown-wrapper { display:flex;align-items:center;justify-content:center;flex:0 0 38px;width:38px;height:38px;align-self:center; }
+            .header-actions > #catererMessagesButton { align-self:center; }
+            .header-profile-section { align-self:center;flex:0 0 38px;width:38px;height:38px; }
+            .header-actions > .hdr-btn,.header-dropdown-wrapper > .hdr-btn,.mobile-search-toggle { box-sizing:border-box;width:38px !important;height:38px !important;min-width:38px;flex:0 0 38px;display:flex;align-items:center;justify-content:center;align-self:center;padding:0; }
+            .mobile-search-toggle { border:0;border-radius:11px;background:transparent;color:#475569;font-size:1rem;cursor:pointer; }
+            .profile-trigger { box-sizing:border-box;width:38px;height:38px;display:flex;align-items:center;justify-content:center;padding:0 !important; }
+            .profile-avatar { box-sizing:border-box;width:34px !important;height:34px !important; }
+            .mobile-search-panel { display:none; }
+            .mobile-search-panel.open { position:fixed;top:calc(var(--header-height,68px) + 8px);left:12px;right:12px;z-index:6000;display:block;padding:12px;border:1px solid #e2e8f0;border-radius:16px;background:#fff;box-shadow:0 20px 45px rgba(15,23,42,.2); }
+            .mobile-search-panel .header-search { display:flex !important;align-items:center;gap:9px;width:100%;height:44px;padding:0 11px;border:1px solid #e2e8f0;border-radius:11px;background:#f8fafc; }
+            .mobile-search-panel .header-search input { flex:1;width:100%;min-width:0;border:0;outline:0;background:transparent;color:#1e293b;font-size:.9rem; }
+            .mobile-search-close { width:30px;height:30px;flex:0 0 30px;border:0;border-radius:8px;background:transparent;color:#64748b;font-size:1rem;cursor:pointer; }
+            .mobile-search-panel .omni-results-panel { position:relative;inset:auto;width:100%;max-height:min(65dvh,520px);margin-top:8px;overflow:auto;box-shadow:none;border-radius:12px; }
+            .mobile-search-panel .results-scroller { max-height:min(65dvh,520px);overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch; }
+        }
+        @media (max-width: 520px) {
+            .header-clock,.header-separator { display:none !important; }
+            .header-right,.header-actions { gap:.4rem !important; }
+        }
+        @media (min-width: 1025px) {
+            .mobile-search-wrap {
                 display: none !important;
             }
-        }
-
-        /* QUICK ACTIONS BTN */
-        .hdr-btn.plus-btn {
-            width: 42px;
-            height: 42px;
-            border-radius: var(--border-radius, 12px);
-            background: var(--primary-color);
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.15rem;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.25);
-        }
-
-        .hdr-btn.plus-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(var(--primary-color-rgb), 0.35);
         }
 
         /* OMNI-RESULTS PANEL */
@@ -1887,7 +1869,7 @@
                     <div class="command-search-wrap">
                         <div class="header-search" id="omniSearchTrigger">
                             <i class="fas fa-magnifying-glass"></i>
-                            <input type="text" id="globalSearchInput" placeholder="Search platform..."
+                            <input type="text" id="globalSearchInput" placeholder="Search this page..."
                                 autocomplete="off">
                             <div class="search-kbd">
                                 <span>Ctrl K</span>
@@ -1920,49 +1902,11 @@
                         </div>
                         <div class="header-separator"></div>
 
-                        <!-- Quick Commands -->
-                        <div class="header-dropdown-wrapper">
-                            <button type="button" class="hdr-btn plus-btn" title="Quick Actions"
-                                onclick="toggleHeaderDropdown('quickActionsDropdown', this)">
-                                <i class="fas fa-plus"></i>
-                            </button>
-                            <div class="premium-dropdown" id="quickActionsDropdown" style="width: 280px; padding: 0;">
-                                <div class="mobile-search-dropdown-wrap">
-                                    <div class="header-search">
-                                        <i class="fas fa-magnifying-glass" style="color: #64748b;"></i>
-                                        <input type="text" id="mobileSearchInput" placeholder="Search platform..."
-                                            autocomplete="off">
-                                    </div>
-                                    <div id="omniSearchResultsMobile" class="omni-results-panel"
-                                        style="position: relative; top: 10px; box-shadow: none; border: none; padding: 0; background: transparent; max-height: none;">
-                                    </div>
-                                </div>
-                                <div class="dropdown-header"
-                                    style="padding: 12px 16px; font-weight: 700; color: #64748b; font-size: 0.75rem; text-transform: uppercase;">
-                                    Quick Commands</div>
-                                <ul class="dropdown-links" style="list-style: none; margin: 0; padding: 8px;">
-                                    <li>
-                                        <a href="/caterer/menu"
-                                            style="display: flex; align-items: center; gap: 12px; padding: 10px; color: #1e293b; text-decoration: none; border-radius: var(--border-radius, 8px); transition: background 0.2s;">
-                                            <i class="fas fa-plus-circle" style="color: var(--primary-color);"></i> Add
-                                            Menu Item
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="/caterer/packages"
-                                            style="display: flex; align-items: center; gap: 12px; padding: 10px; color: #1e293b; text-decoration: none; border-radius: var(--border-radius, 8px); transition: background 0.2s;">
-                                            <i class="fas fa-box-open" style="color: var(--accent-color);"></i> Create
-                                            Package
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="/caterer/calendar"
-                                            style="display: flex; align-items: center; gap: 12px; padding: 10px; color: #1e293b; text-decoration: none; border-radius: var(--border-radius, 8px); transition: background 0.2s;">
-                                            <i class="fas fa-calendar-plus" style="color: var(--highlight-color);"></i>
-                                            New Manual Booking
-                                        </a>
-                                    </li>
-                                </ul>
+                        <div class="mobile-search-wrap" id="mobileSearchWrap">
+                            <button type="button" class="mobile-search-toggle" id="mobileSearchToggle" aria-label="Search platform" aria-expanded="false" aria-controls="mobileSearchPanel"><i class="fas fa-magnifying-glass"></i></button>
+                            <div class="mobile-search-panel" id="mobileSearchPanel">
+                                <div class="header-search"><i class="fas fa-magnifying-glass" style="color:#64748b;"></i><input type="text" id="mobileSearchInput" placeholder="Search this page..." autocomplete="off" aria-label="Search this page"><button type="button" class="mobile-search-close" id="mobileSearchClose" aria-label="Close search"><i class="fas fa-times"></i></button></div>
+                                <div id="omniSearchResultsMobile" class="omni-results-panel"><div class="results-scroller" id="searchResultsScrollerMobile"></div></div>
                             </div>
                         </div>
 
@@ -2015,46 +1959,11 @@
                             </div>
                         </div>
 
-                        <!-- Messages Dropdown -->
-                        <div class="header-dropdown-wrapper" style="position: relative;">
-                            {% if active_page == 'messages' %}
-                            <a href="/caterer/messages" class="hdr-btn active" title="Messages"
-                                style="text-decoration: none;">
-                                <i class="fas fa-comment-dots"></i>
-                                <span id="nav-chat-badge" class="action-badge" style="display: none;">0</span>
-                            </a>
-                            {% else %}
-                            <button type="button" onclick="toggleHeaderDropdown('messagesDropdown', this)"
-                                class="hdr-btn" title="Messages">
-                                <i class="fas fa-comment-dots"></i>
-                                <span id="nav-chat-badge" class="action-badge" style="display: none;">0</span>
-                            </button>
-                            <div class="premium-dropdown" id="messagesDropdown"
-                                style="width: 320px; right: -10px; cursor: default;">
-                                <div class="dropdown-header"
-                                    style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px;">
-                                    <p class="dropdown-user-name" style="margin: 0;">Messages</p>
-                                </div>
-                                <div class="dropdown-body" id="headerChatContainer"
-                                    style="max-height: 320px; overflow-y: auto;">
-                                    <div style="text-align: center; padding: 2rem 1rem;">
-                                        <div
-                                            style="background: #f8fafc; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
-                                            <i class="fas fa-comments" style="color: #cbd5e1; font-size: 1.25rem;"></i>
-                                        </div>
-                                        <p style="margin: 0; font-size: 0.85rem; color: #64748b;">Loading messages...
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="dropdown-footer"
-                                    style="padding: 10px; border-top: 1px solid #f1f5f9; text-align: center; background: #fafafa; border-radius: 0 0 16px 16px;">
-                                    <a href="/caterer/messages"
-                                        style="color: var(--primary-color); font-weight: 700; font-size: 0.8rem; text-decoration: none; display: block; width: 100%;">Open
-                                        Chat Center</a>
-                                </div>
-                            </div>
-                            {% endif %}
-                        </div>
+                        <button type="button" id="catererMessagesButton" onclick="toggleCatererMessagesModal()"
+                            class="hdr-btn {{ 'active' if active_page == 'messages' }}" title="Messages" aria-label="Messages" aria-expanded="false" aria-controls="catererMessagesModal">
+                            <i class="fas fa-comment-dots"></i>
+                            <span id="nav-chat-badge" class="action-badge" style="display:none;">0</span>
+                        </button>
                     </div>
 
                     <div class="header-profile-section">
@@ -2100,6 +2009,26 @@
                 </div>
             </header>
 
+            <style>
+                #catererMessagesButton.active { color:var(--primary-color);background:rgba(var(--primary-color-rgb),.12);box-shadow:0 0 0 2px rgba(var(--primary-color-rgb),.14); }
+                #catererMessagesModal { position:fixed;inset:0;z-index:5000;display:none;align-items:center;justify-content:center;padding:clamp(8px,2vw,24px);background:rgba(15,23,42,.58);backdrop-filter:blur(4px); }
+                #catererMessagesModal.open { display:flex; }
+                #catererMessagesDialog { width:min(1160px,100%);height:min(840px,calc(100dvh - 32px));display:flex;flex-direction:column;overflow:hidden;border-radius:18px;background:#f8fafc;box-shadow:0 24px 80px rgba(15,23,42,.35); }
+                #catererMessagesModalHeader { flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid #e2e8f0;background:#fff; }
+                #catererMessagesModalHeader h2 { margin:0;color:#0f172a;font-size:.95rem;font-weight:800; }
+                #catererMessagesModalHeader p { margin:3px 0 0;color:#64748b;font-size:.7rem; }
+                #catererMessagesModalHeader button { width:36px;height:36px;border:0;border-radius:9px;background:#f1f5f9;color:#475569;font-size:1.1rem;cursor:pointer;transition:background .16s,color .16s; }
+                #catererMessagesModalHeader button:hover,#catererMessagesModalHeader button:focus-visible { background:rgba(var(--primary-color-rgb),.12);color:var(--primary-color);outline:none; }
+                #catererMessagesFrame { width:100%;height:100%;min-height:0;flex:1;border:0;background:#f8fafc; }
+                @media(max-width:600px) { #catererMessagesModal { padding:0; } #catererMessagesDialog { width:100%;height:100dvh;border-radius:0; } #catererMessagesModalHeader { padding:10px 12px; } }
+            </style>
+            <div id="catererMessagesModal" role="dialog" aria-modal="true" aria-labelledby="catererMessagesModalTitle" onclick="if(event.target===this) closeCatererMessagesModal()">
+                <section id="catererMessagesDialog">
+                    <header id="catererMessagesModalHeader"><div><h2 id="catererMessagesModalTitle">Messages</h2><p>Chat with customers and OccaServe admin.</p></div><button type="button" aria-label="Close messages" onclick="closeCatererMessagesModal()"><i class="fas fa-times"></i></button></header>
+                    <iframe id="catererMessagesFrame" title="Caterer conversations" loading="lazy"></iframe>
+                </section>
+            </div>
+
             <!-- Main Content Area -->
             <main class="main-content">
                 {% if user and user.caterer_profile and user.caterer_profile.verification_status != 'Verified' and
@@ -2132,6 +2061,23 @@
         window.catererConfig = {
             userId: {{ user.id if user else 'null' }}
         };
+        function toggleCatererMessagesModal() {
+            const modal=document.getElementById('catererMessagesModal');
+            if(modal.classList.contains('open')) return closeCatererMessagesModal();
+            modal.classList.add('open');
+            document.getElementById('catererMessagesButton').classList.add('active');
+            document.getElementById('catererMessagesButton').setAttribute('aria-expanded','true');
+            const frame=document.getElementById('catererMessagesFrame');
+            if(!frame.src||frame.src==='about:blank') frame.src='/caterer/messages?embedded=true';
+            document.body.style.overflow='hidden';
+        }
+        function closeCatererMessagesModal() {
+            document.getElementById('catererMessagesModal').classList.remove('open');
+            document.getElementById('catererMessagesButton').setAttribute('aria-expanded','false');
+            if({{ 'false' if active_page == 'messages' else 'true' }}) document.getElementById('catererMessagesButton').classList.remove('active');
+            document.body.style.overflow='';
+        }
+        document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.getElementById('catererMessagesModal').classList.contains('open'))closeCatererMessagesModal();});
     </script>
     <script src="{{ url_for('static', path='/js/caterer/layout.js') }}?v={{ static_asset_version('js/caterer/layout.js') }}"></script>
     <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v={{ static_asset_version('js/caterer/alert_modal.js') }}"></script>
@@ -2210,66 +2156,93 @@
                 { input: document.getElementById('globalSearchInput'), resBox: document.getElementById('omniSearchResults') },
                 { input: document.getElementById('mobileSearchInput'), resBox: document.getElementById('omniSearchResultsMobile') }
             ];
+            const mobileSearchPopover = document.getElementById('mobileSearchPanel');
+            const mobileSearchToggle = document.getElementById('mobileSearchToggle');
+            const mobileSearchClose = document.getElementById('mobileSearchClose');
+            const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[char]));
 
-            let timeout = null;
+            // Filter the current page and show matching records from across the caterer's account.
+            const pagesWithLocalSearch = new Set([
+                '/caterer/archives', '/caterer/bookings', '/caterer/calendar', '/caterer/compliance',
+                '/caterer/ingredients', '/caterer/menu', '/caterer/orders', '/caterer/packages',
+                '/caterer/reviews', '/caterer/services'
+            ]);
+            const applyPageSearchFallback = (query) => {
+                if (pagesWithLocalSearch.has(window.location.pathname.replace(/\/$/, ''))) return;
+                const candidates = document.querySelectorAll(
+                    'main table tbody tr, main [data-search-item], main .searchable-card, main .searchable-row, ' +
+                    'main .today-event-row, main .upcoming-booking-row, main .action-center-row, ' +
+                    'main .portfolio-item, main .portfolio-card, main .notification-item, main .notif-item, ' +
+                    'main .payment-row, main .transaction-row, main .archived-card, main .gallery-item, ' +
+                    'main .weekly-event-card, main .review-quote-card, main .recent-booking-row'
+                );
+                candidates.forEach(item => {
+                    const matches = !query || item.textContent.toLowerCase().includes(query);
+                    item.style.display = matches ? '' : 'none';
+                });
+            };
 
             configs.forEach(conf => {
                 if (!conf.input || !conf.resBox) return;
+                conf.searchTimer = null;
+                conf.searchRequestId = 0;
+
+                const renderGlobalResults = results => {
+                    const safeResults = Array.isArray(results) ? results.slice(0, 20) : [];
+                    if (!safeResults.length) {
+                        conf.resBox.innerHTML = '<div class="search-placeholder"><i class="fas fa-search"></i><p>No matches found in your account.</p></div>';
+                        return;
+                    }
+                    conf.resBox.innerHTML = '<div class="results-scroller">' + safeResults.map((result, index) => {
+                        let href = '#';
+                        try {
+                            const parsed = new URL(result.url || '/', window.location.origin);
+                            if (parsed.origin === window.location.origin) href = parsed.pathname + parsed.search + parsed.hash;
+                        } catch (_) {}
+                        const icon = /^[a-z0-9 _-]+$/i.test(result.icon || '') ? result.icon : 'fas fa-magnifying-glass';
+                        return `<a href="${escapeHtml(href)}" class="omni-result-item ${index === 0 ? 'selected' : ''}">
+                            <div class="omni-result-icon"><i class="${escapeHtml(icon)}"></i></div>
+                            <div class="omni-result-content"><div class="omni-result-header">
+                                <span class="omni-result-title">${escapeHtml(result.title)}</span>
+                                <span class="omni-type-tag">${escapeHtml(result.type)}</span>
+                            </div><span class="omni-result-subtitle">${escapeHtml(result.subtitle)}</span></div>
+                            <div class="omni-result-action"><i class="fas fa-chevron-right"></i></div>
+                        </a>`;
+                    }).join('') + '</div>';
+                };
 
                 // Dispatch globalSearch on input to filter current page in real-time
                 conf.input.addEventListener('input', (e) => {
                     const val = e.target.value;
+                    window.catererPageSearchQuery = val.trim().toLowerCase();
                     window.dispatchEvent(new CustomEvent('globalSearch', { detail: { value: val } }));
-
-                    clearTimeout(timeout);
                     const q = val.trim();
-                    if (q.length < 2) { 
-                        conf.resBox.classList.remove('active'); 
-                        conf.resBox.innerHTML = ''; 
-                        return; 
+                    conf.resBox.classList.remove('active');
+                    conf.resBox.replaceChildren();
+                    clearTimeout(conf.searchTimer);
+                    const requestId = ++conf.searchRequestId;
+                    if (q.length < 2) {
+                        applyPageSearchFallback('');
+                        return;
                     }
-
-                    timeout = setTimeout(async () => {
+                    applyPageSearchFallback(q.toLowerCase());
+                    conf.resBox.innerHTML = '<div class="search-placeholder"><i class="fas fa-spinner fa-spin"></i><p>Searching your account...</p></div>';
+                    conf.resBox.classList.add('active');
+                    conf.searchTimer = setTimeout(async () => {
                         try {
-                            conf.resBox.innerHTML = '<div style="padding:1rem;text-align:center;color:#94a3b8;font-size:0.8rem;"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
-                            conf.resBox.classList.add('active');
-                            const r = await fetch(`/caterer/api/omni-search?q=${encodeURIComponent(q)}`);
-                            const data = await r.json();
-                            if (data.results && data.results.length > 0) {
-                                conf.resBox.innerHTML = '<div class="results-scroller">' + data.results.map((i, idx) => `
-                                    <a href="${i.url}" class="omni-result-item ${idx === 0 ? 'selected' : ''}">
-                                        <div class="omni-result-icon"><i class="${i.icon}"></i></div>
-                                        <div class="omni-result-content">
-                                            <div class="omni-result-header">
-                                                <span class="omni-result-title">${i.title}</span>
-                                                <span class="omni-type-tag">${i.type}</span>
-                                            </div>
-                                            <span class="omni-result-subtitle">${i.subtitle}</span>
-                                        </div>
-                                    </a>
-                                `).join('') + `
-                                    <a href="/caterer/bookings?search=${encodeURIComponent(q)}" class="omni-result-action" style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:0.8rem;font-weight:700;color:var(--primary-color);text-decoration:none;">
-                                        <span><i class="fas fa-magnifying-glass" style="margin-right:6px;"></i> Search all bookings for "<b>${q}</b>"</span>
-                                        <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i>
-                                    </a>
-                                </div>`;
-                            } else {
-                                conf.resBox.innerHTML = `
-                                <div style="padding:1.5rem;text-align:center;color:#94a3b8;font-size:0.8rem;">
-                                    <i class="fas fa-search" style="display:block;font-size:1.5rem;margin-bottom:0.5rem;opacity:0.4;"></i>
-                                    No direct matches for "<b>${q}</b>"
-                                    <div style="margin-top:0.75rem;">
-                                        <a href="/caterer/bookings?search=${encodeURIComponent(q)}" style="color:var(--primary-color);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
-                                            Search in Bookings &rarr;
-                                        </a>
-                                    </div>
-                                </div>`;
-                            }
-                        } catch (e) {
-                            conf.resBox.innerHTML = '<div style="padding:1rem;text-align:center;color:#ef4444;font-size:0.8rem;">Search error. Try again.</div>';
-                            console.error("Search error:", e);
+                            const response = await fetch(`/caterer/api/omni-search?q=${encodeURIComponent(q)}`);
+                            if (!response.ok) throw new Error(`Search failed (${response.status})`);
+                            const data = await response.json();
+                            if (requestId !== conf.searchRequestId || q !== conf.input.value.trim()) return;
+                            renderGlobalResults(data.results);
+                        } catch (error) {
+                            if (requestId !== conf.searchRequestId) return;
+                            conf.resBox.innerHTML = '<div class="search-placeholder"><i class="fas fa-triangle-exclamation"></i><p>Search failed. Try again.</p></div>';
+                            console.error('Caterer global search failed:', error);
                         }
-                    }, 250);
+                    }, 220);
                 });
 
                 // Keyboard controls for search dropdown
@@ -2277,13 +2250,10 @@
                     if (e.key === 'Escape') {
                         conf.resBox.classList.remove('active');
                     } else if (e.key === 'Enter') {
-                        const activeItem = conf.resBox.querySelector('.omni-result-item.selected') || conf.resBox.querySelector('.omni-result-item');
-                        if (activeItem && conf.resBox.classList.contains('active')) {
+                        const firstResult = conf.resBox.querySelector('.omni-result-item');
+                        if (firstResult && conf.resBox.classList.contains('active')) {
                             e.preventDefault();
-                            activeItem.click();
-                        } else if (conf.input.value.trim().length > 0) {
-                            e.preventDefault();
-                            window.location.href = `/caterer/bookings?search=${encodeURIComponent(conf.input.value.trim())}`;
+                            firstResult.click();
                         }
                     } else if (e.key === 'ArrowDown') {
                         const items = Array.from(conf.resBox.querySelectorAll('.omni-result-item'));
@@ -2313,13 +2283,31 @@
             document.addEventListener('click', (e) => {
                 configs.forEach(conf => {
                     if (conf.input && conf.resBox) {
-                        const isInsideInput = conf.input.contains(e.target) || (conf.input.closest('.command-search-wrap') && conf.input.closest('.command-search-wrap').contains(e.target));
+                        const isInsideInput = conf.input.contains(e.target) || (conf.input.closest('.command-search-wrap') && conf.input.closest('.command-search-wrap').contains(e.target)) || (conf.input.closest('.mobile-search-wrap') && conf.input.closest('.mobile-search-wrap').contains(e.target));
                         const isInsideDropdown = conf.input.closest('.premium-dropdown') && conf.input.closest('.premium-dropdown').contains(e.target);
                         if (!isInsideInput && !isInsideDropdown) {
                             conf.resBox.classList.remove('active');
                         }
                     }
                 });
+                const mobileIsOpen = mobileSearchPopover?.classList.contains('open');
+                if (mobileIsOpen && !e.target.closest('#mobileSearchWrap')) {
+                    mobileSearchPopover.classList.remove('open');
+                    mobileSearchToggle?.setAttribute('aria-expanded', 'false');
+                }
+            });
+
+            mobileSearchToggle?.addEventListener('click', () => {
+                const isOpen = mobileSearchPopover.classList.toggle('open');
+                mobileSearchToggle.setAttribute('aria-expanded', String(isOpen));
+                if (isOpen) document.getElementById('mobileSearchInput')?.focus();
+                else document.getElementById('omniSearchResultsMobile')?.classList.remove('active');
+            });
+            mobileSearchClose?.addEventListener('click', () => {
+                mobileSearchPopover?.classList.remove('open');
+                mobileSearchToggle?.setAttribute('aria-expanded', 'false');
+                document.getElementById('omniSearchResultsMobile')?.classList.remove('active');
+                document.getElementById('mobileSearchInput')?.blur();
             });
 
             // Ctrl+K shortcut
@@ -2330,9 +2318,9 @@
                         configs[0].input.focus();
                         configs[0].input.select();
                     } else if (window.innerWidth <= 1024) {
-                        const plusBtn = document.querySelector('.plus-btn');
-                        if (plusBtn) plusBtn.click();
-                        setTimeout(() => { if (configs[1].input) configs[1].input.focus(); }, 100);
+                        mobileSearchPopover?.classList.add('open');
+                        mobileSearchToggle?.setAttribute('aria-expanded', 'true');
+                        if (configs[1].input) configs[1].input.focus();
                     }
                 }
                 if (e.key === 'Escape') {
@@ -2342,6 +2330,8 @@
                             conf.input.blur();
                         }
                     });
+                    mobileSearchPopover?.classList.remove('open');
+                    mobileSearchToggle?.setAttribute('aria-expanded', 'false');
                 }
             });
         })();
@@ -2376,7 +2366,7 @@
         const _globalChat = new OccaChat({
             userId: CATERER_USER_ID,
             userRole: 'caterer',
-            websocketUrl: `ws://${window.location.host}/ws`,
+            websocketUrl: `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`,
             onMessageReceived: function(data) {
                 // Only count messages sent TO this caterer
                 if (data.sender_id === CATERER_USER_ID) return;

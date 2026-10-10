@@ -97,14 +97,6 @@
                     </a>
                 </li>
                 <li>
-                    <a href="/admin/caterer-verification" class="nav-item {{ 'active' if active_page == 'caterer_verification' }}"
-                        onclick="closeSidebar()">
-                        <div class="nav-icon"><i class="fas fa-shield-halved"></i></div>
-                        <span class="nav-label">Caterer Verification</span>
-                        <span class="nav-badge nav-badge-red" id="badge-caterer_verification" style="display:none;">0</span>
-                    </a>
-                </li>
-                <li>
                     <a href="/admin/customers" class="nav-item {{ 'active' if active_page == 'customers' }}"
                         onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-users"></i></div>
@@ -228,20 +220,10 @@
                     </div>
                 </div>
 
-                <div class="header-dropdown-wrapper">
-                    <button class="header-icon-btn plus-btn" title="Quick Links" aria-label="Quick Links"
-                        onclick="toggleHeaderDropdown('quickActionsDropdown', this)">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                    <div class="premium-dropdown" id="quickActionsDropdown">
-                        <div class="dropdown-header">Quick Links</div>
-                        <ul class="dropdown-links">
-                            <li><a href="/admin/caterer-verification"><i class="fas fa-shield-halved"></i> Review Caterer Applications</a></li>
-                            <li><a href="/admin/bookings?status=pending"><i class="fas fa-calendar-check"></i> Review Pending Bookings</a></li>
-                            <li><a href="/admin/settings"><i class="fas fa-sliders"></i> Platform Settings</a></li>
-                        </ul>
-                    </div>
-                </div>
+                <button type="button" id="adminMessagesButton" class="header-icon-btn {{ 'active' if active_page == 'messages' }}" title="Messages" aria-label="Messages" aria-expanded="false" aria-controls="adminMessagesModal" onclick="toggleAdminMessagesModal()" style="position:relative;">
+                    <i class="fas fa-comment-dots"></i>
+                    <span id="adminChatBadge" class="action-badge" style="display:{{ 'flex' if unread_messages|default(0) > 0 else 'none' }};">{{ unread_messages|default(0) }}</span>
+                </button>
 
                 <!-- Notifications Center -->
                 <div class="header-dropdown-wrapper" id="notifWrapper" style="position: relative;">
@@ -311,6 +293,25 @@
                 </div>
             </div>
         </header>
+
+        <style>
+            #adminMessagesButton.active { color:#ea580c; background:#fff7ed; border-color:#fed7aa; box-shadow:0 0 0 2px rgba(249,115,22,.12); }
+            #adminMessagesModal { position:fixed; inset:0; z-index:5000; display:none; align-items:center; justify-content:center; padding:clamp(8px,2vw,24px); background:rgba(15,23,42,.56); backdrop-filter:blur(4px); }
+            #adminMessagesModal.open { display:flex; }
+            #adminMessagesDialog { width:min(1120px,100%); height:min(820px,calc(100dvh - 32px)); overflow:hidden; display:flex; flex-direction:column; border-radius:18px; background:#f8fafc; box-shadow:0 24px 80px rgba(15,23,42,.35); }
+            #adminMessagesModalHeader { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; padding:13px 18px; border-bottom:1px solid #e2e8f0; background:#fff; }
+            #adminMessagesModalHeader h2 { margin:0; color:#0f172a; font-size:.95rem; font-weight:800; }
+            #adminMessagesModalHeader p { margin:3px 0 0; color:#64748b; font-size:.7rem; }
+            #adminMessagesModalHeader button { width:36px;height:36px;border:0;border-radius:9px;background:#f1f5f9;color:#475569;font-size:1.1rem;cursor:pointer; }
+            #adminMessagesFrame { width:100%;height:100%;min-height:0;flex:1;border:0;background:#f8fafc; }
+            @media(max-width:600px) { #adminMessagesDialog { width:100%;height:calc(100dvh - 16px);border-radius:12px; } #adminMessagesModalHeader { padding:10px 12px; } }
+        </style>
+        <div id="adminMessagesModal" role="dialog" aria-modal="true" aria-labelledby="adminMessagesModalTitle" onclick="if(event.target===this) closeAdminMessagesModal()">
+            <section id="adminMessagesDialog">
+                <header id="adminMessagesModalHeader"><div><h2 id="adminMessagesModalTitle">Messages</h2><p>Chat with caterers without leaving this page.</p></div><button type="button" aria-label="Close messages" onclick="closeAdminMessagesModal()"><i class="fas fa-times"></i></button></header>
+                <iframe id="adminMessagesFrame" title="Admin conversations" loading="lazy"></iframe>
+            </section>
+        </div>
 
         <!-- PAGE CONTENT -->
         <main class="admin-page-content">
@@ -430,6 +431,37 @@
     <script src="{{ url_for('static', path='/js/admin/layout.js') }}?v={{ static_asset_version('js/admin/layout.js') }}"></script>
 
     <script>
+        function toggleAdminMessagesModal() {
+            const modal = document.getElementById('adminMessagesModal');
+            if (modal.classList.contains('open')) return closeAdminMessagesModal();
+            modal.classList.add('open');
+            document.getElementById('adminMessagesButton').classList.add('active');
+            document.getElementById('adminMessagesButton').setAttribute('aria-expanded', 'true');
+            const frame = document.getElementById('adminMessagesFrame');
+            if (!frame.src || frame.src === 'about:blank') frame.src = '/admin/messages?embedded=true';
+            document.body.style.overflow = 'hidden';
+        }
+        function closeAdminMessagesModal() {
+            document.getElementById('adminMessagesModal').classList.remove('open');
+            document.getElementById('adminMessagesButton').setAttribute('aria-expanded', 'false');
+            if ({{ 'false' if active_page == 'messages' else 'true' }}) document.getElementById('adminMessagesButton').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        document.addEventListener('keydown', event => { if (event.key === 'Escape' && document.getElementById('adminMessagesModal').classList.contains('open')) closeAdminMessagesModal(); });
+
+        // Keep the admin message badge current across dashboard pages.
+        (function refreshAdminMessageBadge() {
+            const badge = document.getElementById('adminChatBadge');
+            if (!badge) return;
+            const refresh = () => fetch('/api/chat/unread-count').then(response => response.ok ? response.json() : null).then(data => {
+                if (!data) return;
+                badge.textContent = data.count;
+                badge.style.display = data.count > 0 ? 'flex' : 'none';
+            }).catch(() => {});
+            refresh();
+            window.setInterval(refresh, 20000);
+        })();
+
         // --- Diamond Standard Global Modal Controllers ---
         function openReasonModal(title, desc, callback, options = {}) {
             const modal = document.getElementById('reasonModal');
@@ -535,6 +567,7 @@
             }
 
             modal.classList.add('active');
+            if (config.didOpen) config.didOpen();
 
             submitBtn.onclick = () => {
                 if (config.preConfirm) {

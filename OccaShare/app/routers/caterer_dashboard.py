@@ -578,6 +578,27 @@ async def create_manual_booking(
         requested_status = status_map.get(status_input, "pending")
         is_historical = (event_date < today) or (requested_status == "completed" and event_date <= today)
 
+        # Walk-in bookings follow the same maximum advance window configured in
+        # Caterer Business Settings -> Booking/Event Availability.
+        if not is_historical:
+            profile_rules = user.caterer_profile.scheduling_rules or {}
+            event_availability = profile_rules.get("event_availability") or {}
+            booking_rules = profile_rules.get("booking_rules") or {}
+            raw_max_advance = event_availability.get(
+                "max_advance_booking_days",
+                booking_rules.get("max_advance_booking_days", 365),
+            )
+            try:
+                max_advance_days = max(1, int(raw_max_advance))
+            except (TypeError, ValueError):
+                max_advance_days = 365
+            max_booking_date = today + timedelta(days=max_advance_days)
+            if event_date > max_booking_date:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"extEventDate|Choose a date on or before {max_booking_date.strftime('%b %d, %Y')} based on your maximum advance booking setting.",
+                )
+
         # Lead Time & Past Date Check (allow historical bookings for past dates)
         if not is_historical:
             if event_date <= today + timedelta(days=1) and not data.get("force_override", False):
@@ -638,6 +659,16 @@ async def create_manual_booking(
             event_time = datetime.strptime(event_time_str[:5], "%H:%M").time()
         except (TypeError, ValueError):
             raise HTTPException(status_code=400, detail="extEventTime|Enter a valid event time.")
+        if event_time.minute not in (0, 30):
+            raise HTTPException(status_code=400, detail="extEventTime|Choose a time ending in :00 or :30.")
+        profile_rules = user.caterer_profile.scheduling_rules or {}
+        event_availability = profile_rules.get("event_availability") or {}
+        business_hours = profile_rules.get("business_hours") or {}
+        business_open = event_availability.get("open_time") or business_hours.get("open_time") or "08:00"
+        business_close = event_availability.get("close_time") or business_hours.get("close_time") or "20:00"
+        event_time_value = event_time.strftime("%H:%M")
+        if event_time_value < business_open or event_time_value > business_close:
+            raise HTTPException(status_code=400, detail=f"extEventTime|Event time must be within your business hours ({business_open}–{business_close}).")
 
         # Build special requests and staff notes
         special_notes = data.get("special_notes", "").strip()
@@ -689,6 +720,8 @@ async def create_manual_booking(
                 s_qty = int(s.get("qty", 1) or s.get("quantity", 1) or 1)
                 if s_price < 0:
                     raise HTTPException(status_code=400, detail=f"walkinServices|Service price cannot be negative for '{s.get('name', 'service')}'.")
+                if s_price > 999999.99:
+                    raise HTTPException(status_code=400, detail=f"walkinServices|Service amount cannot exceed 999,999.99 for '{s.get('name', 'service')}'.")
                 if s_qty <= 0:
                     raise HTTPException(status_code=400, detail=f"walkinServices|Quantity must be greater than zero for '{s.get('name', 'service')}'.")
                 computed_services_total += (s_price * s_qty)
@@ -1631,15 +1664,15 @@ async def caterer_dashboard(
     today = date.today()
     
     # 1. Operational Dashboard Metrics
-    today_events_count = len([b for b in all_bookings if b.event_date == today and b.status not in ['cancelled', 'draft']])
-    upcoming_events_count = len([b for b in all_bookings if b.event_date and today < b.event_date <= today + timedelta(days=30) and b.status not in ['cancelled', 'draft']])
+    today_events_count = len([b for b in all_bookings if not b.is_archived and b.event_date == today and b.status not in ['cancelled', 'draft']])
+    upcoming_events_count = len([b for b in all_bookings if not b.is_archived and b.event_date and today < b.event_date <= today + timedelta(days=30) and b.status not in ['cancelled', 'draft']])
     
     outstanding_balance = 0
     outstanding_count = 0
     action_center_items = []
     
     for b in all_bookings:
-        if b.status in ['cancelled', 'draft', 'completed']:
+        if b.is_archived or b.status in ['cancelled', 'draft', 'completed']:
             continue
             
         amount = float(b.total_amount or b.total_price or 0)
@@ -1766,16 +1799,25 @@ async def caterer_dashboard(
     total_bookings = len([b for b in all_bookings if b.status not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted', 'cancelled'] and not b.is_archived])
     
     import datetime as dt_module
-    today_schedule = [b for b in all_bookings if b.event_date == today and b.status not in ['cancelled', 'draft']]
+    today_schedule = [b for b in all_bookings if not b.is_archived and b.event_date == today and b.status not in ['cancelled', 'draft']]
     today_schedule.sort(key=lambda b: (b.event_time or dt_module.time.min))
 
-    upcoming_events_list = [b for b in all_bookings if b.event_date and b.event_date > today and b.status not in ['cancelled', 'draft']]
+    upcoming_events_list = [b for b in all_bookings if not b.is_archived and b.event_date and b.event_date > today and b.status not in ['cancelled', 'draft']]
     upcoming_events_list.sort(key=lambda b: (b.event_date, b.event_time or dt_module.time.min))
     upcoming_events_list = upcoming_events_list[:8]
 
+    stale_pins = db.query(models.InternalSchedule).filter(
+        models.InternalSchedule.caterer_id == profile.id,
+        models.InternalSchedule.is_pinned == True,
+        models.InternalSchedule.date < today,
+    ).update({models.InternalSchedule.is_pinned: False}, synchronize_session=False)
+    if stale_pins:
+        db.commit()
+
     pinned_schedules = db.query(models.InternalSchedule).filter(
         models.InternalSchedule.caterer_id == profile.id,
-        models.InternalSchedule.is_pinned == True
+        models.InternalSchedule.is_pinned == True,
+        models.InternalSchedule.date >= today,
     ).order_by(models.InternalSchedule.date.asc(), models.InternalSchedule.time.asc()).all()
 
     # Accurate analytics counts across both online and walk-in bookings:
@@ -1919,8 +1961,11 @@ async def caterer_omni_search(
         b_type = b.event_type.lower() if b.event_type else ""
         b_status = b.status.lower() if b.status else ""
         b_venue = (b.event_address or "").lower()
+        b_event_name = (b.event_name or "").lower()
+        b_customer_name = (b.customer_name or "").lower()
+        b_customer_email = (b.customer_email or "").lower()
         
-        if query in b_ref.lower() or query in c_ref.lower() or query in str(b.id) or query in b_type or query in b_status or query in b_venue:
+        if query in b_ref.lower() or query in c_ref.lower() or query in str(b.id) or query in b_type or query in b_status or query in b_venue or query in b_event_name or query in b_customer_name or query in b_customer_email:
             results.append({
                 "type": "Booking",
                 "title": f"Booking {b_ref} • Client {c_ref}",
@@ -1973,7 +2018,9 @@ async def caterer_omni_search(
     seen_refs = set()
     for b in bookings_custs:
         cref = b.customer_ref
-        if cref and cref not in seen_refs and query in cref.lower():
+        customer_name = (b.customer_name or "").lower()
+        customer_email = (b.customer_email or "").lower()
+        if cref and cref not in seen_refs and (query in cref.lower() or query in customer_name or query in customer_email):
             seen_refs.add(cref)
             results.append({
                 "type": "Customer",
@@ -2076,8 +2123,7 @@ async def caterer_omni_search(
                 "icon": p["icon"]
             })
 
-    # Return top 15 results
-    return {"results": results[:15]}
+    return {"results": results}
 
 @router.get("/api/dashboard-overview")
 async def dashboard_overview_api(
@@ -3642,7 +3688,7 @@ async def get_booking_details_api(
         entry_method = 'online'
 
     total_price = float(booking.total_price or booking.total_amount or 0)
-    payment_records = sorted(booking.payment_records or [], key=lambda record: record.payment_date.isoformat() if record.payment_date else "")
+    payment_records = sorted(booking.payment_records or [], key=lambda record: record.payment_date.isoformat() if record.payment_date else "", reverse=True)
     selected_items = []
     for item in booking.selected_items or []:
         related_item = item.menu_item or item.equipment or item.service
@@ -3741,7 +3787,8 @@ async def get_booking_details_api(
                     "id": s.id,
                     "name": s.name,
                     "category": s.category or "Service",
-                    "price": float(s.selling_price or 0)
+                    "price": float(s.selling_price or 0),
+                    "notes": s.description or ""
                 })
 
     # Selected Services
@@ -4944,8 +4991,20 @@ async def caterer_calendar(
     current_date = date.today()
     lead_time_days = user.caterer_profile.booking_lead_time or 7
     min_booking_date = current_date + timedelta(days=lead_time_days)
-    max_advance_days = user.caterer_profile.scheduling_rules.get("max_advance_booking_days", 730) if user.caterer_profile.scheduling_rules else 730
+    scheduling_rules = user.caterer_profile.scheduling_rules or {}
+    event_availability = scheduling_rules.get("event_availability") or {}
+    booking_rules = scheduling_rules.get("booking_rules") or {}
+    try:
+        max_advance_days = max(1, int(event_availability.get(
+            "max_advance_booking_days",
+            booking_rules.get("max_advance_booking_days", 365),
+        )))
+    except (TypeError, ValueError):
+        max_advance_days = 365
     max_booking_date = current_date + timedelta(days=max_advance_days)
+    business_hours = scheduling_rules.get("business_hours") or {}
+    business_open = event_availability.get("open_time") or business_hours.get("open_time") or "08:00"
+    business_close = event_availability.get("close_time") or business_hours.get("close_time") or "20:00"
     
     # For the list view on the side (Status Tracker) - Show active non-completed bookings first
     tracker_bookings = db.query(models.Booking).filter(
@@ -5018,7 +5077,7 @@ async def caterer_calendar(
     
     catalog = {
         "menu": [{"id": m.id, "name": m.name, "price": m.price, "category": m.category} for m in menu_items],
-        "services": [{"id": s.id, "name": s.name, "price": s.selling_price, "category": s.category} for s in service_items],
+        "services": [{"id": s.id, "name": s.name, "price": s.selling_price, "category": s.category, "notes": s.description or ""} for s in service_items],
         "equipment": [{"id": e.id, "name": e.name, "price": e.rental_price, "category": getattr(e, 'category', None)} for e in equipment_items]
     }
     catalog_json = json.dumps(catalog)
@@ -5028,7 +5087,9 @@ async def caterer_calendar(
             "id": s.id,
             "name": s.name,
             "selling_price": float(s.selling_price or 0.0),
-            "category": s.category or "General Service"
+            "category": s.category or "General Service",
+            "notes": s.description or "",
+            "description": s.description or ""
         }
         for s in service_items
     ]
@@ -5049,8 +5110,8 @@ async def caterer_calendar(
         "booking_lead_time": lead_time_days,
         "min_booking_date": min_booking_date,
         "max_booking_date": max_booking_date,
-        "business_open": user.caterer_profile.scheduling_rules.get("business_hours", {}).get("open_time", "08:00") if user.caterer_profile.scheduling_rules else "08:00",
-        "business_close": user.caterer_profile.scheduling_rules.get("business_hours", {}).get("close_time", "20:00") if user.caterer_profile.scheduling_rules else "20:00",
+        "business_open": business_open,
+        "business_close": business_close,
         "min_pax": user.caterer_profile.min_pax or 20,
         "active_page": "calendar"
     })
@@ -7884,7 +7945,13 @@ async def toggle_availability(
     reason = data.get("reason", "")
     
     from datetime import datetime
-    target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    try:
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Enter a valid availability date")
+    from zoneinfo import ZoneInfo
+    if not is_available and target_date < datetime.now(ZoneInfo("Asia/Manila")).date():
+        raise HTTPException(status_code=400, detail="Past dates cannot be blocked")
     
     # Check if entry already exists
     existing = db.query(models.Availability).filter(
@@ -7986,6 +8053,34 @@ async def add_internal_schedule(
         event_time = datetime.strptime(time_str, "%H:%M").time() if time_str else None
     except (TypeError, ValueError):
         raise HTTPException(status_code=400, detail="Enter a valid schedule time")
+    if not event_time:
+        raise HTTPException(status_code=400, detail="Select a schedule time")
+
+    from zoneinfo import ZoneInfo
+    today = datetime.now(ZoneInfo("Asia/Manila")).date()
+    if event_date < today:
+        raise HTTPException(status_code=400, detail="Past dates cannot be scheduled")
+    rules = user.caterer_profile.scheduling_rules or {}
+    event_availability = rules.get("event_availability") or {}
+    booking_rules = rules.get("booking_rules") or {}
+    try:
+        max_advance_days = max(1, int(event_availability.get(
+            "max_advance_booking_days",
+            booking_rules.get("max_advance_booking_days", 365),
+        )))
+    except (TypeError, ValueError):
+        max_advance_days = 365
+    max_schedule_date = today + timedelta(days=max_advance_days)
+    if event_date > max_schedule_date:
+        raise HTTPException(status_code=400, detail=f"Schedule date cannot be later than {max_schedule_date.strftime('%b %d, %Y')} based on your maximum advance booking setting")
+    if event_time.minute not in (0, 30):
+        raise HTTPException(status_code=400, detail="Choose a time on the hour or half-hour")
+    business_hours = rules.get("business_hours") or {}
+    business_open = event_availability.get("open_time") or business_hours.get("open_time") or "08:00"
+    business_close = event_availability.get("close_time") or business_hours.get("close_time") or "20:00"
+    event_time_value = event_time.strftime("%H:%M")
+    if event_time_value < business_open or event_time_value > business_close:
+        raise HTTPException(status_code=400, detail=f"Schedule time must be within your business hours ({business_open}–{business_close})")
 
     if schedule_id not in (None, ""):
         try:
@@ -8001,9 +8096,8 @@ async def add_internal_schedule(
         if not schedule:
             raise HTTPException(status_code=404, detail="Schedule not found")
 
-        # Prevent editing schedules that are in the past
-        from datetime import date
-        if schedule.date and schedule.date < date.today():
+        # Prevent editing schedules that are in the past (Manila business date).
+        if schedule.date and schedule.date < datetime.now(ZoneInfo("Asia/Manila")).date():
             raise HTTPException(status_code=400, detail="Cannot modify past schedules")
 
         schedule.title = title
@@ -8432,6 +8526,18 @@ async def update_booking_preparation_status(
             status_code=400,
             detail="Invalid preparation status. Choose one of the available options."
         )
+    if new_key == "completed":
+        confirmed_statuses = {
+            "confirmed", "preparing", "ready_for_delivery", "on_the_way",
+            "arrived", "setup_ongoing", "in_progress", "ready_for_event",
+        }
+        total_due = float(booking.total_price or booking.total_amount or 0)
+        paid_so_far = float(booking.amount_paid or 0)
+        if booking.status not in confirmed_statuses or total_due <= 0 or paid_so_far + 0.009 < total_due:
+            raise HTTPException(
+                status_code=400,
+                detail="Confirm the booking and settle the full balance before marking the event completed.",
+            )
 
     old_key = normalize_prep_status(booking.preparation_status, booking.status)
     old_meta = get_prep_meta(old_key)
@@ -9189,6 +9295,7 @@ async def delete_portfolio_permanent(
 @router.get("/messages", response_class=HTMLResponse)
 async def caterer_messages(
     request: Request, 
+    embedded: bool = False,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -9196,7 +9303,8 @@ async def caterer_messages(
     return templates.TemplateResponse("caterer/messages.html", {
         "request": request,
         "user": user,
-        "active_page": "messages"
+        "active_page": "messages",
+        "embedded": embedded,
     })
 
 @router.post("/api/check-customer")
@@ -10684,19 +10792,40 @@ async def record_manual_payment(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
         
-    data = await request.json()
-    amount = float(data.get("amount", 0))
-    method = (data.get("payment_method") or "Cash").strip()
-    reference = (data.get("reference_number") or data.get("reference_notes") or "").strip()
-    notes = (data.get("notes") or "").strip()
+    content_type = request.headers.get("content-type", "")
+    payment_proof = None
+    if "multipart/form-data" in content_type:
+        data = await request.form()
+        amount = float(data.get("amount", 0) or 0)
+        method = (data.get("payment_method") or "Cash").strip()
+        reference = (data.get("reference_number") or data.get("reference_notes") or "").strip()
+        notes = (data.get("notes") or "").strip()
+        payment_proof = data.get("proof_image")
+    else:
+        data = await request.json()
+        amount = float(data.get("amount", 0))
+        method = (data.get("payment_method") or "Cash").strip()
+        reference = (data.get("reference_number") or data.get("reference_notes") or "").strip()
+        notes = (data.get("notes") or "").strip()
     
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be greater than zero.")
 
     method_l = method.lower()
-    needs_ref = method_l in {"gcash", "bank transfer", "bank", "maya", "check"}
-    if needs_ref and not reference:
-        raise HTTPException(status_code=400, detail="Reference number is required for GCash / Bank / Maya payments.")
+    needs_proof = method_l != "cash"
+    proof_url = None
+    if needs_proof:
+        if not payment_proof or not getattr(payment_proof, "filename", None):
+            raise HTTPException(status_code=400, detail="Upload a receipt or payment screenshot for non-cash payments.")
+        if payment_proof.content_type not in {"image/jpeg", "image/png", "image/webp"}:
+            raise HTTPException(status_code=400, detail="Receipt must be a JPG, PNG, or WEBP image.")
+        proof_bytes = await payment_proof.read()
+        if not proof_bytes or len(proof_bytes) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Receipt image must be no larger than 5 MB.")
+        from app.services.storage import upload_file_to_cloudinary
+        proof_url = upload_file_to_cloudinary(proof_bytes, folder="payment_receipts")
+        if not proof_url:
+            raise HTTPException(status_code=502, detail="Receipt upload failed. Please try again.")
 
     total = float(booking.total_price or booking.total_amount or 0)
     already_paid = float(booking.amount_paid or 0)
@@ -10712,6 +10841,8 @@ async def record_manual_payment(
     note_parts = []
     if reference:
         note_parts.append(f"Ref: {reference}")
+    if proof_url:
+        note_parts.append(f"Receipt: {proof_url}")
     if notes:
         note_parts.append(notes)
     combined_notes = " | ".join(note_parts) if note_parts else f"{method} payment recorded by caterer."
@@ -10822,8 +10953,10 @@ async def quick_save_service(
     name = payload.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Service / Inclusion name is required.")
-    
-    price = max(0.0, float(payload.price or 0.0))
+
+    price = float(payload.price or 0.0)
+    if price <= 0 or price > 999999.99:
+        raise HTTPException(status_code=400, detail="Service amount must be between 0.01 and 999,999.99.")
     notes = payload.notes.strip() if payload.notes else None
     category = payload.category.strip() if payload.category else "Service"
 
@@ -10851,6 +10984,7 @@ async def quick_save_service(
             "name": new_service.name,
             "selling_price": new_service.selling_price,
             "category": new_service.category,
+            "notes": new_service.description or "",
             "description": new_service.description or ""
         }
     }
@@ -10877,8 +11011,12 @@ async def quick_update_service(
     if not name:
         raise HTTPException(status_code=400, detail="Service / Inclusion name is required.")
 
+    price = float(payload.price or 0.0)
+    if price <= 0 or price > 999999.99:
+        raise HTTPException(status_code=400, detail="Service amount must be between 0.01 and 999,999.99.")
+
     service.name = name
-    service.selling_price = max(0.0, float(payload.price or 0.0))
+    service.selling_price = price
     service.description = payload.notes.strip() if payload.notes else None
     if payload.category:
         service.category = payload.category.strip()
@@ -10894,6 +11032,7 @@ async def quick_update_service(
             "name": service.name,
             "selling_price": service.selling_price,
             "category": service.category,
+            "notes": service.description or "",
             "description": service.description or ""
         }
     }

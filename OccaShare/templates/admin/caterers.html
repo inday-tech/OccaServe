@@ -1,6 +1,6 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Caterer Partners - Admin Dashboard{% endblock %}
+{% block title %}Caterer Management - Admin Dashboard{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ static_asset_version('css/admin/dashboard.css') }}">
@@ -39,9 +39,399 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 1rem;
         padding: 1.25rem 1.5rem;
         background: #fff;
         border-bottom: 1px solid var(--adm-border-light);
+    }
+
+    .caterer-add-button {
+        min-height: 44px;
+        padding: 0.7rem 1.1rem;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        background: var(--adm-primary);
+        color: #fff;
+        font-size: 0.82rem;
+        font-weight: 700;
+        white-space: nowrap;
+        justify-content: center;
+    }
+
+    .header-actions-area {
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .caterer-add-button:hover {
+        background: #ea580c;
+        color: #fff;
+    }
+
+    .caterer-status-filter {
+        min-height: 42px;
+        padding: 0.55rem 2rem 0.55rem 0.85rem;
+        border: 1px solid #fdba74;
+        border-radius: 10px;
+        background: #fff7ed;
+        color: #9a3412;
+        font-size: 0.78rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .caterer-filter-card {
+        width: 100%;
+        min-width: 0;
+        min-height: 104px !important;
+        height: auto !important;
+        padding: 1.15rem !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        border: var(--adm-border) !important;
+        border-radius: var(--adm-radius) !important;
+        background: var(--adm-card-bg) !important;
+        box-shadow: var(--adm-shadow-sm) !important;
+        color: inherit;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .caterer-filter-card .kpi-info {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .caterer-filter-card:hover {
+        transform: translateY(-3px);
+        border-color: var(--adm-primary) !important;
+        box-shadow: var(--adm-shadow) !important;
+    }
+
+    .caterer-filter-card[aria-pressed="true"] {
+        border-color: var(--adm-primary);
+        box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.12);
+    }
+
+    .caterer-filter-card:focus-visible,
+    .caterer-status-filter:focus-visible,
+    .caterer-add-button:focus-visible {
+        outline: 3px solid rgba(249, 115, 22, 0.35);
+        outline-offset: 2px;
+    }
+
+    .caterer-directory-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--adm-border-light);
+    }
+
+    .caterer-directory-header h3 {
+        margin: 0;
+        color: var(--adm-navy);
+        font-size: 0.9rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .caterer-section-heading td {
+        padding: 0.8rem 1.1rem !important;
+        background: #f8fafc;
+        color: var(--adm-navy);
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .caterer-empty-row td {
+        padding: 2rem !important;
+        color: var(--adm-muted);
+        text-align: center;
+    }
+
+    .partner-business-name,
+    .partner-owner-name {
+        color: var(--adm-navy);
+        font-size: 0.86rem;
+        font-weight: 800;
+        overflow-wrap: anywhere;
+    }
+
+    .partner-owner-name { font-weight: 700; }
+    .partner-owner-email,
+    .partner-city {
+        color: var(--adm-muted);
+        font-size: 0.75rem;
+        font-weight: 600;
+        overflow-wrap: anywhere;
+    }
+
+    .partner-new-label { color: var(--adm-muted); opacity: 0.8; }
+    .status-suspended { background: #fee2e2; color: #991b1b; }
+    .status-unverified { background: #f1f5f9; color: #475569; }
+
+    .partner-actions-cell { text-align: right; }
+    .dropdown-trigger { position: relative; z-index: 1; }
+    .dropdown-menu-dm {
+        max-height: min(360px, calc(100vh - 24px));
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+    .dropdown-menu-dm.is-fixed {
+        position: fixed;
+        z-index: 3000;
+        top: var(--menu-top);
+        left: var(--menu-left);
+        right: auto;
+        width: min(220px, calc(100vw - 24px));
+        margin-top: 0;
+    }
+
+    .onboard-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+        gap: 1.5rem;
+    }
+
+    .onboard-grid > div,
+    .onboard-name-grid > div,
+    .onboard-contact-grid > div {
+        min-width: 0;
+    }
+
+    .onboard-name-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .onboard-contact-grid,
+    .onboard-address-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .onboard-choice-card {
+        padding: 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+    }
+
+    .onboard-choice-title {
+        display: block;
+        margin-bottom: 0.65rem;
+        color: var(--adm-navy);
+        font-size: 0.72rem;
+        font-weight: 800;
+    }
+
+    .onboard-choice-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .onboard-choice {
+        display: flex;
+        min-width: 0;
+        min-height: 40px;
+        align-items: center;
+        gap: 8px;
+        padding: 0.55rem 0.6rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #fff;
+        color: #334155;
+        font-size: 0.74rem;
+        line-height: 1.35;
+    }
+
+    .onboard-choice input {
+        width: 16px !important;
+        min-width: 16px;
+        height: 16px !important;
+        min-height: 16px;
+        flex: 0 0 16px;
+        margin: 0;
+        padding: 0;
+        accent-color: var(--adm-primary);
+    }
+
+    .onboard-verification-note {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.65rem;
+        padding: 0.85rem;
+        border: 1px solid #fed7aa;
+        border-radius: 10px;
+        background: #fff7ed;
+        color: #7c2d12;
+        font-size: 0.76rem;
+        font-weight: 500;
+        line-height: 1.5;
+    }
+
+    .onboard-verification-note i {
+        margin-top: 2px;
+        color: var(--adm-primary);
+    }
+
+    .edit-modal-card { max-width: 600px; width: 95%; }
+    .edit-modal-body { padding: 1.25rem 1.5rem; }
+    .edit-field { margin-bottom: 1rem; }
+    .edit-field label {
+        display: block;
+        margin-bottom: 0.4rem;
+        color: var(--adm-navy);
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+    .edit-field input,
+    .edit-field textarea {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.7rem 0.8rem;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 8px;
+        background: #fff !important;
+        color: var(--adm-navy);
+        font: inherit;
+    }
+    .edit-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #f1f5f9;
+        background: #f8fafc;
+    }
+    .verification-status-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
+    .vd-modal-card { width: min(720px, calc(100vw - 32px)); }
+    .vd-modal-card .modal-body-clean { min-width: 0; }
+    .review-verification-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 300px;
+        gap: 1.5rem;
+    }
+    .verification-status-card {
+        min-width: 0;
+        padding: 0.8rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+    }
+    .verification-status-card span {
+        display: block;
+        margin-bottom: 0.35rem;
+        color: var(--adm-muted);
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+    .verification-status-card strong {
+        color: var(--adm-navy);
+        font-size: 0.82rem;
+        overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 767px) {
+        .header-actions-area {
+            width: 100%;
+        }
+
+        .header-actions-area .caterer-add-button {
+            width: 100%;
+        }
+
+        .terminal-filter-strip {
+            align-items: stretch;
+            flex-direction: column;
+            padding: 1rem;
+        }
+
+        .caterer-directory-header {
+            align-items: stretch;
+            flex-direction: column;
+            padding: 1rem;
+        }
+
+        .caterer-status-filter {
+            width: 100%;
+        }
+
+        .onboard-grid {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 1.25rem;
+        }
+
+        .onboard-name-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        #addCatererModal .modal-header-clean,
+        #addCatererModal .modal-body-clean,
+        #addCatererModal .modal-footer-clean {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+
+        #addCatererModal .modal-footer-clean {
+            flex-direction: column-reverse;
+        }
+
+        #addCatererModal .modal-footer-clean button {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .edit-modal-card { max-height: 90vh; overflow-y: auto; }
+        .edit-modal-body { padding: 1rem !important; }
+        .edit-modal-footer {
+            position: sticky;
+            bottom: 0;
+            flex-direction: column-reverse;
+            padding: 0.85rem 1rem;
+        }
+        .edit-modal-footer button { width: 100%; justify-content: center; }
+
+        .dropdown-menu-dm.is-fixed {
+            max-height: min(320px, calc(100dvh - 24px));
+        }
+
+        .verification-status-grid { grid-template-columns: minmax(0, 1fr); }
+        .vd-modal-card { width: calc(100vw - 24px); }
+        .vd-modal-card .modal-header-clean,
+        .vd-modal-card .modal-body-clean,
+        .vd-modal-card .modal-footer-clean,
+        #reviewVerificationModal .modal-header-clean,
+        #reviewVerificationModal .modal-body-clean {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+        .review-verification-grid { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+        #reviewDocumentsGrid { grid-template-columns: minmax(0, 1fr) !important; }
+    }
+
+    @media (max-width: 380px) {
+        .onboard-contact-grid,
+        .onboard-address-grid,
+        .onboard-choice-grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
     }
 
     /* Action Dropdown */
@@ -498,65 +888,160 @@
 </style>
 {% endblock %}
 
+{% macro render_caterer_row(caterer, section) %}
+{% set verification_status = (caterer.verification_status or 'unknown')|lower %}
+<tr class="cust-row" data-caterer-id="{{ caterer.id }}" data-business-name="{{ (caterer.business_name or 'Unnamed business')|e }}" data-directory-section="{{ section }}" data-verification-status="{{ (caterer.verification_status or 'unknown')|lower }}" data-account-status="{{ 'suspended' if caterer.account_status == 'Suspended' or (caterer.user and caterer.user.status == 'suspended') else (caterer.account_status or (caterer.user.status if caterer.user else 'unknown'))|lower }}">
+    <td>
+        <div class="partner-identity-cell">
+            <div class="partner-avatar">{{ (caterer.business_name or 'C')[0] }}</div>
+            <div>
+                <div class="partner-business-name">{{ caterer.business_name or 'Unnamed business' }}</div>
+                <div class="performance-mini">
+                    {% if caterer.rating and caterer.rating > 0 %}
+                    {{ "%.1f"|format(caterer.rating) }} Rating
+                    {% else %}
+                    <span class="partner-new-label">NEW CATERER</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </td>
+    <td>
+        <div class="partner-owner-name">{{ caterer.user.first_name }} {{ caterer.user.last_name }}</div>
+        <div class="partner-owner-email">{{ caterer.user.email }}</div>
+    </td>
+    <td><span class="partner-city">{{ caterer.city or 'Not Set' }}</span></td>
+    <td>
+        {% if caterer.account_status|lower == 'suspended' or (caterer.user and caterer.user.status|lower == 'suspended') %}
+        <span class="badge-clean status-suspended">SUSPENDED</span>
+        {% elif verification_status == 'verified' %}
+        <span class="badge-clean badge-active">VERIFIED</span>
+        {% elif verification_status in ['pending review', 'pending', 'pending_review'] %}
+        <span class="badge-clean badge-pending">PENDING REVIEW</span>
+        {% elif verification_status == 'unverified' %}
+        <span class="badge-clean status-unverified">UNVERIFIED</span>
+        {% elif verification_status in ['requires revision', 'revision requested', 'resubmission_required'] %}
+        <span class="badge-clean badge-pending">REVISION REQUIRED</span>
+        {% elif verification_status == 'rejected' %}
+        <span class="badge-clean status-suspended">REJECTED</span>
+        {% else %}
+        <span class="badge-clean status-unverified">{{ caterer.verification_status or 'Unknown' }}</span>
+        {% endif %}
+    </td>
+    <td class="partner-actions-cell">
+        <div class="actions-dropdown">
+            <button type="button" class="dropdown-trigger" aria-label="Actions for {{ caterer.business_name|e }}" aria-expanded="false" onclick="toggleActionDropdown(this, event)"><i class="fas fa-ellipsis" aria-hidden="true"></i></button>
+            <div class="dropdown-menu-dm">
+                {% set kyc = caterer.user.identity_verification if caterer.user else None %}
+                <button type="button" class="dm-dropdown-item"
+                    data-id="{{ caterer.id }}"
+                    data-name="{{ (caterer.business_name or 'Unnamed business')|e }}"
+                    data-owner="{{ (caterer.user.first_name ~ ' ' ~ caterer.user.last_name)|e }}"
+                    data-email="{{ (caterer.user.email or '')|e }}"
+                    data-city="{{ (caterer.city or 'Not listed')|e }}"
+                    data-coverage="{{ (caterer.coverage_area or 'Not listed')|e }}"
+                    data-events="{{ ((caterer.event_types|join(', ')) if caterer.event_types else 'Not listed')|e }}"
+                    data-cuisines="{{ ((caterer.cuisine_types|join(', ')) if caterer.cuisine_types else 'Not listed')|e }}"
+                    data-years="{{ caterer.years_of_operation if caterer.years_of_operation else 'Not listed' }}"
+                    data-pax="{{ caterer.min_pax if caterer.min_pax else 'Not listed' }}"
+                    data-rating="{{ '%.1f'|format(caterer.rating) if caterer.rating else 'No ratings yet' }}"
+                    data-bookings="{{ caterer.booking_count if caterer.booking_count is defined else 0 }}"
+                    data-status="{{ caterer.verification_status or 'Unverified' }}"
+                    data-account="{{ 'Suspended' if caterer.account_status|lower == 'suspended' or (caterer.user and caterer.user.status|lower == 'suspended') else (caterer.account_status or (caterer.user.status if caterer.user else 'Unknown')) }}"
+                    data-regdate="{{ caterer.created_at.strftime('%b %d, %Y') if caterer.created_at else 'Not recorded' }}"
+                    data-verdate="{{ kyc.verified_at.strftime('%b %d, %Y') if kyc and kyc.verified_at else 'Not recorded' }}"
+                    data-permit="{{ caterer.permit_expiry_date.strftime('%b %d, %Y') if caterer.permit_expiry_date else 'Not on file' }}"
+                    data-permit-status="{{ caterer.permit_status or 'Not on file' }}"
+                    onclick="viewCatererDetails(this)">
+                    <i class="fas fa-eye" aria-hidden="true"></i> View Details
+                </button>
+                {% if verification_status != 'verified' %}
+                <button type="button" class="dm-dropdown-item" onclick="openReviewModal({{ caterer.id }})">
+                    <i class="fas fa-shield-halved" aria-hidden="true"></i> Review Documents
+                </button>
+                {% endif %}
+                {% if verification_status == 'verified' and caterer.account_status|lower != 'suspended' and caterer.user.status|lower != 'suspended' %}
+                <button type="button" class="dm-dropdown-item" data-id="{{ caterer.id }}"
+                    data-city="{{ (caterer.city or '')|e }}"
+                    data-coverage="{{ (caterer.coverage_area or '')|e }}"
+                    data-remarks="{{ (caterer.admin_remarks or '')|e }}"
+                    onclick="openEditModal(this)">
+                    <i class="fas fa-edit" aria-hidden="true"></i> Edit Listing
+                </button>
+                {% endif %}
+                {% if caterer.account_status|lower == 'suspended' or caterer.user.status|lower == 'suspended' %}
+                <button type="button" class="dm-dropdown-item" onclick="reactivateCaterer({{ caterer.id }})">
+                    <i class="fas fa-undo" aria-hidden="true"></i> Reactivate Account
+                </button>
+                {% else %}
+                <button type="button" class="dm-dropdown-item danger" onclick="suspendCaterer({{ caterer.id }})">
+                    <i class="fas fa-ban" aria-hidden="true"></i> Suspend Account
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </td>
+</tr>
+{% endmacro %}
+
 {% block content %}
 <div class="dashboard-header-clean">
     <div class="header-title-area">
-        <h1>Caterer Partners</h1>
-        <p>Manage and review your verified catering partners.</p>
+        <h1>Caterer Management</h1>
+        <p>Manage caterer accounts and review their verification status.</p>
     </div>
     <div class="header-actions-area">
-        <button class="btn-clean" style="background: var(--adm-navy); color: white;" onclick="openAddCatererModal()">
-            Add Caterer
+        <button class="btn-clean caterer-add-button" onclick="openAddCatererModal()">
+            <i class="fas fa-plus" aria-hidden="true"></i> Add Caterer
         </button>
     </div>
 </div>
 
 <!-- KPI Metrics Cluster -->
 <div class="kpi-grid-clean">
-    <div class="kpi-card-clean">
+    <button type="button" class="kpi-card-clean caterer-filter-card" data-caterer-filter="all" aria-pressed="true" onclick="setCatererStatusFilter('all')">
         <div class="kpi-info">
-            <h4>Total Partners</h4>
+            <h4>Total Caterers</h4>
             <span class="kpi-value">{{ metrics.total_caterers }}</span>
-            <span class="trend-badge trend-up">All Registered</span>
+            <span class="trend-badge trend-up">All Accounts</span>
         </div>
-    </div>
-    <div class="kpi-card-clean">
+    </button>
+    <button type="button" class="kpi-card-clean caterer-filter-card" data-caterer-filter="pending" aria-pressed="false" onclick="setCatererStatusFilter('pending')">
         <div class="kpi-info">
-            <h4>Pending Review</h4>
+            <h4>Needs Review</h4>
             <span class="kpi-value">{{ metrics.pending_caterers_count }}</span>
-            <span class="trend-badge" style="background: #fef3c7; color: #92400e;">Needs Action</span>
+            <span class="trend-badge" style="background: #fef3c7; color: #92400e;">Action Needed</span>
         </div>
-    </div>
-    <div class="kpi-card-clean">
+    </button>
+    <button type="button" class="kpi-card-clean caterer-filter-card" data-caterer-filter="verified" aria-pressed="false" onclick="setCatererStatusFilter('verified')">
         <div class="kpi-info">
             <h4>Verified</h4>
             <span class="kpi-value">{{ metrics.approved_caterers_count }}</span>
-            <span class="trend-badge trend-up">Trusted</span>
+            <span class="trend-badge trend-up">Approved</span>
         </div>
-    </div>
-    <div class="kpi-card-clean">
+    </button>
+    <button type="button" class="kpi-card-clean caterer-filter-card" data-caterer-filter="suspended" aria-pressed="false" onclick="setCatererStatusFilter('suspended')">
         <div class="kpi-info">
             <h4>Suspended</h4>
             <span class="kpi-value">{{ metrics.suspended_caterers_count }}</span>
             <span class="trend-badge" style="background: #fee2e2; color: #991b1b;">Restricted</span>
         </div>
-    </div>
+    </button>
 </div>
 
 <!-- Main Registry Terminal -->
 <div class="table-card-clean">
-    <div class="terminal-filter-strip">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <h3
-                style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase;">
-                Partner Directory</h3>
-        </div>
-        <div style="display: flex; gap: 10px;">
-            <select id="catererStatusFilter" onchange="filterCaterers()" class="btn-clean"
-                style="padding: 6px 14px; font-size: 0.8rem; font-weight: 700;">
-                <option value="all">Filter: All Partners</option>
-                <option value="VERIFIED">Status: Verified</option>
-                <option value="SUSPENDED">Status: Suspended</option>
+    <div class="caterer-directory-header">
+        <h3>Caterer Accounts</h3>
+        <div>
+            <select id="catererStatusFilter" onchange="filterCaterers()" class="caterer-status-filter" aria-label="Show caterers by status">
+                <option value="all" {{ 'selected' if initial_filter == 'all' else '' }}>All caterers</option>
+                <option value="pending" {{ 'selected' if initial_filter == 'pending' else '' }}>Needs review</option>
+                <option value="verified" {{ 'selected' if initial_filter == 'verified' else '' }}>Verified</option>
+                <option value="suspended" {{ 'selected' if initial_filter == 'suspended' else '' }}>Suspended</option>
+                <option value="unverified" {{ 'selected' if initial_filter == 'unverified' else '' }}>Unverified</option>
+                <option value="revision" {{ 'selected' if initial_filter == 'revision' else '' }}>Revision requested</option>
+                <option value="rejected" {{ 'selected' if initial_filter == 'rejected' else '' }}>Rejected</option>
             </select>
         </div>
     </div>
@@ -573,96 +1058,15 @@
                 </tr>
             </thead>
             <tbody>
-                {% for caterer in caterers %}
-                <tr class="cust-row">
-                    <td>
-                        <div class="partner-identity-cell">
-                            <div class="partner-avatar">{{ caterer.business_name[0] }}</div>
-                            <div>
-                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem;">{{
-                                    caterer.business_name }}</div>
-                                <div class="performance-mini">
-                                    {% if caterer.rating and caterer.rating > 0 %}
-                                    {{ "%.1f"|format(caterer.rating) }} Rating
-                                    {% else %}
-                                    <span style="color: var(--adm-muted); opacity: 0.8;">NEW PARTNER</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>
-                        <div style="font-weight: 700; color: var(--adm-navy); font-size: 0.85rem;">{{
-                            caterer.user.first_name }} {{ caterer.user.last_name }}</div>
-                        <div style="font-size: 0.75rem; color: var(--adm-muted);">{{ caterer.user.email }}</div>
-                    </td>
-                    <td><span style="font-weight: 600; color: var(--adm-muted); font-size: 0.85rem;">{{ caterer.city or
-                            'Not Set' }}</span></td>
-                    <td>
-                        {% if caterer.verification_status == 'Verified' %}
-                        <span class="badge-clean badge-active">VERIFIED</span>
-                        {% elif caterer.verification_status == 'Pending Review' or caterer.verification_status ==
-                        'Pending' %}
-                        <span class="badge-clean badge-pending">REVIEW</span>
-                        {% else %}
-                        <span class="badge-clean" style="background: #f1f5f9; color: #64748b;">{{
-                            caterer.verification_status }}</span>
-                        {% endif %}
-                    </td>
-                    <td style="text-align: right;">
-                        <div class="actions-dropdown">
-                            <button class="dropdown-trigger" onclick="toggleActionDropdown(this, event)">...</button>
-                            <div class="dropdown-menu-dm">
-                                {% set kyc = caterer.user.identity_verification if caterer.user else None %}
-                                <button class="dm-dropdown-item"
-                                    data-id="{{ caterer.id }}"
-                                    data-name="{{ (caterer.business_name or 'Unnamed business')|e }}"
-                                    data-owner="{{ (caterer.user.first_name ~ ' ' ~ caterer.user.last_name)|e }}"
-                                    data-email="{{ (caterer.user.email or '')|e }}"
-                                    data-city="{{ (caterer.city or 'Not listed')|e }}"
-                                    data-coverage="{{ (caterer.coverage_area or 'Not listed')|e }}"
-                                    data-events="{{ ((caterer.event_types|join(', ')) if caterer.event_types else 'Not listed')|e }}"
-                                    data-cuisines="{{ ((caterer.cuisine_types|join(', ')) if caterer.cuisine_types else 'Not listed')|e }}"
-                                    data-years="{{ caterer.years_of_operation if caterer.years_of_operation else 'Not listed' }}"
-                                    data-pax="{{ caterer.min_pax if caterer.min_pax else 'Not listed' }}"
-                                    data-rating="{{ '%.1f'|format(caterer.rating) if caterer.rating else 'No ratings yet' }}"
-                                    data-bookings="{{ caterer.booking_count if caterer.booking_count is defined else 0 }}"
-                                    data-status="{{ caterer.verification_status }}"
-                                    data-account="{{ caterer.account_status or (caterer.user.status if caterer.user else 'Unknown') }}"
-                                    data-regdate="{{ caterer.created_at.strftime('%b %d, %Y') if caterer.created_at else 'Not recorded' }}"
-                                    data-verdate="{{ kyc.verified_at.strftime('%b %d, %Y') if kyc and kyc.verified_at else (caterer.created_at.strftime('%b %d, %Y') if caterer.verification_status == 'Verified' and caterer.created_at else 'Not yet verified') }}"
-                                    data-permit="{{ caterer.permit_expiry_date.strftime('%b %d, %Y') if caterer.permit_expiry_date else 'Not on file' }}"
-                                    data-permit-status="{{ caterer.permit_status or 'Not on file' }}"
-                                    onclick="viewCatererDetails(this)">
-                                    <i class="fas fa-eye" style="color: #64748b;"></i> View Details
-                                </button>
-
-                                {% if caterer.verification_status == 'Verified' and caterer.account_status !=
-                                'Suspended' and caterer.user.status != 'suspended' %}
-                                <button class="dm-dropdown-item" data-id="{{ caterer.id }}"
-                                    data-city="{{ (caterer.city or '')|e }}"
-                                    data-coverage="{{ (caterer.coverage_area or '')|e }}"
-                                    data-remarks="{{ (caterer.admin_remarks or '')|e }}"
-                                    onclick="openEditModal(this)">
-                                    <i class="fas fa-edit" style="color: #64748b;"></i> Edit Profile
-                                </button>
-                                <div style="height: 1px; background: #f1f5f9; margin: 4px 8px;"></div>
-                                <button class="dm-dropdown-item danger" onclick="suspendCaterer({{ caterer.id }})">
-                                    <i class="fas fa-ban" style="color: #ef4444;"></i> Suspend Account
-                                </button>
-                                {% endif %}
-
-                                {% if caterer.account_status == 'Suspended' or caterer.user.status == 'suspended' %}
-                                <button class="dm-dropdown-item" style="color: #2563eb;"
-                                    onclick="reactivateCaterer({{ caterer.id }})">
-                                    <i class="fas fa-undo" style="color: #2563eb;"></i> Reactivate Account
-                                </button>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </td>
-                </tr>
+                <tr class="caterer-section-heading" data-section-heading="verified"><td colspan="5">Verified Caterers</td></tr>
+                {% for caterer in verified_caterers %}
+                {{ render_caterer_row(caterer, 'verified') }}
                 {% endfor %}
+                <tr class="caterer-section-heading" data-section-heading="unverified"><td colspan="5">Unverified &amp; Needs Attention</td></tr>
+                {% for caterer in unverified_caterers %}
+                {{ render_caterer_row(caterer, 'unverified') }}
+                {% endfor %}
+                <tr class="caterer-empty-row" id="catererEmptyRow" style="display: none;"><td colspan="5">No caterers match this status or search.</td></tr>
             </tbody>
         </table>
     </div>
@@ -686,21 +1090,20 @@
 
 <!-- Add Caterer Modal -->
 <div id="addCatererModal" class="admin-modal-overlay">
-    <div class="admin-modal-card"
+    <div class="admin-modal-card onboard-modal-card"
         style="max-width: 900px; width: 95%; display: flex; flex-direction: column; max-height: 90vh;">
         <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem;">
             <div>
                 <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Add Caterer</h3>
-                <p style="font-size: 0.7rem; color: var(--adm-muted);">Add a pre-verified partner directly to the
-                    platform.</p>
+                <p style="font-size: 0.7rem; color: var(--adm-muted);">Create an account. Verification is completed after document review.</p>
             </div>
             <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
                 onclick="closeAddCatererModal()">&times;</button>
         </div>
 
         <form id="addCatererForm" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
-            <div class="modal-body-clean" style="overflow-y: auto; padding: 1.5rem 2rem; flex: 1;">
-                <div class="onboard-grid" style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 2.5rem;">
+            <div class="modal-body-clean onboard-modal-body" style="overflow-y: auto; padding: 1.5rem 2rem; flex: 1;">
+                <div class="onboard-grid">
 
                     <!-- Primary Identity Column -->
                     <div style="display: flex; flex-direction: column; gap: 1.25rem;">
@@ -721,7 +1124,7 @@
 
                         <!-- Legal Identity -->
                         <div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 80px; gap: 8px;">
+                            <div class="onboard-name-grid">
                                 <div>
                                     <label
                                         style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block;">First
@@ -763,7 +1166,7 @@
                         </div>
 
                         <!-- Contact Registry -->
-                        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
+                        <div class="onboard-contact-grid">
                             <div style="display: flex; flex-direction: column; gap: 4px;">
                                 <label
                                     style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 2px;">Gmail
@@ -785,7 +1188,7 @@
                         <h4
                             style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; margin-top: 0.5rem;">
                             Business Address (PSGC)</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="onboard-address-grid">
                             <div class="dm-input-group">
                                 <select name="province" id="onboard_province" onchange="fetchMunicipalities()" required>
                                     <option value="" disabled selected>Select Province</option>
@@ -798,7 +1201,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="onboard-address-grid">
                             <div class="dm-input-group">
                                 <select name="barangay" id="onboard_brgy" disabled required>
                                     <option value="" disabled selected>Select Barangay</option>
@@ -809,59 +1212,49 @@
                         </div>
                     </div>
 
-                    <!-- Service Matrix Column -->
+                    <!-- Event and Cuisine Options -->
                     <div style="display: flex; flex-direction: column; gap: 1.25rem;">
                         <h4
                             style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase;">
-                            Services Offered</h4>
-                        <div
-                            style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #f1f5f9;">
-                            <label
-                                style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 8px;">Events</label>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                <label><input type="checkbox" name="events" value="Wedding"> Wedding</label>
-                                <label><input type="checkbox" name="events" value="Birthday"> Birthday</label>
-                                <label><input type="checkbox" name="events" value="Corporate"> Corporate Events</label>
-                                <label><input type="checkbox" name="events" value="Debut"> Debuts & Milestones</label>
-                                <label><input type="checkbox" name="events" value="Baptism"> Baptism & Family</label>
-                                <label><input type="checkbox" name="events" value="Private Party"> Private
-                                    Parties</label>
-                                <label><input type="checkbox" name="events" value="Fiesta"> Fiestas & Large
-                                    Events</label>
-                                <label><input type="checkbox" name="events" value="Holiday"> Holiday
-                                    Celebrations</label>
+                            Event Types Served</h4>
+                        <div class="onboard-choice-card">
+                            <span class="onboard-choice-title">Select all event types this caterer serves</span>
+                            <div class="onboard-choice-grid">
+                                <label class="onboard-choice"><input type="checkbox" name="events" value="Wedding"> <span>Wedding</span></label>
+                                <label class="onboard-choice"><input type="checkbox" name="events" value="Birthday"> <span>Birthday</span></label>
+                                <label class="onboard-choice"><input type="checkbox" name="events" value="Corporate"> <span>Corporate events</span></label>
+                                <label class="onboard-choice"><input type="checkbox" name="events" value="Debut"> <span>Debuts and milestones</span></label>
+                                <label class="onboard-choice"><input type="checkbox" name="events" value="Baptism"> <span>Baptisms and family events</span></label>
+                                <label class="onboard-choice"><input type="checkbox" name="events" value="Private Party"> <span>Private parties</span></label>
+                                <label class="onboard-choice"><input type="checkbox" name="events" value="Fiesta"> <span>Fiestas and large events</span></label>
+                                <label class="onboard-choice"><input type="checkbox" name="events" value="Holiday"> <span>Holiday celebrations</span></label>
                             </div>
                         </div>
 
-                        <div
-                            style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #f1f5f9;">
-                            <label
-                                style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 8px;">Cuisine</label>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                <label><input type="checkbox" name="cuisines" value="Filipino"> Filipino</label>
-                                <label><input type="checkbox" name="cuisines" value="Asian"> Asian</label>
-                                <label><input type="checkbox" name="cuisines" value="Western"> Western</label>
+                        <div class="onboard-choice-card">
+                            <span class="onboard-choice-title">Cuisine types</span>
+                            <div class="onboard-choice-grid">
+                                <label class="onboard-choice"><input type="checkbox" name="cuisines" value="Filipino"> <span>Filipino</span></label>
+                                <label class="onboard-choice"><input type="checkbox" name="cuisines" value="Asian"> <span>Asian</span></label>
+                                <label class="onboard-choice"><input type="checkbox" name="cuisines" value="Western"> <span>Western</span></label>
                             </div>
                         </div>
 
-                        <div
-                            style="margin-top: auto; padding: 0.75rem; background: var(--adm-primary-soft); border-radius: 10px;">
-                            <p style="font-size: 0.65rem; color: var(--adm-navy); font-weight: 600; margin: 0;">
-                                Note: Added caterers bypass the verification review and are marked as "Verified" immediately.
-                                They will receive their temporary password via email.
-                            </p>
+                        <div class="onboard-verification-note" role="note">
+                            <i class="fas fa-shield-alt" aria-hidden="true"></i>
+                            <span>This creates an unverified account. The caterer must still submit the required identity and business documents. An admin must review and approve them before the account is verified.</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="modal-footer-clean"
+            <div class="modal-footer-clean onboard-modal-footer"
                 style="padding: 1.25rem 2rem; background: #f8fafc; display: flex; justify-content: flex-end; gap: 10px;">
                 <button type="button" class="btn-clean"
                     style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy);"
                     onclick="closeAddCatererModal()">Cancel</button>
-                <button type="submit" class="btn-clean"
-                    style="background: var(--adm-primary); color: white; padding: 0.75rem 2rem;">Add New
+                <button type="submit" class="btn-clean caterer-add-button"
+                    style="padding: 0.75rem 2rem;">Add New
                     Caterer</button>
             </div>
         </form>
@@ -870,40 +1263,39 @@
 
 <!-- Edit Caterer Modal -->
 <div id="editCatererModal" class="admin-modal-overlay">
-    <div class="admin-modal-card" style="max-width: 520px; width: 95%;">
+    <div class="admin-modal-card edit-modal-card">
         <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem;">
             <div>
-                <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Edit Caterer Profile</h3>
-                <p style="font-size: 0.7rem; color: var(--adm-muted);">Update only the public service area and platform settings.</p>
+                <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Edit Caterer Listing</h3>
+                <p style="font-size: 0.7rem; color: var(--adm-muted);">Update the public listing and an internal admin note.</p>
             </div>
             <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
                 onclick="closeEditModal()">&times;</button>
         </div>
         <form id="editCatererForm" onsubmit="submitEditCaterer(event)">
             <input type="hidden" id="edit_caterer_id">
-            <div class="modal-body-clean" style="padding: 1.5rem 2rem;">
-                <p class="vd-privacy-note">This form cannot change account-holder identity, sign-in or contact details, private address, payout information, or verification records.</p>
+            <div class="modal-body-clean edit-modal-body">
+                <p class="vd-privacy-note">Admins can edit the service city, coverage area, and internal note only. Account-holder details, private address, payout information, event types, and verification documents are not editable here.</p>
                 <h4 class="edit-section-heading" style="margin-top: 0;">Public listing</h4>
-                <div class="dm-input-group" style="margin-bottom: 15px;">
-                    <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Service city shown in listing</label>
-                    <input type="text" id="edit_city" name="city" class="form-control" placeholder="City or municipality shown in the directory">
+                <div class="edit-field">
+                    <label for="edit_city">Service city</label>
+                    <input type="text" id="edit_city" name="city" placeholder="City or municipality shown in the listing">
                 </div>
-                <div class="dm-input-group" style="margin-bottom: 15px;">
-                    <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Coverage area</label>
+                <div class="edit-field">
+                    <label for="edit_coverage">Coverage area</label>
                     <textarea id="edit_coverage" name="coverage_area" rows="3" class="form-control"
-                        style="width: 100%; border: none; outline: none; resize: vertical; font-size: 0.85rem;"
+                        style="resize: vertical;"
                         placeholder="Areas this partner can serve"></textarea>
                 </div>
                 <h4 class="edit-section-heading">Admin-only note</h4>
-                <div class="dm-input-group">
-                    <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Internal note</label>
+                <div class="edit-field" style="margin-bottom: 0;">
+                    <label for="edit_remarks">Internal note</label>
                     <textarea id="edit_remarks" name="admin_remarks" rows="3" class="form-control"
-                        style="width: 100%; border: none; outline: none; resize: vertical; font-size: 0.85rem;"
-                        placeholder="Visible to admins only; do not include passwords, payout numbers, or identity data"></textarea>
+                        style="resize: vertical;"
+                        placeholder="Visible to admins only"></textarea>
                 </div>
             </div>
-            <div class="modal-footer-clean"
-                style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px;">
+            <div class="modal-footer-clean edit-modal-footer">
                 <button type="button" class="btn-clean"
                     style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy);"
                     onclick="closeEditModal()">Cancel</button>
@@ -1005,19 +1397,10 @@
 
             <div id="vd_verification" class="vd-tab-content" role="tabpanel" aria-labelledby="vd_verification_tab" style="display: none;">
                 <div class="verif-summary">
-                    <div class="verif-row">
-                        <span>Verification date</span>
-                        <strong id="vc_verdate"></strong>
+                    <div class="verification-status-grid" id="vc_verification_summary">
+                        <div class="verification-empty">Loading current verification records...</div>
                     </div>
-                    <div class="verif-row">
-                        <span>Permit status</span>
-                        <strong id="vc_permit_status"></strong>
-                    </div>
-                    <div class="verif-row">
-                        <span>Permit expiry</span>
-                        <strong id="vc_permit"></strong>
-                    </div>
-                    <p class="vd-privacy-note">Identity and business verification files are restricted to this admin review and are not part of the public listing.</p>
+                    <p class="vd-privacy-note">Statuses come from the caterer account, identity verification, and submitted document records. “Submitted” means a file exists; it does not mean that document was individually approved.</p>
                     <button type="button" class="btn-clean" id="vc_open_files"
                         style="background: var(--adm-primary); color: white; width: 100%; justify-content: center; padding: 12px;">
                         <i class="fas fa-shield-alt" style="margin-right: 8px;"></i> Review verification files
@@ -1068,16 +1451,16 @@
         style="max-width: 900px; width: 95%; display: flex; flex-direction: column; max-height: 90vh;">
         <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem;">
             <div>
-                <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Review Partner Verification
+                <h3 id="reviewCatererTitle" style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Review Caterer Documents
                 </h3>
-                <p style="font-size: 0.7rem; color: var(--adm-muted);">Audit submitted identity and business verification files.</p>
+                <p id="reviewCatererSubtitle" style="font-size: 0.7rem; color: var(--adm-muted);">Check the submitted identity and business documents, then choose a decision.</p>
             </div>
             <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
                 onclick="closeReviewModal()">&times;</button>
         </div>
 
         <div class="modal-body-clean" style="overflow-y: auto; padding: 1.5rem 2rem; flex: 1;">
-            <div style="display: grid; grid-template-columns: 1fr 300px; gap: 2rem;">
+            <div class="review-verification-grid">
 
                 <!-- Left Panel: Verification files -->
                 <div>
@@ -1144,13 +1527,33 @@
         event.stopPropagation();
         const menu = btn.nextElementSibling;
         document.querySelectorAll('.dropdown-menu-dm').forEach(m => {
-            if (m !== menu) m.classList.remove('show');
+            if (m !== menu) {
+                m.classList.remove('show', 'is-fixed');
+                m.previousElementSibling?.setAttribute('aria-expanded', 'false');
+            }
         });
-        menu.classList.toggle('show');
+        const opening = !menu.classList.contains('show');
+        menu.classList.toggle('show', opening);
+        menu.classList.toggle('is-fixed', opening && window.innerWidth <= 767);
+        btn.setAttribute('aria-expanded', String(opening));
+        if (opening && window.innerWidth <= 767) {
+            const rect = btn.getBoundingClientRect();
+            const width = Math.min(220, window.innerWidth - 24);
+            const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12));
+            const menuHeight = Math.min(menu.scrollHeight, window.innerHeight - 24);
+            const top = rect.bottom + menuHeight + 8 > window.innerHeight
+                ? Math.max(12, rect.top - menuHeight - 8)
+                : rect.bottom + 8;
+            menu.style.setProperty('--menu-left', `${left}px`);
+            menu.style.setProperty('--menu-top', `${top}px`);
+        }
     }
 
     window.onclick = () => {
-        document.querySelectorAll('.dropdown-menu-dm').forEach(m => m.classList.remove('show'));
+        document.querySelectorAll('.dropdown-menu-dm').forEach(m => {
+            m.classList.remove('show', 'is-fixed');
+            m.previousElementSibling?.setAttribute('aria-expanded', 'false');
+        });
     };
 
     // --- State & Pagination Engine ---
@@ -1159,21 +1562,42 @@
     const rows = Array.from(document.querySelectorAll('.cust-row'));
 
     function filterCaterers() {
-        const status = document.getElementById('catererStatusFilter').value.toLowerCase();
+        const statusFilter = document.getElementById('catererStatusFilter').value.toLowerCase();
         const globalSearch = document.getElementById('globalSearchInput');
         const query = globalSearch ? globalSearch.value.toLowerCase().trim() : '';
 
         const filteredRows = rows.filter(row => {
-            const stat = row.querySelector('.badge-clean')?.innerText.toLowerCase() || '';
+            const verificationStatus = row.dataset.verificationStatus;
+            const accountStatus = row.dataset.accountStatus;
             const textContent = row.innerText.toLowerCase();
 
-            const matchesStatus = (status === 'all' || stat.includes(status));
+            let matchesStatus = statusFilter === 'all';
+            if (statusFilter === 'pending') {
+                matchesStatus = ['unverified', 'pending', 'pending review', 'requires revision', 'revision requested', 'resubmission_required'].includes(verificationStatus);
+            } else if (statusFilter === 'verified') {
+                matchesStatus = verificationStatus === 'verified' && accountStatus !== 'suspended';
+            } else if (statusFilter === 'suspended') {
+                matchesStatus = accountStatus === 'suspended';
+            } else if (statusFilter === 'revision') {
+                matchesStatus = ['requires revision', 'revision requested', 'resubmission_required'].includes(verificationStatus);
+            } else if (!matchesStatus) {
+                matchesStatus = verificationStatus === statusFilter;
+            }
             const matchesQuery = query === '' || textContent.includes(query);
 
             return matchesStatus && matchesQuery;
         });
 
+        document.querySelectorAll('.caterer-filter-card').forEach(card => {
+            card.setAttribute('aria-pressed', String(card.dataset.catererFilter === statusFilter));
+        });
         updatePagination(filteredRows);
+    }
+
+    function setCatererStatusFilter(status) {
+        document.getElementById('catererStatusFilter').value = status;
+        currentPage = 1;
+        filterCaterers();
     }
 
     function updatePagination(filteredRows) {
@@ -1186,7 +1610,13 @@
         const end = start + entriesPerPage;
 
         rows.forEach(row => row.style.display = 'none');
-        filteredRows.slice(start, end).forEach(row => row.style.display = '');
+        const pageRows = filteredRows.slice(start, end);
+        pageRows.forEach(row => row.style.display = '');
+        document.querySelectorAll('.caterer-section-heading').forEach(heading => {
+            const section = heading.dataset.sectionHeading;
+            heading.style.display = pageRows.some(row => row.dataset.directorySection === section) ? '' : 'none';
+        });
+        document.getElementById('catererEmptyRow').style.display = total === 0 ? '' : 'none';
 
         document.getElementById('entryStart').innerText = total === 0 ? 0 : start + 1;
         document.getElementById('entryEnd').innerText = Math.min(end, total);
@@ -1464,7 +1894,7 @@
         fd.append('event_types', JSON.stringify(events));
         fd.append('cuisine_types', JSON.stringify(cuisines));
 
-        Swal.fire({ title: 'Processing', text: 'Creating pre-verified partner...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        Swal.fire({ title: 'Processing', text: 'Creating caterer account...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         try {
             const res = await fetch('/admin/caterers/add', { method: 'POST', body: fd });
@@ -1524,7 +1954,6 @@
         document.getElementById('vc_owner').innerText = btn.getAttribute('data-owner') || 'Not listed';
         document.getElementById('vc_email').innerText = btn.getAttribute('data-email') || 'Not listed';
         document.getElementById('vc_regdate').innerText = btn.getAttribute('data-regdate') || 'Not recorded';
-        document.getElementById('vc_verdate').innerText = btn.getAttribute('data-verdate') || 'Not yet verified';
         document.getElementById('vc_city').innerText = btn.getAttribute('data-city') || 'Not listed';
         document.getElementById('vc_coverage').innerText = btn.getAttribute('data-coverage') || 'Not listed';
         document.getElementById('vc_events').innerText = btn.getAttribute('data-events') || 'Not listed';
@@ -1533,22 +1962,20 @@
         document.getElementById('vc_pax').innerText = btn.getAttribute('data-pax') || 'Not listed';
         document.getElementById('vc_rating').innerText = btn.getAttribute('data-rating') || 'No ratings yet';
         document.getElementById('vc_bookings').innerText = btn.getAttribute('data-bookings') || '0';
-        document.getElementById('vc_permit').innerText = btn.getAttribute('data-permit') || 'Not on file';
-        document.getElementById('vc_permit_status').innerText = btn.getAttribute('data-permit-status') || 'Not on file';
         document.getElementById('vc_account').innerText = btn.getAttribute('data-account') || 'Unknown';
 
         const status = btn.getAttribute('data-status');
         const catererId = btn.getAttribute('data-id');
+        const accountStatus = (btn.getAttribute('data-account') || 'Unknown').replace(/_/g, ' ');
         const statusBadge = document.createElement('span');
         statusBadge.className = 'badge-clean';
-        if (status === 'Verified') statusBadge.classList.add('badge-active');
-        else if (['Pending', 'Pending Review', 'Requires Revision', 'Revision Requested'].includes(status)) statusBadge.classList.add('badge-pending');
-        statusBadge.textContent = status === 'Pending' || status === 'Pending Review' || status === 'Requires Revision' || status === 'Revision Requested'
-            ? 'Needs review'
-            : status || 'Unknown';
+        const normalizedStatus = (status || 'Unknown').toLowerCase();
+        if (normalizedStatus === 'verified') statusBadge.classList.add('badge-active');
+        else if (['pending', 'pending review', 'requires revision', 'revision requested', 'resubmission_required'].includes(normalizedStatus)) statusBadge.classList.add('badge-pending');
+        else if (normalizedStatus === 'rejected' || normalizedStatus === 'suspended') statusBadge.classList.add('status-suspended');
+        statusBadge.textContent = status || 'Unknown';
         document.getElementById('vc_status').replaceChildren(statusBadge);
         document.getElementById('vc_id').textContent = `#${catererId || 'N/A'}`;
-        const accountStatus = (btn.getAttribute('data-account') || 'Unknown').replace(/_/g, ' ');
         document.getElementById('vc_account').textContent = accountStatus.replace(/\b\w/g, character => character.toUpperCase());
         document.getElementById('vf_subtitle').innerText = name;
         document.getElementById('vc_open_files').onclick = () => openVerificationFilesModal(catererId);
@@ -1557,8 +1984,78 @@
         if (firstTab) switchVDTab('vd_overview', firstTab);
 
         document.getElementById('viewCatererModal').classList.add('active');
+        loadCatererVerificationSummary(catererId);
     }
     function closeViewCatererModal() { document.getElementById('viewCatererModal').classList.remove('active'); }
+
+    function formatVerificationStatus(value) {
+        if (!value) return 'Not submitted';
+        const labels = {
+            VERIFIED: 'Verified',
+            PENDING_REVIEW: 'Pending review',
+            RESUBMISSION_REQUIRED: 'Revision requested',
+            REVERIFICATION_REQUIRED: 'Re-verification required',
+            NEEDS_REVIEW: 'Needs review',
+            PROCESSING: 'Processing',
+            FAILED: 'Failed',
+            EXPIRED: 'Expired',
+            UNVERIFIED: 'Unverified',
+        };
+        const normalized = String(value).trim();
+        return labels[normalized.toUpperCase()] || normalized.replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+    }
+
+    function addVerificationStatusCard(container, label, value) {
+        const card = document.createElement('div');
+        card.className = 'verification-status-card';
+        const heading = document.createElement('span');
+        heading.textContent = label;
+        const content = document.createElement('strong');
+        content.textContent = value || 'Not recorded';
+        card.append(heading, content);
+        container.appendChild(card);
+    }
+
+    async function loadCatererVerificationSummary(catererId) {
+        const container = document.getElementById('vc_verification_summary');
+        container.replaceChildren();
+        const loading = document.createElement('div');
+        loading.className = 'verification-empty';
+        loading.textContent = 'Loading current verification records...';
+        container.appendChild(loading);
+
+        try {
+            const response = await fetch(`/admin/api/caterers/${encodeURIComponent(catererId)}/documents`);
+            const data = await response.json();
+            if (!response.ok || !data.success || !data.docs?.verification_summary) {
+                throw new Error(data.message || 'Verification records are unavailable.');
+            }
+
+            const summary = data.docs.verification_summary;
+            const reviewedAt = summary.business_reviewed_at || summary.identity_reviewed_at;
+            const reviewedLabel = reviewedAt
+                ? new Date(reviewedAt).toLocaleString()
+                : 'No review recorded';
+            const permitExpiry = summary.permit_expiry_date || 'Not on file';
+
+            container.replaceChildren();
+            addVerificationStatusCard(container, 'Overall status', formatVerificationStatus(summary.overall_status));
+            addVerificationStatusCard(container, 'Identity verification', formatVerificationStatus(summary.identity_status));
+            addVerificationStatusCard(container, 'Business document review', formatVerificationStatus(summary.business_status));
+            addVerificationStatusCard(container, 'Business permit', formatVerificationStatus(summary.permit_status));
+            addVerificationStatusCard(container, 'DTI registration', formatVerificationStatus(summary.dti_status));
+            addVerificationStatusCard(container, 'BIR registration', formatVerificationStatus(summary.bir_status));
+            addVerificationStatusCard(container, "Mayor's permit", formatVerificationStatus(summary.mayors_permit_status));
+            addVerificationStatusCard(container, 'Last reviewed', reviewedLabel);
+            addVerificationStatusCard(container, 'Business permit expiry', permitExpiry);
+        } catch (error) {
+            container.replaceChildren();
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'verification-empty';
+            errorMessage.textContent = `Could not load verification records: ${error.message}`;
+            container.appendChild(errorMessage);
+        }
+    }
 
     function isPdfVerificationFile(url) {
         return url.split(/[?#]/, 1)[0].toLowerCase().endsWith('.pdf');
@@ -1647,10 +2144,10 @@
                 { name: 'Liveness photo 1', url: data.docs.selfie_url },
                 { name: 'Liveness photo 2', url: data.docs.selfie_2_url },
                 { name: 'Liveness photo 3', url: data.docs.selfie_3_url },
-                { name: 'Business permit', url: data.docs.permit_url, extra: data.docs.permit_expiry_date ? `Expires ${data.docs.permit_expiry_date}` : '' },
-                { name: 'DTI registration', url: data.docs.dti_url },
-                { name: 'BIR registration', url: data.docs.bir_url },
-                { name: "Mayor's permit", url: data.docs.mayors_permit_url }
+                { name: 'Business permit', url: data.docs.permit_url, extra: data.docs.verification_summary?.permit_status || '' },
+                { name: 'DTI registration', url: data.docs.dti_url, extra: data.docs.verification_summary?.dti_status || '' },
+                { name: 'BIR registration', url: data.docs.bir_url, extra: data.docs.verification_summary?.bir_status || '' },
+                { name: "Mayor's permit", url: data.docs.mayors_permit_url, extra: data.docs.verification_summary?.mayors_permit_status || '' }
             ];
             renderVerificationFiles(grid, files, 'No verification files on record.');
         } catch (e) {
@@ -1839,7 +2336,10 @@
 
     // --- Review Verification Engine ---
     async function openReviewModal(catererId) {
+        const row = document.querySelector(`[data-caterer-id="${catererId}"]`);
         document.getElementById('review_caterer_id').value = catererId;
+        document.getElementById('reviewCatererTitle').textContent = `Review ${row?.dataset.businessName || 'caterer'} documents`;
+        document.getElementById('reviewCatererSubtitle').textContent = 'Check each submitted file and choose a review decision.';
         document.getElementById('review_action_select').value = 'Verified';
         document.getElementById('review_remarks').value = '';
         toggleRemarks();
@@ -1854,15 +2354,15 @@
 
             if (data.success) {
                 const files = [
-                    { name: 'Gov ID Front', url: data.docs.gov_id_url },
-                    { name: 'Gov ID Back', url: data.docs.gov_id_back_url },
-                    { name: 'Selfie / Proof of Life 1', url: data.docs.selfie_url },
-                    { name: 'Selfie / Proof of Life 2', url: data.docs.selfie_2_url },
-                    { name: 'Selfie / Proof of Life 3', url: data.docs.selfie_3_url },
-                    { name: 'Business Permit', url: data.docs.permit_url, extra: data.docs.permit_expiry_date ? `(Expires: ${data.docs.permit_expiry_date})` : '' },
-                    { name: 'DTI Reg', url: data.docs.dti_url },
-                    { name: 'BIR Reg', url: data.docs.bir_url },
-                    { name: 'Mayor Permit', url: data.docs.mayors_permit_url }
+                    { name: 'Government ID front', url: data.docs.gov_id_url, extra: data.docs.verification_summary?.identity_status },
+                    { name: 'Government ID back', url: data.docs.gov_id_back_url, extra: data.docs.verification_summary?.identity_status },
+                    { name: 'Selfie / proof of life 1', url: data.docs.selfie_url, extra: data.docs.verification_summary?.identity_status },
+                    { name: 'Selfie / proof of life 2', url: data.docs.selfie_2_url, extra: data.docs.verification_summary?.identity_status },
+                    { name: 'Selfie / proof of life 3', url: data.docs.selfie_3_url, extra: data.docs.verification_summary?.identity_status },
+                    { name: 'Business permit', url: data.docs.permit_url, extra: data.docs.verification_summary?.permit_status || 'Not submitted' },
+                    { name: 'DTI registration', url: data.docs.dti_url, extra: data.docs.verification_summary?.dti_status || 'Not submitted' },
+                    { name: 'BIR registration', url: data.docs.bir_url, extra: data.docs.verification_summary?.bir_status || 'Not submitted' },
+                    { name: "Mayor's permit", url: data.docs.mayors_permit_url, extra: data.docs.verification_summary?.mayors_permit_status || 'Not submitted' }
                 ];
 
                 renderVerificationFiles(grid, files, 'No verification files submitted yet.');
@@ -1886,6 +2386,55 @@
         } else {
             container.style.display = 'none';
         }
+    }
+
+    function updateCatererReviewRow(catererId, status) {
+        const row = document.querySelector(`[data-caterer-id="${catererId}"]`);
+        if (!row) return;
+
+        const normalizedStatus = status.toLowerCase();
+        row.dataset.verificationStatus = normalizedStatus;
+        row.dataset.accountStatus = normalizedStatus === 'suspended'
+            ? 'suspended'
+            : (normalizedStatus === 'verified' ? 'active' : row.dataset.accountStatus);
+        const statusCell = row.cells[3];
+        const badge = document.createElement('span');
+        badge.className = 'badge-clean';
+        if (normalizedStatus === 'verified') {
+            badge.classList.add('badge-active');
+            badge.textContent = 'VERIFIED';
+        } else if (normalizedStatus === 'rejected' || normalizedStatus === 'suspended') {
+            badge.classList.add('status-suspended');
+            badge.textContent = normalizedStatus.toUpperCase();
+        } else if (normalizedStatus === 'requires revision') {
+            badge.classList.add('badge-pending');
+            badge.textContent = 'REVISION REQUIRED';
+        } else {
+            badge.classList.add('badge-pending');
+            badge.textContent = status.toUpperCase();
+        }
+        statusCell.replaceChildren(badge);
+
+        const section = normalizedStatus === 'verified' ? 'verified' : 'unverified';
+        row.dataset.directorySection = section;
+        const heading = document.querySelector(`[data-section-heading="${section}"]`);
+        heading?.parentElement.appendChild(row);
+        const reviewButton = Array.from(row.querySelectorAll('.dm-dropdown-item')).find(item => item.textContent.includes('Review Documents'));
+        if (reviewButton) reviewButton.style.display = normalizedStatus === 'verified' ? 'none' : '';
+
+        const pendingStatuses = ['unverified', 'pending', 'pending review', 'pending_review', 'requires revision', 'revision requested', 'resubmission_required'];
+        const countFor = filter => {
+            if (filter === 'all') return rows.length;
+            if (filter === 'verified') return rows.filter(item => item.dataset.verificationStatus === 'verified' && item.dataset.accountStatus !== 'suspended').length;
+            if (filter === 'pending') return rows.filter(item => pendingStatuses.includes(item.dataset.verificationStatus)).length;
+            if (filter === 'suspended') return rows.filter(item => item.dataset.accountStatus === 'suspended' || item.dataset.verificationStatus === 'suspended').length;
+            return 0;
+        };
+        document.querySelectorAll('.caterer-filter-card').forEach(card => {
+            const value = card.querySelector('.kpi-value');
+            if (value) value.textContent = countFor(card.dataset.catererFilter);
+        });
+        filterCaterers();
     }
 
     async function submitReview() {
@@ -1916,9 +2465,10 @@
             const data = await res.json();
 
             if (data.success) {
+                updateCatererReviewRow(id, status);
+                closeReviewModal();
                 if (window.showSuccess) window.showSuccess(data.message);
                 else alert(data.message);
-                setTimeout(() => window.location.reload(), 1500);
             } else {
                 if (window.showError) window.showError(data.message);
                 else alert(data.message);

@@ -1,4 +1,4 @@
-{% extends "caterer/layout.html" %}
+{% extends "caterer/messages_modal_shell.html" if embedded else "caterer/layout.html" %}
 
 {% block title %}Messages - {{ user.caterer_profile.business_name }}{% endblock %}
 
@@ -15,6 +15,7 @@
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         margin-bottom: 0;
     }
+    body.embedded-caterer-messages .messages-container { height:calc(100dvh - 28px);min-height:0;margin:0;border-radius:12px; }
 
     /* Conversations List */
     .conversations-sidebar {
@@ -25,13 +26,52 @@
     }
 
     .sidebar-search {
+        display:flex;
+        align-items:center;
+        gap:10px;
         padding: 1.5rem;
         border-bottom: 1px solid #e2e8f0;
     }
 
+    .message-start-row { display:flex;align-items:center;flex:0 0 auto;gap:8px;margin:0; }
+    .message-start-row button { min-height:42px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:8px;padding:0 13px;background:var(--primary-color);color:#fff;font-weight:800;white-space:nowrap;cursor:pointer;transition:filter .16s,box-shadow .16s; }
+    .message-start-row button:hover,.message-start-row button:focus-visible { filter:brightness(.94);box-shadow:0 0 0 3px rgba(var(--primary-color-rgb),.16);outline:none; }
+    .message-contact-modal { position:fixed; inset:0; z-index:1200; display:none; align-items:center; justify-content:center; padding:16px; background:rgba(15,23,42,.55); }
+    .message-contact-modal.open { display:flex; }
+    .message-contact-card { width:min(500px,100%); max-height:min(760px,88vh); overflow:hidden; display:flex;flex-direction:column;padding:18px;border-radius:16px;background:#fff;box-shadow:0 20px 50px rgba(15,23,42,.25); }
+    .message-contact-option { width:100%; display:flex; gap:10px; align-items:center; padding:12px; border:0; border-bottom:1px solid #edf1f5; background:#fff; text-align:left; cursor:pointer; }
+    .message-contact-option:hover,.message-contact-option:focus-visible { background:rgba(var(--primary-color-rgb),.07);outline:none; }
+    .contact-modal-heading { display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid #edf1f5; }
+    .contact-modal-heading h2 { margin:0;color:#0f172a;font-size:1rem; }
+    .contact-modal-heading p { margin:4px 0 0;color:#64748b;font-size:.76rem; }
+    .contact-modal-icon { width:42px;height:42px;display:grid;place-items:center;border-radius:12px;background:rgba(var(--primary-color-rgb),.1);color:var(--primary-color); }
+    .contact-modal-close { margin-left:auto;border:0;border-radius:8px;background:transparent;color:#64748b;font-size:1.5rem;cursor:pointer; }
+    .contact-modal-close:hover,.contact-modal-close:focus-visible { background:rgba(var(--primary-color-rgb),.1);color:var(--primary-color);outline:none; }
+    .contact-search { display:flex;align-items:center;gap:9px;margin:13px 0;padding:0 11px;border:1px solid #dbe3ed;border-radius:10px;color:#94a3b8;transition:border-color .16s,box-shadow .16s; }
+    .contact-search:focus-within { border-color:var(--primary-color);box-shadow:0 0 0 3px rgba(var(--primary-color-rgb),.1); }
+    .contact-search input { width:100%;min-width:0;padding:11px 0;border:0;outline:0;background:transparent;font-size:.8rem; }
+    .contact-modal-scroll { min-height:0;overflow:auto; }
+    .contact-section-title { position:sticky;top:0;padding:9px 11px;background:#f8fafc;color:#64748b;font-size:.65rem;font-weight:800;letter-spacing:.08em; }
+    .message-contact-option .contact-copy { min-width:0;flex:1; }
+    .message-contact-option .contact-copy strong,.message-contact-option .contact-copy small { display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+    .message-contact-option .contact-copy strong { color:#0f172a;font-size:.82rem; }
+    .message-contact-option .contact-copy small { margin-top:3px;color:#64748b;font-size:.7rem; }
+    .message-contact-option .contact-meta { color:#64748b;font-size:.67rem;white-space:nowrap; }
+    .admin-direct-message { width:100%;display:flex;align-items:center;gap:11px;margin:12px 0 4px;padding:12px;border:1px solid rgba(var(--primary-color-rgb),.28);border-radius:11px;background:rgba(var(--primary-color-rgb),.07);text-align:left;cursor:pointer;transition:background .16s,border-color .16s,box-shadow .16s; }
+    .admin-direct-message:hover,.admin-direct-message:focus-visible { border-color:var(--primary-color);background:rgba(var(--primary-color-rgb),.12);box-shadow:0 0 0 3px rgba(var(--primary-color-rgb),.08);outline:none; }
+    .admin-direct-message strong,.admin-direct-message small { display:block; }
+    .admin-direct-message strong { color:var(--primary-color);font-size:.82rem; }
+    .admin-direct-message small { margin-top:3px;color:#78716c;font-size:.7rem; }
+    .contact-empty-state { padding:24px 12px;text-align:center;color:#94a3b8;font-size:.8rem; }
+    .contact-modal-note { display:flex;align-items:center;gap:7px;margin-top:12px;padding-top:11px;border-top:1px solid #edf1f5;color:#64748b;font-size:.68rem; }
+    @media(max-width:520px) { .message-contact-modal { padding:8px;align-items:flex-end; } .message-contact-card { width:100%;max-height:86dvh;padding:14px;border-radius:16px 16px 10px 10px; } .message-contact-option { padding:11px 7px; } .message-contact-option .contact-meta { max-width:92px;overflow:hidden;text-overflow:ellipsis; } }
+
     .sidebar-search input {
         width: 100%;
-        padding: 0.75rem 1rem;
+        min-width:0;
+        height:42px;
+        box-sizing:border-box;
+        padding: 0 0.85rem;
         border: 1px solid #e2e8f0;
         border-radius: var(--border-radius, 99px);
         font-size: 0.9rem;
@@ -58,8 +98,8 @@
     }
 
     .conversation-item.active {
-        background: #eff6ff;
-        border-left: 4px solid var(--accent-color);
+        background: rgba(var(--primary-color-rgb),.09);
+        border-left: 4px solid var(--primary-color);
     }
 
     .peer-avatar {
@@ -142,6 +182,8 @@
         align-items: center;
         gap: 0.75rem;
     }
+    .mobile-back { display:none;width:38px;height:38px;flex:0 0 38px;place-items:center;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;color:#334155;cursor:pointer;transition:background .15s,border-color .15s,color .15s; }
+    .mobile-back:hover,.mobile-back:focus-visible { border-color:var(--primary-color);background:rgba(var(--primary-color-rgb),.1);color:var(--primary-color);outline:none; }
 
     .chat-messages {
         flex: 1;
@@ -188,18 +230,24 @@
     }
 
     .chat-input-area {
-        padding: 1.5rem;
+        padding: 1rem 1.25rem;
         border-top: 1px solid #e2e8f0;
     }
 
     .chat-input-wrapper {
-        display: flex;
-        gap: 1rem;
+        display:flex;
+        align-items:stretch;
+        gap:.65rem;
+        min-width:0;
+        height:48px;
     }
 
     .chat-input-wrapper input {
-        flex: 1;
-        padding: 0.75rem 1.25rem;
+        flex:1 1 auto;
+        min-width:0;
+        height:48px;
+        box-sizing:border-box;
+        padding:0 .95rem;
         border: 1px solid #e2e8f0;
         border-radius: var(--border-radius-base);
         outline: none;
@@ -207,9 +255,9 @@
     }
 
     .chat-input-wrapper input:focus {
-        border-color: var(--accent-color);
+        border-color: var(--primary-color);
         background: #ffffff;
-        box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb, 37, 99, 235), 0.08);
+        box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.12);
     }
 
     /* Custom send button - bypasses main.js loading state */
@@ -217,7 +265,9 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 0 1.5rem;
+        width:48px;
+        min-width:48px;
+        padding:0;
         height: 48px;
         background: var(--primary-color);
         color: white;
@@ -228,7 +278,7 @@
         flex-shrink: 0;
         transition: background 0.2s, transform 0.1s;
     }
-    .btn-chat-send:hover { opacity: 0.9; }
+    .btn-chat-send:hover,.btn-chat-send:focus-visible { background:var(--accent-color);box-shadow:0 0 0 3px rgba(var(--primary-color-rgb),.16);outline:none; }
     .btn-chat-send:active { transform: scale(0.97); }
 
     .sidebar-search input {
@@ -274,23 +324,37 @@
         #conversationsSidebar.hidden + #chatArea {
             display: flex;
         }
+
+        .sidebar-search { padding:12px;gap:8px; }
+        .message-start-row { margin:0;gap:7px; }
+        .message-start-row button { min-height:40px;padding:0 11px;font-size:.78rem; }
+        .sidebar-search input { height:40px;padding:0 10px;font-size:.78rem; }
+        .chat-header { min-height:60px;padding:10px 14px; }
+        .mobile-back.is-visible { display:grid; }
+        .chat-input-area { padding:10px 12px max(10px,env(safe-area-inset-bottom)); }
+        .chat-input-wrapper { height:46px;gap:7px; }
+        .chat-input-wrapper #mainAttachmentBtn { width:46px;height:46px !important;min-width:46px;padding:0 !important;justify-content:center; }
+        .chat-input-wrapper #attachFileLabel { display:none !important; }
+        .chat-input-wrapper input { height:46px;padding:0 11px;font-size:.9rem; }
+        .chat-input-wrapper .btn-chat-send { width:46px;height:46px;min-width:46px; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
+{% if not embedded %}<div class="page-header">
     <div class="header-text">
         <h1>Messages</h1>
         <p>Chat with your customers in real-time.</p>
     </div>
-</div>
+</div>{% endif %}
 
 <div class="messages-container">
     <!-- Sidebar -->
     <div class="conversations-sidebar" id="conversationsSidebar">
         <div class="sidebar-search">
             <input type="text" placeholder="Search conversations..." id="searchConversations">
+            <div class="message-start-row"><button type="button" onclick="openCatererContactModal()"><i class="fas fa-pen-to-square"></i><span>New</span></button></div>
         </div>
         <div class="conversations-list" id="conversationsList">
             <div style="padding: 2rem; text-align: center; color: #94a3b8;">
@@ -310,7 +374,7 @@
         <div id="activeChat" style="display: none; flex-direction: column; height: 100%; min-height: 0; overflow: hidden;">
             <div class="chat-header">
                 <div class="active-peer">
-                    <button class="mobile-back btn-icon" style="display: none;" onclick="showSidebar()"><i class="fas fa-arrow-left"></i></button>
+                    <button type="button" class="mobile-back" onclick="showSidebar()" aria-label="Back to conversations" title="Back to conversations"><i class="fas fa-arrow-left"></i></button>
                     <div class="peer-avatar" id="activePeerAvatar">?</div>
                     <div>
                         <div class="peer-name" id="activePeerName">Customer Name</div>
@@ -337,6 +401,16 @@
         </div>
     </div>
 </div>
+
+<div class="message-contact-modal" id="catererContactModal" onclick="if(event.target===this) closeCatererContactModal()">
+    <section class="message-contact-card" role="dialog" aria-modal="true" aria-labelledby="catererContactTitle">
+        <div class="contact-modal-heading"><span class="contact-modal-icon"><i class="fas fa-message"></i></span><div><h2 id="catererContactTitle">New message</h2><p>Contact OccaServe admin or a customer you have worked with.</p></div><button type="button" onclick="closeCatererContactModal()" aria-label="Close" class="contact-modal-close">&times;</button></div>
+        <button type="button" id="messageAdminDirect" class="admin-direct-message" style="display:none;"><span class="contact-modal-icon"><i class="fas fa-headset"></i></span><span><strong>Message OccaServe Admin</strong><small id="messageAdminName">Open your private admin conversation</small></span><i class="fas fa-chevron-right" style="margin-left:auto;color:var(--primary-color);"></i></button>
+        <label class="contact-search"><i class="fas fa-magnifying-glass"></i><input type="search" id="catererContactSearch" placeholder="Search customers" aria-label="Search customers"></label>
+        <div class="contact-modal-scroll"><div class="contact-section-title">CUSTOMERS WHO INQUIRED OR BOOKED</div><div id="catererContactChoices"><div class="contact-empty-state">Loading customers…</div></div></div>
+        <div class="contact-modal-note"><i class="fas fa-lock"></i> Conversations stay inside OccaServe.</div>
+    </section>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -350,7 +424,7 @@
         chatClient = new OccaChat({
             userId: {{ user.id }},
             userRole: 'caterer',
-            websocketUrl: `ws://${window.location.host}/ws`,
+            websocketUrl: `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`,
             onMessageReceived: (data) => {
                 // If it's for the currently open chat, append it
                 if (currentPeerId && data.sender_id === currentPeerId) {
@@ -379,6 +453,9 @@
 
         // Load initial conversations
         refreshConversations();
+        loadCatererMessageContacts();
+        if (new URLSearchParams(window.location.search).get('new') === '1') openCatererContactModal();
+        document.getElementById('catererContactSearch').addEventListener('input', renderCatererCustomerContacts);
 
         // Handle sending messages - optimistic UI (shows message immediately)
         document.getElementById('chatForm').addEventListener('submit', async (e) => {
@@ -589,7 +666,7 @@
         // On mobile, hide sidebar
         if (window.innerWidth <= 1024) {
             document.getElementById('conversationsSidebar').classList.add('hidden');
-            document.querySelector('.mobile-back').style.display = 'block';
+            document.querySelector('.mobile-back').classList.add('is-visible');
         }
     }
 
@@ -624,6 +701,36 @@
         document.getElementById('conversationsSidebar').classList.remove('hidden');
         document.getElementById('activeChat').style.display = 'none';
         document.getElementById('noChatSelected').style.display = 'flex';
+        document.querySelector('.mobile-back').classList.remove('is-visible');
     }
+
+    let catererMessageContacts = [];
+    async function loadCatererMessageContacts() {
+        const host=document.getElementById('catererContactChoices');
+        try {
+            const response=await fetch('/api/chat/contacts');
+            catererMessageContacts=response.ok?await response.json():[];
+            const admin=catererMessageContacts.find(contact=>contact.role==='admin');
+            const adminButton=document.getElementById('messageAdminDirect');
+            if(admin){document.getElementById('messageAdminName').textContent=admin.name||'Your OccaServe admin';adminButton.style.display='flex';adminButton.onclick=()=>{closeCatererContactModal();selectConversation(admin.id,admin.name||'OccaServe Admin',admin.is_online);};}
+            renderCatererCustomerContacts();
+        } catch { host.textContent='Could not load contacts. Please try again.'; }
+    }
+    function renderCatererCustomerContacts(){
+        const host=document.getElementById('catererContactChoices');
+        const query=(document.getElementById('catererContactSearch')?.value||'').toLowerCase().trim();
+        const customers=catererMessageContacts.filter(contact=>contact.role==='customer'&&`${contact.name||''} ${contact.email||''}`.toLowerCase().includes(query));
+        host.replaceChildren();
+        if(!customers.length){const empty=document.createElement('div');empty.className='contact-empty-state';empty.textContent=catererMessageContacts.some(contact=>contact.role==='customer')?'No customers match your search.':'No registered customer accounts from inquiries or bookings yet.';host.appendChild(empty);return;}
+        customers.forEach(contact=>{
+            const button=document.createElement('button');button.type='button';button.className='message-contact-option';
+            const avatar=document.createElement('span');avatar.className='peer-avatar';avatar.textContent=(contact.name||'C').trim().charAt(0).toUpperCase();
+            const copy=document.createElement('span');copy.className='contact-copy';const name=document.createElement('strong');name.textContent=contact.name||'Customer';const email=document.createElement('small');email.textContent=contact.email||'OccaServe customer';copy.append(name,email);
+            const meta=document.createElement('span');meta.className='contact-meta';meta.textContent=contact.contact_group==='booked'?'Booked':contact.contact_group==='inquired'?'Inquired':'Customer';
+            button.append(avatar,copy,meta);button.onclick=()=>{closeCatererContactModal();selectConversation(contact.id,contact.name||'Customer',contact.is_online);};host.appendChild(button);
+        });
+    }
+    function openCatererContactModal(){document.getElementById('catererContactModal').classList.add('open');document.getElementById('catererContactSearch').focus();}
+    function closeCatererContactModal(){document.getElementById('catererContactModal').classList.remove('open');}
 </script>
 {% endblock %}

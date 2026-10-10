@@ -128,6 +128,31 @@ function bk_openModal(id) {
     }
 }
 
+// Booking tab dialogs are children of View Details. Close only the topmost
+// dialog with Escape, and ignore parent backdrop clicks while a child is open.
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    const active = [...document.querySelectorAll('.occ-modal-overlay.active')];
+    const top = active.reduce((current, el) => {
+        const z = parseInt(getComputedStyle(el).zIndex, 10) || 0;
+        const currentZ = current ? (parseInt(getComputedStyle(current).zIndex, 10) || 0) : -1;
+        return z >= currentZ ? el : current;
+    }, null);
+    if (top) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        bk_closeModal(top.id);
+    }
+}, true);
+
+document.addEventListener('click', function(e) {
+    if (e.target?.id !== 'bookingDetailModal') return;
+    if ([...document.querySelectorAll('.occ-modal-overlay.active')].some(el => el.id !== 'bookingDetailModal')) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+    }
+}, true);
+
 function bk_closeModal(id) {
     console.log('[BookingsJS] Closing modal:', id);
     if (id === 'bookingDetailModal') {
@@ -562,14 +587,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        // 6. ESC key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                var open = document.querySelector('.occ-modal-overlay.active');
-                if (open) bk_closeModal(open.id);
-            }
-        });
-
         // Polling removed in favor of accurate server-side rendering
         console.log('[BookingsJS] Manage Bookings JS Ready. [v2.0-english-standard]');
     } catch (err) {
@@ -643,7 +660,8 @@ function setUniversalFilter(filterVal) {
 }
 
 function filterBookings() {
-    const searchInput = document.getElementById('bookingSearchInput') ? document.getElementById('bookingSearchInput').value.trim().toLowerCase() : '';
+    const pageSearch = document.getElementById('bookingSearchInput')?.value;
+    const searchInput = String(pageSearch ?? window.catererPageSearchQuery ?? '').trim().toLowerCase();
     const statusFilter = document.getElementById('statusFilter') ? document.getElementById('statusFilter').value.toLowerCase() : '';
     const sourceFilter = document.getElementById('sourceFilter') ? document.getElementById('sourceFilter').value.toLowerCase() : '';
     const universalFilter = document.getElementById('universalFilter') ? document.getElementById('universalFilter').value.toLowerCase() : '';
@@ -670,7 +688,7 @@ function filterBookings() {
         const rawStatus = (el.dataset.status || '').toLowerCase();
         const payStatus = (el.dataset.paymentStatus || '').toLowerCase();
         const rawEntry = (el.dataset.entryMethod || el.dataset.source || '').toLowerCase();
-        const searchText = (el.dataset.searchText || el.textContent || '').toLowerCase();
+        const searchText = `${el.dataset.searchText || ''} ${el.textContent || ''}`.toLowerCase();
 
         // 1. Search text matching
         if (searchInput && searchText.indexOf(searchInput) === -1) {
@@ -1219,6 +1237,7 @@ function hydrateButtonDataset(btn, detail) {
     const fields = {
         status: detail.status || btn.dataset.status || '',
         paymentStatus: detail.payment_status || btn.dataset.paymentStatus || 'unpaid',
+        computedPaymentStatus: detail.computed_payment_status || (detail.payment_summary && detail.payment_summary.computed_payment_status) || btn.dataset.computedPaymentStatus || '',
         source: detail.booking_source || (isManual ? 'MANUAL' : 'ONLINE'),
         sourceKind: detail.source_kind || (isManual ? 'manual' : 'online'),
         sourceLabel: detail.source_label || (isManual ? 'MANUAL BOOKING' : 'ONLINE BOOKING'),
@@ -1424,6 +1443,36 @@ function _syncFooterButtons(cleanId, normStatus, hasPaymentRequiringReview) {
 
 // ─── MODAL: BOOKING DETAILS ──────────────────────────────────────────────────
 
+function resolvePaymentDisplayStatus(rawStatus, computedStatus, total, verifiedPaid, balance, pendingReview, isUnderReview) {
+    const raw = String(rawStatus || '').toLowerCase();
+    const computed = String(computedStatus || '').toLowerCase();
+    const totalValue = Number(total) || 0;
+    const paidValue = Number(verifiedPaid) || 0;
+    const balanceValue = Number(balance) || 0;
+    const pendingValue = Number(pendingReview) || 0;
+
+    if (computed === 'fully_paid' || (totalValue > 0 && balanceValue <= 0.009)) {
+        return { label: 'Fully Paid', background: '#dcfce7', color: '#166534', border: '#bbf7d0' };
+    }
+    const reviewLabels = {
+        proof_submitted: 'Payment Proof Submitted',
+        balance_proof_submitted: 'Balance Proof Submitted',
+        cash_payment_requested: 'Cash Payment Requested',
+        cash_balance_requested: 'Cash Balance Requested',
+        pending_verification: 'Payment Under Review',
+        reupload_requested: 'New Payment Proof Requested',
+        balance_reupload_requested: 'New Balance Proof Requested'
+    };
+    const reviewLabel = reviewLabels[raw];
+    if (reviewLabel || computed === 'under_review' || isUnderReview || pendingValue > 0.009) {
+        return { label: reviewLabel || (pendingValue > 0.009 ? 'Payment Proof Submitted' : 'Payment Under Review'), background: '#fef3c7', color: '#92400e', border: '#fde68a' };
+    }
+    if (computed === 'partially_paid' || paidValue > 0.009 || ['deposit_paid', 'partially_paid'].includes(raw)) {
+        return { label: 'Partially Paid', background: '#e0f2fe', color: '#0369a1', border: '#bae6fd' };
+    }
+    return { label: 'Unpaid', background: '#fff7ed', color: '#c2410c', border: '#fed7aa' };
+}
+
 function showBookingDetails(btn) {
     var data = btn.dataset;
     var rawId = data.id || data.bookingId || '';
@@ -1458,6 +1507,15 @@ function showBookingDetails(btn) {
     );
     var pendingReviewAmount = Math.max(parseFloat(data.pendingAmount) || 0, 0);
     var remainingAfterVerif = Math.max(parseFloat(data.remainingAfterVerification) || 0, 0);
+    var canonicalPayment = resolvePaymentDisplayStatus(
+        paymentStatus,
+        data.computedPaymentStatus || data.computed_payment_status || '',
+        totalAmountValue,
+        paidAmountValue,
+        balanceValue,
+        pendingReviewAmount,
+        isUnderReview
+    );
     data.isUnderReview = isUnderReview ? 'true' : 'false';
     data.needsVerification = isUnderReview ? 'true' : 'false';
 
@@ -1472,6 +1530,7 @@ function showBookingDetails(btn) {
     data.balance = String(balanceValue);
 
     currentBookingId = cleanId;
+    window.currentBookingBalance = balanceValue;
     window.currentBookingStatus = data.status;
     currentEventDate = data.eventDate;
 
@@ -1480,9 +1539,7 @@ function showBookingDetails(btn) {
     if (prepStatusButton) {
         prepStatusButton.disabled = isStatusLocked;
         prepStatusButton.title = isStatusLocked ? 'Completed bookings are locked.' : 'Update preparation status';
-        prepStatusButton.innerHTML = isStatusLocked
-            ? '<i class="fas fa-lock"></i> Status Locked'
-            : '<i class="fas fa-sync-alt"></i> Update Status';
+        prepStatusButton.textContent = isStatusLocked ? 'Status Locked' : 'Update Status';
     }
 
     // Immediately sync footer buttons so Archive/Cancel visibility is correct before hydration
@@ -1564,20 +1621,11 @@ function showBookingDetails(btn) {
             stBg = '#f0fdf4'; stColor = '#15803d'; stBorder = '#86efac';
         } else if (bookingStatus === 'cancelled') {
             stBg = '#fee2e2'; stColor = '#b91c1c'; stBorder = '#fecaca';
-        } else if (isUnderReview) {
-            stBg = '#fef3c7'; stColor = '#92400e'; stBorder = '#fde68a';
-            if (paymentStatus === 'cash_payment_requested' || paymentStatus === 'cash_balance_requested') {
-                statusLabel = 'CONFIRM CASH';
-            } else if (paymentStatus === 'balance_proof_submitted') {
-                statusLabel = 'VERIFY BALANCE';
-            } else {
-                statusLabel = 'VERIFY PAYMENT';
-            }
         } else if (bookingStatus === 'pending' || bookingStatus === 'pending_review' || bookingStatus === 'inquiry' || bookingStatus === 'awaiting_payment') {
             stBg = '#fef3c7'; stColor = '#92400e'; stBorder = '#fde68a';
             if (bookingStatus === 'pending_review') statusLabel = 'NEW INQUIRY';
-            else if (bookingStatus === 'pending') statusLabel = 'PENDING PAY';
-            else if (bookingStatus === 'awaiting_payment') statusLabel = 'AWAITING CUSTOMER PAYMENT';
+            else if (bookingStatus === 'pending') statusLabel = 'PENDING';
+            else if (bookingStatus === 'awaiting_payment') statusLabel = 'AWAITING PAYMENT';
         }
         stBadge.innerText = statusLabel;
         stBadge.style.background = stBg;
@@ -1585,26 +1633,13 @@ function showBookingDetails(btn) {
         stBadge.style.borderColor = stBorder;
     }
 
-    // Payment Status Badge — amounts win over stale payment_status flags
+    // One payment state is shared by the header, Overview, and Payment tab.
     var payBadge = document.getElementById('modalPaymentStatusBadge');
     if (payBadge) {
-        var isFullyPaidNow = totalAmountValue > 0 && paidAmountValue >= totalAmountValue - 0.009 && balanceValue <= 0.009;
-        if (isFullyPaidNow) {
-            payBadge.innerText = 'FULLY PAID';
-            payBadge.style.background = '#dcfce7'; payBadge.style.color = '#166534'; payBadge.style.borderColor = '#bbf7d0';
-        } else if (paymentStatus === 'cash_payment_requested' || paymentStatus === 'cash_balance_requested') {
-            payBadge.innerText = paymentStatus === 'cash_balance_requested' ? 'CASH BALANCE REQUESTED' : 'AWAITING CASH RECEIPT';
-            payBadge.style.background = '#fef3c7'; payBadge.style.color = '#92400e'; payBadge.style.borderColor = '#fde68a';
-        } else if (isUnderReview) {
-            payBadge.innerText = 'PAYMENT UNDER REVIEW';
-            payBadge.style.background = '#fef3c7'; payBadge.style.color = '#92400e'; payBadge.style.borderColor = '#fde68a';
-        } else if (totalAmountValue > 0 && (paidAmountValue > 0 || paymentStatus.includes('partial') || paymentStatus.includes('downpayment') || paymentStatus === 'deposit_paid')) {
-            payBadge.innerText = 'PARTIALLY PAID';
-            payBadge.style.background = '#e0f2fe'; payBadge.style.color = '#0369a1'; payBadge.style.borderColor = '#bae6fd';
-        } else {
-            payBadge.innerText = 'UNPAID';
-            payBadge.style.background = '#fff7ed'; payBadge.style.color = '#c2410c'; payBadge.style.borderColor = '#fed7aa';
-        }
+        payBadge.innerText = canonicalPayment.label.toUpperCase();
+        payBadge.style.background = canonicalPayment.background;
+        payBadge.style.color = canonicalPayment.color;
+        payBadge.style.borderColor = canonicalPayment.border;
     }
 
     // Booking Channel & Added By & Created Date
@@ -1708,15 +1743,10 @@ function showBookingDetails(btn) {
     var ovCustRef = document.getElementById('ovCustomerRef'); if (ovCustRef) ovCustRef.innerText = data.customerRef || '—';
     var ovSt = document.getElementById('ovStatusText');
     if (ovSt) {
-        if (isUnderReview) {
-            ovSt.innerText = (paymentStatus === 'cash_payment_requested' || paymentStatus === 'cash_balance_requested')
-                ? 'CONFIRM CASH'
-                : (paymentStatus === 'balance_proof_submitted' ? 'VERIFY BALANCE' : 'VERIFY PAYMENT');
-        } else if (bookingStatus === 'pending' || bookingStatus === 'awaiting_payment') {
-            ovSt.innerText = bookingStatus === 'awaiting_payment' ? 'AWAITING CUSTOMER PAYMENT' : 'PENDING PAY';
-        } else {
-            ovSt.innerText = (bookingStatus || 'pending').replace(/_/g, ' ').toUpperCase();
-        }
+        ovSt.innerText = (bookingStatus || 'pending').replace(/_/g, ' ').toUpperCase();
+        if (bookingStatus === 'pending_review') ovSt.innerText = 'NEW INQUIRY';
+        else if (bookingStatus === 'pending') ovSt.innerText = 'PENDING';
+        else if (bookingStatus === 'awaiting_payment') ovSt.innerText = 'AWAITING PAYMENT';
     }
 
     // Financial Overview Box
@@ -1727,26 +1757,16 @@ function showBookingDetails(btn) {
     // Paid display: show submitted-under-review vs verified-paid
     var ovPd = document.getElementById('ovPaidDisplay');
     if (ovPd) {
-        if (isUnderReview && pendingReviewAmount > 0 && paymentStatus !== 'cash_payment_requested' && paymentStatus !== 'cash_balance_requested') {
-            ovPd.innerHTML = `<span style="color:#92400e; font-weight:700;">Submitted: ${formattedPending}</span> <span style="color:#94a3b8; font-size:0.78em;">(Under Review)</span><br><span style="color:#16a34a; font-size:0.85em;">Verified: ${formattedPaid}</span>`;
+        if (isUnderReview && pendingReviewAmount > 0) {
+            ovPd.innerHTML = `${formattedPaid}<div style="margin-top:3px;color:#92400e;font-size:.75rem;font-weight:700;">Pending review: ${formattedPending}</div>`;
         } else {
             ovPd.innerText = formattedPaid;
         }
     }
 
     if (ovPaySt) {
-        var isFullyPaidOv = totalAmountValue > 0 && paidAmountValue >= totalAmountValue - 0.009 && balanceValue <= 0.009;
-        if (isFullyPaidOv) {
-            ovPaySt.innerText = 'FULLY PAID'; ovPaySt.style.color = '#10b981';
-        } else if (paymentStatus === 'cash_payment_requested' || paymentStatus === 'cash_balance_requested') {
-            ovPaySt.innerText = paymentStatus === 'cash_balance_requested' ? 'CASH BALANCE REQUESTED' : 'AWAITING CASH RECEIPT'; ovPaySt.style.color = '#d97706';
-        } else if (isUnderReview) {
-            ovPaySt.innerText = 'UNDER REVIEW'; ovPaySt.style.color = '#d97706';
-        } else if (totalAmountValue > 0 && (paidAmountValue > 0 || paymentStatus.includes('partial') || paymentStatus === 'deposit_paid')) {
-            ovPaySt.innerText = 'PARTIALLY PAID'; ovPaySt.style.color = '#38bdf8';
-        } else {
-            ovPaySt.innerText = 'UNPAID'; ovPaySt.style.color = '#f59e0b';
-        }
+        ovPaySt.innerText = canonicalPayment.label.toUpperCase();
+        ovPaySt.style.color = canonicalPayment.color;
     }
 
     // Process/Booking Status Workflow Tracker
@@ -1792,7 +1812,7 @@ function showBookingDetails(btn) {
                             <div style="width: 32px; height: 32px; border-radius: 6px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 0.85rem;">
                                 <i class="fas fa-concierge-bell"></i>
                             </div>
-                            <div>
+                            <div class="walkin-detail-service-info">
                                 <div style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">${s.name || 'Service'}</div>
                                 <div style="font-size: 0.75rem; color: #64748b;">${s.category || 'Event Service'}</div>
                             </div>
@@ -1801,6 +1821,21 @@ function showBookingDetails(btn) {
                             ₱${Number(s.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                     `;
+                    var serviceNotes = String(s.notes || s.description || '')
+                        .split(/[\n,]+/)
+                        .map(function(note) { return note.replace(/^\s*[•*-]\s*/, '').trim(); })
+                        .filter(Boolean);
+                    var serviceInfo = sRow.querySelector('.walkin-detail-service-info');
+                    if (serviceInfo && serviceNotes.length) {
+                        var notesList = document.createElement('ul');
+                        notesList.style.cssText = 'margin:5px 0 0;padding-left:16px;color:#64748b;font-size:.75rem;line-height:1.4;';
+                        serviceNotes.forEach(function(note) {
+                            var noteItem = document.createElement('li');
+                            noteItem.textContent = note;
+                            notesList.appendChild(noteItem);
+                        });
+                        serviceInfo.appendChild(notesList);
+                    }
                     servContainer.appendChild(sRow);
                 });
             } else {
@@ -2097,7 +2132,7 @@ function showBookingDetails(btn) {
     var pPaid = document.getElementById('payTotalPaid');
     if (pPaid) {
         if (isUnderReview && pendingReviewAmount > 0) {
-            pPaid.innerHTML = `${formattedPaid} <span style="color:#92400e; font-size:0.82em; background:#fef3c7; border:1px solid #fde68a; padding:1px 6px; border-radius:4px; margin-left:4px;">(${formattedPending} Under Review)</span>`;
+            pPaid.innerHTML = `${formattedPaid}<div style="margin-top:3px;color:#92400e;font-size:.75rem;font-weight:700;">Pending review: ${formattedPending}</div>`;
         } else {
             pPaid.innerText = formattedPaid;
         }
@@ -2105,15 +2140,10 @@ function showBookingDetails(btn) {
 
     var pBadge = document.getElementById('paymentTabBadge');
     if (pBadge) {
-        if (balanceValue <= 0) {
-            pBadge.innerText = 'FULLY PAID'; pBadge.style.background = '#dcfce7'; pBadge.style.color = '#166534';
-        } else if (isUnderReview) {
-            pBadge.innerText = 'UNDER REVIEW'; pBadge.style.background = '#fef3c7'; pBadge.style.color = '#92400e';
-        } else if (paidAmountValue > 0) {
-            pBadge.innerText = 'PARTIALLY PAID'; pBadge.style.background = '#e0f2fe'; pBadge.style.color = '#0369a1';
-        } else {
-            pBadge.innerText = 'UNPAID'; pBadge.style.background = '#fff7ed'; pBadge.style.color = '#c2410c';
-        }
+        pBadge.innerText = canonicalPayment.label.toUpperCase();
+        pBadge.style.background = canonicalPayment.background;
+        pBadge.style.color = canonicalPayment.color;
+        pBadge.style.borderColor = canonicalPayment.border;
     }
 
     var balanceReviewStatuses = ['balance_proof_submitted', 'cash_balance_requested'];
@@ -2130,7 +2160,7 @@ function showBookingDetails(btn) {
         // Hide while customer proof/cash request is awaiting verification
         btnRecPay.style.display = (balanceValue > 0 && !isBalanceUnderReview) ? 'inline-flex' : 'none';
         if (balanceValue > 0 && !isBalanceUnderReview) {
-            btnRecPay.innerHTML = '<i class="fas fa-plus-circle"></i> Record Payment (Cash / GCash / Bank)';
+            btnRecPay.innerHTML = '<i class="fas fa-plus-circle"></i> Record Payment';
         }
     }
 
@@ -2159,6 +2189,13 @@ function showBookingDetails(btn) {
             balGuide.innerHTML = '<i class="fas fa-money-bill-wave" style="color:#16a34a;"></i> Customer requested cash for the remaining balance. Confirm only after you received the cash.';
         } else {
             balGuide.style.display = 'none';
+        }
+        const guideToggle = document.getElementById('paymentGuideToggle');
+        const hasGuide = Boolean(balGuide.textContent.trim());
+        balGuide.style.display = 'none';
+        if (guideToggle) {
+            guideToggle.style.display = hasGuide ? 'inline-flex' : 'none';
+            guideToggle.setAttribute('aria-expanded', 'false');
         }
     }
 
@@ -2199,9 +2236,14 @@ function showBookingDetails(btn) {
         var records = [];
         try { records = JSON.parse(data.paymentRecordsJson || '[]'); } catch(e) {}
         if (records && records.length > 0) {
+            records.sort(function(a, b) {
+                return new Date(b.payment_date || 0).getTime() - new Date(a.payment_date || 0).getTime();
+            });
             pRows.innerHTML = '';
             records.forEach(function(rec) {
-                var rDate = rec.payment_date ? new Date(rec.payment_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+                var paymentDate = rec.payment_date ? new Date(rec.payment_date) : null;
+                var rDate = paymentDate && !isNaN(paymentDate.getTime()) ? paymentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+                var rTime = paymentDate && !isNaN(paymentDate.getTime()) ? paymentDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '—';
                 var rRow = document.createElement('tr');
                 rRow.style.borderBottom = '1px solid #f1f5f9';
                 var recStatusUpper = (rec.status || 'VERIFIED').toUpperCase();
@@ -2210,11 +2252,18 @@ function showBookingDetails(btn) {
                 var recStatusColor = recIsUnderReview ? '#92400e' : '#166534';
                 var recAmtColor = recIsUnderReview ? '#92400e' : '#166534';
                 var refText = rec.reference_notes || rec.reference_number || rec.notes || '—';
+                var escapeCell = function(value) { var el = document.createElement('span'); el.textContent = String(value ?? ''); return el.innerHTML; };
+                var receiptMatch = String(refText).match(/Receipt:\s*(https?:\/\/[^\s|]+)/i);
+                var receiptUrl = '';
+                try { var parsedReceipt = receiptMatch ? new URL(receiptMatch[1]) : null; if (parsedReceipt && parsedReceipt.protocol === 'https:') receiptUrl = parsedReceipt.href; } catch (_) {}
+                var refDisplay = escapeCell(String(refText).replace(/Receipt:\s*https?:\/\/[^\s|]+/i, receiptUrl ? 'Receipt attached' : ''));
+                if (receiptUrl) refDisplay += ' <a href="' + escapeCell(receiptUrl) + '" target="_blank" rel="noopener noreferrer">View receipt</a>';
                 rRow.innerHTML = `
                     <td style="padding: 0.75rem 1rem; font-weight: 600; color: #0f172a;">${rDate}</td>
-                    <td style="padding: 0.75rem 1rem; color: #334155; text-transform: capitalize;">${rec.payment_method || 'Offline Payment'}</td>
+                    <td style="padding: 0.75rem 1rem; color: #475569; white-space:nowrap;">${rTime}</td>
+                    <td style="padding: 0.75rem 1rem; color: #334155; text-transform: capitalize;">${escapeCell(rec.payment_method || 'Offline Payment')}</td>
                     <td style="padding: 0.75rem 1rem; color: #64748b;">${rec.recorded_by_type === 'caterer' ? 'Caterer' : 'Customer'}</td>
-                    <td style="padding: 0.75rem 1rem; color: #64748b; font-family: monospace; font-size: 0.78rem;">${refText}</td>
+                    <td style="padding: 0.75rem 1rem; color: #64748b; font-family: monospace; font-size: 0.78rem;">${refDisplay}</td>
                     <td style="padding: 0.75rem 1rem; text-align: right; font-weight: 800; color: ${recAmtColor};">₱${Number(rec.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                     <td style="padding: 0.75rem 1rem; text-align: center;">
                         <span style="font-size: 0.7rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; background: ${recStatusBg}; color: ${recStatusColor};">${recStatusUpper}</span>
@@ -2223,7 +2272,7 @@ function showBookingDetails(btn) {
                 pRows.appendChild(rRow);
             });
         } else {
-            pRows.innerHTML = '<tr><td colspan="6" style="padding: 1.5rem; text-align: center; color: #94a3b8;">No payment records found.</td></tr>';
+            pRows.innerHTML = '<tr><td colspan="7" style="padding: 1.5rem; text-align: center; color: #94a3b8;">No payment records found.</td></tr>';
         }
     }
 
@@ -2340,11 +2389,7 @@ function showBookingDetails(btn) {
             }
         }
 
-        rightActions.innerHTML = actionButtonsHtml + `
-            <button type="button" onclick="bk_closeBookingDetailModal()" class="btn-secondary-pro" style="padding: 0.6rem 1.4rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer;">
-                Close
-            </button>
-        `;
+        rightActions.innerHTML = actionButtonsHtml;
     }
 
     // Open Modal
@@ -2477,6 +2522,10 @@ window.toggleActionCenter = function(forceExpand) {
 };
 
 function switchBookingTab(tabId, targetEl) {
+    const currentTab = document.querySelector('#bookingDetailModal .mtab-btn-pro.active')?.dataset?.tab;
+    const tabScroller = document.querySelector('#bookingDetailModal .modal-body-scroll');
+    if (currentTab && currentTab !== tabId && tabScroller) tabScroller.scrollTop = 0;
+
     document.querySelectorAll('#bookingDetailModal .mtab-pane-pro').forEach(function(p) { 
         p.classList.remove('active'); 
         p.style.display = 'none';
@@ -2598,7 +2647,9 @@ function renderOverviewWorkspace(data, context) {
     const attBox = document.getElementById('modalOverviewAttentionBox');
     const attList = document.getElementById('modalOverviewAttentionList');
     if (attBox && attList) {
-        if (missing.length > 0) {
+        attBox.style.display = 'none';
+        attList.innerHTML = '';
+        if (data.workspaceHydrated === 'true' && missing.length > 0) {
             attBox.style.display = 'block';
             attList.innerHTML = missing.join('');
         } else {
@@ -2933,6 +2984,16 @@ window.openBalanceSettlement = function(bookingId) {
 };
 
 // ═══ RECORD PAYMENT MODAL LOGIC ═══
+window.togglePaymentGuide = function(event) {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    const guide = document.getElementById('paymentBalanceSettleGuide');
+    const toggle = document.getElementById('paymentGuideToggle');
+    if (!guide || !toggle) return;
+    const isOpen = guide.style.display === 'none';
+    guide.style.display = isOpen ? 'block' : 'none';
+    toggle.setAttribute('aria-expanded', String(isOpen));
+};
+
 window.toggleRecordPaymentRefField = function() {
     const methodEl = document.getElementById('recPayMethod');
     const wrap = document.getElementById('recPayRefWrap');
@@ -2941,11 +3002,69 @@ window.toggleRecordPaymentRefField = function() {
     if (!methodEl || !wrap || !refInput) return;
 
     const method = String(methodEl.value || 'Cash').toLowerCase();
-    const needsRef = ['gcash', 'bank transfer', 'bank', 'maya', 'check'].includes(method);
-    wrap.style.display = needsRef ? 'block' : 'none';
-    refInput.required = needsRef;
-    if (reqMark) reqMark.style.display = needsRef ? 'inline' : 'none';
-    if (!needsRef) refInput.value = '';
+    const needsProof = method !== 'cash';
+    const proofWrap = document.getElementById('recPayProofWrap');
+    const proofInput = document.getElementById('recPayProof');
+    wrap.style.display = 'block';
+    refInput.required = false;
+    if (reqMark) reqMark.style.display = 'none';
+    if (proofWrap) proofWrap.style.display = needsProof ? 'block' : 'none';
+    if (proofInput) proofInput.required = needsProof;
+    if (!needsProof && proofInput) proofInput.value = '';
+};
+
+window.updateRecordPaymentPreview = function(input) {
+    if (!input) return;
+    const raw = input.value.replace(/,/g, '').replace(/[^\d.]/g, '');
+    const parts = raw.split('.');
+    const normalized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : raw;
+    const notice = document.getElementById('recPayBalanceNotice');
+    const currentBalance = parseFloat(notice?.dataset.remaining || '0') || 0;
+    const enteredAmount = parseFloat(normalized) || 0;
+    const error = document.getElementById('recPayAmountError');
+
+    // Reject a keystroke or paste that would put the amount above the balance.
+    // Restore the last accepted value so an oversized number never remains in the field.
+    if (enteredAmount > currentBalance + 0.009) {
+        const previousValue = input.dataset.lastValidValue || '';
+        input.value = previousValue;
+        if (error) {
+            error.textContent = 'Maximum payment is ₱' + currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '.';
+            error.style.display = 'block';
+        }
+        input.setAttribute('aria-invalid', 'true');
+        input.style.borderColor = '#dc2626';
+        const previousAmount = parseFloat(previousValue.replace(/,/g, '')) || 0;
+        if (notice) {
+            notice.textContent = '₱' + Math.max(0, currentBalance - previousAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            notice.style.color = 'var(--primary-color)';
+        }
+        return;
+    }
+
+    const [whole, decimal] = normalized.split('.');
+    const formattedWhole = (whole || '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    input.value = decimal !== undefined ? formattedWhole + '.' + decimal.slice(0, 2) : formattedWhole;
+    const paymentAmount = parseFloat(normalized) || 0;
+    const invalid = !normalized || paymentAmount <= 0;
+    input.dataset.lastValidValue = input.value;
+    if (input.value.trim() && paymentAmount <= 0) {
+        if (error) error.textContent = 'Enter an amount greater than zero.';
+    } else if (!normalized && input.dataset.touched === 'true') {
+        if (error) error.textContent = 'Enter a payment amount.';
+    } else if (error) {
+        error.textContent = '';
+    }
+    if (error) error.style.display = error.textContent ? 'block' : 'none';
+    input.setAttribute('aria-invalid', String(invalid && Boolean(input.dataset.touched === 'true' || input.value.trim())));
+    input.style.borderColor = input.getAttribute('aria-invalid') === 'true' ? '#dc2626' : '#cbd5e1';
+
+    // The single balance summary above the form reflects the proposed payment.
+    if (notice) {
+        const remaining = Math.max(0, currentBalance - paymentAmount);
+        notice.textContent = '₱' + remaining.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        notice.style.color = 'var(--primary-color)';
+    }
 };
 
 window.openRecordPaymentModal = function() {
@@ -2962,11 +3081,13 @@ window.openRecordPaymentModal = function() {
     const balNotice = document.getElementById('recPayBalanceNotice');
     if (balNotice) {
         balNotice.innerText = '₱' + balanceVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        balNotice.dataset.remaining = String(balanceVal);
     }
 
     const amountInput = document.getElementById('recPayAmount') || document.getElementById('payAmount');
     if (amountInput) {
-        amountInput.value = balanceVal > 0 ? balanceVal : '';
+        amountInput.value = balanceVal > 0 ? balanceVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+        amountInput.dataset.touched = 'false';
     }
 
     const methodInput = document.getElementById('recPayMethod');
@@ -2978,6 +3099,7 @@ window.openRecordPaymentModal = function() {
     if (notesInput) notesInput.value = '';
 
     window.toggleRecordPaymentRefField();
+    window.updateRecordPaymentPreview(amountInput);
 
     modal.style.zIndex = '10005';
     modal.style.display = 'flex';
@@ -3013,22 +3135,36 @@ window.submitRecordPayment = async function(event) {
     const refInput = document.getElementById('recPayRef') || document.getElementById('payReference');
     const notesInput = document.getElementById('recPayNotes') || document.getElementById('payNotes');
 
-    const amount = parseFloat(amountInput?.value || 0);
+    const amount = parseFloat(String(amountInput?.value || '0').replace(/,/g, ''));
     const method = methodInput?.value || 'Cash';
     const reference = (refInput?.value || '').trim();
     const notes = (notesInput?.value || '').trim();
     const methodL = String(method).toLowerCase();
-    const needsRef = ['gcash', 'bank transfer', 'bank', 'maya', 'check'].includes(methodL);
+    const needsProof = methodL !== 'cash';
+    const proofInput = document.getElementById('recPayProof');
 
-    if (amount <= 0 || isNaN(amount)) {
-        if (typeof window.showError === 'function') window.showError('Payment amount must be greater than zero.');
+    const remainingBalance = parseFloat(document.getElementById('recPayBalanceNotice')?.dataset.remaining || '0') || 0;
+    if (amountInput) {
+        amountInput.dataset.touched = 'true';
+        window.updateRecordPaymentPreview(amountInput);
+    }
+    if (amount <= 0 || isNaN(amount) || amount > remainingBalance + 0.009) {
+        if (amountInput) amountInput.focus();
+        if (amount > remainingBalance + 0.009) {
+            if (typeof window.showError === 'function') window.showError('Payment amount cannot exceed the remaining balance.');
+            else alert('Payment amount cannot exceed the remaining balance.');
+        } else if (typeof window.showError === 'function') window.showError('Payment amount must be greater than zero.');
         else alert('Payment amount must be greater than zero.');
         return false;
     }
-    if (needsRef && !reference) {
-        if (typeof window.showError === 'function') window.showError('Reference number is required for GCash / Bank / Maya.');
-        else alert('Reference number is required for GCash / Bank / Maya.');
-        if (refInput) refInput.focus();
+    if (needsProof && !proofInput?.files?.[0]) {
+        if (typeof window.showError === 'function') window.showError('Upload a receipt or payment screenshot for non-cash payments.');
+        else alert('Upload a receipt or payment screenshot for non-cash payments.');
+        proofInput?.focus();
+        return false;
+    }
+    if (proofInput?.files?.[0] && proofInput.files[0].size > 5 * 1024 * 1024) {
+        if (window.showError) window.showError('Receipt image must be no larger than 5 MB.');
         return false;
     }
 
@@ -3040,19 +3176,19 @@ window.submitRecordPayment = async function(event) {
     }
 
     try {
+        const body = new FormData();
+        body.append('amount', String(amount));
+        body.append('payment_method', method);
+        body.append('reference_number', reference);
+        body.append('notes', notes);
+        if (proofInput?.files?.[0]) body.append('proof_image', proofInput.files[0]);
         const response = await fetch(`/caterer/api/bookings/${bookingId}/record-payment`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
             },
-            body: JSON.stringify({
-                amount: amount,
-                payment_method: method,
-                reference_number: reference,
-                notes: notes
-            })
+            body
         });
 
         let result = {};
@@ -3576,7 +3712,7 @@ async function submitRejectionWithReason() {
             await refreshBookingUiRealtime(targetId, {
                 toast: BOOKING_ACTION_TOASTS.cancel,
                 newStatus: 'cancelled',
-                closeModal: true,
+                closeModal: false,
                 removeRow: false
             });
             bk_closeModal('rejectReasonModal');
@@ -4126,9 +4262,7 @@ function _renderPrepStatusUI(prep) {
         statusButton.title = isPreparationComplete
             ? 'Event preparation is complete.'
             : 'Update preparation status';
-        statusButton.innerHTML = isPreparationComplete
-            ? '<i class="fas fa-check-circle"></i> Event Completed'
-            : '<i class="fas fa-sync-alt"></i> Update Status';
+        statusButton.textContent = isPreparationComplete ? 'Event Completed' : 'Update Status';
         statusButton.style.opacity = isPreparationComplete ? '0.65' : '1';
         statusButton.style.cursor = isPreparationComplete ? 'not-allowed' : 'pointer';
     }
@@ -4203,9 +4337,14 @@ window.openPrepStatusModal = function() {
             { key: 'completed', label: 'Event Completed', progress: 100, emoji: '🟢' }
         ];
 
+    const bookingStatus = String(window.currentBookingStatus || '').toLowerCase();
+    const isConfirmed = ['confirmed', 'preparing', 'ready_for_delivery', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress', 'ready_for_event'].includes(bookingStatus);
+    const isSettled = Number(window.currentBookingBalance || 0) <= 0.009;
     list.innerHTML = statuses.map(function(s) {
         const active = s.key === current ? ' active' : '';
-        return '<button type="button" class="prep-status-option' + active + '" onclick="selectPrepStatus(\'' + s.key + '\')">' +
+        const locked = s.key === 'completed' && (!isConfirmed || !isSettled);
+        const disabled = locked ? ' disabled aria-disabled="true" title="Confirm the booking and settle the full balance first."' : '';
+        return '<button type="button" class="prep-status-option' + active + (locked ? ' is-disabled' : '') + '"' + disabled + ' onclick="selectPrepStatus(\'' + s.key + '\')">' +
             '<span>' + (s.emoji || '') + ' ' + s.label + '</span>' +
             '<span class="pct">' + s.progress + '%</span></button>';
     }).join('');

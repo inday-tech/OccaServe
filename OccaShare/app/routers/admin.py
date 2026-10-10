@@ -65,7 +65,7 @@ async def omni_search(
         {"title": "Caterer Partners", "link": "/admin/caterers", "tags": ["vendors", "business", "partners", "verify"]},
         {"title": "Customer Directory", "link": "/admin/customers", "tags": ["users", "clients", "directory"]},
         {"title": "All Bookings", "link": "/admin/bookings", "tags": ["orders", "events", "calendar", "manage"]},
-        {"title": "Caterer Applications", "link": "/admin/caterer-verification", "tags": ["verification", "approval", "applications"]},
+        {"title": "Caterer Applications", "link": "/admin/caterers?status=pending", "tags": ["verification", "approval", "applications"]},
         {"title": "Notifications", "link": "/admin/notifications", "tags": ["alerts", "messages"]},
         {"title": "Commissions", "link": "/admin/commissions", "tags": ["revenue", "payouts", "payments"]},
         {"title": "Reports & Analytics", "link": "/admin/reports", "tags": ["reports", "analytics", "statistics"]},
@@ -191,6 +191,26 @@ async def omni_search(
         })
         
     return {"success": True, "results": results}
+
+
+@router.get("/messages", response_class=HTMLResponse)
+async def admin_messages(
+    request: Request,
+    embedded: bool = False,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only),
+):
+    unread_messages = db.query(models.ChatMessage).filter(
+        models.ChatMessage.receiver_id == user.id,
+        models.ChatMessage.is_read == False,
+    ).count()
+    return templates.TemplateResponse("admin/messages.html", {
+        "request": request,
+        "user": user,
+        "active_page": "messages",
+        "unread_messages": unread_messages,
+        "embedded": embedded,
+    })
 
 @router.get("/notifications", response_class=HTMLResponse)
 async def admin_notifications(
@@ -676,7 +696,8 @@ async def admin_dashboard(
 
 @router.get("/caterers", response_class=HTMLResponse)
 async def manage_caterers(
-    request: Request, 
+    request: Request,
+    status: Optional[str] = None,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
@@ -685,9 +706,8 @@ async def manage_caterers(
     caterers_list = db.query(models.CatererProfile).options(
         joinedload(models.CatererProfile.user).joinedload(models.User.identity_verifications)
     ).join(models.User).filter(
-        models.User.is_archived == False,
-        models.CatererProfile.verification_status.in_(['Verified', 'Suspended'])
-    ).all()
+        models.User.is_archived == False
+    ).order_by(models.CatererProfile.business_name.asc()).all()
     
     # Enrich with performance metrics
     for c in caterers_list:
@@ -699,16 +719,46 @@ async def manage_caterers(
 
     metrics = {
         "total_caterers": db.query(models.CatererProfile).join(models.User).filter(models.User.is_archived == False).count(),
-        "pending_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status.in_(["Pending", "Pending Review"]), models.User.is_archived == False).count(),
-        "approved_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Verified", models.User.is_archived == False).count(),
+        "pending_caterers_count": db.query(models.CatererProfile).join(models.User).filter(
+            func.lower(func.coalesce(models.CatererProfile.verification_status, "")).in_([
+                "unverified", "pending", "pending review", "pending_review", "requires revision",
+                "revision requested", "resubmission_required",
+            ]),
+            models.User.is_archived == False,
+        ).count(),
+        "approved_caterers_count": db.query(models.CatererProfile).join(models.User).filter(
+            func.lower(func.coalesce(models.CatererProfile.verification_status, "")) == "verified",
+            models.User.is_archived == False,
+            func.lower(func.coalesce(models.CatererProfile.account_status, "")) != "suspended",
+            func.lower(func.coalesce(models.User.status, "")) != "suspended",
+        ).count(),
         "rejected_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Rejected", models.User.is_archived == False).count(),
-        "suspended_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.account_status == "Suspended", models.User.is_archived == False).count(),
+        "suspended_caterers_count": db.query(models.CatererProfile).join(models.User).filter(
+            or_(
+                models.CatererProfile.account_status == "Suspended",
+                func.lower(models.User.status) == "suspended",
+            ),
+            models.User.is_archived == False,
+        ).count(),
     }
+    verified_caterers = [
+        caterer for caterer in caterers_list
+        if (caterer.verification_status or "").lower() == "verified"
+    ]
+    unverified_caterers = [
+        caterer for caterer in caterers_list
+        if (caterer.verification_status or "").lower() != "verified"
+    ]
+    allowed_filters = {"all", "pending", "verified", "suspended", "unverified", "revision", "rejected"}
+    initial_filter = status.lower() if status and status.lower() in allowed_filters else "all"
 
     return templates.TemplateResponse("admin/caterers.html", {
         "request": request,
         "user": user,
         "caterers": caterers_list,
+        "verified_caterers": verified_caterers,
+        "unverified_caterers": unverified_caterers,
+        "initial_filter": initial_filter,
         "metrics": metrics,
         "active_page": "caterers"
     })
@@ -880,8 +930,19 @@ async def get_caterers_overview(
         
     metrics = {
         "total_caterers": db.query(models.CatererProfile).join(models.User).filter(models.User.is_archived == False).count(),
-        "pending_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status.in_(["Pending", "Pending Review"]), models.User.is_archived == False).count(),
-        "approved_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Verified", models.User.is_archived == False).count(),
+        "pending_caterers_count": db.query(models.CatererProfile).join(models.User).filter(
+            func.lower(func.coalesce(models.CatererProfile.verification_status, "")).in_([
+                "unverified", "pending", "pending review", "pending_review", "requires revision",
+                "revision requested", "resubmission_required",
+            ]),
+            models.User.is_archived == False,
+        ).count(),
+        "approved_caterers_count": db.query(models.CatererProfile).join(models.User).filter(
+            models.CatererProfile.verification_status == "Verified",
+            models.User.is_archived == False,
+            func.lower(func.coalesce(models.CatererProfile.account_status, "")) != "suspended",
+            func.lower(func.coalesce(models.User.status, "")) != "suspended",
+        ).count(),
         "rejected_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Rejected", models.User.is_archived == False).count(),
     }
     
@@ -891,6 +952,7 @@ async def get_caterers_overview(
 @router.get("/commissions", response_class=HTMLResponse)
 async def manage_commissions(
     request: Request, 
+    invoice_id: Optional[int] = None,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
@@ -906,6 +968,18 @@ async def manage_commissions(
         models.BillingInvoice.payment_proof_url.isnot(None),
         models.BillingInvoice.payment_proof_url != ''
     ).order_by(models.BillingInvoice.created_at.desc()).all()
+
+    focus_invoice = None
+    if invoice_id is not None:
+        focus_invoice = db.query(models.BillingInvoice).options(
+            joinedload(models.BillingInvoice.caterer),
+            joinedload(models.BillingInvoice.booking),
+        ).filter(
+            models.BillingInvoice.id == invoice_id,
+            models.BillingInvoice.booking_id.is_(None),
+            models.BillingInvoice.payment_proof_url.isnot(None),
+            models.BillingInvoice.payment_proof_url != '',
+        ).first()
 
     paid_invoices = db.query(models.BillingInvoice).filter(
         models.BillingInvoice.status == 'paid',
@@ -980,6 +1054,7 @@ async def manage_commissions(
         "user": user,
         "pending_invoices": pending_invoices,
         "recent_paid": recent_paid,
+        "focus_invoice": focus_invoice,
         "pending_total": pending_total,
         "paid_total": paid_total,
         "rejected_count": rejected_count,
@@ -2138,19 +2213,38 @@ async def update_investigation(
 
 @router.get("/api/customers/{user_id}/kyc-audit")
 async def get_customer_kyc_audit(user_id: int, db: Session = Depends(database.get_db), admin: models.User = Depends(admin_only)):
-    user = db.query(models.User).filter(models.User.id == user_id).first()
+    user = db.query(models.User).filter(models.User.id == user_id, models.User.role == "customer").first()
     if not user: return {"success": False, "message": "User not found"}
     
-    kyc = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user_id).first()
+    kyc = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.user_id == user_id,
+        or_(models.IdentityVerification.verification_type.is_(None), models.IdentityVerification.verification_type != "business_permit")
+    ).order_by(models.IdentityVerification.id.desc()).first()
+    def safe_document_url(value):
+        if value and value.startswith("/static/uploads/verification/"):
+            return value.replace("/static/uploads/verification/", "/api/bookings/kyc/view/")
+        return value
+    if not kyc:
+        return {"success": False, "message": "No identity submission was found for this customer."}
     
     return {
-        "success": kyc is not None,
-        "document_url": kyc.document_url if kyc else None,
-        "selfie_url": kyc.selfie_url if kyc else None,
-        "id_number": kyc.id_number if kyc else None,
-        "fraud_score": kyc.fraud_score if kyc else 0,
-        "verified_at": kyc.verified_at.strftime('%b %d, %Y') if kyc and kyc.verified_at else "N/A",
-        "ocr_data": kyc.ocr_data if kyc else None,
+        "success": True,
+        "document_url": safe_document_url(kyc.document_url),
+        "document_back_url": safe_document_url(kyc.document_back_url),
+        "selfie_url": safe_document_url(kyc.selfie_url),
+        "selfie_2_url": safe_document_url(kyc.selfie_2_url),
+        "selfie_3_url": safe_document_url(kyc.selfie_3_url),
+        "id_type": kyc.id_type,
+        "id_expiry_date": kyc.id_expiry_date.isoformat() if kyc.id_expiry_date else None,
+        "id_number": kyc.id_number,
+        "fraud_score": kyc.fraud_score or 0,
+        "ocr_status": kyc.ocr_status,
+        "liveness_status": kyc.liveness_status,
+        "match_status": kyc.match_status,
+        "failure_reason": kyc.failure_reason,
+        "verification_status": kyc.verification_status,
+        "verified_at": kyc.verified_at.strftime('%b %d, %Y') if kyc.verified_at else "N/A",
+        "ocr_data": kyc.ocr_data,
         "status": user.status,
         "status_reason": user.status_reason,
         "investigation_notes": user.investigation_notes
@@ -3071,27 +3165,29 @@ async def admin_customers(
         *base_filters
     ).order_by(models.User.created_at.desc()).all()
 
+    verified_customers = [customer for customer in customers if customer.is_verified]
+    pending_verification_customers = [customer for customer in customers if not customer.is_verified]
+
     pending_customers = db.query(models.User).filter(
         *base_filters,
-        models.User.status == "active",
         models.User.is_verified == False
     ).count()
 
     # Metrics use the exact same population as the table so the numbers always match.
     metrics = {
         "total_customers": db.query(models.User).filter(*base_filters).count(),
-        "active_customers": db.query(models.User).filter(
+        "verified_customers": db.query(models.User).filter(
             *base_filters,
-            models.User.status == "active"
+            models.User.is_verified == True
         ).count(),
         "pending_customers": pending_customers,
         "suspended_customers": db.query(models.User).filter(
             *base_filters,
-            models.User.status == "suspended"
+            func.lower(func.coalesce(models.User.status, "")) == "suspended"
         ).count(),
         "flagged_customers": db.query(models.User).filter(
             *base_filters,
-            models.User.status == "flagged"
+            func.lower(func.coalesce(models.User.status, "")) == "flagged"
         ).count()
     }
 
@@ -3099,6 +3195,8 @@ async def admin_customers(
         "request": request,
         "user": user,
         "customers": customers,
+        "verified_customers": verified_customers,
+        "pending_verification_customers": pending_verification_customers,
         "metrics": metrics,
         "active_page": "customers"
     })
@@ -3117,9 +3215,10 @@ async def get_customer_audit_data(
     
     # Calculate performance metrics
     bookings = target.bookings
-    total_completed = sum(1 for b in bookings if b.status == "completed")
-    total_spent = sum((b.total_amount or b.total_price or 0.0) for b in bookings if b.status == "completed")
-    cancellations = sum(1 for b in bookings if b.status == "cancelled")
+    normalized_status = lambda booking: (booking.status or "").strip().lower()
+    total_completed = sum(1 for b in bookings if normalized_status(b) == "completed")
+    total_spent = sum((b.total_amount or b.total_price or 0.0) for b in bookings if normalized_status(b) == "completed")
+    cancellations = sum(1 for b in bookings if normalized_status(b) in {"cancelled", "canceled"})
     
     # Calculate Risk Score (0-100)
     risk_score = 0
@@ -3134,13 +3233,17 @@ async def get_customer_audit_data(
             "email": target.email,
             "status": target.status,
             "is_verified": target.is_verified,
-            "join_date": target.created_at.strftime("%b %d, %Y"),
+            "join_date": target.created_at.strftime("%b %d, %Y") if target.created_at else None,
+            "last_login": target.last_login.isoformat() if target.last_login else None,
+            "phone_number": target.phone_number,
+            "status_reason": target.status_reason,
             "total_bookings": len(bookings),
             "completed_bookings": total_completed,
+            "cancelled_bookings": cancellations,
             "lifetime_value": float(total_spent),
             "cancellations": cancellations,
             "risk_score": round(risk_score, 1),
-            "investigation_notes": target.investigation_notes or "No active investigations."
+            "investigation_notes": target.investigation_notes
         }
     }
 
@@ -3294,6 +3397,7 @@ async def rescan_kyc_document(
 
 @router.post("/verify/manual-action")
 async def kyc_manual_action(
+    request: Request,
     target_user_id: int = Form(...),
     action: str = Form(...),
     reason: str = Form(...),
@@ -3442,6 +3546,8 @@ async def kyc_manual_action(
         "count": count
     }))
     db.commit()
+    if "application/json" in request.headers.get("accept", ""):
+        return {"success": True, "message": msg, "action": action, "account_status": target_user.status, "is_verified": target_user.is_verified}
     return RedirectResponse(url="/admin/dashboard?success_msg=Action+completed+successfully", status_code=303)
 
 
@@ -3953,7 +4059,26 @@ async def get_caterer_documents(
     if not profile:
         return {"success": False, "message": "Partner not found"}
         
-    identity = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == profile.user_id).first()
+    identity = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.user_id == profile.user_id,
+        models.IdentityVerification.verification_type != "business_permit",
+    ).order_by(
+        models.IdentityVerification.created_at.desc(),
+        models.IdentityVerification.id.desc(),
+    ).first()
+    permit_identity = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.user_id == profile.user_id,
+        models.IdentityVerification.verification_type == "business_permit",
+    ).order_by(
+        models.IdentityVerification.created_at.desc(),
+        models.IdentityVerification.id.desc(),
+    ).first()
+    business_review = db.query(models.CatererVerification).filter(
+        models.CatererVerification.caterer_id == profile.id
+    ).order_by(
+        models.CatererVerification.submitted_at.desc(),
+        models.CatererVerification.id.desc(),
+    ).first()
     
     def fix_url(url):
         if url and url.startswith("/static/uploads/verification/"):
@@ -3972,6 +4097,25 @@ async def get_caterer_documents(
     if identity and identity.selfie_url:
         selfie_url_raw = identity.selfie_url
 
+    verified = profile.verification_status == "Verified"
+
+    def document_status(url):
+        if not url:
+            return "Not submitted"
+        return "Verified" if verified else "Submitted"
+
+    permit_status = "Not submitted"
+    if profile.permit_url:
+        permit_status = (
+            "Verified"
+            if verified
+            else (
+                permit_identity.verification_status
+                if permit_identity and permit_identity.verification_status
+                else profile.permit_status or "Pending review"
+            )
+        )
+
     docs = {
         "permit_url": fix_url(profile.permit_url),
         "permit_expiry_date": str(profile.permit_expiry_date) if profile.permit_expiry_date else None,
@@ -3982,7 +4126,35 @@ async def get_caterer_documents(
         "gov_id_back_url": fix_url(identity.document_back_url) if identity else None,
         "selfie_url": fix_url(selfie_url_raw),
         "selfie_2_url": fix_url(identity.selfie_2_url) if identity else None,
-        "selfie_3_url": fix_url(identity.selfie_3_url) if identity else None
+        "selfie_3_url": fix_url(identity.selfie_3_url) if identity else None,
+        "verification_summary": {
+            "overall_status": profile.verification_status or "Unverified",
+            "identity_status": (
+                identity.verification_status
+                if identity and identity.verification_status
+                else ("Submitted" if gov_id_url_raw else "Not submitted")
+            ),
+            "business_status": (
+                business_review.status
+                if business_review and business_review.status
+                else (profile.verification_status or "Unverified")
+            ),
+            "business_reviewed_at": (
+                business_review.reviewed_at.isoformat()
+                if business_review and business_review.reviewed_at
+                else None
+            ),
+            "identity_reviewed_at": (
+                (identity.reviewed_at or identity.verified_at).isoformat()
+                if identity and (identity.reviewed_at or identity.verified_at)
+                else None
+            ),
+            "permit_status": permit_status,
+            "dti_status": document_status(profile.dti_url),
+            "bir_status": document_status(profile.bir_url),
+            "mayors_permit_status": document_status(profile.mayors_permit_url),
+            "permit_expiry_date": str(profile.permit_expiry_date) if profile.permit_expiry_date else None,
+        },
     }
     return {"success": True, "docs": docs}
 
@@ -4001,23 +4173,68 @@ async def submit_caterer_review(
     profile.verification_status = status
     profile.admin_remarks = remarks
     
-    identity = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == profile.user_id).first()
+    identity = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.user_id == profile.user_id,
+        models.IdentityVerification.verification_type != "business_permit",
+    ).order_by(
+        models.IdentityVerification.created_at.desc(),
+        models.IdentityVerification.id.desc(),
+    ).first()
     if identity:
         identity.verification_status = status
-        
+
+    if status not in {"Verified", "Requires Revision", "Rejected", "Suspended"}:
+        return {"success": False, "message": "Unsupported verification decision."}
+
     if status == "Verified":
         profile.is_verified = True
+        profile.account_status = "Active"
         if profile.user:
             profile.user.is_verified = True
             profile.user.is_kyc_complete = True
+            profile.user.status = "active"
+            profile.user.status_reason = None
+        if profile.permit_url:
+            profile.permit_status = "Verified"
     else:
         profile.is_verified = False
         if profile.user:
             profile.user.is_verified = False
+            profile.user.is_kyc_complete = False
             if status == "Suspended":
                 profile.user.status = "suspended"
                 profile.user.status_reason = remarks
                 profile.account_status = "Suspended"
+        if profile.permit_url and status in {"Requires Revision", "Rejected"}:
+            profile.permit_status = status
+
+    if identity:
+        identity.review_status = "approved" if status == "Verified" else (
+            "requested_reverification" if status == "Requires Revision" else "rejected"
+        )
+        identity.reviewed_by = admin.id
+        identity.reviewed_at = datetime.now(timezone.utc)
+        if status == "Verified":
+            identity.verified_at = datetime.now(timezone.utc)
+        else:
+            identity.failure_reason = remarks
+
+    latest_business_review = db.query(models.CatererVerification).filter(
+        models.CatererVerification.caterer_id == profile.id
+    ).order_by(
+        models.CatererVerification.submitted_at.desc(),
+        models.CatererVerification.id.desc(),
+    ).first()
+    if latest_business_review:
+        latest_business_review.status = {
+            "Verified": "VERIFIED",
+            "Requires Revision": "RESUBMISSION_REQUIRED",
+            "Rejected": "REJECTED",
+            "Suspended": "REJECTED",
+        }[status]
+        latest_business_review.reviewed_by = admin.id
+        latest_business_review.reviewed_at = datetime.now(timezone.utc)
+        latest_business_review.rejection_reason = remarks or None
                 
     # Log Audit
     audit = models.AuditLog(

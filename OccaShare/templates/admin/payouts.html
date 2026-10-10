@@ -77,6 +77,16 @@
     }
     @keyframes modalIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
+    .proof-viewer { position:fixed;inset:0;z-index:4000;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(15,23,42,.72);backdrop-filter:blur(5px); }
+    .proof-viewer.active { display:flex; }
+    .proof-viewer-card { display:flex;flex-direction:column;width:min(900px,100%);max-height:92vh;overflow:hidden;border-radius:16px;background:#fff;box-shadow:0 24px 70px rgba(0,0,0,.3); }
+    .proof-viewer-head { display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid #e2e8f0; }
+    .proof-viewer-head h2 { margin:0;color:#0f172a;font-size:.95rem; }
+    .proof-viewer-head p { margin:4px 0 0;color:#64748b;font-size:.75rem; }
+    .proof-viewer-head button { width:36px;height:36px;border:0;border-radius:9px;background:#f1f5f9;color:#475569;font-size:1.1rem;cursor:pointer; }
+    #invoiceProofImage { width:100%;height:min(70vh,720px);object-fit:contain;background:#0f172a; }
+    @media(max-width:600px) { .proof-viewer { padding:8px; } #invoiceProofImage { height:72vh; } .proof-viewer-head { padding:11px 13px; } }
+
     /* Fix for 3-dots visibility */
     .table-card-clean { overflow: visible !important; }
 </style>
@@ -174,7 +184,7 @@
                 <td><span style="font-weight: 900; color: var(--adm-navy); font-size: 1rem;">₱{{ "{:,.2f}".format(inv.amount) }}</span></td>
                 <td>
                     {% if inv.payment_proof_url %}
-                    <button class="btn-clean" style="font-size: 0.7rem; padding: 4px 8px; background: #eff6ff; color: #1d4ed8;" onclick="window.open('{{ inv.payment_proof_url }}', '_blank')">
+                    <button type="button" class="btn-clean invoice-proof-button" data-invoice-id="{{ inv.id }}" data-proof-url="{{ inv.payment_proof_url|e }}" style="font-size: 0.7rem; padding: 4px 8px; background: #eff6ff; color: #1d4ed8;" onclick="openInvoiceProof(this)">
                         <i class="fas fa-image"></i> View Receipt
                     </button>
                     {% else %}
@@ -203,6 +213,15 @@
     </div>
     {% endif %}
 </div>
+
+{% if focus_invoice and focus_invoice.id not in pending_invoices|map(attribute='id')|list %}
+<div class="table-card-clean" style="margin-bottom:1.5rem;border:1px solid #fed7aa;">
+    <div style="padding:1rem 1.25rem;background:#fff7ed;border-bottom:1px solid #fed7aa;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div><strong style="color:#9a3412;">Payment proof from this notification</strong><div style="font-size:.78rem;color:#64748b;margin-top:4px;">Invoice #INV-{{ focus_invoice.id }} · {{ focus_invoice.caterer.business_name if focus_invoice.caterer else 'Unknown caterer' }} · {{ focus_invoice.status|title }}</div></div>
+        <button type="button" class="btn-clean invoice-proof-button" data-invoice-id="{{ focus_invoice.id }}" data-proof-url="{{ focus_invoice.payment_proof_url|e }}" onclick="openInvoiceProof(this)" style="background:#eff6ff;color:#1d4ed8;padding:8px 12px;"><i class="fas fa-image"></i> View payment proof</button>
+    </div>
+</div>
+{% endif %}
 
 <div class="table-card-clean" style="opacity: 0.8;">
     <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
@@ -234,6 +253,14 @@
     </table>
 </div>
 
+<div id="invoiceProofViewer" class="proof-viewer" role="dialog" aria-modal="true" aria-labelledby="invoiceProofTitle" onclick="if(event.target===this) closeInvoiceProof()">
+    <section class="proof-viewer-card">
+        <header class="proof-viewer-head"><div><h2 id="invoiceProofTitle">Commission payment proof</h2><p id="invoiceProofSubtitle"></p></div><button type="button" aria-label="Close proof" onclick="closeInvoiceProof()"><i class="fas fa-times"></i></button></header>
+        <img id="invoiceProofImage" alt="Caterer commission payment proof">
+        <div style="padding:10px 16px;text-align:right;"><a id="invoiceProofOriginal" href="#" target="_blank" rel="noopener" style="font-size:.78rem;font-weight:700;color:#1d4ed8;">Open original proof</a></div>
+    </section>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     window.addEventListener('load', () => {
@@ -248,7 +275,22 @@
                 invoiceRow.style.outlineOffset = '';
             }, 3000);
         }
+        const proofButton = invoiceId && document.querySelector(`.invoice-proof-button[data-invoice-id="${CSS.escape(invoiceId)}"]`);
+        if (proofButton) openInvoiceProof(proofButton);
     });
+
+    function openInvoiceProof(button) {
+        const proofUrl = button.dataset.proofUrl;
+        if (!proofUrl) return;
+        document.getElementById('invoiceProofTitle').textContent = `Commission payment proof · Invoice #INV-${button.dataset.invoiceId}`;
+        document.getElementById('invoiceProofSubtitle').textContent = 'Submitted by the caterer for admin verification.';
+        document.getElementById('invoiceProofImage').src = proofUrl;
+        document.getElementById('invoiceProofOriginal').href = proofUrl;
+        document.getElementById('invoiceProofViewer').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeInvoiceProof() { document.getElementById('invoiceProofViewer').classList.remove('active'); document.getElementById('invoiceProofImage').removeAttribute('src'); document.body.style.overflow = ''; }
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') closeInvoiceProof(); });
 
     async function approveInvoice(id) {
         openDiamondModal({

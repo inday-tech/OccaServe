@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Messages{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  {% set caterer_primary = user.caterer_profile.primary_color if user and user.caterer_profile and user.caterer_profile.primary_color else '#FF7B54' %}
+  {% set caterer_accent = user.caterer_profile.accent_color if user and user.caterer_profile and user.caterer_profile.accent_color else '#FFB26B' %}
+  {% set caterer_secondary = user.caterer_profile.secondary_color if user and user.caterer_profile and user.caterer_profile.secondary_color else '#2D4059' %}
+  <style>:root{--primary-color:{{ caterer_primary }};--primary-color-rgb:{{ caterer_primary|hex_to_rgb }};--accent-color:{{ caterer_accent }};--accent-color-rgb:{{ caterer_accent|hex_to_rgb }};--secondary-color:{{ caterer_secondary }};--border-radius-base:12px;--border-radius:10px;--header-height:0px}html,body{margin:0;min-height:100%;font-family:Inter,Arial,sans-serif;background:#f8fafc;color:var(--secondary-color)}body{padding:14px;box-sizing:border-box}</style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="embedded-caterer-messages">
+  {% block content %}{% endblock %}
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

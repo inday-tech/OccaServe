@@ -9,6 +9,13 @@
 let wsConnection = null;
 let calendarRefreshTimer = null;
 
+function calendarLocalDateValue(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 function initWebSocket() {
     if (wsConnection) return;
 
@@ -192,7 +199,8 @@ document.addEventListener('DOMContentLoaded', function () {
             dateClick: function (info) {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                const clickedDate = new Date(info.dateStr);
+                const clickedDate = new Date(`${info.dateStr}T00:00:00`);
+                if (clickedDate < today) return;
 
                 const blockInput = document.getElementById('blockDate');
                 const manInput = document.getElementById('manDate');
@@ -1679,6 +1687,11 @@ async function toggleDateAvailability(isAvailable) {
         showNotification("Error", "Please select a target date first.", "error");
         return;
     }
+    dateInput.min = calendarLocalDateValue();
+    if (dateInput.value < dateInput.min && !isAvailable) {
+        showNotification("Date unavailable", "Past dates cannot be blocked.", "warning");
+        return;
+    }
 
     let reasonText = "";
     if (!isAvailable) {
@@ -1708,7 +1721,7 @@ async function toggleDateAvailability(isAvailable) {
             if (window.fullCalendarInstance) {
                 window.fullCalendarInstance.refetchEvents();
             }
-            document.getElementById('availabilityForm').reset();
+            if (blockReasonInput) blockReasonInput.value = '';
         } else {
             showNotification("Error", "Failed to update availability.", "error");
         }
@@ -1817,11 +1830,20 @@ window.setReminder = setReminder;
 
 
 window.openAddScheduleModal = function() {
-    document.getElementById('addScheduleForm').reset();
+    const form = document.getElementById('addScheduleForm');
+    form.reset();
     document.getElementById('schedId').value = '';
+    const dateInput = document.getElementById('schedDate');
+    if (dateInput) {
+        dateInput.min = calendarLocalDateValue();
+        if (window.MAX_BOOKING_DATE) dateInput.max = window.MAX_BOOKING_DATE;
+        dateInput.value = calendarLocalDateValue();
+    }
+    const timeInput = document.getElementById('schedTime');
+    if (timeInput) timeInput.step = '1800';
     
     const titleEl = document.querySelector('#addScheduleModal .occ-modal-title');
-    if (titleEl) titleEl.innerHTML = '<i class="fas fa-calendar-plus" style="margin-right: 8px;"></i> Add Internal Schedule';
+    if (titleEl) titleEl.textContent = 'Add a schedule';
     
     document.getElementById('schedOtherContainer').style.display = 'none';
     
@@ -1835,6 +1857,29 @@ window.openAddScheduleModal = function() {
 window.submitAddSchedule = async function(e) {
     e.preventDefault();
     const form = document.getElementById('addScheduleForm');
+    const dateInput = document.getElementById('schedDate');
+    const todayValue = calendarLocalDateValue();
+    if (dateInput) {
+        dateInput.min = todayValue;
+        if (window.MAX_BOOKING_DATE) dateInput.max = window.MAX_BOOKING_DATE;
+        if (dateInput.value < todayValue) {
+            dateInput.setCustomValidity('Past dates cannot be scheduled.');
+        } else if (window.MAX_BOOKING_DATE && dateInput.value > window.MAX_BOOKING_DATE) {
+            dateInput.setCustomValidity(`Choose a date on or before ${window.MAX_BOOKING_DATE} based on the maximum advance booking setting.`);
+        } else {
+            dateInput.setCustomValidity('');
+        }
+    }
+    const timeInput = document.getElementById('schedTime');
+    if (timeInput) {
+        const time = timeInput.value;
+        const timeError = !time
+            ? 'Select a schedule time.'
+            : !/^([01]\d|2[0-3]):(00|30)$/.test(time)
+                ? 'Choose a time ending in :00 or :30.'
+                : walkinBusinessHoursMessage(time);
+        timeInput.setCustomValidity(timeError || '');
+    }
     if (!form || !form.reportValidity()) return;
 
     const btn = document.getElementById('btnSubmitSchedule');
@@ -1940,18 +1985,28 @@ window.showInternalScheduleDetails = function(event) {
         document.getElementById('schedTitle').value = titleOnly;
         
         const offsetDate = new Date(event.start.getTime() - (event.start.getTimezoneOffset() * 60000));
-        document.getElementById('schedDate').value = offsetDate.toISOString().split('T')[0];
+        document.getElementById('schedTime').step = '1800';
         
         if (event.start.getHours() || event.start.getMinutes()) {
-            document.getElementById('schedTime').value = event.start.toTimeString().substring(0,5);
+            let roundedMinutes = Math.round((event.start.getHours() * 60 + event.start.getMinutes()) / 30) * 30;
+            if (roundedMinutes >= 1440) {
+                offsetDate.setDate(offsetDate.getDate() + 1);
+                roundedMinutes -= 1440;
+            }
+            const roundedHour = Math.floor(roundedMinutes / 60);
+            const minutePart = roundedMinutes % 60;
+            document.getElementById('schedTime').value = `${String(roundedHour).padStart(2, '0')}:${String(minutePart).padStart(2, '0')}`;
         } else {
             document.getElementById('schedTime').value = '';
         }
+        document.getElementById('schedDate').value = offsetDate.toISOString().split('T')[0];
+        document.getElementById('schedDate').min = calendarLocalDateValue();
+        if (window.MAX_BOOKING_DATE) document.getElementById('schedDate').max = window.MAX_BOOKING_DATE;
         
         if (document.getElementById('schedPin')) document.getElementById('schedPin').checked = event.extendedProps.isPinned;
         
         const titleEl = document.querySelector('#addScheduleModal .occ-modal-title');
-        if (titleEl) titleEl.innerHTML = '<i class="fas fa-edit" style="margin-right: 8px;"></i> Edit Internal Schedule';
+        if (titleEl) titleEl.textContent = 'Edit schedule';
         
         closeModal('internalScheduleViewModal');
         const m = document.getElementById('addScheduleModal');
@@ -2059,6 +2114,8 @@ window.openExternalBookingModal = function() {
     const inputs = document.querySelectorAll('#externalBookingModal .control-pro');
     inputs.forEach(inp => {
         inp.style.borderColor = '#cbd5e1';
+        delete inp.dataset.walkinTouched;
+        if (inp.parentElement?.classList.contains('walkin-phone-field')) inp.parentElement.style.borderColor = '#cbd5e1';
     });
 
     // Reset and initialize Walk-in Services Checklist from Caterer Services
@@ -2099,8 +2156,6 @@ window.openExternalBookingModal = function() {
     // Reset status and notes
     const statusSelect = document.getElementById('extBookingStatus');
     if (statusSelect) statusSelect.value = 'pending';
-    const notesInput = document.getElementById('extBookingNotes');
-    if (notesInput) notesInput.value = '';
 
     // Reset discount
     const discInput = document.getElementById('extDiscountInput');
@@ -2122,15 +2177,19 @@ window.openExternalBookingModal = function() {
         window.recalcEquipRentalTotals();
     }
 
-    // Allow historical dates for walk-in bookings without min-date restriction
+    // Walk-in bookings must use today or a future date.
     const dateInput = document.getElementById('extEventDate');
     if (dateInput) {
-        dateInput.removeAttribute('min');
+        const localToday = calendarLocalDateValue();
+        dateInput.min = localToday;
+        if (window.MAX_BOOKING_DATE) dateInput.max = window.MAX_BOOKING_DATE;
         if (!dateInput.value) {
-            const todayStr = new Date().toISOString().split('T')[0];
-            dateInput.value = todayStr;
+            dateInput.value = localToday;
         }
     }
+    const walkinSubmit = document.getElementById('extBtnSubmit');
+    if (walkinSubmit) walkinSubmit.disabled = true;
+    if (window.updateWalkinFormValidation) window.updateWalkinFormValidation(false);
 
     const eqDateInput = document.getElementById('eqRentalDate');
     if (eqDateInput && window.MIN_BOOKING_DATE) {
@@ -2155,6 +2214,13 @@ window.openExternalBookingModal = function() {
 
     const modal = document.getElementById('externalBookingModal');
     if (modal) {
+        if (!modal.dataset.walkinValidationBound) {
+            ['input', 'change'].forEach(eventName => modal.addEventListener(eventName, event => {
+                if (event.target && event.target.id) event.target.dataset.walkinTouched = 'true';
+                if (window.updateWalkinFormValidation) window.updateWalkinFormValidation(true);
+            }));
+            modal.dataset.walkinValidationBound = 'true';
+        }
         modal.style.display = 'flex';
         setTimeout(() => modal.classList.add('active'), 10);
     }
@@ -2169,10 +2235,76 @@ window.clearWalkinError = function(fieldId) {
     const inputEl = document.getElementById(fieldId);
     if (inputEl) {
         inputEl.style.borderColor = '#cbd5e1';
+        if (inputEl.parentElement?.classList.contains('walkin-phone-field')) inputEl.parentElement.style.borderColor = '#cbd5e1';
     }
 };
 
-window.setWalkinError = function(fieldId, message) {
+window.updateWalkinFormValidation = function(showTouched = true) {
+    const modal = document.getElementById('externalBookingModal');
+    const form = document.getElementById('externalBookingForm');
+    const submit = document.getElementById('extBtnSubmit');
+    if (!form || !submit) return false;
+    const errors = {};
+    const value = id => (document.getElementById(id)?.value || '').trim();
+    const eventType = value('extEventType').toLowerCase();
+    if (!eventType) errors.extEventType = 'Select an event type.';
+    const requiredNames = eventType === 'wedding' ? ['extBrideName', 'extGroomName']
+        : ['birthday', 'debut', 'anniversary'].includes(eventType) ? ['extCelebrantName']
+        : ['corporate', 'seminar', 'meeting', 'product launch'].includes(eventType) ? ['extRepresentativeName']
+        : eventType ? ['extFullName'] : [];
+    requiredNames.forEach(id => {
+        const name = value(id);
+        if (!name) errors[id] = 'This name is required.';
+        else if (!/^[A-Za-zÑñ\s.,'-]+$/.test(name)) errors[id] = 'Use letters, spaces, periods, apostrophes, or hyphens.';
+    });
+    const phone = value('extCustomerContact');
+    if (!phone) errors.extCustomerContact = 'Mobile number is required.';
+    else if (!/^9\d{9}$/.test(phone)) errors.extCustomerContact = 'Enter 10 digits after +63 (example: 9171234567).';
+    const eventDate = value('extEventDate');
+    if (!eventDate) errors.extEventDate = 'Event date is required.';
+    else if (eventDate < calendarLocalDateValue()) errors.extEventDate = 'Choose today or a future date.';
+    else if (window.MAX_BOOKING_DATE && eventDate > window.MAX_BOOKING_DATE) errors.extEventDate = `Choose a date on or before ${window.MAX_BOOKING_DATE} based on the maximum advance booking setting.`;
+    const eventTime = value('extEventTime');
+    if (!eventTime) errors.extEventTime = 'Event time is required.';
+    else if (!/^([01]\d|2[0-3]):(00|30)$/.test(eventTime)) errors.extEventTime = 'Choose a time ending in :00 or :30.';
+    else if (walkinBusinessHoursMessage(eventTime)) errors.extEventTime = walkinBusinessHoursMessage(eventTime);
+    if (!value('extVenue')) errors.extVenue = 'Event venue is required.';
+
+    let servicesTotal = 0;
+    let selectedCount = 0;
+    let serviceError = '';
+    document.querySelectorAll('#walkinServicesList .walkin-service-checkbox:checked').forEach(cb => {
+        selectedCount += 1;
+        const id = cb.dataset.serviceId;
+        const nameInput = document.getElementById(`walkin_custom_name_${id}`);
+        const amount = parseCurrencyFloat(document.getElementById(`walkin_amount_${id}`)?.value || 0);
+        if (nameInput && !nameInput.value.trim()) serviceError = 'Name each selected custom service.';
+        if (amount <= 0) serviceError = 'Enter a price greater than zero for each selected service.';
+        else if (amount > 999999.99) serviceError = 'Service amounts cannot exceed ₱999,999.99.';
+        servicesTotal += amount;
+    });
+    if (!selectedCount) serviceError = 'Select at least one service or add an inclusion.';
+    if (serviceError) errors.walkinServices = serviceError;
+    const discount = parseCurrencyFloat(value('extDiscountInput'));
+    const paid = parseCurrencyFloat(value('extDownpaymentInput'));
+    const grandTotal = Math.max(0, servicesTotal - discount);
+    if (discount > servicesTotal) errors.extDiscount = 'Discount cannot exceed the services amount.';
+    if (paid > grandTotal) errors.extDownpayment = 'Amount paid cannot exceed the grand total.';
+
+    const fields = ['extEventType', ...requiredNames, 'extCustomerContact', 'extEventDate', 'extEventTime', 'extVenue', 'walkinServices', 'extDiscount', 'extDownpayment'];
+    fields.forEach(id => {
+        const touchedId = id === 'extDiscount' ? 'extDiscountInput' : id === 'extDownpayment' ? 'extDownpaymentInput' : id;
+        const touched = !showTouched || document.getElementById(touchedId)?.dataset.walkinTouched === 'true' || id === 'walkinServices' && document.querySelector('#walkinServicesList .walkin-service-checkbox:checked');
+        if (!touched) return;
+        if (errors[id]) window.setWalkinError(id, errors[id], false);
+        else window.clearWalkinError(id);
+    });
+    const ready = Object.keys(errors).length === 0;
+    submit.disabled = !ready;
+    return ready;
+};
+
+window.setWalkinError = function(fieldId, message, scroll = true) {
     const errEl = document.getElementById(`error-${fieldId}`);
     if (errEl) {
         errEl.innerText = message;
@@ -2181,7 +2313,8 @@ window.setWalkinError = function(fieldId, message) {
     const inputEl = document.getElementById(fieldId);
     if (inputEl) {
         inputEl.style.borderColor = '#ef4444';
-        inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (inputEl.parentElement?.classList.contains('walkin-phone-field')) inputEl.parentElement.style.borderColor = '#ef4444';
+        if (scroll) inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 };
 
@@ -2210,7 +2343,7 @@ window.handleWalkinEventTypeChange = function(eventType) {
             </div>
         `;
     } else if (normType === 'birthday' || normType === 'debut' || normType === 'anniversary') {
-        const titleLabel = normType === 'debut' ? "Debutante's Full Name" : (normType === 'anniversary' ? "Celebrant / Couple Full Name" : "Celebrant's Full Name");
+        const titleLabel = normType === 'birthday' ? 'Celebrant / Guest of Honor' : (normType === 'debut' ? 'Debutante / Guest of Honor' : "Celebrant / Couple Full Name");
         container.innerHTML = `
             <div class="form-group-pro" style="grid-column: span 2;">
                 <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
@@ -2358,8 +2491,13 @@ window.updateWalkinAddressPreview = function() {
 };
 
 window.formatWalkinPhone = function(el) {
-    let val = el.value.replace(/[^\d+]/g, '');
-    el.value = val;
+    let digits = String(el.value || '').replace(/\D/g, '');
+    if (digits.startsWith('0063')) digits = digits.slice(4);
+    else if (digits.startsWith('63')) digits = digits.slice(2);
+    if (digits.startsWith('0')) digits = digits.slice(1);
+    el.value = digits.slice(0, 10);
+    el.setCustomValidity(/^9\d{9}$/.test(el.value) ? '' : 'Enter 10 digits after +63.');
+    if (window.updateWalkinFormValidation) window.updateWalkinFormValidation(true);
 };
 
 function formatCurrencyString(num) {
@@ -2453,6 +2591,74 @@ window.initWalkinServicesList = function() {
     window.renderWalkinServicesList();
 };
 
+function formatServiceNotesForEditing(notes) {
+    return String(notes || '').split(/[\n,]+/).map(item => item.replace(/^\s*[•*-]\s*/, '').trim()).filter(Boolean).join(', ');
+}
+
+function formatServiceNotesForStorage(notes) {
+    return String(notes || '').split(/[\n,]+/).map(item => item.replace(/^\s*[•*-]\s*/, '').trim()).filter(Boolean).map(item => `• ${item}`).join('\n');
+}
+
+function renderServiceNotesList(notes) {
+    const items = String(notes || '').split(/[\n,]+/).map(item => item.replace(/^\s*[•*-]\s*/, '').trim()).filter(Boolean);
+    if (!items.length) return '';
+    const firstColumn = items.slice(0, 10);
+    const secondColumn = items.slice(10);
+    const renderColumn = column => column.length
+        ? `<ul>${column.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
+        : '';
+    return `<details class="walkin-service-notes-dropdown"><summary>Service notes (${items.length})</summary><div class="walkin-service-notes-display">${renderColumn(firstColumn)}${renderColumn(secondColumn)}</div></details>`;
+}
+
+function formatWalkinPriceInput(value) {
+    const raw = String(value || '').replace(/[^\d.]/g, '');
+    const dot = raw.indexOf('.');
+    let whole = dot < 0 ? raw : raw.slice(0, dot);
+    let fraction = dot < 0 ? '' : raw.slice(dot + 1).replace(/\./g, '');
+    const exceeded = whole.length > 6;
+    whole = whole.slice(0, 6);
+    fraction = fraction.slice(0, 2);
+    const formattedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return { value: dot >= 0 ? `${formattedWhole}.${fraction}` : formattedWhole, exceeded };
+}
+
+function walkinBusinessHoursMessage(time) {
+    const open = window.BUSINESS_OPEN || '08:00';
+    const close = window.BUSINESS_CLOSE || '20:00';
+    if (!time || (time >= open && time <= close)) return '';
+    const display = value => {
+        const [hourText, minute] = value.split(':');
+        const hour = Number(hourText);
+        return `${hour % 12 || 12}:${minute} ${hour >= 12 ? 'PM' : 'AM'}`;
+    };
+    return `Choose a time within your business hours (${display(open)}–${display(close)}).`;
+}
+
+let walkinEditConfirmationResolver = null;
+window.confirmWalkinEditAction = function(title, message, actionLabel) {
+    const modal = document.getElementById('walkinEditConfirmModal');
+    if (!modal) return Promise.resolve(window.confirm(message));
+    document.getElementById('walkinEditConfirmTitle').textContent = title;
+    document.getElementById('walkinEditConfirmMessage').textContent = message;
+    document.getElementById('walkinEditConfirmAction').textContent = actionLabel;
+    modal.style.display = 'flex';
+    requestAnimationFrame(() => modal.classList.add('active'));
+    return new Promise(resolve => { walkinEditConfirmationResolver = resolve; });
+};
+
+window.resolveWalkinEditConfirmation = function(confirmed) {
+    const modal = document.getElementById('walkinEditConfirmModal');
+    if (modal) {
+        modal.classList.remove('active');
+        setTimeout(() => { modal.style.display = 'none'; }, 180);
+    }
+    if (walkinEditConfirmationResolver) {
+        const resolve = walkinEditConfirmationResolver;
+        walkinEditConfirmationResolver = null;
+        resolve(Boolean(confirmed));
+    }
+};
+
 window.renderWalkinServicesList = function() {
     const container = document.getElementById('walkinServicesList');
     if (!container) return;
@@ -2488,13 +2694,13 @@ window.renderWalkinServicesList = function() {
             html += `
                 <div id="walkin_service_card_${id}" class="walkin-service-card is-editing" data-service-id="${id}">
                     <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                        <div class="walkin-edit-row">
                             <input type="text" id="edit_svc_name_${s.id}" class="control-pro" value="${escapeHtml(s.name)}" placeholder="Service / Inclusion Name" style="flex: 1; font-weight: 700; font-size: 0.88rem; height: 34px; padding: 4px 10px;">
-                            <div class="walkin-amount-box is-active">
+                            <div class="walkin-amount-box is-active walkin-edit-amount-box">
                                 <span class="walkin-currency-symbol">₱</span>
-                                <input type="text" id="edit_svc_amount_${s.id}" class="walkin-service-amount" value="${priceStr}" placeholder="0.00" oninput="handleWalkinServiceAmountInput(this, 'edit_${s.id}')" onblur="handleWalkinServiceAmountBlur(this, 'edit_${s.id}')">
+                                <input type="text" id="edit_svc_amount_${s.id}" class="walkin-service-amount" value="${priceStr}" placeholder="0.00" maxlength="12" inputmode="decimal" oninput="handleWalkinServiceAmountInput(this, 'edit_${s.id}')" onblur="handleWalkinServiceAmountBlur(this, 'edit_${s.id}')">
                             </div>
-                            <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                            <div class="walkin-edit-actions">
                                 <button type="button" id="btn_save_edit_${s.id}" onclick="saveEditWalkinService(${s.id})" class="btn-draft-save" title="Save changes">
                                     <i class="fas fa-check"></i>
                                 </button>
@@ -2503,7 +2709,8 @@ window.renderWalkinServicesList = function() {
                                 </button>
                             </div>
                         </div>
-                        <input type="text" id="edit_svc_notes_${s.id}" class="walkin-service-note-input" value="${escapeHtml(s.notes || s.description || '')}" placeholder="Optional notes, inclusions, or specifications...">
+                        <label class="walkin-edit-notes-label" for="edit_svc_notes_${s.id}">Optional notes (separate items with commas)</label>
+                        <textarea id="edit_svc_notes_${s.id}" class="walkin-service-note-input walkin-edit-notes" rows="2" placeholder="e.g. Setup, delivery, table styling">${escapeHtml(formatServiceNotesForEditing(s.notes || s.description || ''))}</textarea>
                     </div>
                 </div>
             `;
@@ -2539,7 +2746,7 @@ window.renderWalkinServicesList = function() {
                             <!-- Unit Price -->
                             <div class="walkin-amount-box is-active" id="walkin_amount_box_${id}" style="width: 105px; min-width: 105px; max-width: 105px; height: 32px;" title="Unit Price">
                                 <span class="walkin-currency-symbol">₱</span>
-                                <input type="text" id="walkin_amount_${id}" class="walkin-service-amount" value="${priceStr}" placeholder="0.00" oninput="handleWalkinServiceAmountInput(this, '${id}')" onblur="handleWalkinServiceAmountBlur(this, '${id}')" onfocus="handleWalkinServiceAmountFocus(this, '${id}')">
+                                <input type="text" id="walkin_amount_${id}" class="walkin-service-amount" value="${priceStr}" placeholder="0.00" maxlength="12" inputmode="decimal" oninput="handleWalkinServiceAmountInput(this, '${id}')" onblur="handleWalkinServiceAmountBlur(this, '${id}')" onfocus="handleWalkinServiceAmountFocus(this, '${id}')">
                             </div>
 
                             <!-- Subtotal = Qty * Unit Price -->
@@ -2559,22 +2766,21 @@ window.renderWalkinServicesList = function() {
                             </div>
                         </div>
                     </div>
+                    ${renderServiceNotesList(s.notes || s.description || '')}
 
-                    <!-- Notes / Specifications for this service -->
-                    <div style="margin-left: 28px;">
-                        <input type="text" id="walkin_note_${id}" class="walkin-service-note-input" value="${escapeHtml(s.notes || s.description || '')}" placeholder="Optional notes, inclusions, or specifications..." oninput="recalculateWalkinTotals()">
-                    </div>
                 </div>
             `;
         }
     });
 
+    // Put new custom inclusions before catalog services so they are immediately visible.
+    let draftHtml = '';
     // 2. Render Draft Rows for newly added services
     drafts.forEach((draft) => {
         const id = `draft_${draft.id}`;
         const priceStr = draft.price ? formatCurrencyString(draft.price) : '';
 
-        html += `
+        draftHtml += `
             <div id="walkin_service_card_${id}" class="walkin-service-card is-draft" data-service-id="${id}">
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     <div class="walkin-service-top-row">
@@ -2593,7 +2799,7 @@ window.renderWalkinServicesList = function() {
                             <!-- Unit Price -->
                             <div id="walkin_amount_box_${id}" class="walkin-amount-box is-active" style="width: 105px; min-width: 105px; max-width: 105px; height: 32px;" title="Unit Price">
                                 <span class="walkin-currency-symbol">₱</span>
-                                <input type="text" id="walkin_amount_${id}" class="walkin-service-amount" placeholder="0.00" value="${priceStr}" oninput="handleWalkinServiceAmountInput(this, '${id}')" onblur="handleWalkinServiceAmountBlur(this, '${id}')" onfocus="handleWalkinServiceAmountFocus(this, '${id}')">
+                                <input type="text" id="walkin_amount_${id}" class="walkin-service-amount" placeholder="0.00" value="${priceStr}" maxlength="12" inputmode="decimal" oninput="handleWalkinServiceAmountInput(this, '${id}')" onblur="handleWalkinServiceAmountBlur(this, '${id}')" onfocus="handleWalkinServiceAmountFocus(this, '${id}')">
                             </div>
 
                             <!-- Subtotal -->
@@ -2613,15 +2819,12 @@ window.renderWalkinServicesList = function() {
                         </div>
                     </div>
 
-                    <div style="margin-left: 28px;">
-                        <input type="text" id="walkin_note_${id}" class="walkin-service-note-input" placeholder="Optional notes, inclusions, or specifications..." value="${escapeHtml(draft.notes || '')}" oninput="handleWalkinDraftNoteInput(this, '${draft.id}')">
-                    </div>
                 </div>
             </div>
         `;
     });
 
-    container.innerHTML = html;
+    container.innerHTML = draftHtml + html;
     updateSelectedServicesCount();
     recalculateWalkinTotals();
 };
@@ -2629,7 +2832,7 @@ window.renderWalkinServicesList = function() {
 window.addWalkinCustomService = function() {
     const draftId = 'd_' + Date.now();
     window.walkinDraftServices = window.walkinDraftServices || [];
-    window.walkinDraftServices.push({
+    window.walkinDraftServices.unshift({
         id: draftId,
         name: '',
         price: 0,
@@ -2750,7 +2953,10 @@ window.saveWalkinDraftService = async function(draftId) {
     }
 };
 
-window.startEditWalkinService = function(serviceId) {
+window.startEditWalkinService = async function(serviceId) {
+    const service = (window.CATERER_SERVICES || []).find(item => item.id === serviceId);
+    const proceed = await window.confirmWalkinEditAction('Edit service?', `Edit ${service?.name || 'this service'} and its price or notes?`, 'Edit service');
+    if (!proceed) return;
     window.walkinEditingServiceId = serviceId;
     window.renderWalkinServicesList();
     setTimeout(() => {
@@ -2759,7 +2965,9 @@ window.startEditWalkinService = function(serviceId) {
     }, 50);
 };
 
-window.cancelEditWalkinService = function() {
+window.cancelEditWalkinService = async function() {
+    const proceed = await window.confirmWalkinEditAction('Discard changes?', 'Your unsaved service changes will be lost.', 'Discard changes');
+    if (!proceed) return;
     window.walkinEditingServiceId = null;
     window.renderWalkinServicesList();
 };
@@ -2785,6 +2993,18 @@ window.saveEditWalkinService = async function(serviceId) {
         return;
     }
 
+    if (!Number.isFinite(price) || price <= 0 || price > 999999.99) {
+        if (amtInput) {
+            amtInput.style.borderColor = '#ef4444';
+            amtInput.focus();
+        }
+        if (window.showNotification) window.showNotification('Validation Error', 'Enter an amount from ₱0.01 to ₱999,999.99.', 'error');
+        return;
+    }
+
+    const proceed = await window.confirmWalkinEditAction('Save service changes?', 'Save the updated name, amount, and notes for this service?', 'Save changes');
+    if (!proceed) return;
+
     if (btnSave) {
         btnSave.disabled = true;
         btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -2800,7 +3020,7 @@ window.saveEditWalkinService = async function(serviceId) {
             body: JSON.stringify({
                 name: name,
                 price: price,
-                notes: notes
+                notes: formatServiceNotesForStorage(notes)
             })
         });
 
@@ -2971,7 +3191,8 @@ window.handleWalkinServiceAmountInput = function(input, id) {
     const oldSel = input.selectionStart || 0;
     const digitsBefore = (oldVal.slice(0, oldSel).match(/[0-9.]/g) || []).length;
 
-    const formatted = formatNumberWithCommas(oldVal);
+    const bounded = formatWalkinPriceInput(oldVal);
+    const formatted = bounded.value;
     input.value = formatted;
 
     let newSel = 0;
@@ -2993,6 +3214,12 @@ window.handleWalkinServiceAmountInput = function(input, id) {
         if (draft) draft.price = parseCurrencyFloat(formatted);
     }
 
+    if (window.updateWalkinFormValidation) window.updateWalkinFormValidation(true);
+    if (bounded.exceeded && errEl) {
+        errEl.innerText = 'Service amounts can have up to 6 digits before the decimal (maximum ₱999,999.99).';
+        errEl.style.display = 'block';
+    }
+
     recalculateWalkinTotals();
 };
 
@@ -3005,7 +3232,7 @@ window.handleWalkinServiceAmountBlur = function(input, id) {
     const amtBox = document.getElementById(`walkin_amount_box_${id}`);
     if (amtBox) amtBox.classList.remove('is-focused');
 
-    const rawNum = parseCurrencyFloat(input.value);
+    const rawNum = Math.min(parseCurrencyFloat(input.value), 999999.99);
     if (rawNum > 0) {
         input.value = formatCurrencyString(rawNum);
     } else {
@@ -3017,6 +3244,8 @@ window.handleWalkinServiceAmountBlur = function(input, id) {
         const draft = (window.walkinDraftServices || []).find(item => item.id === rawId);
         if (draft) draft.price = rawNum;
     }
+
+    if (window.updateWalkinFormValidation) window.updateWalkinFormValidation(true);
 
     recalculateWalkinTotals();
 };
@@ -3103,8 +3332,7 @@ function recalculateWalkinTotals() {
     const checkboxes = document.querySelectorAll('.walkin-service-checkbox');
     checkboxes.forEach(cb => {
         const id = cb.getAttribute('data-service-id');
-        const qtyInput = document.getElementById(`walkin_qty_${id}`);
-        const qty = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
+        const qty = 1;
         const amtInput = document.getElementById(`walkin_amount_${id}`);
         const unitPrice = amtInput ? parseCurrencyFloat(amtInput.value) : 0;
         const itemSubtotal = Math.round(qty * unitPrice * 100) / 100;
@@ -3374,36 +3602,39 @@ window.submitExternalBooking = async function(e) {
 
     if (!contactVal) {
         reportError('extCustomerContact', 'Mobile number is required.');
-    } else if (!/^(09\d{9}|639\d{9}|\+639\d{9})$/.test(contactVal.replace(/[\s\-]/g, ''))) {
-        reportError('extCustomerContact', 'Please enter a valid Philippine mobile number (e.g., 09XXXXXXXXX or +639XXXXXXXXX).');
+    } else if (!/^9\d{9}$/.test(cleanDigits)) {
+        reportError('extCustomerContact', 'Enter 10 digits after +63 (example: 9171234567).');
     } else {
-        const checkSequence = cleanDigits.startsWith('63') ? '0' + cleanDigits.slice(2) : cleanDigits;
-        if (new Set(checkSequence.slice(2)).size <= 2) {
+        if (new Set(cleanDigits.slice(1)).size <= 2) {
             reportError('extCustomerContact', 'Invalid mobile number pattern detected.');
         }
     }
 
     // Canonical +639XXXXXXXXX format
     let canonicalPhone = '';
-    if (cleanDigits.startsWith('63') && cleanDigits.length === 12) {
-        canonicalPhone = `+${cleanDigits}`;
-    } else if (cleanDigits.startsWith('09') && cleanDigits.length === 11) {
-        canonicalPhone = `+63${cleanDigits.slice(1)}`;
-    } else if (cleanDigits.startsWith('9') && cleanDigits.length === 10) {
+    if (cleanDigits.startsWith('9') && cleanDigits.length === 10) {
         canonicalPhone = `+63${cleanDigits}`;
     }
 
-    // 4. Date of Event Validation (Allows legitimate historical walk-in entries)
+    // 4. Date of Event Validation
     const dateEl = document.getElementById('extEventDate');
     const dateVal = dateEl ? dateEl.value : '';
     if (!dateVal) {
         reportError('extEventDate', 'Date of event is required.');
+    } else if (dateVal < calendarLocalDateValue()) {
+        reportError('extEventDate', 'Choose today or a future date.');
+    } else if (window.MAX_BOOKING_DATE && dateVal > window.MAX_BOOKING_DATE) {
+        reportError('extEventDate', `Choose a date on or before ${window.MAX_BOOKING_DATE} based on the maximum advance booking setting.`);
     }
 
     const eventTimeEl = document.getElementById('extEventTime');
     const eventTimeVal = eventTimeEl ? eventTimeEl.value : '';
     if (!eventTimeVal) {
         reportError('extEventTime', 'Event time is required.');
+    } else if (!/^([01]\d|2[0-3]):(00|30)$/.test(eventTimeVal)) {
+        reportError('extEventTime', 'Choose a time ending in :00 or :30.');
+    } else if (walkinBusinessHoursMessage(eventTimeVal)) {
+        reportError('extEventTime', walkinBusinessHoursMessage(eventTimeVal));
     }
 
     // 5. Venue Validation
@@ -3467,15 +3698,20 @@ window.submitExternalBooking = async function(e) {
                 category = cb.getAttribute('data-category') || 'Service';
             }
 
-            const qtyInput = document.getElementById(`walkin_qty_${id}`);
-            const qty = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
+            const qty = 1;
 
             const amtInput = document.getElementById(`walkin_amount_${id}`);
             const unitPrice = amtInput ? parseCurrencyFloat(amtInput.value) : 0;
             const noteInput = document.getElementById(`walkin_note_${id}`);
-            const noteVal = noteInput ? noteInput.value.trim() : '';
+            const catalogService = (window.CATERER_SERVICES || []).find(service => String(service.id) === String(catalogId));
+            const draftService = (window.walkinDraftServices || []).find(draft => String(draft.id) === String(id).replace(/^draft_/, ''));
+            const noteVal = noteInput?.value.trim()
+                || catalogService?.notes
+                || catalogService?.description
+                || draftService?.notes
+                || '';
 
-            if (unitPrice <= 0) {
+            if (unitPrice <= 0 || unitPrice > 999999.99) {
                 hasServiceAmountError = true;
                 const amtBox = document.getElementById(`walkin_amount_box_${id}`);
                 if (amtBox) amtBox.style.borderColor = '#ef4444';
@@ -3493,7 +3729,7 @@ window.submitExternalBooking = async function(e) {
                     qty: qty,
                     quantity: qty,
                     subtotal: subtotal,
-                    notes: noteVal,
+                    notes: formatServiceNotesForStorage(noteVal),
                     category: category,
                     is_custom: type === 'custom' || type === 'draft'
                 });
@@ -3510,7 +3746,7 @@ window.submitExternalBooking = async function(e) {
         const svcSection = document.getElementById('walkinServicesList');
         if (svcSection && !firstInvalidEl) firstInvalidEl = svcSection;
     } else if (hasServiceAmountError) {
-        reportError('walkinServices', 'Please enter a valid price greater than ₱0 for all selected services.');
+        reportError('walkinServices', 'Enter a service price from ₱0.01 to ₱999,999.99 for each selected service.');
         if (firstServiceAmtInput && !firstInvalidEl) firstInvalidEl = firstServiceAmtInput;
     }
 
@@ -3520,7 +3756,7 @@ window.submitExternalBooking = async function(e) {
     const amountPaid = parseCurrencyFloat(document.getElementById('extDownpaymentInput')?.value || 0);
     const paymentMethod = document.getElementById('extPaymentMethod')?.value || 'Cash';
     const bookingStatus = document.getElementById('extBookingStatus')?.value || 'pending';
-    const bookingNotes = (document.getElementById('extBookingNotes')?.value || '').trim();
+    const bookingNotes = '';
 
     if (amountPaid < 0) {
         reportError('extDownpayment', 'Amount paid cannot be negative.');
@@ -3623,6 +3859,8 @@ window.submitExternalBooking = async function(e) {
                     window.setWalkinError('extRepresentativeName', cleanMsg);
                 } else if (fieldKey === 'manFullName') {
                     window.setWalkinError('extFullName', cleanMsg);
+                } else if (fieldKey === 'extEventTime') {
+                    window.setWalkinError('extEventTime', cleanMsg);
                 } else if (fieldKey === 'manDownpayment') {
                     window.setWalkinError('extDownpayment', cleanMsg);
                 } else {
@@ -3646,8 +3884,8 @@ window.submitExternalBooking = async function(e) {
         }
     } finally {
         if (btn) {
-            btn.disabled = false;
             btn.innerHTML = originalBtnHtml;
+            if (window.updateWalkinFormValidation) window.updateWalkinFormValidation(true);
         }
     }
 };
@@ -3973,6 +4211,12 @@ window.submitWalkinEquipmentRental = async function(e) {
 
 window.openAvailabilitySettings = function() {
     const m = document.getElementById('availabilityModal');
+    const dateInput = document.getElementById('blockDate');
+    const todayValue = calendarLocalDateValue();
+    if (dateInput) {
+        dateInput.min = todayValue;
+        if (!dateInput.value || dateInput.value < todayValue) dateInput.value = todayValue;
+    }
     if (m) {
         m.style.display = 'flex';
         setTimeout(() => m.classList.add('active'), 10);

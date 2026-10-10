@@ -645,7 +645,13 @@
     .mtab-pane-pro.active { display: block; }
 
     @media (max-width: 768px) {
-        .b-table-header { flex-direction: column; align-items: flex-start; }
+        .b-table-header { flex-direction: column; align-items: stretch; padding: 0.75rem 1rem !important; }
+        .bookings-heading-row { width: 100%; align-items: flex-start !important; gap: 0.5rem !important; }
+        .bookings-heading-copy { flex: 1 1 auto; }
+        .bookings-heading-copy h3,
+        .bookings-heading-copy p { margin-left: 0 !important; text-align: left; }
+        .booking-export-control { flex: 0 0 auto !important; align-self: flex-start; }
+        .booking-export-control > button { width: auto !important; min-height: 36px; padding: 0.45rem 0.65rem !important; white-space: nowrap; }
         .header-controls { width: 100%; flex-direction: column; align-items: stretch; }
         .header-controls .filter-wrapper,
         .header-controls select,
@@ -744,13 +750,27 @@
     </div>
 </div>
 
-<div class="b-table-header" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid #f1f5f9;">
-    <div>
-        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #0f172a;">All Bookings</h3>
-        <p style="margin: 0.25rem 0 0; font-size: 0.78rem; color: #94a3b8; font-weight: 500;">Manage and track your catering bookings</p>
+<div class="b-table-header" style="display:flex;flex-direction:column;gap:.75rem;padding:1rem 1.25rem;border-bottom:1px solid #f1f5f9;">
+    <div class="bookings-heading-row" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;min-width:0;">
+        <div class="bookings-heading-copy" style="min-width:0;">
+            <h3 style="margin:0;font-size:1.1rem;font-weight:700;color:#0f172a;">All Bookings</h3>
+            <p style="margin:.25rem 0 0;font-size:.78rem;color:#94a3b8;font-weight:500;">Manage and track your catering bookings</p>
+        </div>
+        {% if bookings %}
+        <div class="action-dropdown-container booking-export-control" style="position:relative;flex:0 0 auto;">
+            <button class="btn-outline input-sm" style="padding:.45rem 1rem;border:1px solid #cbd5e1;border-radius:8px;font-weight:600;font-size:.78rem;color:#475569;background:white;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;" onclick="window.toggleBookingExportMenu(event)">
+                <i class="fas fa-file-export"></i> Export <i class="fas fa-chevron-down" style="font-size:.65rem;"></i>
+            </button>
+            <div class="action-dropdown-menu" id="bookingExportMenu" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 10px 25px -5px rgba(0,0,0,.1);width:200px;z-index:100;overflow:hidden;">
+                <button onclick="window.exportBookings('excel')" style="width:100%;text-align:left;padding:12px 16px;border:0;background:transparent;cursor:pointer;display:flex;align-items:center;gap:10px;font-weight:600;color:#475569;border-bottom:1px solid #f1f5f9;"><i class="fas fa-file-excel" style="color:var(--accent-color,#f97316);font-size:1.1rem;width:20px;"></i> Excel (CSV)</button>
+                <button onclick="window.exportBookings('pdf')" style="width:100%;text-align:left;padding:12px 16px;border:0;background:transparent;cursor:pointer;display:flex;align-items:center;gap:10px;font-weight:600;color:#475569;border-bottom:1px solid #f1f5f9;"><i class="fas fa-file-pdf" style="color:#ef4444;font-size:1.1rem;width:20px;"></i> PDF Report</button>
+                <button onclick="window.exportBookings('word')" style="width:100%;text-align:left;padding:12px 16px;border:0;background:transparent;cursor:pointer;display:flex;align-items:center;gap:10px;font-weight:600;color:#475569;"><i class="fas fa-file-word" style="color:#3b82f6;font-size:1.1rem;width:20px;"></i> Word Doc</button>
+            </div>
+        </div>
+        {% endif %}
     </div>
-    <div class="header-controls" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
-        <div class="filter-wrapper" style="display: flex; gap: 0.5rem; align-items: center;">
+    <div class="header-controls" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center;">
+        <div class="filter-wrapper" style="display:flex;gap:.5rem;align-items:center;">
             <select class="filter-select-pro" id="statusFilter" onchange="filterBookings()" style="padding: 0.45rem 1.25rem 0.45rem 0.75rem; font-size: 0.82rem; border-radius: 8px; border: 1px solid #cbd5e1; background-color: #fff; color: #334155; font-weight: 600; cursor: pointer; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                 <option value="">Status: All</option>
                 <option value="pending">Pending</option>
@@ -766,19 +786,6 @@
                 <option value="walkin">Manual</option>
             </select>
         </div>
-
-        {% if bookings %}
-        <div class="action-dropdown-container" style="position: relative;">
-            <button class="btn-outline input-sm" style="padding: 0.45rem 1rem; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 600; font-size: 0.78rem; color: #475569; background: white; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; white-space: nowrap;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'" onclick="window.toggleBookingExportMenu(event)">
-                <i class="fas fa-file-export"></i> Export <i class="fas fa-chevron-down" style="font-size: 0.65rem;"></i>
-            </button>
-            <div class="action-dropdown-menu" id="bookingExportMenu" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); width: 200px; z-index: 100; overflow: hidden;">
-                <button onclick="window.exportBookings('excel')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569; border-bottom: 1px solid #f1f5f9;"><i class="fas fa-file-excel" style="color: var(--accent-color, #f97316); font-size: 1.1rem; width: 20px;"></i> Excel (CSV)</button>
-                <button onclick="window.exportBookings('pdf')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569; border-bottom: 1px solid #f1f5f9;"><i class="fas fa-file-pdf" style="color: #ef4444; font-size: 1.1rem; width: 20px;"></i> PDF Report</button>
-                <button onclick="window.exportBookings('word')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569;"><i class="fas fa-file-word" style="color: #3b82f6; font-size: 1.1rem; width: 20px;"></i> Word Doc</button>
-            </div>
-        </div>
-        {% endif %}
     </div>
 </div>
 
@@ -1094,6 +1101,7 @@
                             data-booking-ref="{{ booking_ref }}"
                             data-status="{{ booking.status or '' }}"
                             data-payment-status="{{ booking.payment_status or 'no_payment' }}"
+                            data-computed-payment-status="{{ booking._pay_summary.computed_payment_status if booking._pay_summary is defined else 'unpaid' }}"
                             data-pending-amount="{{ pending_val }}"
                             data-cash-requested-amount="{% if booking.payment_status == 'cash_balance_requested' %}{{ balance_val }}{% elif booking.payment_status == 'cash_payment_requested' %}{{ booking.reservation_fee or 0 }}{% else %}0{% endif %}"
                             data-verified-paid="{{ paid_val }}"
@@ -2271,6 +2279,98 @@
         
         #actionCenterWrapper { display: none !important; }
     }
+    /* Match the caterer dashboard's cards and configured corner radius. */
+    .kpi-card-clean,.smart-booking-card,.prep-status-card,#bookingDetailModal .exec-card,
+    #bookingDetailModal .modal-info-card,#bookingDetailModal .workspace-next-action,
+    #bookingDetailModal .workspace-summary-item,#bookingDetailModal .finance-summary-strip > div,
+    #bookingDetailModal .modal-b-container,#recordPaymentModal .occ-modal-box {
+        border-radius:var(--border-radius,12px) !important;
+    }
+    .kpi-card-clean { border:1px solid color-mix(in srgb,var(--primary-color) 24%,white) !important;box-shadow:0 1px 2px rgba(15,23,42,.03),0 2px 8px rgba(15,23,42,.025) !important;transition:border-color .16s,box-shadow .16s,transform .16s; }
+    .kpi-card-clean:hover,.kpi-card-clean:focus-visible { border-color:var(--primary-color) !important;box-shadow:0 3px 14px color-mix(in srgb,var(--primary-color) 12%,transparent) !important;transform:translateY(-1px); }
+    .kpi-card-clean .kpi-icon { display:none !important; }
+    .kpi-card-clean .kpi-info { width:100%; }
+    .kpi-card-clean .kpi-value { color:var(--primary-color) !important; }
+    #bookingDetailModal .exec-card,#bookingDetailModal .modal-info-card,#bookingDetailModal .workspace-summary-item,
+    #bookingDetailModal .finance-summary-strip > div,#bookingDetailModal .workspace-next-action,
+    #bookingDetailModal .workspace-lifecycle-card,#bookingDetailModal .payment-summary-card,
+    #bookingDetailModal .prep-status-card,#bookingDetailModal .occ-modal-footer { border-color:color-mix(in srgb,var(--primary-color) 22%,white) !important; }
+    #bookingDetailModal .booking-header-financials { display:none !important; }
+    #bookingDetailModal .exec-header .header-action-btn { border-radius:var(--border-radius,10px) !important;flex:0 0 38px !important;min-width:38px !important;min-height:38px !important;box-sizing:border-box;margin:2px;position:relative;z-index:2; }
+    #bookingDetailModal .exec-header .header-action-btn:hover { color:var(--primary-color) !important;border-color:var(--primary-color) !important;background:color-mix(in srgb,var(--primary-color) 7%,white) !important; }
+    #bookingDetailModal .modal-body-scroll { background:#f8fafc !important; }
+    #bookingDetailModal .modal-section-title,#bookingDetailModal .exec-title { color:var(--primary-color) !important; }
+    #bookingDetailModal .payment-history-scroll { max-width:100%;overflow-x:auto !important;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch; }
+    #bookingDetailModal .payment-history-scroll-inner { min-width:820px; }
+    #bookingDetailModal .payment-history-scroll table { min-width:820px; }
+    #bookingDetailModal .payment-history-scroll th,#bookingDetailModal .payment-history-scroll td { white-space:nowrap; }
+    #bookingDetailModal .payment-summary-card { border-radius:var(--border-radius,10px) !important; }
+    #bookingDetailModal .prep-current-status-row { display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap; }
+    #bookingDetailModal .prep-current-status-row > div:first-child { margin:0 !important; }
+    #bookingDetailModal .prep-current-status-row #prepCurrentStatusBadge { margin:0; }
+    #bookingDetailModal .prep-current-status-row #btnUpdatePrepStatus { margin-left:auto; }
+    #prepStatusOptions .prep-status-option.is-disabled { opacity:.48;filter:saturate(.45);cursor:not-allowed; }
+    #prepStatusOptions .prep-status-option.is-disabled:hover { transform:none; }
+    #bookingDetailModal .overview-grid { min-width:0; }
+    #bookingDetailModal .financial-overview-card { background:color-mix(in srgb,var(--primary-color) 6%,white) !important;border:1px solid color-mix(in srgb,var(--primary-color) 24%,white) !important;color:#172033 !important; }
+    #bookingDetailModal .financial-overview-card * { color:#172033 !important; }
+    #bookingDetailModal button.ov-customer-details-button { height:18px !important;min-height:18px !important;max-height:18px !important;padding:0 6px !important;line-height:16px !important;box-sizing:border-box;flex:0 0 auto;align-self:center;font-size:10px !important; }
+    #bookingDetailModal .financial-overview-card { display:grid !important;grid-template-columns:minmax(160px,.8fr) minmax(0,2fr) !important;align-items:center !important;gap:.85rem !important;padding:1rem !important; }
+    #bookingDetailModal .financial-overview-metrics { display:grid !important;grid-template-columns:repeat(4,minmax(0,1fr));gap:.55rem !important;width:100%; }
+    #bookingDetailModal .financial-overview-item { min-width:0;text-align:left !important;padding:.6rem .65rem;border:1px solid color-mix(in srgb,var(--primary-color) 15%,white);border-radius:var(--border-radius,10px);background:#fff; }
+    #bookingDetailModal .financial-overview-item > div:first-child { color:#64748b !important;font-size:.65rem !important; }
+    #bookingDetailModal .financial-overview-item > div:last-child { color:#172033 !important;font-size:clamp(.88rem,1.5vw,1.15rem) !important;overflow-wrap:anywhere; }
+    #bookingDetailModal .occ-modal-footer #modalFooterLeftActions,#bookingDetailModal .occ-modal-footer #modalFooterRightActions { display:flex;align-items:center;gap:.6rem;flex-wrap:wrap; }
+    #bookingDetailModal .occ-modal-footer #modalFooterLeftActions > button:not(.is-footer-btn-hidden),#bookingDetailModal .occ-modal-footer #modalFooterRightActions > button:not(.is-footer-btn-hidden) { min-height:42px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;margin:0; }
+    #bookingDetailModal #bookingDetailModalBox { height:94vh !important;max-height:94vh !important;min-height:0; }
+    #bookingDetailModal .modal-body-scroll { flex:1 1 0 !important;min-height:0;overflow-y:auto;scrollbar-gutter:stable; }
+    #bookingDetailModal .mtab-pane-pro.active { min-height:100%;overflow:visible !important; }
+    #bookingDetailModal .prep-status-card > div:first-child #btnUpdatePrepStatus { flex:0 0 auto;white-space:nowrap; }
+    #recordPaymentModal .occ-modal-header h3,#recordPaymentModal .occ-modal-body label { color:#172033 !important; }
+    #recordPaymentModal .occ-modal-header { background:#fff !important;gap:1rem; }
+    #recordPaymentModal .occ-modal-header > div:first-child { min-width:0; }
+    #recordPaymentModal .occ-modal-close { width:38px !important;height:38px !important;min-width:38px !important;min-height:38px !important;flex:0 0 38px;display:inline-flex;align-items:center;justify-content:center;padding:0 !important;margin:2px;box-sizing:border-box;border:1px solid color-mix(in srgb,var(--primary-color) 28%,white) !important;background:color-mix(in srgb,var(--primary-color) 6%,white) !important;color:var(--primary-color) !important;border-radius:var(--border-radius,8px) !important;line-height:1; }
+    #recordPaymentModal .occ-modal-close i { display:block;line-height:1;font-size:.9rem; }
+    #recordPaymentModal .occ-modal-close:hover { background:color-mix(in srgb,var(--primary-color) 12%,white) !important;border-color:var(--primary-color) !important; }
+    #recordPaymentModal .btn-primary { background:var(--primary-color) !important;color:#fff !important; }
+    #recordPaymentModal .btn-primary:hover { background:var(--highlight-color,var(--primary-color)) !important; }
+    @media (max-width:768px) {
+        #recordPaymentModal .occ-modal-header { padding:12px 14px !important;gap:.75rem !important; }
+        #recordPaymentModal .occ-modal-body { padding:14px !important; }
+        /* Keep the booking modal inset evenly on every screen edge. */
+        #bookingDetailModal.occ-modal-overlay { padding:12px !important;align-items:center !important; }
+        #bookingDetailModal .modal-b-container { width:100% !important;height:calc(100dvh - 24px) !important;max-height:calc(100dvh - 24px) !important;margin:0 !important;border-radius:16px !important;box-sizing:border-box; }
+        #bookingDetailModal .exec-header { padding:12px !important; }
+        #bookingDetailModal .exec-tabs { padding-left:12px !important;padding-right:12px !important; }
+        #bookingDetailModal .modal-body-scroll { padding:12px !important;padding-bottom:12px !important; }
+        #bookingDetailModal .occ-modal-footer { padding:12px !important; }
+        #bookingDetailModal .financial-overview-card { grid-template-columns:minmax(0,1fr) !important;padding:.75rem !important;gap:.65rem !important; }
+        #bookingDetailModal .financial-overview-metrics { grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:.45rem !important; }
+        #bookingDetailModal .financial-overview-item { padding:.55rem !important; }
+        .kpi-grid-clean { grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:.65rem !important; }
+        .kpi-card-clean { min-width:0;padding:.85rem !important; }
+        #bookingDetailModal .payment-summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:.6rem !important; }
+        #bookingDetailModal .payment-summary-balance { grid-column:1 / -1 !important; }
+        #bookingDetailModal .payment-summary-card { min-width:0;padding:.7rem !important; }
+        #bookingDetailModal #bookingDetailModalBox { height:94dvh !important;max-height:94dvh !important; }
+        #bookingDetailModal .prep-status-card > div:first-child #btnUpdatePrepStatus { height:28px !important;min-height:28px !important;padding:.25rem .6rem !important;font-size:.7rem !important;line-height:1 !important; }
+        #bookingDetailModal .payment-summary-card div:last-child { font-size:clamp(1rem,5vw,1.25rem) !important;overflow-wrap:anywhere; }
+        #bookingDetailModal .exec-header > div > div:last-child > div:first-child { display:none !important; }
+        #bookingDetailModal .exec-header { padding:.7rem .75rem !important; }
+        #bookingDetailModal .exec-header > div { gap:.5rem !important;align-items:flex-start !important; }
+        #bookingDetailModal h2#modalBookingId { font-size:1rem !important; }
+        #bookingDetailModal .modal-body-scroll { background:#f8fafc !important; }
+        #bookingDetailModal .overview-grid > * { min-width:0 !important; }
+        #bookingDetailModal .workspace-summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+        #bookingDetailModal .prep-current-status-row { gap:.5rem; }
+        #bookingDetailModal #bookingDetailModalBox { height:calc(100dvh - 24px) !important;max-height:calc(100dvh - 24px) !important; }
+        #bookingDetailModal .exec-header { padding:12px !important; }
+        #bookingDetailModal .occ-modal-footer { padding:12px !important; }
+        #bookingDetailModal .modal-body-scroll { padding-left:12px !important;padding-right:12px !important;scrollbar-gutter:stable both-edges; }
+        #bookingDetailModal .modal-body-scroll > .mtab-pane-pro { width:100%;max-width:100%;min-width:0;box-sizing:border-box; }
+        #bookingDetailModal .mtab-pane-pro > * { max-width:100%;min-width:0;box-sizing:border-box; }
+        #bookingDetailModal .overview-grid { grid-template-columns:minmax(0,1fr) !important;gap:.75rem !important; }
+    }
 </style>
 
 <div id="bookingDetailModal" class="occ-modal-overlay">
@@ -2321,7 +2421,7 @@
                 <!-- Right: Financial Display & Close Button -->
                 <div style="display: flex; align-items: center; gap: 0.85rem; flex-shrink: 0;">
                     <!-- Financials Box -->
-                    <div style="text-align: right; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.45rem 0.85rem; min-width: 155px;">
+                    <div class="booking-header-financials" style="text-align: right; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.45rem 0.85rem; min-width: 155px;">
                         <div style="font-size: 0.62rem; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">TOTAL AMOUNT</div>
                         <div id="modalHeaderTotal" style="font-size: 1.35rem; font-weight: 900; color: #0f172a; line-height: 1.1; margin: 2px 0;">₱0.00</div>
                         <div style="font-size: 0.72rem; font-weight: 700; color: #475569;">
@@ -2331,7 +2431,7 @@
                     </div>
 
                     <!-- Close Button only -->
-                    <button type="button" onclick="bk_closeBookingDetailModal()" class="header-action-btn" title="Close" style="background: #f8fafc; border: 1px solid #e2e8f0; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: all 0.2s;">
+                    <button type="button" onclick="bk_closeBookingDetailModal()" class="header-action-btn" title="Close booking details" aria-label="Close booking details" style="background: #f8fafc; border: 1px solid #e2e8f0; width: 38px; height: 38px; border-radius: var(--border-radius, 10px); display: flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: all 0.2s;">
                         <i class="fas fa-times" style="font-size: 0.95rem;"></i>
                     </button>
                 </div>
@@ -2351,7 +2451,7 @@
                 <i class="fas fa-box-open"></i> <span id="tabServicesLabel">Event &amp; Package</span>
             </button>
             <button id="tabBtnChat" data-tab="chat" class="mtab-btn-pro" onclick="switchBookingTab('chat', this)">
-                <i class="fas fa-comments"></i> <span>Consultation Chat</span>
+                <i class="fas fa-comments"></i> <span>Chat</span>
                 <span id="modalChatTabBadge" style="display: none; background: #ea580c; color: white; font-size: 0.65rem; font-weight: 850; padding: 1px 6px; border-radius: 10px; margin-left: 4px; box-shadow: 0 1px 3px rgba(234, 88, 12, 0.3);">0</span>
             </button>
             <button id="tabBtnContract" data-tab="contract" class="mtab-btn-pro" onclick="switchBookingTab('contract', this)" style="display: none;">
@@ -2395,7 +2495,7 @@
                     <div id="modalOverviewAttentionList" style="display: flex; flex-direction: column; gap: 3px;"></div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
+                <div class="overview-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
                     <!-- Event Information Card -->
                     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                         <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem; margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
@@ -2447,8 +2547,8 @@
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Customer Reference</span>
                                 <span style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                                     <strong id="ovCustomerRef" style="color: #0f172a; font-size: 0.88rem;">—</strong>
-                                    <button type="button" onclick="switchBookingTab('customer', document.getElementById('tabBtnCustomer'))" style="font-size: 0.68rem; font-weight: 700; color: #7e22ce; background: #f3e8ff; border: 1px solid #e9d5ff; border-radius: 4px; padding: 1px 7px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; line-height: 1.4; white-space: nowrap;" title="View Customer Details">
-                                        <i class="fas fa-user-lock" style="font-size: 0.6rem;"></i> View Details
+                                    <button type="button" class="ov-customer-details-button" onclick="switchBookingTab('customer', document.getElementById('tabBtnCustomer'))" style="font-size: 0.68rem; font-weight: 700; color: var(--primary-color); background: color-mix(in srgb,var(--primary-color) 7%,white); border: 1px solid color-mix(in srgb,var(--primary-color) 24%,white); border-radius: var(--border-radius, 6px); padding: 2px 7px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; line-height: 1.3; white-space: nowrap;" title="View Customer Details">
+                                        View Details
                                     </button>
                                 </span>
                             </div>
@@ -2477,25 +2577,25 @@
                 </div>
 
                 <!-- Financial Summary Box -->
-                <div style="background: linear-gradient(135deg, #0f172a, #1e293b); border-radius: 12px; padding: 1.25rem 1.5rem; color: #ffffff; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div class="financial-overview-card" style="background: linear-gradient(135deg, #0f172a, #1e293b); border-radius: 12px; padding: 1.25rem 1.5rem; color: #ffffff; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                     <div>
                         <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; font-weight: 700;">Financial Overview</div>
                         <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">Total booking value and settlement progress</div>
                     </div>
-                    <div style="display: flex; gap: 2rem; align-items: center; flex-wrap: wrap;">
-                        <div style="text-align: right;">
+                    <div class="financial-overview-metrics" style="display: flex; gap: 2rem; align-items: center; flex-wrap: wrap;">
+                        <div class="financial-overview-item" style="text-align: right;">
                             <div style="font-size: 0.7rem; text-transform: uppercase; color: #94a3b8; font-weight: 700;">Total Amount</div>
                             <div id="ovTotalDisplay" style="font-size: 1.35rem; font-weight: 900; color: #ffffff;">₱0.00</div>
                         </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 0.7rem; text-transform: uppercase; color: #94a3b8; font-weight: 700;">Paid</div>
+                        <div class="financial-overview-item" style="text-align: right;">
+                            <div style="font-size: 0.7rem; text-transform: uppercase; color: #94a3b8; font-weight: 700;">Verified Paid</div>
                             <div id="ovPaidDisplay" style="font-size: 1.35rem; font-weight: 900; color: #10b981;">₱0.00</div>
                         </div>
-                        <div style="text-align: right;">
+                        <div class="financial-overview-item" style="text-align: right;">
                             <div style="font-size: 0.7rem; text-transform: uppercase; color: #94a3b8; font-weight: 700;">Balance</div>
                             <div id="ovBalanceDisplay" style="font-size: 1.35rem; font-weight: 900; color: #38bdf8;">₱0.00</div>
                         </div>
-                        <div style="text-align: right;">
+                        <div class="financial-overview-item" style="text-align: right;">
                             <div style="font-size: 0.7rem; text-transform: uppercase; color: #94a3b8; font-weight: 700;">Payment Status</div>
                             <div id="ovPaymentStatusDisplay" style="font-size: 0.95rem; font-weight: 800; color: #f59e0b; text-transform: uppercase;">UNPAID</div>
                         </div>
@@ -2816,12 +2916,13 @@
                 <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
                         <div style="font-size: 1rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-receipt" style="color: var(--primary-color, #800020);"></i> Payment Records &amp; Settlement
+                            Payment Records &amp; Settlement
                         </div>
                         <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                             <span id="paymentTabBadge" style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; background: #fff7ed; color: #c2410c;">UNPAID</span>
+                            <button type="button" id="paymentGuideToggle" onclick="window.togglePaymentGuide(event)" aria-label="Payment status information" aria-expanded="false" title="Payment status information" style="display:none;width:28px;height:28px;border:1px solid color-mix(in srgb,var(--primary-color) 32%,white);border-radius:50%;background:#fff;color:var(--primary-color);align-items:center;justify-content:center;cursor:pointer;padding:0;"><i class="fas fa-info" aria-hidden="true"></i></button>
                             <button type="button" id="btnPaymentRecordAction" onclick="openRecordPaymentModal()" class="btn-primary" style="display: none; background: #16a34a; color: white; border: none; padding: 0.4rem 0.95rem; font-size: 0.78rem; font-weight: 700; border-radius: 6px; cursor: pointer; align-items: center; gap: 5px;">
-                                <i class="fas fa-plus-circle"></i> Record Payment (Cash / GCash / Bank)
+                                <i class="fas fa-plus-circle"></i> Record Payment
                             </button>
                             <button type="button" id="btnVerifyBalanceProofAction" onclick="verifyPayment(currentBookingId, true)" class="btn-primary" style="display: none; background: #0284c7; color: white; border: none; padding: 0.4rem 0.95rem; font-size: 0.78rem; font-weight: 700; border-radius: 6px; cursor: pointer; align-items: center; gap: 5px;">
                                 <i class="fas fa-shield-alt"></i> Verify Balance Proof
@@ -2834,19 +2935,19 @@
                             </button>
                         </div>
                     </div>
-                    <div id="paymentBalanceSettleGuide" style="display: none; margin: -0.35rem 0 1rem; padding: 0.65rem 0.85rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; font-size: 0.78rem; color: #1e40af; font-weight: 600; line-height: 1.4;"></div>
+                    <div id="paymentBalanceSettleGuide" style="display: none; margin: -0.35rem 0 1rem; padding: 0.65rem 0.85rem; background: color-mix(in srgb,var(--primary-color) 6%,white); border: 1px solid color-mix(in srgb,var(--primary-color) 24%,white); border-radius: var(--border-radius, 8px); font-size: 0.78rem; color: #1e293b; font-weight: 600; line-height: 1.4;"></div>
 
                     <!-- Payment Financial Summary 3 Cards -->
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.25rem;">
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
+                    <div class="payment-summary-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.25rem;">
+                        <div class="payment-summary-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.9rem 1rem;">
                             <div style="font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Booking Amount</div>
                             <div id="payTotalAmount" style="font-size: 1.35rem; font-weight: 900; color: #0f172a; margin-top: 2px;">₱0.00</div>
                         </div>
-                        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 0.9rem 1rem;">
-                            <div style="font-size: 0.7rem; font-weight: 700; color: #166534; text-transform: uppercase;">Total Paid</div>
+                        <div class="payment-summary-card" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 0.9rem 1rem;">
+                            <div style="font-size: 0.7rem; font-weight: 700; color: #166534; text-transform: uppercase;">Verified Paid</div>
                             <div id="payTotalPaid" style="font-size: 1.35rem; font-weight: 900; color: #166534; margin-top: 2px;">₱0.00</div>
                         </div>
-                        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 0.9rem 1rem;">
+                        <div class="payment-summary-card payment-summary-balance" style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 0.9rem 1rem;">
                             <div style="font-size: 0.7rem; font-weight: 700; color: #1e40af; text-transform: uppercase;">Remaining Balance</div>
                             <div id="payBalance" style="font-size: 1.35rem; font-weight: 900; color: #1e40af; margin-top: 2px;">₱0.00</div>
                         </div>
@@ -2862,11 +2963,12 @@
 
                     <!-- Payment History Table -->
                     <div style="font-size: 0.85rem; font-weight: 800; color: #0f172a; margin-bottom: 0.6rem;">Payment History &amp; Transaction Audit</div>
-                    <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #ffffff;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+                    <div class="payment-history-scroll" style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #ffffff;">
+                        <div class="payment-history-scroll-inner"><table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
                             <thead style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #64748b; text-transform: uppercase; font-size: 0.7rem;">
                                 <tr>
                                     <th style="padding: 0.75rem 1rem; text-align: left;">Date</th>
+                                    <th style="padding: 0.75rem 1rem; text-align: left;">Time</th>
                                     <th style="padding: 0.75rem 1rem; text-align: left;">Method</th>
                                     <th style="padding: 0.75rem 1rem; text-align: left;">Recorded By</th>
                                     <th style="padding: 0.75rem 1rem; text-align: left;">Reference / Notes</th>
@@ -2876,10 +2978,10 @@
                             </thead>
                             <tbody id="paymentHistoryRows">
                                 <tr>
-                                    <td colspan="6" style="padding: 1.5rem; text-align: center; color: #94a3b8;">No payment records found.</td>
+                                    <td colspan="7" style="padding: 1.5rem; text-align: center; color: #94a3b8;">No payment records found.</td>
                                 </tr>
                             </tbody>
-                        </table>
+                        </table></div>
                     </div>
                 </div>
             </div>
@@ -2890,18 +2992,16 @@
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.75rem; flex-wrap:wrap;">
                         <div>
                             <div style="font-size: 1.05rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
-                                <i class="fas fa-clipboard-check" style="color: var(--primary-color, #800020);"></i> Preparation &amp; Event Status
+                                Preparation &amp; Event Status
                             </div>
                             <div style="font-size: 0.78rem; color: #64748b; font-weight: 600; margin-top: 0.2rem;">
                                 Track preparation progress and event completion for this booking
                             </div>
                         </div>
-                        <button type="button" id="btnUpdatePrepStatus" onclick="openPrepStatusModal()" class="btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 800; border-radius: 8px; background: var(--primary-color, #800020); color: #fff; border: none; cursor: pointer;">
-                            <i class="fas fa-sync-alt"></i> Update Status
-                        </button>
+                        <button type="button" id="btnUpdatePrepStatus" onclick="openPrepStatusModal()" class="btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 800; border-radius: var(--border-radius, 8px); background: var(--primary-color, #800020); color: #fff; border: none; cursor: pointer;">Update Status</button>
                     </div>
 
-                    <div style="margin-top: 1.25rem;">
+                    <div class="prep-current-status-row" style="margin-top: 1.25rem;">
                         <div style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b;">Current Status</div>
                         <div id="prepCurrentStatusBadge" class="prep-status-badge" style="background:#f1f5f9; color:#475569;">
                             ⚪ Not Started
@@ -2953,9 +3053,6 @@
             
             <div id="modalFooterRightActions" style="display: flex; align-items: center; gap: 0.75rem;">
                 <!-- dynamic action buttons populated based on status and source -->
-                <button type="button" onclick="bk_closeBookingDetailModal()" class="btn-secondary-pro" style="padding: 0.6rem 1.4rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer;">
-                    Close
-                </button>
             </div>
         </div>
 
@@ -2976,13 +3073,14 @@
         </div>
         <div class="occ-modal-body" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
             <div style="background: #f8fafc; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.82rem; display: flex; justify-content: space-between;">
-                <span>Balance Remaining:</span>
+                <span>Balance Remaining after payment:</span>
                 <strong id="recPayBalanceNotice" style="color: #c2410c; font-weight: 800;">₱0.00</strong>
             </div>
             <form id="recordPaymentForm" onsubmit="window.submitRecordPayment(event); return false;" style="display: flex; flex-direction: column; gap: 0.85rem;">
                 <div>
                     <label style="display: block; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #475569; margin-bottom: 4px;">Payment Amount (₱) *</label>
-                    <input type="number" step="0.01" min="0.01" id="recPayAmount" required class="occ-form-input" placeholder="e.g. 5000" style="width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 700; font-size: 0.95rem;">
+                <input type="text" inputmode="decimal" id="recPayAmount" required aria-describedby="recPayAmountError" aria-invalid="false" class="occ-form-input" placeholder="e.g. 5,000.00" oninput="this.dataset.touched='true';window.updateRecordPaymentPreview(this)" style="width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #cbd5e1; border-radius: var(--border-radius, 8px); font-weight: 700; font-size: 0.95rem;">
+                <small id="recPayAmountError" role="alert" style="display:none;margin-top:4px;color:#dc2626;font-size:.76rem;font-weight:600;"></small>
                 </div>
                 <div>
                     <label style="display: block; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #475569; margin-bottom: 4px;">Payment Method *</label>
@@ -2996,15 +3094,19 @@
                     </select>
                 </div>
                 <div id="recPayRefWrap">
-                    <label style="display: block; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #475569; margin-bottom: 4px;">Reference Number / Txn ID <span id="recPayRefRequiredMark" style="color:#dc2626;">*</span></label>
-                    <input type="text" id="recPayRef" class="occ-form-input" placeholder="e.g. GCash Ref # or Bank Receipt #" style="width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
+                <label style="display: block; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #475569; margin-bottom: 4px;">Reference Number / Txn ID <span style="font-weight:500;text-transform:none;">(Optional)</span></label>
+                <input type="text" id="recPayRef" class="occ-form-input" placeholder="Enter a reference number if available" style="width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #cbd5e1; border-radius: var(--border-radius, 8px); font-size: 0.85rem;">
                 </div>
+            <div id="recPayProofWrap" style="display:none;">
+                <label for="recPayProof" style="display:block;font-size:.72rem;font-weight:800;text-transform:uppercase;color:#475569;margin-bottom:4px;">Receipt or payment screenshot <span style="color:#dc2626;">*</span></label>
+                <input type="file" id="recPayProof" class="occ-form-input" accept="image/jpeg,image/png,image/webp" style="width:100%;padding:.55rem;border:1px solid #cbd5e1;border-radius:var(--border-radius, 8px);font-size:.82rem;">
+                <small style="display:block;margin-top:4px;color:#64748b;">Required for non-cash payments. JPG, PNG, or WEBP, up to 5 MB.</small>
+            </div>
                 <div>
                     <label style="display: block; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #475569; margin-bottom: 4px;">Notes / Description</label>
                     <textarea id="recPayNotes" class="occ-form-input" rows="2" placeholder="e.g. Remaining balance received in person" style="width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; resize: none;"></textarea>
                 </div>
                 <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
-                    <button type="button" onclick="closeRecordPaymentModal()" class="btn-secondary-pro" style="padding: 0.55rem 1rem; font-size: 0.82rem;">Cancel</button>
                     <button type="submit" id="btnSubmitRecPay" class="btn-primary" style="background: #16a34a; color: white; border: none; padding: 0.55rem 1.25rem; font-weight: 700; font-size: 0.82rem; border-radius: 6px; cursor: pointer;">
                         Save Payment
                     </button>
@@ -3106,9 +3208,6 @@
         </div>
         <div style="padding: 1.15rem 1.35rem;">
             <div id="prepStatusOptions"></div>
-            <div style="display:flex; justify-content:flex-end; gap:0.6rem; margin-top:0.75rem;">
-                <button type="button" onclick="closePrepStatusModal()" class="btn-secondary-pro" style="padding:0.55rem 1rem; font-weight:700; border-radius:8px;">Cancel</button>
-            </div>
         </div>
     </div>
 </div>
@@ -3263,11 +3362,8 @@
 
             // Global Search Listener
             window.addEventListener('globalSearch', function(e) {
-                const hiddenInput = document.getElementById('bookingSearchInput');
-                if (hiddenInput && typeof window.filterBookings === 'function') {
-                    hiddenInput.value = e.detail.value;
-                    window.filterBookings();
-                }
+                window.catererPageSearchQuery = (e.detail?.value || '').trim().toLowerCase();
+                if (typeof window.filterBookings === 'function') window.filterBookings();
             });
         });
     })();
