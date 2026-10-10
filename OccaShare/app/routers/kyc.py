@@ -351,16 +351,26 @@ async def upload_id(
         )
 
     if id_result.get("status") == "needs_review":
-        kyc_record.ocr_data = id_result.get("ocr_data") or {}
-        kyc_record.ocr_status = "needs_review"
-        kyc_record.verification_status = "pending_manual_review"
-        kyc_record.failure_reason = "ID Review | Your ID details need a manual review before face verification can begin."
+        ocr_data = id_result.get("ocr_data") or {}
+        extracted_fields = ocr_data.get("fields") if isinstance(ocr_data, dict) else None
+        if (not extracted_fields or id_result.get("name_matched") is False
+                or id_result.get("id_number_matched") is False):
+            delete_identity_image(id_url)
+            kyc_record.verification_status = "failed"
+            kyc_record.ocr_status = "failed"
+            kyc_record.failure_reason = "We could not verify the extracted ID details. Please check the information and upload a clear ID image again."
+            db.commit()
+            raise HTTPException(status_code=400, detail=kyc_record.failure_reason)
+
+        # Structured OCR and the key identity fields matched. Move directly to
+        # liveness; do not stop the customer at a manual-review screen.
+        kyc_record.ocr_data = ocr_data
+        kyc_record.ocr_status = "passed"
+        kyc_record.verification_status = "pending_liveliness"
+        kyc_record.failure_reason = None
         db.commit()
-        return {
-            "success": True,
-            "status": "pending_manual_review",
-            "message": "Your ID submission is awaiting review. We will notify you when the review is complete.",
-        }
+        return {"success": True, "status": "pending_liveliness",
+                "message": "ID details were extracted and saved. Proceeding to liveness detection."}
 
     if id_result.get("name_matched") == False:
         ocr_data = id_result.get("ocr_data", {})
@@ -390,20 +400,18 @@ async def upload_id(
             detail=kyc_record.failure_reason
         )
         
-    # OCR that did not produce structured fields is inconclusive. Do not convert
-    # user-entered form values into fabricated OCR fields or confidence scores.
+    # Never send an unreadable ID to manual review at this stage. If OCR did not
+    # extract fields, ask the customer to retry; successful extraction continues
+    # straight to liveness below.
     ocr_data = id_result.get("ocr_data", {})
     if not ocr_data or not isinstance(ocr_data, dict) or not ocr_data.get("fields"):
+        delete_identity_image(id_url)
         kyc_record.ocr_data = {}
-        kyc_record.ocr_status = "needs_review"
-        kyc_record.verification_status = "pending_manual_review"
-        kyc_record.failure_reason = "ID Review | We could not reliably read the required ID details. Your submission is awaiting a manual review."
+        kyc_record.ocr_status = "failed"
+        kyc_record.verification_status = "failed"
+        kyc_record.failure_reason = "Extraction Error | Could not read the required ID details. Please upload a clear, well-lit image and try again."
         db.commit()
-        return {
-            "success": True,
-            "status": "pending_manual_review",
-            "message": "Your ID submission is awaiting review. We will notify you when the review is complete.",
-        }
+        raise HTTPException(status_code=400, detail=kyc_record.failure_reason)
     
     kyc_record.ocr_data = ocr_data
     kyc_record.ocr_status = "passed"
