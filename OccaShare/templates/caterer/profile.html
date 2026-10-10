@@ -192,6 +192,40 @@
         object-fit: cover;
     }
 
+    .profile-distance-button {
+        display: inline-flex !important;
+        min-height: 44px !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 0.75rem !important;
+        border: 1px solid color-mix(in srgb, var(--brand-primary) 24%, white) !important;
+        background-color: color-mix(in srgb, var(--brand-primary) 10%, white) !important;
+        color: var(--brand-primary) !important;
+    }
+
+    .profile-distance-button:hover {
+        background-color: color-mix(in srgb, var(--brand-primary) 16%, white) !important;
+    }
+
+    @media (max-width: 640px) {
+        .profile-action-button,
+        aside [class~="space-y-3"] > .btn-primary,
+        aside [class~="space-y-3"] > .btn-outline,
+        .profile-distance-button {
+            display: flex !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            height: 52px !important;
+            min-height: 52px !important;
+            padding: 0 1rem !important;
+            border-radius: 0.75rem !important;
+            box-sizing: border-box !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+        }
+    }
+
     @media (max-width: 480px) {
         .pkg-food-grid {
             gap: 6px;
@@ -647,7 +681,7 @@
                             caterer.contact_address or caterer.city or 'Operational HQ' }}</span>
                     </div>
                     <button id="profileDistBtn" onclick="calcProfileDistance()" 
-                        class="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-xl transition-colors hover:bg-slate-900 shadow-sm cursor-pointer border-none font-semibold text-xs">
+                        class="profile-distance-button w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl transition-colors shadow-sm cursor-pointer font-semibold text-xs">
                         <i class="fas fa-location-arrow"></i> 
                         <span id="profileDistText">Check Distance</span>
                     </button>
@@ -871,14 +905,14 @@
 
                 <div class="space-y-3">
                     <a href="#packages-section"
-                        class="btn-primary w-full text-sm py-4 text-center block font-bold" style="text-decoration: none;">
+                        class="btn-primary profile-action-button w-full text-sm py-4 text-center block font-bold" style="text-decoration: none;">
                         <i class="fas fa-box-open mr-1"></i> Book Packages
                     </a>
                     <button {% if not request.query_params.get('preview') %}onclick="promptInquiryAuth()" {% else
                         %}disabled title="Preview Mode - Action Disabled"
                         onclick="Swal.fire({icon: 'info', title: 'Preview Mode', text: 'This action is disabled while previewing your profile.', confirmButtonColor: 'var(--brand-primary)'})"
                         {% endif %}
-                        class="btn-outline w-full text-sm py-4 border-2 {% if request.query_params.get('preview') %}opacity-80 bg-slate-50{% endif %}">
+                        class="btn-outline profile-action-button w-full text-sm py-4 border-2 {% if request.query_params.get('preview') %}opacity-80 bg-slate-50{% endif %}">
                         <i class="far fa-comment-dots"></i> Send Inquiry
                     </button>
                 </div>
@@ -2439,8 +2473,6 @@
 
             const distStr = d.toFixed(1) + ' km away';
             btnText.innerHTML = distStr;
-            btn.classList.add('bg-slate-900');
-            btn.classList.remove('bg-slate-800');
 
             if (window.updateMapDistance) window.updateMapDistance(distStr);
         };
