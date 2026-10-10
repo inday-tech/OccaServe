@@ -2127,7 +2127,7 @@
                     </div>
                     <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.35rem 0;border-bottom:1px solid var(--hub-slate-100);">
                         <span style="color:var(--hub-slate-400);font-weight:700;">SERVICE DURATION</span>
-                        <span style="font-weight:800;color:var(--hub-text-dark);">${pRules.max_event_duration ? pRules.max_event_duration + " hours" : pkg.duration}</span>
+                        <span style="font-weight:800;color:var(--hub-text-dark);">${Number(pkg.duration) > 0 ? `${pkg.duration} hours` : 'Not specified'}</span>
                     </div>
                     ${prepHtml}
                     ${addGuestHtml}
@@ -2145,11 +2145,8 @@
             const packageDetailRows = [];
             if (guestCapacity.length) packageDetailRows.push(['GUEST CAPACITY', `${guestCapacity.join(' · ')} pax`]);
 
-            const durationValue = pRules.max_event_duration || pkg.duration || '';
-            if (durationValue) {
-                const durationText = typeof durationValue === 'number' ? `${durationValue} hours` : String(durationValue);
-                packageDetailRows.push(['SERVICE DURATION', durationText]);
-            }
+            const durationValue = Number(pkg.duration);
+            packageDetailRows.push(['SERVICE DURATION', durationValue > 0 ? `${durationValue} hours` : 'Not specified']);
 
             const setupHours = Number(pRules.setup_time_hours) || 0;
             const cleanupHours = Number(pRules.cleanup_time_hours) || 0;
@@ -2787,7 +2784,7 @@ window.hubPkgs = {
         pricing_mode: {{ (pkg.pricing_mode or 'per_pax')|tojson }},
         min_guests: {{ (pkg.min_guests or 0)|tojson }},
         max_guests: {{ (pkg.max_guests or 0)|tojson }},
-        duration: "{{ pkg.service_duration or 4 }} hours",
+        duration: {{ (pkg.service_duration if pkg.service_duration_confirmed else none)|tojson }},
         additional_guest_price: {{ (pkg.additional_guest_price or 0)|tojson }},
         overtime_fee: {{ (pkg.overtime_fee or 0)|tojson }},
         inclusions: {{ (pkg.inclusions)|tojson if pkg.inclusions else '[]' }},
@@ -3998,4 +3995,3 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     </script>
 {% endblock %}
-

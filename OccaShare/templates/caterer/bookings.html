@@ -1113,14 +1113,14 @@
 
                             <div style="display: flex; flex-direction: column; gap: 1rem;">
                                 <!-- 1. PACKAGE OVERVIEW & HIGHLIGHTS -->
-                                {% if booking.package and (booking.package.description or booking.package.service_duration or booking.package.min_guests) %}
+                                {% if booking.package and (booking.package.description or (booking.package.service_duration_confirmed and booking.package.service_duration) or booking.package.min_guests) %}
                                 <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.9rem 1.15rem;">
                                     <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.4rem;">
                                         <div style="font-size: 0.82rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.4rem;">
                                             <i class="fas fa-gift" style="color: var(--primary-color, #800020);"></i> {{ booking.package.name }} Overview
                                         </div>
                                         <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
-                                            {% if booking.package.service_duration %}
+                                            {% if booking.package.service_duration_confirmed and booking.package.service_duration %}
                                             <span style="background: #e0e7ff; color: #3730a3; font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 10px; display: inline-flex; align-items: center; gap: 4px;">
                                                 <i class="far fa-clock"></i> {{ booking.package.service_duration }} hrs duration
                                             </span>

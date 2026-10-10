@@ -21,7 +21,7 @@
                 </div>
                 <div class="meta-item">
                     <i class="fas fa-clock"></i>
-                    <span>{{ package.service_duration or 4 }} Hours Service</span>
+                    <span>{% if package.service_duration_confirmed and package.service_duration %}{{ package.service_duration }} Hours Service{% else %}Service duration not specified{% endif %}</span>
                 </div>
                 {% if package.booking_lead_time %}
                 <div class="meta-item">

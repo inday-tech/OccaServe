@@ -518,7 +518,7 @@
     <div class="cust-header-meta">
         <span><i class="fas fa-utensils" style="color: #ea580c;"></i> {{ caterer.business_name }}</span>
         <span><i class="fas fa-users" style="color: #3b82f6;"></i> Min {{ package.min_guests or caterer.min_pax or 50 }}{% if package.max_guests %} - Max {{ package.max_guests }}{% endif %} Pax</span>
-        <span><i class="fas fa-clock" style="color: #10b981;"></i> {{ package.service_duration or 4 }} Hours Service</span>
+        <span><i class="fas fa-clock" style="color: #10b981;"></i> {% if package.service_duration_confirmed and package.service_duration %}{{ package.service_duration }} Hours Service{% else %}Service duration not specified{% endif %}</span>
     </div>
 </div>
 
