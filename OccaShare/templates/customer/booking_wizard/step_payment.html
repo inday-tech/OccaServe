@@ -257,13 +257,13 @@
                         </div>
                         {% endif %}
                         
-                        {% if profile.bank_name and profile.bank_account_number %}
+                        {% if profile.bank_qr_url or (profile.bank_name and profile.bank_account_number) %}
                         <div class="method-card-clean" onclick="openPaymentModal('Bank')">
                             <div class="method-logo-box">
                                 <div class="brand-badge-bank"><i class="fas fa-university"></i> Bank</div>
                             </div>
                             <span class="method-label-clean">Bank Transfer</span>
-                            <span class="method-sub-clean">Send online via InstaPay or PESONet</span>
+                            <span class="method-sub-clean">Pay via QR or bank transfer</span>
                         </div>
                         {% endif %}
 
@@ -441,23 +441,31 @@
                 <!-- Bank Transfer Channel Sheet -->
                 <div id="modalContentBank" style="display: none;">
                     <div class="payment-channel-box bank-channel-box">
+                        {% if profile.bank_qr_url %}
+                        <div class="qr-frame">
+                            <img src="{{ profile.bank_qr_url }}" alt="Bank payment QR code">
+                        </div>
+                        {% endif %}
                         <div class="bank-channel-icon">
                             <i class="fas fa-university"></i>
                         </div>
                         <h4 class="channel-name">{{ profile.bank_name if profile.bank_name and profile.bank_name|string|lower != 'none' else 'Bank transfer' }}</h4>
-                        <div class="bank-account-name"><span>Account name</span><strong>{{ profile.bank_account_name if profile.bank_account_name and profile.bank_account_name|string|lower != 'none' else 'Not provided' }}</strong></div>
+                        {% if profile.bank_account_name and profile.bank_account_name|string|lower != 'none' %}
+                        <div class="bank-account-name"><span>Account name</span><strong>{{ profile.bank_account_name }}</strong></div>
+                        {% endif %}
+                        {% if profile.bank_account_number and profile.bank_account_number|string|lower != 'none' %}
                         <div class="bank-account-number">
                             <span>Account number</span>
-                            <strong>{{ profile.bank_account_number if profile.bank_account_number and profile.bank_account_number|string|lower != 'none' else 'No account number available' }}</strong>
+                            <strong>{{ profile.bank_account_number }}</strong>
                         </div>
-                        {% if profile.bank_account_number and profile.bank_account_number|string|lower != 'none' %}
                         <button type="button" class="btn-copy-num bank-copy-button" onclick="navigator.clipboard.writeText('{{ profile.bank_account_number }}'); Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'Account Number Copied!', showConfirmButton: false, timer: 1500, customClass: { popup: 'small-toast-popup', title: 'small-toast-title' }});"><i class="far fa-copy"></i> Copy Account Number</button>
+                        {% endif %}
                         {% endif %}
                     </div>
                     <div class="instruction-steps-clean mb-3">
                         <h4>How to Pay and Upload</h4>
-                        <div class="inst-step"><span class="inst-number">1</span><i class="fas fa-university"></i><span>Open your Bank App and select InstaPay or PESONet</span></div>
-                        <div class="inst-step"><span class="inst-number">2</span><i class="fas fa-exchange-alt"></i><span>Send the exact amount to the bank account above</span></div>
+                        <div class="inst-step"><span class="inst-number">1</span><i class="fas fa-university"></i><span>Scan the bank QR code or open your Bank App and select InstaPay or PESONet</span></div>
+                        <div class="inst-step"><span class="inst-number">2</span><i class="fas fa-exchange-alt"></i><span>Send the exact amount using the payment details above</span></div>
                         <div class="inst-step"><span class="inst-number">3</span><i class="fas fa-camera"></i><span>Take a clear screenshot of your transfer receipt</span></div>
                     </div>
                 </div>

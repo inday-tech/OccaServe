@@ -2720,7 +2720,10 @@ async def step_payment_submit(
         payment_method == "Cash"
         or (payment_method == "GCash" and bool(profile and (profile.gcash_qr_url or profile.gcash_number)))
         or (payment_method == "Maya" and bool(profile and (profile.maya_qr_url or profile.maya_number)))
-        or (payment_method == "Bank" and bool(profile and profile.bank_name and profile.bank_account_number))
+        or (
+            payment_method == "Bank"
+            and bool(profile and (profile.bank_qr_url or (profile.bank_name and profile.bank_account_number)))
+        )
     )
     if not method_is_configured:
         raise HTTPException(status_code=400, detail="This caterer has not configured that payment method.")
