@@ -1,4 +1,4 @@
-{% extends "customer/layout.html" %}
+{% extends "customer/messages_modal_shell.html" if embedded else "customer/layout.html" %}
 
 {% block title %}Messages - OccaServe Elite{% endblock %}
 
@@ -16,9 +16,11 @@
 
     .messages-terminal {
         display: grid;
-        grid-template-columns: 320px minmax(0, 1fr);
+        grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
         height: calc(100vh - 150px);
         min-height: 600px;
+        min-width: 0;
+        box-sizing: border-box;
         background: #fff;
         border-radius: 1.25rem;
         border: 1px solid var(--dm-slate-100);
@@ -34,20 +36,50 @@
         flex-direction: column;
         background: #fcfcfd;
         height: 100%;
+        min-width: 0;
+        min-height: 0;
     }
 
     .sidebar-header {
         padding: 1.75rem 1.5rem;
         background: #fff;
+        min-width: 0;
+    }
+
+    .sidebar-heading-row {
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        margin-bottom:1rem;
     }
 
     .sidebar-header h2 {
         font-size: 1.4rem;
         font-weight: 900;
         color: var(--up-slate-900);
-        margin: 0 0 1.25rem;
+        margin: 0;
         letter-spacing: -0.02em;
     }
+
+    .customer-new-message-btn {
+        min-height:38px;
+        flex:0 0 auto;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        gap:7px;
+        padding:0 12px;
+        border:0;
+        border-radius:9px;
+        background:var(--up-orange);
+        color:#fff;
+        font-size:.78rem;
+        font-weight:800;
+        white-space:nowrap;
+        cursor:pointer;
+    }
+    .customer-new-message-btn:hover,.customer-new-message-btn:focus-visible { background:#f56842;outline:3px solid rgba(255,123,84,.2); }
 
     .search-wrapper {
         position: relative;
@@ -77,6 +109,8 @@
         flex: 1;
         overflow-y: auto;
         padding: 0.5rem;
+        min-width:0;
+        min-height:0;
     }
 
     .conv-item {
@@ -84,11 +118,18 @@
         display: flex;
         align-items: center;
         gap: 1rem;
+        width:100%;
+        border:0;
+        background:#fff;
+        text-align:left;
+        font:inherit;
         cursor: pointer;
         border-radius: 16px;
         transition: all 0.2s;
         margin-bottom: 4px;
         position: relative;
+        min-width:0;
+        box-sizing:border-box;
     }
 
     .conv-item:hover { background: var(--dm-slate-50); }
@@ -139,7 +180,7 @@
 
     .conv-meta { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
 
-    .conv-name { font-weight: 800; color: var(--up-slate-900); font-size: 0.92rem; }
+    .conv-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight: 800; color: var(--up-slate-900); font-size: 0.92rem; }
 
     .conv-time { font-size: 0.68rem; font-weight: 700; color: var(--dm-slate-400); text-transform: uppercase; }
 
@@ -152,6 +193,8 @@
         background: #fff; 
         position: relative; 
         height: 100%;
+        min-width:0;
+        min-height:0;
         overflow: hidden;
     }
 
@@ -194,6 +237,9 @@
         flex: 1;
         padding: 2rem;
         overflow-y: auto;
+        min-width:0;
+        min-height:0;
+        box-sizing:border-box;
         display: flex;
         flex-direction: column;
         gap: 1.25rem;
@@ -322,11 +368,36 @@
         cursor: pointer;
     }
 
+    .customer-contact-modal { position:fixed;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(15,23,42,.55); }
+    .customer-contact-modal.open { display:flex; }
+    .customer-contact-card { width:min(500px,100%);max-height:min(760px,88dvh);box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column;padding:18px;border-radius:16px;background:#fff;box-shadow:0 20px 50px rgba(15,23,42,.25); }
+    .customer-contact-heading { display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid #edf1f5; }
+    .customer-contact-heading h3 { margin:0;color:#0f172a;font-size:1rem; }
+    .customer-contact-heading p { margin:4px 0 0;color:#64748b;font-size:.76rem; }
+    .customer-contact-icon { width:42px;height:42px;flex:0 0 auto;display:grid;place-items:center;border-radius:12px;background:rgba(255,123,84,.1);color:var(--up-orange); }
+    .customer-contact-close { margin-left:auto;width:36px;height:36px;flex:0 0 auto;border:0;border-radius:8px;background:transparent;color:#64748b;font-size:1.4rem;cursor:pointer; }
+    .customer-contact-close:hover,.customer-contact-close:focus-visible { background:rgba(255,123,84,.1);color:var(--up-orange);outline:none; }
+    .customer-contact-search { display:flex;align-items:center;gap:9px;margin:13px 0;padding:0 11px;border:1px solid #dbe3ed;border-radius:10px;color:#94a3b8; }
+    .customer-contact-search:focus-within { border-color:var(--up-orange);box-shadow:0 0 0 3px rgba(255,123,84,.1); }
+    .customer-contact-search input { width:100%;min-width:0;padding:11px 0;border:0;outline:0;background:transparent;font-size:.8rem; }
+    .customer-contact-scroll { min-height:0;overflow:auto; }
+    .customer-contact-section { position:sticky;top:0;padding:9px 11px;background:#f8fafc;color:#64748b;font-size:.65rem;font-weight:800;letter-spacing:.08em; }
+    .customer-contact-option { width:100%;display:flex;align-items:center;gap:10px;padding:12px;border:0;border-bottom:1px solid #edf1f5;background:#fff;text-align:left;cursor:pointer; }
+    .customer-contact-option:hover,.customer-contact-option:focus-visible { background:rgba(255,123,84,.07);outline:none; }
+    .customer-contact-option .customer-contact-copy { min-width:0;flex:1; }
+    .customer-contact-option strong,.customer-contact-option small { display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+    .customer-contact-option strong { color:#0f172a;font-size:.82rem; }
+    .customer-contact-option small { margin-top:3px;color:#64748b;font-size:.7rem; }
+    .customer-contact-avatar { width:42px;height:42px;flex:0 0 auto;display:grid;place-items:center;overflow:hidden;border-radius:12px;background:#f1f5f9;color:#334155;font-weight:800; }
+    .customer-contact-avatar img { width:100%;height:100%;object-fit:cover; }
+    .customer-contact-meta { color:#64748b;font-size:.67rem;white-space:nowrap; }
+    .customer-contact-empty { padding:24px 12px;text-align:center;color:#64748b;font-size:.8rem; }
+
     @media (max-width: 768px) {
         .messages-terminal {
             grid-template-columns: 1fr;
-            height: calc(100vh - 80px);
-            min-height: calc(100vh - 80px);
+            height: calc(100dvh - 80px);
+            min-height: 0;
             margin-top: 0;
             border-radius: 0;
             border: none;
@@ -346,6 +417,29 @@
         
         .sidebar-header { padding: 1.25rem 1rem; }
         .sidebar-header h2 { font-size: 1.25rem; }
+        .customer-contact-modal { padding:8px;align-items:flex-end; }
+        .customer-contact-card { max-height:86dvh;padding:14px;border-radius:16px 16px 10px 10px; }
+        .customer-contact-option { padding:11px 7px; }
+        .customer-contact-meta { max-width:92px;overflow:hidden;text-overflow:ellipsis; }
+    }
+
+    body.embedded-customer-messages .messages-terminal {
+        width:100%;
+        height:100%;
+        min-height: 0;
+        margin-top: 0;
+        border-radius: 12px;
+        grid-template-columns:minmax(240px, 32%) minmax(0, 1fr);
+    }
+
+    @media (max-width: 768px) {
+        body.embedded-customer-messages .messages-terminal {
+            width:100%;
+            height:100%;
+            min-height: 0;
+            border-radius: 12px;
+            grid-template-columns:minmax(0, 1fr);
+        }
     }
 </style>
 {% endblock %}
@@ -355,7 +449,12 @@
     <!-- ── SIDEBAR ── -->
     <div class="chat-sidebar" id="conversationsSidebar">
         <div class="sidebar-header">
-            <h2>Messages</h2>
+            <div class="sidebar-heading-row">
+                <h2>Messages</h2>
+                <button type="button" class="customer-new-message-btn" onclick="openCustomerContactModal()">
+                    <i class="fas fa-pen-to-square"></i><span>New</span>
+                </button>
+            </div>
             <div class="search-wrapper">
                 <i class="fas fa-search"></i>
                 <input type="text" placeholder="Search for caterers..." id="searchConversations">
@@ -379,7 +478,7 @@
         </div>
 
         <!-- Active Chat -->
-        <div id="activeChat" style="display: none; flex-direction: column; height: 100%;">
+        <div id="activeChat" style="display: none; flex-direction: column; height: 100%; min-width: 0; min-height: 0; overflow: hidden;">
             <div class="window-header">
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                     <button id="mobileBackBtn" class="mobile-back-btn" onclick="closeMobileChat()">
@@ -429,6 +528,24 @@
         </div>
     </div>
 </div>
+
+<div class="customer-contact-modal" id="customerContactModal" onclick="if(event.target===this) closeCustomerContactModal()">
+    <section class="customer-contact-card" role="dialog" aria-modal="true" aria-labelledby="customerContactTitle">
+        <div class="customer-contact-heading">
+            <span class="customer-contact-icon"><i class="fas fa-message"></i></span>
+            <div><h3 id="customerContactTitle">New message</h3><p>Choose a caterer to start a conversation.</p></div>
+            <button type="button" class="customer-contact-close" onclick="closeCustomerContactModal()" aria-label="Close">&times;</button>
+        </div>
+        <label class="customer-contact-search">
+            <i class="fas fa-magnifying-glass"></i>
+            <input type="search" id="customerContactSearch" placeholder="Search caterers..." aria-label="Search caterers">
+        </label>
+        <div class="customer-contact-scroll">
+            <div class="customer-contact-section">AVAILABLE CATERERS</div>
+            <div id="customerContactChoices"><div class="customer-contact-empty">Loading caterers…</div></div>
+        </div>
+    </section>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -436,13 +553,15 @@
 <script>
     let chatClient;
     let currentPeerId = null;
+    let customerConversations = [];
+    let availableCaterers = [];
     const currentUserId = Number("{{ user.id }}");
 
     document.addEventListener('DOMContentLoaded', async () => {
         chatClient = new OccaChat({
             userId: currentUserId,
             userRole: 'customer',
-            websocketUrl: `ws://${window.location.host}/ws`,
+            websocketUrl: `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`,
             onMessageReceived: (data) => {
                 if (currentPeerId && data.sender_id === currentPeerId) {
                     appendMessage(data, 'received');
@@ -453,6 +572,9 @@
         });
 
         refreshConversations();
+        loadAvailableCaterers();
+        document.getElementById('customerContactSearch').addEventListener('input', renderAvailableCaterers);
+        document.getElementById('searchConversations').addEventListener('input', renderConversations);
 
         // File Attachment Logic
         const attachBtn = document.getElementById('attachBtn');
@@ -528,35 +650,94 @@
     });
 
     async function refreshConversations() {
-        const conversations = await loadConversations();
-        const listDiv = document.getElementById('conversationsList');
-        
-        if (conversations.length === 0) {
-            listDiv.innerHTML = `<div style="padding: 4rem 2rem; text-align: center; color: var(--dm-slate-400); font-weight: 600; font-size: 0.85rem;">No conversations in registry.</div>`;
+        customerConversations = await loadConversations();
+        renderConversations();
+    }
+
+    function renderConversations() {
+        const list = document.getElementById('conversationsList');
+        const searchTerm = document.getElementById('searchConversations').value.trim().toLowerCase();
+        const conversations = customerConversations.filter(conv => (conv.peer.name || '').toLowerCase().includes(searchTerm));
+        list.replaceChildren();
+
+        if (!conversations.length) {
+            const empty = document.createElement('div');
+            empty.className = 'customer-contact-empty';
+            empty.textContent = customerConversations.length
+                ? 'No conversations match your search.'
+                : 'No conversations yet. Select New to message a caterer.';
+            list.appendChild(empty);
             return;
         }
 
-        listDiv.innerHTML = conversations.map(conv => `
-            <div class="conv-item ${currentPeerId == conv.peer.id ? 'active' : ''}" onclick="selectConversation(${conv.peer.id}, '${conv.peer.name.replace(/'/g, "\\'")}', '${conv.peer.logo || ''}', ${conv.peer.profile_id || 'null'})">
-                <div class="avatar-wrapper">
-                    ${conv.peer.logo ? `<img src="${conv.peer.logo}" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null; this.parentElement.innerHTML='<b style=\\'color:var(--up-slate-900);\\'>${conv.peer.name.charAt(0)}</b>'">` : `<b style="color:var(--up-slate-900);">${conv.peer.name.charAt(0)}</b>`}
-                    ${conv.peer.is_online ? `<div class="online-indicator"></div>` : ''}
-                </div>
-                <div class="conv-content">
-                    <div class="conv-meta">
-                        <span class="conv-name">${conv.peer.name}</span>
-                        <span class="conv-time">${new Date(conv.last_message.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span class="conv-last">${conv.last_message.sender_id == currentUserId ? 'You: ' : ''}${escapeHTML(conv.last_message.content)}</span>
-                        ${conv.unread_count > 0 ? `<span style="background:var(--up-orange);color:#fff;font-size:0.65rem;font-weight:900;padding:2px 8px;border-radius:10px;">${conv.unread_count}</span>` : ''}
-                    </div>
-                </div>
-            </div>
-        `).join('');
+        conversations.forEach(conv => {
+            const peer = conv.peer;
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = `conv-item${currentPeerId === peer.id ? ' active' : ''}`;
+            item.addEventListener('click', () => selectConversation(peer.id, peer.name, peer.logo, peer.profile_id));
+
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar-wrapper';
+            if (peer.logo) {
+                const image = document.createElement('img');
+                image.src = peer.logo;
+                image.alt = '';
+                image.onerror = () => {
+                    avatar.replaceChildren();
+                    const initial = document.createElement('b');
+                    initial.textContent = (peer.name || 'C').charAt(0).toUpperCase();
+                    avatar.appendChild(initial);
+                };
+                avatar.appendChild(image);
+            } else {
+                const initial = document.createElement('b');
+                initial.textContent = (peer.name || 'C').charAt(0).toUpperCase();
+                avatar.appendChild(initial);
+            }
+            if (peer.is_online) {
+                const online = document.createElement('span');
+                online.className = 'online-indicator';
+                avatar.appendChild(online);
+            }
+
+            const info = document.createElement('div');
+            info.className = 'conv-content';
+            const metadata = document.createElement('div');
+            metadata.className = 'conv-meta';
+            const name = document.createElement('span');
+            name.className = 'conv-name';
+            name.textContent = peer.name || 'Caterer';
+            const time = document.createElement('span');
+            time.className = 'conv-time';
+            time.textContent = new Date(conv.last_message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            metadata.append(name, time);
+
+            const previewRow = document.createElement('div');
+            previewRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px;min-width:0;';
+            const preview = document.createElement('span');
+            preview.className = 'conv-last';
+            const lastMessage = conv.last_message;
+            const messageText = lastMessage.message_type === 'image'
+                ? 'Photo'
+                : lastMessage.message_type === 'file'
+                    ? 'File attachment'
+                    : lastMessage.content || '';
+            preview.textContent = `${lastMessage.sender_id === currentUserId ? 'You: ' : ''}${messageText}`;
+            previewRow.appendChild(preview);
+            if (conv.unread_count > 0) {
+                const unread = document.createElement('span');
+                unread.className = 'unread-badge';
+                unread.textContent = String(conv.unread_count);
+                previewRow.appendChild(unread);
+            }
+            info.append(metadata, previewRow);
+            item.append(avatar, info);
+            list.appendChild(item);
+        });
     }
 
-    async function selectConversation(peerId, peerName, peerLogo, peerProfileId) {
+    async function selectConversation(peerId, peerName, peerLogo = '', peerProfileId = null) {
         currentPeerId = peerId;
         chatClient.peerId = peerId;
 
@@ -566,22 +747,34 @@
         document.getElementById('activePeerName').innerText = peerName;
         
         const avatarBox = document.getElementById('activePeerAvatar');
-        if (peerLogo) avatarBox.innerHTML = `<img src="${peerLogo}" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null; this.parentElement.innerHTML='<b style=\\'color:var(--up-slate-900);\\'>${peerName.charAt(0)}</b>'">`;
-        else avatarBox.innerHTML = `<b style="color:var(--up-slate-900);">${peerName.charAt(0)}</b>`;
+        avatarBox.replaceChildren();
+        if (peerLogo) {
+            const image = document.createElement('img');
+            image.src = peerLogo;
+            image.alt = '';
+            image.onerror = () => {
+                avatarBox.replaceChildren();
+                const initial = document.createElement('b');
+                initial.textContent = (peerName || 'C').charAt(0).toUpperCase();
+                avatarBox.appendChild(initial);
+            };
+            avatarBox.appendChild(image);
+        } else {
+            const initial = document.createElement('b');
+            initial.textContent = (peerName || 'C').charAt(0).toUpperCase();
+            avatarBox.appendChild(initial);
+        }
 
         const profileBtn = document.getElementById('viewPeerProfile');
         if (peerProfileId) {
-            profileBtn.onclick = () => window.open(`/caterers/${peerProfileId}`, '_blank');
+            profileBtn.onclick = () => window.open(`/customer/marketplace/${peerProfileId}`, '_blank');
             profileBtn.style.display = 'flex';
         } else {
             profileBtn.style.display = 'none';
         }
         
         // Mark as active in sidebar
-        document.querySelectorAll('.conv-item').forEach(item => {
-            item.classList.remove('active');
-            if (item.getAttribute('onclick').includes(peerId)) item.classList.add('active');
-        });
+        renderConversations();
         
         // Trigger Mobile View Transition
         document.querySelector('.messages-terminal').classList.add('mobile-chat-active');
@@ -609,6 +802,88 @@
         await chatClient.markAllAsRead(peerId);
         refreshConversations();
     }
+
+    async function loadAvailableCaterers() {
+        const choices = document.getElementById('customerContactChoices');
+        try {
+            const response = await fetch('/api/chat/contacts');
+            if (!response.ok) throw new Error(`Contacts request failed (${response.status}).`);
+            availableCaterers = (await response.json()).filter(contact => contact.role === 'caterer');
+            renderAvailableCaterers();
+        } catch (error) {
+            console.error('Unable to load caterer contacts:', error);
+            choices.replaceChildren();
+            const message = document.createElement('div');
+            message.className = 'customer-contact-empty';
+            message.textContent = 'Could not load caterers. Please close this window and try again.';
+            choices.appendChild(message);
+        }
+    }
+
+    function renderAvailableCaterers() {
+        const choices = document.getElementById('customerContactChoices');
+        const query = document.getElementById('customerContactSearch').value.trim().toLowerCase();
+        const contacts = availableCaterers.filter(contact =>
+            `${contact.name || ''} ${contact.email || ''}`.toLowerCase().includes(query)
+        );
+        choices.replaceChildren();
+        if (!contacts.length) {
+            const empty = document.createElement('div');
+            empty.className = 'customer-contact-empty';
+            empty.textContent = availableCaterers.length
+                ? 'No caterers match your search.'
+                : 'No caterers are currently available.';
+            choices.appendChild(empty);
+            return;
+        }
+
+        contacts.forEach(contact => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'customer-contact-option';
+            const avatar = document.createElement('span');
+            avatar.className = 'customer-contact-avatar';
+            if (contact.logo) {
+                const image = document.createElement('img');
+                image.src = contact.logo;
+                image.alt = '';
+                image.onerror = () => { avatar.textContent = (contact.name || 'C').charAt(0).toUpperCase(); };
+                avatar.appendChild(image);
+            } else {
+                avatar.textContent = (contact.name || 'C').charAt(0).toUpperCase();
+            }
+            const copy = document.createElement('span');
+            copy.className = 'customer-contact-copy';
+            const name = document.createElement('strong');
+            name.textContent = contact.name || 'Caterer';
+            const email = document.createElement('small');
+            email.textContent = contact.email || 'OccaServe caterer';
+            copy.append(name, email);
+            const meta = document.createElement('span');
+            meta.className = 'customer-contact-meta';
+            meta.textContent = contact.is_online ? 'Online' : 'Caterer';
+            button.append(avatar, copy, meta);
+            button.addEventListener('click', () => {
+                closeCustomerContactModal();
+                selectConversation(contact.id, contact.name || 'Caterer', contact.logo, contact.profile_id);
+            });
+            choices.appendChild(button);
+        });
+    }
+
+    function openCustomerContactModal() {
+        const modal = document.getElementById('customerContactModal');
+        modal.classList.add('open');
+        document.getElementById('customerContactSearch').focus();
+    }
+
+    function closeCustomerContactModal() {
+        document.getElementById('customerContactModal').classList.remove('open');
+    }
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeCustomerContactModal();
+    });
     
     function closeMobileChat() {
         document.querySelector('.messages-terminal').classList.remove('mobile-chat-active');

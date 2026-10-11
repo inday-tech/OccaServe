@@ -2175,11 +2175,12 @@ window.openExternalBookingModal = function() {
         window.recalcEquipRentalTotals();
     }
 
-    // Walk-in bookings must use today or a future date.
+    window.handleWalkinEventTypeChange(document.getElementById('extEventType')?.value || '');
+
+    // Keep the configured advance-booking limit, but allow historical dates.
     const dateInput = document.getElementById('extEventDate');
     if (dateInput) {
         const localToday = calendarLocalDateValue();
-        dateInput.min = localToday;
         if (window.MAX_BOOKING_DATE) dateInput.max = window.MAX_BOOKING_DATE;
         if (!dateInput.value) {
             dateInput.value = localToday;
@@ -2260,8 +2261,13 @@ window.updateWalkinFormValidation = function(showTouched = true) {
     else if (!/^9\d{9}$/.test(phone)) errors.extCustomerContact = 'Enter 10 digits after +63 (example: 9171234567).';
     const eventDate = value('extEventDate');
     if (!eventDate) errors.extEventDate = 'Event date is required.';
-    else if (eventDate < calendarLocalDateValue()) errors.extEventDate = 'Choose today or a future date.';
     else if (window.MAX_BOOKING_DATE && eventDate > window.MAX_BOOKING_DATE) errors.extEventDate = `Choose a date on or before ${window.MAX_BOOKING_DATE} based on the maximum advance booking setting.`;
+    const otherEventType = value('extOtherEventType');
+    if (eventType === 'other' && !otherEventType) errors.extOtherEventType = 'Specify the event type.';
+    const guestCount = value('extGuestCount');
+    if (!guestCount || !Number.isInteger(Number(guestCount)) || Number(guestCount) < 1 || Number(guestCount) > 100000) {
+        errors.extGuestCount = 'Enter a whole number of guests between 1 and 100,000.';
+    }
     const eventTime = value('extEventTime');
     if (!eventTime) errors.extEventTime = 'Event time is required.';
     else if (!/^([01]\d|2[0-3]):(00|30)$/.test(eventTime)) errors.extEventTime = 'Choose a time ending in :00 or :30.';
@@ -2289,7 +2295,7 @@ window.updateWalkinFormValidation = function(showTouched = true) {
     if (discount > servicesTotal) errors.extDiscount = 'Discount cannot exceed the services amount.';
     if (paid > grandTotal) errors.extDownpayment = 'Amount paid cannot exceed the grand total.';
 
-    const fields = ['extEventType', ...requiredNames, 'extCustomerContact', 'extEventDate', 'extEventTime', 'extVenue', 'walkinServices', 'extDiscount', 'extDownpayment'];
+    const fields = ['extEventType', ...(eventType === 'other' ? ['extOtherEventType'] : []), ...requiredNames, 'extCustomerContact', 'extEventDate', 'extEventTime', 'extGuestCount', 'extVenue', 'walkinServices', 'extDiscount', 'extDownpayment'];
     fields.forEach(id => {
         const touchedId = id === 'extDiscount' ? 'extDiscountInput' : id === 'extDownpayment' ? 'extDownpaymentInput' : id;
         const touched = !showTouched || document.getElementById(touchedId)?.dataset.walkinTouched === 'true' || id === 'walkinServices' && document.querySelector('#walkinServicesList .walkin-service-checkbox:checked');
@@ -2322,6 +2328,17 @@ window.handleWalkinEventTypeChange = function(eventType) {
 
     window.clearWalkinError('extEventType');
     const normType = (eventType || '').toLowerCase();
+    const otherTypeGroup = document.getElementById('extOtherEventTypeGroup');
+    const otherTypeInput = document.getElementById('extOtherEventType');
+    if (otherTypeGroup && otherTypeInput) {
+        const isOther = normType === 'other';
+        otherTypeGroup.style.display = isOther ? '' : 'none';
+        otherTypeInput.required = isOther;
+        if (!isOther) {
+            otherTypeInput.value = '';
+            window.clearWalkinError('extOtherEventType');
+        }
+    }
 
     if (normType === 'wedding') {
         container.innerHTML = `
@@ -3461,7 +3478,8 @@ window.updateWalkinSummary = function(servicesTotal, grandTotal, amountPaid, rem
 
     // 2. Event Type
     const sumEventType = document.getElementById('sumEventType');
-    if (sumEventType) sumEventType.innerText = eventType || '-';
+    const otherEventType = (document.getElementById('extOtherEventType')?.value || '').trim();
+    if (sumEventType) sumEventType.innerText = (normType === 'other' ? otherEventType : eventType) || '-';
 
     // 3. Date & Time
     const dateVal = document.getElementById('extEventDate')?.value || '';
@@ -3543,9 +3561,14 @@ window.submitExternalBooking = async function(e) {
     if (!eventType) {
         reportError('extEventType', 'Please select the type of event.');
     }
+    const normType = (eventType || '').toLowerCase();
+    const otherTypeEl = document.getElementById('extOtherEventType');
+    const otherEventType = otherTypeEl ? otherTypeEl.value.trim() : '';
+    if (normType === 'other' && !otherEventType) {
+        reportError('extOtherEventType', 'Please specify the type of event.');
+    }
 
     // 2. Dynamic Participant Names Validation
-    const normType = (eventType || '').toLowerCase();
     let brideName = '';
     let groomName = '';
     let celebrantName = '';
@@ -3619,10 +3642,14 @@ window.submitExternalBooking = async function(e) {
     const dateVal = dateEl ? dateEl.value : '';
     if (!dateVal) {
         reportError('extEventDate', 'Date of event is required.');
-    } else if (dateVal < calendarLocalDateValue()) {
-        reportError('extEventDate', 'Choose today or a future date.');
     } else if (window.MAX_BOOKING_DATE && dateVal > window.MAX_BOOKING_DATE) {
         reportError('extEventDate', `Choose a date on or before ${window.MAX_BOOKING_DATE} based on the maximum advance booking setting.`);
+    }
+
+    const guestCountEl = document.getElementById('extGuestCount');
+    const guestCount = guestCountEl ? Number(guestCountEl.value) : 0;
+    if (!Number.isInteger(guestCount) || guestCount < 1 || guestCount > 100000) {
+        reportError('extGuestCount', 'Enter a whole number of guests between 1 and 100,000.');
     }
 
     const eventTimeEl = document.getElementById('extEventTime');
@@ -3783,6 +3810,7 @@ window.submitExternalBooking = async function(e) {
         status: bookingStatus,
         payment_method: paymentMethod,
         event_type: eventType,
+        other_event_type: normType === 'other' ? otherEventType : '',
         bride_name: brideName,
         groom_name: groomName,
         celebrant_name: celebrantName,
@@ -3790,10 +3818,10 @@ window.submitExternalBooking = async function(e) {
         full_name: genericFullName || (normType === 'wedding' ? `${brideName} & ${groomName}` : (celebrantName || repName)),
         customer_contact: canonicalPhone,
         customer_email: "",
-        event_name: `${eventType} - ${genericFullName || (normType === 'wedding' ? `${brideName} & ${groomName}` : (celebrantName || repName))}`,
+        event_name: `${normType === 'other' ? otherEventType : eventType} - ${genericFullName || (normType === 'wedding' ? `${brideName} & ${groomName}` : (celebrantName || repName))}`,
         event_date: dateVal,
         event_time: eventTimeVal,
-        guest_count: 20,
+        guest_count: guestCount,
         street_address: streetVal,
         barangay: brgyVal,
         city_municipality: cityVal,

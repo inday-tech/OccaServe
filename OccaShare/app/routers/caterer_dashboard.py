@@ -534,7 +534,11 @@ async def create_manual_booking(
             raise HTTPException(status_code=400, detail="manCustEmail|Security Violation: You cannot create a booking using your own caterer email or contact number.")
         
         # Dynamic Event-Type Participant Validation
-        event_type = data.get("event_type", "").strip()
+        event_type = str(data.get("event_type") or "").strip()
+        if event_type.lower() == "other":
+            event_type = str(data.get("other_event_type") or "").strip()
+            if not event_type:
+                raise HTTPException(status_code=400, detail="extOtherEventType|Please specify the type of event.")
         bride_name = data.get("bride_name", "").strip()
         groom_name = data.get("groom_name", "").strip()
         celebrant_name = data.get("celebrant_name", "").strip()
@@ -731,7 +735,12 @@ async def create_manual_booking(
 
         # Package Constraint Check
         package_id = data.get("package_id")
-        guest_count = int(data.get("guest_count", 0) or 0)
+        try:
+            guest_count = int(data.get("guest_count", 0) or 0)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="extGuestCount|Enter a valid whole number of guests.")
+        if guest_count < 1 or guest_count > 100000:
+            raise HTTPException(status_code=400, detail="extGuestCount|Guest count must be between 1 and 100,000.")
         if package_id:
             package = db.query(models.CateringPackage).get(package_id)
             if package:

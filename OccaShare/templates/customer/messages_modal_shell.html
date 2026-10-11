@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Customer Messages - OccaServe</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+    <style>
+        :root {
+            --up-slate-900: #0f172a;
+            --up-orange: #ff7b54;
+            --up-emerald: #10b981;
+            --dm-slate-50: #f8fafc;
+            --dm-slate-100: #f1f5f9;
+            --dm-slate-200: #e2e8f0;
+            --dm-slate-400: #94a3b8;
+        }
+        html, body { width:100%; height:100%; min-width:0; min-height:0; margin:0; overflow:hidden; }
+        body { padding:14px; box-sizing:border-box; background:#f8fafc; color:#0f172a; font-family:Inter,Arial,sans-serif; }
+        @media (max-width:768px) { body { padding:8px; } }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="embedded-customer-messages">
+    {% block content %}{% endblock %}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

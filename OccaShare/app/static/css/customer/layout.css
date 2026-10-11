@@ -123,6 +123,16 @@ html, body {
     border-radius: 18px; display: flex; align-items: center; gap: 14px;
     transition: var(--transition-standard);
 }
+.sidebar-user-card-link {
+    color: inherit;
+    text-decoration: none;
+}
+.sidebar-user-card-link:hover,
+.sidebar-user-card-link:focus-visible {
+    border-color: rgba(255, 123, 84, 0.35);
+    box-shadow: 0 4px 12px rgba(255, 123, 84, 0.1);
+    outline: none;
+}
 .user-avatar { 
     width: 42px; height: 42px; border-radius: 12px; 
     background: var(--primary-color); color: #fff; 
@@ -504,6 +514,9 @@ html, body {
     .customer-sidebar {
         transform: translateX(-100%);
         box-shadow: none;
+        background: #ffffff;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
     }
     .customer-sidebar.active {
@@ -626,7 +639,6 @@ html, body {
 
 
 @media (max-width: 480px) { .premium-dropdown { position: fixed !important; top: 62px !important; left: 2% !important; right: 2% !important; width: 96% !important; max-height: 70vh !important; overflow-y: auto !important; z-index: 9999 !important; } }
-
 
 
 

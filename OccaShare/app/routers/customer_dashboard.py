@@ -871,13 +871,15 @@ async def customer_reviews(
 async def customer_messages(
     request: Request, 
     db: Session = Depends(database.get_db),
-    user: models.User = Depends(customer_only)
+    user: models.User = Depends(customer_only),
+    embedded: bool = False
 ):
     """Render the chat messaging interface for the customer."""
     return templates.TemplateResponse("customer/messages.html", {
         "request": request,
         "user": user,
-        "active_page": "messages"
+        "active_page": "messages",
+        "embedded": embedded
     })
 
 @router.get("/profile", response_class=HTMLResponse)

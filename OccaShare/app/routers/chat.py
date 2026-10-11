@@ -53,6 +53,17 @@ async def get_message_contacts(
                 ),
             ).order_by(models.User.created_at.desc()).limit(250).all()
             contacts.extend(customer_contacts)
+    elif current_user.role == "customer":
+        contacts = db.query(models.User).join(
+            models.CatererProfile,
+            models.CatererProfile.user_id == models.User.id,
+        ).filter(
+            models.User.role == "caterer",
+            models.User.is_archived == False,
+            models.CatererProfile.status == "Published",
+            models.CatererProfile.verification_status == "Verified",
+            models.CatererProfile.account_status == "Active",
+        ).order_by(models.CatererProfile.business_name.asc()).all()
     else:
         return []
 
@@ -78,6 +89,8 @@ async def get_message_contacts(
             "email": contact.email,
             "role": contact.role,
             "contact_group": contact_group,
+            "logo": contact.caterer_profile.logo_url if contact.role == "caterer" and contact.caterer_profile else None,
+            "profile_id": contact.caterer_profile.id if contact.role == "caterer" and contact.caterer_profile else None,
             "is_online": contact.id in manager.user_connections,
         })
     return result

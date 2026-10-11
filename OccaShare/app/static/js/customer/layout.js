@@ -340,12 +340,8 @@ async function fetchIntelligence() {
 // renderNotifications handled by main.js
 
 function renderMessages(data) {
-    const body  = document.getElementById('headerMsgBody');
     const badge = document.getElementById('headerMsgBadge');
-    const label = document.getElementById('msgUnreadLabel');
-    if (!body) return;
-
-    const unread = data.filter(m => !m.is_read).length;
+    const unread = Array.isArray(data) ? data.filter(m => !m.is_read).length : 0;
 
     if (badge) {
         if (unread > 0) {
@@ -355,26 +351,6 @@ function renderMessages(data) {
             badge.style.display = 'none';
         }
     }
-    if (label) label.textContent = unread > 0 ? `${unread} new` : '';
-
-    if (!data.length) {
-        body.innerHTML = `<div class="hdr-empty"><i class="fas fa-comment-slash"></i><p>No messages yet</p></div>`;
-        return;
-    }
-
-    body.innerHTML = data.slice(0, 6).map(m => `
-        <a href="/customer/messages" class="hdr-msg-item">
-            <div class="hmi-avatar">${escHtml(m.sender_name[0] || '?')}</div>
-            <div style="flex:1;min-width:0;">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span class="hmi-name">${escHtml(m.sender_name)}</span>
-                    <span class="hmi-time">${m.time_ago}</span>
-                </div>
-                <div class="hmi-text">${escHtml(m.message)}</div>
-            </div>
-            ${!m.is_read ? '<div class="hmi-unread-dot"></div>' : ''}
-        </a>
-    `).join('');
 }
 
 // markAllNotificationsRead centralized in main.js
